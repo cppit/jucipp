@@ -1,6 +1,6 @@
 # README #
 
-##Get git up an running##
+##Get git up and running##
 ```
 #!python
 
