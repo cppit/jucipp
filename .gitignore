@@ -1,0 +1,9 @@
+#Blacklist everything
+*
+
+!*/
+
+#Whitelist
+!*.cc
+!*.h
+!*.txt
