@@ -12,8 +12,6 @@ Controller::Menu::Menu() :
                 onNewEmptyfile();
             });
 
-
-
     menu_view.set_ui_manager_action_group(menu_view.get_action_group());
     menu_view.set_ui_manger_string(menu_model.get_ui_string());
 }
