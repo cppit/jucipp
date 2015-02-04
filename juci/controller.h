@@ -35,6 +35,13 @@ public:
         void onFileOpenFolder();
         void onSystemQuit();
         void onPluginAddSnippet();
+        void onWindowCloseTab();
+        void onEditCopy();
+        void onEditCut();
+        void onEditPaste();
+        void onEditFind();
+        void onWindowSplitWindow();
+        void onHelpAbout();
 
     };
 };
