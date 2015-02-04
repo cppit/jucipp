@@ -18,14 +18,13 @@ public:
 
         virtual ~Menu();
 
-        Gtk::Box &get_view();
-
-        Glib::RefPtr<Gtk::ActionGroup> get_action_group() {
-            return action_group;
+        Gtk::Box &view();
+        Glib::RefPtr<Gtk::ActionGroup> action_group() {
+            return action_group_;
         };
 
-        Glib::RefPtr<Gtk::UIManager> get_ui_manager() {
-            return ui_manager;
+        Glib::RefPtr<Gtk::UIManager> ui_manager() {
+            return ui_manager_;
         };
 
         void set_ui_manger_string(std::string ui_string);
@@ -33,9 +32,9 @@ public:
         void set_ui_manager_action_group(Glib::RefPtr<Gtk::ActionGroup> action_group);
 
     protected:
-        Gtk::Box view;
-        Glib::RefPtr<Gtk::UIManager> ui_manager;
-        Glib::RefPtr<Gtk::ActionGroup> action_group;
+        Gtk::Box view_;
+        Glib::RefPtr<Gtk::UIManager> ui_manager_;
+        Glib::RefPtr<Gtk::ActionGroup> action_group_;
     };
 
 

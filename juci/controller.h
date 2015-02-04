@@ -18,21 +18,24 @@ public:
         Menu();
 
         virtual ~Menu();
-        Gtk::Box &get_view();
+        Gtk::Box &view();
 
-        Glib::RefPtr<Gtk::ActionGroup> get_action_group() {
-            return menu_view.get_action_group();
-        };
-        Glib::RefPtr<Gtk::UIManager> get_ui_manager() {
-            return menu_view.get_ui_manager();
+        Glib::RefPtr<Gtk::UIManager> ui_manager() {
+            return menu_view_.ui_manager();
         };
 
     private:
-        View::Menu menu_view;
-        Model::Menu menu_model;
-        void onNewEmptyfile();
-        void onNewCCFile();
-        void onNewHeaderFile();
+        View::Menu menu_view_;
+        Model::Menu menu_model_;
+        /*Signal handlers*/
+        void onFileNewEmptyfile();
+        void onFileNewCCFile();
+        void onFileNewHeaderFile();
+        void onFileOpenFile();
+        void onFileOpenFolder();
+        void onSystemQuit();
+        void onPluginAddSnippet();
+
     };
 };
 

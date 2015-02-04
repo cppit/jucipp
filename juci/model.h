@@ -16,11 +16,11 @@ public:
 
         virtual~Menu();
 
-        std::string get_ui_string() {
-            return ui_string;
+        std::string ui_string() {
+            return ui_string_;
         };
     private:
-        std::string ui_string;
+        std::string ui_string_;
     };
 
 };

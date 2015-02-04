@@ -15,7 +15,7 @@ public:
 
     virtual ~Window();
 
-    Gtk::Box window_box;
+    Gtk::Box window_box_;
 
 private:
     Controller::Menu menu;
