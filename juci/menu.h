@@ -1,90 +1,69 @@
 #include <iostream>
 #include "gtkmm.h"
+#include "keybindings.h"
 namespace Menu {
     class Model {
     public:
-        Model();
+      Model();
 
-        virtual~Model();
+      virtual~Model();
 
-        std::string ui_string() {
-            return ui_string_;
-        };
+      std::string ui_string() {
+        return ui_string_;
+      };
     private:
-        std::string ui_string_;
+      std::string ui_string_;
     };
-
 
     class View {
     public:
-        View(Gtk::Orientation orient);
-
-        virtual ~View();
-
-        Gtk::Box &view();
-
-        Glib::RefPtr <Gtk::ActionGroup> action_group() {
-            return action_group_;
-        };
-
-        Glib::RefPtr <Gtk::UIManager> ui_manager() {
-            return ui_manager_;
-        };
-
-        void set_ui_manger_string(std::string ui_string);
-
-        void set_ui_manager_action_group(Glib::RefPtr <Gtk::ActionGroup> action_group);
+      View(Gtk::Orientation orient);
+      virtual ~View();
+      Gtk::Box &view(Glib::RefPtr<Gtk::UIManager> ui_manager);
 
     protected:
-        Gtk::Box view_;
-        Glib::RefPtr <Gtk::UIManager> ui_manager_;
-        Glib::RefPtr <Gtk::ActionGroup> action_group_;
+      Gtk::Box view_;
+
     };
 
     class Controller {
     public:
-        Controller();
-
-        virtual ~Controller();
-
-        Gtk::Box &view();
-
-        Glib::RefPtr <Gtk::UIManager> ui_manager() {
-            return menu_view_.ui_manager();
-        };
-
+      Controller(Keybindings::Controller keybindings);
+      virtual ~Controller();
+      Gtk::Box &view();
     private:
-        Menu::View menu_view_;
-        Menu::Model menu_model_;
+      Keybindings::Controller keybindings_;
+      Menu::View menu_view_;
+      Menu::Model menu_model_;
 
-        /*Signal handlers*/
-        void onFileNewEmptyfile();
+      /*Signal handlers*/
+      void OnFileNewEmptyfile();
 
-        void onFileNewCCFile();
+      void OnFileNewCCFile();
 
-        void onFileNewHeaderFile();
+      void OnFileNewHeaderFile();
 
-        void onFileOpenFile();
+      void OnFileOpenFile();
 
-        void onFileOpenFolder();
+      void OnFileOpenFolder();
 
-        void onSystemQuit();
+      void OnSystemQuit();
 
-        void onPluginAddSnippet();
+      void OnPluginAddSnippet();
 
-        void onWindowCloseTab();
+      void OnWindowCloseTab();
 
-        void onEditCopy();
+      void OnEditCopy();
 
-        void onEditCut();
+      void OnEditCut();
 
-        void onEditPaste();
+      void OnEditPaste();
 
-        void onEditFind();
+      void OnEditFind();
 
-        void onWindowSplitWindow();
+      void OnWindowSplitWindow();
 
-        void onHelpAbout();
+      void OnHelpAbout();
 
     };
 }

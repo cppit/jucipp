@@ -10,16 +10,19 @@
 class Window : public Gtk::Window {
 public:
     Window();
-
     virtual ~Window();
 
     Gtk::Box window_box_;
 
 private:
+    Keybindings::Controller keybindings;
     Menu::Controller menu;
+
     /*signal handler*/
     void onSystemQuit();
 
 };
+
+
 
 #endif // JUCI_H
