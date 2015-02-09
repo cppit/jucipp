@@ -3,7 +3,8 @@
 
 !*/
 
+
 #Whitelist
 !*.cc
 !*.h
-!*.txt
+!CMakeLists.txt
