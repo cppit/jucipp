@@ -3,7 +3,7 @@ set(project_name juci)
 
 project (${project_name})
 
-set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -std=c++14")
+set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -std=c++11")
 
 INCLUDE(FindPkgConfig)
 
@@ -18,9 +18,9 @@ if(${PYTHONLIBS_FOUND})
   message("Python libraries found. Continuing")
 else()
   message("Please install python libraries. The libraries where not found.")
-  message("Boost include dirs: ${PYTHON_INCLUDE_DIRS}")
-  message("Boost link dirs ${PYTHON_LIBRARIES}")
-  message(FATAL_ERROR "The boost libraries are required. Quiting.")
+  message("Python include dirs: ${PYTHON_INCLUDE_DIRS}")
+  message("Python link dirs ${PYTHON_LIBRARIES}")
+  message(FATAL_ERROR "The python libraries are required. Quitting.")
 endif()
 
 #### Finding boost, the variables below is set #####
@@ -38,7 +38,7 @@ else()
   message("Boost library dirs: ${Boost_LIBRARY_DIRS}")
   message("Boost include dirs: ${Boost_INCLUDE_DIRS}")
   message("Boost link dirs ${Boost_LIBRARIES}")
-  message(FATAL_ERROR "The boost libraries are required. Quiting.")
+  message(FATAL_ERROR "The boost libraries are required. Quitting.")
 endif()
 
 #### Finding gtkmm, the variables below is set #####
@@ -56,7 +56,7 @@ else()
   message("Gtkmm library dirs ${GTKMM_LIBRARY_DIRS}")
   message("Gtkmm include dirs ${GTKMM_INCLUDE_DIRS}")
   message("Gtkmm link dirs ${GTKMM_LIBRARIES}")
-  message(FATAL_ERROR "The gtkmm libraries are required. Quiting.")
+  message(FATAL_ERROR "The gtkmm libraries are required. Quitting.")
 endif()
 
 
