@@ -1,6 +1,90 @@
-#include "controller.h"
+#include "menu.h"
 
-Controller::Menu::Menu() :
+/***********************************/
+/*              MODEL              */
+/***********************************/
+
+
+Menu::Model::Model() {
+    ui_string_ =
+                    "<ui>                                                   "
+                    "   <menubar name='MenuBar'>                            "
+                    "       <menu action='FileMenu'>                        "
+                    "           <menu action='FileNew'>                     "
+                    "               <menuitem action='FileNewStandard'/>    "
+                    "               <menuitem action='FileNewCC'/>          "
+                    "               <menuitem action='FileNewH'/>           "
+                    "           </menu>                                     "
+                    "           <menuitem action='FileOpenFile'/>           "
+                    "           <menuitem action='FileOpenFolder'/>         "
+                    "            <separator/>                               "
+                    "           <menuitem action='FileQuit'/>               "
+                    "       </menu>                                         "
+                    "       <menu action='EditMenu'>                        "
+                    "           <menuitem action='EditCopy'/>               "
+                    "           <menuitem action='EditCut'/>                "
+                    "           <menuitem action='EditPaste'/>              "
+                    "            <separator/>                               "
+                    "           <menuitem action='EditFind'/>               "
+                    "       </menu>                                         "
+                    "       <menu action='WindowMenu'>                      "
+                    "           <menuitem action='WindowCloseTab'/>         "
+                    "           <menuitem action='WindowSplitWindow'/>      "
+                    "       </menu>                                         "
+                    "       <menu action='PluginMenu'>                      "
+                    "           <menu action='PluginSnippet'>               "
+                    "               <menuitem action='PluginAddSnippet'/>   "
+                    "           </menu>                                     "
+                    "       </menu>                                         "
+                    "       <menu action='HelpMenu'>                        "
+                    "           <menuitem action='HelpAbout'/>              "
+                    "        </menu>                                        "
+                    "   </menubar>                                          "
+                    "</ui>                                                  ";
+
+}
+
+Menu::Model::~Model() {
+}
+
+/***********************************/
+/*              VIEW               */
+/***********************************/
+Menu::View::View(Gtk::Orientation orientation) :
+        view_(orientation) {
+
+    action_group_ = Gtk::ActionGroup::create();
+    ui_manager_ = Gtk::UIManager::create();
+
+
+}
+
+void Menu::View::set_ui_manger_string(std::string ui_string) {
+    try {
+        ui_manager_->add_ui_from_string(ui_string);
+    }
+    catch (const Glib::Error &ex) {
+        std::cerr << "building menus failed: " << ex.what();
+    }
+}
+
+void Menu::View::set_ui_manager_action_group(Glib::RefPtr<Gtk::ActionGroup> action_group) {
+    ui_manager_->insert_action_group(action_group);
+}
+
+Gtk::Box &Menu::View::view() {
+    view_.pack_start(*ui_manager_->get_widget("/MenuBar"), Gtk::PACK_SHRINK);
+    return view_;
+}
+
+
+Menu::View::~View() {
+}
+
+/***********************************/
+/*            CONTROLLER           */
+/***********************************/
+Menu::Controller::Controller() :
         menu_view_(Gtk::ORIENTATION_VERTICAL),
         menu_model_() {
 /* Add action to menues */
@@ -96,68 +180,68 @@ Controller::Menu::Menu() :
     menu_view_.set_ui_manger_string(menu_model_.ui_string());
 }
 
-Controller::Menu::~Menu() {
+Menu::Controller::~Controller() {
 
 }
 
-Gtk::Box &Controller::Menu::view() {
+Gtk::Box &Menu::Controller::view() {
     return menu_view_.view();
 }
 
-void Controller::Menu::onFileNewEmptyfile() {
+void Menu::Controller::onFileNewEmptyfile() {
     std::cout << "New file clicked" << std::endl;
     //TODO(Oyvang) Legg til funksjon
 }
-void Controller::Menu::onFileNewCCFile() {
+void Menu::Controller::onFileNewCCFile() {
     std::cout << "New cc file clicked" << std::endl;
     //TODO(Oyvang) Legg til funksjon
 }
 
-void Controller::Menu::onFileNewHeaderFile() {
+void Menu::Controller::onFileNewHeaderFile() {
     std::cout << "New cc file clicked" << std::endl;
     //TODO(Oyvang) Legg til funksjon
 }
-void Controller::Menu::onSystemQuit(){
+void Menu::Controller::onSystemQuit(){
     //TODO(Oyvang, Zalox, Forgie) Add everything that needs to be done before quiting
     /*Quit the system*/
     Gtk::Main::quit(); //TODO(Oyvang, Zalox, Forgie) methode is depricated, find a better solution.
 }
-void Controller::Menu::onPluginAddSnippet() {
+void Menu::Controller::onPluginAddSnippet() {
     std::cout << "Add snipper" << std::endl; //TODO(Forgi add you snippet magic code)
 }
-void Controller::Menu::onFileOpenFile() {
+void Menu::Controller::onFileOpenFile() {
     std::cout << "Open file clicked" << std::endl;
     //TODO(Oyvang) Legg til funksjon
 }
-void Controller::Menu::onFileOpenFolder() {
+void Menu::Controller::onFileOpenFolder() {
     std::cout << "Open folder clicked" << std::endl;
     //TODO(Oyvang) Legg til funksjon
 }
-void Controller::Menu::onWindowCloseTab() {
+void Menu::Controller::onWindowCloseTab() {
     std::cout << "Closing tab clicked" << std::endl;
     //TODO(Oyvang) Legg til funksjon
 }
-void Controller::Menu::onEditCopy() {
+void Menu::Controller::onEditCopy() {
     std::cout << "Clicked copy" << std::endl;
     //TODO(Oyvang) Legg til funksjon
 }
-void Controller::Menu::onEditCut() {
+void Menu::Controller::onEditCut() {
     std::cout << "Clicked cut" << std::endl;
     //TODO(Oyvang) Legg til funksjon
 }
-void Controller::Menu::onEditPaste() {
+void Menu::Controller::onEditPaste() {
     std::cout << "Clicked paste" << std::endl;
     //TODO(Oyvang) Legg til funksjon
 }
-void Controller::Menu::onEditFind() {
+void Menu::Controller::onEditFind() {
     std::cout << "Clicked find" << std::endl;
     //TODO(Oyvang) Legg til funksjon
 }
-void Controller::Menu::onWindowSplitWindow() {
+void Menu::Controller::onWindowSplitWindow() {
     std::cout << "Clicked split window" << std::endl;
     //TODO(Oyvang) Legg til funksjon
 }
-void Controller::Menu::onHelpAbout() {
+void Menu::Controller::onHelpAbout() {
     std::cout << "Clicked about" << std::endl;
     //TODO(Oyvang) Legg til funksjon
 }
