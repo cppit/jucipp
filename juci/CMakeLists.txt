@@ -7,14 +7,9 @@ INCLUDE(FindPkgConfig)
 # name of the executable on Windows will be example.exe
 add_executable(juci
 # list of every needed file to create the executable
-    model.h
-    models.cc
+    menu.h
 
-    view.h
-    views.cc
-
-    controller.h
-    controllers.cc
+    menu.cc
 
     window.cc
     juci.cc

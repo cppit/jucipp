@@ -4,9 +4,7 @@
 
 #include <iostream>
 #include "gtkmm.h"
-#include "view.h"
-#include "model.h"
-#include "controller.h"
+#include "menu.h"
 
 
 class Window : public Gtk::Window {
@@ -18,7 +16,7 @@ public:
     Gtk::Box window_box_;
 
 private:
-    Controller::Menu menu;
+    Menu::Controller menu;
     /*signal handler*/
     void onSystemQuit();
 
