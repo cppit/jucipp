@@ -64,9 +64,9 @@ endif()
 add_executable(${project_name}
 # list of every needed file to create the executable
     menu.h
-
     menu.cc
-
+    source.h
+    source.cc
     window.cc
     juci.cc
     )

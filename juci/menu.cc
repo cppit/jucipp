@@ -68,13 +68,14 @@ void Menu::View::set_ui_manger_string(std::string ui_string) {
     }
 }
 
-void Menu::View::set_ui_manager_action_group(Glib::RefPtr<Gtk::ActionGroup> action_group) {
+void Menu::View::set_ui_manager_action_group(Glib::RefPtr<Gtk::ActionGroup>
+                                             action_group) {
     ui_manager_->insert_action_group(action_group);
 }
 
-Gtk::Box &Menu::View::view() {
+Glib::RefPtr<Gtk::Box> Menu::View::view() {
     view_.pack_start(*ui_manager_->get_widget("/MenuBar"), Gtk::PACK_SHRINK);
-    return view_;
+    return Glib::RefPtr<Gtk::Box>(&view_);
 }
 
 
@@ -184,8 +185,8 @@ Menu::Controller::~Controller() {
 
 }
 
-Gtk::Box &Menu::Controller::view() {
-    return menu_view_.view();
+Glib::RefPtr<Gtk::Box> Menu::Controller::view() {
+  return menu_view_.view();
 }
 
 void Menu::Controller::onFileNewEmptyfile() {
@@ -204,7 +205,7 @@ void Menu::Controller::onFileNewHeaderFile() {
 void Menu::Controller::onSystemQuit(){
     //TODO(Oyvang, Zalox, Forgie) Add everything that needs to be done before quiting
     /*Quit the system*/
-    Gtk::Main::quit(); //TODO(Oyvang, Zalox, Forgie) methode is depricated, find a better solution.
+  
 }
 void Menu::Controller::onPluginAddSnippet() {
     std::cout << "Add snipper" << std::endl; //TODO(Forgi add you snippet magic code)
