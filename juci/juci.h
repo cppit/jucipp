@@ -14,7 +14,8 @@ public:
   Gtk::Box window_box_;
   std::shared_ptr<Source::Controller> source();
 private:
-  Menu::Controller menu;
+  Keybindings::Controller keybindings_;
+  Menu::Controller menu_;
   Source::Controller source_;
   /*signal handler*/
   void onSystemQuit();
