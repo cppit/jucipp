@@ -1,4 +1,4 @@
-/*juCi++ main header file*/
+//juCi++ main header file
 #ifndef JUCI_JUCI_H_
 #define JUCI_JUCI_H_
 
@@ -10,15 +10,12 @@
 class Window : public Gtk::Window {
 public:
   Window();
-
-  virtual ~Window() {
-  }
-
-  std::shared_ptr<Source::Controller> source();
+  virtual ~Window() {}
 
 private:
   Keybindings::Controller keybindings_;
   Menu::Controller menu_;
+  Source::Controller& source();
   Source::Controller source_;
   Gtk::Box window_box_;
 
