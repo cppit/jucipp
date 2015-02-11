@@ -66,18 +66,19 @@ endif()
 
 # name of the executable on Windows will be example.exe
 add_executable(${project_name}
-  # list of every needed file to create the executable
-  menu.h
-  menu.cc
+  #list of every needed file to create the executable
+  keybindings
+  menu
+  source
+  window
+  juci
+  api
+  #there is no need for extentions
+  )
 
-  window.cc
-  juci.cc
-
-  api.h
-)
 
 add_library(${module} SHARED
-  
+ 
   api.h
   api_ext.cc
   )
