@@ -10,7 +10,7 @@
 class Window : public Gtk::Window {
 public:
   Window();
-  virtual ~Window(){};
+  virtual ~Window() {}
   Gtk::Box window_box_;
   std::shared_ptr<Source::Controller> source();
 private:

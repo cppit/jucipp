@@ -2,8 +2,7 @@
 
 Window::Window() :
   window_box_(Gtk::ORIENTATION_HORIZONTAL),
-  menu(),
-  source_() {
+  menu() {
   set_title("example juCi++");
   set_default_size(600, 600);
   //  window_box_.add(*source_.sourceview());
@@ -13,4 +12,6 @@ Window::Window() :
   show_all_children();
 }
 
-
+std::shared_ptr<Source::Controller> Window::source() {
+  return std::shared_ptr<Source::Controller>(&source_);
+}

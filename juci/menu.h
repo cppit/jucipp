@@ -3,11 +3,13 @@
 
 #include <iostream>
 #include "gtkmm.h"
+#include "keybindings.h"
+
 namespace Menu {
   class Model {
   public:
     Model();
-    virtual~Model();
+    virtual ~Model();
     std::string ui_string() { return ui_string_; }
   private:
     std::string ui_string_;
@@ -17,49 +19,35 @@ namespace Menu {
   public:
     explicit View(Gtk::Orientation orient);
     virtual ~View();
-    Glib::RefPtr<Gtk::Box> view();
-    Glib::RefPtr <Gtk::ActionGroup> action_group() {
-      return action_group_;
-    }
-    Glib::RefPtr <Gtk::UIManager> ui_manager() {
-      return ui_manager_;
-    }
-    void set_ui_manger_string(std::string ui_string);
-    void set_ui_manager_action_group(
-                           Glib::RefPtr<Gtk::ActionGroup> action_group);
+    Glib::RefPtr<Gtk::Box> view(Glib::RefPtr<Gtk::UIManager> ui_manager);
 
   protected:
     Gtk::Box view_;
-    Glib::RefPtr <Gtk::UIManager> ui_manager_;
-    Glib::RefPtr <Gtk::ActionGroup> action_group_;
   };  // class View
   // controller
   class Controller {
   public:
-    Controller();
+    explicit Controller(Keybindings::Controller keybindings);
     virtual ~Controller();
-    Glib::RefPtr<Gtk::Box> view();
-    Glib::RefPtr <Gtk::UIManager> ui_manager() {
-      return menu_view_.ui_manager();
-    }
 
   private:
+    Keybindings::Controller keybindings_;
     View menu_view_;
     Model menu_model_;
-    void onFileNewEmptyfile();    /*Signal handlers*/
-    void onFileNewCCFile();
-    void onFileNewHeaderFile();
-    void onFileOpenFile();
-    void onFileOpenFolder();
-    void onSystemQuit();
-    void onPluginAddSnippet();
-    void onWindowCloseTab();
-    void onEditCopy();
-    void onEditCut();
-    void onEditPaste();
-    void onEditFind();
-    void onWindowSplitWindow();
-    void onHelpAbout();
+    void OnFileNewEmptyfile();    /*Signal handlers*/
+    void OnFileNewCCFile();
+    void OnFileNewHeaderFile();
+    void OnFileOpenFile();
+    void OnFileOpenFolder();
+    void OnSystemQuit();
+    void OnPluginAddSnippet();
+    void OnWindowCloseTab();
+    void OnEditCopy();
+    void OnEditCut();
+    void OnEditPaste();
+    void OnEditFind();
+    void OnWindowSplitWindow();
+    void OnHelpAbout();
   };  // class Controller
 }  // namespace Menu
 #endif  // JUCI_MENU_H_
