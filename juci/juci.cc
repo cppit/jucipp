@@ -7,7 +7,6 @@ int main(int argc, char *argv[]) {
                                                                 argc,
                                                                 argv,
                                                                 "no.sout.juci");
-  // app->set_flags(Gio::APPLICATION_NON_UNIQUE);
 
   Window window;
   return app->run(window);

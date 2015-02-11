@@ -2,7 +2,7 @@
 
 Window::Window() :
   window_box_(Gtk::ORIENTATION_VERTICAL),
-  menu_(keybindings_) {
+  menu_(keybindings_){
   set_title("juCi++");
   set_default_size(600, 600);
   add(window_box_);
@@ -16,6 +16,9 @@ Window::Window() :
   window_box_.pack_start(menu_.view(), Gtk::PACK_SHRINK);
   window_box_.pack_start(source().view());
   show_all_children();
+  //TODO(Oyvang, Forgi, Zalox) Find a better solution to hide menu items and still have the keybinding
+  keybindings_.action_group()->get_action("HelpHide")->set_visible(false);
+  show();
 }
 
 Source::Controller& Window::source() {

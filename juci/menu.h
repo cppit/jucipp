@@ -31,6 +31,8 @@ namespace Menu {
     protected:
       Gtk::Box view_;
     };  // class View
+
+
     // controller
     class Controller {
     public:

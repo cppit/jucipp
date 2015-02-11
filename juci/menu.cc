@@ -38,6 +38,7 @@ Menu::Model::Model() {
                   "       </menu>                                         "
                   "       <menu action='HelpMenu'>                        "
                   "           <menuitem action='HelpAbout'/>              "
+                  "           <menuitem action='HelpHide'/>               "
                   "        </menu>                                        "
                   "   </menubar>                                          "
                   "</ui>                                                  ";
@@ -81,14 +82,12 @@ Menu::Controller::Controller(Keybindings::Controller keybindings) :
           [this]() {
               OnFileNewEmptyfile();
           });
-  keybindings_.action_group()->add(Gtk::Action::create("FileNewCC",
-                  Gtk::Stock::NEW, "New cc file", "Create a new cc file"),
+  keybindings_.action_group()->add(Gtk::Action::create("FileNewCC", "New cc file"),
           Gtk::AccelKey("<control><alt>c"),
           [this]() {
-              OnFileNewCCFile();
+                  OnFileNewCCFile();
           });
-  keybindings_.action_group()->add(Gtk::Action::create("FileNewH",
-                  Gtk::Stock::NEW, "New h file", "Create a new h file"),
+  keybindings_.action_group()->add(Gtk::Action::create("FileNewH","New h file" ),
           Gtk::AccelKey("<control><alt>h"),
           [this]() {
               OnFileNewHeaderFile();
@@ -152,6 +151,12 @@ Menu::Controller::Controller(Keybindings::Controller keybindings) :
           [this]() {
               OnHelpAbout();
           });
+  keybindings_.action_group()->add(Gtk::Action::create("HelpHide"),
+          Gtk::AccelKey("<control><alt>K"),
+          [this]() {
+              OnHelpAbout();
+          });
+
 
 
 /* END help menu */
@@ -159,6 +164,8 @@ Menu::Controller::Controller(Keybindings::Controller keybindings) :
 
   keybindings_.ui_manager()->add_ui_from_string(menu_model_.ui_string());
   keybindings_.ui_manager()->insert_action_group(keybindings_.action_group());
+
+
 }
 
 Menu::Controller::~Controller() {
