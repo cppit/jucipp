@@ -1,7 +1,9 @@
 cmake_minimum_required (VERSION 2.8.4)
 set(project_name juci)
+set(module juci_to_python_api)
 
 project (${project_name})
+
 
 set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -std=c++11")
 
@@ -28,7 +30,7 @@ endif()
 #Boost_INCLUDE_DIRS     - Boost include directories
 #Boost_LIBRARY_DIRS     - Link directories for Boost libraries
 #Boost_LIBRARIES        - Boost component libraries to be linked
-find_package(Boost 1.5 REQUIRED)
+find_package(Boost 1.5 REQUIRED COMPONENTS python)
 
 #If boost is not found
 if(${Boost_FOUND}) 
@@ -60,20 +62,32 @@ else()
 endif()
 
 
+
+
 # name of the executable on Windows will be example.exe
 add_executable(${project_name}
-# list of every needed file to create the executable
-    menu.h
+  # list of every needed file to create the executable
+  menu.h
+  menu.cc
 
-    menu.cc
+  window.cc
+  juci.cc
 
-    window.cc
-    juci.cc
-    )
+  api.h
+)
 
+add_library(${module} SHARED
+  
+  api.h
+  api_ext.cc
+  )
 # dependencies
 
 include_directories(${Boost_INCLUDE_DIRS} ${PYTHON_INCLUDE_DIRS} ${GTKMM_INCLUDE_DIRS})
-link_directories(${GTKMM_LIBRARY_DIRS} ${Boost_LIBRARY_DIRS})
+link_directories(${GTKMM_LIBRARY_DIRS} ${Boost_LIBRARY_DIRS} ${PYTHON_INCLUDE_DIRS})
+#module:
+set_target_properties(${module} PROPERTIES PREFIX "") 
+target_link_libraries(${module} ${PYTHON_LIBRARIES} ${Boost_LIBRARIES})
+#executable:
 target_link_libraries(${project_name} ${GTKMM_LIBRARIES} ${Boost_LIBRARIES} ${PYTHON_LIBRARIES})
 
