@@ -63,12 +63,12 @@ endif()
 # name of the executable on Windows will be example.exe
 add_executable(${project_name}
 # list of every needed file to create the executable
-    keybindings.h
-    menu.h
-    keybindings.cc
-    menu.cc
-    window.cc
-    juci.cc
+    keybindings
+    menu
+    source
+    window
+    juci
+#there is no need for extentions
     )
 
 # dependencies

@@ -1,28 +1,23 @@
 /*juCi++ main header file*/
-#ifndef JUCI_H
-#define JUCI_H
+#ifndef JUCI_JUCI_H_
+#define JUCI_JUCI_H_
 
 #include <iostream>
 #include "gtkmm.h"
 #include "menu.h"
-
+#include "source.h"
 
 class Window : public Gtk::Window {
 public:
-    Window();
-    virtual ~Window();
-
-    Gtk::Box window_box_;
-
+  Window();
+  virtual ~Window() {}
+  Gtk::Box window_box_;
+  std::shared_ptr<Source::Controller> source();
 private:
-    Keybindings::Controller keybindings;
-    Menu::Controller menu;
-
-    /*signal handler*/
-    void onSystemQuit();
-
+  Menu::Controller menu;
+  Source::Controller source_;
+  /*signal handler*/
+  void onSystemQuit();
 };
 
-
-
-#endif // JUCI_H
+#endif  // JUCI_JUCI_H_

@@ -52,12 +52,13 @@ Menu::Model::~Model() {
 
 Menu::View::View(Gtk::Orientation orientation) :
         view_(orientation) {
-
+  
 }
 
-Gtk::Box &Menu::View::view(Glib::RefPtr<Gtk::UIManager> ui_manager) {
+Glib::RefPtr<Gtk::Box> Menu::View::view(
+       Glib::RefPtr<Gtk::UIManager> ui_manager) {
   view_.pack_start(*ui_manager->get_widget("/MenuBar"), Gtk::PACK_SHRINK);
-  return view_;
+  return Glib::RefPtr<Gtk::Box>(&view_);
 }
 
 Menu::View::~View() {
@@ -78,7 +79,7 @@ Menu::Controller::Controller(Keybindings::Controller keybindings) :
   keybindings_.action_group()->add(Gtk::Action::create("FileNewStandard",
                   Gtk::Stock::NEW, "New empty file", "Create a new file"),
           [this]() {
-              OnFileNewEmptyfile();
+	      OnFileNewEmptyfile();
           });
   keybindings_.action_group()->add(Gtk::Action::create("FileNewCC",
                   Gtk::Stock::NEW, "New cc file", "Create a new cc file"),
@@ -166,11 +167,6 @@ Menu::Controller::Controller(Keybindings::Controller keybindings) :
 }
 
 Menu::Controller::~Controller() {
-
-}
-
-Gtk::Box &Menu::Controller::view() {
-  return menu_view_.view(keybindings_.ui_manager());
 }
 
 void Menu::Controller::OnFileNewEmptyfile() {
