@@ -196,7 +196,13 @@ void Menu::Controller::OnSystemQuit() {
 
 void Menu::Controller::OnPluginAddSnippet() {
   std::cout << "Add snipper" << std::endl; //TODO(Forgi add you snippet magic code)
+  juci_api::py::LoadPlugin("snippet");
 }
+
+
+// void Menu::Controller::LoadPlugin() {
+//  juci_api::py::LoadPlugin("plugin_name");
+// }
 
 void Menu::Controller::OnFileOpenFile() {
   std::cout << "Open file clicked" << std::endl;

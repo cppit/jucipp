@@ -4,6 +4,8 @@
 #include <iostream>
 #include "gtkmm.h"
 #include "keybindings.h"
+#include "api.h"
+
 
 namespace Menu {
   class Model {

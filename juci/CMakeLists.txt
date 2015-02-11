@@ -4,7 +4,6 @@ set(module juci_to_python_api)
 
 project (${project_name})
 
-
 set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -std=c++11")
 
 INCLUDE(FindPkgConfig)
@@ -61,24 +60,20 @@ else()
   message(FATAL_ERROR "The gtkmm libraries are required. Quitting.")
 endif()
 
-
-
-
 # name of the executable on Windows will be example.exe
 add_executable(${project_name}
-  #list of every needed file to create the executable
+  #list of every needed file to create the executable 
   keybindings
   menu
   source
   window
   juci
   api
+
   #there is no need for extentions
   )
 
-
 add_library(${module} SHARED
- 
   api
   api_ext
   )
