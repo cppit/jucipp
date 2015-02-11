@@ -21,11 +21,15 @@ namespace Source {
   class Controller {
   public:
     Controller();
-    std::shared_ptr<Source::View> sourceview();
+    std::shared_ptr<View> view();
+    std::shared_ptr<Model> model();
+
   private:
     void OnLineEdit(Glib::RefPtr<Gtk::TextBuffer::Mark> mark);
+
   protected:
-    View sourceview_;
+    View view_;
+    Model model_;
   };  // class Controller
 }  // namespace Source
 #endif  // JUCI_SOURCE_H_
