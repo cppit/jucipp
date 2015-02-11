@@ -19,7 +19,7 @@ namespace Menu {
   public:
     explicit View(Gtk::Orientation orient);
     virtual ~View();
-    Glib::RefPtr<Gtk::Box> view(Glib::RefPtr<Gtk::UIManager> ui_manager);
+    Gtk::Box& view(Glib::RefPtr<Gtk::UIManager> ui_manager);
 
   protected:
     Gtk::Box view_;
@@ -29,7 +29,7 @@ namespace Menu {
   public:
     explicit Controller(Keybindings::Controller keybindings);
     virtual ~Controller();
-
+    Gtk::Box& view();
   private:
     Keybindings::Controller keybindings_;
     View menu_view_;

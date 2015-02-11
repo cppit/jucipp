@@ -55,10 +55,10 @@ Menu::View::View(Gtk::Orientation orientation) :
   
 }
 
-Glib::RefPtr<Gtk::Box> Menu::View::view(
+Gtk::Box& Menu::View::view(
        Glib::RefPtr<Gtk::UIManager> ui_manager) {
   view_.pack_start(*ui_manager->get_widget("/MenuBar"), Gtk::PACK_SHRINK);
-  return Glib::RefPtr<Gtk::Box>(&view_);
+  return view_;
 }
 
 Menu::View::~View() {
@@ -167,6 +167,10 @@ Menu::Controller::Controller(Keybindings::Controller keybindings) :
 }
 
 Menu::Controller::~Controller() {
+}
+
+Gtk::Box& Menu::Controller::view() {
+  return menu_view_.view(keybindings_.ui_manager());
 }
 
 void Menu::Controller::OnFileNewEmptyfile() {
