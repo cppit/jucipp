@@ -7,7 +7,7 @@
 
 Menu::Model::Model() {
   ui_string_ =
-                  "<ui>                                                   "
+          "<ui>                                                   "
                   "   <menubar name='MenuBar'>                            "
                   "       <menu action='FileMenu'>                        "
                   "           <menu action='FileNew'>                     "
@@ -52,11 +52,11 @@ Menu::Model::~Model() {
 
 Menu::View::View(Gtk::Orientation orientation) :
         view_(orientation) {
-  
+
 }
 
-Gtk::Box& Menu::View::view(
-       Glib::RefPtr<Gtk::UIManager> ui_manager) {
+Gtk::Box &Menu::View::view(
+        Glib::RefPtr<Gtk::UIManager> ui_manager) {
   view_.pack_start(*ui_manager->get_widget("/MenuBar"), Gtk::PACK_SHRINK);
   return view_;
 }
@@ -70,7 +70,7 @@ Menu::View::~View() {
 Menu::Controller::Controller(Keybindings::Controller keybindings) :
         menu_view_(Gtk::ORIENTATION_VERTICAL),
         menu_model_(),
-        keybindings_(keybindings){
+        keybindings_(keybindings) {
 /* Add action to menues */
 /* START file menu */
   keybindings_.action_group()->add(Gtk::Action::create("FileMenu", Gtk::Stock::FILE));
@@ -79,7 +79,7 @@ Menu::Controller::Controller(Keybindings::Controller keybindings) :
   keybindings_.action_group()->add(Gtk::Action::create("FileNewStandard",
                   Gtk::Stock::NEW, "New empty file", "Create a new file"),
           [this]() {
-	      OnFileNewEmptyfile();
+              OnFileNewEmptyfile();
           });
   keybindings_.action_group()->add(Gtk::Action::create("FileNewCC",
                   Gtk::Stock::NEW, "New cc file", "Create a new cc file"),
@@ -87,7 +87,6 @@ Menu::Controller::Controller(Keybindings::Controller keybindings) :
           [this]() {
               OnFileNewCCFile();
           });
-
   keybindings_.action_group()->add(Gtk::Action::create("FileNewH",
                   Gtk::Stock::NEW, "New h file", "Create a new h file"),
           Gtk::AccelKey("<control><alt>h"),
@@ -102,10 +101,6 @@ Menu::Controller::Controller(Keybindings::Controller keybindings) :
   keybindings_.action_group()->add(Gtk::Action::create("FileOpenFolder", "Open folder"),
           [this]() {
               OnFileOpenFolder();
-          });
-  keybindings_.action_group()->add(Gtk::Action::create("FileQuit", Gtk::Stock::QUIT),
-          [this]() {
-              OnSystemQuit();
           });
 /* END file menu */
 /* START edit menu */
@@ -169,7 +164,7 @@ Menu::Controller::Controller(Keybindings::Controller keybindings) :
 Menu::Controller::~Controller() {
 }
 
-Gtk::Box& Menu::Controller::view() {
+Gtk::Box &Menu::Controller::view() {
   return menu_view_.view(keybindings_.ui_manager());
 }
 
@@ -186,12 +181,6 @@ void Menu::Controller::OnFileNewCCFile() {
 void Menu::Controller::OnFileNewHeaderFile() {
   std::cout << "New header file clicked" << std::endl;
   //TODO(Oyvang) Legg til funksjon
-}
-
-void Menu::Controller::OnSystemQuit() {
-  //TODO(Oyvang, Zalox, Forgie) Add everything that needs to be done before quiting
-  /*Quit the system*/
-
 }
 
 void Menu::Controller::OnPluginAddSnippet() {
