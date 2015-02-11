@@ -7,7 +7,7 @@
 
 Menu::Model::Model() {
   ui_string_ =
-          "<ui>                                                   "
+                  "<ui>                                                   "
                   "   <menubar name='MenuBar'>                            "
                   "       <menu action='FileMenu'>                        "
                   "           <menu action='FileNew'>                     "
@@ -47,9 +47,9 @@ Menu::Model::Model() {
 Menu::Model::~Model() {
 }
 
-/***********************************/
-/*              VIEW               */
-/***********************************/
+
+// VIEW
+
 Menu::View::View(Gtk::Orientation orientation) :
         view_(orientation) {
 
@@ -86,6 +86,7 @@ Menu::Controller::Controller(Keybindings::Controller keybindings) :
           [this]() {
               OnFileNewCCFile();
           });
+
   keybindings_.action_group()->add(Gtk::Action::create("FileNewH",
                   Gtk::Stock::NEW, "New h file", "Create a new h file"),
           Gtk::AccelKey("<control><alt>h"),
@@ -183,7 +184,7 @@ void Menu::Controller::OnFileNewCCFile() {
 }
 
 void Menu::Controller::OnFileNewHeaderFile() {
-  std::cout << "New cc file clicked" << std::endl;
+  std::cout << "New header file clicked" << std::endl;
   //TODO(Oyvang) Legg til funksjon
 }
 
