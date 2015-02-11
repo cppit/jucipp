@@ -21,8 +21,8 @@ namespace Source {
   class Controller {
   public:
     Controller();
-    std::shared_ptr<View> view();
-    std::shared_ptr<Model> model();
+    View& view();
+    Model& model();
 
   private:
     void OnLineEdit(Glib::RefPtr<Gtk::TextBuffer::Mark> mark);

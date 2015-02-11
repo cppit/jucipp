@@ -31,13 +31,13 @@ Source::Controller::Controller() {
 }
 // Source::Controller::view()
 // return shared_ptr to the view
-std::shared_ptr<Source::View> Source::Controller::view() {
-  return std::shared_ptr<Source::View>(&view_);
+Source::View& Source::Controller::view() {
+  return view_;
 }
 // Source::Controller::model()
 // return shared_ptr to the model()
-std::shared_ptr<Source::Model> Source::Controller::model() {
-  return std::shared_ptr<Source::Model>(&model_);
+Source::Model& Source::Controller::model() {
+  return model_;
 }
 // Source::Controller::OnLineEdit()
 // fired when a line in the buffer is edited
