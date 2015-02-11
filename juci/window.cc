@@ -10,6 +10,7 @@ Window::Window() :
   add_accel_group(keybindings_.ui_manager()->get_accel_group());
   window_box_.pack_start(menu_.view());
   show_all_children();
+  
 }
 
 std::shared_ptr<Source::Controller> Window::source() {

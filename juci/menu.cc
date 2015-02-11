@@ -191,7 +191,7 @@ void Menu::Controller::OnFileNewHeaderFile() {
 void Menu::Controller::OnSystemQuit() {
   //TODO(Oyvang, Zalox, Forgie) Add everything that needs to be done before quiting
   /*Quit the system*/
-  Gtk::Main::quit(); //TODO(Oyvang, Zalox, Forgie) methode is depricated, find a better solution.
+
 }
 
 void Menu::Controller::OnPluginAddSnippet() {
