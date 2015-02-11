@@ -79,8 +79,8 @@ add_executable(${project_name}
 
 add_library(${module} SHARED
  
-  api.h
-  api_ext.cc
+  api
+  api_ext
   )
 # dependencies
 
