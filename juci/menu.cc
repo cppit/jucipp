@@ -6,42 +6,7 @@
 
 
 Menu::Model::Model() {
-  ui_string_ =
-          "<ui>                                                   "
-                  "   <menubar name='MenuBar'>                            "
-                  "       <menu action='FileMenu'>                        "
-                  "           <menu action='FileNew'>                     "
-                  "               <menuitem action='FileNewStandard'/>    "
-                  "               <menuitem action='FileNewCC'/>          "
-                  "               <menuitem action='FileNewH'/>           "
-                  "           </menu>                                     "
-                  "           <menuitem action='FileOpenFile'/>           "
-                  "           <menuitem action='FileOpenFolder'/>         "
-                  "            <separator/>                               "
-                  "           <menuitem action='FileQuit'/>               "
-                  "       </menu>                                         "
-                  "       <menu action='EditMenu'>                        "
-                  "           <menuitem action='EditCopy'/>               "
-                  "           <menuitem action='EditCut'/>                "
-                  "           <menuitem action='EditPaste'/>              "
-                  "            <separator/>                               "
-                  "           <menuitem action='EditFind'/>               "
-                  "       </menu>                                         "
-                  "       <menu action='WindowMenu'>                      "
-                  "           <menuitem action='WindowCloseTab'/>         "
-                  "           <menuitem action='WindowSplitWindow'/>      "
-                  "       </menu>                                         "
-                  "       <menu action='PluginMenu'>                      "
-                  "           <menu action='PluginSnippet'>               "
-                  "               <menuitem action='PluginAddSnippet'/>   "
-                  "           </menu>                                     "
-                  "       </menu>                                         "
-                  "       <menu action='HelpMenu'>                        "
-                  "           <menuitem action='HelpAbout'/>              "
-                  "           <menuitem action='HelpHide'/>               "
-                  "        </menu>                                        "
-                  "   </menubar>                                          "
-                  "</ui>                                                  ";
+
 
 }
 
@@ -74,71 +39,71 @@ Menu::Controller::Controller(Keybindings::Controller keybindings) :
         keybindings_(keybindings) {
 /* Add action to menues */
 /* START file menu */
-  keybindings_.action_group()->add(Gtk::Action::create("FileMenu", Gtk::Stock::FILE));
+  keybindings_.action_group_menu()->add(Gtk::Action::create("FileMenu", Gtk::Stock::FILE));
   /* File->New files */
-  keybindings_.action_group()->add(Gtk::Action::create("FileNew", "New"));
-  keybindings_.action_group()->add(Gtk::Action::create("FileNewStandard",
+  keybindings_.action_group_menu()->add(Gtk::Action::create("FileNew", "New"));
+  keybindings_.action_group_menu()->add(Gtk::Action::create("FileNewStandard",
                   Gtk::Stock::NEW, "New empty file", "Create a new file"),
           [this]() {
               OnFileNewEmptyfile();
           });
-  keybindings_.action_group()->add(Gtk::Action::create("FileNewCC", "New cc file"),
+  keybindings_.action_group_menu()->add(Gtk::Action::create("FileNewCC", "New cc file"),
           Gtk::AccelKey("<control><alt>c"),
           [this]() {
                   OnFileNewCCFile();
           });
-  keybindings_.action_group()->add(Gtk::Action::create("FileNewH","New h file" ),
+  keybindings_.action_group_menu()->add(Gtk::Action::create("FileNewH","New h file" ),
           Gtk::AccelKey("<control><alt>h"),
           [this]() {
               OnFileNewHeaderFile();
           });
   /* File-> New files end */
-  keybindings_.action_group()->add(Gtk::Action::create("FileOpenFile", Gtk::Stock::OPEN),
+  keybindings_.action_group_menu()->add(Gtk::Action::create("FileOpenFile", Gtk::Stock::OPEN),
           [this]() {
               OnFileOpenFile();
           });
-  keybindings_.action_group()->add(Gtk::Action::create("FileOpenFolder", "Open folder"),
+  keybindings_.action_group_menu()->add(Gtk::Action::create("FileOpenFolder", "Open folder"),
           [this]() {
               OnFileOpenFolder();
           });
 /* END file menu */
 /* START edit menu */
-  keybindings_.action_group()->add(Gtk::Action::create("EditMenu", Gtk::Stock::EDIT));
-  keybindings_.action_group()->add(Gtk::Action::create("EditCopy", Gtk::Stock::COPY),
+  keybindings_.action_group_menu()->add(Gtk::Action::create("EditMenu", Gtk::Stock::EDIT));
+  keybindings_.action_group_menu()->add(Gtk::Action::create("EditCopy", Gtk::Stock::COPY),
           [this]() {
               OnEditCopy();
           });
-  keybindings_.action_group()->add(Gtk::Action::create("EditCut", Gtk::Stock::CUT),
+  keybindings_.action_group_menu()->add(Gtk::Action::create("EditCut", Gtk::Stock::CUT),
           [this]() {
               OnEditCut();
           });
-  keybindings_.action_group()->add(Gtk::Action::create("EditPaste", Gtk::Stock::PASTE),
+  keybindings_.action_group_menu()->add(Gtk::Action::create("EditPaste", Gtk::Stock::PASTE),
           [this]() {
               OnEditPaste();
           });
-  keybindings_.action_group()->add(Gtk::Action::create("EditFind", Gtk::Stock::FIND),
+  keybindings_.action_group_menu()->add(Gtk::Action::create("EditFind", Gtk::Stock::FIND),
           [this]() {
               OnEditFind();
           });
 /* END edit menu */
 /* START window menu */
-  keybindings_.action_group()->add(Gtk::Action::create("WindowMenu", "_Window"));
-  keybindings_.action_group()->add(Gtk::Action::create("WindowCloseTab", "Close tab"),
+  keybindings_.action_group_menu()->add(Gtk::Action::create("WindowMenu", "_Window"));
+  keybindings_.action_group_menu()->add(Gtk::Action::create("WindowCloseTab", "Close tab"),
           Gtk::AccelKey("<control>w"),
           [this]() {
               OnWindowCloseTab();
           });
-  keybindings_.action_group()->add(Gtk::Action::create("WindowSplitWindow", "Split window"),
+  keybindings_.action_group_menu()->add(Gtk::Action::create("WindowSplitWindow", "Split window"),
           Gtk::AccelKey("<control><alt>S"),
           [this]() {
               OnWindowSplitWindow();
           });
 /* END window menu */
 /* START Plugin menu */
-  keybindings_.action_group()->add(Gtk::Action::create("PluginMenu", "_Plugins"));
+  keybindings_.action_group_menu()->add(Gtk::Action::create("PluginMenu", "_Plugins"));
   /*Plugin->snippet*/
-  keybindings_.action_group()->add(Gtk::Action::create("PluginSnippet", "Snippet"));
-  keybindings_.action_group()->add(Gtk::Action::create("PluginAddSnippet", "Add snippet"),
+  keybindings_.action_group_menu()->add(Gtk::Action::create("PluginSnippet", "Snippet"));
+  keybindings_.action_group_menu()->add(Gtk::Action::create("PluginAddSnippet", "Add snippet"),
           Gtk::AccelKey("<alt>space"),
           [this]() {
               OnPluginAddSnippet();
@@ -146,24 +111,26 @@ Menu::Controller::Controller(Keybindings::Controller keybindings) :
   /* End snippet */
 /* END plugin menu */
 /* START help menu */
-  keybindings_.action_group()->add(Gtk::Action::create("HelpMenu", Gtk::Stock::HELP));
-  keybindings_.action_group()->add(Gtk::Action::create("HelpAbout", Gtk::Stock::ABOUT),
+  keybindings_.action_group_menu()->add(Gtk::Action::create("HelpMenu", Gtk::Stock::HELP));
+  keybindings_.action_group_menu()->add(Gtk::Action::create("HelpAbout", Gtk::Stock::ABOUT),
           [this]() {
               OnHelpAbout();
           });
-  keybindings_.action_group()->add(Gtk::Action::create("HelpHide"),
+
+// Hidden actions
+  keybindings_.action_group_hidden()->add(Gtk::Action::create("Test"),
           Gtk::AccelKey("<control><alt>K"),
           [this]() {
               OnHelpAbout();
           });
 
 
+  keybindings_.BuildMenu();
+  keybindings_.BuildHiddenMenu();
+
 
 /* END help menu */
 
-
-  keybindings_.ui_manager()->add_ui_from_string(menu_model_.ui_string());
-  keybindings_.ui_manager()->insert_action_group(keybindings_.action_group());
 
 
 }
@@ -172,7 +139,7 @@ Menu::Controller::~Controller() {
 }
 
 Gtk::Box &Menu::Controller::view() {
-  return menu_view_.view(keybindings_.ui_manager());
+  return menu_view_.view(keybindings_.ui_manager_menu());
 }
 
 void Menu::Controller::OnFileNewEmptyfile() {
