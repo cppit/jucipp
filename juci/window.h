@@ -1,4 +1,3 @@
-//juCi++ main header file
 #ifndef JUCI_JUCI_H_
 #define JUCI_JUCI_H_
 
@@ -19,7 +18,7 @@ private:
   Source::Controller source_;
   Gtk::Box window_box_;
 
-  /*signal handler*/
+  //signal handlers
   void OnSystemQuit();
 };
 

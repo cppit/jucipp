@@ -1,3 +1,7 @@
+//juCi++ class that holds every keybinding.
+#ifndef JUCI_KEYBINDINGS_H_
+#define JUCI_KEYBINDINGS_H_
+
 #include "iostream"
 #include "gtkmm.h"
 
@@ -50,3 +54,5 @@ namespace Keybindings {
     };
 
 }
+
+#endif  // JUCI_KEYBINDINGS_H_

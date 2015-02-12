@@ -1,4 +1,4 @@
-#include "juci.h"
+#include "window.h"
 
 Window::Window() :
   window_box_(Gtk::ORIENTATION_VERTICAL),
@@ -19,7 +19,7 @@ Window::Window() :
   window_box_.pack_start(source().view());
   show_all_children();
 
-}
+} // Window constructor
 
 Source::Controller& Window::source() {
   return source_;
