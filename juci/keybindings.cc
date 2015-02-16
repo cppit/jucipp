@@ -1,7 +1,6 @@
 #include "keybindings.h"
 
 Keybindings::Model::Model() {
-  std::cout<<"Keybindings: Model constructor run"<<std::endl;
   menu_ui_string_ =
                   "<ui>                                                   "
                   "   <menubar name='MenuBar'>                            "
@@ -50,7 +49,6 @@ Keybindings::Model::~Model() {
 }
 
  Keybindings::Controller::Controller() {
-   std::cout<<"Keybindings: Controller constructor run"<<std::endl;
    action_group_menu_ = Gtk::ActionGroup::create();
    ui_manager_menu_ = Gtk::UIManager::create();
 

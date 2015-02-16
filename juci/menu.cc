@@ -19,27 +19,7 @@ Menu::Controller::Controller(Keybindings::Controller keybindings) :
         keybindings_(keybindings) {
 /* Add action to menues */
 /* START file menu */
-  keybindings_.action_group_menu()->add(Gtk::Action::create("FileMenu",
-          Gtk::Stock::FILE));
-  /* File->New files */
-  keybindings_.action_group_menu()->add(Gtk::Action::create("FileNew", "New"));
-  keybindings_.action_group_menu()->add(Gtk::Action::create("FileNewStandard",
-                  Gtk::Stock::NEW, "New empty file", "Create a new file"),
-          [this]() {
-              OnFileNewEmptyfile();
-          });
-  keybindings_.action_group_menu()->add(Gtk::Action::create("FileNewCC",
-                  "New cc file"),
-          Gtk::AccelKey("<control><alt>c"),
-          [this]() {
-              OnFileNewCCFile();
-          });
-  keybindings_.action_group_menu()->add(Gtk::Action::create("FileNewH",
-                  "New h file"),
-          Gtk::AccelKey("<control><alt>h"),
-          [this]() {
-              OnFileNewHeaderFile();
-          });
+
   /* File-> New files end */
   keybindings_.action_group_menu()->add(Gtk::Action::create("FileOpenFile",
                   Gtk::Stock::OPEN),
@@ -79,12 +59,7 @@ Menu::Controller::Controller(Keybindings::Controller keybindings) :
 /* START window menu */
   keybindings_.action_group_menu()->add(Gtk::Action::create("WindowMenu",
           "_Window"));
-  keybindings_.action_group_menu()->add(Gtk::Action::create("WindowCloseTab",
-                  "Close tab"),
-          Gtk::AccelKey("<control>w"),
-          [this]() {
-              OnWindowCloseTab();
-          });
+
   keybindings_.action_group_menu()->add(Gtk::Action::create("WindowSplitWindow",
                   "Split window"),
           Gtk::AccelKey("<control><alt>S"),
@@ -136,20 +111,6 @@ Gtk::Box &Menu::Controller::view() {
   return menu_view_.view(keybindings_.ui_manager_menu());
 }
 
-void Menu::Controller::OnFileNewEmptyfile() {
-  std::cout << "New file clicked" << std::endl;
-  //TODO(Oyvang) Legg til funksjon
-}
-
-void Menu::Controller::OnFileNewCCFile() {
-  std::cout << "New cc file clicked" << std::endl;
-  //TODO(Oyvang) Legg til funksjon
-}
-
-void Menu::Controller::OnFileNewHeaderFile() {
-  std::cout << "New header file clicked" << std::endl;
-  //TODO(Oyvang) Legg til funksjon
-}
 
 void Menu::Controller::OnPluginAddSnippet() {
   //TODO(Forgi add you snippet magic code)
@@ -172,10 +133,6 @@ void Menu::Controller::OnFileOpenFolder() {
   //TODO(Oyvang) Legg til funksjon
 }
 
-void Menu::Controller::OnWindowCloseTab() {
-  std::cout << "Closing tab clicked" << std::endl;
-  //TODO(Oyvang) Legg til funksjon
-}
 
 void Menu::Controller::OnEditCopy() {
   std::cout << "Clicked copy" << std::endl;

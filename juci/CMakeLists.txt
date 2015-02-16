@@ -69,6 +69,7 @@ add_executable(${project_name}
   source
   window
   api
+  notebook
 
   #there is no need for extentions
   )
