@@ -10,7 +10,7 @@ Gtk::Box& Notebook::View::view() {
   return view_;
 }
 
-Notebook::Controller::Controller(Keybindings::Controller keybindings) {
+Notebook::Controller::Controller(Keybindings::Controller& keybindings){
   scrolledwindow_vec_.push_back(new Gtk::ScrolledWindow());
   source_vec_.push_back(new Source::Controller);
   scrolledwindow_vec_.back()->add(source_vec_.back()->view());
@@ -44,11 +44,26 @@ Notebook::Controller::Controller(Keybindings::Controller keybindings) {
           [this]() {
               OnCloseCurrentPage();
           });
+  keybindings.action_group_menu()->add(Gtk::Action::create("EditFind",
+                  Gtk::Stock::FIND),
+          [this]() {
+					  //   OnEditFind();
+          });
 
+   entry_.view_.entry().signal_activate().connect(
+         [this]() {
+   	        OnNewPage(entry_.view_.entry().get_text());
+	        entry_.OnHideEntries();
+         });
 }
+  
 
 Gtk::Box& Notebook::Controller::view() {
   return view_.view();
+}
+
+Gtk::Box& Notebook::Controller::entry_view(){
+  return entry_.view();
 }
 
 void Notebook::Controller::OnNewPage(std::string name) {
@@ -58,9 +73,13 @@ void Notebook::Controller::OnNewPage(std::string name) {
   scrolledwindow_vec_.back()->add(source_vec_.back()->view());
   view_.notebook().append_page(*scrolledwindow_vec_.back(), name);
   view_.notebook().show_all_children();
+  view_.notebook().set_focus_child(*scrolledwindow_vec_.back());
+  view().show_all_children();
+  view_.notebook().set_current_page(view_.notebook().get_n_pages()-1);
 }
-
+  
 void Notebook::Controller::OnCloseCurrentPage() {
+  //TODO (oyvang, zalox, forgi) Save a temp file, in case you close one you dont want to close?
   int page = view_.notebook().get_current_page();
   view_.notebook().remove_page(page);
   delete source_vec_.at(page);
@@ -70,17 +89,17 @@ void Notebook::Controller::OnCloseCurrentPage() {
 }
 
 void Notebook::Controller::OnFileNewEmptyfile() {
-  OnNewPage("New Page");
+  entry_.OnShowSetFilenName("");
   //TODO(Oyvang) Legg til funksjon for Entry file name.extension
 }
 
 void Notebook::Controller::OnFileNewCCFile() {
-  OnNewPage("New Page");
+  entry_.OnShowSetFilenName(".cc");
   //TODO(Oyvang) Legg til funksjon for Entry file name.extension
 }
 
 void Notebook::Controller::OnFileNewHeaderFile() {
-  OnNewPage("New Page");
+  entry_.OnShowSetFilenName(".h");
   //TODO(Oyvang) Legg til funksjon for Entry file name.extension
 }
 

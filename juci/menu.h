@@ -20,7 +20,7 @@ namespace Menu {
 
     class Controller {
     public:
-      explicit Controller(Keybindings::Controller keybindings);
+      explicit Controller(Keybindings::Controller& keybindings);
 
       Gtk::Box &view();
 

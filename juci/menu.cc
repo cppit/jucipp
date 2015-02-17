@@ -14,7 +14,7 @@ Gtk::Box &Menu::View::view(
 
 
 // CONTROLLER
-Menu::Controller::Controller(Keybindings::Controller keybindings) :
+Menu::Controller::Controller(Keybindings::Controller& keybindings) :
         menu_view_(Gtk::ORIENTATION_VERTICAL),
         keybindings_(keybindings) {
 /* Add action to menues */
@@ -50,11 +50,7 @@ Menu::Controller::Controller(Keybindings::Controller keybindings) :
           [this]() {
               OnEditPaste();
           });
-  keybindings_.action_group_menu()->add(Gtk::Action::create("EditFind",
-                  Gtk::Stock::FIND),
-          [this]() {
-              OnEditFind();
-          });
+
 /* END edit menu */
 /* START window menu */
   keybindings_.action_group_menu()->add(Gtk::Action::create("WindowMenu",

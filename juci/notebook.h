@@ -3,11 +3,11 @@
 
 #include <iostream>
 #include "gtkmm.h"
-#include "keybindings.h"
+#include "entry.h"
 #include "source.h"
 
 namespace Notebook {
-    class View : public Gtk::Box {
+    class View {
     public:
       View();
       Gtk::Box& view();
@@ -18,12 +18,14 @@ namespace Notebook {
     };
     class Controller {
     public:
-      Controller(Keybindings::Controller keybindings);
+      Controller(Keybindings::Controller& keybindings);
       Gtk::Box& view();
+      Gtk::Box& entry_view();
       void OnNewPage(std::string name);
       void OnCloseCurrentPage();
     private:
       View view_;
+      Entry::Controller entry_;
       std::vector<Source::Controller*> source_vec_;
       std::vector<Gtk::ScrolledWindow*> scrolledwindow_vec_;
       void OnFileNewEmptyfile();
