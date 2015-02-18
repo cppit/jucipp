@@ -81,11 +81,11 @@ add_library(${module} SHARED
   )
 # dependencies
 
-include_directories(${Boost_INCLUDE_DIRS} ${PYTHON_INCLUDE_DIRS} ${GTKMM_INCLUDE_DIRS})
-link_directories(${GTKMM_LIBRARY_DIRS} ${Boost_LIBRARY_DIRS} ${PYTHON_INCLUDE_DIRS})
+include_directories(${Boost_INCLUDE_DIRS} ${PYTHON_INCLUDE_DIRS} ${GTKMM_INCLUDE_DIRS} "/home/zalox/bachelor/libclang++/")
+link_directories(${GTKMM_LIBRARY_DIRS} ${Boost_LIBRARY_DIRS} ${PYTHON_INCLUDE_DIRS} "/home/zalox/bachelor/libclang++/")
 #module:
 set_target_properties(${module} PROPERTIES PREFIX "") 
 target_link_libraries(${module} ${PYTHON_LIBRARIES} ${Boost_LIBRARIES})
 #executable:
-target_link_libraries(${project_name} ${GTKMM_LIBRARIES} ${Boost_LIBRARIES} ${PYTHON_LIBRARIES})
+target_link_libraries(${project_name} ${GTKMM_LIBRARIES} ${Boost_LIBRARIES} ${PYTHON_LIBRARIES} "/home/zalox/bachelor/libclang++/")
 
