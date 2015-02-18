@@ -4,10 +4,18 @@ set(module juci_to_python_api)
 
 project (${project_name})
 
-
+set(CMAKE_MODULE_PATH ${CMAKE_MODULE_PATH} "${CMAKE_CURRENT_LIST_DIR}/cmake/Modules/")
 set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -std=c++11")
 
 INCLUDE(FindPkgConfig)
+
+#libclang_LIBRARIES
+#libclang_INCLUDE_DIR
+find_package(Libclang)
+
+message("Libclang libraries ${Libclang_LIBRARIES}")
+message("Libclang libraries ${Libclang_LIBRARY}")
+message("Libclang include dirs ${Libclang_INCLUDE_DIR}")
 
 #### Finding boost, the variables below is set #####
 #PYTHONLIBS_FOUND            - True if headers and requested libraries were found
@@ -85,11 +93,11 @@ add_library(${module} SHARED
   )
 # dependencies
 
-include_directories(${Boost_INCLUDE_DIRS} ${PYTHON_INCLUDE_DIRS} ${GTKMM_INCLUDE_DIRS})
-link_directories(${GTKMM_LIBRARY_DIRS} ${Boost_LIBRARY_DIRS} ${PYTHON_INCLUDE_DIRS})
+include_directories(${Boost_INCLUDE_DIRS} ${PYTHON_INCLUDE_DIRS} ${GTKMM_INCLUDE_DIRS} "/home/zalox/bachelor/libclang++/")
+link_directories(${GTKMM_LIBRARY_DIRS} ${Boost_LIBRARY_DIRS} ${PYTHON_INCLUDE_DIRS} "/home/zalox/bachelor/libclang++/")
 #module:
 set_target_properties(${module} PROPERTIES PREFIX "") 
 target_link_libraries(${module} ${PYTHON_LIBRARIES} ${Boost_LIBRARIES})
 #executable:
-target_link_libraries(${project_name} ${GTKMM_LIBRARIES} ${Boost_LIBRARIES} ${PYTHON_LIBRARIES})
+target_link_libraries(${project_name} ${GTKMM_LIBRARIES} ${Boost_LIBRARIES} ${PYTHON_LIBRARIES} "/home/zalox/bachelor/libclang++/")
 
