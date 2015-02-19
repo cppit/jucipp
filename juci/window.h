@@ -17,6 +17,7 @@ private:
 
   //signal handlers
   void OnWindowHide();
+  void OnOpenFile();
 };
 
 #endif  // JUCI_WINDOW_H_

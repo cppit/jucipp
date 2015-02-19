@@ -21,11 +21,7 @@ Notebook::Controller::Controller(Keybindings::Controller& keybindings){
   keybindings.action_group_menu()->add(Gtk::Action::create("FileMenu",
                                                            Gtk::Stock::FILE));
   /* File->New files */
-  keybindings.action_group_menu()->add(Gtk::Action::create("FileOpenFile",
-                                                           Gtk::Stock::OPEN),
-                                       [this]() {
-                                         OnOpenFile();
-                                       });
+
   keybindings.action_group_menu()->add(Gtk::Action::create("FileNewStandard",
                                                            Gtk::Stock::NEW,
                                                            "New empty file",
@@ -136,8 +132,15 @@ void Notebook::Controller::OnEditCut() {
   }
 }
 
-void Notebook::Controller::OnOpenFile() {
-  std::cout << "fired" << std::endl;
+void Notebook::Controller::OnOpenFile(std::string name, std::string content){
+  scrolledwindow_vec_.push_back(new Gtk::ScrolledWindow());
+  source_vec_.push_back(new Source::Controller);
+  scrolledwindow_vec_.back()->add(source_vec_.back()->view());
+  source_vec_.back()->view().get_buffer()->set_text(content);
+  view_.notebook().append_page(*scrolledwindow_vec_.back(), name);
+  view_.notebook().show_all_children();
+  view_.notebook().set_focus_child(*scrolledwindow_vec_.back());
+  view_.notebook().set_current_page(view_.notebook().get_n_pages()-1);
 }
 
 

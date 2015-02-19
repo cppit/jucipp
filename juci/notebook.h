@@ -36,7 +36,7 @@ namespace Notebook {
     void OnEditCopy();
     void OnEditPaste();
     void OnEditCut();
-    void OnOpenFile();
+    void OnOpenFile(std::string name, std::string content);
   };  // class controller
 }  // namespace Notebook
 
