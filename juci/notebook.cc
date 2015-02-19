@@ -9,66 +9,81 @@ Gtk::Box& Notebook::View::view() {
   view_.pack_start(notebook_);
   return view_;
 }
-
 Notebook::Controller::Controller(Keybindings::Controller& keybindings){
+
   scrolledwindow_vec_.push_back(new Gtk::ScrolledWindow());
   source_vec_.push_back(new Source::Controller);
   scrolledwindow_vec_.back()->add(source_vec_.back()->view());
   source_vec_.back()->OnNewEmptyFile();
   view_.notebook().append_page(*scrolledwindow_vec_.back(), "juCi++");
-
+  refClipboard = Gtk::Clipboard::get();
 
   keybindings.action_group_menu()->add(Gtk::Action::create("FileMenu",
-          Gtk::Stock::FILE));
+                                                           Gtk::Stock::FILE));
   /* File->New files */
-  keybindings.action_group_menu()->add(Gtk::Action::create("FileNew", "New"));
+  keybindings.action_group_menu()->add(Gtk::Action::create("FileOpenFile",
+                                                           Gtk::Stock::OPEN),
+                                       [this]() {
+                                         OnOpenFile();
+                                       });
   keybindings.action_group_menu()->add(Gtk::Action::create("FileNewStandard",
-                  Gtk::Stock::NEW, "New empty file", "Create a new file"),
-          [this]() {
-              OnFileNewEmptyfile();
-          });
+                                                           Gtk::Stock::NEW,
+                                                           "New empty file",
+                                                           "Create a new file"),
+                                       [this]() {
+                                         OnFileNewEmptyfile();
+                                       });
   keybindings.action_group_menu()->add(Gtk::Action::create("FileNewCC",
-                  "New cc file"),
-          Gtk::AccelKey("<control><alt>c"),
-          [this]() {
-              OnFileNewCCFile();
-          });
+                                                           "New cc file"),
+                                       Gtk::AccelKey("<control><alt>c"),
+                                       [this]() {
+                                         OnFileNewCCFile();
+                                       });
   keybindings.action_group_menu()->add(Gtk::Action::create("FileNewH",
-                  "New h file"),
-          Gtk::AccelKey("<control><alt>h"),
-          [this]() {
-              OnFileNewHeaderFile();
-          });
+                                                           "New h file"),
+                                       Gtk::AccelKey("<control><alt>h"),
+                                       [this]() {
+                                         OnFileNewHeaderFile();
+                                       });
   keybindings.action_group_menu()->add(Gtk::Action::create("WindowCloseTab",
-                  "Close tab"),
-          Gtk::AccelKey("<control>w"),
-          [this]() {
-              OnCloseCurrentPage();
-          });
+                                                           "Close tab"),
+                                       Gtk::AccelKey("<control>w"),
+                                       [this]() {
+                                         OnCloseCurrentPage();
+                                       });
   keybindings.action_group_menu()->add(Gtk::Action::create("EditFind",
-                  Gtk::Stock::FIND),
-          [this]() {
-					  //   OnEditFind();
-          });
-
-   entry_.view_.entry().signal_activate().connect(
-         [this]() {
-   	        OnNewPage(entry_.view_.entry().get_text());
-	        entry_.OnHideEntries();
-         });
-}
-  
-
+                                                           Gtk::Stock::FIND),
+                                       [this]() {
+                                         //TODO(Oyvang, Zalox, Forgi)Create function OnEditFind();
+                                       });
+  keybindings.action_group_menu()->add(Gtk::Action::create("EditCopy",
+                                                           Gtk::Stock::COPY),  
+                                       [this]() {
+                                         OnEditCopy();
+                                       });
+  keybindings.action_group_menu()->add(Gtk::Action::create("EditCut",
+                                                           Gtk::Stock::CUT),
+                                       [this]() {
+                                         OnEditCut();
+                                       });
+  keybindings.action_group_menu()->add(Gtk::Action::create("EditPaste",
+                                                           Gtk::Stock::PASTE),
+                                       [this]() {
+                                         OnEditPaste();
+                                       });
+  entry_.view_.entry().signal_activate().connect(
+                                                 [this]() {
+                                                   OnNewPage(entry_.view_.entry().get_text());
+                                                   entry_.OnHideEntries();
+                                                 });
+}//Constructor
 Gtk::Box& Notebook::Controller::view() {
   return view_.view();
 }
-
 Gtk::Box& Notebook::Controller::entry_view(){
   return entry_.view();
 }
-
 void Notebook::Controller::OnNewPage(std::string name) {
-
   scrolledwindow_vec_.push_back(new Gtk::ScrolledWindow());
   source_vec_.push_back(new Source::Controller);
   scrolledwindow_vec_.back()->add(source_vec_.back()->view());
@@ -76,10 +91,8 @@ void Notebook::Controller::OnNewPage(std::string name) {
   view_.notebook().append_page(*scrolledwindow_vec_.back(), name);
   view_.notebook().show_all_children();
   view_.notebook().set_focus_child(*scrolledwindow_vec_.back());
-  view().show_all_children();
   view_.notebook().set_current_page(view_.notebook().get_n_pages()-1);
 }
-  
 void Notebook::Controller::OnCloseCurrentPage() {
   //TODO (oyvang, zalox, forgi) Save a temp file, in case you close one you dont want to close?
   int page = view_.notebook().get_current_page();
@@ -89,20 +102,42 @@ void Notebook::Controller::OnCloseCurrentPage() {
   source_vec_.erase(source_vec_.begin()+ page);
   scrolledwindow_vec_.erase(scrolledwindow_vec_.begin()+page);
 }
-
 void Notebook::Controller::OnFileNewEmptyfile() {
   entry_.OnShowSetFilenName("");
-  //TODO(Oyvang) Legg til funksjon for Entry file name.extension
 }
-
 void Notebook::Controller::OnFileNewCCFile() {
   entry_.OnShowSetFilenName(".cc");
-  //TODO(Oyvang) Legg til funksjon for Entry file name.extension
 }
-
 void Notebook::Controller::OnFileNewHeaderFile() {
   entry_.OnShowSetFilenName(".h");
-  //TODO(Oyvang) Legg til funksjon for Entry file name.extension
+}
+void Notebook::Controller::OnEditCopy() {
+  if(view_.notebook().get_n_pages()!=0){
+    int source_pos = view_.notebook().get_current_page();
+    Glib::RefPtr<Gtk::TextBuffer> buffer = source_vec_.at(source_pos)
+      ->view().get_buffer();
+    buffer->copy_clipboard(refClipboard);
+  }
+}
+void Notebook::Controller::OnEditPaste() {
+  if(view_.notebook().get_n_pages()!=0){
+    int source_pos = view_.notebook().get_current_page();
+    Glib::RefPtr<Gtk::TextBuffer> buffer = source_vec_.at(source_pos)
+      ->view().get_buffer();
+    buffer->paste_clipboard(refClipboard);
+  }
+}
+void Notebook::Controller::OnEditCut() {
+  if(view_.notebook().get_n_pages()!=0){
+    int source_pos = view_.notebook().get_current_page();
+    Glib::RefPtr<Gtk::TextBuffer> buffer = source_vec_.at(source_pos)
+      ->view().get_buffer();
+    buffer->cut_clipboard(refClipboard);
+  }
+}
+
+void Notebook::Controller::OnOpenFile() {
+  std::cout << "fired" << std::endl;
 }
 
 

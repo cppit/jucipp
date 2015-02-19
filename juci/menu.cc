@@ -1,160 +1,93 @@
 #include "menu.h"
 
-// VIEW
 Menu::View::View(Gtk::Orientation orientation) :
-        view_(orientation) {
+  view_(orientation) {
+  Gtk::MenuBar menutest;
+  view_.pack_end(menutest);
 
-}// view controller
-
+}
 Gtk::Box &Menu::View::view(
-        Glib::RefPtr<Gtk::UIManager> ui_manager) {
+			   Glib::RefPtr<Gtk::UIManager> ui_manager) {
   view_.pack_start(*ui_manager->get_widget("/MenuBar"), Gtk::PACK_SHRINK);
   return view_;
 }
 
-
-// CONTROLLER
 Menu::Controller::Controller(Keybindings::Controller& keybindings) :
-        menu_view_(Gtk::ORIENTATION_VERTICAL),
-        keybindings_(keybindings) {
-/* Add action to menues */
-/* START file menu */
-
-  /* File-> New files end */
+  menu_view_(Gtk::ORIENTATION_VERTICAL),
+  keybindings_(keybindings) {
   keybindings_.action_group_menu()->add(Gtk::Action::create("FileOpenFile",
-                  Gtk::Stock::OPEN),
-          [this]() {
-              OnFileOpenFile();
-          });
+							    Gtk::Stock::OPEN),
+					[this]() {
+					  OnFileOpenFile();
+					});
   keybindings_.action_group_menu()->add(Gtk::Action::create("FileOpenFolder",
-                  "Open folder"),
-          [this]() {
-              OnFileOpenFolder();
-          });
-/* END file menu */
-/* START edit menu */
+							    "Open folder"),
+					[this]() {
+					  OnFileOpenFolder();
+					});
   keybindings_.action_group_menu()->add(Gtk::Action::create("EditMenu",
-          Gtk::Stock::EDIT));
-  keybindings_.action_group_menu()->add(Gtk::Action::create("EditCopy",
-                  Gtk::Stock::COPY),
-          [this]() {
-              OnEditCopy();
-          });
-  keybindings_.action_group_menu()->add(Gtk::Action::create("EditCut",
-                  Gtk::Stock::CUT),
-          [this]() {
-              OnEditCut();
-          });
-  keybindings_.action_group_menu()->add(Gtk::Action::create("EditPaste",
-                  Gtk::Stock::PASTE),
-          [this]() {
-              OnEditPaste();
-          });
-
-/* END edit menu */
-/* START window menu */
+							    Gtk::Stock::EDIT));
   keybindings_.action_group_menu()->add(Gtk::Action::create("WindowMenu",
-          "_Window"));
-
+							    "_Window"));
   keybindings_.action_group_menu()->add(Gtk::Action::create("WindowSplitWindow",
-                  "Split window"),
-          Gtk::AccelKey("<control><alt>S"),
-          [this]() {
-              OnWindowSplitWindow();
-          });
-/* END window menu */
-/* START Plugin menu */
+							    "Split window"),
+					Gtk::AccelKey("<control><alt>S"),
+					[this]() {
+					  OnWindowSplitWindow();
+					});
   keybindings_.action_group_menu()->add(Gtk::Action::create("PluginMenu",
-          "_Plugins"));
-  /*Plugin->snippet*/
+							    "_Plugins"));
   keybindings_.action_group_menu()->add(Gtk::Action::create("PluginSnippet",
-          "Snippet"));
+							    "Snippet"));
   keybindings_.action_group_menu()->add(Gtk::Action::create("PluginAddSnippet",
-                  "Add snippet"),
-          Gtk::AccelKey("<alt>space"),
-          [this]() {
-              OnPluginAddSnippet();
-          });
-  /* End snippet */
-/* END plugin menu */
-/* START help menu */
+							    "Add snippet"),
+					Gtk::AccelKey("<alt>space"),
+					[this]() {
+					  OnPluginAddSnippet();
+					});
   keybindings_.action_group_menu()->add(Gtk::Action::create("HelpMenu",
-          Gtk::Stock::HELP));
+							    Gtk::Stock::HELP));
   keybindings_.action_group_menu()->add(Gtk::Action::create("HelpAbout",
-                  Gtk::Stock::ABOUT),
-          [this]() {
-              OnHelpAbout();
-          });
-
-// Hidden actions
+							    Gtk::Stock::ABOUT),
+					[this]() {
+					  OnHelpAbout();
+					});
   keybindings_.action_group_hidden()->add(Gtk::Action::create("Test"),
-          Gtk::AccelKey("<control><alt>K"),
-          [this]() {
-              OnHelpAbout();
-          });
+					  Gtk::AccelKey("<control><alt>K"),
+					  [this]() {
+					    OnHelpAbout();
+					  });
   keybindings_.BuildMenu();
   keybindings_.BuildHiddenMenu();
-
-
-/* END help menu */
-
-
-
-}
-
-
+  }  // Controller
 Gtk::Box &Menu::Controller::view() {
   return menu_view_.view(keybindings_.ui_manager_menu());
 }
-
-
 void Menu::Controller::OnPluginAddSnippet() {
   //TODO(Forgi add you snippet magic code)
   std::cout << "Add snipper" << std::endl;
   juci_api::py::LoadPlugin("snippet");
 }
-
-
-// void Menu::Controller::LoadPlugin() {
-//  juci_api::py::LoadPlugin("plugin_name");
-// }
-
 void Menu::Controller::OnFileOpenFile() {
   std::cout << "Open file clicked" << std::endl;
   //TODO(Oyvang) Legg til funksjon
 }
-
 void Menu::Controller::OnFileOpenFolder() {
   std::cout << "Open folder clicked" << std::endl;
   //TODO(Oyvang) Legg til funksjon
 }
-
-
-void Menu::Controller::OnEditCopy() {
-  std::cout << "Clicked copy" << std::endl;
-  //TODO(Oyvang) Legg til funksjon
-}
-
 void Menu::Controller::OnEditCut() {
   std::cout << "Clicked cut" << std::endl;
   //TODO(Oyvang) Legg til funksjon
 }
-
-void Menu::Controller::OnEditPaste() {
-  std::cout << "Clicked paste" << std::endl;
-  //TODO(Oyvang) Legg til funksjon
-}
-
 void Menu::Controller::OnEditFind() {
   std::cout << "Clicked find" << std::endl;
   //TODO(Oyvang) Legg til funksjon
 }
-
 void Menu::Controller::OnWindowSplitWindow() {
   std::cout << "Clicked split window" << std::endl;
   //TODO(Oyvang) Legg til funksjon
 }
-
 void Menu::Controller::OnHelpAbout() {
   std::cout << "Clicked about" << std::endl;
   //TODO(Oyvang) Legg til funksjon

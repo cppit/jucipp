@@ -10,8 +10,6 @@ class Window : public Gtk::Window {
 public:
   Window();
   Gtk::Box window_box_;
-
-
 private:
   Keybindings::Controller keybindings_;
   Menu::Controller menu_;
@@ -19,9 +17,6 @@ private:
 
   //signal handlers
   void OnWindowHide();
-
 };
-
-
 
 #endif  // JUCI_WINDOW_H_
