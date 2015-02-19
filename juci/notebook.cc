@@ -14,6 +14,7 @@ Notebook::Controller::Controller(Keybindings::Controller& keybindings){
   scrolledwindow_vec_.push_back(new Gtk::ScrolledWindow());
   source_vec_.push_back(new Source::Controller);
   scrolledwindow_vec_.back()->add(source_vec_.back()->view());
+  source_vec_.back()->OnNewEmptyFile();
   view_.notebook().append_page(*scrolledwindow_vec_.back(), "juCi++");
 
 
@@ -71,6 +72,7 @@ void Notebook::Controller::OnNewPage(std::string name) {
   scrolledwindow_vec_.push_back(new Gtk::ScrolledWindow());
   source_vec_.push_back(new Source::Controller);
   scrolledwindow_vec_.back()->add(source_vec_.back()->view());
+  source_vec_.back()->OnNewEmptyFile();
   view_.notebook().append_page(*scrolledwindow_vec_.back(), name);
   view_.notebook().show_all_children();
   view_.notebook().set_focus_child(*scrolledwindow_vec_.back());

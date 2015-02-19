@@ -8,3 +8,4 @@
 !*.cc
 !*.h
 !CMakeLists.txt
+!config.json
