@@ -100,20 +100,28 @@ void Notebook::Controller::OnFileNewHeaderFile() {
   entry_.OnShowSetFilenName(".h");
 }
 void Notebook::Controller::OnEditCopy() {
-  std::cout << "Clicked copy" << std::endl;
-  int source_pos = view_.notebook().get_current_page();
-  Glib::RefPtr<Gtk::TextBuffer> buffer = source_vec_.at(source_pos)->view().get_buffer();
-  buffer->copy_clipboard(refClipboard); 
+  if(view_.notebook().get_n_pages()!=0){
+    int source_pos = view_.notebook().get_current_page();
+    Glib::RefPtr<Gtk::TextBuffer> buffer = source_vec_.at(source_pos)
+      ->view().get_buffer();
+    buffer->copy_clipboard(refClipboard);
+  }
 }
 void Notebook::Controller::OnEditPaste() {
-  int source_pos = view_.notebook().get_current_page();
-  Glib::RefPtr<Gtk::TextBuffer> buffer = source_vec_.at(source_pos)->view().get_buffer();
-  buffer->paste_clipboard(refClipboard);
-};
+  if(view_.notebook().get_n_pages()!=0){
+    int source_pos = view_.notebook().get_current_page();
+    Glib::RefPtr<Gtk::TextBuffer> buffer = source_vec_.at(source_pos)
+      ->view().get_buffer();
+    buffer->paste_clipboard(refClipboard);
+  }
+}
 void Notebook::Controller::OnEditCut() {
-  int source_pos = view_.notebook().get_current_page();
-  Glib::RefPtr<Gtk::TextBuffer> buffer = source_vec_.at(source_pos)->view().get_buffer();
-  buffer->cut_clipboard(refClipboard);
+  if(view_.notebook().get_n_pages()!=0){
+    int source_pos = view_.notebook().get_current_page();
+    Glib::RefPtr<Gtk::TextBuffer> buffer = source_vec_.at(source_pos)
+      ->view().get_buffer();
+    buffer->cut_clipboard(refClipboard);
+  }
 }
 
 
