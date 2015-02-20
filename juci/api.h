@@ -4,44 +4,43 @@
 #include <boost/python.hpp>
 #include <Python.h>
 #include <string>
+#include "notebook.h"
+#include "menu.h"
 
-//    Plugin API
-//
-const std::string g_project_root("/home/forgie/bachelor/app/juci/");
-static std::string g_test_string("test");
-namespace juci_api {
-  //
-  //   calls from python to C++
-  //
-  namespace cpp {
+const std::string g_project_root("/home/forgie/app/juci/");
 
-    
-    //    Replaceword:
-    //        replaces a word in the editor with a string
-    
+namespace libjuci {
+
+/////////////////////////////
+//// API ServiceProvider ////
+/////////////////////////////
+  struct ApiServiceProvider {
+  public:
+    static std::shared_ptr<Menu::Controller> menu_;
+    static std::shared_ptr<Notebook::Controller> notebook_;
+
+    ApiServiceProvider();
+    static void ReplaceWord(const std::string word);
+    void ReplaceLine(const std::string line);
+    static void AddKeybinding();
+  };
+
+///////////////////////
+//// Api to python ////
+///////////////////////
     void ReplaceWord(const std::string word_);
-        
-    //
-    //    ReplaceLine:
-    //        Replaces a line in the editor with a string
-    //
+
     void ReplaceLine(const std::string line_);
-    
-  }//namespace cpp
 
-  //
-  //   calls from C++ to Python
-  //
-  namespace py {
-    
-
-    //helpers
+//////////////////////////////
+//// Boost.Python methods ////
+//////////////////////////////
     boost::python::api::object openPythonScript(const std::string path,
 						boost::python::api::object python_name_space);
     
     //void snippet(std::string& word);
 
     void LoadPlugin(const std::string& plugin_name);
-  }// py   
-}//juci_api
+
+}//api
 #endif // JUCI_API_H

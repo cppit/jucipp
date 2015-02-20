@@ -36,12 +36,12 @@ Menu::Controller::Controller(Keybindings::Controller& keybindings) :
                                                             "_Plugins"));
   keybindings_.action_group_menu()->add(Gtk::Action::create("PluginSnippet",
                                                             "Snippet"));
-  keybindings_.action_group_menu()->add(Gtk::Action::create("PluginAddSnippet",
+  /*keybindings_.action_group_menu()->add(Gtk::Action::create("PluginAddSnippet",
                                                             "Add snippet"),
                                         Gtk::AccelKey("<alt>space"),
                                         [this]() {
                                           OnPluginAddSnippet();
-                                        });
+                                        });*/
   keybindings_.action_group_menu()->add(Gtk::Action::create("HelpMenu",
                                                             Gtk::Stock::HELP));
   keybindings_.action_group_menu()->add(Gtk::Action::create("HelpAbout",
@@ -62,8 +62,8 @@ Gtk::Box &Menu::Controller::view() {
 }
 void Menu::Controller::OnPluginAddSnippet() {
   //TODO(Forgi add you snippet magic code)
-  std::cout << "Add snipper" << std::endl;
-  juci_api::py::LoadPlugin("snippet");
+  std::cout << "Add snippet" << std::endl;
+  //juci_api::py::LoadPlugin("snippet");
 }
 void Menu::Controller::OnFileOpenFile() {
   std::cout << "Open file clicked" << std::endl;

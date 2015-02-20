@@ -92,7 +92,7 @@ void Source::Theme::SetTagTable(
 //// Model ////
 ///////////////
 Source::Model::Model() :
-  theme_() {
+  theme_() {/*
   std::cout << "Model constructor run" << std::endl;
   boost::property_tree::ptree pt;
   boost::property_tree::json_parser::read_json("config.json", pt);
@@ -108,7 +108,7 @@ Source::Model::Model() :
         //        std::cout << "inserting type. " << pi.first << pi.second.get_value<std::string>() << std::endl;
       }
     }
-  }
+  }*/
 }
 
 Source::Theme& Source::Model::theme() {

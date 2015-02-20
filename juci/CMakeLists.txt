@@ -104,7 +104,7 @@ include_directories(
   ${Boost_INCLUDE_DIRS}
   ${PYTHON_INCLUDE_DIRS}
   ${GTKMM_INCLUDE_DIRS}
-  "/home/zalox/bachelor/libclang++/headers/"
+  ${LCL_INCLUDE_DIRS}
   )
 link_directories(
   ${GTKMM_LIBRARY_DIRS}

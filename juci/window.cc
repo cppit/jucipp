@@ -17,6 +17,11 @@ Window::Window() :
                                        [this]() {
                                          OnOpenFile();
                                        });
+
+  libjuci::ApiServiceProvider::menu_ = std::shared_ptr<Menu::Controller>(&menu_);
+  libjuci::ApiServiceProvider::notebook_ = std::shared_ptr<Notebook::Controller>(&notebook_);
+  libjuci::ApiServiceProvider::AddKeybinding();
+
   add_accel_group(keybindings_.ui_manager_menu()->get_accel_group());
   add_accel_group(keybindings_.ui_manager_hidden()->get_accel_group());
   
@@ -25,7 +30,10 @@ Window::Window() :
   window_box_.pack_start(notebook_.view());
   show_all_children();
   } // Window constructor
-void Window::OnWindowHide() {
+void Window::OnWindowHide(){
+  //TODO forgie: find out how to 'remove' the pointers
+  libjuci::ApiServiceProvider::notebook_ = std::shared_ptr<Notebook::Controller>(nullptr);
+  libjuci::ApiServiceProvider::menu_ = std::shared_ptr<Menu::Controller>(nullptr);
   hide();
 }
 
