@@ -62,11 +62,9 @@ void Window::OnOpenFile() {
     switch (result) {
         case(Gtk::RESPONSE_OK): {
             std::cout << "Open clicked." << std::endl;
-
             std::string path = dialog.get_filename();
             std::cout << "File selected: " << path << std::endl;
-	    Source::Controller sourcefile;
-	    notebook_.OnOpenFile(path, sourcefile.OnOpenFile(path));
+	    notebook_.OnOpenFile(path);
             break;
         }
         case(Gtk::RESPONSE_CANCEL): {

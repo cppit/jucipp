@@ -13,10 +13,15 @@ namespace Source {
   class Theme {
   public:
     const std::unordered_map<string, string>& tagtable() const;
+    const std::unordered_map<string, string>& typetable() const;
     void SetTagTable(const std::unordered_map<string, string> &tagtable);
     void InsertTag(const string &key, const string &value);
+    void SetTypeTable(const std::unordered_map<string, string> &tagtable);
+    void InsertType(const string &key, const string &value);
+
   private:
     std::unordered_map<string, string> tagtable_;
+    std::unordered_map<string, string> typetable_;
     string background_;
   };  // class Theme
 

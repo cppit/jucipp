@@ -108,7 +108,7 @@ void Notebook::Controller::OnFileNewHeaderFile() {
   entry_.OnShowSetFilenName(".h");
 }
 void Notebook::Controller::OnEditCopy() {
-  if(view_.notebook().get_n_pages()!=0){
+  if (view_.notebook().get_n_pages() != 0) {
     int source_pos = view_.notebook().get_current_page();
     Glib::RefPtr<Gtk::TextBuffer> buffer = source_vec_.at(source_pos)
       ->view().get_buffer();
@@ -116,7 +116,7 @@ void Notebook::Controller::OnEditCopy() {
   }
 }
 void Notebook::Controller::OnEditPaste() {
-  if(view_.notebook().get_n_pages()!=0){
+  if (view_.notebook().get_n_pages() != 0) {
     int source_pos = view_.notebook().get_current_page();
     Glib::RefPtr<Gtk::TextBuffer> buffer = source_vec_.at(source_pos)
       ->view().get_buffer();
@@ -124,7 +124,7 @@ void Notebook::Controller::OnEditPaste() {
   }
 }
 void Notebook::Controller::OnEditCut() {
-  if(view_.notebook().get_n_pages()!=0){
+  if (view_.notebook().get_n_pages() != 0) {
     int source_pos = view_.notebook().get_current_page();
     Glib::RefPtr<Gtk::TextBuffer> buffer = source_vec_.at(source_pos)
       ->view().get_buffer();
@@ -132,12 +132,12 @@ void Notebook::Controller::OnEditCut() {
   }
 }
 
-void Notebook::Controller::OnOpenFile(std::string name, std::string content){
+void Notebook::Controller::OnOpenFile(std::string filename) {
   scrolledwindow_vec_.push_back(new Gtk::ScrolledWindow());
   source_vec_.push_back(new Source::Controller);
   scrolledwindow_vec_.back()->add(source_vec_.back()->view());
-  source_vec_.back()->view().get_buffer()->set_text(content);
-  view_.notebook().append_page(*scrolledwindow_vec_.back(), name);
+  source_vec_.back()->OnOpenFile(filename);
+  view_.notebook().append_page(*scrolledwindow_vec_.back(), filename);
   view_.notebook().show_all_children();
   view_.notebook().set_focus_child(*scrolledwindow_vec_.back());
   view_.notebook().set_current_page(view_.notebook().get_n_pages()-1);

@@ -11,7 +11,7 @@ namespace Notebook {
   public:
     View();
     Gtk::Box& view();
-    Gtk::Notebook& notebook(){return notebook_;}
+    Gtk::Notebook& notebook() { return notebook_; }
   protected:
     Gtk::Box view_;
     Gtk::Notebook notebook_;
@@ -23,6 +23,7 @@ namespace Notebook {
     Gtk::Box& entry_view();
     void OnNewPage(std::string name);
     void OnCloseCurrentPage();
+    void OnOpenFile(std::string filename);
   private:
     View view_;
     Entry::Controller entry_;
@@ -36,7 +37,6 @@ namespace Notebook {
     void OnEditCopy();
     void OnEditPaste();
     void OnEditCut();
-    void OnOpenFile(std::string name, std::string content);
   };  // class controller
 }  // namespace Notebook
 

@@ -14,6 +14,7 @@ Source::View::View() {
 // returns the new line
 string Source::View::UpdateLine() {
   Gtk::TextIter line(get_buffer()->get_insert()->get_iter());
+  //  std::cout << line.get_line() << std::endl;
   // for each word --> check what it is --> apply appropriate tag
   return "";
 }
@@ -41,9 +42,18 @@ void Source::View::OnOpenFile(std::vector<Clang::SourceLocation> &locations,
     int linum = loc.line_number();
     int begin = loc.begin();
     int end = loc.end();
-    buffer->apply_tag_by_name(theme.tagtable().at(type),
+    if(end < 0) end = 0;
+    if(begin < 0) begin = 0;
+    
+    // for (auto &i : theme.tagtable()) {
+    //   std::cout << "first: "<< i.first << " second: "<< i.second << std::endl;
+    // }
+
+    //    std::cout << "type: " << type << std::endl;
+    buffer->apply_tag_by_name(theme.typetable().at(type),
                               buffer->get_iter_at_line_offset(linum, begin),
                               buffer->get_iter_at_line_offset(linum, end));
+    //    std::cout << "This is a ans" << std::endl;
   }
 }
 // Source::View::Theme::tagtable()
@@ -52,8 +62,24 @@ const std::unordered_map<string, string>& Source::Theme::tagtable() const {
   return tagtable_;
 }
 
+// Source::View::Theme::tagtable()
+// returns a const refrence to the tagtable
+const std::unordered_map<string, string>& Source::Theme::typetable() const {
+  return typetable_;
+}
+
 void Source::Theme::InsertTag(const string &key, const string &value) {
   tagtable_[key] = value;
+}
+// Source::View::Theme::SetTagTable()
+// sets the tagtable for the view
+void Source::Theme::SetTypeTable(
+                        const std::unordered_map<string, string> &typetable) {
+  typetable_ = typetable;
+}
+
+void Source::Theme::InsertType(const string &key, const string &value) {
+  typetable_[key] = value;
 }
 // Source::View::Theme::SetTagTable()
 // sets the tagtable for the view
@@ -75,6 +101,11 @@ Source::Model::Model() :
     for (auto &pi : props) {
       if (i.first.compare("syntax")) {  // checks the config-file
         theme_.InsertTag(pi.first, pi.second.get_value<std::string>());
+        //    std::cout << "inserting tag. " << pi.first << pi.second.get_value<std::string>() << std::endl;
+      }
+      if (i.first.compare("colors")) {  // checks the config-file
+        theme_.InsertType(pi.first, pi.second.get_value<std::string>());
+        //        std::cout << "inserting type. " << pi.first << pi.second.get_value<std::string>() << std::endl;
       }
     }
   }

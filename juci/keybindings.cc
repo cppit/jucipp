@@ -54,7 +54,7 @@ Keybindings::Controller::Controller() {
   action_group_hidden_ = Gtk::ActionGroup::create();
   ui_manager_hidden_ = Gtk::UIManager::create();
 }
-Keybindings::Controller::~Controller(){
+Keybindings::Controller::~Controller() {
 }
 void Keybindings::Controller::BuildMenu() {
   try {

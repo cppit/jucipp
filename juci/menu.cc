@@ -4,10 +4,9 @@ Menu::View::View(Gtk::Orientation orientation) :
   view_(orientation) {
   Gtk::MenuBar menutest;
   view_.pack_end(menutest);
-
 }
 Gtk::Box &Menu::View::view(
-			   Glib::RefPtr<Gtk::UIManager> ui_manager) {
+                           Glib::RefPtr<Gtk::UIManager> ui_manager) {
   view_.pack_start(*ui_manager->get_widget("/MenuBar"), Gtk::PACK_SHRINK);
   return view_;
 }
@@ -15,48 +14,46 @@ Gtk::Box &Menu::View::view(
 Menu::Controller::Controller(Keybindings::Controller& keybindings) :
   menu_view_(Gtk::ORIENTATION_VERTICAL),
   keybindings_(keybindings) {
-  keybindings_.action_group_menu()->add(Gtk::Action::create("FileOpenFile",
-							    Gtk::Stock::OPEN),
-					[this]() {
-					  OnFileOpenFile();
-					});
+  keybindings_.action_group_menu()->add(Gtk::Action::create("FileNew",
+                                                            Gtk::Stock::FILE));
+
   keybindings_.action_group_menu()->add(Gtk::Action::create("FileOpenFolder",
-							    "Open folder"),
-					[this]() {
-					  OnFileOpenFolder();
-					});
+                                                            "Open folder"),
+                                        [this]() {
+                                          OnFileOpenFolder();
+                                        });
   keybindings_.action_group_menu()->add(Gtk::Action::create("EditMenu",
-							    Gtk::Stock::EDIT));
+                                                            Gtk::Stock::EDIT));
   keybindings_.action_group_menu()->add(Gtk::Action::create("WindowMenu",
-							    "_Window"));
+                                                            "_Window"));
   keybindings_.action_group_menu()->add(Gtk::Action::create("WindowSplitWindow",
-							    "Split window"),
-					Gtk::AccelKey("<control><alt>S"),
-					[this]() {
-					  OnWindowSplitWindow();
-					});
+                                                            "Split window"),
+                                        Gtk::AccelKey("<control><alt>S"),
+                                        [this]() {
+                                          OnWindowSplitWindow();
+                                        });
   keybindings_.action_group_menu()->add(Gtk::Action::create("PluginMenu",
-							    "_Plugins"));
+                                                            "_Plugins"));
   keybindings_.action_group_menu()->add(Gtk::Action::create("PluginSnippet",
-							    "Snippet"));
+                                                            "Snippet"));
   keybindings_.action_group_menu()->add(Gtk::Action::create("PluginAddSnippet",
-							    "Add snippet"),
-					Gtk::AccelKey("<alt>space"),
-					[this]() {
-					  OnPluginAddSnippet();
-					});
+                                                            "Add snippet"),
+                                        Gtk::AccelKey("<alt>space"),
+                                        [this]() {
+                                          OnPluginAddSnippet();
+                                        });
   keybindings_.action_group_menu()->add(Gtk::Action::create("HelpMenu",
-							    Gtk::Stock::HELP));
+                                                            Gtk::Stock::HELP));
   keybindings_.action_group_menu()->add(Gtk::Action::create("HelpAbout",
-							    Gtk::Stock::ABOUT),
-					[this]() {
-					  OnHelpAbout();
-					});
+                                                            Gtk::Stock::ABOUT),
+                                        [this]() {
+                                          OnHelpAbout();
+                                        });
   keybindings_.action_group_hidden()->add(Gtk::Action::create("Test"),
-					  Gtk::AccelKey("<control><alt>K"),
-					  [this]() {
-					    OnHelpAbout();
-					  });
+                                          Gtk::AccelKey("<control><alt>K"),
+                                          [this]() {
+                                            OnHelpAbout();
+                                          });
   keybindings_.BuildMenu();
   keybindings_.BuildHiddenMenu();
   }  // Controller
