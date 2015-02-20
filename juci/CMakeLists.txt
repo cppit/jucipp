@@ -4,18 +4,19 @@ set(module juci_to_python_api)
 
 project (${project_name})
 
-set(CMAKE_MODULE_PATH ${CMAKE_MODULE_PATH} "${CMAKE_CURRENT_LIST_DIR}/cmake/Modules/")
 set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -std=c++11")
+set(CMAKE_MODULE_PATH ${CMAKE_MODULE_PATH} "${CMAKE_CURRENT_LIST_DIR}/cmake/Modules/")
 
 INCLUDE(FindPkgConfig)
 
-#libclang_LIBRARIES
-#libclang_INCLUDE_DIR
-find_package(Libclang)
+message("Searcing for libclang")
+#LIBCLANG_FOUND System has libclang.
+#LIBCLANG_INCLUDE_DIRS The libclang include directories.
+#LIBCLANG_LIBRARIES  The libraries needed to use libclang.
+#LIBCLANG_LIBRARY_DIR The path to the directory containing libclang.
+#LIBCLANG_KNOWN_LLVM_VERSIONS  Known LLVM release numbers.
+find_package(Testlcl)
 
-message("Libclang libraries ${Libclang_LIBRARIES}")
-message("Libclang libraries ${Libclang_LIBRARY}")
-message("Libclang include dirs ${Libclang_INCLUDE_DIR}")
 
 #### Finding boost, the variables below is set #####
 #PYTHONLIBS_FOUND            - True if headers and requested libraries were found
@@ -68,36 +69,53 @@ else()
   message("Gtkmm link dirs ${GTKMM_LIBRARIES}")
   message(FATAL_ERROR "The gtkmm libraries are required. Quitting.")
 endif()
-
-
-
-
 # name of the executable on Windows will be example.exe
 add_executable(${project_name}
   #list of every needed file to create the executable
-  juci.h
-  juci.cc
+  juci.cc	
   keybindings
   menu
   source
+  sourcefile.h
+  sourcefile.cc
   window
   api
+  notebook
+  entry
+
   #there is no need for extentions
   )
 
-
 add_library(${module} SHARED
- 
-  api.h
-  api_ext.cc
+  api
+  api_ext
   )
 # dependencies
 
-include_directories(${Boost_INCLUDE_DIRS} ${PYTHON_INCLUDE_DIRS} ${GTKMM_INCLUDE_DIRS} "/home/zalox/bachelor/libclang++/")
-link_directories(${GTKMM_LIBRARY_DIRS} ${Boost_LIBRARY_DIRS} ${PYTHON_INCLUDE_DIRS} "/home/zalox/bachelor/libclang++/")
+
+
+if(${lcl_NOTFOUND})
+  message("FATAL_ERROR ohh lord!")
+else()
+  message("Found libs!")
+endif()
+  
+include_directories(
+  ${Boost_INCLUDE_DIRS}
+  ${PYTHON_INCLUDE_DIRS}
+  ${GTKMM_INCLUDE_DIRS}
+  "/home/zalox/bachelor/libclang++/headers/"
+  )
+link_directories(
+  ${GTKMM_LIBRARY_DIRS}
+  ${Boost_LIBRARY_DIRS}
+  ${PYTHON_INCLUDE_DIRS}
+  ${LCL_LIBRARY_DIRS}
+  )
 #module:
 set_target_properties(${module} PROPERTIES PREFIX "") 
 target_link_libraries(${module} ${PYTHON_LIBRARIES} ${Boost_LIBRARIES})
 #executable:
-target_link_libraries(${project_name} ${GTKMM_LIBRARIES} ${Boost_LIBRARIES} ${PYTHON_LIBRARIES} "/home/zalox/bachelor/libclang++/")
+target_link_libraries(${project_name} ${LCL_LIBRARIES} ${GTKMM_LIBRARIES} ${Boost_LIBRARIES} ${PYTHON_LIBRARIES})
+
 

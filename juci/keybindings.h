@@ -1,28 +1,47 @@
+//juCi++ class that holds every keybinding.
+#ifndef JUCI_KEYBINDINGS_H_
+#define JUCI_KEYBINDINGS_H_
+
 #include "iostream"
 #include "gtkmm.h"
 
 namespace Keybindings {
-    class Controller {
-    public:
-      Controller();
-
-      virtual ~Controller();
-
-      Glib::RefPtr<Gtk::ActionGroup> action_group() {
-        return action_group_;
-      };
-
-      Glib::RefPtr<Gtk::UIManager> ui_manager() {
-        return ui_manager_;
-      };
-
-      void set_ui_manger_string(std::string ui_string);
-
-      void set_ui_manager_action_group(Glib::RefPtr<Gtk::ActionGroup> action_group);
-
-    protected:
-      Glib::RefPtr<Gtk::UIManager> ui_manager_;
-      Glib::RefPtr<Gtk::ActionGroup> action_group_;
+  class Model {
+  public:
+    Model();
+    virtual ~Model();
+    std::string menu_ui_string(){return menu_ui_string_;}
+    std::string hidden_ui_string(){return hidden_ui_string_;}
+  private:
+    std::string menu_ui_string_;
+    std::string hidden_ui_string_;
+  }; // Model
+  class Controller {
+  public:
+    Controller();
+    virtual ~Controller();
+    Glib::RefPtr<Gtk::ActionGroup> action_group_menu() {
+      return action_group_menu_;
     };
-
+    Glib::RefPtr<Gtk::UIManager> ui_manager_menu() {
+      return ui_manager_menu_;
+    };
+    Glib::RefPtr<Gtk::ActionGroup> action_group_hidden() {
+      return action_group_hidden_;
+    };
+    Glib::RefPtr<Gtk::UIManager> ui_manager_hidden() {
+      return ui_manager_hidden_;
+    };
+    void BuildMenu();
+    void BuildHiddenMenu();
+  protected:
+    Glib::RefPtr<Gtk::UIManager> ui_manager_menu_;
+    Glib::RefPtr<Gtk::ActionGroup> action_group_menu_;
+    Glib::RefPtr<Gtk::UIManager> ui_manager_hidden_;
+    Glib::RefPtr<Gtk::ActionGroup> action_group_hidden_;
+  private:
+    Keybindings::Model model_;
+  };//Controller
 }
+
+#endif  // JUCI_KEYBINDINGS_H_
