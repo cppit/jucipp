@@ -24,7 +24,7 @@ namespace Notebook {
     void OnNewPage(std::string name);
     void OnCloseCurrentPage();
     void OnOpenFile(std::string filename);
-  private:
+ // private:
     View view_;
     Entry::Controller entry_;
     std::vector<Source::Controller*> source_vec_;

@@ -10,7 +10,20 @@ libjuci::ApiServiceProvider::ApiServiceProvider( ){
   std::cout << "Apiservice std.ctor" << std::endl;
 }
 void libjuci::ApiServiceProvider::ReplaceWord(std::string word){
-  std::cout << word << std::endl;
+
+  Glib::RefPtr<Gtk::TextBuffer> buffer = libjuci::ApiServiceProvider::notebook_->source_vec_.back()->view().get_buffer();
+
+  Gtk::TextIter text_iterator = buffer->get_insert()->get_iter();
+  Gtk::TextIter end  = buffer->get_insert()->get_iter();
+
+  while(  !text_iterator.starts_word()){
+    //    text_iterator--;
+    text_iterator.backward_char();
+  }
+  buffer->erase(text_iterator, end);
+  text_iterator = buffer->get_insert()->get_iter();
+  buffer->insert(text_iterator, word);
+
 }
 void libjuci::ApiServiceProvider::ReplaceLine(std::string line){}
 
@@ -37,8 +50,8 @@ void libjuci::ReplaceWord(const std::string word_) {
   //    << std::endl;
 
   //libjuci::ApiServiceProvider::ReplaceWord(word);
-
-  std::cout << "The string: "  << word_ << std::endl;
+  libjuci::ApiServiceProvider::ReplaceWord(word_);
+  //std::cout << "The string: "  << word_ << std::endl;
 }
 
 void libjuci::ReplaceLine(const std::string line) {
