@@ -37,8 +37,7 @@ std::string libjuci::ApiServiceProvider::GetWord() {
   libjuci::IterToWordStart(word_start);
   libjuci::IterToWordEnd(word_end);
 
-  std::cout <<"start: " << word_start << std::endl << "end: " << word_end << std::endl;
-  if(word_start <  word_end) {
+  if(word_start < word_end) {
     std::string word = buffer->get_text(word_start, word_end);
     return word;
   }
