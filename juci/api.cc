@@ -51,17 +51,15 @@ void libjuci::ApiServiceProvider::AddKeybinding() {
 			      "Add snippet"),
 	  Gtk::AccelKey("<control><alt>space"),
 	  []() {
-	    std::cout << "ctrl alt space" << std::endl;
 	    libjuci::LoadPlugin("snippet");
 	  });
-  std::cout << "addkeybinding" << std::endl;
 }
 
 ///////////////////////
 //// Api to python ////
 ///////////////////////
-void libjuci::ReplaceWord(const std::string word_) {
-  libjuci::ApiServiceProvider::ReplaceWord(word_);
+void libjuci::ReplaceWord(const std::string word) {
+  libjuci::ApiServiceProvider::ReplaceWord(word);
 }
 
 void libjuci::ReplaceLine(const std::string line) {
@@ -122,7 +120,12 @@ void libjuci::IterToWordEnd(Gtk::TextIter &iter) {
 }
 
 Glib::RefPtr<Gtk::TextBuffer> libjuci::BufferFromNotebook() {
-  return Glib::RefPtr<Gtk::TextBuffer>(libjuci::ApiServiceProvider::notebook_->source_vec_.back()->view().get_buffer());
+    //TODO forgie: make sure it does not get the buffer to the last created textview.
+  int i = 0;
+  while(!libjuci::ApiServiceProvider::notebook_->source_vec_.at(i)->view().has_focus()) {
+    i++;
+  }
+  return Glib::RefPtr<Gtk::TextBuffer>(libjuci::ApiServiceProvider::notebook_->source_vec_.at(i)->view().get_buffer());
 }
 
 Gtk::TextIter libjuci::IterFromNotebook() {

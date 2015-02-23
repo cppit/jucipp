@@ -35,13 +35,14 @@ namespace libjuci {
   void IterToWordStart(Gtk::TextIter &iter);
   void IterToWordEnd(Gtk::TextIter &iter);
   Gtk::TextIter IterFromNotebook();
+  //TODO forgie: make sure it does not get the buffer to the last created textview.
   Glib::RefPtr<Gtk::TextBuffer> BufferFromNotebook();
   
   ///////////////////////
   //// Api to python ////
   ///////////////////////
-  void ReplaceWord(const std::string word_);
-  void ReplaceLine(const std::string line_);
+  void ReplaceWord(const std::string word);
+  void ReplaceLine(const std::string line);
   std::string GetWord();
   //TODO forgie: Make more functions targeting the python module
 
