@@ -43,6 +43,7 @@ namespace libjuci {
   void ReplaceWord(const std::string word_);
   void ReplaceLine(const std::string line_);
   std::string GetWord();
+  //TODO forgie: Make more functions targeting the python module
 
   //////////////////////////////
   //// Boost.Python methods ////
