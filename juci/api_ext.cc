@@ -5,4 +5,5 @@ BOOST_PYTHON_MODULE(juci_to_python_api) {
       // text editing
       def("replaceLine", &libjuci::ReplaceLine);
       def("replaceWord", &libjuci::ReplaceWord);
+      def("getWord", &libjuci::GetWord);
     }// module::juci

@@ -10,33 +10,47 @@ libjuci::ApiServiceProvider::ApiServiceProvider( ){
   std::cout << "Apiservice std.ctor" << std::endl;
 }
 void libjuci::ApiServiceProvider::ReplaceWord(std::string word){
+  Glib::RefPtr<Gtk::TextBuffer> buffer = libjuci::BufferFromNotebook();
+  Gtk::TextIter word_start = libjuci::IterFromNotebook();
+  Gtk::TextIter word_end = libjuci::IterFromNotebook();
 
-  Glib::RefPtr<Gtk::TextBuffer> buffer = libjuci::ApiServiceProvider::notebook_->source_vec_.back()->view().get_buffer();
-
-  Gtk::TextIter text_iterator = buffer->get_insert()->get_iter();
-  Gtk::TextIter end  = buffer->get_insert()->get_iter();
-
-  while(  !text_iterator.starts_word()){
-    //    text_iterator--;
-    text_iterator.backward_char();
+  libjuci::IterToWordStart(word_start);
+  libjuci::IterToWordEnd(word_end);
+  if(word_start != word_end) {
+    buffer->erase(word_start, word_end);
+    Gtk::TextIter current = libjuci::IterFromNotebook();
+    buffer->insert(current, word);
   }
-  buffer->erase(text_iterator, end);
-  text_iterator = buffer->get_insert()->get_iter();
-  buffer->insert(text_iterator, word);
-
 }
 void libjuci::ApiServiceProvider::ReplaceLine(std::string line){}
+
+std::string libjuci::ApiServiceProvider::GetWord(){
+  Glib::RefPtr<Gtk::TextBuffer> buffer = libjuci::BufferFromNotebook();
+  Gtk::TextIter word_start = libjuci::IterFromNotebook();
+  Gtk::TextIter word_end = libjuci::IterFromNotebook();
+
+  libjuci::IterToWordStart(word_start);
+  libjuci::IterToWordEnd(word_end);
+
+  std::cout <<"start: " << word_start << std::endl << "end: " << word_end << std::endl;
+  if(word_start <  word_end) {
+    std::string test = buffer->get_text(word_start, word_end);
+    std::cout << "test: " << test << std::endl;
+    return test;
+  }
+  return "no word, sry";
+}
 
 void libjuci::ApiServiceProvider::AddKeybinding() {
 
   libjuci::ApiServiceProvider::menu_->keybindings_.action_group_menu()
-          ->add(Gtk::Action::create("PluginAddSnippet",
-                          "Add snippet"),
-                  Gtk::AccelKey("<control><alt>space"),
-                  []() {
-                      std::cout << "ctrl alt space" << std::endl;
-                      libjuci::LoadPlugin("juci_api_test");
-                  });
+    ->add(Gtk::Action::create("PluginAddSnippet",
+			      "Add snippet"),
+	  Gtk::AccelKey("<control><alt>space"),
+	  []() {
+	    std::cout << "ctrl alt space" << std::endl;
+	    libjuci::LoadPlugin("snippet");
+	  });
   std::cout << "addkeybinding" << std::endl;
 }
 
@@ -44,34 +58,32 @@ void libjuci::ApiServiceProvider::AddKeybinding() {
 //// Api to python ////
 ///////////////////////
 void libjuci::ReplaceWord(const std::string word_) {
-  //TODO implement libjuci::ReplaceWord / change string to iter?
-  //some_namespace::controller::replaceWord(word_*);
-  //std::cout << "unimplemented function: 'libjuci::ReplaceWord()' called"
-  //    << std::endl;
-
-  //libjuci::ApiServiceProvider::ReplaceWord(word);
   libjuci::ApiServiceProvider::ReplaceWord(word_);
-  //std::cout << "The string: "  << word_ << std::endl;
 }
 
 void libjuci::ReplaceLine(const std::string line) {
-  //TODO implement libjuci::ReplaceLine / change string to iter?
+  //TODO forgie: implement libjuci::ReplaceLine / change string to iter?
   //some_namespace::controller::replaceLine(line_);
   std::cout << "unimplemented function: 'libjuci::ReplaceLine()' called"
-      << std::endl;
+	    << std::endl;
+}
+std::string libjuci::GetWord() {
+  //  boost::python::str converted(libjuci::ApiServiceProvider::GetWord() );
+  return libjuci::ApiServiceProvider::GetWord();
+  //  return converted;
 }
 //////////////////////////////
 //// Boost.Python methods ////
 //////////////////////////////
 
 boost::python::api::object libjuci::openPythonScript(const std::string path,
-            boost::python::api::object python_name_space) {
+						     boost::python::api::object python_name_space) {
   std::string temp = g_project_root + path + ".py";
   boost::python::str the_path(temp);
   return boost::python::exec_file(the_path, python_name_space);//, python_name_space);
 }
 
- void libjuci::LoadPlugin(const std::string& plugin_name) {
+void libjuci::LoadPlugin(const std::string& plugin_name) {
   try{
     /* initialize python interpreter */
     Py_Initialize();
@@ -90,4 +102,34 @@ boost::python::api::object libjuci::openPythonScript(const std::string path,
     PyErr_Print();
   }
 }
+
+///////////////////////
+//// Glib wrappers ////
+///////////////////////
+void libjuci::IterToWordStart(Gtk::TextIter &iter) {
+  if(!iter.starts_line()) {
+    while(!iter.starts_word()) {
+      iter.backward_char();
+    }
+  }
+}
+void libjuci::IterToWordEnd(Gtk::TextIter &iter) {
+  if(!iter.ends_line()) {
+    while(!iter.ends_word()) {
+      iter.forward_char();
+    }
+  }
+}
+
+Glib::RefPtr<Gtk::TextBuffer> libjuci::BufferFromNotebook() {
+  return Glib::RefPtr<Gtk::TextBuffer>(libjuci::ApiServiceProvider::notebook_->source_vec_.back()->view().get_buffer());
+}
+
+Gtk::TextIter libjuci::IterFromNotebook() {
+  // Glib::RefPtr<Gtk::TextBuffer> buffer = libjuci::ApiServiceProvider::notebook_
+  //->source_vec_.back()->view().get_buffer();  
+  return libjuci::BufferFromNotebook()->get_insert()->get_iter();
+}
+ 
+
 
