@@ -2,10 +2,7 @@
 #snippet plugin
 import juci_to_python_api
 
-print("From Python: Snippet run")
-
 snippets = {}
-snippets["hoy"] = "hoyvalue"
 snippets["for"] = """\
 for(#int i=0; #i<#v.size(); #i++) {
    std::cout << v[i] << std::endl;
@@ -50,5 +47,4 @@ def getSnippet(word):
 theWord=juci_to_python_api.getWord()
 output=getSnippet(theWord)
 
-print(theWord)
 juci_to_python_api.replaceWord(output)
