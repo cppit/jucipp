@@ -9,3 +9,4 @@
 !*.h
 !CMakeLists.txt
 !config.json
+!*.py
