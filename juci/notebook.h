@@ -24,19 +24,24 @@ namespace Notebook {
     void OnNewPage(std::string name);
     void OnCloseCurrentPage();
     void OnOpenFile(std::string filename);
- // private:
     View view_;
     Entry::Controller entry_;
     std::vector<Source::Controller*> source_vec_;
     std::vector<Gtk::ScrolledWindow*> scrolledwindow_vec_;
     Glib::RefPtr<Gtk::Clipboard> refClipboard;
     std::list<Gtk::TargetEntry> listTargets;
+    std::string GetCursorWord();
     void OnFileNewEmptyfile();
     void OnFileNewCCFile();
     void OnFileNewHeaderFile();
     void OnEditCopy();
     void OnEditPaste();
     void OnEditCut();
+    void OnEditSearch();
+    void Search();
+  private:
+    bool isnewfile;
+    
   };  // class controller
 }  // namespace Notebook
 

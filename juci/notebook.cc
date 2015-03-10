@@ -27,18 +27,21 @@ Notebook::Controller::Controller(Keybindings::Controller& keybindings){
                                                            "New empty file",
                                                            "Create a new file"),
                                        [this]() {
+					 isnewfile = true;
                                          OnFileNewEmptyfile();
                                        });
   keybindings.action_group_menu()->add(Gtk::Action::create("FileNewCC",
                                                            "New cc file"),
                                        Gtk::AccelKey("<control><alt>c"),
                                        [this]() {
+					 isnewfile = true;
                                          OnFileNewCCFile();
                                        });
   keybindings.action_group_menu()->add(Gtk::Action::create("FileNewH",
                                                            "New h file"),
                                        Gtk::AccelKey("<control><alt>h"),
                                        [this]() {
+					 isnewfile = true;
                                          OnFileNewHeaderFile();
                                        });
   keybindings.action_group_menu()->add(Gtk::Action::create("WindowCloseTab",
@@ -50,6 +53,8 @@ Notebook::Controller::Controller(Keybindings::Controller& keybindings){
   keybindings.action_group_menu()->add(Gtk::Action::create("EditFind",
                                                            Gtk::Stock::FIND),
                                        [this]() {
+					 isnewfile = false;
+					 OnEditSearch();
                                          //TODO(Oyvang, Zalox, Forgi)Create function OnEditFind();
                                        });
   keybindings.action_group_menu()->add(Gtk::Action::create("EditCopy",
@@ -69,7 +74,11 @@ Notebook::Controller::Controller(Keybindings::Controller& keybindings){
                                        });
   entry_.view_.entry().signal_activate().connect(
                                                  [this]() {
-                                                   OnNewPage(entry_.view_.entry().get_text());
+						   if(isnewfile){
+						     OnNewPage(entry_.text());
+						   }else{
+						     Search();
+						   }
                                                    entry_.OnHideEntries();
                                                  });
 }//Constructor
@@ -132,17 +141,54 @@ void Notebook::Controller::OnEditCut() {
   }
 }
 
-void Notebook::Controller::OnOpenFile(std::string filename) {
+void Notebook::Controller::OnOpenFile(std::string path) {
   scrolledwindow_vec_.push_back(new Gtk::ScrolledWindow());
   source_vec_.push_back(new Source::Controller);
   scrolledwindow_vec_.back()->add(source_vec_.back()->view());
-  source_vec_.back()->OnOpenFile(filename);
-  view_.notebook().append_page(*scrolledwindow_vec_.back(), filename);
+  source_vec_.back()->OnOpenFile(path);
+  unsigned pos = path.find_last_of("/\\");
+  view_.notebook().append_page(*scrolledwindow_vec_.back(), path.substr(pos+1));
   view_.notebook().show_all_children();
   view_.notebook().set_focus_child(*scrolledwindow_vec_.back());
   view_.notebook().set_current_page(view_.notebook().get_n_pages()-1);
 }
 
+std::string Notebook::Controller::GetCursorWord(){
+  int page = view_.notebook().get_current_page();
+  std::string word;
+  Gtk::TextIter start,end;
+  start=source_vec_.at(page)->view().get_buffer()->begin();
+  end=source_vec_.at(page)->view().get_buffer()->end();
+  // if(!source_vec_.at(page)->view().get_buffer()->get_selection_bounds(start,
+  //								      end)){
+    start=source_vec_.at(page)->view().get_buffer()->get_insert()->get_iter();
+    end=source_vec_.at(page)->view().get_buffer()->get_insert()->get_iter();
+    if(!end.ends_line()) {
+      while(!end.ends_word()){
+	end.forward_char();
+      }
+    }
+    if(!start.starts_line()) {
+      while(!start.starts_word()){
+	start.backward_char();
+      }
+    }
+    word = source_vec_.at(page)->view().get_buffer()->get_text(start,end);
 
+    //TODO(Oyvang)fix selected text
+   return word;
+}
+
+void Notebook::Controller::OnEditSearch(){
+  entry_.OnShowSearch(GetCursorWord());   
+   
+}
+
+void Notebook::Controller::Search(){
+  std::string search_word;
+  search_word = entry_.text();
+  //TODO(oyvang) create seacrh function
+  std::cout<<"funka"<<std::endl;
+}
 
 

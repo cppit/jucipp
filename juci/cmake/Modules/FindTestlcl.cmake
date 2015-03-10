@@ -10,11 +10,11 @@
 find_package(PkgConfig)
 
 find_path(LCL_INCLUDE_DIR headers/TranslationUnit.h
-          HINTS "/home/forgie/code/libclangpp/"
+          HINTS "/home/gm/bachelor/lib/"
           )
 
 find_library(LCL_LIBRARY NAMES testlcl
-  HINTS "/home/forgie/code/libclangpp/lib")
+  HINTS "/home/gm/bachelor/lib/lib/")
 
 set(LCL_LIBRARIES ${LCL_LIBRARY} )
 set(LCL_INCLUDE_DIRS ${LCL_INCLUDE_DIR} )

@@ -14,11 +14,12 @@ namespace Entry {
     Gtk::Button& button_apply(){return button_apply_;};
     Gtk::Button& button_cancel(){return button_cancel_;};
     void OnShowSetFilenName(std::string exstension);
+    void OnShowSearch(std::string current);
     void OnHideEntry();
   protected:
     Gtk::Box view_;
     Gtk::Entry entry_;
-    Gtk::Button button_apply_, button_cancel_;
+    Gtk::Button button_apply_, button_cancel_, button_next_, button_prev_;
   };
   class Model {
   public:
@@ -33,7 +34,9 @@ namespace Entry {
     Controller();
     Gtk::Box& view();
     Gtk::Button& button_apply();
+    std::string text();
     void OnShowSetFilenName(std::string exstension);
+    void OnShowSearch(std::string current);
     void OnHideEntries();
     View view_;
   };// class controller
