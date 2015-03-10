@@ -47,12 +47,17 @@ std::string libjuci::ApiServiceProvider::GetWord() {
 void libjuci::ApiServiceProvider::AddKeybinding() {
 
   libjuci::ApiServiceProvider::menu_->keybindings_.action_group_menu()
+    ->add(Gtk::Action::create("PluginSnippet", "Snippet"));
+  
+  libjuci::ApiServiceProvider::menu_->keybindings_.action_group_menu()
     ->add(Gtk::Action::create("PluginAddSnippet",
 			      "Add snippet"),
 	  Gtk::AccelKey("<control><alt>space"),
 	  []() {
 	    libjuci::LoadPlugin("snippet");
 	  });
+
+  //TODO forgie: update views
 }
 
 ///////////////////////
@@ -72,6 +77,38 @@ std::string libjuci::GetWord() {
   //  boost::python::str converted(libjuci::ApiServiceProvider::GetWord() );
   return libjuci::ApiServiceProvider::GetWord();
   //  return converted;
+}
+
+void libjuci::AddMenuElement(std::string plugin_name){
+  libjuci::EditUiString(plugin_name);
+
+  libjuci::ApiServiceProvider::menu_->keybindings_.action_group_menu()
+    ->add(Gtk::Action::create("Plugin"+plugin_name, plugin_name));
+  /*
+  libjuci::ApiServiceProvider::menu_->keybindings_.action_group_menu()
+    ->add(Gtk::Action::create("PluginAdd"+plugin_name,
+			      "Add snippet"),
+	  Gtk::AccelKey("<control><alt>space"),
+	  []() {
+	    libjuci::LoadPlugin("snippet");
+	    });*/
+}
+
+void libjuci::EditUiString(std::string plugin_name){
+  std::string temp_menu = libjuci::ApiServiceProvider::menu_
+    ->keybindings_.model_.menu_ui_string();
+
+  std::size_t plugin_menu_pos = temp_menu.find("PluginMenu");
+  std::string menu_prefix = temp_menu.substr(0, plugin_menu_pos);
+  std::string menu_suffix = temp_menu.substr(plugin_menu_pos);
+  std::string menu_input =
+    "           <menu action='Plugin"+plugin_name+"'>               "
+    //    "               <menuitem action='PluginAdd"+plugin_name+"'/>   "
+    "           </menu>                                             ";
+
+  libjuci::ApiServiceProvider::menu_->keybindings_.model_.menu_ui_string_ =
+    menu_prefix + menu_input + menu_suffix;
+
 }
 //////////////////////////////
 //// Boost.Python methods ////

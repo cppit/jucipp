@@ -34,9 +34,10 @@ Menu::Controller::Controller(Keybindings::Controller& keybindings) :
                                         });
   keybindings_.action_group_menu()->add(Gtk::Action::create("PluginMenu",
                                                             "_Plugins"));
-  keybindings_.action_group_menu()->add(Gtk::Action::create("PluginSnippet",
-                                                            "Snippet"));
-  /*keybindings_.action_group_menu()->add(Gtk::Action::create("PluginAddSnippet",
+  //Moved to ApiServiceProvider
+  /*keybindings_.action_group_menu()
+    ->add(Gtk::Action::create("PluginSnippet", "Snippet"));
+  keybindings_.action_group_menu()->add(Gtk::Action::create("PluginAddSnippet",
                                                             "Add snippet"),
                                         Gtk::AccelKey("<alt>space"),
                                         [this]() {

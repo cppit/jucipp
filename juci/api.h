@@ -44,6 +44,9 @@ namespace libjuci {
   void ReplaceWord(const std::string word);
   void ReplaceLine(const std::string line);
   std::string GetWord();
+
+  void AddMenuElement(const std::string plugin_name);
+  void EditUiString(const std::string plugin_name);
   //TODO forgie: Make more functions targeting the python module
 
   //////////////////////////////

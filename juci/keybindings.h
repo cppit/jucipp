@@ -12,7 +12,7 @@ namespace Keybindings {
     virtual ~Model();
     std::string menu_ui_string(){return menu_ui_string_;}
     std::string hidden_ui_string(){return hidden_ui_string_;}
-  private:
+    //private:
     std::string menu_ui_string_;
     std::string hidden_ui_string_;
   }; // Model
@@ -34,12 +34,12 @@ namespace Keybindings {
     };
     void BuildMenu();
     void BuildHiddenMenu();
-  protected:
+    // protected:
     Glib::RefPtr<Gtk::UIManager> ui_manager_menu_;
     Glib::RefPtr<Gtk::ActionGroup> action_group_menu_;
     Glib::RefPtr<Gtk::UIManager> ui_manager_hidden_;
     Glib::RefPtr<Gtk::ActionGroup> action_group_hidden_;
-  private:
+    //  private:
     Keybindings::Model model_;
   };//Controller
 }
