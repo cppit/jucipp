@@ -32,6 +32,7 @@ Window::Window() :
   } // Window constructor
 void Window::OnWindowHide(){
   //TODO forgie: find out how to 'remove' the pointers
+  //TODO forgie: Make shared_ptr
   libjuci::ApiServiceProvider::notebook_ = std::shared_ptr<Notebook::Controller>(nullptr);
   libjuci::ApiServiceProvider::menu_ = std::shared_ptr<Menu::Controller>(nullptr);
   hide();

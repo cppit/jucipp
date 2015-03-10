@@ -120,7 +120,7 @@ void libjuci::IterToWordEnd(Gtk::TextIter &iter) {
 }
 
 Glib::RefPtr<Gtk::TextBuffer> libjuci::BufferFromNotebook() {
-    //TODO forgie: make sure it does not get the buffer to the last created textview.
+  //finding focused view
   int i = 0;
   while(!libjuci::ApiServiceProvider::notebook_->source_vec_.at(i)->view().has_focus()) {
     i++;
@@ -131,6 +131,3 @@ Glib::RefPtr<Gtk::TextBuffer> libjuci::BufferFromNotebook() {
 Gtk::TextIter libjuci::IterFromNotebook() {
   return libjuci::BufferFromNotebook()->get_insert()->get_iter();
 }
- 
-
-
