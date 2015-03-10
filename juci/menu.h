@@ -4,7 +4,6 @@
 #include <iostream>
 #include "gtkmm.h"
 #include "keybindings.h"
-#include "api.h"
 
 namespace Menu {
   class View {
@@ -18,7 +17,7 @@ namespace Menu {
   public:
     explicit Controller(Keybindings::Controller& keybindings);
     Gtk::Box &view();
-  private:
+
     Keybindings::Controller &keybindings_;
     View menu_view_;
     void OnFileNewEmptyfile();

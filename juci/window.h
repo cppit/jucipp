@@ -3,14 +3,14 @@
 
 #include <iostream>
 #include "gtkmm.h"
-#include "menu.h"
-#include "notebook.h"
+#include "api.h"
+#include <cstddef>
 
 class Window : public Gtk::Window {
 public:
   Window();
   Gtk::Box window_box_;
-private:
+//private:
   Keybindings::Controller keybindings_;
   Menu::Controller menu_;
   Notebook::Controller notebook_;
@@ -21,3 +21,4 @@ private:
 };
 
 #endif  // JUCI_WINDOW_H_
+
