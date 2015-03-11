@@ -55,7 +55,7 @@ void libjuci::ApiServiceProvider::AddKeybinding() {
 	    std::cout << "ctrl alt space" << std::endl;
 	    libjuci::LoadPlugin("snippet");
 	  });
-  std::cout << "addkeybinding" << std::endl;
+  //std::cout << "addkeybinding" << std::endl;
 }
 
 ///////////////////////

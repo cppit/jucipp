@@ -8,14 +8,14 @@
 //// View ////
 //////////////
 Source::View::View() {
-  std::cout << "View constructor run" << std::endl;
+  //  std::cout << "View constructor run" << std::endl;
   override_font(Pango::FontDescription("Monospace"));
 }
 // Source::View::UpdateLine
 // returns the new line
 string Source::View::UpdateLine() {
   Gtk::TextIter line(get_buffer()->get_insert()->get_iter());
-  std::cout << line.get_line() << std::endl;
+  //std::cout << line.get_line() << std::endl;
   // for each word --> check what it is --> apply appropriate tag
   return "";
 }
@@ -150,7 +150,7 @@ SetSourceLocations(const std::vector<Clang::SourceLocation> &locations) {
 // Source::Controller::Controller()
 // Constructor for Controller
 Source::Controller::Controller() {
-  std::cout << "Controller constructor run" << std::endl;
+  //std::cout << "Controller constructor run" << std::endl;
   view().get_buffer()->signal_changed().connect([this](){
       this->OnLineEdit();
     });
@@ -186,4 +186,8 @@ void Source::Controller::OnOpenFile(const string &filename) {
   Clang::TranslationUnit tu(filename.c_str(), linums, offset);
   model().SetSourceLocations(tu.getSourceLocations());
   view().OnOpenFile(model().getSourceLocations(), model().theme());
+}
+
+Glib::RefPtr<Gtk::TextBuffer> Source::Controller::buffer(){
+  return view().get_buffer();
 }
