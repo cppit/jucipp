@@ -7,9 +7,8 @@ def initPlugin():
     juci.addSubMenuElement("SnippetMenu", #name of parent menu
                            "Insert snippet", #menu description
                            "insertSnippet()", #function to execute
-                           inspect.getfile(inspect.currentframe()),
+                           inspect.getfile(inspect.currentframe()), #plugin path
                            "<control><alt>space")
-
 snippets = {}
 
 snippets["for"] = """\
