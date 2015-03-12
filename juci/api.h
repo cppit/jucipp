@@ -9,31 +9,35 @@
 
 const std::string g_project_root("/home/forgie/app/juci/");
 
-namespace libjuci {
-
-  /////////////////////////////
-  //// API ServiceProvider ////
-  /////////////////////////////
-  class ApiServiceProvider {
+  ////////////////////
+  //// Plugin Api ////
+  ////////////////////
+  class PluginApi {
   public:
     static std::shared_ptr<Menu::Controller> menu_;
     static std::shared_ptr<Notebook::Controller> notebook_;
-    static std::string text;
     
-    ApiServiceProvider();
-    static void AddKeybinding();
-
+    static void InitPlugins();
+    
     //for Python module:
     static std::string GetWord();
-    static void ReplaceWord(const std::string word);
-    static void ReplaceLine(const std::string line);
+    //menu management
     static void AddMenuElement(const std::string plugin_name);
     static void AddSubMenuElement(const std::string parent_menu,
 				  const std::string menu_name,
 				  const std::string menu_func_name,
 				  const std::string plugin_path,
 				  const std::string menu_keybinding);
+    //text-buffer functions
+    static void ReplaceWord(const std::string word);
+    static void ReplaceLine(const std::string line);
+    
+  protected:
+    static void AddMenuXml(std::string plugin_name, std::string parent_menu);
+    static void AddSubMenuXml(std::string plugin_name, std::string parent_menu);
   };
+
+namespace libjuci {
   
   ///////////////////////
   //// Glib wrappers ////
