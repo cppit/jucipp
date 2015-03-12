@@ -1,7 +1,7 @@
 #include "api.h"
 
-std::shared_ptr<Menu::Controller> PluginApi::menu_;
-std::shared_ptr<Notebook::Controller> PluginApi::notebook_;
+Menu::Controller* PluginApi::menu_;
+Notebook::Controller* PluginApi::notebook_;
 
 /////////////////////////////
 //// API ServiceProvider ////

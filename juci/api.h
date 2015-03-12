@@ -14,8 +14,8 @@ const std::string g_project_root("/home/forgie/app/juci/");
   ////////////////////
   class PluginApi {
   public:
-    static std::shared_ptr<Menu::Controller> menu_;
-    static std::shared_ptr<Notebook::Controller> notebook_;
+    static Menu::Controller* menu_;
+    static Notebook::Controller* notebook_;
     
     static void InitPlugins();
     

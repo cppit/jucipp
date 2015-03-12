@@ -1,7 +1,6 @@
 #!/usr/bin/python
 #snippet plugin
-import juci_to_python_api as juci
-import inspect
+import juci_to_python_api as juci, inspect
 
 def initPlugin():
     juci.addMenuElement("Snippet")

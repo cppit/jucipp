@@ -17,11 +17,9 @@ Window::Window() :
 					[this]() {
 					  OnOpenFile();
 					});
-  PluginApi::menu_ = std::shared_ptr<Menu::Controller>(&menu_);
-
-  PluginApi::notebook_ = std::shared_ptr<Notebook::Controller>(&notebook_);
-
-  PluginApi::InitPlugins();  
+  PluginApi::menu_ = &menu_;
+  PluginApi::notebook_ = &notebook_;
+  PluginApi::InitPlugins();
 
   add_accel_group(keybindings_.ui_manager_menu()->get_accel_group());
   add_accel_group(keybindings_.ui_manager_hidden()->get_accel_group());
