@@ -55,7 +55,7 @@ Menu::Controller::Controller(Keybindings::Controller& keybindings) :
                                           [this]() {
                                             OnHelpAbout();
                                           });
-  keybindings_.BuildMenu();
+  //keybindings_.BuildMenu(); // moved to window.cc
   keybindings_.BuildHiddenMenu();
   }  // Controller
 Gtk::Box &Menu::Controller::view() {

@@ -10,7 +10,8 @@ def loadplugins():
     for current_file in plugin_files:
         (filepath, filename) = os.path.split(current_file)
         (name, extension) = filename.split(".")
-        print(filename+" ("+current_file+") loading...")
+        if filename != "plugins.py":
+            print(filename+" ("+current_file+") loading...")
             #juci_to_python_api.loadPlugin(current_file)
 #            juci_to_python_api.addMenuElement(name.capitalize())#, current_file)
             juci_to_python_api.initPlugin(current_file)
