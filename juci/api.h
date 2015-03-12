@@ -7,8 +7,6 @@
 #include "notebook.h"
 #include "menu.h"
 
-const std::string g_project_root("/home/forgie/app/juci/");
-
   ////////////////////
   //// Plugin Api ////
   ////////////////////
@@ -18,6 +16,7 @@ const std::string g_project_root("/home/forgie/app/juci/");
     static Notebook::Controller* notebook_;
     
     static void InitPlugins();
+    static std::string ProjectPath();
     
     //for Python module:
     static std::string GetWord();
