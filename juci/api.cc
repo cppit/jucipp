@@ -149,7 +149,6 @@ bp::api::object libjuci::OpenPythonScript(const std::string path,
 }
 
 void libjuci::LoadPlugin(const std::string& plugin_name) {
-  std::cout << "libjuci::LoadPlugin " << plugin_name << std::endl; 
   try{
     Py_Initialize();
     bp::api::object main_module = bp::import("__main__");
@@ -178,7 +177,6 @@ void libjuci::LoadPluginFunction(const std::string &function_name,
 }
 
 void libjuci::InitPlugin(const std::string& plugin_path) {
-  std::cout << "libjuci::InitPlugin " << plugin_path << std::endl; 
   try{
     Py_Initialize();
     bp::api::object main_module = bp::import("__main__");
