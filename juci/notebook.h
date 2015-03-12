@@ -7,6 +7,12 @@
 #include "source.h"
 
 namespace Notebook {
+  class Model {
+  public:
+    Model();
+    std::string cc_extension;
+    std::string h_extension;
+  };
   class View {
   public:
     View();
@@ -24,19 +30,30 @@ namespace Notebook {
     void OnNewPage(std::string name);
     void OnCloseCurrentPage();
     void OnOpenFile(std::string filename);
- // private:
     View view_;
+    Model model_;
     Entry::Controller entry_;
     std::vector<Source::Controller*> source_vec_;
     std::vector<Gtk::ScrolledWindow*> scrolledwindow_vec_;
     Glib::RefPtr<Gtk::Clipboard> refClipboard;
     std::list<Gtk::TargetEntry> listTargets;
+    std::string GetCursorWord();
+    Glib::RefPtr<Gtk::TextBuffer> buffer();
+    Gtk::Notebook& notebook();
+    int currentPage();
+    int pages();
     void OnFileNewEmptyfile();
     void OnFileNewCCFile();
     void OnFileNewHeaderFile();
     void OnEditCopy();
     void OnEditPaste();
     void OnEditCut();
+    void OnEditSearch();
+    void Search(bool forward);
+  private:
+    bool is_new_file;
+    Gtk::TextIter search_match_end_;
+    Gtk::TextIter search_match_start_;
   };  // class controller
 }  // namespace Notebook
 

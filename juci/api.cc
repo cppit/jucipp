@@ -1,3 +1,4 @@
+
 #include "api.h"
 
 Menu::Controller* PluginApi::menu_;
@@ -213,8 +214,7 @@ void libjuci::IterToWordEnd(Gtk::TextIter &iter) {
 Glib::RefPtr<Gtk::TextBuffer> libjuci::BufferFromNotebook() {
   //finding focused view
   int i = 0;
-  while(!PluginApi::notebook_->source_vec_.at(i)
-	->view().has_focus()) {
+  while(!PluginApi::notebook_->source_vec_.at(i)->view().has_focus()) {
     i++;
   }
   return Glib::RefPtr<Gtk::TextBuffer>(PluginApi::notebook_

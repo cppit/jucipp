@@ -61,6 +61,7 @@ namespace Source {
     Model& model();
     void OnNewEmptyFile();
     void OnOpenFile(const string &filename);
+    Glib::RefPtr<Gtk::TextBuffer> buffer();
 
   private:
     void OnLineEdit();
