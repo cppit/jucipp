@@ -35,6 +35,8 @@ namespace Notebook {
     Entry::Controller entry_;
     std::vector<Source::Controller*> source_vec_;
     std::vector<Gtk::ScrolledWindow*> scrolledwindow_vec_;
+    std::vector<Gtk::Label*> label_vec_;
+    std::vector<Gtk::Paned*> paned_vec_;
     Glib::RefPtr<Gtk::Clipboard> refClipboard;
     std::list<Gtk::TargetEntry> listTargets;
     std::string GetCursorWord();

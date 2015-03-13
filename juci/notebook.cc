@@ -7,6 +7,7 @@ Notebook::Model::Model() {
 Notebook::View::View() :
   view_(Gtk::ORIENTATION_VERTICAL){
 
+  
 }
 Gtk::Box& Notebook::View::view() {
   view_.pack_start(notebook_);
@@ -14,14 +15,9 @@ Gtk::Box& Notebook::View::view() {
 }
 Notebook::Controller::Controller(Keybindings::Controller& keybindings){
 
-  scrolledwindow_vec_.push_back(new Gtk::ScrolledWindow());
-  source_vec_.push_back(new Source::Controller);
-  scrolledwindow_vec_.back()->add(source_vec_.back()->view());
-  source_vec_.back()->OnNewEmptyFile();
-  notebook().append_page(*scrolledwindow_vec_.back(), "juCi++");
-  notebook().set_focus_child(*scrolledwindow_vec_.back());
+  OnNewPage("juCi++");
   refClipboard = Gtk::Clipboard::get();
-
+  
   keybindings.action_group_menu()->add(Gtk::Action::create("FileMenu",
                                                            Gtk::Stock::FILE));
   /* File->New files */
@@ -115,8 +111,18 @@ Gtk::Box& Notebook::Controller::entry_view(){
 void Notebook::Controller::OnNewPage(std::string name) {
   scrolledwindow_vec_.push_back(new Gtk::ScrolledWindow());
   source_vec_.push_back(new Source::Controller);
-  scrolledwindow_vec_.back()->add(source_vec_.back()->view());
+  label_vec_.push_back(new Gtk::Label);
+  label_vec_.back()->set_text("1\n");
+  label_vec_.back()->set_justify(Gtk::Justification::JUSTIFY_RIGHT);
+  label_vec_.back()->set_alignment(Gtk::ALIGN_START, Gtk::ALIGN_START);
+  paned_vec_.push_back(new Gtk::Paned());
+  paned_vec_.back()->set_orientation(Gtk::Orientation::ORIENTATION_HORIZONTAL);
+  paned_vec_.back()->add1(*label_vec_.back());
+  paned_vec_.back()->pack2(source_vec_.back()->view(),true,false);
+  scrolledwindow_vec_.back()->add(*paned_vec_.back());
   source_vec_.back()->OnNewEmptyFile();
+    scrolledwindow_vec_.back()->set_policy(Gtk::PolicyType::POLICY_NEVER,
+					 Gtk::PolicyType::POLICY_AUTOMATIC);
   notebook().append_page(*scrolledwindow_vec_.back(), name);
   notebook().show_all_children();
   notebook().set_focus_child(*scrolledwindow_vec_.back());
@@ -161,6 +167,8 @@ void Notebook::Controller::OnOpenFile(std::string path) {
   source_vec_.push_back(new Source::Controller);
   scrolledwindow_vec_.back()->add(source_vec_.back()->view());
   source_vec_.back()->OnOpenFile(path);
+  scrolledwindow_vec_.back()->set_policy(Gtk::PolicyType::POLICY_NEVER,
+					 Gtk::PolicyType::POLICY_AUTOMATIC);
   unsigned pos = path.find_last_of("/\\");
   notebook().append_page(*scrolledwindow_vec_.back(), path.substr(pos+1));
   notebook().show_all_children();
