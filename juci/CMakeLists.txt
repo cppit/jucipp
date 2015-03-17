@@ -92,8 +92,6 @@ add_library(${module} SHARED
   )
 # dependencies
 
-
-
 if(${lcl_NOTFOUND})
   message("FATAL_ERROR ohh lord!")
 else()
@@ -113,7 +111,8 @@ link_directories(
   ${LCL_LIBRARY_DIRS}
   )
 #module:
-set_target_properties(${module} PROPERTIES PREFIX "") 
+set_target_properties(${module} PROPERTIES PREFIX ""
+  LIBRARY_OUTPUT_DIRECTORY "/usr/lib/python2.7/dist-packages/")
 target_link_libraries(${module} ${PYTHON_LIBRARIES} ${Boost_LIBRARIES})
 #executable:
 target_link_libraries(${project_name} ${LCL_LIBRARIES} ${GTKMM_LIBRARIES} ${Boost_LIBRARIES} ${PYTHON_LIBRARIES})
