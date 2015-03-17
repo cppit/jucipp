@@ -10,7 +10,18 @@
 using std::string;
 
 namespace Source {
-  class Theme {
+
+  class Config() {
+    // læs json
+
+    // 
+
+  private:
+
+  }
+
+
+  class Config {
   public:
     const std::unordered_map<string, string>& tagtable() const;
     const std::unordered_map<string, string>& typetable() const;

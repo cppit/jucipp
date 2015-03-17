@@ -31,8 +31,8 @@ string Source::View::GetLine(const Gtk::TextIter &begin) {
 // Applies theme in textview
 void Source::View::ApplyTheme(const Source::Theme &theme) {
   for (auto &item : theme.tagtable()) {
-    std::cout << "Apply: f: " << item.first << ", s: " <<
-      item.second << std::endl;
+    //    std::cout << "Apply: f: " << item.first << ", s: " <<
+    //      item.second << std::endl;
     get_buffer()->create_tag(item.first)->property_foreground() = item.second;
   }
 }
@@ -56,15 +56,15 @@ void Source::View::OnOpenFile(std::vector<Clang::SourceLocation> &locations,
     if (end < 0) end = 0;
     if (begin < 0) begin = 0;
 
-    std::cout << "Libc: ";
-    std::cout << "type: " << type;
-    std::cout << " linum_s: " << linum_start+1 << " linum_e: " << linum_end+1;
-    std::cout << ", begin: " << begin << ", end: " << end  << std::endl;
+    // std::cout << "Libc: ";
+    // std::cout << "type: " << type;
+    // std::cout << " linum_s: " << linum_start+1 << " linum_e: " << linum_end+1;
+    // std::cout << ", begin: " << begin << ", end: " << end  << std::endl;
 
     Gtk::TextIter begin_iter = buffer->get_iter_at_line_offset(linum_start,
                                                                begin);
     Gtk::TextIter end_iter  = buffer->get_iter_at_line_offset(linum_end, end);
-    std::cout << get_buffer()->get_text(begin_iter, end_iter) << std::endl;
+    //    std::cout << get_buffer()->get_text(begin_iter, end_iter) << std::endl;
     if (begin_iter.get_line() ==  end_iter.get_line()) {
         buffer->apply_tag_by_name(theme.typetable().at(type),
                                   begin_iter, end_iter);
@@ -108,7 +108,7 @@ void Source::Theme::SetTagTable(
 //// Model ////
 ///////////////
 Source::Model::Model() :
-  theme_() {/*
+  theme_() {
   std::cout << "Model constructor run" << std::endl;
   boost::property_tree::ptree pt;
   boost::property_tree::json_parser::read_json("config.json", pt);
@@ -124,7 +124,7 @@ Source::Model::Model() :
         //   std::cout << "inserting type. " << pi.first << pi.second.get_value<std::string>() << std::endl;
       }
     }
-  }*/
+  }
 }
 
 Source::Theme& Source::Model::theme() {
