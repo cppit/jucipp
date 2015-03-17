@@ -18,6 +18,7 @@ find_path(LCL_INCLUDE_DIR headers/TranslationUnit.h
 find_library(LCL_LIBRARY NAMES testlcl
   HINTS "/home/gm/bachelor/lib/lib/"
   "/home/forgie/code/libclangpp/lib/"
+  "/home/zalox/bachelor/libclang++/lib/"
   )
 
 set(LCL_LIBRARIES ${LCL_LIBRARY} )
