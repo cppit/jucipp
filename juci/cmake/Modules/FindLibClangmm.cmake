@@ -9,16 +9,12 @@
 
 find_package(PkgConfig)
 
-find_path(LCL_INCLUDE_DIR headers/TranslationUnit.h
-  HINTS "/home/gm/bachelor/lib/"
-  "/home/forgie/code/libclangpp/"
-  "/home/zalox/bachelor/libclang++/"
+find_path(LCL_INCLUDE_DIR clangmm.h
+  HINTS  "/usr/lib/libclangmm/include/"
   )
 
-find_library(LCL_LIBRARY NAMES testlcl
-  HINTS "/home/gm/bachelor/lib/lib/"
-  "/home/forgie/code/libclangpp/lib/"
-  "/home/zalox/bachelor/libclang++/lib/"
+find_library(LCL_LIBRARY NAMES clangmm
+  HINTS  "/usr/lib/libclangmm/"
   )
 
 set(LCL_LIBRARIES ${LCL_LIBRARY} )

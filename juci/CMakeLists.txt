@@ -3,7 +3,6 @@ set(project_name juci)
 set(module juci_to_python_api)
 
 project (${project_name})
-
 set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -std=c++11")
 set(CMAKE_MODULE_PATH ${CMAKE_MODULE_PATH} "${CMAKE_CURRENT_LIST_DIR}/cmake/Modules/")
 
@@ -15,8 +14,22 @@ message("Searcing for libclang")
 #LIBCLANG_LIBRARIES  The libraries needed to use libclang.
 #LIBCLANG_LIBRARY_DIR The path to the directory containing libclang.
 #LIBCLANG_KNOWN_LLVM_VERSIONS  Known LLVM release numbers.
-find_package(Testlcl)
+find_package(LibClangmm)
+find_package(LibClang)
 
+if(${LCL_FOUND}) 
+  message("libclangmm libraries found. Continuing")
+  message("${LCL_INCLUDE_DIRS}")
+else()
+  message(FATAL_ERROR "The libclangmm libraries are required. Quitting.")
+endif()
+
+if(${LIBCLANG_FOUND}) 
+  message("libclangmm libraries found. Continuing")
+  message("${LIBCLANG_INCLUDE_DIRS}")
+else()
+  message(FATAL_ERROR "The libclangmm libraries are required. Quitting.")
+endif()
 
 #### Finding boost, the variables below is set #####
 #PYTHONLIBS_FOUND            - True if headers and requested libraries were found
@@ -73,16 +86,22 @@ endif()
 add_executable(${project_name}
   #list of every needed file to create the executable
   juci.cc	
-  keybindings
-  menu
-  source
+  keybindings.h
+  keybindings.cc
+  menu.h
+  menu.cc
+  source.h
+  source.cc
   sourcefile.h
   sourcefile.cc
-  window
-  api
-  notebook
-  entry
-
+  window.cc
+  window.h
+  api.h
+  api.cc
+  notebook.cc
+  notebook.h
+  entry.h
+  entry.cc
   #there is no need for extentions
   )
 
@@ -92,29 +111,25 @@ add_library(${module} SHARED
   )
 # dependencies
 
-if(${lcl_NOTFOUND})
-  message("FATAL_ERROR ohh lord!")
-else()
-  message("Found libs!")
-endif()
-  
 include_directories(
   ${Boost_INCLUDE_DIRS}
   ${PYTHON_INCLUDE_DIRS}
   ${GTKMM_INCLUDE_DIRS}
   ${LCL_INCLUDE_DIRS}
+  ${LIBCLANG_INCLUDE_DIRS}
   )
 link_directories(
   ${GTKMM_LIBRARY_DIRS}
   ${Boost_LIBRARY_DIRS}
   ${PYTHON_INCLUDE_DIRS}
   ${LCL_LIBRARY_DIRS}
+  ${LIBCLANG_LIBRARY_DIRS}
   )
 #module:
 set_target_properties(${module} PROPERTIES PREFIX ""
   LIBRARY_OUTPUT_DIRECTORY "/usr/lib/python2.7/dist-packages/")
 target_link_libraries(${module} ${PYTHON_LIBRARIES} ${Boost_LIBRARIES})
 #executable:
-target_link_libraries(${project_name} ${LCL_LIBRARIES} ${GTKMM_LIBRARIES} ${Boost_LIBRARIES} ${PYTHON_LIBRARIES})
+target_link_libraries(${project_name} ${LIVCLANG_LIBRARIES} ${LCL_LIBRARIES} ${GTKMM_LIBRARIES} ${Boost_LIBRARIES} ${PYTHON_LIBRARIES})
 
 
