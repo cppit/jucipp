@@ -72,10 +72,12 @@ endif()
 # name of the executable on Windows will be example.exe
 add_executable(${project_name}
   #list of every needed file to create the executable
-  juci.cc	
+  juci.cc
   keybindings
   menu
   source
+  config.h
+  config.cc
   sourcefile.h
   sourcefile.cc
   window

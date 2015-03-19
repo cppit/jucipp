@@ -1,19 +1,33 @@
 {
-    "colors": {
-        "text_color": "#333333",
-        "string" : "#CC0000",
-        "namespace_ref" : "#990099",
-        "type" : "#0066FF",
-        "keyword": "blue",
-        "comment": "grey",
-        "own": "pink"
-    },
-    "syntax": {
-        "43": "type",
-        "46": "namespace_ref",
-        "109": "string",
-        "702": "keyword",
-        "703": "own",
-        "705": "comment"
+    "source": {
+        "colors": {
+            "text_color": "#333333",
+            "string": "#CC0000",
+            "namespace_ref": "#990099",
+            "type": "#0066FF",
+            "keyword": "blue",
+            "comment": "grey",
+            "own": "pink"
+        },
+        "syntax": {
+            "43": "type",
+            "46": "namespace_ref",
+            "109": "string",
+            "702": "keyword",
+            "703": "own",
+            "705": "comment"
         }
+    },
+    "example": {
+	"key": "value",
+	"key2": [
+	    "val1",
+	    "val2",
+	    3
+	],
+	"key3": "value"
+    },
+    "keybindings": {
+	"path" : "keybindings.xml"
+    }
 }

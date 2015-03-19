@@ -29,8 +29,8 @@ string Source::View::GetLine(const Gtk::TextIter &begin) {
 
 // Source::View::ApplyTheme()
 // Applies theme in textview
-void Source::View::ApplyTheme(const Source::Theme &theme) {
-  for (auto &item : theme.tagtable()) {
+void Source::View::ApplyConfig(const Source::Config &config) {
+  for (auto &item : config.tagtable()) {
     //    std::cout << "Apply: f: " << item.first << ", s: " <<
     //      item.second << std::endl;
     get_buffer()->create_tag(item.first)->property_foreground() = item.second;
@@ -38,13 +38,13 @@ void Source::View::ApplyTheme(const Source::Theme &theme) {
 }
 
 void Source::View::OnOpenFile(std::vector<Clang::SourceLocation> &locations,
-           const Source::Theme &theme) {
-  ApplyTheme(theme);
+           const Source::Config &config) {
+  ApplyConfig(config);
   Glib::RefPtr<Gtk::TextBuffer> buffer = get_buffer();
   for (auto &loc : locations) {
     string type = std::to_string(loc.kind());
     try {
-      theme.typetable().at(type);
+      config.typetable().at(type);
     } catch (std::exception) {
       continue;
     }
@@ -66,40 +66,51 @@ void Source::View::OnOpenFile(std::vector<Clang::SourceLocation> &locations,
     Gtk::TextIter end_iter  = buffer->get_iter_at_line_offset(linum_end, end);
     //    std::cout << get_buffer()->get_text(begin_iter, end_iter) << std::endl;
     if (begin_iter.get_line() ==  end_iter.get_line()) {
-        buffer->apply_tag_by_name(theme.typetable().at(type),
+        buffer->apply_tag_by_name(config.typetable().at(type),
                                   begin_iter, end_iter);
     }
   }
 }
-// Source::View::Theme::tagtable()
+
+
+// Source::View::Config::Config(Config &config)
+// copy-constructor
+Source::Config::Config(const Source::Config &original) {
+  SetTagTable(original.tagtable());
+  SetTypeTable(original.typetable());
+}
+
+Source::Config::Config(){}
+
+// Source::View::Config::tagtable()
 // returns a const refrence to the tagtable
-const std::unordered_map<string, string>& Source::Theme::tagtable() const {
+const std::unordered_map<string, string>& Source::Config::tagtable() const {
   return tagtable_;
 }
 
-// Source::View::Theme::tagtable()
+// Source::View::Config::tagtable()
 // returns a const refrence to the tagtable
-const std::unordered_map<string, string>& Source::Theme::typetable() const {
+const std::unordered_map<string, string>& Source::Config::typetable() const {
   return typetable_;
 }
 
 
-void Source::Theme::InsertTag(const string &key, const string &value) {
+void Source::Config::InsertTag(const string &key, const string &value) {
   tagtable_[key] = value;
 }
-// Source::View::Theme::SetTagTable()
+// Source::View::Config::SetTagTable()
 // sets the tagtable for the view
-void Source::Theme::SetTypeTable(
+void Source::Config::SetTypeTable(
                         const std::unordered_map<string, string> &typetable) {
   typetable_ = typetable;
 }
 
-void Source::Theme::InsertType(const string &key, const string &value) {
+void Source::Config::InsertType(const string &key, const string &value) {
   typetable_[key] = value;
 }
-// Source::View::Theme::SetTagTable()
+// Source::View::Config::SetTagTable()
 // sets the tagtable for the view
-void Source::Theme::SetTagTable(
+void Source::Config::SetTagTable(
                         const std::unordered_map<string, string> &tagtable) {
   tagtable_ = tagtable;
 }
@@ -107,8 +118,7 @@ void Source::Theme::SetTagTable(
 ///////////////
 //// Model ////
 ///////////////
-Source::Model::Model() :
-  theme_() {
+/*Source::Model::Model() {
   std::cout << "Model constructor run" << std::endl;
   boost::property_tree::ptree pt;
   boost::property_tree::json_parser::read_json("config.json", pt);
@@ -116,19 +126,23 @@ Source::Model::Model() :
     boost::property_tree::ptree props =  pt.get_child(i.first);
     for (auto &pi : props) {
       if (i.first.compare("syntax")) {  // checks the config-file
-        theme_.InsertTag(pi.first, pi.second.get_value<std::string>());
+        config_.InsertTag(pi.first, pi.second.get_value<std::string>());
         //  std::cout << "inserting tag. " << pi.first << pi.second.get_value<std::string>() << std::endl;
       }
       if (i.first.compare("colors")) {  // checks the config-file
-        theme_.InsertType(pi.first, pi.second.get_value<std::string>());
+        config_.InsertType(pi.first, pi.second.get_value<std::string>());
         //   std::cout << "inserting type. " << pi.first << pi.second.get_value<std::string>() << std::endl;
       }
     }
-  }
+    }
+}*/
+
+Source::Model::Model(const Source::Config &config) :
+  config_(config) {
 }
 
-Source::Theme& Source::Model::theme() {
-  return theme_;
+Source::Config& Source::Model::config() {
+  return config_;
 }
 
 const string Source::Model::filepath() {
@@ -149,12 +163,20 @@ SetSourceLocations(const std::vector<Clang::SourceLocation> &locations) {
 
 // Source::Controller::Controller()
 // Constructor for Controller
-Source::Controller::Controller() {
-  //std::cout << "Controller constructor run" << std::endl;
+Source::Controller::Controller(const Source::Config &config) :
+  model_(config) {
   view().get_buffer()->signal_changed().connect([this](){
       this->OnLineEdit();
     });
 }
+
+/*Source::Controller::Controller(){
+  //std::cout << "Controller constructor run" << std::endl;
+ 
+  view().get_buffer()->signal_changed().connect([this](){
+      this->OnLineEdit();
+    });
+    }*/
 // Source::Controller::view()
 // return shared_ptr to the view
 Source::View& Source::Controller::view() {
@@ -185,7 +207,7 @@ void Source::Controller::OnOpenFile(const string &filename) {
   int offset = view().get_buffer()->end().get_line_offset();
   Clang::TranslationUnit tu(filename.c_str(), linums, offset);
   model().SetSourceLocations(tu.getSourceLocations());
-  view().OnOpenFile(model().getSourceLocations(), model().theme());
+  view().OnOpenFile(model().getSourceLocations(), model().config());
 }
 
 Glib::RefPtr<Gtk::TextBuffer> Source::Controller::buffer(){

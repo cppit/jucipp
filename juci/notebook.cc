@@ -12,16 +12,16 @@ Gtk::Box& Notebook::View::view() {
   view_.pack_start(notebook_);
   return view_;
 }
-Notebook::Controller::Controller(Keybindings::Controller& keybindings){
 
+Notebook::Controller::Controller(Keybindings::Controller& keybindings,
+				 const Source::Config &source_cfg) { 
   scrolledwindow_vec_.push_back(new Gtk::ScrolledWindow());
-  source_vec_.push_back(new Source::Controller);
+  source_vec_.push_back(new Source::Controller(source_cfg));
   scrolledwindow_vec_.back()->add(source_vec_.back()->view());
   source_vec_.back()->OnNewEmptyFile();
   notebook().append_page(*scrolledwindow_vec_.back(), "juCi++");
   notebook().set_focus_child(*scrolledwindow_vec_.back());
   refClipboard = Gtk::Clipboard::get();
-
   keybindings.action_group_menu()->add(Gtk::Action::create("FileMenu",
                                                            Gtk::Stock::FILE));
   /* File->New files */
@@ -114,7 +114,7 @@ Gtk::Box& Notebook::Controller::entry_view(){
 }
 void Notebook::Controller::OnNewPage(std::string name) {
   scrolledwindow_vec_.push_back(new Gtk::ScrolledWindow());
-  source_vec_.push_back(new Source::Controller);
+  source_vec_.push_back(new Source::Controller(source_config_));
   scrolledwindow_vec_.back()->add(source_vec_.back()->view());
   source_vec_.back()->OnNewEmptyFile();
   notebook().append_page(*scrolledwindow_vec_.back(), name);
@@ -158,7 +158,7 @@ void Notebook::Controller::OnEditCut() {
 
 void Notebook::Controller::OnOpenFile(std::string path) {
   scrolledwindow_vec_.push_back(new Gtk::ScrolledWindow());
-  source_vec_.push_back(new Source::Controller);
+  source_vec_.push_back(new Source::Controller(source_config_));
   scrolledwindow_vec_.back()->add(source_vec_.back()->view());
   source_vec_.back()->OnOpenFile(path);
   unsigned pos = path.find_last_of("/\\");

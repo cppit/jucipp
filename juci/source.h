@@ -11,18 +11,10 @@ using std::string;
 
 namespace Source {
 
-  class Config() {
-    // læs json
-
-    // 
-
-  private:
-
-  }
-
-
   class Config {
   public:
+    Config(const Config &original);
+    Config();
     const std::unordered_map<string, string>& tagtable() const;
     const std::unordered_map<string, string>& typetable() const;
     void SetTagTable(const std::unordered_map<string, string> &tagtable);
@@ -33,24 +25,24 @@ namespace Source {
   private:
     std::unordered_map<string, string> tagtable_;
     std::unordered_map<string, string> typetable_;
-    string background_;
-  };  // class Theme
+  };  // class Config
 
   class View : public Gtk::TextView {
   public:
     View();
     string UpdateLine();
-    void ApplyTheme(const Theme &theme);
+    void ApplyConfig(const Config &config);
     void OnOpenFile(std::vector<Clang::SourceLocation> &locations,
-                    const Theme &theme);
+                    const Config &config);
   private:
     string GetLine(const Gtk::TextIter &begin);
   };  // class View
 
   class Model{
   public:
-    Model();
-    Theme& theme();
+    Model(const Source::Config &config);
+    //Model();
+    Config& config();
     const string filepath();
     void SetFilePath(const string &filepath);
     void SetSourceLocations(
@@ -60,13 +52,14 @@ namespace Source {
     }
 
   private:
-    Theme theme_;
+    Source::Config config_;
     string filepath_;
     std::vector<Clang::SourceLocation> locations_;
   };
 
   class Controller {
   public:
+    Controller(const Source::Config &config);
     Controller();
     View& view();
     Model& model();
@@ -77,7 +70,6 @@ namespace Source {
   private:
     void OnLineEdit();
     void OnSaveFile();
-
   protected:
     View view_;
     Model model_;

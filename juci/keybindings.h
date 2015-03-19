@@ -6,9 +6,22 @@
 #include "gtkmm.h"
 
 namespace Keybindings {
+
+  class Config{
+  public:
+    Config(const Config &original);
+    Config();
+    const std::string& menu_xml() const {return menu_xml_;}
+    void SetMenu(std::string &menu_xml);
+    
+  private:
+    std::string menu_xml_;
+    std::string hidden_ui_string_;
+  };//Config
+    
   class Model {
   public:
-    Model();
+    Model(const Keybindings::Config &config);
     virtual ~Model();
     std::string menu_ui_string(){return menu_ui_string_;}
     std::string hidden_ui_string(){return hidden_ui_string_;}
@@ -16,9 +29,10 @@ namespace Keybindings {
     std::string menu_ui_string_;
     std::string hidden_ui_string_;
   }; // Model
+  
   class Controller {
   public:
-    Controller();
+    Controller(const Keybindings::Config &config);
     virtual ~Controller();
     Glib::RefPtr<Gtk::ActionGroup> action_group_menu() {
       return action_group_menu_;
@@ -40,8 +54,14 @@ namespace Keybindings {
     Glib::RefPtr<Gtk::UIManager> ui_manager_hidden_;
     Glib::RefPtr<Gtk::ActionGroup> action_group_hidden_;
     //  private:
+    Keybindings::Config config_;
     Keybindings::Model model_;
+
+   
+    
   };//Controller
+
+
 }
 
 #endif  // JUCI_KEYBINDINGS_H_
