@@ -46,7 +46,7 @@ namespace Source {
     const string filepath();
     void SetFilePath(const string &filepath);
     void SetSourceLocations(
-                     const std::vector<Clang::SourceLocation> &locations);
+                            const std::vector<Clang::SourceLocation> &locations);
     std::vector<Clang::SourceLocation>& getSourceLocations() {
       return locations_;
     }

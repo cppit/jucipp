@@ -4,8 +4,8 @@ Window::Window() :
   window_box_(Gtk::ORIENTATION_VERTICAL),
   main_config_(),
   keybindings_(main_config_.keybindings_cfg()),
-  notebook_( keybindings(), main_config_.source_cfg()),
-  menu_( keybindings() ) {
+  notebook_(keybindings(), main_config_.source_cfg()),
+  menu_(keybindings()) {
   set_title("juCi++");
   set_default_size(600, 400);
   add(window_box_);
@@ -26,8 +26,6 @@ Window::Window() :
 
   add_accel_group(keybindings_.ui_manager_menu()->get_accel_group());
   add_accel_group(keybindings_.ui_manager_hidden()->get_accel_group());
-
-  //moved here from menu.cc by forgie
   keybindings_.BuildMenu();
 
   window_box_.pack_start(menu_.view(), Gtk::PACK_SHRINK);
@@ -36,7 +34,7 @@ Window::Window() :
   show_all_children();
   } // Window constructor
 
-void Window::OnWindowHide(){
+void Window::OnWindowHide() {
   hide();
 }
 
