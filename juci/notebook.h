@@ -10,32 +10,30 @@ namespace Notebook {
   class Model {
   public:
     Model();
-    std::string cc_extension;
-    std::string h_extension;
+    std::string cc_extension_;
+    std::string h_extension_;
+    int scrollvalue_;
   };
   class View {
   public:
     View();
     Gtk::HBox& view() {return view_;}
     Gtk::Notebook& notebook() {return notebook_; }
-    Gtk::Label& linenumbers() {return linenumbers_;}
     Gtk::ScrolledWindow text, line;
     
   protected:
     Gtk::HBox view_;
     Gtk::Notebook notebook_;
-    Gtk::Label linenumbers_;
   };
   class Controller {
   public:
-    Gtk::ScrolledWindow linesscroll;
     Controller(Keybindings::Controller& keybindings);
     ~Controller();
-    Glib::RefPtr<Gtk::TextBuffer> Buffer();
+    Glib::RefPtr<Gtk::TextBuffer> Buffer( Source::Controller *source);
+    Gtk::TextView& CurrentTextView();
     int CurrentPage();
     Gtk::Box& entry_view();
     Gtk::Notebook& Notebook();
-    Gtk::Label& Linenumbers();
     void OnBufferChange();
     void OnCloseCurrentPage();
     std::string GetCursorWord();
@@ -53,22 +51,22 @@ namespace Notebook {
     int Pages();
     Gtk::HBox& view();
     void Search(bool forward);
+  protected:
+    void BufferChangeHandler(Glib::RefPtr<Gtk::TextBuffer> buffer);
+  private:
     View view_;
     Model model_;
     bool is_new_file_;
     Entry::Controller entry_;
-    std::vector<Source::Controller*> source_vec_, linenumbers;
-    std::vector<Gtk::Paned*> paned;
-    std::vector<Gtk::ScrolledWindow*> scrolledwindow_vec_, scrolledeverything_vec_;
-    std::vector<Gtk::Label*> label_vec_;
-    std::vector<Gtk::HBox*> box_l, box_h, box_m;
+    std::vector<Source::Controller*> text_vec_, linenumbers_vec_;
+    std::vector<Gtk::ScrolledWindow*> scrolledtext_vec_, scrolledline_vec_;
+    std::vector<Gtk::HBox*> editor_vec_;
     std::list<Gtk::TargetEntry> listTargets_;
     Gtk::TextIter search_match_end_;
     Gtk::TextIter search_match_start_;
     Glib::RefPtr<Gtk::Clipboard> refClipboard_;
     
-  protected:
-    void BufferChangeHandler(Glib::RefPtr<Gtk::TextBuffer> buffer);
+    
   };  // class controller
 }  // namespace Notebook
 
