@@ -2,29 +2,34 @@
 #ifndef JUCI_KEYBINDINGS_H_
 #define JUCI_KEYBINDINGS_H_
 
-#include "iostream"
+#include <iostream>
 #include "gtkmm.h"
+#include <unordered_map>
+//#include "config.h" //TODO :: remove?
 
 namespace Keybindings {
 
-  class Config{
+  class Config {
   public:
-    Config(const Config &original);
+    Config(Config &original);
     Config();
-    const std::string& menu_xml() const {return menu_xml_;}
+    std::string& menu_xml() { return menu_xml_; }
+    std::unordered_map<std::string, std::string>& key_map() { return key_map_; }
+    void AppendXml(std::string &child);    
     void SetMenu(std::string &menu_xml);
-    
+    void SetKeyMap(std::unordered_map<std::string, std::string> &key_map);
   private:
+    std::unordered_map<std::string, std::string> key_map_;
     std::string menu_xml_;
     std::string hidden_ui_string_;
   };//Config
     
   class Model {
   public:
-    Model(const Keybindings::Config &config);
+    Model(Keybindings::Config &config);
     virtual ~Model();
-    std::string menu_ui_string(){return menu_ui_string_;}
-    std::string hidden_ui_string(){return hidden_ui_string_;}
+    std::string menu_ui_string() { return menu_ui_string_; }
+    std::string hidden_ui_string() { return hidden_ui_string_; }
     //private:
     std::string menu_ui_string_;
     std::string hidden_ui_string_;
@@ -32,7 +37,7 @@ namespace Keybindings {
   
   class Controller {
   public:
-    Controller(const Keybindings::Config &config);
+    explicit Controller(Keybindings::Config &config);
     virtual ~Controller();
     Glib::RefPtr<Gtk::ActionGroup> action_group_menu() {
       return action_group_menu_;
@@ -55,13 +60,7 @@ namespace Keybindings {
     Glib::RefPtr<Gtk::ActionGroup> action_group_hidden_;
     //  private:
     Keybindings::Config config_;
-    Keybindings::Model model_;
-
-   
-    
+    Keybindings::Model model_;   
   };//Controller
-
-
 }
-
 #endif  // JUCI_KEYBINDINGS_H_

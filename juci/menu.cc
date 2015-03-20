@@ -28,21 +28,13 @@ Menu::Controller::Controller(Keybindings::Controller& keybindings) :
                                                             "_Window"));
   keybindings_.action_group_menu()->add(Gtk::Action::create("WindowSplitWindow",
                                                             "Split window"),
-                                        Gtk::AccelKey("<control><alt>S"),
+                                        Gtk::AccelKey(keybindings_.config_
+						      .key_map()["split_window"]),//"<control><alt>S"),
                                         [this]() {
                                           OnWindowSplitWindow();
                                         });
   keybindings_.action_group_menu()->add(Gtk::Action::create("PluginMenu",
                                                             "_Plugins"));
-  //Moved to ApiServiceProvider
-  /*keybindings_.action_group_menu()
-    ->add(Gtk::Action::create("PluginSnippet", "Snippet"));
-  keybindings_.action_group_menu()->add(Gtk::Action::create("PluginAddSnippet",
-                                                            "Add snippet"),
-                                        Gtk::AccelKey("<alt>space"),
-                                        [this]() {
-                                          OnPluginAddSnippet();
-                                        });*/
   keybindings_.action_group_menu()->add(Gtk::Action::create("HelpMenu",
                                                             Gtk::Stock::HELP));
   keybindings_.action_group_menu()->add(Gtk::Action::create("HelpAbout",

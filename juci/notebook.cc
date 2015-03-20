@@ -36,21 +36,24 @@ Notebook::Controller::Controller(Keybindings::Controller& keybindings,
                                        });
   keybindings.action_group_menu()->add(Gtk::Action::create("FileNewCC",
                                                            "New cc file"),
-                                       Gtk::AccelKey("<control><alt>c"),
+                                       Gtk::AccelKey(keybindings.config_
+						     .key_map()["new_cc_file"]),
                                        [this]() {
 					 is_new_file = true;
                                          OnFileNewCCFile();
                                        });
   keybindings.action_group_menu()->add(Gtk::Action::create("FileNewH",
                                                            "New h file"),
-                                       Gtk::AccelKey("<control><alt>h"),
+                                       Gtk::AccelKey(keybindings.config_
+						     .key_map()["new_h_file"]),
                                        [this]() {
 					 is_new_file = true;
                                          OnFileNewHeaderFile();
                                        });
   keybindings.action_group_menu()->add(Gtk::Action::create("WindowCloseTab",
                                                            "Close tab"),
-                                       Gtk::AccelKey("<control>w"),
+                                       Gtk::AccelKey(keybindings.config_
+						     .key_map()["close_tab"]),
                                        [this]() {
                                          OnCloseCurrentPage();
                                        });
@@ -59,7 +62,7 @@ Notebook::Controller::Controller(Keybindings::Controller& keybindings,
                                        [this]() {
 					 is_new_file = false;
 					 OnEditSearch();
-                                         //TODO(Oyvang, Zalox, Forgi)Create function OnEditFind();
+		       //TODO(Oyvang, Zalox, Forgi)Create function OnEditFind();
                                        });
   keybindings.action_group_menu()->add(Gtk::Action::create("EditCopy",
                                                            Gtk::Stock::COPY),  

@@ -25,7 +25,8 @@ namespace Notebook {
   };
   class Controller {
   public:
-    Controller(Keybindings::Controller& keybindings,const Source::Config& config);
+    Controller(Keybindings::Controller& keybindings,
+	       const Source::Config& config);
     Gtk::Box& view();
     Gtk::Box& entry_view();
     void OnNewPage(std::string name);
@@ -51,7 +52,7 @@ namespace Notebook {
     void OnEditCut();
     void OnEditSearch();
     void Search(bool forward);
-    Source::Config& source_config() { return source_config_; }
+    const Source::Config& source_config() { return source_config_; }
   private:
     Source::Config source_config_;
     bool is_new_file;
