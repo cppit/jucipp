@@ -1,22 +1,21 @@
+
 #include "notebook.h"
 
 Notebook::Model::Model() {
   cc_extension = ".cc";
   h_extension  = ".h";
 };
-Notebook::View::View() :
-  view_(Gtk::ORIENTATION_VERTICAL){
-
-  
+Notebook::View::View(){
+  linenumbers_.set_margin_top(30);
+  linenumbers_.set_justify(Gtk::Justification::JUSTIFY_RIGHT);
+  linenumbers_.set_alignment(Gtk::ALIGN_START, Gtk::ALIGN_START);
+  //line.add(linenumbers_);
+  view_.pack_start(notebook_);  
 }
-Gtk::Box& Notebook::View::view() {
-  view_.pack_start(notebook_);
-  return view_;
-}
-Notebook::Controller::Controller(Keybindings::Controller& keybindings){
 
+Notebook::Controller::Controller(Keybindings::Controller& keybindings) {
   OnNewPage("juCi++");
-  refClipboard = Gtk::Clipboard::get();
+  refClipboard_ = Gtk::Clipboard::get();
   
   keybindings.action_group_menu()->add(Gtk::Action::create("FileMenu",
                                                            Gtk::Stock::FILE));
@@ -27,21 +26,21 @@ Notebook::Controller::Controller(Keybindings::Controller& keybindings){
                                                            "New empty file",
                                                            "Create a new file"),
                                        [this]() {
-					 is_new_file = true;
+					 is_new_file_ = true;
                                          OnFileNewEmptyfile();
                                        });
   keybindings.action_group_menu()->add(Gtk::Action::create("FileNewCC",
                                                            "New cc file"),
                                        Gtk::AccelKey("<control><alt>c"),
                                        [this]() {
-					 is_new_file = true;
+					 is_new_file_ = true;
                                          OnFileNewCCFile();
                                        });
   keybindings.action_group_menu()->add(Gtk::Action::create("FileNewH",
                                                            "New h file"),
                                        Gtk::AccelKey("<control><alt>h"),
                                        [this]() {
-					 is_new_file = true;
+					 is_new_file_ = true;
                                          OnFileNewHeaderFile();
                                        });
   keybindings.action_group_menu()->add(Gtk::Action::create("WindowCloseTab",
@@ -53,7 +52,7 @@ Notebook::Controller::Controller(Keybindings::Controller& keybindings){
   keybindings.action_group_menu()->add(Gtk::Action::create("EditFind",
                                                            Gtk::Stock::FIND),
                                        [this]() {
-					 is_new_file = false;
+					 is_new_file_ = false;
 					 OnEditSearch();
                                          //TODO(Oyvang, Zalox, Forgi)Create function OnEditFind();
                                        });
@@ -74,9 +73,9 @@ Notebook::Controller::Controller(Keybindings::Controller& keybindings){
                                        });
   entry_.view_.entry().signal_activate().connect(
                                                  [this]() {
-						   if(is_new_file){
+						   if(is_new_file_){
 						     OnNewPage(entry_.text());
-						     entry_.OnHideEntries(is_new_file);
+						     entry_.OnHideEntries(is_new_file_);
 						   }else{
 						     Search(true);
 						   }
@@ -84,11 +83,11 @@ Notebook::Controller::Controller(Keybindings::Controller& keybindings){
   entry_.button_apply().signal_clicked().connect(
 						 [this]() {   
 						   OnNewPage(entry_.text());
-						   entry_.OnHideEntries(is_new_file);  
+						   entry_.OnHideEntries(is_new_file_);  
 						 });
   entry_.button_close().signal_clicked().connect(
 						 [this]() {   
-						   entry_.OnHideEntries(is_new_file);  
+						   entry_.OnHideEntries(is_new_file_);  
 						 });
   entry_.button_next().signal_clicked().connect(
 						[this]() {   
@@ -99,43 +98,120 @@ Notebook::Controller::Controller(Keybindings::Controller& keybindings){
 						  Search(false); 
 						});
 
+  source_vec_.back()->view().
+    signal_scroll_event().connect(
+				  sigc::mem_fun(
+						this,
+						&Notebook::Controller::
+						scroll_event_callback));
+
   
   
 }//Constructor
-Gtk::Box& Notebook::Controller::view() {
+
+  
+bool Notebook::Controller::scroll_event_callback(GdkEventScroll* scroll_event) {
+  
+  Glib::RefPtr<Gtk::Adjustment> adj =
+    scrolledeverything_vec_.back()->
+    get_vscrollbar()->get_adjustment();
+
+  if(scroll_event->delta_y == -1) {
+     adj->set_value(adj->get_value()-10);
+   } else {
+     adj->set_value(adj->get_value()+10);
+   }
+
+   source_vec_.back()->view().set_vadjustment(adj);
+   linenumbers.back()->view().set_vadjustment(adj);
+ 
+
+   return true;
+ }
+
+Notebook::Controller::~Controller() {
+  for (auto &i : source_vec_) delete i;
+  for (auto &i : label_vec_) delete i;
+  for (auto &i : box_h) delete i;
+  for (auto &i : box_l) delete i;
+  for (auto &i : box_m) delete i;
+  for (auto &i : scrolledeverything_vec_) delete i;
+  for (auto &i : scrolledwindow_vec_) delete i;
+}
+
+Gtk::HBox& Notebook::Controller::view() {
   return view_.view();
 }
-Gtk::Box& Notebook::Controller::entry_view(){
-  return entry_.view();
+Gtk::Box& Notebook::Controller::entry_view() {
+  return entry_.view();y
 }
+
+
 void Notebook::Controller::OnNewPage(std::string name) {
+  std::cout << "new page" << std::endl;y
+  OnCreatePage();
+  std::cout << "oppretta pages" << std::endl;
+  source_vec_.back()->OnNewEmptyFile();
+  Notebook().append_page(*box_m.back(), name);
+  Notebook().show_all_children();
+  Notebook().set_current_page(Pages()-1);
+  BufferChangeHandler(source_vec_.back()->view().get_buffer());
+}
+
+void Notebook::Controller::OnOpenFile(std::string path) {
+  OnCreatePage();
+  source_vec_.back()->OnOpenFile(path);
+  unsigned pos = path.find_last_of("/\\");
+  Notebook().append_page(*scrolledwindow_vec_.back(), path.substr(pos+1));
+  Notebook().show_all_children();
+  Notebook().set_focus_child(*scrolledwindow_vec_.back());
+  Notebook().set_current_page(Pages()-1);
+   BufferChangeHandler(source_vec_.back()->view().get_buffer());
+  OnBufferChange();
+}
+
+void Notebook::Controller::OnCreatePage(){
   scrolledwindow_vec_.push_back(new Gtk::ScrolledWindow());
   source_vec_.push_back(new Source::Controller);
-  label_vec_.push_back(new Gtk::Label);
-  label_vec_.back()->set_text("1\n");
-  label_vec_.back()->set_justify(Gtk::Justification::JUSTIFY_RIGHT);
-  label_vec_.back()->set_alignment(Gtk::ALIGN_START, Gtk::ALIGN_START);
-  paned_vec_.push_back(new Gtk::Paned());
-  paned_vec_.back()->set_orientation(Gtk::Orientation::ORIENTATION_HORIZONTAL);
-  paned_vec_.back()->add1(*label_vec_.back());
-  paned_vec_.back()->pack2(source_vec_.back()->view(),true,false);
-  scrolledwindow_vec_.back()->add(*paned_vec_.back());
-  source_vec_.back()->OnNewEmptyFile();
-    scrolledwindow_vec_.back()->set_policy(Gtk::PolicyType::POLICY_NEVER,
-					 Gtk::PolicyType::POLICY_AUTOMATIC);
-  notebook().append_page(*scrolledwindow_vec_.back(), name);
-  notebook().show_all_children();
-  notebook().set_focus_child(*scrolledwindow_vec_.back());
-  notebook().set_current_page(pages()-1);
+  linenumbers.push_back(new Source::Controller);
+  scrolledeverything_vec_.push_back(new Gtk::ScrolledWindow());
+  label_vec_.push_back(new Gtk::Label());
+  // box_l.push_back(new Gtk::HBox());
+  //box_h.push_back(new Gtk::HBox());
+  box_m.push_back(new Gtk::HBox());
+  scrolledeverything_vec_.back()->add(source_vec_.back()->view());
+  linesscroll.add(linenumbers.back()->view());
+  linenumbers.back()->view().get_buffer()->set_text("1\n");
+
+  linesscroll.get_vscrollbar()->hide();
+
+  linenumbers.back()->view().set_editable(false);
+  linenumbers.back()->view().set_sensitive(false);
+  box_m.back()->pack_start(linesscroll,false,false);
+  box_m.back()->pack_start(*scrolledeverything_vec_.back(), true, true);
+
 }
+
 void Notebook::Controller::OnCloseCurrentPage() {
   //TODO (oyvang, zalox, forgi) Save a temp file, in case you close one you dont want to close?
-  int page = currentPage();
-  notebook().remove_page(page);
+  int page = CurrentPage();
+  Notebook().remove_page(page);
   delete source_vec_.at(page);
+  delete label_vec_.at(page);
+  delete box_h.at(page);
+  delete box_l.at(page);
+  delete box_m.at(page);
+  delete scrolledeverything_vec_.at(page);
   delete scrolledwindow_vec_.at(page);
+
   source_vec_.erase(source_vec_.begin()+ page);
+  label_vec_.erase(label_vec_.begin()+page);
+  box_h.erase(box_h.begin()+page);
+  box_l.erase(box_l.begin()+page);
+  box_m.erase(box_m.begin()+page);
+  scrolledeverything_vec_.erase(scrolledeverything_vec_.begin()+page);
   scrolledwindow_vec_.erase(scrolledwindow_vec_.begin()+page);
+
 }
 void Notebook::Controller::OnFileNewEmptyfile() {
   entry_.OnShowSetFilenName("");
@@ -147,40 +223,26 @@ void Notebook::Controller::OnFileNewHeaderFile() {
   entry_.OnShowSetFilenName(model_.h_extension);
 }
 void Notebook::Controller::OnEditCopy() {
-  if (pages() != 0) {
-    buffer()->copy_clipboard(refClipboard);
+  if (Pages() != 0) {
+    Buffer()->copy_clipboard(refClipboard_);
   }
 }
 void Notebook::Controller::OnEditPaste() {
-  if (pages() != 0) {
-    buffer()->paste_clipboard(refClipboard);
+  if (Pages() != 0) {
+    Buffer()->paste_clipboard(refClipboard_);
   }
 }
 void Notebook::Controller::OnEditCut() {
-  if (pages() != 0) {
-    buffer()->cut_clipboard(refClipboard);
+  if (Pages() != 0) {
+    Buffer()->cut_clipboard(refClipboard_);
   }
-}
-
-void Notebook::Controller::OnOpenFile(std::string path) {
-  scrolledwindow_vec_.push_back(new Gtk::ScrolledWindow());
-  source_vec_.push_back(new Source::Controller);
-  scrolledwindow_vec_.back()->add(source_vec_.back()->view());
-  source_vec_.back()->OnOpenFile(path);
-  scrolledwindow_vec_.back()->set_policy(Gtk::PolicyType::POLICY_NEVER,
-					 Gtk::PolicyType::POLICY_AUTOMATIC);
-  unsigned pos = path.find_last_of("/\\");
-  notebook().append_page(*scrolledwindow_vec_.back(), path.substr(pos+1));
-  notebook().show_all_children();
-  notebook().set_focus_child(*scrolledwindow_vec_.back());
-  notebook().set_current_page(pages()-1);
 }
 
 std::string Notebook::Controller::GetCursorWord(){
   std::string word;
   Gtk::TextIter start,end;
-  start = buffer()->get_insert()->get_iter();
-  end = buffer()->get_insert()->get_iter();
+  start = Buffer()->get_insert()->get_iter();
+  end = Buffer()->get_insert()->get_iter();
   if(!end.ends_line()) {
     while(!end.ends_word()){
       end.forward_char();
@@ -191,16 +253,14 @@ std::string Notebook::Controller::GetCursorWord(){
       start.backward_char();
     }
   }
-  word = buffer()->get_text(start,end);
-
+  word = Buffer()->get_text(start,end);
   //TODO(Oyvang)fix selected text
   return word;
 }
 
-void Notebook::Controller::OnEditSearch(){
-  search_match_end_ = buffer()->get_iter_at_offset(0);
+void Notebook::Controller::OnEditSearch() {
+  search_match_end_ = Buffer()->get_iter_at_offset(0);
   entry_.OnShowSearch(GetCursorWord());   
-   
 }
 
 void Notebook::Controller::Search(bool forward){
@@ -210,7 +270,7 @@ void Notebook::Controller::Search(bool forward){
 
   if(!forward){
     if(search_match_start_ == 0 || search_match_start_.get_line_offset() == 0) {
-      search_match_start_= buffer()->end();
+      search_match_start_= Buffer()->end();
     }
     search_match_start_.backward_search(search_word,
 					Gtk::TextSearchFlags::TEXT_SEARCH_TEXT_ONLY|
@@ -218,36 +278,71 @@ void Notebook::Controller::Search(bool forward){
 					search_match_start_, search_match_end_);  
   }else{
     if(search_match_end_ == 0) {
-      search_match_end_= buffer()->begin();
+      search_match_end_= Buffer()->begin();
     }
     search_match_end_.forward_search(search_word,
 				     Gtk::TextSearchFlags::TEXT_SEARCH_TEXT_ONLY |
 				     Gtk::TextSearchFlags::TEXT_SEARCH_VISIBLE_ONLY,
 				     search_match_start_, search_match_end_);
   }
+}
 
-  // std::cout << "matc_start - "
-  //   << search_match_start_.get_line_offset()
-  //   //<< test.get_line_offset()
-  // 	    << "  ||  match_end - "
-  // 	    << search_match_end_.get_line_offset()
-  // 		<< std::endl;
+void Notebook::Controller::OnBufferChange() {
+   int page =  CurrentPage();
+   int line_nr = Buffer()->get_line_count();
 
 
+  
+
+
+ Glib::RefPtr<Gtk::TextBuffer::Mark> mark = Gtk::TextBuffer::Mark::create();
+ Glib::RefPtr<Gtk::TextBuffer::Mark> mark_lines = Gtk::TextBuffer::Mark::create();
+
+ if(source_vec_.at(page)->view().get_buffer()->get_insert()->get_iter().starts_line() &&
+    source_vec_.at(page)->view().get_buffer()->get_insert()->get_iter().get_line() == Buffer()->end().get_line()){
+
+
+    std::string lines ="1";
+ for (int it = 2; it <= line_nr; ++it) {
+   lines.append("\n"+ std::to_string(it)+"");
+
+} 
+ linenumbers.back()->view().get_buffer()->set_text(lines);
+
+
+ source_vec_.at(page)->view().get_buffer()->add_mark(mark, Buffer()->end());
+ linenumbers.at(page)->view().get_buffer()->add_mark(mark_lines,linenumbers.at(page)->view().get_buffer()->end());
+
+ source_vec_.at(page)->view().scroll_to(mark); 
+ linenumbers.at(page)->view().scroll_to(mark_lines);
+ }else{
+    source_vec_.at(page)->view().get_buffer()->add_mark(mark, Buffer()->get_insert()->get_iter());
+ }
 }
 
 
-int Notebook::Controller::currentPage(){
-  return notebook().get_current_page();
+int Notebook::Controller::CurrentPage() {
+  return Notebook().get_current_page();
 }
 
-Glib::RefPtr<Gtk::TextBuffer> Notebook::Controller::buffer(){
-  return source_vec_.at(currentPage())->view().get_buffer();
+Glib::RefPtr<Gtk::TextBuffer> Notebook::Controller::Buffer() {
+  return source_vec_.at(CurrentPage())->view().get_buffer();
 }
 
-int Notebook::Controller::pages(){
-  return notebook().get_n_pages();
+int Notebook::Controller::Pages() {
+  return Notebook().get_n_pages();
 }
-Gtk::Notebook& Notebook::Controller::notebook(){
+Gtk::Notebook& Notebook::Controller::Notebook() {
   return view_.notebook();
+}
+Gtk::Label& Notebook::Controller::Linenumbers() {
+  return view_.linenumbers();
+}
+
+void Notebook::Controller::BufferChangeHandler(Glib::RefPtr<Gtk::TextBuffer>
+					       buffer) {
+  buffer->signal_changed().connect(
+				   [this]() {   
+				     OnBufferChange(); 
+				   });
 }
