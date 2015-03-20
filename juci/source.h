@@ -5,7 +5,7 @@
 #include <vector>
 #include <string>
 #include "gtkmm.h"
-#include <TranslationUnit.h>
+#include "clangmm.h"
 
 using std::string;
 
@@ -30,7 +30,7 @@ namespace Source {
     View();
     string UpdateLine();
     void ApplyTheme(const Theme &theme);
-    void OnOpenFile(std::vector<Clang::SourceLocation> &locations,
+    void OnOpenFile(std::vector<clang::SourceLocation> &locations,
                     const Theme &theme);
   private:
     string GetLine(const Gtk::TextIter &begin);
@@ -43,15 +43,15 @@ namespace Source {
     const string filepath();
     void SetFilePath(const string &filepath);
     void SetSourceLocations(
-                     const std::vector<Clang::SourceLocation> &locations);
-    std::vector<Clang::SourceLocation>& getSourceLocations() {
+                     const std::vector<clang::SourceLocation> &locations);
+    std::vector<clang::SourceLocation>& getSourceLocations() {
       return locations_;
     }
 
   private:
     Theme theme_;
     string filepath_;
-    std::vector<Clang::SourceLocation> locations_;
+    std::vector<clang::SourceLocation> locations_;
   };
 
   class Controller {

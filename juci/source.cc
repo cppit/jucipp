@@ -15,7 +15,7 @@ Source::View::View() {
 // returns the new line
 string Source::View::UpdateLine() {
   Gtk::TextIter line(get_buffer()->get_insert()->get_iter());
-  //std::cout << line.get_line() << std::endl;
+  // std::cout << line.get_line() << std::endl;
   // for each word --> check what it is --> apply appropriate tag
   return "";
 }
@@ -37,9 +37,9 @@ void Source::View::ApplyTheme(const Source::Theme &theme) {
   }
 }
 
-void Source::View::OnOpenFile(std::vector<Clang::SourceLocation> &locations,
+void Source::View::OnOpenFile(std::vector<clang::SourceLocation> &locations,
            const Source::Theme &theme) {
-  ApplyTheme(theme);
+  /*  ApplyTheme(theme);
   Glib::RefPtr<Gtk::TextBuffer> buffer = get_buffer();
   for (auto &loc : locations) {
     string type = std::to_string(loc.kind());
@@ -69,7 +69,7 @@ void Source::View::OnOpenFile(std::vector<Clang::SourceLocation> &locations,
         buffer->apply_tag_by_name(theme.typetable().at(type),
                                   begin_iter, end_iter);
     }
-  }
+    }*/
 }
 // Source::View::Theme::tagtable()
 // returns a const refrence to the tagtable
@@ -108,7 +108,8 @@ void Source::Theme::SetTagTable(
 //// Model ////
 ///////////////
 Source::Model::Model() :
-  theme_() {/*
+  theme_() {
+  /*
   std::cout << "Model constructor run" << std::endl;
   boost::property_tree::ptree pt;
   boost::property_tree::json_parser::read_json("config.json", pt);
@@ -140,7 +141,7 @@ void Source::Model::SetFilePath(const string &filepath) {
 }
 
 void Source::Model::
-SetSourceLocations(const std::vector<Clang::SourceLocation> &locations) {
+SetSourceLocations(const std::vector<clang::SourceLocation> &locations) {
   locations_ = locations;
 }
 ////////////////////
@@ -150,7 +151,7 @@ SetSourceLocations(const std::vector<Clang::SourceLocation> &locations) {
 // Source::Controller::Controller()
 // Constructor for Controller
 Source::Controller::Controller() {
-  //std::cout << "Controller constructor run" << std::endl;
+  // std::cout << "Controller constructor run" << std::endl;
   view().get_buffer()->signal_changed().connect([this](){
       this->OnLineEdit();
     });
@@ -178,16 +179,32 @@ void Source::Controller::OnNewEmptyFile() {
   s.save("");
 }
 
-void Source::Controller::OnOpenFile(const string &filename) {
-  sourcefile s(filename);
-  view().get_buffer()->set_text(s.get_content());
-  int linums = view().get_buffer()->end().get_line();
-  int offset = view().get_buffer()->end().get_line_offset();
-  Clang::TranslationUnit tu(filename.c_str(), linums, offset);
-  model().SetSourceLocations(tu.getSourceLocations());
-  view().OnOpenFile(model().getSourceLocations(), model().theme());
+void Source::Controller::OnOpenFile(const string &filepath) {
+  sourcefile s(filepath);
+  buffer()->set_text(s.get_content());
+  int start_offset = buffer()->begin().get_offset();
+  int end_offset = buffer()->end().get_offset();
+
+  clang::TranslationUnit tu(true, filepath);
+  clang::SourceLocation start(&tu, filepath, start_offset);
+  clang::SourceLocation end(&tu, filepath, end_offset);
+  clang::SourceRange range(&start, &end);
+  clang::Tokens tokens(&tu, &range);
+  std::vector<clang::Token> tks = tokens.tokens();
+
+  for (auto &t : tks) {
+    clang::SourceLocation loc = t.get_source_location(&tu);
+    unsigned line;
+    unsigned column;
+    loc.get_location_info(NULL, &line, &column, NULL);
+    std::cout << "Token line: " << line;
+    std::cout << ", column: " << column;
+    std::cout << ", kind: " << t.kind() << std::endl;
+  }
+  //  model().SetSourceLocations(tu.getSourceLocations());
+  //  view().OnOpenFile(model().getSourceLocations(), model().theme());
 }
 
-Glib::RefPtr<Gtk::TextBuffer> Source::Controller::buffer(){
+Glib::RefPtr<Gtk::TextBuffer> Source::Controller::buffer() {
   return view().get_buffer();
 }
