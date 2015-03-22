@@ -185,7 +185,20 @@ void Source::Controller::OnOpenFile(const string &filepath) {
   int start_offset = buffer()->begin().get_offset();
   int end_offset = buffer()->end().get_offset();
 
-  clang::TranslationUnit tu(true, filepath);
+  std::string project_path =
+    filepath.substr(0, filepath.find_last_of('/'));
+
+  clang::CompilationDatabase db(project_path);
+  clang::CompileCommands commands(filepath, &db);
+  std::vector<clang::CompileCommand> cmds = commands.get_commands();
+  std::vector<const char*> arguments;
+  for (auto &i : cmds) {
+    std::vector<std::string> lol = i.get_command_as_args();
+    for (int a = 1; a < lol.size()-4; a++) {
+      arguments.emplace_back(lol[a].c_str());
+    }
+  }
+  clang::TranslationUnit tu(true, filepath, arguments);
   clang::SourceLocation start(&tu, filepath, start_offset);
   clang::SourceLocation end(&tu, filepath, end_offset);
   clang::SourceRange range(&start, &end);
@@ -197,10 +210,8 @@ void Source::Controller::OnOpenFile(const string &filepath) {
     unsigned line;
     unsigned column;
     loc.get_location_info(NULL, &line, &column, NULL);
-    std::cout << "Token line: " << line;
-    std::cout << ", column: " << column;
-    std::cout << ", kind: " << t.kind() << std::endl;
   }
+
   //  model().SetSourceLocations(tu.getSourceLocations());
   //  view().OnOpenFile(model().getSourceLocations(), model().theme());
 }
