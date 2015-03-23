@@ -1,0 +1,31 @@
+<ui>                                                   
+  <menubar name='MenuBar'>                            
+    <menu action='FileMenu'>                        
+      <menu action='FileNew'>                     
+        <menuitem action='FileNewStandard'/>    
+        <menuitem action='FileNewCC'/>          
+        <menuitem action='FileNewH'/>           
+      </menu>                                     
+      <menuitem action='FileOpenFile'/>           
+      <menuitem action='FileOpenFolder'/>         
+      <separator/>                               
+      <menuitem action='FileQuit'/>               
+    </menu>                                         
+    <menu action='EditMenu'>                        
+      <menuitem action='EditCopy'/>               
+      <menuitem action='EditCut'/>                
+      <menuitem action='EditPaste'/>              
+      <separator/>                               
+      <menuitem action='EditFind'/>               
+    </menu>                                         
+    <menu action='WindowMenu'>                      
+      <menuitem action='WindowCloseTab'/>         
+      <menuitem action='WindowSplitWindow'/>      
+    </menu>                                         
+    <menu action='PluginMenu'>                            
+    </menu>                                         
+    <menu action='HelpMenu'>                        
+      <menuitem action='HelpAbout'/>              
+    </menu>                                        
+  </menubar>                                          
+</ui>                                                  
