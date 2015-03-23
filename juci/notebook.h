@@ -10,56 +10,63 @@ namespace Notebook {
   class Model {
   public:
     Model();
-    std::string cc_extension;
-    std::string h_extension;
+    std::string cc_extension_;
+    std::string h_extension_;
+    int scrollvalue_;
   };
   class View {
   public:
     View();
-    Gtk::Box& view();
-    Gtk::Notebook& notebook() { return notebook_; }
-
+    Gtk::HBox& view() {return view_;}
+    Gtk::Notebook& notebook() {return notebook_; }
   protected:
-    Gtk::Box view_;
+    Gtk::HBox view_;
     Gtk::Notebook notebook_;
   };
   class Controller {
   public:
+
     Controller(Keybindings::Controller& keybindings,
-	       const Source::Config& config);
-    Gtk::Box& view();
+	       Source::Config& config);
+    ~Controller();
+    Glib::RefPtr<Gtk::TextBuffer> Buffer( Source::Controller *source);
+    Gtk::TextView& CurrentTextView();
+    int CurrentPage();
     Gtk::Box& entry_view();
-    void OnNewPage(std::string name);
+    Gtk::Notebook& Notebook();
+    void OnBufferChange();
     void OnCloseCurrentPage();
-    void OnOpenFile(std::string filename);
-    View view_;
-    Model model_;
-    Entry::Controller entry_;
-    std::vector<Source::Controller*> source_vec_;
-    std::vector<Gtk::ScrolledWindow*> scrolledwindow_vec_;
-    Glib::RefPtr<Gtk::Clipboard> refClipboard;
-    std::list<Gtk::TargetEntry> listTargets;
     std::string GetCursorWord();
-    Glib::RefPtr<Gtk::TextBuffer> buffer();
-    Gtk::Notebook& notebook();
-    int currentPage();
-    int pages();
-    void OnFileNewEmptyfile();
-    void OnFileNewCCFile();
-    void OnFileNewHeaderFile();
     void OnEditCopy();
-    void OnEditPaste();
     void OnEditCut();
+    void OnEditPaste();
     void OnEditSearch();
+    void OnFileNewCCFile();
+    void OnFileNewEmptyfile();
+    void OnFileNewHeaderFile();
+    void OnNewPage(std::string name);
+    void OnOpenFile(std::string filename);
+    void OnCreatePage();
+    bool scroll_event_callback(GdkEventScroll* scroll_event);
+    int Pages();
+    Gtk::HBox& view();
     void Search(bool forward);
     const Source::Config& source_config() { return source_config_; }
+  protected:
+    void BufferChangeHandler(Glib::RefPtr<Gtk::TextBuffer> buffer);
   private:
     Source::Config source_config_;
-    bool is_new_file;
+    View view_;
+    Model model_;
+    bool is_new_file_;
+    Entry::Controller entry_;
+    std::vector<Source::Controller*> text_vec_, linenumbers_vec_;
+    std::vector<Gtk::ScrolledWindow*> scrolledtext_vec_, scrolledline_vec_;
+    std::vector<Gtk::HBox*> editor_vec_;
+    std::list<Gtk::TargetEntry> listTargets_;
     Gtk::TextIter search_match_end_;
     Gtk::TextIter search_match_start_;
+    Glib::RefPtr<Gtk::Clipboard> refClipboard_;
   };  // class controller
 }  // namespace Notebook
-
-
 #endif  // JUCI_NOTEBOOK_H_

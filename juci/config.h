@@ -8,7 +8,7 @@
 class MainConfig {
 public:
   MainConfig();
-  const Source::Config& source_cfg();
+  Source::Config& source_cfg();
   Keybindings::Config& keybindings_cfg();
   void PrintMenu();
   void GenerateSource();

@@ -37,6 +37,6 @@ void MainConfig::GenerateKeybindings() {
 Keybindings::Config& MainConfig::keybindings_cfg() {
   return keybindings_cfg_;
 }
-const Source::Config& MainConfig::source_cfg() {
+Source::Config& MainConfig::source_cfg() {
   return source_cfg_;
 }
