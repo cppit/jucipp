@@ -52,7 +52,7 @@ namespace Source {
     View();
     string UpdateLine();
     void ApplyConfig(const Config &config);
-    void OnOpenFile(std::vector<Clang::SourceLocation> &locations,
+    void OnOpenFile(std::vector<clang::SourceLocation> &locations,
                     const Config &config);
   private:
     string GetLine(const Gtk::TextIter &begin);
@@ -65,8 +65,8 @@ namespace Source {
     Config& config();
     const string filepath();
     void SetFilePath(const string &filepath);
-    void SetSourceLocations( const std::vector<Clang::SourceLocation> &locations);
-    std::vector<Clang::SourceLocation>& getSourceLocations() {
+    void SetSourceLocations( const std::vector<clang::SourceLocation> &locations);
+    std::vector<clang::SourceLocation>& getSourceLocations() {
       return locations_;
     }
 

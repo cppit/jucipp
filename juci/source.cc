@@ -38,9 +38,9 @@ void Source::View::ApplyConfig(const Source::Config &config) {
   }
 }
 
-void Source::View::OnOpenFile(std::vector<Clang::SourceLocation> &locations,
+void Source::View::OnOpenFile(std::vector<clang::SourceLocation> &locations,
                               const Source::Config &config) {
-  ApplyConfig(config);
+  /*  ApplyConfig(config);
   Glib::RefPtr<Gtk::TextBuffer> buffer = get_buffer();
   for (auto &loc : locations) {
     string type = std::to_string(loc.kind());
@@ -71,6 +71,7 @@ void Source::View::OnOpenFile(std::vector<Clang::SourceLocation> &locations,
                                 begin_iter, end_iter);
     }
   }
+  */
 }
 
 
@@ -194,10 +195,7 @@ void Source::Controller::OnOpenFile(const string &filepath) {
       arguments.emplace_back(lol[a].c_str());
     }
   }
-  boost::timer::auto_cpu_timer timer;
   clang::TranslationUnit tu(true, filepath, arguments);
-  timer.~auto_cpu_timer();
-  boost::timer::auto_cpu_timer timer2;
   clang::SourceLocation start(&tu, filepath, start_offset);
   clang::SourceLocation end(&tu, filepath, end_offset);
   clang::SourceRange range(&start, &end);
@@ -211,7 +209,6 @@ void Source::Controller::OnOpenFile(const string &filepath) {
     loc.get_location_info(NULL, &line, &column, NULL);
   }
 
-  timer2.~auto_cpu_timer();
   //  std::cout << t.elapsed().user << std::endl;
   //  model().SetSourceLocations(tu.getSourceLocations());
   //  view().OnOpenFile(model().getSourceLocations(), model().theme());
