@@ -3,6 +3,7 @@
 #include "sourcefile.h"
 #include <boost/property_tree/json_parser.hpp>
 #include <fstream>
+#include <boost/timer/timer.hpp>
 
 //////////////
 //// View ////
@@ -185,8 +186,11 @@ void Source::Controller::OnOpenFile(const string &filepath) {
   int start_offset = buffer()->begin().get_offset();
   int end_offset = buffer()->end().get_offset();
 
+
+
   std::string project_path =
     filepath.substr(0, filepath.find_last_of('/'));
+
 
   clang::CompilationDatabase db(project_path);
   clang::CompileCommands commands(filepath, &db);
@@ -198,7 +202,10 @@ void Source::Controller::OnOpenFile(const string &filepath) {
       arguments.emplace_back(lol[a].c_str());
     }
   }
+  boost::timer::auto_cpu_timer timer;
   clang::TranslationUnit tu(true, filepath, arguments);
+  timer.~auto_cpu_timer();
+  boost::timer::auto_cpu_timer timer2;
   clang::SourceLocation start(&tu, filepath, start_offset);
   clang::SourceLocation end(&tu, filepath, end_offset);
   clang::SourceRange range(&start, &end);
@@ -212,6 +219,8 @@ void Source::Controller::OnOpenFile(const string &filepath) {
     loc.get_location_info(NULL, &line, &column, NULL);
   }
 
+  timer2.~auto_cpu_timer();
+  //  std::cout << t.elapsed().user << std::endl;
   //  model().SetSourceLocations(tu.getSourceLocations());
   //  view().OnOpenFile(model().getSourceLocations(), model().theme());
 }

@@ -24,6 +24,24 @@ namespace Source {
     std::unordered_map<string, string> typetable_;
     string background_;
   };  // class Theme
+  /*
+  class BufferLocation {
+    BufferLocation(const BufferLocation &location);
+    BufferLocation(int, int);
+    int line_number() { return line_number_; }
+    int column_number() { return column_offset_; }
+  private:
+    int line_number_;
+    int column_offset_;
+  };
+
+  class BufferRange {
+    BufferRange(const BufferLocation &start, const BufferLocation &end) :
+      start_(start), end_(end) { }
+  private:
+    BufferLocation start_;
+    BufferLocation end_;
+    };*/
 
   class View : public Gtk::TextView {
   public:

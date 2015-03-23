@@ -52,7 +52,7 @@ endif()
 #Boost_INCLUDE_DIRS     - Boost include directories
 #Boost_LIBRARY_DIRS     - Link directories for Boost libraries
 #Boost_LIBRARIES        - Boost component libraries to be linked
-find_package(Boost 1.5 REQUIRED COMPONENTS python)
+find_package(Boost 1.5 REQUIRED COMPONENTS python timer system)
 
 #If boost is not found
 if(${Boost_FOUND}) 
