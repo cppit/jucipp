@@ -1,19 +1,36 @@
 {
-    "colors": {
-        "text_color": "#333333",
-        "string" : "#CC0000",
-        "namespace_ref" : "#990099",
-        "type" : "#0066FF",
-        "keyword": "blue",
-        "comment": "grey",
-        "own": "pink"
-    },
-    "syntax": {
-        "43": "type",
-        "46": "namespace_ref",
-        "109": "string",
-        "702": "keyword",
-        "703": "own",
-        "705": "comment"
+    "source": {
+        "colors": {
+            "text_color": "#333333",
+            "string": "#CC0000",
+            "namespace_ref": "#990099",
+            "type": "#0066FF",
+            "keyword": "blue",
+            "comment": "grey",
+            "own": "pink"
+        },
+        "syntax": {
+            "43": "type",
+            "46": "namespace_ref",
+            "109": "string",
+            "702": "keyword",
+            "703": "own",
+            "705": "comment"
         }
+    },
+    "keybindings": {
+	"split_window": "<control><alt>s",
+	"new_h_file": "<control><alt>h",
+	"new_cc_file": "<alt>c",
+	"close_tab": "<control>w"
+    },
+    "example": {
+	"key": "value",
+	"key2": [
+	    "val1",
+	    "val2",
+	    3
+	],
+	"key3": "value"
+    }
 }

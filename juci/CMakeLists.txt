@@ -92,6 +92,8 @@ add_executable(${project_name}
   menu.cc
   source.h
   source.cc
+  config.h
+  config.cc
   sourcefile.h
   sourcefile.cc
   window.cc
@@ -102,7 +104,6 @@ add_executable(${project_name}
   notebook.h
   entry.h
   entry.cc
-  #there is no need for extentions
   )
 
 add_library(${module} SHARED

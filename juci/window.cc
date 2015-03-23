@@ -2,11 +2,14 @@
 
 Window::Window() :
   window_box_(Gtk::ORIENTATION_VERTICAL),
-  notebook_(keybindings_),
-  menu_(keybindings_){
+  main_config_(),
+  keybindings_(main_config_.keybindings_cfg()),
+  notebook_(keybindings(), main_config_.source_cfg()),
+  menu_(keybindings()) {
   set_title("juCi++");
   set_default_size(600, 400);
   add(window_box_);
+  
   keybindings_.action_group_menu()->add(Gtk::Action::create("FileQuit",
 							    Gtk::Stock::QUIT),
 					[this]() {
@@ -23,8 +26,6 @@ Window::Window() :
 
   add_accel_group(keybindings_.ui_manager_menu()->get_accel_group());
   add_accel_group(keybindings_.ui_manager_hidden()->get_accel_group());
-
-  //moved here from menu.cc by forgie
   keybindings_.BuildMenu();
 
   window_box_.pack_start(menu_.view(), Gtk::PACK_SHRINK);
@@ -33,13 +34,7 @@ Window::Window() :
   show_all_children();
   } // Window constructor
 
-void Window::OnWindowHide(){
-  //TODO forgie: find out how to 'remove' the pointers
-  //TODO forgie: Make shared_ptr
-  //libjuci::PluginApi::notebook_ =
-  //   std::shared_ptr<Notebook::Controller>(nullptr);
-  // libjuci::PluginApi::menu_ =
-  //  std::shared_ptr<Menu::Controller>(nullptr);
+void Window::OnWindowHide() {
   hide();
 }
 
@@ -90,5 +85,4 @@ void Window::OnOpenFile() {
             break;
         }
     }
-
 }

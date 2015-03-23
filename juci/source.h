@@ -10,8 +10,11 @@
 using std::string;
 
 namespace Source {
-  class Theme {
+
+  class Config {
   public:
+    Config(const Config &original);
+    Config();
     const std::unordered_map<string, string>& tagtable() const;
     const std::unordered_map<string, string>& typetable() const;
     void SetTagTable(const std::unordered_map<string, string> &tagtable);
@@ -23,7 +26,7 @@ namespace Source {
     std::unordered_map<string, string> tagtable_;
     std::unordered_map<string, string> typetable_;
     string background_;
-  };  // class Theme
+  };  // class Config
   /*
   class BufferLocation {
     BufferLocation(const BufferLocation &location);
@@ -43,37 +46,39 @@ namespace Source {
     BufferLocation end_;
     };*/
 
+
   class View : public Gtk::TextView {
   public:
     View();
     string UpdateLine();
-    void ApplyTheme(const Theme &theme);
-    void OnOpenFile(std::vector<clang::SourceLocation> &locations,
-                    const Theme &theme);
+    void ApplyConfig(const Config &config);
+    void OnOpenFile(std::vector<Clang::SourceLocation> &locations,
+                    const Config &config);
   private:
     string GetLine(const Gtk::TextIter &begin);
   };  // class View
 
   class Model{
   public:
-    Model();
-    Theme& theme();
+    Model(const Source::Config &config);
+    //Model();
+    Config& config();
     const string filepath();
     void SetFilePath(const string &filepath);
-    void SetSourceLocations(
-                     const std::vector<clang::SourceLocation> &locations);
-    std::vector<clang::SourceLocation>& getSourceLocations() {
+    void SetSourceLocations( const std::vector<Clang::SourceLocation> &locations);
+    std::vector<Clang::SourceLocation>& getSourceLocations() {
       return locations_;
     }
 
   private:
-    Theme theme_;
+    Source::Config config_;
     string filepath_;
     std::vector<clang::SourceLocation> locations_;
   };
 
   class Controller {
   public:
+    Controller(const Source::Config &config);
     Controller();
     View& view();
     Model& model();
@@ -84,7 +89,6 @@ namespace Source {
   private:
     void OnLineEdit();
     void OnSaveFile();
-
   protected:
     View view_;
     Model model_;
