@@ -65,10 +65,14 @@ namespace Notebook {
     Gtk::TextIter search_match_end_;
     Gtk::TextIter search_match_start_;
     Glib::RefPtr<Gtk::Clipboard> refClipboard_;
+    std::string
+    lines="1 ";
     
     
   };  // class controller
 }  // namespace Notebook
+
+
 
 
 #endif  // JUCI_NOTEBOOK_H_

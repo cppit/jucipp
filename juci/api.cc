@@ -1,4 +1,3 @@
-
 #include "api.h"
 
 Menu::Controller* PluginApi::menu_;
