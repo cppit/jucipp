@@ -205,13 +205,13 @@ Glib::RefPtr<Gtk::TextBuffer> libjuci::BufferFromNotebook() {
   // int i = 0;
   // while (!PluginApi::notebook_->source_vec_.at(i)->view().has_focus()) {
   //   i++;
-  //while(!PluginApi::notebook_->CurrentTextView().has_focus()) {
+  // while(!PluginApi::notebook_->CurrentTextView().has_focus()) {
   //   i++;
   // }
   return Glib::RefPtr<Gtk::TextBuffer>(PluginApi::notebook_
                                        // ->source_vec_.at(i)
                                        // ->view().get_buffer());
-				       ->CurrentTextView().get_buffer());
+                                       ->CurrentTextView().get_buffer());
 }
 
 Gtk::TextIter libjuci::IterFromNotebook() {
