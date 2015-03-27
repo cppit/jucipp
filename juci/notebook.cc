@@ -33,7 +33,8 @@ source_config_(source_cfg) {
 						     .key_map()["new_cc_file"]),
                                        [this]() {
 					 is_new_file_ = true;
-                                         OnFileNewCCFile();
+                                         // OnFileNewCCFile();
+                                         OnOpenFile("/home/zalox/bachelor/juci/juci/source.cc");
                                        });
   keybindings.action_group_menu()->add(Gtk::Action::create("FileNewH",
                                                            "New h file"),
