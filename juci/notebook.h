@@ -69,4 +69,5 @@ namespace Notebook {
     Glib::RefPtr<Gtk::Clipboard> refClipboard_;
   };  // class controller
 }  // namespace Notebook
+
 #endif  // JUCI_NOTEBOOK_H_

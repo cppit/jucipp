@@ -3,6 +3,7 @@
 #include "sourcefile.h"
 #include <boost/property_tree/json_parser.hpp>
 #include <fstream>
+#include <boost/timer/timer.hpp>
 
 //////////////
 //// View ////
@@ -15,7 +16,7 @@ Source::View::View() {
 // returns the new line
 string Source::View::UpdateLine() {
   Gtk::TextIter line(get_buffer()->get_insert()->get_iter());
-  //std::cout << line.get_line() << std::endl;
+  // std::cout << line.get_line() << std::endl;
   // for each word --> check what it is --> apply appropriate tag
   return "";
 }
@@ -37,9 +38,9 @@ void Source::View::ApplyConfig(const Source::Config &config) {
   }
 }
 
-void Source::View::OnOpenFile(std::vector<Clang::SourceLocation> &locations,
-           const Source::Config &config) {
-  ApplyConfig(config);
+void Source::View::OnOpenFile(std::vector<clang::SourceLocation> &locations,
+                              const Source::Config &config) {
+  /*  ApplyConfig(config);
   Glib::RefPtr<Gtk::TextBuffer> buffer = get_buffer();
   for (auto &loc : locations) {
     string type = std::to_string(loc.kind());
@@ -66,10 +67,11 @@ void Source::View::OnOpenFile(std::vector<Clang::SourceLocation> &locations,
     Gtk::TextIter end_iter  = buffer->get_iter_at_line_offset(linum_end, end);
     //    std::cout << get_buffer()->get_text(begin_iter, end_iter) << std::endl;
     if (begin_iter.get_line() ==  end_iter.get_line()) {
-        buffer->apply_tag_by_name(config.typetable().at(type),
-                                  begin_iter, end_iter);
+      buffer->apply_tag_by_name(config.typetable().at(type),
+                                begin_iter, end_iter);
     }
   }
+  */
 }
 
 
@@ -101,7 +103,7 @@ void Source::Config::InsertTag(const string &key, const string &value) {
 // Source::View::Config::SetTagTable()
 // sets the tagtable for the view
 void Source::Config::SetTypeTable(
-                        const std::unordered_map<string, string> &typetable) {
+                                  const std::unordered_map<string, string> &typetable) {
   typetable_ = typetable;
 }
 
@@ -111,32 +113,13 @@ void Source::Config::InsertType(const string &key, const string &value) {
 // Source::View::Config::SetTagTable()
 // sets the tagtable for the view
 void Source::Config::SetTagTable(
-                        const std::unordered_map<string, string> &tagtable) {
+                                 const std::unordered_map<string, string> &tagtable) {
   tagtable_ = tagtable;
 }
 
 ///////////////
 //// Model ////
 ///////////////
-/*Source::Model::Model() {
-  std::cout << "Model constructor run" << std::endl;
-  boost::property_tree::ptree pt;
-  boost::property_tree::json_parser::read_json("config.json", pt);
-  for ( auto &i : pt ) {
-    boost::property_tree::ptree props =  pt.get_child(i.first);
-    for (auto &pi : props) {
-      if (i.first.compare("syntax")) {  // checks the config-file
-        config_.InsertTag(pi.first, pi.second.get_value<std::string>());
-        //  std::cout << "inserting tag. " << pi.first << pi.second.get_value<std::string>() << std::endl;
-      }
-      if (i.first.compare("colors")) {  // checks the config-file
-        config_.InsertType(pi.first, pi.second.get_value<std::string>());
-        //   std::cout << "inserting type. " << pi.first << pi.second.get_value<std::string>() << std::endl;
-      }
-    }
-    }
-}*/
-
 Source::Model::Model(const Source::Config &config) :
   config_(config) {
 }
@@ -154,7 +137,7 @@ void Source::Model::SetFilePath(const string &filepath) {
 }
 
 void Source::Model::
-SetSourceLocations(const std::vector<Clang::SourceLocation> &locations) {
+SetSourceLocations(const std::vector<clang::SourceLocation> &locations) {
   locations_ = locations;
 }
 ////////////////////
@@ -170,13 +153,6 @@ Source::Controller::Controller(const Source::Config &config) :
     });
 }
 
-/*Source::Controller::Controller(){
-  //std::cout << "Controller constructor run" << std::endl;
- 
-  view().get_buffer()->signal_changed().connect([this](){
-      this->OnLineEdit();
-    });
-    }*/
 // Source::Controller::view()
 // return shared_ptr to the view
 Source::View& Source::Controller::view() {
@@ -200,16 +176,44 @@ void Source::Controller::OnNewEmptyFile() {
   s.save("");
 }
 
-void Source::Controller::OnOpenFile(const string &filename) {
-  sourcefile s(filename);
-  view().get_buffer()->set_text(s.get_content());
-  int linums = view().get_buffer()->end().get_line();
-  int offset = view().get_buffer()->end().get_line_offset();
-  Clang::TranslationUnit tu(filename.c_str(), linums, offset);
-  model().SetSourceLocations(tu.getSourceLocations());
-  view().OnOpenFile(model().getSourceLocations(), model().config());
+void Source::Controller::OnOpenFile(const string &filepath) {
+  sourcefile s(filepath);
+  buffer()->set_text(s.get_content());
+  int start_offset = buffer()->begin().get_offset();
+  int end_offset = buffer()->end().get_offset();
+
+  std::string project_path =
+    filepath.substr(0, filepath.find_last_of('/'));
+
+  clang::CompilationDatabase db(project_path);
+  clang::CompileCommands commands(filepath, &db);
+  std::vector<clang::CompileCommand> cmds = commands.get_commands();
+  std::vector<const char*> arguments;
+  for (auto &i : cmds) {
+    std::vector<std::string> lol = i.get_command_as_args();
+    for (int a = 1; a < lol.size()-4; a++) {
+      arguments.emplace_back(lol[a].c_str());
+    }
+  }
+  clang::TranslationUnit tu(true, filepath, arguments);
+  clang::SourceLocation start(&tu, filepath, start_offset);
+  clang::SourceLocation end(&tu, filepath, end_offset);
+  clang::SourceRange range(&start, &end);
+  clang::Tokens tokens(&tu, &range);
+  std::vector<clang::Token> tks = tokens.tokens();
+
+  for (auto &t : tks) {
+    clang::SourceLocation loc = t.get_source_location(&tu);
+    unsigned line;
+    unsigned column;
+    loc.get_location_info(NULL, &line, &column, NULL);
+  }
+
+  //  std::cout << t.elapsed().user << std::endl;
+  //  model().SetSourceLocations(tu.getSourceLocations());
+  //  view().OnOpenFile(model().getSourceLocations(), model().theme());
 }
 
-Glib::RefPtr<Gtk::TextBuffer> Source::Controller::buffer(){
+Glib::RefPtr<Gtk::TextBuffer> Source::Controller::buffer() {
   return view().get_buffer();
 }

@@ -1,11 +1,14 @@
-
+#include <thread> 
 #include "notebook.h"
+
+
 
 Notebook::Model::Model() {
   cc_extension_ = ".cc";
   h_extension_  = ".h";
-  scrollvalue_ = 20;
-}
+  scrollvalue_ = 50;
+};
+
 Notebook::View::View(){
   view_.pack_start(notebook_);  
 }
@@ -98,13 +101,6 @@ source_config_(source_cfg) {
 						[this]() {   
 						  Search(false); 
 						});
-
-  text_vec_.back()->view().
-    signal_scroll_event().connect(sigc::mem_fun(
-						this,
-						&Notebook::Controller::
-						scroll_event_callback));
-
   
   
 }//Constructor
@@ -120,19 +116,14 @@ bool Notebook::Controller::scroll_event_callback(GdkEventScroll* scroll_event) {
     get_vscrollbar()->get_adjustment();
   
   if ( direction_y != 0 ) {
+   
     int dir_val = direction_y==-1?-model_.scrollvalue_:+model_.scrollvalue_; 
     adj->set_value(adj->get_value()+dir_val);
     text_vec_.at(page)->view().set_vadjustment(adj);
     linenumbers_vec_.at(page)->view().set_vadjustment(adj);
   }
-  if ( direction_x != 0 ) {
-    int dir_val = direction_x==-1?-model_.scrollvalue_:+model_.scrollvalue_; 
-    adj->set_value(adj->get_value()+dir_val);
-    text_vec_.at(page)->view().set_hadjustment(adj);
-  }
   return true;
 }
-
 Notebook::Controller::~Controller() {
   for (auto &i : text_vec_) delete i;
   for (auto &i : linenumbers_vec_) delete i;
@@ -148,9 +139,9 @@ Gtk::Box& Notebook::Controller::entry_view() {
   return entry_.view();
 }
 
-
 void Notebook::Controller::OnNewPage(std::string name) {
   OnCreatePage();
+
   std::cout << "oppretta pages" << std::endl;
   text_vec_.back()->OnNewEmptyFile();
   Notebook().append_page(*editor_vec_.back(), name);
@@ -178,7 +169,7 @@ void Notebook::Controller::OnCreatePage(){
   editor_vec_.push_back(new Gtk::HBox());
   scrolledtext_vec_.back()->add(text_vec_.back()->view());
   scrolledline_vec_.back()->add(linenumbers_vec_.back()->view());
-  linenumbers_vec_.back()->view().get_buffer()->set_text("1 \n");
+  linenumbers_vec_.back()->view().get_buffer()->set_text("1 ");
   linenumbers_vec_.back()->view().override_color(Gdk::RGBA("Black"));
   linenumbers_vec_.back()->
     view().set_justification(Gtk::Justification::JUSTIFY_RIGHT);
@@ -187,6 +178,7 @@ void Notebook::Controller::OnCreatePage(){
   linenumbers_vec_.back()->view().set_sensitive(false);
   editor_vec_.back()->pack_start(*scrolledline_vec_.back(),false,false);
   editor_vec_.back()->pack_start(*scrolledtext_vec_.back(), true, true);
+ 
   BufferChangeHandler(text_vec_.back()->view().get_buffer());
 }
 
@@ -268,7 +260,7 @@ void Notebook::Controller::Search(bool forward){
 
   if ( !forward ) {
     if ( search_match_start_ == 0 ||
-       search_match_start_.get_line_offset() == 0) {
+	 search_match_start_.get_line_offset() == 0) {
       search_match_start_= Buffer(text_vec_.at(CurrentPage()))->end();
     }
     search_match_start_.
@@ -289,42 +281,35 @@ void Notebook::Controller::Search(bool forward){
 		     search_match_end_);
   }
 }
+
 void Notebook::Controller::OnBufferChange() {
-   int page =  CurrentPage();
-   int line_nr = Buffer(text_vec_.at(page))->get_line_count();
-
-   Glib::RefPtr
-     <Gtk::TextBuffer::Mark> mark = Gtk::TextBuffer::Mark::create();
-   Glib::RefPtr
-     <Gtk::TextBuffer::Mark> mark_lines = Gtk::TextBuffer::Mark::create();
-
-   if(Buffer(text_vec_.at(page))->get_insert()->get_iter().starts_line() &&
-      Buffer(text_vec_.at(page))->get_insert()->get_iter().get_line() ==
-      Buffer(text_vec_.at(page))->end().get_line()) {
-     std::string lines ="1 ";
-     for ( int it = 2; it <= line_nr; ++it ) {
-       lines.append("\n"+ std::to_string(it)+" ");
-     }
-     Buffer(linenumbers_vec_.at(page))->set_text(lines);
-     
-     Buffer(text_vec_.at(page))->
-       add_mark(
-		mark,
-		Buffer(text_vec_.at(page))->end());
-     Buffer(linenumbers_vec_.at(page))->
-       add_mark(
-		mark_lines,
-		Buffer(linenumbers_vec_.at(page))->end());
-
-     text_vec_.at(page)->view().scroll_to(mark); 
-     linenumbers_vec_.at(page)->view().scroll_to(mark_lines);
-   }else{
-     Buffer(text_vec_.at(page))->
-       add_mark(
-		mark,
-	        Buffer(text_vec_.at(page))->
-		get_insert()->get_iter());
-   }
+  int page =  CurrentPage();
+  int text_nr = Buffer(text_vec_.at(page))->get_line_count();
+  int line_nr =  Buffer(linenumbers_vec_.at(page))->get_line_count();
+  while (line_nr < text_nr ){
+    line_nr++;
+    Buffer(linenumbers_vec_.at(page))->
+      insert(Buffer(linenumbers_vec_.at(page))->end(),
+	     "\n"+std::to_string(line_nr)+" ");
+  }
+  while (line_nr > text_nr ){
+    Gtk::TextIter iter = Buffer(linenumbers_vec_.at(page))->get_iter_at_line(line_nr);
+    iter.backward_char();
+    line_nr--;
+    Buffer(linenumbers_vec_.at(page))->
+      erase(iter,
+	    Buffer(linenumbers_vec_.at(page))->end());
+  }
+  if(Buffer(text_vec_.at(page))->get_insert()->get_iter().starts_line() &&
+     Buffer(text_vec_.at(page))->get_insert()->get_iter().get_line() ==
+     Buffer(text_vec_.at(page))->end().get_line()) {
+      
+    GdkEventScroll* scroll = new GdkEventScroll;
+    scroll->delta_y = 1.0;
+    scroll->delta_x = 0.0;
+    scroll_event_callback(scroll);
+    delete scroll;
+  }
 }
 
 
@@ -351,7 +336,8 @@ Gtk::Notebook& Notebook::Controller::Notebook() {
 void Notebook::Controller::BufferChangeHandler(Glib::RefPtr<Gtk::TextBuffer>
 					       buffer) {
   buffer->signal_changed().connect(
-				   [this]() {   
-				     OnBufferChange(); 
+				   [this]() {
+				     OnBufferChange();
 				   });
 }
+
