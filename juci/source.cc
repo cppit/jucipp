@@ -4,6 +4,7 @@
 #include <boost/property_tree/json_parser.hpp>
 #include <fstream>
 #include <boost/timer/timer.hpp>
+#include <thread>
 
 #define DBGVAR( os, var )                                       \
   (os) << "DBG: " << __FILE__ << "(" << __LINE__ << ") "        \
@@ -31,15 +32,6 @@ Range(const Source::Range &org) :
 //////////////
 Source::View::View() {
   override_font(Pango::FontDescription("Monospace"));
-  DBGVAR(std::cout, "View Constructor");
-}
-// Source::View::UpdateLine
-// returns the new line
-string Source::View::UpdateLine() {
-  Gtk::TextIter line(get_buffer()->get_insert()->get_iter());
-  DBGVAR(std::cout, line.get_line());
-  DBGVAR(std::cout, line.get_line_offset());
-  return "";
 }
 
 string Source::View::GetLine(const Gtk::TextIter &begin) {
@@ -52,15 +44,18 @@ string Source::View::GetLine(const Gtk::TextIter &begin) {
 // Source::View::ApplyTheme()
 // Applies theme in textview
 void Source::View::ApplyConfig(const Source::Config &config) {
-  //  DBGVAR(std::cout, "Start of apply config");
-  for (auto &item : config.tagtable())
-    get_buffer()->create_tag(item.first)->property_foreground() = item.second;
-  std::cout << "End of apply config" << std::endl;
+  for (auto &item : config.tagtable()) {
+    if (get_buffer()->get_tag_table()->lookup(item.first) == 0)
+      get_buffer()->create_tag(item.first)->property_foreground() = item.second;
+  }
 }
 
-void Source::View::OnOpenFile(const std::vector<Source::Range> &ranges,
+void Source::View::OnUpdateSyntax(const std::vector<Source::Range> &ranges,
                               const Source::Config &config) {
+  get_buffer()->remove_all_tags(get_buffer()->begin(),
+                                get_buffer()->end());
   ApplyConfig(config);
+
   Glib::RefPtr<Gtk::TextBuffer> buffer = get_buffer();
   for (auto &range : ranges) {
     string type = std::to_string(range.kind());
@@ -79,32 +74,22 @@ void Source::View::OnOpenFile(const std::vector<Source::Range> &ranges,
     if (end < 0) end = 0;
     if (begin < 0) begin = 0;
 
-    std::cout << "Libc: ";
-    std::cout << "type: " << type;
-    std::cout << " linum_s: " << linum_start;
-    std::cout << " linum_e: " << linum_end;
-    std::cout << ", begin: " << begin << ", end: " << end  << std::endl;
-
     Gtk::TextIter begin_iter = buffer->get_iter_at_line_offset(linum_start,
                                                                begin);
     Gtk::TextIter end_iter  = buffer->get_iter_at_line_offset(linum_end, end);
-    std::cout << get_buffer()->get_text(begin_iter, end_iter) << std::endl;
     if (begin_iter.get_line() ==  end_iter.get_line()) {
       buffer->apply_tag_by_name(config.typetable().at(type),
                                 begin_iter, end_iter);
     }
   }
-  //  DBGVAR(std::cout, "End of OnOpenFile");
 }
 
 
 // Source::View::Config::Config(Config &config)
 // copy-constructor
 Source::Config::Config(const Source::Config &original) {
-  //  DBGVAR(std::cout, "Start of Config constructor");
   SetTagTable(original.tagtable());
   SetTypeTable(original.typetable());
-  //  DBGVAR(std::cout, "End of Config constructor");
 }
 
 Source::Config::Config() {}
@@ -151,59 +136,39 @@ Source::Model::Model(const Source::Config &config) :
 void Source::Model::
 initSyntaxHighlighting(const std::string &filepath,
                        const std::string &project_path,
+                       const std::string &text,
                        int start_offset,
                        int end_offset) {
-  //  DBGVAR(std::cout, "Start of initsntax");
   set_file_path(filepath);
   set_project_path(project_path);
   std::vector<const char*> arguments = get_compilation_commands();
-  clang::TranslationUnit tu(true, filepath, arguments);
-  //  DBGVAR(std::cout, &tu);
-  //  DBGVAR(std::cout, "Start of extract tokens");
-  //  DBGVAR(std::cout, file_path());
-  //  DBGVAR(std::cout, &tu);
-  clang::SourceLocation start(&tu, file_path(), start_offset);
-  //  DBGVAR(std::cout, "After start");
-  clang::SourceLocation end(&tu, file_path(), end_offset);
-  //  DBGVAR(std::cout, "After end");
-  clang::SourceRange range(&start, &end);
-  //  DBGVAR(std::cout, "After range");
-  clang::Tokens tokens(&tu, &range);
-
-  
-  
-  //  DBGVAR(std::cout, "After tokens");
-  std::vector<clang::Token> tks = tokens.tokens();
-  //  DBGVAR(std::cout, "After tokens tokens");
-  //  DBGVAR(std::cout, "before for loop");
-  for (auto &token : tks) {
-    //    std::cout << token.kind() << std::endl;
-    switch (token.kind()) {
-      // case 0: PunctuationToken(&token); break;  // A tkn with punctation
-      // case 1: KeywordToken(&token); break;  // A language keyword.
-      // case 2: IdentifierToken(&token); break;  // An identifier, not a keyword
-      // case 3: LiteralToken(&token); break;  // A num, string, or char literal
-    case 4:
-      //  std::cout << "Comment token" << std::endl;
-      clang::SourceRange range = token.get_source_range(&tu);
-      //  DBGVAR(std::cout, "etter range");
-      unsigned begin_line_num, begin_offset, end_line_num, end_offset;
-      clang::SourceLocation begin(&range, true);
-      clang::SourceLocation end(&range, false);
-      //  DBGVAR(std::cout, "Herre krasje etter begin");
-      begin.get_location_info(NULL, &begin_line_num, &begin_offset, NULL);
-      //  DBGVAR(std::cout, "etter utpressing av begin");
-      end.get_location_info(NULL, &end_line_num, &end_offset, NULL);
-      //  DBGVAR(std::cout, "etter utpressing av end");
-      source_ranges_.emplace_back(Source::Location(begin_line_num, begin_offset),
-                                  Source::Location(end_line_num, end_offset), 705);
-      std::string k = token.get_token_spelling(&tu);
-      break;  // A comment.
-    }
-  }
-  //  DBGVAR(std::cout, "End of extract tokens");
+  tu_ = clang::TranslationUnit(true,
+                               filepath,
+                               arguments,
+                               text);
   extractTokens(start_offset, end_offset);
-  //  DBGVAR(std::cout, "End of of initsntax");
+}
+
+// Source::View::UpdateLine
+void Source::View::OnLineEdit(const std::vector<Source::Range> &locations,
+                              const Source::Config &config) {
+  OnUpdateSyntax(locations, config);
+}
+
+// Source::Model::UpdateLine
+void Source::Model::OnLineEdit(const std::string &buffer) {
+  int i = tu_.ReparseTranslationUnit(file_path(), buffer);
+  set_ranges(std::vector<Source::Range>());
+  extractTokens(0, buffer.size());
+}
+
+
+// Source::Controller::OnLineEdit()
+// fired when a line in the buffer is edited
+void Source::Controller::OnLineEdit() {
+  model().OnLineEdit(buffer()->get_text());
+  view().OnLineEdit(model().source_ranges(),
+                    model().config());
 }
 
 // sets the filepath for this mvc
@@ -240,7 +205,6 @@ const Source::Config& Source::Model::config() const {
 
 std::vector<const char*> Source::Model::
 get_compilation_commands() {
-  //  DBGVAR(std::cout, "Start of get compilation commands");
   clang::CompilationDatabase db(project_path()+"/");
   clang::CompileCommands commands(file_path(), &db);
   std::vector<clang::CompileCommand> cmds = commands.get_commands();
@@ -251,32 +215,58 @@ get_compilation_commands() {
       arguments.emplace_back(lol[a].c_str());
     }
   }
-  //  DBGVAR(std::cout, "End of get compilation commands");
   return arguments;
 }
 
 void Source::Model::
 extractTokens(int start_offset, int end_offset) {
- 
+  clang::SourceLocation start(&tu_, file_path(), start_offset);
+  clang::SourceLocation end(&tu_, file_path(), end_offset);
+  clang::SourceRange range(&start, &end);
+  clang::Tokens tokens(&tu_, &range);
+  std::vector<clang::Token> tks = tokens.tokens();
+  for (auto &token : tks) {
+    switch (token.kind()) {
+    case 0: PunctuationToken(&token); break;   // A tkn with punctation
+    case 1: KeywordToken(&token); break;   // A language keyword.
+    case 2: IdentifierToken(&token); break;  // An identifier, not a keyword
+    case 3: LiteralToken(&token); break;  // A num, string, or char literal
+    case 4: CommentToken(&token); break;  // A comment token
+    }
+  }
 }
 
 void Source::Model::LiteralToken(clang::Token *token) {
-  std::cout << "Literal token" << std::endl;
+  HighlightToken(token, 109);;
 }
 
 void Source::Model::CommentToken(clang::Token *token) {
+  HighlightToken(token, 705);
 }
 
 void Source::Model::IdentifierToken(clang::Token *token) {
-  std::cout << "Identifyer token" << std::endl;
+  
 }
 
 void Source::Model::KeywordToken(clang::Token *token) {
-  std::cout << "Keyword token" << std::endl;
+  HighlightToken(token, 702);;
 }
 
 void Source::Model::PunctuationToken(clang::Token *token) {
-  std::cout << "Punctuation token" << std::endl;
+}
+
+
+void Source::Model::HighlightToken(clang::Token *token, int token_kind) {
+  clang::SourceRange range = token->get_source_range(&tu_);
+  unsigned begin_line_num, begin_offset, end_line_num, end_offset;
+  clang::SourceLocation begin(&range, true);
+  clang::SourceLocation end(&range, false);
+  begin.get_location_info(NULL, &begin_line_num, &begin_offset, NULL);
+  end.get_location_info(NULL, &end_line_num, &end_offset, NULL);
+  source_ranges_.emplace_back(Source::Location(begin_line_num,
+                                               begin_offset),
+                              Source::Location(end_line_num,
+                                               end_offset), token_kind);
 }
 
 ////////////////////
@@ -287,10 +277,8 @@ void Source::Model::PunctuationToken(clang::Token *token) {
 // Constructor for Controller
 Source::Controller::Controller(const Source::Config &config) :
   model_(config) {
-  view().get_buffer()->signal_changed().connect([this](){
-      this->OnLineEdit();
-    });
 }
+
 
 // Source::Controller::view()
 // return shared_ptr to the view
@@ -301,11 +289,6 @@ Source::View& Source::Controller::view() {
 // return shared_ptr to the model()
 Source::Model& Source::Controller::model() {
   return model_;
-}
-// Source::Controller::OnLineEdit()
-// fired when a line in the buffer is edited
-void Source::Controller::OnLineEdit() {
-  view().UpdateLine();
 }
 
 void Source::Controller::OnNewEmptyFile() {
@@ -320,16 +303,38 @@ string extract_file_path(const std::string &file_path) {
   return file_path.substr(0, file_path.find_last_of('/'));
 }
 
+std::vector<std::string> extentions() {
+  return {".h", ".cc", ".cpp", ".hpp"};
+}
+
+bool check_extention(const std::string &file_path) {
+  std::string extention = file_path.substr(file_path.find_last_of('.'),
+                                           file_path.size());
+  for (auto &ex : extentions()) {
+    if (extention == ex) {
+      return true;
+    }
+  }
+  return false;
+}
+
 void Source::Controller::OnOpenFile(const string &filepath) {
   sourcefile s(filepath);
   buffer()->set_text(s.get_content());
   int start_offset = buffer()->begin().get_offset();
   int end_offset = buffer()->end().get_offset();
-  model().initSyntaxHighlighting(filepath,
-                                 extract_file_path(filepath),
-                                 start_offset,
-                                 end_offset);
-  view().OnOpenFile(model().source_ranges(), model().config());
+
+  if (check_extention(filepath)) {
+    model().initSyntaxHighlighting(filepath,
+                                   extract_file_path(filepath),
+                                   buffer()->get_text(),
+                                   start_offset,
+                                   end_offset);
+    view().OnUpdateSyntax(model().source_ranges(), model().config());
+  }
+  view().get_buffer()->signal_changed().connect([this]() {
+            OnLineEdit();
+    });
 }
 
 Glib::RefPtr<Gtk::TextBuffer> Source::Controller::buffer() {

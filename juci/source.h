@@ -55,9 +55,11 @@ namespace Source {
   class View : public Gtk::TextView {
   public:
     View();
-    string UpdateLine();
+    
     void ApplyConfig(const Config &config);
-    void OnOpenFile(const std::vector<Range> &locations,
+    void OnLineEdit(const std::vector<Range> &locations,
+                    const Config &config);
+    void OnUpdateSyntax(const std::vector<Range> &locations,
                     const Config &config);
   private:
     string GetLine(const Gtk::TextIter &begin);
@@ -70,6 +72,7 @@ namespace Source {
     // inits the syntax highligthing on file open
     void initSyntaxHighlighting(const std::string &filepath,
                            const std::string &project_path,
+                                const std::string &text,
                            int start_offset,
                            int end_offset);
     // sets the filepath for this mvc
@@ -87,11 +90,11 @@ namespace Source {
     const std::vector<Range>& source_ranges() const;
     // gets the config member
     const Config& config() const;
-    ~Model() {
-      std::cout << "SNOUTHN" << std::endl;
-    }
+    ~Model() { }
+    void OnLineEdit(const std::string &buffer);
+
   private:
-    Source::Config config_;
+    Config config_;
     string file_path_;
     string project_path_;
     std::vector<Range> source_ranges_;
@@ -102,6 +105,7 @@ namespace Source {
     void IdentifierToken(clang::Token *token);
     void KeywordToken(clang::Token *token);
     void PunctuationToken(clang::Token *token);
+    void HighlightToken(clang::Token *token, int token_kind);
     std::vector<const char*> get_compilation_commands();
   };
 
