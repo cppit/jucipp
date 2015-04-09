@@ -9,7 +9,6 @@ Window::Window() :
   set_title("juCi++");
   set_default_size(600, 400);
   add(window_box_);
-  
   keybindings_.action_group_menu()->add(Gtk::Action::create("FileQuit",
 							    Gtk::Stock::QUIT),
 					[this]() {
@@ -20,6 +19,17 @@ Window::Window() :
 					[this]() {
 					  OnOpenFile();
 					});
+  keybindings_.action_group_menu()->add(Gtk::Action::create("FileOpenFolder",
+                                                           "Open folder"),
+                                       Gtk::AccelKey(keybindings_.config_
+						     .key_map()["open_folder"]),
+                                       [this]() {
+                                         OnFileOpenFolder();
+                                       });
+
+  notebook_.directories().m_TreeView.signal_row_activated()
+    .connect(sigc::mem_fun(*this,
+                           &Window::OnDirectoryNavigation));
   PluginApi::menu_ = &menu_;
   PluginApi::notebook_ = &notebook_;
   PluginApi::InitPlugins();
@@ -31,13 +41,67 @@ Window::Window() :
   window_box_.pack_start(menu_.view(), Gtk::PACK_SHRINK);
   window_box_.pack_start(notebook_.entry_view(), Gtk::PACK_SHRINK);
   window_box_.pack_start(notebook_.view());
+
   show_all_children();
   } // Window constructor
 
 void Window::OnWindowHide() {
   hide();
 }
+void Window::OnFileOpenFolder() {
+  Gtk::FileChooserDialog dialog("Please choose a folder",
+          Gtk::FILE_CHOOSER_ACTION_SELECT_FOLDER);
+  
+  dialog.set_transient_for(*this);
+  //Add response buttons the the dialog:
+  dialog.add_button("_Cancel", Gtk::RESPONSE_CANCEL);
+  dialog.add_button("Select", Gtk::RESPONSE_OK);
 
+  int result = dialog.run();
+
+  //Handle the response:
+  switch(result)
+  {
+    case(Gtk::RESPONSE_OK):
+    {
+      std::cout << "Folder selected: " << dialog.get_filename()
+          << std::endl;
+      notebook_.directories().open_folder(dialog.get_filename());
+      break;
+    }
+    case(Gtk::RESPONSE_CANCEL):
+    {
+      std::cout << "Cancel clicked." << std::endl;
+      break;
+    }
+    default:
+    {
+      std::cout << "Unexpected button clicked." << std::endl;
+      break;
+    }
+  }
+}
+
+void Window::OnDirectoryNavigation(const Gtk::TreeModel::Path& path,
+                                   Gtk::TreeViewColumn* column) {
+  Gtk::TreeModel::iterator iter = notebook_.directories().m_refTreeModel->get_iter(path);
+  if(iter) {
+    Gtk::TreeModel::Row row = *iter;
+    boost::filesystem::path fs_path(Glib::ustring(row[notebook_.directories().view().m_col_path]));
+    if(boost::filesystem::is_directory(fs_path)) {
+      std::cout << "Expand folder: " << row[notebook_.directories().view().m_col_path] << std::endl;
+      notebook_.directories().m_TreeView.row_expanded(path) ?
+        notebook_.directories().m_TreeView.collapse_row(path) :
+        notebook_.directories().m_TreeView.expand_row(path, false);
+    } else {
+      std::stringstream sstm;
+      sstm << row[notebook_.directories().view().m_col_path];
+      std::string file = sstm.str();
+      std::cout << "open file: "<< row[notebook_.directories().view().m_col_path]  << std::endl;
+      notebook_.OnOpenFile(file);
+    }
+  }
+}
 void Window::OnOpenFile() {
   Gtk::FileChooserDialog dialog("Please choose a file",
             Gtk::FILE_CHOOSER_ACTION_OPEN);

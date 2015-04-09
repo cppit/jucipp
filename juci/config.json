@@ -22,7 +22,8 @@
 	"split_window": "<control><alt>s",
 	"new_h_file": "<control><alt>h",
 	"new_cc_file": "<alt>c",
-	"close_tab": "<control>w"
+	"close_tab": "<control>w",
+        "open_folder": "<control><alt>o"
     },
     "example": {
 	"key": "value",

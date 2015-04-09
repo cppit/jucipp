@@ -52,7 +52,7 @@ endif()
 #Boost_INCLUDE_DIRS     - Boost include directories
 #Boost_LIBRARY_DIRS     - Link directories for Boost libraries
 #Boost_LIBRARIES        - Boost component libraries to be linked
-find_package(Boost 1.5 REQUIRED COMPONENTS python timer system)
+find_package(Boost 1.5 REQUIRED COMPONENTS python timer system filesystem)
 
 #If boost is not found
 if(${Boost_FOUND}) 
@@ -104,6 +104,8 @@ add_executable(${project_name}
   notebook.h
   entry.h
   entry.cc
+  directories.h
+  directories.cc
   )
 
 add_library(${module} SHARED

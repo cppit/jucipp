@@ -5,6 +5,7 @@
 #include "gtkmm.h"
 #include "entry.h"
 #include "source.h"
+#include "directories.h"
 
 namespace Notebook {
   class Model {
@@ -17,10 +18,10 @@ namespace Notebook {
   class View {
   public:
     View();
-    Gtk::HBox& view() {return view_;}
+    Gtk::Paned& view() {return view_;}
     Gtk::Notebook& notebook() {return notebook_; }
   protected:
-    Gtk::HBox view_;
+    Gtk::Paned view_;
     Gtk::Notebook notebook_;
   };
   class Controller {
@@ -44,18 +45,21 @@ namespace Notebook {
     void OnFileNewCCFile();
     void OnFileNewEmptyfile();
     void OnFileNewHeaderFile();
+    void OnFileOpenFolder();
     void OnNewPage(std::string name);
     void OnOpenFile(std::string filename);
     void OnCreatePage();
     bool scroll_event_callback(GdkEventScroll* scroll_event);
     int Pages();
-    Gtk::HBox& view();
+    Directories::Controller& directories() { return directories_; } 
+    Gtk::Paned& view();
     void Search(bool forward);
     const Source::Config& source_config() { return source_config_; }
   protected:
     void BufferChangeHandler(Glib::RefPtr<Gtk::TextBuffer> buffer);
   private:
     Source::Config source_config_;
+    Directories::Controller directories_;
     View view_;
     Model model_;
     bool is_new_file_;

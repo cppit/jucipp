@@ -10,7 +10,8 @@ Notebook::Model::Model() {
 };
 
 Notebook::View::View(){
-  view_.pack_start(notebook_);  
+  view_.pack2(notebook_);
+  view_.set_position(120);
 }
 
 Notebook::Controller::Controller(Keybindings::Controller& keybindings,
@@ -20,6 +21,7 @@ source_config_(source_cfg) {
   refClipboard_ = Gtk::Clipboard::get();
   keybindings.action_group_menu()->add(Gtk::Action::create("FileMenu",
                                                            Gtk::Stock::FILE));
+  view_.view().pack1(directories_.widget(), true, true);
   /* File->New files */
 
   keybindings.action_group_menu()->add(Gtk::Action::create("FileNewStandard",
@@ -46,6 +48,7 @@ source_config_(source_cfg) {
 					 is_new_file_ = true;
                                          OnFileNewHeaderFile();
                                        });
+ 
   keybindings.action_group_menu()->add(Gtk::Action::create("WindowCloseTab",
                                                            "Close tab"),
                                        Gtk::AccelKey(keybindings.config_
@@ -132,7 +135,7 @@ Notebook::Controller::~Controller() {
   for (auto &i : scrolledline_vec_) delete i;
 }
 
-Gtk::HBox& Notebook::Controller::view() {
+Gtk::Paned& Notebook::Controller::view() {
   return view_.view();
 }
 Gtk::Box& Notebook::Controller::entry_view() {
@@ -156,7 +159,9 @@ void Notebook::Controller::OnOpenFile(std::string path) {
   unsigned pos = path.find_last_of("/\\");
   Notebook().append_page(*editor_vec_.back(), path.substr(pos+1));
   Notebook().show_all_children();
+  std::cout << "setting current page"<< std::endl;
   Notebook().set_current_page(Pages()-1);
+  std::cout << "current page set" << std::endl;
   Notebook().set_focus_child(text_vec_.back()->view());
   OnBufferChange();
 }
@@ -178,7 +183,6 @@ void Notebook::Controller::OnCreatePage(){
   linenumbers_vec_.back()->view().set_sensitive(false);
   editor_vec_.back()->pack_start(*scrolledline_vec_.back(),false,false);
   editor_vec_.back()->pack_start(*scrolledtext_vec_.back(), true, true);
- 
   BufferChangeHandler(text_vec_.back()->view().get_buffer());
 }
 
