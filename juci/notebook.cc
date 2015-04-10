@@ -318,7 +318,8 @@ void Notebook::Controller::OnBufferChange() {
     delete scroll;
   }
 }
-void Notebook::Controller::OnDirectoryNavigation(const Gtk::TreeModel::Path& path,
+void Notebook::Controller
+::OnDirectoryNavigation(const Gtk::TreeModel::Path& path,
                                                  Gtk::TreeViewColumn* column) {
   Gtk::TreeModel::iterator iter = directories().m_refTreeModel->get_iter(path);
   if(iter) {
@@ -326,7 +327,6 @@ void Notebook::Controller::OnDirectoryNavigation(const Gtk::TreeModel::Path& pat
     boost::filesystem::path fs_path(Glib::ustring(row[directories()
                                                       .view().m_col_path]));
     if (boost::filesystem::is_directory(fs_path)) {
-      std::cout << "Expand folder: " << row[directories().view().m_col_path] << std::endl;
       directories().m_TreeView.row_expanded(path) ?
         directories().m_TreeView.collapse_row(path) :
         directories().m_TreeView.expand_row(path, false);
@@ -334,7 +334,6 @@ void Notebook::Controller::OnDirectoryNavigation(const Gtk::TreeModel::Path& pat
       std::stringstream sstm;
       sstm << row[directories().view().m_col_path];
       std::string file = sstm.str();
-      std::cout << "open file: "<< row[directories().view().m_col_path]  << std::endl;
       OnOpenFile(file);
     }
   }

@@ -1,5 +1,5 @@
-#ifndef JUCI_DIRECTIRIES_H_
-#define JUCI_DIRECTIRIES_H_
+#ifndef JUCI_DIRECTORIES_H_
+#define JUCI_DIRECTORIES_H_
 
 #include <gtkmm.h>
 #include <glib.h>
@@ -23,35 +23,30 @@ namespace Directories {
   class Model {
   };
   class Controller {
-
   public:
     Controller();
-    View& view() { return view_;};
-    Model& model() { return model_;};
+    View& view() { return view_;}
+    Model& model() { return model_;}
 
-    Gtk::ScrolledWindow& widget() {return m_ScrolledWindow;};
-    bool open_folder( const boost::filesystem::path& dir_path);
-    bool list_dirs( const boost::filesystem::path& dir_path,
+    Gtk::ScrolledWindow& widget() {return m_ScrolledWindow;}
+    bool open_folder (const boost::filesystem::path& dir_path);
+    void list_dirs (const boost::filesystem::path& dir_path,
                     Gtk::TreeModel::Row &row, unsigned depth);
     std::string get_project_name(const boost::filesystem::path& dir_path);
-    int count( const std::string path);
+    int count (const std::string path);
 
     //Child widgets:
     Gtk::Box m_VBox;
-  
     Gtk::ScrolledWindow m_ScrolledWindow;
     Gtk::TreeView m_TreeView;
     Glib::RefPtr<Gtk::TreeStore> m_refTreeModel;
-
-    
   private:
     View view_;
     Model model_;
-
   protected:
-     void on_treeview_row_activated(const Gtk::TreeModel::Path& path,
-                                 Gtk::TreeViewColumn* column);
+    void on_treeview_row_activated(const Gtk::TreeModel::Path& path,
+                                   Gtk::TreeViewColumn* column);
   };
-}
+}  // namespace Directories
 
-#endif  // JUCI_DIRECTIRIES_H_
+#endif  // JUCI_DIRECTORIES_H_
