@@ -104,6 +104,9 @@ source_config_(source_cfg) {
 						[this]() {   
 						  Search(false); 
 						});
+  directories().m_TreeView.signal_row_activated()
+    .connect(sigc::mem_fun(*this,
+                           &Notebook::Controller::OnDirectoryNavigation));
   
   
 }//Constructor
@@ -315,7 +318,27 @@ void Notebook::Controller::OnBufferChange() {
     delete scroll;
   }
 }
-
+void Notebook::Controller::OnDirectoryNavigation(const Gtk::TreeModel::Path& path,
+                                                 Gtk::TreeViewColumn* column) {
+  Gtk::TreeModel::iterator iter = directories().m_refTreeModel->get_iter(path);
+  if(iter) {
+    Gtk::TreeModel::Row row = *iter;
+    boost::filesystem::path fs_path(Glib::ustring(row[directories()
+                                                      .view().m_col_path]));
+    if (boost::filesystem::is_directory(fs_path)) {
+      std::cout << "Expand folder: " << row[directories().view().m_col_path] << std::endl;
+      directories().m_TreeView.row_expanded(path) ?
+        directories().m_TreeView.collapse_row(path) :
+        directories().m_TreeView.expand_row(path, false);
+    } else {
+      std::stringstream sstm;
+      sstm << row[directories().view().m_col_path];
+      std::string file = sstm.str();
+      std::cout << "open file: "<< row[directories().view().m_col_path]  << std::endl;
+      OnOpenFile(file);
+    }
+  }
+}
 
 Gtk::TextView&  Notebook::Controller::CurrentTextView() {
   return text_vec_.at(CurrentPage())->view();

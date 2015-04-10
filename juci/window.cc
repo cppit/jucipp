@@ -26,10 +26,6 @@ Window::Window() :
                                        [this]() {
                                          OnFileOpenFolder();
                                        });
-
-  notebook_.directories().m_TreeView.signal_row_activated()
-    .connect(sigc::mem_fun(*this,
-                           &Window::OnDirectoryNavigation));
   PluginApi::menu_ = &menu_;
   PluginApi::notebook_ = &notebook_;
   PluginApi::InitPlugins();
@@ -82,26 +78,7 @@ void Window::OnFileOpenFolder() {
   }
 }
 
-void Window::OnDirectoryNavigation(const Gtk::TreeModel::Path& path,
-                                   Gtk::TreeViewColumn* column) {
-  Gtk::TreeModel::iterator iter = notebook_.directories().m_refTreeModel->get_iter(path);
-  if(iter) {
-    Gtk::TreeModel::Row row = *iter;
-    boost::filesystem::path fs_path(Glib::ustring(row[notebook_.directories().view().m_col_path]));
-    if(boost::filesystem::is_directory(fs_path)) {
-      std::cout << "Expand folder: " << row[notebook_.directories().view().m_col_path] << std::endl;
-      notebook_.directories().m_TreeView.row_expanded(path) ?
-        notebook_.directories().m_TreeView.collapse_row(path) :
-        notebook_.directories().m_TreeView.expand_row(path, false);
-    } else {
-      std::stringstream sstm;
-      sstm << row[notebook_.directories().view().m_col_path];
-      std::string file = sstm.str();
-      std::cout << "open file: "<< row[notebook_.directories().view().m_col_path]  << std::endl;
-      notebook_.OnOpenFile(file);
-    }
-  }
-}
+
 void Window::OnOpenFile() {
   Gtk::FileChooserDialog dialog("Please choose a file",
             Gtk::FILE_CHOOSER_ACTION_OPEN);

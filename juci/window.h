@@ -29,8 +29,7 @@ public:
   void OnWindowHide();
   void OnOpenFile();
   void OnFileOpenFolder();
-  void OnDirectoryNavigation(const Gtk::TreeModel::Path& path,
-                                   Gtk::TreeViewColumn* column);
+  
 };
 
 #endif  // JUCI_WINDOW_H
