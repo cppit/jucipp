@@ -4,12 +4,11 @@ Window::Window() :
   window_box_(Gtk::ORIENTATION_VERTICAL),
   main_config_(),
   keybindings_(main_config_.keybindings_cfg()),
-  notebook_(keybindings(), main_config_.source_cfg()),
+  notebook_(keybindings(), main_config_.source_cfg(), main_config_.dir_cfg()),
   menu_(keybindings()) {
   set_title("juCi++");
   set_default_size(600, 400);
   add(window_box_);
-  
   keybindings_.action_group_menu()->add(Gtk::Action::create("FileQuit",
 							    Gtk::Stock::QUIT),
 					[this]() {
@@ -20,6 +19,13 @@ Window::Window() :
 					[this]() {
 					  OnOpenFile();
 					});
+  keybindings_.action_group_menu()->add(Gtk::Action::create("FileOpenFolder",
+                                                           "Open folder"),
+                                       Gtk::AccelKey(keybindings_.config_
+						     .key_map()["open_folder"]),
+                                       [this]() {
+                                         OnFileOpenFolder();
+                                       });
   PluginApi::menu_ = &menu_;
   PluginApi::notebook_ = &notebook_;
   PluginApi::InitPlugins();
@@ -37,6 +43,40 @@ Window::Window() :
 void Window::OnWindowHide() {
   hide();
 }
+void Window::OnFileOpenFolder() {
+  Gtk::FileChooserDialog dialog("Please choose a folder",
+          Gtk::FILE_CHOOSER_ACTION_SELECT_FOLDER);
+  
+  dialog.set_transient_for(*this);
+  //Add response buttons the the dialog:
+  dialog.add_button("_Cancel", Gtk::RESPONSE_CANCEL);
+  dialog.add_button("Select", Gtk::RESPONSE_OK);
+
+  int result = dialog.run();
+
+  //Handle the response:
+  switch(result)
+  {
+    case(Gtk::RESPONSE_OK):
+    {
+      std::cout << "Folder selected: " << dialog.get_filename()
+          << std::endl;
+      notebook_.directories().open_folder(dialog.get_filename());
+      break;
+    }
+    case(Gtk::RESPONSE_CANCEL):
+    {
+      std::cout << "Cancel clicked." << std::endl;
+      break;
+    }
+    default:
+    {
+      std::cout << "Unexpected button clicked." << std::endl;
+      break;
+    }
+  }
+}
+
 
 void Window::OnOpenFile() {
   Gtk::FileChooserDialog dialog("Please choose a file",

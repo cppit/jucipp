@@ -1,14 +1,14 @@
 #include "config.h"
 
-
 MainConfig::MainConfig() :
-keybindings_cfg_(), source_cfg_() {
+  keybindings_cfg_(), source_cfg_() {
   boost::property_tree::json_parser::read_json("config.json", cfg_);
   GenerateSource();
   GenerateKeybindings();
-    //    keybindings_cfg_ = cfg_.get_child("keybindings");
-    //    notebook_cfg_ = cfg_.get_child("notebook");
-    //    menu_cfg_ = cfg_.get_child("menu");
+  GenerateDirectoryFilter();
+  //    keybindings_cfg_ = cfg_.get_child("keybindings");
+  //    notebook_cfg_ = cfg_.get_child("notebook");
+  //    menu_cfg_ = cfg_.get_child("menu");
 }
 
 void MainConfig::GenerateSource() {
@@ -37,9 +37,15 @@ void MainConfig::GenerateKeybindings() {
   for (auto &i : keys_json)
     keybindings_cfg_.key_map()[i.first] = i.second.get_value<std::string>();
 }
-Keybindings::Config& MainConfig::keybindings_cfg() {
-  return keybindings_cfg_;
+
+void MainConfig::GenerateDirectoryFilter() {
+  boost::property_tree::ptree dir_json = cfg_.get_child("directoryfilter");
+  boost::property_tree::ptree ignore_json = dir_json.get_child("ignore");
+  boost::property_tree::ptree except_json = dir_json.get_child("exceptions");
+  for ( auto &i : except_json )   
+    dir_cfg_.AddException(i.second.get_value<std::string>());
+  for ( auto &i : ignore_json ) 
+    dir_cfg_.AddIgnore(i.second.get_value<std::string>());
 }
-Source::Config& MainConfig::source_cfg() {
-  return source_cfg_;
-}
+
+

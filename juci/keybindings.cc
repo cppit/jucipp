@@ -50,8 +50,7 @@ Keybindings::Config::Config(Keybindings::Config &original) {
 
 Keybindings::Config::Config() {
   menu_xml_ = "";
-  std::unordered_map<std::string, std::string> key_map();
-}
+  }
 
 void Keybindings::Config::AppendXml(std::string &child) {
   menu_xml_ += child;

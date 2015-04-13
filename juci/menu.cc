@@ -16,12 +16,6 @@ Menu::Controller::Controller(Keybindings::Controller& keybindings) :
   keybindings_(keybindings) {
   keybindings_.action_group_menu()->add(Gtk::Action::create("FileNew",
                                                             Gtk::Stock::FILE));
-
-  keybindings_.action_group_menu()->add(Gtk::Action::create("FileOpenFolder",
-                                                            "Open folder"),
-                                        [this]() {
-                                          OnFileOpenFolder();
-                                        });
   keybindings_.action_group_menu()->add(Gtk::Action::create("EditMenu",
                                                             Gtk::Stock::EDIT));
   keybindings_.action_group_menu()->add(Gtk::Action::create("WindowMenu",
@@ -60,10 +54,6 @@ void Menu::Controller::OnPluginAddSnippet() {
 }
 void Menu::Controller::OnFileOpenFile() {
   std::cout << "Open file clicked" << std::endl;
-  //TODO(Oyvang) Legg til funksjon
-}
-void Menu::Controller::OnFileOpenFolder() {
-  std::cout << "Open folder clicked" << std::endl;
   //TODO(Oyvang) Legg til funksjon
 }
 void Menu::Controller::OnEditCut() {
