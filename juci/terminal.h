@@ -10,15 +10,16 @@ namespace Terminal {
   class View {
   public:
     View();   
-    //Gtk::HBox view() {return view_;}
+    Gtk::HBox& view() {return view_;}
   private:
     Gtk::HBox view_;
-    Gtk::TextBuffer buffer_;
+    Glib::RefPtr<Gtk::TextBuffer> buffer_;
     Gtk::TextView textview_;
   };  // class view
   
   class Controller {
   public:
+    
 
 
   };  // class controller
