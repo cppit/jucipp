@@ -106,6 +106,8 @@ add_executable(${project_name}
   entry.cc
   directories.h
   directories.cc
+  terminal.h
+  terminal.cc
   )
 
 add_library(${module} SHARED

@@ -18,7 +18,9 @@ Notebook::Controller::Controller(Keybindings::Controller& keybindings,
   directories_(dir_cfg) { 
   OnNewPage("juCi++");
   refClipboard_ = Gtk::Clipboard::get();
+  view().pack1(directories_.widget(),true,true);
   CreateKeybindings(keybindings);
+ 
 }//  Constructor
 
 void Notebook::Controller::CreateKeybindings(Keybindings::Controller

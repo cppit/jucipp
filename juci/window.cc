@@ -37,7 +37,6 @@ Window::Window() :
   window_box_.pack_start(menu_.view(), Gtk::PACK_SHRINK);
   window_box_.pack_start(notebook_.entry_view(), Gtk::PACK_SHRINK);
   window_box_.pack_start(notebook_.view());
-
   show_all_children();
   } // Window constructor
 

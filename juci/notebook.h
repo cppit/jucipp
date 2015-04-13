@@ -8,10 +8,10 @@
 
 #include "directories.h"
 
- // #include <boost/algorithm/string/case_conv.hpp>
+  #include <boost/algorithm/string/case_conv.hpp>
 
- // #include <type_traits>
- // #include <sigc++/sigc++.h>
+  #include <type_traits>
+  #include <sigc++/sigc++.h>
 
 
 namespace Notebook {
