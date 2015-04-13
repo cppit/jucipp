@@ -1,7 +1,4 @@
-#include <thread> 
 #include "notebook.h"
-
-
 
 Notebook::Model::Model() {
   cc_extension_ = ".cc";
@@ -16,103 +13,172 @@ Notebook::View::View(){
 
 Notebook::Controller::Controller(Keybindings::Controller& keybindings,
 				 Source::Config& source_cfg) :
-source_config_(source_cfg) { 
+  source_config_(source_cfg) { 
   OnNewPage("juCi++");
   refClipboard_ = Gtk::Clipboard::get();
-  keybindings.action_group_menu()->add(Gtk::Action::create("FileMenu",
-                                                           Gtk::Stock::FILE));
-  view_.view().pack1(directories_.widget(), true, true);
-  /* File->New files */
+  CreateKeybindings(keybindings);
+}//  Constructor
 
-  keybindings.action_group_menu()->add(Gtk::Action::create("FileNewStandard",
-                                                           Gtk::Stock::NEW,
-                                                           "New empty file",
-                                                           "Create a new file"),
-                                       [this]() {
-					 is_new_file_ = true;
-                                         OnFileNewEmptyfile();
-                                       });
-  keybindings.action_group_menu()->add(Gtk::Action::create("FileNewCC",
-                                                           "New cc file"),
-                                       Gtk::AccelKey(keybindings.config_
-						     .key_map()["new_cc_file"]),
-                                       [this]() {
-					 is_new_file_ = true;
-                                         OnFileNewCCFile();
-                                       });
-  keybindings.action_group_menu()->add(Gtk::Action::create("FileNewH",
-                                                           "New h file"),
-                                       Gtk::AccelKey(keybindings.config_
-						     .key_map()["new_h_file"]),
-                                       [this]() {
-					 is_new_file_ = true;
-                                         OnFileNewHeaderFile();
-                                       });
- 
-  keybindings.action_group_menu()->add(Gtk::Action::create("WindowCloseTab",
-                                                           "Close tab"),
-                                       Gtk::AccelKey(keybindings.config_
-						     .key_map()["close_tab"]),
-                                       [this]() {
-                                         OnCloseCurrentPage();
-                                       });
-  keybindings.action_group_menu()->add(Gtk::Action::create("EditFind",
-                                                           Gtk::Stock::FIND),
-                                       [this]() {
-					 is_new_file_ = false;
-					 OnEditSearch();
-		       //TODO(Oyvang, Zalox, Forgi)Create function OnEditFind();
-                                       });
-  keybindings.action_group_menu()->add(Gtk::Action::create("EditCopy",
-                                                           Gtk::Stock::COPY),  
-                                       [this]() {
-                                         OnEditCopy();
-                                       });
-  keybindings.action_group_menu()->add(Gtk::Action::create("EditCut",
-                                                           Gtk::Stock::CUT),
-                                       [this]() {
-                                         OnEditCut();
-                                       });
-  keybindings.action_group_menu()->add(Gtk::Action::create("EditPaste",
-                                                           Gtk::Stock::PASTE),
-                                       [this]() {
-                                         OnEditPaste();
-                                       });
-  entry_.view_.entry().signal_activate().connect(
-                                                 [this]() {
-						   if(is_new_file_){
-						     OnNewPage(entry_.text());
-						     entry_.OnHideEntries(is_new_file_);
-						   }else{
-						     Search(true);
-						   }
-                                                 });
-  entry_.button_apply().signal_clicked().connect(
-						 [this]() {   
-						   OnNewPage(entry_.text());
-						   entry_.OnHideEntries(is_new_file_);  
-						 });
-  entry_.button_close().signal_clicked().connect(
-						 [this]() {   
-						   entry_.OnHideEntries(is_new_file_);  
-						 });
-  entry_.button_next().signal_clicked().connect(
-						[this]() {   
-						  Search(true); 
-						});
-  entry_.button_prev().signal_clicked().connect(
-						[this]() {   
-						  Search(false); 
-						});
+void Notebook::Controller::CreateKeybindings(Keybindings::Controller
+					     &keybindings){
   directories().m_TreeView.signal_row_activated()
     .connect(sigc::mem_fun(*this,
                            &Notebook::Controller::OnDirectoryNavigation));
   
-  
-}//Constructor
+  keybindings.action_group_menu()->
+    add(Gtk::Action::create("FileMenu",
+			    Gtk::Stock::FILE));
+
+  keybindings.action_group_menu()->
+    add(Gtk::Action::create("FileNewStandard",
+			    Gtk::Stock::NEW,
+			    "New empty file",
+			    "Create a new file"),
+	[this]() {
+	  is_new_file_ = true;
+	  OnFileNewEmptyfile();
+	});
+  keybindings.action_group_menu()->
+    add(Gtk::Action::create("FileNewCC",
+			    "New cc file"),
+	Gtk::AccelKey(keybindings.config_
+		      .key_map()["new_cc_file"]),
+	[this]() {
+	  is_new_file_ = true;
+	  OnFileNewCCFile();
+	});
+  keybindings.action_group_menu()->
+    add(Gtk::Action::create("FileNewH",
+			    "New h file"),
+	Gtk::AccelKey(keybindings.config_
+		      .key_map()["new_h_file"]),
+	[this]() {
+	  is_new_file_ = true;
+	  OnFileNewHeaderFile();
+	});
+  keybindings.action_group_menu()->
+    add(Gtk::Action::create("WindowCloseTab",
+			    "Close tab"),
+	Gtk::AccelKey(keybindings.config_
+		      .key_map()["close_tab"]),
+	[this]() {
+	  OnCloseCurrentPage();
+	});
+  keybindings.action_group_menu()->
+    add(Gtk::Action::create("EditFind",
+			    Gtk::Stock::FIND),
+	[this]() {
+	  is_new_file_ = false;
+	  OnEditSearch();
+	  //TODO(Oyvang, Zalox, Forgi)Create function OnEditFind();
+	});
+  keybindings.action_group_menu()->
+    add(Gtk::Action::create("EditCopy",
+			    Gtk::Stock::COPY),  
+	[this]() {
+	  OnEditCopy();
+	});
+  keybindings.action_group_menu()->
+    add(Gtk::Action::create("EditCut",
+			    Gtk::Stock::CUT),
+	[this]() {
+	  OnEditCut();
+	});
+  keybindings.action_group_menu()->
+    add(Gtk::Action::create("EditPaste",
+			    Gtk::Stock::PASTE),
+	[this]() {
+	  OnEditPaste();
+	});
+  keybindings.action_group_hidden()->
+    add(Gtk::Action::create("EditPaste",
+			    Gtk::Stock::PASTE),
+	[this]() {
+	  OnEditPaste();
+	});
+  entry_.view_.entry().signal_activate().
+    connect(
+	    [this]() {
+	      if(is_new_file_){
+		OnNewPage(entry_.text());
+		entry_.OnHideEntries(is_new_file_);
+	      }else{
+		Search(true);
+	      }
+	    });
+  entry_.button_apply().signal_clicked().
+    connect(
+	    [this]() {   
+	      OnNewPage(entry_.text());
+	      entry_.OnHideEntries(is_new_file_);  
+	    });
+  entry_.button_close().signal_clicked().
+    connect(
+	    [this]() {   
+	      entry_.OnHideEntries(is_new_file_);  
+	    });
+  entry_.button_next().signal_clicked().
+    connect(
+	    [this]() {   
+	      Search(true); 
+	    });
+  entry_.button_prev().signal_clicked().
+    connect(
+	    [this]() {   
+	      Search(false); 
+	    });
+}
+
+void Notebook::Controller::GeneratePopup(std::vector<string> items){
+  Gtk::ScrolledWindow popup_scroll_;
+  Gtk::ListViewText listview_(1,false,Gtk::SelectionMode::SELECTION_SINGLE);
+  Gtk::Dialog popup_("",true);
+  listview_.set_enable_search(false);
+  listview_.set_hscroll_policy(Gtk::ScrollablePolicy::SCROLL_NATURAL);
+  listview_.set_activate_on_single_click(true);
+  listview_.signal_row_activated().
+    connect([this, &listview_, &popup_](const Gtk::TreeModel::Path& path,
+					Gtk::TreeViewColumn*) {
+	      std::string t = listview_.get_text(listview_.get_selected()[0]);
+	      CurrentTextView().get_buffer()->insert_at_cursor(t);
+	      popup_.response(Gtk::RESPONSE_DELETE_EVENT); 
+	    });
+  for (auto &i : items) listview_.append(i);
+  listview_.set_headers_visible(false);
+  popup_scroll_.add(listview_); 
+  popup_.get_vbox()->pack_start(popup_scroll_);
+  popup_.set_size_request(80,80);
+  popup_.show_all();
+  Gdk::Rectangle temp1, temp2;
+  CurrentTextView().
+    get_cursor_locations(
+			 CurrentTextView().
+			 get_buffer()->get_insert()->
+			 get_iter(), temp1, temp2);
 
 
-bool Notebook::Controller::scroll_event_callback(GdkEventScroll* scroll_event) {
+  int x = temp1.get_x();
+  int y = temp1.get_y();
+  text_vec_.at(CurrentPage())->
+    view().buffer_to_window_coords(
+				   Gtk::TextWindowType::TEXT_WINDOW_WIDGET,
+				   temp2.get_x(),
+				   temp2.get_y(),
+				   x, y);
+
+
+  int widht = Notebook().get_width()-88;
+  int height = Notebook().get_height()-180;
+  if(x>widht){
+    x = widht;  }
+  if(y>height){
+    y =height;
+  }
+  popup_.move(x, y+88);
+  popup_.run();
+}
+
+bool Notebook::Controller::ScrollEventCallback(GdkEventScroll* scroll_event) {
   int page = CurrentPage();
   int direction_y = scroll_event->delta_y;
   int direction_x = scroll_event->delta_x;
@@ -147,8 +213,6 @@ Gtk::Box& Notebook::Controller::entry_view() {
 
 void Notebook::Controller::OnNewPage(std::string name) {
   OnCreatePage();
-
-  std::cout << "oppretta pages" << std::endl;
   text_vec_.back()->OnNewEmptyFile();
   Notebook().append_page(*editor_vec_.back(), name);
   Notebook().show_all_children();
@@ -170,8 +234,8 @@ void Notebook::Controller::OnOpenFile(std::string path) {
 }
 
 void Notebook::Controller::OnCreatePage(){
-  text_vec_.push_back(new Source::Controller(source_config())); // add arguments
-  linenumbers_vec_.push_back(new Source::Controller(source_config())); // add arguments
+  text_vec_.push_back(new Source::Controller(source_config()));
+  linenumbers_vec_.push_back(new Source::Controller(source_config()));
   scrolledline_vec_.push_back(new Gtk::ScrolledWindow());
   scrolledtext_vec_.push_back(new Gtk::ScrolledWindow());
   editor_vec_.push_back(new Gtk::HBox());
@@ -205,7 +269,6 @@ void Notebook::Controller::OnCloseCurrentPage() {
     scrolledline_vec_.erase(scrolledline_vec_.begin()+page);
     editor_vec_.erase(editor_vec_.begin()+page);
   }
-
 }
 void Notebook::Controller::OnFileNewEmptyfile() {
   entry_.OnShowSetFilenName("");
@@ -314,8 +377,24 @@ void Notebook::Controller::OnBufferChange() {
     GdkEventScroll* scroll = new GdkEventScroll;
     scroll->delta_y = 1.0;
     scroll->delta_x = 0.0;
-    scroll_event_callback(scroll);
+    ScrollEventCallback(scroll);
     delete scroll;
+  }
+  Gtk::TextIter start,end;
+  std::string word;
+  start = Buffer(text_vec_.at(page))->get_insert()->get_iter();
+  end = Buffer(text_vec_.at(page))->get_insert()->get_iter();
+  start.backward_char();
+  word = Buffer(text_vec_.at(page))->get_text(start,end);
+  if( word == "."){
+        //TODO(Oyvang,Zalox,Forgie) Remove TEST
+    std::vector<std::string> TEST;
+    TEST.push_back("toString()");
+    TEST.push_back("toLower()");
+    TEST.push_back("toUpper()");
+    TEST.push_back("fuckOFF()");
+    TEST.push_back("fuckOFF()");
+    GeneratePopup(TEST);
   }
 }
 void Notebook::Controller
