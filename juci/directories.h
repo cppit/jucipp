@@ -4,6 +4,7 @@
 #include <gtkmm.h>
 #include <glib.h>
 #include "boost/filesystem.hpp"
+#include "boost/algorithm/string.hpp"
 #include <utility>
 #include <algorithm>
 #include <iostream>

@@ -95,18 +95,29 @@ get_project_name(const boost::filesystem::path& dir_path) {
           size_t variabel_end = line.find("}", variabel_start);
           project_name_var = line.substr(variabel_start+1,
                                          (variabel_end)-variabel_start-1);
+          boost::algorithm::trim(project_name_var);
+          if (variabel_start == std::string::npos) { //  not a variabel
+            variabel_start = line.find("(", 0);
+            variabel_end = line.find(")", variabel_start);
+            return line.substr(variabel_start+1,
+                                         (variabel_end)-variabel_start-1);
+          }
           break;
         }
       }
       std::ifstream ifs2(itr->path().string());
       while (std::getline(ifs2, line)) {
-        if (line.find("set("+project_name_var, 0) != std::string::npos) {
+        if (line.find("set(", 0) != std::string::npos
+            || line.find("set (", 0) != std::string::npos) {
+          if( line.find(project_name_var, 0) != std::string::npos) {
           size_t variabel_start = line.find(project_name_var, 0)
             +project_name_var.length();
           size_t variabel_end = line.find(")", variabel_start);
-          project_name = line.substr(variabel_start,
-                                     variabel_end-variabel_start);
+          project_name = line.substr(variabel_start+1,
+                                     variabel_end-variabel_start-1);
+          boost::algorithm::trim(project_name);
           return project_name;
+          }
         }
       }
       break;
