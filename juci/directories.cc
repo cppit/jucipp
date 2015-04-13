@@ -32,8 +32,9 @@ list_dirs(const boost::filesystem::path& dir_path,
   for ( boost::filesystem::directory_iterator itr( dir_path );
         itr != end_itr;
         ++itr ) {
-    if (boost::filesystem::is_directory(itr->status())) {
-      if (count(itr->path().string()) > count(dir_path.string())) {
+    if (boost::filesystem::is_directory(itr->status())
+        && itr->) {
+      if (count(itr->path().string()) > count(dir_path.string())) {  // is child
         child = *(m_refTreeModel->append(parent.children()));
         std::string col_id("a"+itr->path().filename().string());
         child[view().m_col_id] = col_id;
