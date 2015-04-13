@@ -15,8 +15,10 @@ Notebook::View::View(){
 }
 
 Notebook::Controller::Controller(Keybindings::Controller& keybindings,
-				 Source::Config& source_cfg) :
-source_config_(source_cfg) { 
+				 Source::Config& source_cfg,
+                                 Directories::Config& dir_cfg) :
+  source_config_(source_cfg),
+  directories_(dir_cfg) { 
   OnNewPage("juCi++");
   refClipboard_ = Gtk::Clipboard::get();
   keybindings.action_group_menu()->add(Gtk::Action::create("FileMenu",

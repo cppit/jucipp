@@ -4,7 +4,6 @@
 #include "api.h"
 #include "config.h"
 #include <cstddef>
-#include "directories.h"
 
 
 class Window : public Gtk::Window {

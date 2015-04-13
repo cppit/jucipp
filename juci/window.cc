@@ -4,7 +4,7 @@ Window::Window() :
   window_box_(Gtk::ORIENTATION_VERTICAL),
   main_config_(),
   keybindings_(main_config_.keybindings_cfg()),
-  notebook_(keybindings(), main_config_.source_cfg()),
+  notebook_(keybindings(), main_config_.source_cfg(), main_config_.dir_cfg()),
   menu_(keybindings()) {
   set_title("juCi++");
   set_default_size(600, 400);

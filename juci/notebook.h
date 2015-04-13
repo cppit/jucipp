@@ -28,7 +28,8 @@ namespace Notebook {
   public:
 
     Controller(Keybindings::Controller& keybindings,
-	       Source::Config& config);
+	       Source::Config& config,
+               Directories::Config& dir_cfg);
     ~Controller();
     Glib::RefPtr<Gtk::TextBuffer> Buffer( Source::Controller *source);
     Gtk::TextView& CurrentTextView();

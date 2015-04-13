@@ -1,6 +1,7 @@
 #include "directories.h"
 
-Directories::Controller::Controller() {
+Directories::Controller::Controller(Directories::Config& cfg) :
+  config_(cfg) {
   m_ScrolledWindow.add(m_TreeView);
   m_ScrolledWindow.set_policy(Gtk::POLICY_AUTOMATIC, Gtk::POLICY_AUTOMATIC);
 }
@@ -18,6 +19,17 @@ open_folder(const boost::filesystem::path& dir_path) {
   m_refTreeModel->set_sort_column(0, Gtk::SortType::SORT_ASCENDING);
 }
 
+bool Directories::Controller::IsIgnored(std::string path) {
+  std::transform(path.begin(), path.end(), path.begin(), ::tolower);
+  //  std::cout << "ignored?: " << path << std::endl;
+  if (config().IsException(path)) {
+    return false;
+  }
+  if (config().IsIgnored(path)) {
+    return true;
+  }
+  return false;
+}
 void Directories::Controller::
 list_dirs(const boost::filesystem::path& dir_path,
           Gtk::TreeModel::Row &parent,
@@ -32,28 +44,30 @@ list_dirs(const boost::filesystem::path& dir_path,
   for ( boost::filesystem::directory_iterator itr( dir_path );
         itr != end_itr;
         ++itr ) {
-    if (boost::filesystem::is_directory(itr->status())) {
-      if (count(itr->path().string()) > count(dir_path.string())) {  // is child
+    if (!IsIgnored(itr->path().filename().string())) {
+      if (boost::filesystem::is_directory(itr->status())) {
+        if (count(itr->path().string()) > count(dir_path.string())) {  // is child
+          child = *(m_refTreeModel->append(parent.children()));
+          std::string col_id("a"+itr->path().filename().string());
+          child[view().m_col_id] = col_id;
+          child[view().m_col_name] =  itr->path().filename().string();
+          child[view().m_col_path] = itr->path().string();
+          list_dirs(itr->path(), child, row_id);
+        } else {
+          row = *(m_refTreeModel->append());
+          std::string col_id("a"+itr->path().filename().string());
+          row[view().m_col_path] = itr->path().string();
+          row[view().m_col_id] = col_id;
+          row[view().m_col_name] =  itr->path().filename().string();
+          list_dirs(itr->path(), parent, row_id);
+        }
+      } else {  // is a file
         child = *(m_refTreeModel->append(parent.children()));
-        std::string col_id("a"+itr->path().filename().string());
+        std::string col_id("b"+itr->path().filename().string());
         child[view().m_col_id] = col_id;
-        child[view().m_col_name] =  itr->path().filename().string();
+        child[view().m_col_name] = itr->path().filename().string();
         child[view().m_col_path] = itr->path().string();
-        list_dirs(itr->path(), child, row_id);
-      } else {
-        row = *(m_refTreeModel->append());
-        std::string col_id("a"+itr->path().filename().string());
-        row[view().m_col_path] = itr->path().string();
-        row[view().m_col_id] = col_id;
-        row[view().m_col_name] =  itr->path().filename().string();
-        list_dirs(itr->path(), parent, row_id);
       }
-    } else {  // is a file
-      child = *(m_refTreeModel->append(parent.children()));
-      std::string col_id("b"+itr->path().filename().string());
-      child[view().m_col_id] = col_id;
-      child[view().m_col_name] = itr->path().filename().string();
-      child[view().m_col_path] = itr->path().string();
     }
   }
 }
@@ -101,3 +115,30 @@ get_project_name(const boost::filesystem::path& dir_path) {
   return "no project name";
 }
 
+Directories::Config::Config() {
+}
+Directories::Config::Config(Directories::Config& cfg) :
+  ignore_list_(cfg.ignore_list()), exception_list_(cfg.exception_list()) {
+}
+
+void Directories::Config::AddIgnore(std::string filter) {
+  ignore_list_.push_back(filter);
+}
+
+void Directories::Config::AddException(std::string filter) {
+  exception_list_.push_back(filter);
+}
+
+bool Directories::Config::IsIgnored(std::string str) {
+  for ( auto &i : ignore_list() )
+    if (str.find(i, 0) != std::string::npos)
+      return true;
+  return false;
+}
+
+bool Directories::Config::IsException(std::string str) {
+  for ( std::string &i : exception_list() )
+    if (i == str)
+      return true;
+  return false;
+}

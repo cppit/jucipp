@@ -25,6 +25,19 @@
 	"close_tab": "<control>w",
         "open_folder": "<control><alt>o"
     },
+    "directoryfilter": {
+        "ignore": [
+            "cmake",
+            "#",
+            "~",
+            ".idea",
+            "in-lowercase.pls"
+        ],
+        "exceptions": [
+            "cmakelists.txt",
+            "in-lowercase.pls"
+        ]
+        },
     "example": {
 	"key": "value",
 	"key2": [
