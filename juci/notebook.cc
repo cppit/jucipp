@@ -188,9 +188,7 @@ bool Notebook::Controller::ScrollEventCallback(GdkEventScroll* scroll_event) {
   Glib::RefPtr<Gtk::Adjustment> adj =
     scrolledtext_vec_.at(page)->
     get_vscrollbar()->get_adjustment();
-  
   if ( direction_y != 0 ) {
-   
     int dir_val = direction_y==-1?-model_.scrollvalue_:+model_.scrollvalue_; 
     adj->set_value(adj->get_value()+dir_val);
     text_vec_.at(page)->view().set_vadjustment(adj);
@@ -405,8 +403,7 @@ void Notebook::Controller
   Gtk::TreeModel::iterator iter = directories().m_refTreeModel->get_iter(path);
   if(iter) {
     Gtk::TreeModel::Row row = *iter;
-    boost::filesystem::path fs_path(Glib::ustring(row[directories()
-                                                      .view().m_col_path]));
+    boost::filesystem::path fs_path(Glib::ustring(row[directories().view().m_col_path]));
     if (boost::filesystem::is_directory(fs_path)) {
       directories().m_TreeView.row_expanded(path) ?
         directories().m_TreeView.collapse_row(path) :
