@@ -6,6 +6,8 @@
 #include <string>
 #include "gtkmm.h"
 #include "clangmm.h"
+#include <thread>
+#include <mutex>
 
 using std::string;
 
@@ -46,6 +48,13 @@ namespace Source {
     const Location& start() const { return start_; }
     const Location& end() const { return end_; }
     int kind() const { return kind_; }
+    void to_stream() const {
+      std::cout << "range: [" << start_.line_number()-1;
+      std::cout << ", " << end_.line_number()-1  << "] ";
+      std::cout << "<" << start_.column_offset()-1;
+      std::cout << ", " << end_.column_offset()-1  << ">";
+      std::cout << std::endl;
+    }
   private:
     Location start_;
     Location end_;
@@ -55,12 +64,12 @@ namespace Source {
   class View : public Gtk::TextView {
   public:
     View();
-    
     void ApplyConfig(const Config &config);
     void OnLineEdit(const std::vector<Range> &locations,
                     const Config &config);
     void OnUpdateSyntax(const std::vector<Range> &locations,
-                    const Config &config);
+                        const Config &config);
+
   private:
     string GetLine(const Gtk::TextIter &begin);
   };  // class View
@@ -70,7 +79,7 @@ namespace Source {
     // constructor for Source::Model
     explicit Model(const Source::Config &config);
     // inits the syntax highligthing on file open
-    void initSyntaxHighlighting(const std::string &filepath,
+    void InitSyntaxHighlighting(const std::string &filepath,
                            const std::string &project_path,
                                 const std::string &text,
                            int start_offset,
@@ -79,33 +88,28 @@ namespace Source {
     void set_file_path(const string &file_path);
     // sets the project path for this mvc
     void set_project_path(const string &project_path);
-    // sets the ranges for keywords in this mvc
-    void set_ranges(const std::vector<Range> &ranges);
 
     // gets the file_path member
     const string& file_path() const;
     // gets the project_path member
     const string& project_path() const;
-    // gets the ranges member
-    const std::vector<Range>& source_ranges() const;
     // gets the config member
     const Config& config() const;
     ~Model() { }
-    void OnLineEdit(const std::string &buffer);
+    int ReParse(const std::string &buffer);
+    std::vector<Range> ExtractTokens(int, int);
 
   private:
     Config config_;
     string file_path_;
     string project_path_;
-    std::vector<Range> source_ranges_;
     clang::TranslationUnit tu_;
-    void extractTokens(int, int);
-    void LiteralToken(clang::Token *token);
-    void CommentToken(clang::Token *token);
-    void IdentifierToken(clang::Token *token);
-    void KeywordToken(clang::Token *token);
-    void PunctuationToken(clang::Token *token);
-    void HighlightToken(clang::Token *token, int token_kind);
+    void HighlightToken(clang::Token *token,
+                        std::vector<Range> *source_ranges,
+                        int token_kind);
+    void HighlightCursor(clang::Token *token,
+                        std::vector<Range> *source_ranges);
+
     std::vector<const char*> get_compilation_commands();
   };
 
@@ -122,6 +126,9 @@ namespace Source {
   private:
     void OnLineEdit();
     void OnSaveFile();
+    std::mutex syntax;
+    std::mutex parsing;
+    bool go = false;
 
   protected:
     View view_;
