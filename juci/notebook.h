@@ -5,6 +5,10 @@
 #include "gtkmm.h"
 #include "entry.h"
 #include "source.h"
+#include <boost/algorithm/string/case_conv.hpp>
+
+#include <type_traits>
+#include <sigc++/sigc++.h>
 
 namespace Notebook {
   class Model {
@@ -47,14 +51,18 @@ namespace Notebook {
     void OnNewPage(std::string name);
     void OnOpenFile(std::string filename);
     void OnCreatePage();
-    bool scroll_event_callback(GdkEventScroll* scroll_event);
+    bool ScrollEventCallback(GdkEventScroll* scroll_event);
     int Pages();
+    void GeneratePopup(std::vector<string> items);
     Gtk::HBox& view();
     void Search(bool forward);
     const Source::Config& source_config() { return source_config_; }
   protected:
     void BufferChangeHandler(Glib::RefPtr<Gtk::TextBuffer> buffer);
-  private:
+  private:  
+    void CreateKeybindings(Keybindings::Controller& keybindings);
+    Glib::RefPtr<Gtk::Builder> m_refBuilder;
+    Glib::RefPtr<Gio::SimpleActionGroup> refActionGroup;
     Source::Config source_config_;
     View view_;
     Model model_;
