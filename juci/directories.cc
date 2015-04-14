@@ -6,7 +6,7 @@ Directories::Controller::Controller(Directories::Config& cfg) :
   m_ScrolledWindow.set_policy(Gtk::POLICY_AUTOMATIC, Gtk::POLICY_AUTOMATIC);
 }
 
-bool Directories::Controller::
+void Directories::Controller::
 open_folder(const boost::filesystem::path& dir_path) {
   m_refTreeModel = Gtk::TreeStore::create(view());
   m_TreeView.set_model(m_refTreeModel);

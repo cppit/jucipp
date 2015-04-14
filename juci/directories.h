@@ -48,7 +48,7 @@ namespace Directories {
     Model& model() { return model_;}
     Directories::Config& config() { return config_;}
     Gtk::ScrolledWindow& widget() {return m_ScrolledWindow;}
-    bool open_folder(const boost::filesystem::path& dir_path);
+    void open_folder(const boost::filesystem::path& dir_path);
     void list_dirs(const boost::filesystem::path& dir_path,
                    Gtk::TreeModel::Row &row, unsigned depth);
     std::string get_project_name(const boost::filesystem::path& dir_path);
