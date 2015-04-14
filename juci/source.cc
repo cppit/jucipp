@@ -118,9 +118,7 @@ InitSyntaxHighlighting(const std::string &filepath,
 void Source::View::
 OnLineEdit(const std::vector<Source::Range> &locations,
            const Source::Config &config) {
-  log("before onupdatesyntax");
   OnUpdateSyntax(locations, config);
-  log("after onupdatesyntax");
 }
 
 // Source::Model::UpdateLine
@@ -132,9 +130,7 @@ ReParse(const std::string &buffer) {
 
 // Source::Controller::OnLineEdit()
 // fired when a line in the buffer is edited
-void Source::Controller::OnLineEdit() {
-  
-}
+void Source::Controller::OnLineEdit() { }
 
 // sets the filepath for this mvc
 void Source::Model::
@@ -191,7 +187,6 @@ ExtractTokens(int start_offset, int end_offset) {
     case 4: HighlightToken(&token, &ranges, 705); break;  // CommentToken
     }
   }
-  log("returns ranges");
   return ranges;
 }
 
@@ -237,7 +232,6 @@ Source::Controller::Controller(const Source::Config &config) :
   model_(config) {
 }
 
-
 // Source::Controller::view()
 // return shared_ptr to the view
 Source::View& Source::Controller::view() {
@@ -279,14 +273,11 @@ bool check_extention(const std::string &file_path) {
 void Source::View::OnUpdateSyntax(const std::vector<Source::Range> &ranges,
                                   const Source::Config &config) {
   if (ranges.empty() || ranges.size() == 0) {
-    log("ranges empty");
     return;
   }
   Glib::RefPtr<Gtk::TextBuffer> buffer = get_buffer();
-  log("after getting buffer");
+  buffer->remove_all_tags(buffer->begin(), buffer->end());
   int i = 0;
-  log("after i int");
-  std::cout << "rangeslengde: " << ranges.size() << std::endl;
   for (auto &range : ranges) {
     string type = std::to_string(range.kind());
     try {
@@ -307,14 +298,12 @@ void Source::View::OnUpdateSyntax(const std::vector<Source::Range> &ranges,
       buffer->get_iter_at_line_offset(linum_start, begin);
     Gtk::TextIter end_iter  =
       buffer->get_iter_at_line_offset(linum_end, end);
-    buffer->remove_all_tags(begin_iter, end_iter);
     if (begin_iter.get_line() ==  end_iter.get_line()) {
       buffer->apply_tag_by_name(config.typetable().at(type),
                                 begin_iter, end_iter);
     }
     i++;
   }
-  log("End of onupdatesyntax");
 }
 
 void Source::Controller::OnOpenFile(const string &filepath) {
@@ -337,17 +326,15 @@ void Source::Controller::OnOpenFile(const string &filepath) {
   buffer()->signal_end_user_action().connect([this]() {
       if (!go) {
         std::thread parse([this]() {
-            if(parsing.try_lock()) {
-              const std::string raw = buffer()->get_text().raw();
-              int b = model().ReParse(raw);
-              if (b == 0) {
-                if (raw == buffer()->get_text().raw()) {
-                  log("alike!");
+            if (parsing.try_lock()) {
+              while (true) {
+                const std::string raw = buffer()->get_text().raw();
+                if (model().ReParse(raw) == 0 &&
+                    raw == buffer()->get_text().raw()) {
                   syntax.lock();
                   go = true;
                   syntax.unlock();
-                } else {
-                  log("buffer changed");
+                  break;
                 }
               }
               parsing.unlock();
@@ -356,6 +343,7 @@ void Source::Controller::OnOpenFile(const string &filepath) {
         parse.detach();
       }
     });
+
 
   buffer()->signal_begin_user_action().connect([this]() {
       if (go) {
