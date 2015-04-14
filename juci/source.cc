@@ -277,7 +277,6 @@ void Source::View::OnUpdateSyntax(const std::vector<Source::Range> &ranges,
   }
   Glib::RefPtr<Gtk::TextBuffer> buffer = get_buffer();
   buffer->remove_all_tags(buffer->begin(), buffer->end());
-  int i = 0;
   for (auto &range : ranges) {
     string type = std::to_string(range.kind());
     try {
@@ -285,10 +284,8 @@ void Source::View::OnUpdateSyntax(const std::vector<Source::Range> &ranges,
     } catch (std::exception) {
       continue;
     }
-
     int linum_start = range.start().line_number()-1;
     int linum_end = range.end().line_number()-1;
-
     int begin = range.start().column_offset()-1;
     int end = range.end().column_offset()-1;
 
@@ -298,11 +295,8 @@ void Source::View::OnUpdateSyntax(const std::vector<Source::Range> &ranges,
       buffer->get_iter_at_line_offset(linum_start, begin);
     Gtk::TextIter end_iter  =
       buffer->get_iter_at_line_offset(linum_end, end);
-    if (begin_iter.get_line() ==  end_iter.get_line()) {
       buffer->apply_tag_by_name(config.typetable().at(type),
                                 begin_iter, end_iter);
-    }
-    i++;
   }
 }
 
