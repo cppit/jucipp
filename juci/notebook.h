@@ -49,6 +49,7 @@ namespace Notebook {
     void OnFileNewEmptyfile();
     void OnFileNewHeaderFile();
     void OnFileOpenFolder();
+    void OnSaveFile(std::string path);
     void OnDirectoryNavigation(const Gtk::TreeModel::Path& path,
                                Gtk::TreeViewColumn* column);
     void OnNewPage(std::string name);
@@ -56,21 +57,26 @@ namespace Notebook {
     void OnCreatePage();
     bool ScrollEventCallback(GdkEventScroll* scroll_event);
     int Pages();
-
-    Directories::Controller& directories() { return directories_; }
+    Directories::Controller& directories() { return directories_; } 
     Gtk::Paned& view();
-
-    void GeneratePopup(std::vector<string> items);
-    // Gtk::HBox& view();
-
+    bool GeneratePopup(Gtk::Window* window);
     void Search(bool forward);
     const Source::Config& source_config() { return source_config_; }
-    
+    bool OnMouseRelease(GdkEventButton* button);
   protected:
-    void BufferChangeHandler(Glib::RefPtr<Gtk::TextBuffer> buffer);
-
-  private:
+    void TextViewHandlers(Gtk::TextView& textview);
+    void PopupSelectHandler(Gtk::Dialog &popup,
+			    Gtk::ListViewText &listview);
+  private:  
     void CreateKeybindings(Keybindings::Controller& keybindings);
+    void FindPopupPosition(Gtk::TextView& textview,
+			   int popup_x,
+			   int popup_y,
+			   int &x,
+			   int &y);
+    void PopupSetSize(Gtk::ScrolledWindow& scroll,
+		      int &current_x,
+		      int &current_y);
     Glib::RefPtr<Gtk::Builder> m_refBuilder;
     Glib::RefPtr<Gio::SimpleActionGroup> refActionGroup;
     Source::Config source_config_;
@@ -86,6 +92,8 @@ namespace Notebook {
     Gtk::TextIter search_match_end_;
     Gtk::TextIter search_match_start_;
     Glib::RefPtr<Gtk::Clipboard> refClipboard_;
+    bool ispopup;
+    Gtk::Dialog popup_;
   };  // class controller
 }  // namespace Notebook
 #endif  // JUCI_NOTEBOOK_H_

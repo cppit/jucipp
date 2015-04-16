@@ -1,4 +1,6 @@
 #include "notebook.h"
+#include <fstream>
+
 
 Notebook::Model::Model() {
   cc_extension_ = ".cc";
@@ -18,9 +20,11 @@ Notebook::Controller::Controller(Keybindings::Controller& keybindings,
   directories_(dir_cfg) {
   OnNewPage("juCi++");
   refClipboard_ = Gtk::Clipboard::get();
-  view().pack1(directories_.widget(), true, true);
-  CreateKeybindings(keybindings);
-  }  //  Constructor
+  ispopup = false;
+  view().pack1(directories_.widget(),true,true);
+  CreateKeybindings(keybindings); 
+}//  Constructor
+
 
 void Notebook::Controller::CreateKeybindings(Keybindings::Controller
                                              &keybindings) {
@@ -93,13 +97,7 @@ void Notebook::Controller::CreateKeybindings(Keybindings::Controller
         [this]() {
           OnEditPaste();
         });
-  keybindings.action_group_hidden()->
-    add(Gtk::Action::create("EditPaste",
-                            Gtk::Stock::PASTE),
-        [this]() {
-          OnEditPaste();
-        });
-  entry_.view_.entry().signal_activate().
+   entry_.view_.entry().signal_activate().
     connect(
             [this]() {
               if (is_new_file_) {
@@ -132,53 +130,57 @@ void Notebook::Controller::CreateKeybindings(Keybindings::Controller
             });
 }
 
-void Notebook::Controller::GeneratePopup(std::vector<string> items) {
+bool Notebook::Controller:: OnMouseRelease(GdkEventButton* button){
+  if(button->button == 1 && ispopup){
+     popup_.response(Gtk::RESPONSE_DELETE_EVENT);
+     return true;
+  }
+  return false;
+}
+
+bool Notebook::Controller::GeneratePopup(Gtk::Window* window){
+  //  Get function to fill popup with suggests item vector under is for testing
+  std::vector<std::string> items;
+  items.push_back("toString(std::string& string) -> void");
+  items.push_back("toLower(std::string& string) -> void");
+  items.push_back("toUpper(std::string& string) -> void");
+  items.push_back("fuckOFF(const std::string string) -> bool");
+  items.push_back("fuckOFF(const std::string string) -> bool");
+  items.push_back("toString(std::string& string) -> void");
+  items.push_back("toLower(std::string& string) -> void");
+  items.push_back("toUpper(std::string& string) -> void");
+  items.push_back("fuckOFF(const std::string string) -> bool");
+  items.push_back("fuckOFF(const std::string string) -> bool");
+  
+  //  Replace over with get suggestions from zalox! OVER IS JUST FOR TESTING
+  
   Gtk::ScrolledWindow popup_scroll_;
-  Gtk::ListViewText listview_(1, false, Gtk::SelectionMode::SELECTION_SINGLE);
-  Gtk::Dialog popup_("", true);
+  Gtk::ListViewText listview_(1,false,Gtk::SelectionMode::SELECTION_SINGLE);
+
+  popup_scroll_.set_policy(Gtk::PolicyType::POLICY_NEVER,
+			   Gtk::PolicyType::POLICY_NEVER);
   listview_.set_enable_search(false);
+  listview_.set_headers_visible(false);
   listview_.set_hscroll_policy(Gtk::ScrollablePolicy::SCROLL_NATURAL);
   listview_.set_activate_on_single_click(true);
-  listview_.signal_row_activated().
-    connect([this, &listview_, &popup_](const Gtk::TreeModel::Path& path,
-                                        Gtk::TreeViewColumn*) {
-              std::string t = listview_.get_text(listview_.get_selected()[0]);
-              CurrentTextView().get_buffer()->insert_at_cursor(t);
-              popup_.response(Gtk::RESPONSE_DELETE_EVENT);
-            });
   for (auto &i : items) listview_.append(i);
-  listview_.set_headers_visible(false);
-  popup_scroll_.add(listview_);
+  popup_scroll_.add(listview_); 
   popup_.get_vbox()->pack_start(popup_scroll_);
-  popup_.set_size_request(80, 80);
+  popup_.set_transient_for(*window);
   popup_.show_all();
-  Gdk::Rectangle temp1, temp2;
-  CurrentTextView().
-    get_cursor_locations(
-                         CurrentTextView().
-                         get_buffer()->get_insert()->
-                         get_iter(), temp1, temp2);
 
-
-  int x = temp1.get_x();
-  int y = temp1.get_y();
-  text_vec_.at(CurrentPage())->
-    view().buffer_to_window_coords(
-                                   Gtk::TextWindowType::TEXT_WINDOW_WIDGET,
-                                   temp2.get_x(),
-                                   temp2.get_y(),
-                                   x, y);
-
-
-  int widht = Notebook().get_width()-88;
-  int height = Notebook().get_height()-180;
-  if (x > widht) {
-    x = widht;  }
-  if (y > height) {
-    y = height;
-  }
-  popup_.move(x, y+88);
+  int popup_x = popup_.get_width();
+  int popup_y = items.size()*20;
+  PopupSetSize(popup_scroll_,popup_x,popup_y);
+  int x,y;
+  FindPopupPosition(CurrentTextView(),popup_x,popup_y,x,y);
+  popup_.move(x, y+15);
+  PopupSelectHandler(popup_, listview_);
+  ispopup = true;
   popup_.run();
+  popup_.hide();
+  ispopup = false;
+  return true;
 }
 
 bool Notebook::Controller::ScrollEventCallback(GdkEventScroll* scroll_event) {
@@ -251,7 +253,7 @@ void Notebook::Controller::OnCreatePage() {
   linenumbers_vec_.back()->view().set_sensitive(false);
   editor_vec_.back()->pack_start(*scrolledline_vec_.back(), false, false);
   editor_vec_.back()->pack_start(*scrolledtext_vec_.back(), true, true);
-  BufferChangeHandler(text_vec_.back()->view().get_buffer());
+  TextViewHandlers(text_vec_.back()->view());
 }
 
 void Notebook::Controller::OnCloseCurrentPage() {
@@ -382,22 +384,6 @@ void Notebook::Controller::OnBufferChange() {
     ScrollEventCallback(scroll);
     delete scroll;
   }
-  Gtk::TextIter start, end;
-  std::string word;
-  start = Buffer(text_vec_.at(page))->get_insert()->get_iter();
-  end = Buffer(text_vec_.at(page))->get_insert()->get_iter();
-  start.backward_char();
-  word = Buffer(text_vec_.at(page))->get_text(start, end);
-  if (word == ".") {
-    // TODO(Forgie) Zalox,Forgie) Remove TEST
-    std::vector<std::string> TEST;
-    TEST.push_back("toString()");
-    TEST.push_back("toLower()");
-    TEST.push_back("toUpper()");
-    TEST.push_back("fuckOFF()");
-    TEST.push_back("fuckOFF()");
-    GeneratePopup(TEST);
-  }
 }
 void Notebook::Controller
 ::OnDirectoryNavigation(const Gtk::TreeModel::Path& path,
@@ -440,11 +426,88 @@ Gtk::Notebook& Notebook::Controller::Notebook() {
   return view_.notebook();
 }
 
-void Notebook::Controller::BufferChangeHandler(Glib::RefPtr<Gtk::TextBuffer>
-                                               buffer) {
-  buffer->signal_changed().connect(
-                                   [this]() {
-                                     OnBufferChange();
-                                   });
+void Notebook::Controller::TextViewHandlers(Gtk::TextView& textview) {
+  textview.get_buffer()->signal_changed().connect(
+				   [this]() {
+				     OnBufferChange();
+				   });
+
+  textview.signal_button_release_event().
+    connect(sigc::mem_fun(*this,&Notebook::Controller::OnMouseRelease),false);
+}
+void Notebook::Controller::PopupSelectHandler(Gtk::Dialog &popup,
+					      Gtk::ListViewText &listview){
+  listview.signal_row_activated().
+    connect([this, &listview, &popup](const Gtk::TreeModel::Path& path,
+					Gtk::TreeViewColumn*) {
+	      std::string selected =
+		listview.get_text(listview.get_selected()[0]);
+	      CurrentTextView().get_buffer()->insert_at_cursor(selected);
+	      popup.response(Gtk::RESPONSE_DELETE_EVENT);
+	    });
+}
+void Notebook::Controller::PopupSetSize(Gtk::ScrolledWindow &scroll,
+					int &current_x,
+					int &current_y) {
+  int textview_x = CurrentTextView().get_width();
+  int textview_y = 150;
+  bool is_never_scroll_x = true;
+  bool is_never_scroll_y = true;
+  if (current_x > textview_x) {
+    current_x = textview_x;
+    is_never_scroll_x = false;
+  }
+  if (current_y > textview_y) {
+    current_y = textview_y;
+    is_never_scroll_y = false;
+  }
+  scroll.set_size_request(current_x,current_y);
+  if (!is_never_scroll_x && !is_never_scroll_y) {
+    scroll.set_policy(Gtk::PolicyType::POLICY_AUTOMATIC,
+		      Gtk::PolicyType::POLICY_AUTOMATIC);
+  } else if (!is_never_scroll_x && is_never_scroll_y) {
+    scroll.set_policy(Gtk::PolicyType::POLICY_AUTOMATIC,
+		      Gtk::PolicyType::POLICY_NEVER);
+  } else if (is_never_scroll_x && !is_never_scroll_y) {
+    scroll.set_policy(Gtk::PolicyType::POLICY_NEVER,
+		       Gtk::PolicyType::POLICY_AUTOMATIC);
+  }
 }
 
+void Notebook::Controller::FindPopupPosition(Gtk::TextView& textview,
+					     int popup_x,
+					     int popup_y,
+					     int &x,
+					     int &y){
+  Gdk::Rectangle temp1, temp2;
+  textview.get_cursor_locations(
+				CurrentTextView().
+				get_buffer()->get_insert()->
+				get_iter(), temp1,temp2);
+  int textview_edge_x = 0;
+  int textview_edge_y = 0;
+  textview.buffer_to_window_coords(
+				   Gtk::TextWindowType::TEXT_WINDOW_WIDGET,
+				   temp1.get_x(),
+				   temp1.get_y(),
+				   x, y);
+  Glib::RefPtr<Gdk::Window> gdkw =
+    CurrentTextView().get_window(Gtk::TextWindowType::TEXT_WINDOW_WIDGET);
+  gdkw->get_origin(textview_edge_x, textview_edge_y);
+
+  x+=textview_edge_x;
+  y+=textview_edge_y;
+  if ((textview_edge_x-x)*-1 > textview.get_width()-popup_x) {
+    x -= popup_x;
+  }
+  if ((textview_edge_y-y)*-1 > textview.get_height()-popup_y) {
+    y -= (popup_y+14) + 15;
+  }
+}
+
+void Notebook::Controller:: OnSaveFile(std::string path){
+  std::ofstream file;
+  file.open (path);
+  file << CurrentTextView().get_buffer()->get_text();
+  file.close();
+}

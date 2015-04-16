@@ -3,6 +3,7 @@
 
 #include "api.h"
 #include "config.h"
+#include "terminal.h"
 #include <cstddef>
 
 
@@ -19,8 +20,7 @@ public:
   Keybindings::Controller keybindings_;
   Menu::Controller menu_;
   Notebook::Controller notebook_;
-
-
+  Terminal::Controller terminal_;
   
   Keybindings::Controller& keybindings() { return keybindings_; }
  private:
@@ -28,6 +28,9 @@ public:
   void OnWindowHide();
   void OnOpenFile();
   void OnFileOpenFolder();
+  void OnSaveFileAs();
+  bool OnKeyRelease(GdkEventKey* key);
+  bool OnMouseRelease(GdkEventButton* button);
   
 };
 
