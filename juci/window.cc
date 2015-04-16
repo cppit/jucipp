@@ -26,6 +26,22 @@ Window::Window() :
                                        [this]() {
                                          OnFileOpenFolder();
                                        });
+
+  keybindings_.action_group_menu()->add(Gtk::Action::create("FileSaveAs",
+							    "Save as"),
+					Gtk::AccelKey(keybindings_.config_
+						      .key_map()["save_as"]),
+					[this]() {
+					  OnSaveFileAs();
+					});
+
+  notebook_.CurrentTextView().signal_key_release_event().
+    connect(sigc::mem_fun(*this,&Window::OnKeyRelease),false);
+  this->signal_button_release_event().
+    connect(sigc::mem_fun(*this,&Window::OnMouseRelease),false);
+  terminal_.Terminal().signal_button_release_event().
+    connect(sigc::mem_fun(*this,&Window::OnMouseRelease),false);
+  
   PluginApi::menu_ = &menu_;
   PluginApi::notebook_ = &notebook_;
   PluginApi::InitPlugins();
@@ -37,6 +53,7 @@ Window::Window() :
   window_box_.pack_start(menu_.view(), Gtk::PACK_SHRINK);
   window_box_.pack_start(notebook_.entry_view(), Gtk::PACK_SHRINK);
   window_box_.pack_start(notebook_.view());
+  window_box_.pack_end(terminal_.view(),Gtk::PACK_SHRINK);
   show_all_children();
   } // Window constructor
 
@@ -112,6 +129,7 @@ void Window::OnOpenFile() {
         case(Gtk::RESPONSE_OK): {
             std::cout << "Open clicked." << std::endl;
             std::string path = dialog.get_filename();
+	    
             std::cout << "File selected: " << path << std::endl;
 	    notebook_.OnOpenFile(path);
             break;
@@ -126,3 +144,38 @@ void Window::OnOpenFile() {
         }
     }
 }
+void Window::OnSaveFileAs(){
+  Gtk::FileChooserDialog dialog("Please choose a file",
+				Gtk::FILE_CHOOSER_ACTION_SAVE);
+  dialog.set_transient_for(*this);
+  dialog.set_position(Gtk::WindowPosition::WIN_POS_CENTER_ALWAYS);
+  dialog.add_button("_Cancel", Gtk::RESPONSE_CANCEL);
+  dialog.add_button("_Save", Gtk::RESPONSE_OK);
+  int result = dialog.run();
+   switch (result) {
+        case(Gtk::RESPONSE_OK): {
+            std::string path = dialog.get_filename();
+	    unsigned pos = path.find_last_of("/\\");
+	    std::cout << path<< std::endl;
+	    notebook_.OnSaveFile(path);
+            break;
+        }
+        case(Gtk::RESPONSE_CANCEL): {
+            break;
+        }
+        default: {
+            std::cout << "Unexpected button clicked." << std::endl;
+            break;
+        }
+    }
+}
+bool Window::OnKeyRelease(GdkEventKey* key){
+  if(key->keyval==46){
+    return notebook_.GeneratePopup(this);
+  }
+  return false;
+}
+bool Window::OnMouseRelease(GdkEventButton *button){
+  return notebook_.OnMouseRelease(button);
+}
+
