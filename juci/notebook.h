@@ -9,6 +9,7 @@
 #include <boost/algorithm/string/case_conv.hpp>
 #include <type_traits>
 #include <sigc++/sigc++.h>
+#include <deque>
 
 namespace Notebook {
   class Model {
@@ -69,7 +70,19 @@ namespace Notebook {
   protected:
     void BufferChangeHandler(Glib::RefPtr<Gtk::TextBuffer> buffer);
 
+    
   private:
+    std::vector<std::deque<Glib::ustring>> history_;
+    const int kHistorySize = 30;
+    void NewBufferHistory(Glib::RefPtr<Gtk::TextBuffer> buffer);
+    void RemoveBufferHistory();
+    void UpdateHistory();
+    void AppendBufferState();
+    std::deque<Glib::ustring>& BufferHistory();
+    void PrintQue();
+    Glib::ustring& LastBufferState();
+    void OnUndo();
+
     void CreateKeybindings(Keybindings::Controller& keybindings);
     Glib::RefPtr<Gtk::Builder> m_refBuilder;
     Glib::RefPtr<Gio::SimpleActionGroup> refActionGroup;
@@ -79,6 +92,7 @@ namespace Notebook {
     Model model_;
     bool is_new_file_;
     Entry::Controller entry_;
+
     std::vector<Source::Controller*> text_vec_, linenumbers_vec_;
     std::vector<Gtk::ScrolledWindow*> scrolledtext_vec_, scrolledline_vec_;
     std::vector<Gtk::HBox*> editor_vec_;

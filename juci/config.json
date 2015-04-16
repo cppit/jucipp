@@ -23,7 +23,8 @@
 	"new_h_file": "<control><alt>h",
 	"new_cc_file": "<alt>c",
 	"close_tab": "<control>w",
-        "open_folder": "<control><alt>o"
+        "open_folder": "<control><alt>o",
+        "edit_undo": "<control>z"
     },
     "directoryfilter": {
         "ignore": [

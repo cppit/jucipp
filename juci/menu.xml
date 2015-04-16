@@ -16,7 +16,8 @@
       <menuitem action='EditCut'/>                
       <menuitem action='EditPaste'/>              
       <separator/>                               
-      <menuitem action='EditFind'/>               
+      <menuitem action='EditFind'/>
+      <menuitem action='EditUndo'/>
     </menu>                                         
     <menu action='WindowMenu'>                      
       <menuitem action='WindowCloseTab'/>         
@@ -26,6 +27,6 @@
     </menu>                                         
     <menu action='HelpMenu'>                        
       <menuitem action='HelpAbout'/>              
-    </menu>                                        
+    </menu>                                       
   </menubar>                                          
 </ui>                                                  

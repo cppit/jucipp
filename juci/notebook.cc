@@ -93,6 +93,16 @@ void Notebook::Controller::CreateKeybindings(Keybindings::Controller
         [this]() {
           OnEditPaste();
         });
+
+  keybindings.action_group_menu()->
+    add(Gtk::Action::create("EditUndo",
+                            "Undo"),
+        Gtk::AccelKey(keybindings.config_
+                      .key_map()["edit_undo"]),
+        [this]() {
+          OnUndo();
+        });
+  
   keybindings.action_group_hidden()->
     add(Gtk::Action::create("EditPaste",
                             Gtk::Stock::PASTE),
@@ -219,6 +229,7 @@ void Notebook::Controller::OnNewPage(std::string name) {
   Notebook().show_all_children();
   Notebook().set_current_page(Pages()-1);
   Notebook().set_focus_child(text_vec_.at(Pages()-1)->view());
+  NewBufferHistory(text_vec_.back()->view().get_buffer());
 }
 
 void Notebook::Controller::OnOpenFile(std::string path) {
@@ -232,6 +243,9 @@ void Notebook::Controller::OnOpenFile(std::string path) {
   std::cout << "current page set" << std::endl;
   Notebook().set_focus_child(text_vec_.back()->view());
   OnBufferChange();
+  NewBufferHistory(text_vec_.back()->view().get_buffer());
+  
+  
 }
 
 void Notebook::Controller::OnCreatePage() {
@@ -383,13 +397,15 @@ void Notebook::Controller::OnBufferChange() {
     delete scroll;
   }
   Gtk::TextIter start, end;
-  std::string word;
+  std::string word, last_word;
   start = Buffer(text_vec_.at(page))->get_insert()->get_iter();
   end = Buffer(text_vec_.at(page))->get_insert()->get_iter();
   start.backward_char();
   word = Buffer(text_vec_.at(page))->get_text(start, end);
+  last_word = Buffer(text_vec_.at(page))->get_text(--start, --end);
   if (word == ".") {
     // TODO(Forgie) Zalox,Forgie) Remove TEST
+    UpdateHistory();
     std::vector<std::string> TEST;
     TEST.push_back("toString()");
     TEST.push_back("toLower()");
@@ -446,5 +462,93 @@ void Notebook::Controller::BufferChangeHandler(Glib::RefPtr<Gtk::TextBuffer>
                                    [this]() {
                                      OnBufferChange();
                                    });
+  buffer->signal_end_user_action().connect(
+                                   [this]() {                                     
+                                     UpdateHistory();
+                                   });
 }
 
+
+// History methods
+void Notebook::Controller::
+NewBufferHistory(Glib::RefPtr<Gtk::TextBuffer> buffer) {
+  Glib::ustring text = buffer->get_text();
+  std::deque<Glib::ustring> queue;
+  queue.push_back(text);
+  history_.push_back(queue);
+}
+
+void Notebook::Controller::UpdateHistory() {
+  Gtk::TextIter start, end;
+  std::string word, last_word;
+  int page = CurrentPage();
+  start = Buffer(text_vec_.at(page))->get_insert()->get_iter();
+  end = Buffer(text_vec_.at(page))->get_insert()->get_iter();
+  start.backward_char();
+  word = Buffer(text_vec_.at(page))->get_text(start, end);
+  last_word = Buffer(text_vec_.at(page))->get_text(--start, --end);
+  /*if(word == "."
+     || word == " "
+     || word == ";"
+     || word == ":"
+     || word == "}"
+     || word == ")"
+     || word == "]"
+     || word == ">") {
+    if(last_word != "."
+       && last_word != " "
+       && last_word != ";"
+       && last_word != ":"
+       && last_word != "}"
+       && last_word != ")"
+       && last_word != "]"
+       && last_word != ">") {*/
+      AppendBufferState();
+      //    }
+      //  }
+}
+void Notebook::Controller::
+AppendBufferState() {
+  Glib::ustring text = CurrentTextView().get_buffer()->get_text();
+  std::cout << "buf.size(): " << text.size() << std::endl;
+  if(BufferHistory().size() < kHistorySize) {
+   BufferHistory().push_back(text);
+  } else {
+    BufferHistory().pop_front();
+    BufferHistory().push_back(text);
+  }
+}
+
+void Notebook::Controller::RemoveBufferHistory() {
+  history_.erase(history_.begin()+CurrentPage());
+}
+
+std::deque<Glib::ustring>& Notebook::Controller::BufferHistory() {
+  return history_.at(CurrentPage());
+}
+
+Glib::ustring& Notebook::Controller::LastBufferState() {
+  if(BufferHistory().size() > 1) {
+    BufferHistory().pop_back();
+  }else {
+    std::cout << "Reached end of history, can't undo any more" << std::endl;
+  }
+  return BufferHistory().back();
+}
+
+void Notebook::Controller::OnUndo() {
+  //  PrintQue();
+  //  std::cout << "UNDOING SOMETHING TERRIBLE" << std::endl;
+  Glib::RefPtr<Gtk::TextBuffer> buf = CurrentTextView().get_buffer();
+  buf->set_text(LastBufferState());
+  std::cout << "Undoing.."<< std::endl;
+  PrintQue();
+}
+
+void Notebook::Controller::PrintQue(){
+  int size = BufferHistory().back().size();
+  std::cout << "buffer size: "<< size << std::endl
+            << "buffer #: " << CurrentPage() << std::endl
+            << "historylength: "<< BufferHistory().size() << std::endl;
+  }
+//TODO remove first history event after open file
