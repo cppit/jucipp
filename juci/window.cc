@@ -4,7 +4,7 @@ Window::Window() :
   window_box_(Gtk::ORIENTATION_VERTICAL),
   main_config_(),
   keybindings_(main_config_.keybindings_cfg()),
-  notebook_(keybindings(), main_config_.source_cfg(), main_config_.dir_cfg()),
+  notebook_(*this,keybindings(), main_config_.source_cfg(), main_config_.dir_cfg()),
   menu_(keybindings()) {
   set_title("juCi++");
   set_default_size(600, 400);
@@ -35,8 +35,6 @@ Window::Window() :
 					  OnSaveFileAs();
 					});
 
-  notebook_.CurrentTextView().signal_key_release_event().
-    connect(sigc::mem_fun(*this,&Window::OnKeyRelease),false);
   this->signal_button_release_event().
     connect(sigc::mem_fun(*this,&Window::OnMouseRelease),false);
   terminal_.Terminal().signal_button_release_event().
@@ -168,12 +166,6 @@ void Window::OnSaveFileAs(){
             break;
         }
     }
-}
-bool Window::OnKeyRelease(GdkEventKey* key){
-  if(key->keyval==46){
-    return notebook_.GeneratePopup(this);
-  }
-  return false;
 }
 bool Window::OnMouseRelease(GdkEventButton *button){
   return notebook_.OnMouseRelease(button);

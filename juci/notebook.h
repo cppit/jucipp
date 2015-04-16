@@ -29,7 +29,7 @@ namespace Notebook {
   };
   class Controller {
   public:
-    Controller(Keybindings::Controller& keybindings,
+    Controller(Gtk::Window& window, Keybindings::Controller& keybindings,
                Source::Config& config,
                Directories::Config& dir_cfg);
     ~Controller();
@@ -59,10 +59,11 @@ namespace Notebook {
     int Pages();
     Directories::Controller& directories() { return directories_; } 
     Gtk::Paned& view();
-    bool GeneratePopup(Gtk::Window* window);
+    bool GeneratePopup();
     void Search(bool forward);
     const Source::Config& source_config() { return source_config_; }
     bool OnMouseRelease(GdkEventButton* button);
+    bool OnKeyRelease(GdkEventKey* key);
   protected:
     void TextViewHandlers(Gtk::TextView& textview);
     void PopupSelectHandler(Gtk::Dialog &popup,
@@ -94,6 +95,7 @@ namespace Notebook {
     Glib::RefPtr<Gtk::Clipboard> refClipboard_;
     bool ispopup;
     Gtk::Dialog popup_;
+    Gtk::Window* window_;
   };  // class controller
 }  // namespace Notebook
 #endif  // JUCI_NOTEBOOK_H_

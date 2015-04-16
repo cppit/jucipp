@@ -13,11 +13,12 @@ Notebook::View::View() {
   view_.set_position(120);
 }
 
-Notebook::Controller::Controller(Keybindings::Controller& keybindings,
+Notebook::Controller::Controller(Gtk::Window& window, Keybindings::Controller& keybindings,
                                  Source::Config& source_cfg,
                                  Directories::Config& dir_cfg) :
   source_config_(source_cfg),
   directories_(dir_cfg) {
+  window_ = &window;
   OnNewPage("juCi++");
   refClipboard_ = Gtk::Clipboard::get();
   ispopup = false;
@@ -138,13 +139,21 @@ bool Notebook::Controller:: OnMouseRelease(GdkEventButton* button){
   return false;
 }
 
-bool Notebook::Controller::GeneratePopup(Gtk::Window* window){
+bool Notebook::Controller::OnKeyRelease(GdkEventKey* key){
+  if(key->keyval==46){
+    return GeneratePopup();
+  }
+  return false;
+}
+
+bool Notebook::Controller::GeneratePopup(){
   //  Get function to fill popup with suggests item vector under is for testing
   std::vector<std::string> items;
   Gtk::TextIter start = CurrentTextView().get_buffer()->get_insert()->get_iter();
   text_vec_.at(CurrentPage())->GetAutoCompleteSuggestions(start.get_line()+1,
                                                 start.get_line_offset()+2,
                                                 &items);
+  std::cout << items.size()<< std::endl;
   
   //  Replace over with get suggestions from zalox! OVER IS JUST FOR TESTING
   
@@ -160,7 +169,7 @@ bool Notebook::Controller::GeneratePopup(Gtk::Window* window){
   for (auto &i : items) listview_.append(i);
   popup_scroll_.add(listview_); 
   popup_.get_vbox()->pack_start(popup_scroll_);
-  popup_.set_transient_for(*window);
+  popup_.set_transient_for(*window_);
   popup_.show_all();
 
   int popup_x = popup_.get_width();
@@ -428,6 +437,11 @@ void Notebook::Controller::TextViewHandlers(Gtk::TextView& textview) {
 
   textview.signal_button_release_event().
     connect(sigc::mem_fun(*this,&Notebook::Controller::OnMouseRelease),false);
+
+  textview.signal_key_release_event().
+    connect(sigc::mem_fun(*this,&Notebook::Controller::OnKeyRelease),false);
+
+  
 }
 void Notebook::Controller::PopupSelectHandler(Gtk::Dialog &popup,
 					      Gtk::ListViewText &listview){
@@ -447,6 +461,7 @@ void Notebook::Controller::PopupSetSize(Gtk::ScrolledWindow &scroll,
   int textview_y = 150;
   bool is_never_scroll_x = true;
   bool is_never_scroll_y = true;
+  std::cout << textview_x << std::endl;
   if (current_x > textview_x) {
     current_x = textview_x;
     is_never_scroll_x = false;
@@ -493,9 +508,11 @@ void Notebook::Controller::FindPopupPosition(Gtk::TextView& textview,
   y+=textview_edge_y;
   if ((textview_edge_x-x)*-1 > textview.get_width()-popup_x) {
     x -= popup_x;
+    if(x<textview_edge_x) x = textview_edge_x;
   }
   if ((textview_edge_y-y)*-1 > textview.get_height()-popup_y) {
     y -= (popup_y+14) + 15;
+      if(x<textview_edge_y) y = textview_edge_y +15;
   }
 }
 

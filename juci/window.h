@@ -29,7 +29,6 @@ public:
   void OnOpenFile();
   void OnFileOpenFolder();
   void OnSaveFileAs();
-  bool OnKeyRelease(GdkEventKey* key);
   bool OnMouseRelease(GdkEventButton* button);
   
 };
