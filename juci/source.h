@@ -95,7 +95,11 @@ namespace Source {
     const string& project_path() const;
     // gets the config member
     const Config& config() const;
-    ~Model() { }
+    std::vector<std::string>
+    GetAutoCompleteSuggestions(const std::string& buffer,
+                               int line_number,
+                               int column);
+      ~Model() { }
     int ReParse(const std::string &buffer);
     std::vector<Range> ExtractTokens(int, int);
 
@@ -121,6 +125,9 @@ namespace Source {
     Model& model();
     void OnNewEmptyFile();
     void OnOpenFile(const string &filename);
+    std::vector<std::string>
+    GetAutoCompleteSuggestions(int line_number,
+                               int column);
     Glib::RefPtr<Gtk::TextBuffer> buffer();
 
   private:

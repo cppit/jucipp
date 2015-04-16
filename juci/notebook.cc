@@ -1,4 +1,5 @@
 #include "notebook.h"
+#include "clangmm.h"
 
 Notebook::Model::Model() {
   cc_extension_ = ".cc";
@@ -388,14 +389,13 @@ void Notebook::Controller::OnBufferChange() {
   end = Buffer(text_vec_.at(page))->get_insert()->get_iter();
   start.backward_char();
   word = Buffer(text_vec_.at(page))->get_text(start, end);
+  std::cout << start.get_line() << std::endl;
+  std::cout << start.get_line_offset() << std::endl;
   if (word == ".") {
     // TODO(Forgie) Zalox,Forgie) Remove TEST
-    std::vector<std::string> TEST;
-    TEST.push_back("toString()");
-    TEST.push_back("toLower()");
-    TEST.push_back("toUpper()");
-    TEST.push_back("fuckOFF()");
-    TEST.push_back("fuckOFF()");
+    std::vector<std::string> TEST
+      = text_vec_[page]->GetAutoCompleteSuggestions(start.get_line()+1,
+                                                    start.get_line_offset()+2);
     GeneratePopup(TEST);
   }
 }
