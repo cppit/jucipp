@@ -393,9 +393,10 @@ void Notebook::Controller::OnBufferChange() {
   std::cout << start.get_line_offset() << std::endl;
   if (word == ".") {
     // TODO(Forgie) Zalox,Forgie) Remove TEST
-    std::vector<std::string> TEST
-      = text_vec_[page]->GetAutoCompleteSuggestions(start.get_line()+1,
-                                                    start.get_line_offset()+2);
+    std::vector<std::string> TEST;
+    text_vec_[page]->GetAutoCompleteSuggestions(start.get_line()+1,
+                                                start.get_line_offset()+2,
+                                                &TEST);
     GeneratePopup(TEST);
   }
 }

@@ -132,22 +132,24 @@ ReParse(const std::string &buffer) {
 // fired when a line in the buffer is edited
 void Source::Controller::OnLineEdit() { }
 
-std::vector<std::string> Source::Controller::
+void Source::Controller::
 GetAutoCompleteSuggestions(int line_number,
-                           int column) {
-  return model().GetAutoCompleteSuggestions(view().get_buffer()
-                                            ->get_text().raw(),
-                                            line_number,
-                                            column);
+                           int column,
+                           std::vector<std::string> *suggestions) {
+  parsing.lock();
+  model().GetAutoCompleteSuggestions(view().get_buffer()
+                                     ->get_text().raw(),
+                                     line_number,
+                                     column,
+                                     suggestions);
+  parsing.unlock();
 }
 
-std::vector<std::string> Source::Model::
+void Source::Model::
 GetAutoCompleteSuggestions(const std::string& buffer,
                            int line_number,
-                           int column) {
-  
-  std::vector<std::string> res;
-  parsing.lock();
+                           int column,
+                           std::vector<std::string> *suggestions) {
   clang::CodeCompleteResults results(&tu_,
                                      file_path(),
                                      buffer,
@@ -159,10 +161,8 @@ GetAutoCompleteSuggestions(const std::string& buffer,
     for (auto &stringchunk : c) {
       ss << stringchunk.chunk();
     }
-    res.emplace_back(ss.str());
+    suggestions->emplace_back(ss.str());
   }
-  parsing.unlock();
-  return res;
 }
 
 // sets the filepath for this mvc
