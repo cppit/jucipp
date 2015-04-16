@@ -1,11 +1,13 @@
 #ifndef JUCI_SOURCE_H_
 #define JUCI_SOURCE_H_
-
+#include <iostream>
 #include <unordered_map>
 #include <vector>
 #include <string>
 #include "gtkmm.h"
 #include "clangmm.h"
+#include <thread>
+#include <mutex>
 
 using std::string;
 
@@ -27,58 +29,93 @@ namespace Source {
     std::unordered_map<string, string> typetable_;
     string background_;
   };  // class Config
-  /*
-  class BufferLocation {
-    BufferLocation(const BufferLocation &location);
-    BufferLocation(int, int);
-    int line_number() { return line_number_; }
-    int column_number() { return column_offset_; }
+
+  class Location {
+  public:
+    Location(const Location &location);
+    Location(int line_number, int column_offset);
+    int line_number() const { return line_number_; }
+    int column_offset() const { return column_offset_; }
   private:
     int line_number_;
     int column_offset_;
   };
 
-  class BufferRange {
-    BufferRange(const BufferLocation &start, const BufferLocation &end) :
-      start_(start), end_(end) { }
+  class Range {
+  public:
+    Range(const Location &start, const Location &end, int kind);
+    Range(const Range &org);
+    const Location& start() const { return start_; }
+    const Location& end() const { return end_; }
+    int kind() const { return kind_; }
+    void to_stream() const {
+      std::cout << "range: [" << start_.line_number()-1;
+      std::cout << ", " << end_.line_number()-1  << "] ";
+      std::cout << "<" << start_.column_offset()-1;
+      std::cout << ", " << end_.column_offset()-1  << ">";
+      std::cout << std::endl;
+    }
   private:
-    BufferLocation start_;
-    BufferLocation end_;
-    };*/
-
+    Location start_;
+    Location end_;
+    int kind_;
+  };
 
   class View : public Gtk::TextView {
   public:
     View();
-    string UpdateLine();
     void ApplyConfig(const Config &config);
-    void OnOpenFile(std::vector<clang::SourceLocation> &locations,
+    void OnLineEdit(const std::vector<Range> &locations,
                     const Config &config);
+    void OnUpdateSyntax(const std::vector<Range> &locations,
+                        const Config &config);
+
   private:
     string GetLine(const Gtk::TextIter &begin);
   };  // class View
 
   class Model{
   public:
-    Model(const Source::Config &config);
-    //Model();
-    Config& config();
-    const string filepath();
-    void SetFilePath(const string &filepath);
-    void SetSourceLocations( const std::vector<clang::SourceLocation> &locations);
-    std::vector<clang::SourceLocation>& getSourceLocations() {
-      return locations_;
-    }
+    // constructor for Source::Model
+    explicit Model(const Source::Config &config);
+    // inits the syntax highligthing on file open
+    void InitSyntaxHighlighting(const std::string &filepath,
+                           const std::string &project_path,
+                                const std::string &text,
+                           int start_offset,
+                           int end_offset);
+    // sets the filepath for this mvc
+    void set_file_path(const string &file_path);
+    // sets the project path for this mvc
+    void set_project_path(const string &project_path);
+
+    // gets the file_path member
+    const string& file_path() const;
+    // gets the project_path member
+    const string& project_path() const;
+    // gets the config member
+    const Config& config() const;
+    ~Model() { }
+    int ReParse(const std::string &buffer);
+    std::vector<Range> ExtractTokens(int, int);
 
   private:
-    Source::Config config_;
-    string filepath_;
-    std::vector<clang::SourceLocation> locations_;
+    Config config_;
+    string file_path_;
+    string project_path_;
+    clang::TranslationUnit tu_;
+    void HighlightToken(clang::Token *token,
+                        std::vector<Range> *source_ranges,
+                        int token_kind);
+    void HighlightCursor(clang::Token *token,
+                        std::vector<Range> *source_ranges);
+
+    std::vector<const char*> get_compilation_commands();
   };
 
   class Controller {
   public:
-    Controller(const Source::Config &config);
+    explicit Controller(const Source::Config &config);
     Controller();
     View& view();
     Model& model();
@@ -89,6 +126,10 @@ namespace Source {
   private:
     void OnLineEdit();
     void OnSaveFile();
+    std::mutex syntax;
+    std::mutex parsing;
+    bool go = false;
+
   protected:
     View view_;
     Model model_;

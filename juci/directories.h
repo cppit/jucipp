@@ -4,14 +4,14 @@
 #include <gtkmm.h>
 #include <glib.h>
 #include "boost/filesystem.hpp"
+#include "boost/algorithm/string.hpp"
 #include <utility>
 #include <algorithm>
 #include <iostream>
 #include <fstream>
 
-
 namespace Directories {
-  
+
   class Config {
   public:
     Config(Config &original);
@@ -38,9 +38,8 @@ namespace Directories {
     Gtk::TreeModelColumn<Glib::ustring> m_col_path;
   };
 
-  class Model {
-  };
-  
+  class Model { };
+
   class Controller {
   public:
     Controller();
@@ -49,22 +48,24 @@ namespace Directories {
     Model& model() { return model_;}
     Directories::Config& config() { return config_;}
     Gtk::ScrolledWindow& widget() {return m_ScrolledWindow;}
-    bool open_folder (const boost::filesystem::path& dir_path);
-    void list_dirs (const boost::filesystem::path& dir_path,
-                    Gtk::TreeModel::Row &row, unsigned depth);
+    void open_folder(const boost::filesystem::path& dir_path);
+    void list_dirs(const boost::filesystem::path& dir_path,
+                   Gtk::TreeModel::Row &row, unsigned depth);
     std::string get_project_name(const boost::filesystem::path& dir_path);
-    int count (const std::string path);
+    int count(const std::string path);
 
-    //Child widgets:
+    // Child widgets:
     Gtk::Box m_VBox;
     Gtk::ScrolledWindow m_ScrolledWindow;
     Gtk::TreeView m_TreeView;
     Glib::RefPtr<Gtk::TreeStore> m_refTreeModel;
     bool IsIgnored(std::string path);
+
   private:
     View view_;
     Model model_;
     Directories::Config config_;
+
   protected:
     void on_treeview_row_activated(const Gtk::TreeModel::Path& path,
                                    Gtk::TreeViewColumn* column);

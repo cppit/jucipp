@@ -5,14 +5,10 @@
 #include "gtkmm.h"
 #include "entry.h"
 #include "source.h"
-
 #include "directories.h"
-
-  #include <boost/algorithm/string/case_conv.hpp>
-
-  #include <type_traits>
-  #include <sigc++/sigc++.h>
-
+#include <boost/algorithm/string/case_conv.hpp>
+#include <type_traits>
+#include <sigc++/sigc++.h>
 
 namespace Notebook {
   class Model {
@@ -33,12 +29,11 @@ namespace Notebook {
   };
   class Controller {
   public:
-
     Controller(Keybindings::Controller& keybindings,
-	       Source::Config& config,
+               Source::Config& config,
                Directories::Config& dir_cfg);
     ~Controller();
-    Glib::RefPtr<Gtk::TextBuffer> Buffer( Source::Controller *source);
+    Glib::RefPtr<Gtk::TextBuffer> Buffer(Source::Controller *source);
     Gtk::TextView& CurrentTextView();
     int CurrentPage();
     Gtk::Box& entry_view();
@@ -62,7 +57,7 @@ namespace Notebook {
     bool ScrollEventCallback(GdkEventScroll* scroll_event);
     int Pages();
 
-    Directories::Controller& directories() { return directories_; } 
+    Directories::Controller& directories() { return directories_; }
     Gtk::Paned& view();
 
     void GeneratePopup(std::vector<string> items);
@@ -70,9 +65,11 @@ namespace Notebook {
 
     void Search(bool forward);
     const Source::Config& source_config() { return source_config_; }
+    
   protected:
     void BufferChangeHandler(Glib::RefPtr<Gtk::TextBuffer> buffer);
-  private:  
+
+  private:
     void CreateKeybindings(Keybindings::Controller& keybindings);
     Glib::RefPtr<Gtk::Builder> m_refBuilder;
     Glib::RefPtr<Gio::SimpleActionGroup> refActionGroup;
@@ -91,5 +88,4 @@ namespace Notebook {
     Glib::RefPtr<Gtk::Clipboard> refClipboard_;
   };  // class controller
 }  // namespace Notebook
-
 #endif  // JUCI_NOTEBOOK_H_
