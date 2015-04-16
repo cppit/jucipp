@@ -1,6 +1,6 @@
 #include "notebook.h"
 #include <fstream>
-
+#include "clangmm.h"
 
 Notebook::Model::Model() {
   cc_extension_ = ".cc";
@@ -21,9 +21,9 @@ Notebook::Controller::Controller(Keybindings::Controller& keybindings,
   OnNewPage("juCi++");
   refClipboard_ = Gtk::Clipboard::get();
   ispopup = false;
-  view().pack1(directories_.widget(),true,true);
+  view().pack1(directories_.widget(), true, true);
   CreateKeybindings(keybindings); 
-}//  Constructor
+}  // Constructor
 
 
 void Notebook::Controller::CreateKeybindings(Keybindings::Controller
@@ -141,16 +141,10 @@ bool Notebook::Controller:: OnMouseRelease(GdkEventButton* button){
 bool Notebook::Controller::GeneratePopup(Gtk::Window* window){
   //  Get function to fill popup with suggests item vector under is for testing
   std::vector<std::string> items;
-  items.push_back("toString(std::string& string) -> void");
-  items.push_back("toLower(std::string& string) -> void");
-  items.push_back("toUpper(std::string& string) -> void");
-  items.push_back("fuckOFF(const std::string string) -> bool");
-  items.push_back("fuckOFF(const std::string string) -> bool");
-  items.push_back("toString(std::string& string) -> void");
-  items.push_back("toLower(std::string& string) -> void");
-  items.push_back("toUpper(std::string& string) -> void");
-  items.push_back("fuckOFF(const std::string string) -> bool");
-  items.push_back("fuckOFF(const std::string string) -> bool");
+  Gtk::TextIter start = CurrentTextView().get_buffer()->get_insert()->get_iter();
+  text_vec_.at(CurrentPage())->GetAutoCompleteSuggestions(start.get_line()+1,
+                                                start.get_line_offset()+2,
+                                                &items);
   
   //  Replace over with get suggestions from zalox! OVER IS JUST FOR TESTING
   
