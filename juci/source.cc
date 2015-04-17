@@ -135,7 +135,8 @@ void Source::Controller::OnLineEdit() { }
 void Source::Controller::
 GetAutoCompleteSuggestions(int line_number,
                            int column,
-                           std::vector<std::string> *suggestions) {
+                           std::vector<Source::AutoCompleteData>
+                           *suggestions) {
   parsing.lock();
   model().GetAutoCompleteSuggestions(view().get_buffer()
                                      ->get_text().raw(),
@@ -149,19 +150,20 @@ void Source::Model::
 GetAutoCompleteSuggestions(const std::string& buffer,
                            int line_number,
                            int column,
-                           std::vector<std::string> *suggestions) {
+                           std::vector<Source::AutoCompleteData>
+                           *suggestions) {
   clang::CodeCompleteResults results(&tu_,
                                      file_path(),
                                      buffer,
                                      line_number,
                                      column);
   for (int i = 0; i < results.size(); i++) {
-    std::stringstream ss;
-    const vector<clang::CompletionChunk> c = results.get(i).get_chunks();
-    for (auto &stringchunk : c) {
-      ss << stringchunk.chunk();
+    const vector<clang::CompletionChunk> chunks_ = results.get(i).get_chunks();
+    std::vector<AutoCompleteChunk> chunks;
+    for (auto &chunk : chunks_) {
+      chunks.emplace_back(chunk);
     }
-    suggestions->emplace_back(ss.str());
+    suggestions->emplace_back(chunks);
   }
 }
 

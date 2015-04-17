@@ -74,6 +74,24 @@ namespace Source {
     string GetLine(const Gtk::TextIter &begin);
   };  // class View
 
+  class AutoCompleteChunk {
+  public:
+    explicit AutoCompleteChunk(const clang::CompletionChunk &chunk) :
+      chunk_(chunk.chunk()), kind_(chunk.kind()) { }
+    const std::string& chunk() const { return chunk_; }
+    const clang::CompletionChunkKind& kind() const { return kind_; }
+  private:
+    std::string chunk_;
+    enum clang::CompletionChunkKind kind_;
+  };
+
+  class AutoCompleteData {
+  public:
+    explicit AutoCompleteData(const std::vector<AutoCompleteChunk> &chunks) :
+      chunks_(chunks) { }
+    std::vector<AutoCompleteChunk> chunks_;
+  };
+
   class Model{
   public:
     // constructor for Source::Model
@@ -98,7 +116,8 @@ namespace Source {
     void GetAutoCompleteSuggestions(const std::string& buffer,
                                     int line_number,
                                     int column,
-                                    std::vector<std::string> *suggestions);
+                                    std::vector<AutoCompleteData>
+                                    *suggestions);
       ~Model() { }
     int ReParse(const std::string &buffer);
     std::vector<Range> ExtractTokens(int, int);
@@ -113,7 +132,6 @@ namespace Source {
                         int token_kind);
     void HighlightCursor(clang::Token *token,
                         std::vector<Range> *source_ranges);
-
     std::vector<const char*> get_compilation_commands();
   };
 
@@ -127,7 +145,8 @@ namespace Source {
     void OnOpenFile(const string &filename);
     void GetAutoCompleteSuggestions(int line_number,
                                     int column,
-                                    std::vector<std::string> *suggestions);
+                                    std::vector<AutoCompleteData>
+                                    *suggestions);
     Glib::RefPtr<Gtk::TextBuffer> buffer();
 
   private:

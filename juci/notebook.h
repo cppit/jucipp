@@ -8,6 +8,7 @@
 #include "directories.h"
 #include <boost/algorithm/string/case_conv.hpp>
 #include <type_traits>
+#include <map>
 #include <sigc++/sigc++.h>
 
 namespace Notebook {
@@ -57,27 +58,31 @@ namespace Notebook {
     void OnCreatePage();
     bool ScrollEventCallback(GdkEventScroll* scroll_event);
     int Pages();
-    Directories::Controller& directories() { return directories_; } 
+    Directories::Controller& directories() { return directories_; }
     Gtk::Paned& view();
-    bool GeneratePopup();
+    bool GeneratePopup(int key);
     void Search(bool forward);
     const Source::Config& source_config() { return source_config_; }
     bool OnMouseRelease(GdkEventButton* button);
     bool OnKeyRelease(GdkEventKey* key);
+
   protected:
     void TextViewHandlers(Gtk::TextView& textview);
     void PopupSelectHandler(Gtk::Dialog &popup,
-			    Gtk::ListViewText &listview);
-  private:  
+                            Gtk::ListViewText &listview,
+                            std::map<std::string, std::string>
+                            *items);
+
+  private:
     void CreateKeybindings(Keybindings::Controller& keybindings);
     void FindPopupPosition(Gtk::TextView& textview,
-			   int popup_x,
-			   int popup_y,
-			   int &x,
-			   int &y);
+                           int popup_x,
+                           int popup_y,
+                           int &x,
+                           int &y);
     void PopupSetSize(Gtk::ScrolledWindow& scroll,
-		      int &current_x,
-		      int &current_y);
+                      int &current_x,
+                      int &current_y);
     Glib::RefPtr<Gtk::Builder> m_refBuilder;
     Glib::RefPtr<Gio::SimpleActionGroup> refActionGroup;
     Source::Config source_config_;
