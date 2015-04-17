@@ -1,70 +1,94 @@
 #include "terminal.h"
 #include <iostream>
+#include <thread>
 
 Terminal::View::View(){
   scrolledwindow_.add(textview_);
   scrolledwindow_.set_size_request(-1,150);
   view_.add(scrolledwindow_);
+  textview_.set_editable(false);
+  //Pango::TabArray tabsize;
+  //tabsize.set_tab(200,Pango::TAB_LEFT, 200);                                  
+  //textview_.set_tabs(tabsize);
 }
 
 
 Terminal::Controller::Controller() {
-  root = "";
-  Terminal().signal_key_release_event().
-    connect(sigc::mem_fun(*this,&Terminal::Controller::OnButtonRealeaseEvenet),false);
+  folder_command_ = "";
 }
 
-bool Terminal::Controller::OnButtonRealeaseEvenet(GdkEventKey *key) {
-  if(key->keyval == 65421 || key->keyval == 65293){
-    ExecuteCommand();
+void Terminal::Controller::SetFolderCommand(std::string path) {
+  int pos = path.find_last_of("/\\");
+  path.erase(path.begin()+pos,path.end());
+  folder_command_ = "cd "+ path + "; ";
+}
+
+void Terminal::Controller::CompileAndRun(std::string project_name) {
+   if (folder_command_=="") {
+     PrintMessage("juCi++ ERROR: Can not find project's CMakeList.txt\n");
+   } else {
+     if (running.try_lock()) {
+       std::thread execute([=]() {
+	   Terminal().get_buffer()->set_text("");
+	   ExecuteCommand("cmake .");
+	   if (ExistInConsole(cmake_sucsess)){
+	     ExecuteCommand("make");
+	     if (ExistInConsole(make_built)){
+	       if (FindExecutable(project_name)) {
+		 ExecuteCommand("./"+project_name);
+	       } else {
+		 PrintMessage("juCi++ ERROR: Can not find Executable\n");
+	       }
+	     }
+	   }
+	 });
+       execute.detach();
+       running.unlock();
+     }
+   }
+}
+
+void Terminal::Controller::PrintMessage(std::string message){
+  Terminal().get_buffer()->
+		   insert(Terminal().get_buffer()-> end(),"> "+message);
+}
+
+bool Terminal::Controller::FindExecutable(std::string executable) {
+  std::string build = Terminal().get_buffer()->get_text();
+  double pos = build.find(make_built);
+  Gtk::TextIter start = Terminal().get_buffer()->get_iter_at_offset(pos);
+  Gtk::TextIter end = Terminal().get_buffer()->get_iter_at_offset(pos);
+  while (!end.ends_line())  {
+    end.forward_char();
   }
-  return false;
+  build = Terminal().get_buffer()->get_text(start, end);
+  pos = build.find_last_of(" ");
+    std::cout << "FINNER NY POS" << std::endl;
+  build = build.substr(pos+1);
+  std::cout <<"BUILD TARGET = "<< build << std::endl;
+  std::cout << "EXECUTABLE FILE = "<< executable << std::endl;
+  if(build != executable) return false;
+  return true;
 }
-void Terminal::Controller::ExecuteCommand() {
 
-  std::cout << "EXECUTE COMMAND ALGORITHM "<< std::endl;
-  std::string temp = getCommand();
-  if(temp != ""){
-    std::cout << "EXECUTE COMMAND: "<<temp << std::endl;  
-    FILE* p = popen(temp.c_str(), "r"); 
-    if (p == NULL) 
-      { 
-	Terminal().get_buffer()->insert(Terminal().get_buffer()->end(),"Command Failed\n");
+bool Terminal::Controller::ExistInConsole(std::string string) {
+  double pos = Terminal().get_buffer()->
+    get_text().find(string);
+  if (pos == std::string::npos) return false;
+  return true;
+}
 
-      } else{
-      char buffer[1028]; 
-   
-      while (fgets(buffer, 1028, p) != NULL) 
-   	{ 
-   	  Terminal().get_buffer()->insert(Terminal().get_buffer()->end(),buffer);
-   	} 
-      pclose(p); 
-
-     
+void Terminal::Controller::ExecuteCommand(std::string command) {
+  command = folder_command_+command;
+  std::cout << "EXECUTE COMMAND: "<< command << std::endl;
+  FILE* p = popen(command.c_str(), "r");
+  if (p == NULL) {
+    PrintMessage("juCi++ ERROR: Failed to run command" + command + "\n");
+  }else {
+    char buffer[1028]; 
+    while (fgets(buffer, 1028, p) != NULL) {
+      PrintMessage(buffer);
     }
-    Terminal().get_buffer()->insert(Terminal().get_buffer()->end(),"Command Executed\n");
-  }else{
-    std::cout << "NO COMMAND TO RUN"<< std::endl;
+    pclose(p); 
   }
-  
 }
-
-std::string Terminal::Controller::getCommand(){
-  std::string command = "";
-  Gtk::TextIter start,end;
-  int a = Terminal().get_buffer()->get_insert()->get_iter().get_line()-1;
-  if(a==-1)a=0;
-  start = Terminal().get_buffer()->get_iter_at_line(a);
-  end  =Terminal().get_buffer()->get_iter_at_line(a);
-  while(!end.ends_line()) {
-    end++;
-  }
-  while(!start.starts_line()) {
-    start--;
-  }
-  
-  command = Terminal().get_buffer()->get_text(start,end);
-  return command;
-}
-
-

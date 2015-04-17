@@ -5,7 +5,7 @@ Window::Window() :
   main_config_(),
   keybindings_(main_config_.keybindings_cfg()),
   notebook_(*this,keybindings(), main_config_.source_cfg(), main_config_.dir_cfg()),
-  menu_(keybindings()) {
+  menu_(keybindings())  {
   set_title("juCi++");
   set_default_size(600, 400);
   add(window_box_);
@@ -34,6 +34,28 @@ Window::Window() :
 					[this]() {
 					  OnSaveFileAs();
 					});
+  
+   keybindings_.action_group_menu()->add(Gtk::Action::create("ProjectCompileAndRun",
+                                                            "Compile And Run"),
+                                        Gtk::AccelKey(keybindings_.config_
+   						     .key_map()["compile_and_run"]),
+                                        [this]() {
+					   terminal_.
+					     SetFolderCommand("/home/gm/ClionProjects/testi/CM.txt");
+					   std::string p = notebook_.directories().get_project_name("/home/gm/ClionProjects/testi");
+   					  terminal_.CompileAndRun(p);
+                                        });
+   
+   keybindings_.action_group_menu()->add(Gtk::Action::create("ProjectCompile",
+							     "Compile"),
+					 Gtk::AccelKey(keybindings_.config_
+						       .key_map()["compile"]),
+					 [this]() {
+					   terminal_.
+					     SetFolderCommand("/home/gm/ClionProjects/testi/CM.txt");
+					   std::string p = notebook_.directories().get_project_name("/home/gm/ClionProjects/testi");
+					   terminal_.CompileAndRun(p);
+					 });
 
   this->signal_button_release_event().
     connect(sigc::mem_fun(*this,&Window::OnMouseRelease),false);
@@ -77,6 +99,7 @@ void Window::OnFileOpenFolder() {
       std::cout << "Folder selected: " << dialog.get_filename()
           << std::endl;
       notebook_.directories().open_folder(dialog.get_filename());
+      std::cout << dialog.get_filename()<< std::endl;
       break;
     }
     case(Gtk::RESPONSE_CANCEL):

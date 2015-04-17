@@ -18,7 +18,11 @@
       <menuitem action='EditPaste'/>              
       <separator/>                               
       <menuitem action='EditFind'/>               
-    </menu>                                         
+    </menu>
+    <menu action='ProjectMenu'>                      
+      <menuitem action='ProjectCompileAndRun'/>         
+      <menuitem action='ProjectCompile'/>      
+    </menu>
     <menu action='WindowMenu'>                      
       <menuitem action='WindowCloseTab'/>         
       <menuitem action='WindowSplitWindow'/>      

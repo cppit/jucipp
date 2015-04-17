@@ -29,8 +29,7 @@ public:
   void OnOpenFile();
   void OnFileOpenFolder();
   void OnSaveFileAs();
-  bool OnMouseRelease(GdkEventButton* button);
-  
+  bool OnMouseRelease(GdkEventButton* button);  
 };
 
 #endif  // JUCI_WINDOW_H

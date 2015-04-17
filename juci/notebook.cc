@@ -151,39 +151,42 @@ bool Notebook::Controller::GeneratePopup(){
   std::vector<std::string> items;
   Gtk::TextIter start = CurrentTextView().get_buffer()->get_insert()->get_iter();
   text_vec_.at(CurrentPage())->GetAutoCompleteSuggestions(start.get_line()+1,
-                                                start.get_line_offset()+2,
-                                                &items);
+							  start.get_line_offset()+2,
+							  &items);
   std::cout << items.size()<< std::endl;
+  if(items.size()>0){
   
-  //  Replace over with get suggestions from zalox! OVER IS JUST FOR TESTING
+    //  Replace over with get suggestions from zalox! OVER IS JUST FOR TESTING
   
-  Gtk::ScrolledWindow popup_scroll_;
-  Gtk::ListViewText listview_(1,false,Gtk::SelectionMode::SELECTION_SINGLE);
+    Gtk::ScrolledWindow popup_scroll_;
+    Gtk::ListViewText listview_(1,false,Gtk::SelectionMode::SELECTION_SINGLE);
 
-  popup_scroll_.set_policy(Gtk::PolicyType::POLICY_NEVER,
-			   Gtk::PolicyType::POLICY_NEVER);
-  listview_.set_enable_search(false);
-  listview_.set_headers_visible(false);
-  listview_.set_hscroll_policy(Gtk::ScrollablePolicy::SCROLL_NATURAL);
-  listview_.set_activate_on_single_click(true);
-  for (auto &i : items) listview_.append(i);
-  popup_scroll_.add(listview_); 
-  popup_.get_vbox()->pack_start(popup_scroll_);
-  popup_.set_transient_for(*window_);
-  popup_.show_all();
+    popup_scroll_.set_policy(Gtk::PolicyType::POLICY_NEVER,
+			     Gtk::PolicyType::POLICY_NEVER);
+    listview_.set_enable_search(false);
+    listview_.set_headers_visible(false);
+    listview_.set_hscroll_policy(Gtk::ScrollablePolicy::SCROLL_NATURAL);
+    listview_.set_activate_on_single_click(true);
+    for (auto &i : items) listview_.append(i);
+    popup_scroll_.add(listview_); 
+    popup_.get_vbox()->pack_start(popup_scroll_);
+    popup_.set_transient_for(*window_);
+    popup_.show_all();
 
-  int popup_x = popup_.get_width();
-  int popup_y = items.size()*20;
-  PopupSetSize(popup_scroll_,popup_x,popup_y);
-  int x,y;
-  FindPopupPosition(CurrentTextView(),popup_x,popup_y,x,y);
-  popup_.move(x, y+15);
-  PopupSelectHandler(popup_, listview_);
-  ispopup = true;
-  popup_.run();
-  popup_.hide();
-  ispopup = false;
-  return true;
+    int popup_x = popup_.get_width();
+    int popup_y = items.size()*20;
+    PopupSetSize(popup_scroll_,popup_x,popup_y);
+    int x,y;
+    FindPopupPosition(CurrentTextView(),popup_x,popup_y,x,y);
+    popup_.move(x, y+15);
+    PopupSelectHandler(popup_, listview_);
+    ispopup = true;
+    popup_.run();
+    popup_.hide();
+    ispopup = false;
+    return true;
+  }
+  return false;
 }
 
 bool Notebook::Controller::ScrollEventCallback(GdkEventScroll* scroll_event) {

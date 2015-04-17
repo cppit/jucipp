@@ -1,6 +1,7 @@
 #ifndef JUCI_TERMINAL_H_
 #define JUCI_TERMINAL_H_
 
+#include <mutex>
 #include "gtkmm.h"
 
 namespace Terminal {
@@ -21,14 +22,20 @@ namespace Terminal {
     Controller();
     Gtk::HBox& view() {return view_.view();}
     Gtk::TextView& Terminal(){return view_.textview();}
+    void SetFolderCommand(std::string path);
+    void CompileAndRun(std::string project_name);
   private:
-    void ExecuteCommand();
-    std::string getCommand();
-    bool OnButtonRealeaseEvenet(GdkEventKey* key);
+    void ExecuteCommand(std::string command);
+    bool OnButtonRealeaseEvent(GdkEventKey* key);
+    bool ExistInConsole(std::string string);
+    bool FindExecutable(std::string executable);
+    void PrintMessage(std::string message);
     Terminal::View view_;
-    std::string root;
-
-
+    std::string folder_command_;
+    std::mutex running;
+    const std::string cmake_sucsess = "Build files have been written to:";
+    const std::string make_built = "Built target";
+    const std::string make_executable = "Linking CXX executable";
   };  // class controller
 }  // namespace Terminal
 
