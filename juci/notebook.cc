@@ -7,7 +7,7 @@ Notebook::Model::Model() {
   scrollvalue_ = 50;
 }
 
-Notebook::View::View() {
+Notebook::View::View() : notebook_() {
   view_.pack2(notebook_);
   view_.set_position(120);
 }
@@ -17,7 +17,8 @@ Notebook::Controller::Controller(Gtk::Window& window,
                                  Source::Config& source_cfg,
                                  Directories::Config& dir_cfg) :
   source_config_(source_cfg),
-  directories_(dir_cfg) {
+  directories_(dir_cfg),
+  index_(0, 1) {
   window_ = &window;
   OnNewPage("juCi++");
   refClipboard_ = Gtk::Clipboard::get();
@@ -25,7 +26,6 @@ Notebook::Controller::Controller(Gtk::Window& window,
   view().pack1(directories_.widget(), true, true);
   CreateKeybindings(keybindings);
   }  // Constructor
-
 
 void Notebook::Controller::CreateKeybindings(Keybindings::Controller
                                              &keybindings) {
@@ -275,6 +275,14 @@ void Notebook::Controller::OnNewPage(std::string name) {
   Notebook().set_focus_child(text_vec_.at(Pages()-1)->view());
 }
 
+void Notebook::Controller::
+MapBuffers(std::map<std::string, std::string> *buffers) {
+  for (auto &buffer : text_vec_) {
+    buffers->operator[](buffer->model().file_path()) =
+      buffer->buffer()->get_text().raw();
+  }
+}
+
 void Notebook::Controller::OnOpenFile(std::string path) {
   OnCreatePage();
   text_vec_.back()->OnOpenFile(path);
@@ -287,8 +295,8 @@ void Notebook::Controller::OnOpenFile(std::string path) {
 }
 
 void Notebook::Controller::OnCreatePage() {
-  text_vec_.push_back(new Source::Controller(source_config()));
-  linenumbers_vec_.push_back(new Source::Controller(source_config()));
+  text_vec_.push_back(new Source::Controller(source_config(), this));
+  linenumbers_vec_.push_back(new Source::Controller(source_config(), this));
   scrolledline_vec_.push_back(new Gtk::ScrolledWindow());
   scrolledtext_vec_.push_back(new Gtk::ScrolledWindow());
   editor_vec_.push_back(new Gtk::HBox());
@@ -551,8 +559,8 @@ void Notebook::Controller::FindPopupPosition(Gtk::TextView& textview,
     CurrentTextView().get_window(Gtk::TextWindowType::TEXT_WINDOW_WIDGET);
   gdkw->get_origin(textview_edge_x, textview_edge_y);
 
-  x+=textview_edge_x;
-  y+=textview_edge_y;
+  x += textview_edge_x;
+  y += textview_edge_y;
   if ((textview_edge_x-x)*-1 > textview.get_width()-popup_x) {
     x -= popup_x;
     if (x < textview_edge_x) x = textview_edge_x;

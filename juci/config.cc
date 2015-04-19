@@ -17,16 +17,14 @@ void MainConfig::GenerateSource() {
   boost::property_tree::ptree colors_json = source_json.get_child("colors");
   for ( auto &i : colors_json ) {
     source_cfg_.InsertTag(i.first, i.second.get_value<std::string>());
-    std::cout << "inserting tag, key: " << i.first << " value: " << i.second.get_value<std::string>() << std::endl;
   }
   for ( auto &i : syntax_json ) {
     source_cfg_.InsertType(i.first, i.second.get_value<std::string>());    
-    std::cout << "inserting type, key: " << i.first << " value: " << i.second.get_value<std::string>() << std::endl;
   }
 }
 
 void MainConfig::GenerateKeybindings() {
-  string line;
+  std::string line;
   std::ifstream menu_xml("menu.xml");
   if (menu_xml.is_open()) {
     while (getline(menu_xml, line)) {

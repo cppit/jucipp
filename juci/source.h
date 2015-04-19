@@ -3,31 +3,34 @@
 #include <iostream>
 #include <unordered_map>
 #include <vector>
-#include <string>
 #include "gtkmm.h"
 #include "clangmm.h"
 #include <thread>
 #include <mutex>
+#include <string>
 
-using std::string;
+namespace Notebook {
+  class Controller;
+}
 
 namespace Source {
-
   class Config {
   public:
     Config(const Config &original);
     Config();
-    const std::unordered_map<string, string>& tagtable() const;
-    const std::unordered_map<string, string>& typetable() const;
-    void SetTagTable(const std::unordered_map<string, string> &tagtable);
-    void InsertTag(const string &key, const string &value);
-    void SetTypeTable(const std::unordered_map<string, string> &tagtable);
-    void InsertType(const string &key, const string &value);
+    const std::unordered_map<std::string, std::string>& tagtable() const;
+    const std::unordered_map<std::string, std::string>& typetable() const;
+    void SetTagTable(const std::unordered_map<std::string, std::string>
+                     &tagtable);
+    void InsertTag(const std::string &key, const std::string &value);
+    void SetTypeTable(const std::unordered_map<std::string, std::string>
+                      &tagtable);
+    void InsertType(const std::string &key, const std::string &value);
 
   private:
-    std::unordered_map<string, string> tagtable_;
-    std::unordered_map<string, string> typetable_;
-    string background_;
+    std::unordered_map<std::string, std::string> tagtable_;
+    std::unordered_map<std::string, std::string> typetable_;
+    std::string background_;
   };  // class Config
 
   class Location {
@@ -48,13 +51,6 @@ namespace Source {
     const Location& start() const { return start_; }
     const Location& end() const { return end_; }
     int kind() const { return kind_; }
-    void to_stream() const {
-      std::cout << "range: [" << start_.line_number()-1;
-      std::cout << ", " << end_.line_number()-1  << "] ";
-      std::cout << "<" << start_.column_offset()-1;
-      std::cout << ", " << end_.column_offset()-1  << ">";
-      std::cout << std::endl;
-    }
   private:
     Location start_;
     Location end_;
@@ -71,7 +67,7 @@ namespace Source {
                         const Config &config);
 
   private:
-    string GetLine(const Gtk::TextIter &begin);
+    std::string GetLine(const Gtk::TextIter &begin);
   };  // class View
 
   class AutoCompleteChunk {
@@ -98,34 +94,37 @@ namespace Source {
     explicit Model(const Source::Config &config);
     // inits the syntax highligthing on file open
     void InitSyntaxHighlighting(const std::string &filepath,
-                           const std::string &project_path,
-                                const std::string &text,
-                           int start_offset,
-                           int end_offset);
+                                const std::string &project_path,
+                                const std::map<std::string, std::string>
+                                &buffers,
+                                int start_offset,
+                                int end_offset,
+                                clang::Index *index);
     // sets the filepath for this mvc
-    void set_file_path(const string &file_path);
+    void set_file_path(const std::string &file_path);
     // sets the project path for this mvc
-    void set_project_path(const string &project_path);
+    void set_project_path(const std::string &project_path);
 
     // gets the file_path member
-    const string& file_path() const;
+    const std::string& file_path() const;
     // gets the project_path member
-    const string& project_path() const;
+    const std::string& project_path() const;
     // gets the config member
     const Config& config() const;
-    void GetAutoCompleteSuggestions(const std::string& buffer,
-                                    int line_number,
-                                    int column,
-                                    std::vector<AutoCompleteData>
-                                    *suggestions);
-      ~Model() { }
-    int ReParse(const std::string &buffer);
+    void GetAutoCompleteSuggestions(const std::map<std::string, std::string>
+                                     &buffers,
+                                     int line_number,
+                                     int column,
+                                     std::vector<AutoCompleteData>
+                                     *suggestions);
+    ~Model() { }
+    int ReParse(const std::map<std::string, std::string> &buffers);
     std::vector<Range> ExtractTokens(int, int);
 
   private:
     Config config_;
-    string file_path_;
-    string project_path_;
+    std::string file_path_;
+    std::string project_path_;
     clang::TranslationUnit tu_;
     void HighlightToken(clang::Token *token,
                         std::vector<Range> *source_ranges,
@@ -137,12 +136,13 @@ namespace Source {
 
   class Controller {
   public:
-    explicit Controller(const Source::Config &config);
+    Controller(const Source::Config &config,
+               Notebook::Controller *notebook);
     Controller();
     View& view();
     Model& model();
     void OnNewEmptyFile();
-    void OnOpenFile(const string &filename);
+    void OnOpenFile(const std::string &filename);
     void GetAutoCompleteSuggestions(int line_number,
                                     int column,
                                     std::vector<AutoCompleteData>
@@ -159,6 +159,7 @@ namespace Source {
   protected:
     View view_;
     Model model_;
+    Notebook::Controller *notebook_;
   };  // class Controller
 }  // namespace Source
 #endif  // JUCI_SOURCE_H_

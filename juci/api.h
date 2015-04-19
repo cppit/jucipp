@@ -55,9 +55,9 @@ namespace libjuci {
                          const std::string plugin_path,
                          const std::string menu_keybinding);
   void AddMenuXml(const std::string plugin_name,
-                  const string parent_menu);
+                  const std::string parent_menu);
   void AddSubMenuXml(const std::string plugin_name,
-                     const string parent_menu);
+                     const std::string parent_menu);
   //////////////////////////////
   //// Boost.Python methods ////
   //////////////////////////////

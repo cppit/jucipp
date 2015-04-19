@@ -10,6 +10,7 @@
 #include <type_traits>
 #include <map>
 #include <sigc++/sigc++.h>
+#include "clangmm.h"
 
 namespace Notebook {
   class Model {
@@ -57,6 +58,8 @@ namespace Notebook {
     void OnOpenFile(std::string filename);
     void OnCreatePage();
     bool ScrollEventCallback(GdkEventScroll* scroll_event);
+    void MapBuffers(std::map<std::string, std::string> *buffers);
+    clang::Index* index() { return &index_; }
     int Pages();
     Directories::Controller& directories() { return directories_; }
     Gtk::Paned& view();
@@ -101,6 +104,7 @@ namespace Notebook {
     bool ispopup;
     Gtk::Dialog popup_;
     Gtk::Window* window_;
+    clang::Index index_;
   };  // class controller
 }  // namespace Notebook
 #endif  // JUCI_NOTEBOOK_H_
