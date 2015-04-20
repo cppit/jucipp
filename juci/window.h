@@ -12,7 +12,7 @@ public:
   Window();
   MainConfig& main_config() { return main_config_; }
   Gtk::Box window_box_;
-
+  virtual ~Window() { }
 
   
 //private:
