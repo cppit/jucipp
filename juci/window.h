@@ -13,7 +13,7 @@ public:
   MainConfig& main_config() { return main_config_; }
   // std::string  OnSaveFileAs();
   Gtk::Box window_box_;
-
+  virtual ~Window() { }
 
   
 //private:

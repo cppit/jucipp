@@ -60,6 +60,7 @@ namespace Source {
   class View : public Gtk::TextView {
   public:
     View();
+    virtual ~View() { }
     void ApplyConfig(const Config &config);
     void OnLineEdit(const std::vector<Range> &locations,
                     const Config &config);
