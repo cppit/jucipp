@@ -282,6 +282,7 @@ void Source::Controller::OnNewEmptyFile() {
   model().set_file_path(filename);
   model().set_project_path(filename);
   s.save("");
+  //OnOpenFile(filename); //OYVANG ADDED; REMOVE IF WRONG
 }
 
 string extract_file_path(const std::string &file_path) {
@@ -334,6 +335,7 @@ void Source::View::OnUpdateSyntax(const std::vector<Source::Range> &ranges,
 }
 
 void Source::Controller::OnOpenFile(const string &filepath) {
+  path_=filepath;
   sourcefile s(filepath);
   buffer()->set_text(s.get_content());
   int start_offset = buffer()->begin().get_offset();

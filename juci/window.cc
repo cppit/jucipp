@@ -4,7 +4,7 @@ Window::Window() :
   window_box_(Gtk::ORIENTATION_VERTICAL),
   main_config_(),
   keybindings_(main_config_.keybindings_cfg()),
-  notebook_(*this,keybindings(), main_config_.source_cfg(), main_config_.dir_cfg()),
+  notebook_(this,keybindings(), main_config_.source_cfg(), main_config_.dir_cfg()),
   menu_(keybindings())  {
   set_title("juCi++");
   set_default_size(600, 400);
@@ -32,7 +32,15 @@ Window::Window() :
 					Gtk::AccelKey(keybindings_.config_
 						      .key_map()["save_as"]),
 					[this]() {
-					  OnSaveFileAs();
+					  notebook_.OnSaveFile();
+					});
+
+    keybindings_.action_group_menu()->add(Gtk::Action::create("FileSave",
+							    "Save"),
+					Gtk::AccelKey(keybindings_.config_
+						      .key_map()["save"]),
+					[this]() {
+					  notebook_.OnSaveFile();
 					});
   
    keybindings_.action_group_menu()->add(Gtk::Action::create("ProjectCompileAndRun",
@@ -157,31 +165,6 @@ void Window::OnOpenFile() {
         }
         case(Gtk::RESPONSE_CANCEL): {
             std::cout << "Cancel clicked." << std::endl;
-            break;
-        }
-        default: {
-            std::cout << "Unexpected button clicked." << std::endl;
-            break;
-        }
-    }
-}
-void Window::OnSaveFileAs(){
-  Gtk::FileChooserDialog dialog("Please choose a file",
-				Gtk::FILE_CHOOSER_ACTION_SAVE);
-  dialog.set_transient_for(*this);
-  dialog.set_position(Gtk::WindowPosition::WIN_POS_CENTER_ALWAYS);
-  dialog.add_button("_Cancel", Gtk::RESPONSE_CANCEL);
-  dialog.add_button("_Save", Gtk::RESPONSE_OK);
-  int result = dialog.run();
-   switch (result) {
-        case(Gtk::RESPONSE_OK): {
-            std::string path = dialog.get_filename();
-	    unsigned pos = path.find_last_of("/\\");
-	    std::cout << path<< std::endl;
-	    notebook_.OnSaveFile(path);
-            break;
-        }
-        case(Gtk::RESPONSE_CANCEL): {
             break;
         }
         default: {

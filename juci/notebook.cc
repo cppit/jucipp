@@ -13,17 +13,24 @@ Notebook::View::View() {
   view_.set_position(120);
 }
 
-Notebook::Controller::Controller(Gtk::Window& window, Keybindings::Controller& keybindings,
+Notebook::Controller::Controller(Gtk::Window* window, Keybindings::Controller& keybindings,
                                  Source::Config& source_cfg,
                                  Directories::Config& dir_cfg) :
   source_config_(source_cfg),
   directories_(dir_cfg) {
-  window_ = &window;
+  std::cout << "NOTEBOOK CONTROLLER"<< std::endl;
+  window_ = window;
+    std::cout << "1"<< std::endl;
   OnNewPage("juCi++");
+    std::cout << "2"<< std::endl;
   refClipboard_ = Gtk::Clipboard::get();
+      std::cout << "3"<< std::endl;
   ispopup = false;
+      std::cout << "4"<< std::endl;
   view().pack1(directories_.widget(), true, true);
-  CreateKeybindings(keybindings); 
+      std::cout << "5"<< std::endl;
+  CreateKeybindings(keybindings);
+    std::cout << "FERDIG"<< std::endl;
 }  // Constructor
 
 
@@ -232,6 +239,7 @@ void Notebook::Controller::OnNewPage(std::string name) {
 void Notebook::Controller::OnOpenFile(std::string path) {
   OnCreatePage();
   text_vec_.back()->OnOpenFile(path);
+  text_vec_.back()->set_is_saved(true);
   unsigned pos = path.find_last_of("/\\");
   Notebook().append_page(*editor_vec_.back(), path.substr(pos+1));
   Notebook().show_all_children();
@@ -519,9 +527,50 @@ void Notebook::Controller::FindPopupPosition(Gtk::TextView& textview,
   }
 }
 
-void Notebook::Controller:: OnSaveFile(std::string path){
-  std::ofstream file;
-  file.open (path);
-  file << CurrentTextView().get_buffer()->get_text();
-  file.close();
+void Notebook::Controller:: OnSaveFile() {
+  if (text_vec_.at(CurrentPage())->is_saved()) {
+    std::ofstream file;
+    file.open (text_vec_.at(CurrentPage())->path());
+    file << CurrentTextView().get_buffer()->get_text();
+    file.close();
+  } else {
+    std::string path = OnSaveFileAs();
+    if (path != "") {
+      std::ofstream file;
+      file.open (path);
+      file << CurrentTextView().get_buffer()->get_text();
+      file.close();
+      text_vec_.at(CurrentPage())->set_path(path);
+      text_vec_.at(CurrentPage())->set_is_saved(true);
+    }
+  } 
+}
+
+
+std::string Notebook::Controller::OnSaveFileAs(){
+  Gtk::FileChooserDialog dialog("Please choose a file",
+				Gtk::FILE_CHOOSER_ACTION_SAVE);
+  dialog.set_transient_for(*window_);
+  dialog.set_position(Gtk::WindowPosition::WIN_POS_CENTER_ALWAYS);
+  dialog.add_button("_Cancel", Gtk::RESPONSE_CANCEL);
+  dialog.add_button("_Save", Gtk::RESPONSE_OK);
+  int result = dialog.run();
+   switch (result) {
+        case(Gtk::RESPONSE_OK): {
+            std::string path = dialog.get_filename();
+	    unsigned pos = path.find_last_of("/\\");
+	    std::cout << path<< std::endl;
+	    //notebook_.OnSaveFile(path);
+	    return path;
+            break;
+        }
+        case(Gtk::RESPONSE_CANCEL): {
+            break;
+        }
+        default: {
+            std::cout << "Unexpected button clicked." << std::endl;
+            break;
+        }
+    }
+   return "";
 }

@@ -29,7 +29,7 @@ namespace Notebook {
   };
   class Controller {
   public:
-    Controller(Gtk::Window& window, Keybindings::Controller& keybindings,
+    Controller(Gtk::Window* window, Keybindings::Controller& keybindings,
                Source::Config& config,
                Directories::Config& dir_cfg);
     ~Controller();
@@ -49,7 +49,7 @@ namespace Notebook {
     void OnFileNewEmptyfile();
     void OnFileNewHeaderFile();
     void OnFileOpenFolder();
-    void OnSaveFile(std::string path);
+    void OnSaveFile();
     void OnDirectoryNavigation(const Gtk::TreeModel::Path& path,
                                Gtk::TreeViewColumn* column);
     void OnNewPage(std::string name);
@@ -64,6 +64,7 @@ namespace Notebook {
     const Source::Config& source_config() { return source_config_; }
     bool OnMouseRelease(GdkEventButton* button);
     bool OnKeyRelease(GdkEventKey* key);
+    std::string OnSaveFileAs();
   protected:
     void TextViewHandlers(Gtk::TextView& textview);
     void PopupSelectHandler(Gtk::Dialog &popup,

@@ -8,6 +8,7 @@
       </menu>                                     
       <menuitem action='FileOpenFile'/>           
       <menuitem action='FileOpenFolder'/>
+      <menuitem action='FileSave'/>
       <menuitem action='FileSaveAs'/>
       <separator/>                               
       <menuitem action='FileQuit'/>               

@@ -11,6 +11,7 @@ class Window : public Gtk::Window {
 public:
   Window();
   MainConfig& main_config() { return main_config_; }
+  // std::string  OnSaveFileAs();
   Gtk::Box window_box_;
 
 
@@ -28,7 +29,7 @@ public:
   void OnWindowHide();
   void OnOpenFile();
   void OnFileOpenFolder();
-  void OnSaveFileAs();
+
   bool OnMouseRelease(GdkEventButton* button);  
 };
 

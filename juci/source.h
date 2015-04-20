@@ -129,13 +129,20 @@ namespace Source {
                                     int column,
                                     std::vector<std::string> *suggestions);
     Glib::RefPtr<Gtk::TextBuffer> buffer();
+    bool is_saved(){return is_saved_;};
+    std::string path(){return path_;};
+    void set_is_saved(bool isSaved){is_saved_ = isSaved;};
+    void set_path(std::string path){path_ = path;};
+    
 
   private:
     void OnLineEdit();
     void OnSaveFile();
     std::mutex syntax;
     std::mutex parsing;
+    std::string path_;
     bool go = false;
+    bool is_saved_ = false;
 
   protected:
     View view_;
