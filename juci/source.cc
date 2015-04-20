@@ -4,7 +4,7 @@
 #include <boost/property_tree/json_parser.hpp>
 #include <fstream>
 #include <boost/timer/timer.hpp>
-
+#include "notebook.h"
 
 #define log( var )                                                      \
   std::cout << "source.cc (" << __LINE__ << ") " << #var  << std::endl
@@ -102,16 +102,17 @@ Source::Model::Model(const Source::Config &config) :
 void Source::Model::
 InitSyntaxHighlighting(const std::string &filepath,
                        const std::string &project_path,
-                       const std::string &text,
+                       const std::map<std::string, std::string>
+                       &buffers,
                        int start_offset,
-                       int end_offset) {
-  set_file_path(filepath);
+                       int end_offset,
+                       clang::Index *index) {
   set_project_path(project_path);
   std::vector<const char*> arguments = get_compilation_commands();
-  tu_ = clang::TranslationUnit(true,
+  tu_ = clang::TranslationUnit(index,
                                filepath,
                                arguments,
-                               text);
+                               buffers);
 }
 
 // Source::View::UpdateLine
@@ -123,7 +124,7 @@ OnLineEdit(const std::vector<Source::Range> &locations,
 
 // Source::Model::UpdateLine
 int Source::Model::
-ReParse(const std::string &buffer) {
+ReParse(const std::map<std::string, std::string> &buffer) {
   return tu_.ReparseTranslationUnit(file_path(), buffer);
 }
 
@@ -131,6 +132,42 @@ ReParse(const std::string &buffer) {
 // Source::Controller::OnLineEdit()
 // fired when a line in the buffer is edited
 void Source::Controller::OnLineEdit() { }
+
+void Source::Controller::
+GetAutoCompleteSuggestions(int line_number,
+                           int column,
+                           std::vector<Source::AutoCompleteData>
+                           *suggestions) {
+  parsing.lock();
+  std::map<std::string, std::string> buffers;
+  notebook_->MapBuffers(&buffers);
+  model().GetAutoCompleteSuggestions(buffers,
+                                     line_number,
+                                     column,
+                                     suggestions);
+  parsing.unlock();
+}
+
+void Source::Model::
+GetAutoCompleteSuggestions(const std::map<std::string, std::string> &buffers,
+                           int line_number,
+                           int column,
+                           std::vector<Source::AutoCompleteData>
+                           *suggestions) {
+  clang::CodeCompleteResults results(&tu_,
+                                     file_path(),
+                                     buffers,
+                                     line_number,
+                                     column);
+  for (int i = 0; i < results.size(); i++) {
+    const vector<clang::CompletionChunk> chunks_ = results.get(i).get_chunks();
+    std::vector<AutoCompleteChunk> chunks;
+    for (auto &chunk : chunks_) {
+      chunks.emplace_back(chunk);
+    }
+    suggestions->emplace_back(chunks);
+  }
+}
 
 // sets the filepath for this mvc
 void Source::Model::
@@ -228,9 +265,9 @@ HighlightToken(clang::Token *token,
 
 // Source::Controller::Controller()
 // Constructor for Controller
-Source::Controller::Controller(const Source::Config &config) :
-  model_(config) {
-}
+Source::Controller::Controller(const Source::Config &config,
+                               Notebook::Controller *notebook) :
+  model_(config), notebook_(notebook) { }
 
 // Source::Controller::view()
 // return shared_ptr to the view
@@ -278,7 +315,7 @@ void Source::View::OnUpdateSyntax(const std::vector<Source::Range> &ranges,
   Glib::RefPtr<Gtk::TextBuffer> buffer = get_buffer();
   buffer->remove_all_tags(buffer->begin(), buffer->end());
   for (auto &range : ranges) {
-    string type = std::to_string(range.kind());
+    std::string type = std::to_string(range.kind());
     try {
       config.typetable().at(type);
     } catch (std::exception) {
@@ -301,18 +338,22 @@ void Source::View::OnUpdateSyntax(const std::vector<Source::Range> &ranges,
 }
 
 void Source::Controller::OnOpenFile(const string &filepath) {
+  set_file_path(filepath);
   sourcefile s(filepath);
+  std::map<std::string, std::string> buffers;
+  notebook_->MapBuffers(&buffers);
+  buffers[filepath] = s.get_content();
   buffer()->set_text(s.get_content());
   int start_offset = buffer()->begin().get_offset();
   int end_offset = buffer()->end().get_offset();
-
   if (check_extention(filepath)) {
     view().ApplyConfig(model().config());
     model().InitSyntaxHighlighting(filepath,
                                    extract_file_path(filepath),
-                                   buffer()->get_text().raw(),
+                                   buffers,
                                    start_offset,
-                                   end_offset);
+                                   end_offset,
+                                   notebook_->index());
     view().OnUpdateSyntax(model().ExtractTokens(start_offset, end_offset),
                           model().config());
   }
@@ -323,7 +364,10 @@ void Source::Controller::OnOpenFile(const string &filepath) {
             if (parsing.try_lock()) {
               while (true) {
                 const std::string raw = buffer()->get_text().raw();
-                if (model().ReParse(raw) == 0 &&
+                std::map<std::string, std::string> buffers;
+                notebook_->MapBuffers(&buffers);
+                buffers[model().file_path()] = raw;
+                if (model().ReParse(buffers) == 0 &&
                     raw == buffer()->get_text().raw()) {
                   syntax.lock();
                   go = true;
@@ -337,7 +381,6 @@ void Source::Controller::OnOpenFile(const string &filepath) {
         parse.detach();
       }
     });
-
 
   buffer()->signal_begin_user_action().connect([this]() {
       if (go) {

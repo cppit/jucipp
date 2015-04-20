@@ -8,8 +8,9 @@
 #include "directories.h"
 #include <boost/algorithm/string/case_conv.hpp>
 #include <type_traits>
+#include <map>
 #include <sigc++/sigc++.h>
-#include <deque>
+#include "clangmm.h"
 
 namespace Notebook {
   class Model {
@@ -30,7 +31,7 @@ namespace Notebook {
   };
   class Controller {
   public:
-    Controller(Keybindings::Controller& keybindings,
+    Controller(Gtk::Window* window, Keybindings::Controller& keybindings,
                Source::Config& config,
                Directories::Config& dir_cfg);
     ~Controller();
@@ -40,6 +41,8 @@ namespace Notebook {
     Gtk::Box& entry_view();
     Gtk::Notebook& Notebook();
     void OnBufferChange();
+    void BufferChangeHandler(Glib::RefPtr<Gtk::TextBuffer>
+                                               buffer);
     void OnCloseCurrentPage();
     std::string GetCursorWord();
     void OnEditCopy();
@@ -50,40 +53,40 @@ namespace Notebook {
     void OnFileNewEmptyfile();
     void OnFileNewHeaderFile();
     void OnFileOpenFolder();
+    void OnSaveFile();
     void OnDirectoryNavigation(const Gtk::TreeModel::Path& path,
                                Gtk::TreeViewColumn* column);
     void OnNewPage(std::string name);
     void OnOpenFile(std::string filename);
     void OnCreatePage();
     bool ScrollEventCallback(GdkEventScroll* scroll_event);
+    void MapBuffers(std::map<std::string, std::string> *buffers);
+    clang::Index* index() { return &index_; }
     int Pages();
-
     Directories::Controller& directories() { return directories_; }
     Gtk::Paned& view();
-
-    void GeneratePopup(std::vector<string> items);
-    // Gtk::HBox& view();
-
+    bool GeneratePopup(int key);
     void Search(bool forward);
     const Source::Config& source_config() { return source_config_; }
-    
+    bool OnMouseRelease(GdkEventButton* button);
+    bool OnKeyRelease(GdkEventKey* key);
+    std::string OnSaveFileAs();
   protected:
-    void BufferChangeHandler(Glib::RefPtr<Gtk::TextBuffer> buffer);
-
-    
+    void TextViewHandlers(Gtk::TextView& textview);
+    void PopupSelectHandler(Gtk::Dialog &popup,
+                            Gtk::ListViewText &listview,
+                            std::map<std::string, std::string>
+                            *items);
   private:
-    std::vector<std::deque<Glib::ustring>> history_;
-    const int kHistorySize = 30;
-    void NewBufferHistory(Glib::RefPtr<Gtk::TextBuffer> buffer);
-    void RemoveBufferHistory();
-    void UpdateHistory();
-    void AppendBufferState();
-    std::deque<Glib::ustring>& BufferHistory();
-    void PrintQue();
-    Glib::ustring& LastBufferState();
-    void OnUndo();
-
     void CreateKeybindings(Keybindings::Controller& keybindings);
+    void FindPopupPosition(Gtk::TextView& textview,
+                           int popup_x,
+                           int popup_y,
+                           int &x,
+                           int &y);
+    void PopupSetSize(Gtk::ScrolledWindow& scroll,
+                      int &current_x,
+                      int &current_y);
     Glib::RefPtr<Gtk::Builder> m_refBuilder;
     Glib::RefPtr<Gio::SimpleActionGroup> refActionGroup;
     Source::Config source_config_;
@@ -100,6 +103,10 @@ namespace Notebook {
     Gtk::TextIter search_match_end_;
     Gtk::TextIter search_match_start_;
     Glib::RefPtr<Gtk::Clipboard> refClipboard_;
+    bool ispopup;
+    Gtk::Dialog popup_;
+    Gtk::Window* window_;
+    clang::Index index_;
   };  // class controller
 }  // namespace Notebook
 #endif  // JUCI_NOTEBOOK_H_

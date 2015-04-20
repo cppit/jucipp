@@ -24,7 +24,11 @@
 	"new_cc_file": "<alt>c",
 	"close_tab": "<control>w",
         "open_folder": "<control><alt>o",
-        "edit_undo": "<control>z"
+        "edit_undo": "<control>z",
+	"save": "<control>s",
+	"save_as": "<control><shift>s",
+	"compile_and_run": "<control><alt>r>",
+	"compile": "<control>r"
     },
     "directoryfilter": {
         "ignore": [

@@ -7,7 +7,9 @@
         <menuitem action='FileNewH'/>           
       </menu>                                     
       <menuitem action='FileOpenFile'/>           
-      <menuitem action='FileOpenFolder'/>         
+      <menuitem action='FileOpenFolder'/>
+      <menuitem action='FileSave'/>
+      <menuitem action='FileSaveAs'/>
       <separator/>                               
       <menuitem action='FileQuit'/>               
     </menu>                                         
@@ -19,6 +21,10 @@
       <menuitem action='EditFind'/>
       <menuitem action='EditUndo'/>
     </menu>                                         
+    <menu action='ProjectMenu'>                      
+      <menuitem action='ProjectCompileAndRun'/>         
+      <menuitem action='ProjectCompile'/>      
+    </menu>
     <menu action='WindowMenu'>                      
       <menuitem action='WindowCloseTab'/>         
       <menuitem action='WindowSplitWindow'/>      

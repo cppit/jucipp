@@ -3,6 +3,7 @@
 
 #include "api.h"
 #include "config.h"
+#include "terminal.h"
 #include <cstddef>
 
 
@@ -10,8 +11,9 @@ class Window : public Gtk::Window {
 public:
   Window();
   MainConfig& main_config() { return main_config_; }
+  // std::string  OnSaveFileAs();
   Gtk::Box window_box_;
-
+  virtual ~Window() { }
 
   
 //private:
@@ -19,8 +21,7 @@ public:
   Keybindings::Controller keybindings_;
   Menu::Controller menu_;
   Notebook::Controller notebook_;
-
-
+  Terminal::Controller terminal_;
   
   Keybindings::Controller& keybindings() { return keybindings_; }
  private:
@@ -28,7 +29,8 @@ public:
   void OnWindowHide();
   void OnOpenFile();
   void OnFileOpenFolder();
-  
+
+  bool OnMouseRelease(GdkEventButton* button);  
 };
 
 #endif  // JUCI_WINDOW_H

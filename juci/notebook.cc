@@ -1,4 +1,5 @@
 #include "notebook.h"
+#include <fstream>
 
 Notebook::Model::Model() {
   cc_extension_ = ".cc";
@@ -6,21 +7,25 @@ Notebook::Model::Model() {
   scrollvalue_ = 50;
 }
 
-Notebook::View::View() {
+Notebook::View::View() : notebook_() {
   view_.pack2(notebook_);
   view_.set_position(120);
 }
 
-Notebook::Controller::Controller(Keybindings::Controller& keybindings,
+Notebook::Controller::Controller(Gtk::Window* window, Keybindings::Controller& keybindings,
                                  Source::Config& source_cfg,
                                  Directories::Config& dir_cfg) :
   source_config_(source_cfg),
-  directories_(dir_cfg) {
+  directories_(dir_cfg),
+  index_(0, 1) {
+  window_ = window;
   OnNewPage("juCi++");
   refClipboard_ = Gtk::Clipboard::get();
+  ispopup = false;
   view().pack1(directories_.widget(), true, true);
   CreateKeybindings(keybindings);
-  }  //  Constructor
+}  // Constructor
+
 
 void Notebook::Controller::CreateKeybindings(Keybindings::Controller
                                              &keybindings) {
@@ -100,15 +105,8 @@ void Notebook::Controller::CreateKeybindings(Keybindings::Controller
         Gtk::AccelKey(keybindings.config_
                       .key_map()["edit_undo"]),
         [this]() {
-          OnUndo();
-        });
-  
-  keybindings.action_group_hidden()->
-    add(Gtk::Action::create("EditPaste",
-                            Gtk::Stock::PASTE),
-        [this]() {
-          OnEditPaste();
-        });
+          //OnUndo();
+        });  
   entry_.view_.entry().signal_activate().
     connect(
             [this]() {
@@ -142,53 +140,108 @@ void Notebook::Controller::CreateKeybindings(Keybindings::Controller
             });
 }
 
-void Notebook::Controller::GeneratePopup(std::vector<string> items) {
+bool Notebook::Controller:: OnMouseRelease(GdkEventButton* button) {
+  if (button->button == 1 && ispopup) {
+    popup_.response(Gtk::RESPONSE_DELETE_EVENT);
+    return true;
+  }
+  return false;
+}
+
+bool Notebook::Controller::OnKeyRelease(GdkEventKey* key) {
+  return GeneratePopup(key->keyval);
+}
+
+bool Notebook::Controller::GeneratePopup(int key_id) {
+  //  Get function to fill popup with suggests item vector under is for testing
+  Gtk::TextIter beg = CurrentTextView().get_buffer()->get_insert()->get_iter();
+  Gtk::TextIter end = CurrentTextView().get_buffer()->get_insert()->get_iter();
+  Gtk::TextIter tmp = CurrentTextView().get_buffer()->get_insert()->get_iter();
+  Gtk::TextIter tmp1 = CurrentTextView().get_buffer()->get_insert()->get_iter();
+  Gtk::TextIter line =
+  CurrentTextView().get_buffer()->get_iter_at_line(tmp.get_line());
+  if (end.backward_char() && end.backward_char()) {
+    bool illegal_chars =
+    end.backward_search("\"", Gtk::TEXT_SEARCH_VISIBLE_ONLY, tmp, tmp1, line)
+    ||
+      end.backward_search("//", Gtk::TEXT_SEARCH_VISIBLE_ONLY, tmp, tmp1, line);
+      if (illegal_chars) {
+        return false;
+      }
+      std::string c = text_vec_[CurrentPage()]->buffer()->get_text(end, beg);
+      switch (key_id) {
+      case 46:
+        break;
+      case 58:
+        if (c != "::") return false;
+        break;
+      case 60:
+        if (c != "->") return false;
+        break;
+      case 62:
+        if (c != "->") return false;
+        break;
+      default:
+        return false;
+      }
+  } else {
+    return false;
+  }
+  std::vector<Source::AutoCompleteData> acdata;
+  text_vec_.at(CurrentPage())->
+    GetAutoCompleteSuggestions(beg.get_line()+1,
+                               beg.get_line_offset()+2,
+                               &acdata);
+  std::map<std::string, std::string> items;
+  for (auto &data : acdata) {
+    std::stringstream ss;
+    std::string return_value;
+    for (auto &chunk : data.chunks_) {
+      switch (chunk.kind()) {
+      case clang::CompletionChunk_ResultType:
+        return_value = chunk.chunk();
+        break;
+      case clang::CompletionChunk_Informative:
+        break;
+      default:
+        ss << chunk.chunk();
+        break;
+      }
+    }
+    items[ss.str() + " --> " + return_value] = ss.str();
+  }
+  //  Replace over with get suggestions from zalox! OVER IS JUST FOR TESTING
   Gtk::ScrolledWindow popup_scroll_;
   Gtk::ListViewText listview_(1, false, Gtk::SelectionMode::SELECTION_SINGLE);
-  Gtk::Dialog popup_("", true);
-  listview_.set_enable_search(false);
+  popup_scroll_.set_policy(Gtk::PolicyType::POLICY_NEVER,
+                           Gtk::PolicyType::POLICY_NEVER);
+  listview_.set_enable_search(true);
+  listview_.set_headers_visible(false);
   listview_.set_hscroll_policy(Gtk::ScrollablePolicy::SCROLL_NATURAL);
   listview_.set_activate_on_single_click(true);
-  listview_.signal_row_activated().
-    connect([this, &listview_, &popup_](const Gtk::TreeModel::Path& path,
-                                        Gtk::TreeViewColumn*) {
-              std::string t = listview_.get_text(listview_.get_selected()[0]);
-              CurrentTextView().get_buffer()->insert_at_cursor(t);
-              popup_.response(Gtk::RESPONSE_DELETE_EVENT);
-            });
-  for (auto &i : items) listview_.append(i);
-  listview_.set_headers_visible(false);
+  if (items.empty()) {
+    items["No suggestions found..."] = "";
+  }
+  for (auto &i : items) {
+    listview_.append(i.first);
+  }
   popup_scroll_.add(listview_);
   popup_.get_vbox()->pack_start(popup_scroll_);
-  popup_.set_size_request(80, 80);
+  popup_.set_transient_for(*window_);
   popup_.show_all();
-  Gdk::Rectangle temp1, temp2;
-  CurrentTextView().
-    get_cursor_locations(
-                         CurrentTextView().
-                         get_buffer()->get_insert()->
-                         get_iter(), temp1, temp2);
 
-
-  int x = temp1.get_x();
-  int y = temp1.get_y();
-  text_vec_.at(CurrentPage())->
-    view().buffer_to_window_coords(
-                                   Gtk::TextWindowType::TEXT_WINDOW_WIDGET,
-                                   temp2.get_x(),
-                                   temp2.get_y(),
-                                   x, y);
-
-
-  int widht = Notebook().get_width()-88;
-  int height = Notebook().get_height()-180;
-  if (x > widht) {
-    x = widht;  }
-  if (y > height) {
-    y = height;
-  }
-  popup_.move(x, y+88);
+  int popup_x = popup_.get_width();
+  int popup_y = items.size() * 20;
+  PopupSetSize(popup_scroll_, popup_x, popup_y);
+  int x, y;
+  FindPopupPosition(CurrentTextView(), popup_x, popup_y, x, y);
+  popup_.move(x, y+15);
+  PopupSelectHandler(popup_, listview_, &items);
+  ispopup = true;
   popup_.run();
+  popup_.hide();
+  ispopup = false;
+  return true;
 }
 
 bool Notebook::Controller::ScrollEventCallback(GdkEventScroll* scroll_event) {
@@ -229,28 +282,35 @@ void Notebook::Controller::OnNewPage(std::string name) {
   Notebook().show_all_children();
   Notebook().set_current_page(Pages()-1);
   Notebook().set_focus_child(text_vec_.at(Pages()-1)->view());
-  NewBufferHistory(text_vec_.back()->view().get_buffer());
+
+}
+
+void Notebook::Controller::
+MapBuffers(std::map<std::string, std::string> *buffers) {
+  for (auto &buffer : text_vec_) {
+    buffers->operator[](buffer->model().file_path()) =
+      buffer->buffer()->get_text().raw();
+  }
 }
 
 void Notebook::Controller::OnOpenFile(std::string path) {
   OnCreatePage();
   text_vec_.back()->OnOpenFile(path);
+  text_vec_.back()->set_is_saved(true);
   unsigned pos = path.find_last_of("/\\");
   Notebook().append_page(*editor_vec_.back(), path.substr(pos+1));
   Notebook().show_all_children();
-  std::cout << "setting current page"<< std::endl;
   Notebook().set_current_page(Pages()-1);
-  std::cout << "current page set" << std::endl;
   Notebook().set_focus_child(text_vec_.back()->view());
   OnBufferChange();
-  NewBufferHistory(text_vec_.back()->view().get_buffer());
+
   
   
 }
 
 void Notebook::Controller::OnCreatePage() {
-  text_vec_.push_back(new Source::Controller(source_config()));
-  linenumbers_vec_.push_back(new Source::Controller(source_config()));
+  text_vec_.push_back(new Source::Controller(source_config(), this));
+  linenumbers_vec_.push_back(new Source::Controller(source_config(), this));
   scrolledline_vec_.push_back(new Gtk::ScrolledWindow());
   scrolledtext_vec_.push_back(new Gtk::ScrolledWindow());
   editor_vec_.push_back(new Gtk::HBox());
@@ -265,7 +325,7 @@ void Notebook::Controller::OnCreatePage() {
   linenumbers_vec_.back()->view().set_sensitive(false);
   editor_vec_.back()->pack_start(*scrolledline_vec_.back(), false, false);
   editor_vec_.back()->pack_start(*scrolledtext_vec_.back(), true, true);
-  BufferChangeHandler(text_vec_.back()->view().get_buffer());
+  TextViewHandlers(text_vec_.back()->view());
 }
 
 void Notebook::Controller::OnCloseCurrentPage() {
@@ -396,24 +456,6 @@ void Notebook::Controller::OnBufferChange() {
     ScrollEventCallback(scroll);
     delete scroll;
   }
-  Gtk::TextIter start, end;
-  std::string word, last_word;
-  start = Buffer(text_vec_.at(page))->get_insert()->get_iter();
-  end = Buffer(text_vec_.at(page))->get_insert()->get_iter();
-  start.backward_char();
-  word = Buffer(text_vec_.at(page))->get_text(start, end);
-  last_word = Buffer(text_vec_.at(page))->get_text(--start, --end);
-  if (word == ".") {
-    // TODO(Forgie) Zalox,Forgie) Remove TEST
-    UpdateHistory();
-    std::vector<std::string> TEST;
-    TEST.push_back("toString()");
-    TEST.push_back("toLower()");
-    TEST.push_back("toUpper()");
-    TEST.push_back("fuckOFF()");
-    TEST.push_back("fuckOFF()");
-    GeneratePopup(TEST);
-  }
 }
 void Notebook::Controller
 ::OnDirectoryNavigation(const Gtk::TreeModel::Path& path,
@@ -464,91 +506,142 @@ void Notebook::Controller::BufferChangeHandler(Glib::RefPtr<Gtk::TextBuffer>
                                    });
   buffer->signal_end_user_action().connect(
                                    [this]() {                                     
-                                     UpdateHistory();
+                                     //UpdateHistory();
                                    });
 }
 
+void Notebook::Controller::TextViewHandlers(Gtk::TextView& textview) {
+  textview.get_buffer()->signal_changed().connect(
+                                                  [this]() {
+                                                    OnBufferChange();
+                                                  });
 
-// History methods
-void Notebook::Controller::
-NewBufferHistory(Glib::RefPtr<Gtk::TextBuffer> buffer) {
-  Glib::ustring text = buffer->get_text();
-  std::deque<Glib::ustring> queue;
-  queue.push_back(text);
-  history_.push_back(queue);
+  textview.signal_button_release_event().
+    connect(sigc::mem_fun(*this, &Notebook::Controller::OnMouseRelease), false);
+
+  textview.signal_key_release_event().
+    connect(sigc::mem_fun(*this, &Notebook::Controller::OnKeyRelease), false);
 }
 
-void Notebook::Controller::UpdateHistory() {
-  Gtk::TextIter start, end;
-  std::string word, last_word;
-  int page = CurrentPage();
-  start = Buffer(text_vec_.at(page))->get_insert()->get_iter();
-  end = Buffer(text_vec_.at(page))->get_insert()->get_iter();
-  start.backward_char();
-  word = Buffer(text_vec_.at(page))->get_text(start, end);
-  last_word = Buffer(text_vec_.at(page))->get_text(--start, --end);
-  /*if(word == "."
-     || word == " "
-     || word == ";"
-     || word == ":"
-     || word == "}"
-     || word == ")"
-     || word == "]"
-     || word == ">") {
-    if(last_word != "."
-       && last_word != " "
-       && last_word != ";"
-       && last_word != ":"
-       && last_word != "}"
-       && last_word != ")"
-       && last_word != "]"
-       && last_word != ">") {*/
-      AppendBufferState();
-      //    }
-      //  }
+void Notebook::Controller::PopupSelectHandler(Gtk::Dialog &popup,
+                                              Gtk::ListViewText &listview,
+                                              std::map<std::string, std::string>
+                                              *items) {
+  listview.signal_row_activated().
+    connect([this, &listview, &popup, items](const Gtk::TreeModel::Path& path,
+                                             Gtk::TreeViewColumn*) {
+              std::string selected = items->
+                at(listview.get_text(listview.get_selected()[0]));
+              CurrentTextView().get_buffer()->insert_at_cursor(selected);
+              popup.response(Gtk::RESPONSE_DELETE_EVENT);
+            });
 }
-void Notebook::Controller::
-AppendBufferState() {
-  Glib::ustring text = CurrentTextView().get_buffer()->get_text();
-  std::cout << "buf.size(): " << text.size() << std::endl;
-  if(BufferHistory().size() < kHistorySize) {
-   BufferHistory().push_back(text);
+void Notebook::Controller::PopupSetSize(Gtk::ScrolledWindow &scroll,
+                                        int &current_x,
+                                        int &current_y) {
+  int textview_x = CurrentTextView().get_width();
+  int textview_y = 150;
+  bool is_never_scroll_x = true;
+  bool is_never_scroll_y = true;
+  if (current_x > textview_x) {
+    current_x = textview_x;
+    is_never_scroll_x = false;
+  }
+  if (current_y > textview_y) {
+    current_y = textview_y;
+    is_never_scroll_y = false;
+  }
+  scroll.set_size_request(current_x, current_y);
+  if (!is_never_scroll_x && !is_never_scroll_y) {
+    scroll.set_policy(Gtk::PolicyType::POLICY_AUTOMATIC,
+                      Gtk::PolicyType::POLICY_AUTOMATIC);
+  } else if (!is_never_scroll_x && is_never_scroll_y) {
+    scroll.set_policy(Gtk::PolicyType::POLICY_AUTOMATIC,
+                      Gtk::PolicyType::POLICY_NEVER);
+  } else if (is_never_scroll_x && !is_never_scroll_y) {
+    scroll.set_policy(Gtk::PolicyType::POLICY_NEVER,
+                      Gtk::PolicyType::POLICY_AUTOMATIC);
+  }
+}
+
+void Notebook::Controller::FindPopupPosition(Gtk::TextView& textview,
+                                             int popup_x,
+                                             int popup_y,
+                                             int &x,
+                                             int &y) {
+  Gdk::Rectangle temp1, temp2;
+  textview.get_cursor_locations(
+                                CurrentTextView().
+                                get_buffer()->get_insert()->
+                                get_iter(), temp1, temp2);
+  int textview_edge_x = 0;
+  int textview_edge_y = 0;
+  textview.buffer_to_window_coords(
+                                   Gtk::TextWindowType::TEXT_WINDOW_WIDGET,
+                                   temp1.get_x(),
+                                   temp1.get_y(),
+                                   x, y);
+  Glib::RefPtr<Gdk::Window> gdkw =
+    CurrentTextView().get_window(Gtk::TextWindowType::TEXT_WINDOW_WIDGET);
+  gdkw->get_origin(textview_edge_x, textview_edge_y);
+
+  x += textview_edge_x;
+  y += textview_edge_y;
+  if ((textview_edge_x-x)*-1 > textview.get_width()-popup_x) {
+    x -= popup_x;
+    if (x < textview_edge_x) x = textview_edge_x;
+  }
+  if ((textview_edge_y-y)*-1 > textview.get_height()-popup_y) {
+    y -= (popup_y+14) + 15;
+    if (x < textview_edge_y) y = textview_edge_y +15;
+  }
+}
+
+void Notebook::Controller:: OnSaveFile() {
+  if (text_vec_.at(CurrentPage())->is_saved()) {
+    std::ofstream file;
+    file.open (text_vec_.at(CurrentPage())->path());
+    file << CurrentTextView().get_buffer()->get_text();
+    file.close();
   } else {
-    BufferHistory().pop_front();
-    BufferHistory().push_back(text);
-  }
+    std::string path = OnSaveFileAs();
+    if (path != "") {
+      std::ofstream file;
+      file.open (path);
+      file << CurrentTextView().get_buffer()->get_text();
+      file.close();
+      text_vec_.at(CurrentPage())->set_file_path(path);
+      text_vec_.at(CurrentPage())->set_is_saved(true);
+    }
+  } 
 }
 
-void Notebook::Controller::RemoveBufferHistory() {
-  history_.erase(history_.begin()+CurrentPage());
+
+std::string Notebook::Controller::OnSaveFileAs(){
+  Gtk::FileChooserDialog dialog("Please choose a file",
+				Gtk::FILE_CHOOSER_ACTION_SAVE);
+  dialog.set_transient_for(*window_);
+  dialog.set_position(Gtk::WindowPosition::WIN_POS_CENTER_ALWAYS);
+  dialog.add_button("_Cancel", Gtk::RESPONSE_CANCEL);
+  dialog.add_button("_Save", Gtk::RESPONSE_OK);
+  int result = dialog.run();
+   switch (result) {
+        case(Gtk::RESPONSE_OK): {
+            std::string path = dialog.get_filename();
+	    unsigned pos = path.find_last_of("/\\");
+	    std::cout << path<< std::endl;
+	    //notebook_.OnSaveFile(path);
+	    return path;
+            break;
+        }
+        case(Gtk::RESPONSE_CANCEL): {
+            break;
+        }
+        default: {
+            std::cout << "Unexpected button clicked." << std::endl;
+            break;
+        }
+    }
+   return "";
 }
 
-std::deque<Glib::ustring>& Notebook::Controller::BufferHistory() {
-  return history_.at(CurrentPage());
-}
-
-Glib::ustring& Notebook::Controller::LastBufferState() {
-  if(BufferHistory().size() > 1) {
-    BufferHistory().pop_back();
-  }else {
-    std::cout << "Reached end of history, can't undo any more" << std::endl;
-  }
-  return BufferHistory().back();
-}
-
-void Notebook::Controller::OnUndo() {
-  //  PrintQue();
-  //  std::cout << "UNDOING SOMETHING TERRIBLE" << std::endl;
-  Glib::RefPtr<Gtk::TextBuffer> buf = CurrentTextView().get_buffer();
-  buf->set_text(LastBufferState());
-  std::cout << "Undoing.."<< std::endl;
-  PrintQue();
-}
-
-void Notebook::Controller::PrintQue(){
-  int size = BufferHistory().back().size();
-  std::cout << "buffer size: "<< size << std::endl
-            << "buffer #: " << CurrentPage() << std::endl
-            << "historylength: "<< BufferHistory().size() << std::endl;
-  }
-//TODO remove first history event after open file

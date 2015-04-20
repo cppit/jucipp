@@ -4,8 +4,8 @@ Window::Window() :
   window_box_(Gtk::ORIENTATION_VERTICAL),
   main_config_(),
   keybindings_(main_config_.keybindings_cfg()),
-  notebook_(keybindings(), main_config_.source_cfg(), main_config_.dir_cfg()),
-  menu_(keybindings()) {
+  notebook_(this,keybindings(), main_config_.source_cfg(), main_config_.dir_cfg()),
+  menu_(keybindings())  {
   set_title("juCi++");
   set_default_size(600, 400);
   add(window_box_);
@@ -26,6 +26,50 @@ Window::Window() :
                                        [this]() {
                                          OnFileOpenFolder();
                                        });
+
+  keybindings_.action_group_menu()->add(Gtk::Action::create("FileSaveAs",
+							    "Save as"),
+					Gtk::AccelKey(keybindings_.config_
+						      .key_map()["save_as"]),
+					[this]() {
+					  notebook_.OnSaveFile();
+					});
+
+    keybindings_.action_group_menu()->add(Gtk::Action::create("FileSave",
+							    "Save"),
+					Gtk::AccelKey(keybindings_.config_
+						      .key_map()["save"]),
+					[this]() {
+					  notebook_.OnSaveFile();
+					});
+  
+   keybindings_.action_group_menu()->add(Gtk::Action::create("ProjectCompileAndRun",
+                                                            "Compile And Run"),
+                                        Gtk::AccelKey(keybindings_.config_
+   						     .key_map()["compile_and_run"]),
+                                        [this]() {
+					   terminal_.
+					     SetFolderCommand("/home/gm/ClionProjects/testi/CM.txt");
+					   std::string p = notebook_.directories().get_project_name("/home/gm/ClionProjects/testi");
+   					  terminal_.CompileAndRun(p);
+                                        });
+   
+   keybindings_.action_group_menu()->add(Gtk::Action::create("ProjectCompile",
+							     "Compile"),
+					 Gtk::AccelKey(keybindings_.config_
+						       .key_map()["compile"]),
+					 [this]() {
+					   terminal_.
+					     SetFolderCommand("/home/gm/ClionProjects/testi/CM.txt");
+					   std::string p = notebook_.directories().get_project_name("/home/gm/ClionProjects/testi");
+					   terminal_.CompileAndRun(p);
+					 });
+
+  this->signal_button_release_event().
+    connect(sigc::mem_fun(*this,&Window::OnMouseRelease),false);
+  terminal_.Terminal().signal_button_release_event().
+    connect(sigc::mem_fun(*this,&Window::OnMouseRelease),false);
+  
   PluginApi::menu_ = &menu_;
   PluginApi::notebook_ = &notebook_;
   PluginApi::InitPlugins();
@@ -37,6 +81,7 @@ Window::Window() :
   window_box_.pack_start(menu_.view(), Gtk::PACK_SHRINK);
   window_box_.pack_start(notebook_.entry_view(), Gtk::PACK_SHRINK);
   window_box_.pack_start(notebook_.view());
+  window_box_.pack_end(terminal_.view(),Gtk::PACK_SHRINK);
   show_all_children();
   } // Window constructor
 
@@ -62,6 +107,7 @@ void Window::OnFileOpenFolder() {
       std::cout << "Folder selected: " << dialog.get_filename()
           << std::endl;
       notebook_.directories().open_folder(dialog.get_filename());
+      std::cout << dialog.get_filename()<< std::endl;
       break;
     }
     case(Gtk::RESPONSE_CANCEL):
@@ -112,6 +158,7 @@ void Window::OnOpenFile() {
         case(Gtk::RESPONSE_OK): {
             std::cout << "Open clicked." << std::endl;
             std::string path = dialog.get_filename();
+	    
             std::cout << "File selected: " << path << std::endl;
 	    notebook_.OnOpenFile(path);
             break;
@@ -126,3 +173,7 @@ void Window::OnOpenFile() {
         }
     }
 }
+bool Window::OnMouseRelease(GdkEventButton *button){
+  return notebook_.OnMouseRelease(button);
+}
+

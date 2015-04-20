@@ -27,6 +27,8 @@ Menu::Controller::Controller(Keybindings::Controller& keybindings) :
                                         [this]() {
                                           OnWindowSplitWindow();
                                         });
+  keybindings_.action_group_menu()->add(Gtk::Action::create("ProjectMenu",
+                                                            "P_roject"));
   keybindings_.action_group_menu()->add(Gtk::Action::create("PluginMenu",
                                                             "_Plugins"));
   keybindings_.action_group_menu()->add(Gtk::Action::create("HelpMenu",
