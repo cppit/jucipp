@@ -3,6 +3,7 @@ set(project_name juci)
 set(module juci_to_python_api)
 
 project (${project_name})
+add_definitions(-DBOOST_LOG_DYN_LINK)
 set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -std=c++11 -pthread")
 set(CMAKE_MODULE_PATH ${CMAKE_MODULE_PATH} "${CMAKE_CURRENT_LIST_DIR}/cmake/Modules/")
 
@@ -52,7 +53,7 @@ endif()
 #Boost_INCLUDE_DIRS     - Boost include directories
 #Boost_LIBRARY_DIRS     - Link directories for Boost libraries
 #Boost_LIBRARIES        - Boost component libraries to be linked
-find_package(Boost 1.5 REQUIRED COMPONENTS python timer system filesystem)
+find_package(Boost 1.55 COMPONENTS python thread log system filesystem REQUIRED)
 
 #If boost is not found
 if(${Boost_FOUND}) 
