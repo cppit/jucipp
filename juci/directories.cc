@@ -11,7 +11,7 @@ open_folder(const boost::filesystem::path& dir_path) {
   m_refTreeModel = Gtk::TreeStore::create(view());
   m_TreeView.set_model(m_refTreeModel);
   m_TreeView.remove_all_columns();
-  std::string project_name = get_project_name(dir_path);
+  std::string project_name = GetCmakeVarValue(dir_path, "project");
   m_TreeView.append_column(project_name, view().m_col_name);
   int row_id = 0;
   Gtk::TreeModel::Row row;
@@ -77,79 +77,80 @@ int Directories::Controller::count(const std::string path) {
     if (path[i] == '/') count++;
   return count;
 }
-std::string Directories::Controller::
-get_project_name(const boost::filesystem::path& dir_path) {
-  std::string project_name;
-  std::string project_name_var;
-  boost::filesystem::directory_iterator end_itr;
-  for (boost::filesystem::directory_iterator itr( dir_path );
-       itr != end_itr;
-       ++itr ) {
-    if (itr->path().filename().string() == "CMakeLists.txt") {
-      std::ifstream ifs(itr->path().string());
-      std::string line;
-      while (std::getline(ifs, line)) {
-        if (line.find("project(", 0) != std::string::npos
-            || line.find("project (", 0) != std::string::npos ) {
-          size_t variabel_start = line.find("{", 0);
-          size_t variabel_end = line.find("}", variabel_start);
-          project_name_var = line.substr(variabel_start+1,
-                                         (variabel_end)-variabel_start-1);
-          boost::algorithm::trim(project_name_var);
-          if (variabel_start == std::string::npos) { //  not a variabel
-            variabel_start = line.find("(", 0);
-            variabel_end = line.find(")", variabel_start);
-            return line.substr(variabel_start+1,
-                                         (variabel_end)-variabel_start-1);
-          }
-          break;
-        }
-      }
-      std::ifstream ifs2(itr->path().string());
-      while (std::getline(ifs2, line)) {
-        if (line.find("set(", 0) != std::string::npos
-            || line.find("set (", 0) != std::string::npos) {
-          if( line.find(project_name_var, 0) != std::string::npos) {
-          size_t variabel_start = line.find(project_name_var, 0)
-            +project_name_var.length();
-          size_t variabel_end = line.find(")", variabel_start);
-          project_name = line.substr(variabel_start+1,
-                                     variabel_end-variabel_start-1);
-          boost::algorithm::trim(project_name);
-          return project_name;
+
+  std::string Directories::Controller::
+  GetCmakeVarValue(const boost::filesystem::path& dir_path, std::string command_name) {
+    std::string project_name;
+    std::string project_name_var;
+    boost::filesystem::directory_iterator end_itr;
+    for (boost::filesystem::directory_iterator itr( dir_path );
+         itr != end_itr;
+         ++itr ) {
+      if (itr->path().filename().string() == "CMakeLists.txt") {
+        std::ifstream ifs(itr->path().string());
+        std::string line;
+        while (std::getline(ifs, line)) {
+          if (line.find(command_name+"(", 0) != std::string::npos
+              || line.find(command_name+" (", 0) != std::string::npos ) {
+            size_t variabel_start = line.find("{", 0);
+            size_t variabel_end = line.find("}", variabel_start);
+            project_name_var = line.substr(variabel_start+1,
+                                           (variabel_end)-variabel_start-1);
+            boost::algorithm::trim(project_name_var);
+            if (variabel_start == std::string::npos) { //  not a variabel
+              variabel_start = line.find("(", 0);
+              variabel_end = line.find(")", variabel_start);
+              return line.substr(variabel_start+1,
+                                 (variabel_end)-variabel_start-1);
+            }
+            break;
           }
         }
+        std::ifstream ifs2(itr->path().string());
+        while (std::getline(ifs2, line)) {
+          if (line.find("set(", 0) != std::string::npos
+              || line.find("set (", 0) != std::string::npos) {
+            if( line.find(project_name_var, 0) != std::string::npos) {
+              size_t variabel_start = line.find(project_name_var, 0)
+                +project_name_var.length();
+              size_t variabel_end = line.find(")", variabel_start);
+              project_name = line.substr(variabel_start+1,
+                                         variabel_end-variabel_start-1);
+              boost::algorithm::trim(project_name);
+              return project_name;
+            }
+          }
+        }
+        break;
       }
-      break;
     }
+    return "no project name";
   }
-  return "no project name";
-}
 
-Directories::Config::Config() {
-}
-Directories::Config::Config(Directories::Config& cfg) :
-  ignore_list_(cfg.ignore_list()), exception_list_(cfg.exception_list()) {
-}
+  Directories::Config::Config() {
+  }
+  Directories::Config::Config(Directories::Config& cfg) :
+    ignore_list_(cfg.ignore_list()), exception_list_(cfg.exception_list()) {
+  }
 
-void Directories::Config::AddIgnore(std::string filter) {
-  ignore_list_.push_back(filter);
-}
+  void Directories::Config::AddIgnore(std::string filter) {
+    ignore_list_.push_back(filter);
+  }
 
-void Directories::Config::AddException(std::string filter) {
-  exception_list_.push_back(filter);
-}
+  void Directories::Config::AddException(std::string filter) {
+    exception_list_.push_back(filter);
+  }
 
-bool Directories::Config::IsIgnored(std::string str) {
-  for ( auto &i : ignore_list() )
-    if (str.find(i, 0) != std::string::npos)
-      return true;
-  return false;
-}
+  bool Directories::Config::IsIgnored(std::string str) {
+    for ( auto &i : ignore_list() )
+      if (str.find(i, 0) != std::string::npos)
+        return true;
+    return false;
+  }
 
-bool Directories::Config::IsException(std::string str) {
-  for ( std::string &i : exception_list() )
-    if (i == str)
-      return true;
-  return false;
-}
+  bool Directories::Config::IsException(std::string str) {
+    for ( std::string &i : exception_list() )
+      if (i == str)
+        return true;
+    return false;
+  }

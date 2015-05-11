@@ -50,7 +50,7 @@ Window::Window() :
                                         [this]() {
 					   terminal_.
 					     SetFolderCommand("/home/gm/ClionProjects/testi/CM.txt");
-					   std::string p = notebook_.directories().get_project_name("/home/gm/ClionProjects/testi");
+					   std::string p = notebook_.directories().GetCmakeVarValue("/home/gm/ClionProjects/testi", "project");
    					  terminal_.CompileAndRun(p);
                                         });
    
@@ -61,7 +61,7 @@ Window::Window() :
 					 [this]() {
 					   terminal_.
 					     SetFolderCommand("/home/gm/ClionProjects/testi/CM.txt");
-					   std::string p = notebook_.directories().get_project_name("/home/gm/ClionProjects/testi");
+					   std::string p = notebook_.directories().GetCmakeVarValue("/home/gm/ClionProjects/testi", "project");
 					   terminal_.CompileAndRun(p);
 					 });
 

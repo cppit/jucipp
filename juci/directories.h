@@ -51,7 +51,7 @@ namespace Directories {
     void open_folder(const boost::filesystem::path& dir_path);
     void list_dirs(const boost::filesystem::path& dir_path,
                    Gtk::TreeModel::Row &row, unsigned depth);
-    std::string get_project_name(const boost::filesystem::path& dir_path);
+    std::string GetCmakeVarValue(const boost::filesystem::path& dir_path, std::string command_name);
     int count(const std::string path);
 
     // Child widgets:
