@@ -22,6 +22,7 @@ public:
   Menu::Controller menu_;
   Notebook::Controller notebook_;
   Terminal::Controller terminal_;
+  PluginApi api_;
   
   Keybindings::Controller& keybindings() { return keybindings_; }
  private:

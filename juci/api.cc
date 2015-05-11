@@ -5,6 +5,13 @@ Notebook::Controller* PluginApi::notebook_;
 /////////////////////////////
 //// API ServiceProvider ////
 /////////////////////////////
+PluginApi::PluginApi(Menu::Controller& menu_ctl_,
+                     Notebook::Controller& notebook_ctl_) {
+  menu_ = &menu_ctl_;
+  notebook_ = &notebook_ctl_;
+  InitPlugins();
+}
+
 std::string PluginApi::ProjectPath() {
   int MAXPATHLEN = 50;
   char temp[MAXPATHLEN];
