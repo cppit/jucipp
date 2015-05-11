@@ -43,30 +43,39 @@ Window::Window() :
 					  notebook_.OnSaveFile();
 					});
   
-   keybindings_.action_group_menu()->add(Gtk::Action::create("ProjectCompileAndRun",
-                                                            "Compile And Run"),
-                                        Gtk::AccelKey(keybindings_.config_
-   						     .key_map()["compile_and_run"]),
-                                        [this]() {
-					   terminal_.
-					     SetFolderCommand("/home/gm/ClionProjects/testi/CM.txt");
-					   std::string p = notebook_.directories().get_project_name("/home/gm/ClionProjects/testi");
-   					  terminal_.CompileAndRun(p);
-                                        });
+    keybindings_.
+      action_group_menu()->
+      add(Gtk::Action::create("ProjectCompileAndRun",
+			      "Compile And Run"),
+	  Gtk::AccelKey(keybindings_.config_
+			.key_map()["compile_and_run"]),
+	  [this]() {
+	    notebook_.OnSaveFile();
+	    std::string path = notebook_.CurrentPagePath();
+	    terminal_.SetFolderCommand(path);
+	    if(terminal_.Compile()) {
+	      std::string executable = notebook_.directories().
+		getCmakeVarValue(path,"add_executable(");
+	      terminal_.Run(executable)
+		}
+	  });
    
-   keybindings_.action_group_menu()->add(Gtk::Action::create("ProjectCompile",
-							     "Compile"),
-					 Gtk::AccelKey(keybindings_.config_
-						       .key_map()["compile"]),
-					 [this]() {
-					   terminal_.
-					     SetFolderCommand("/home/gm/ClionProjects/testi/CM.txt");
-					   std::string p = notebook_.directories().get_project_name("/home/gm/ClionProjects/testi");
-					   terminal_.CompileAndRun(p);
-					 });
+    keybindings_.
+      action_group_menu()->
+      add(Gtk::Action::create("ProjectCompile",
+			      "Compile"),
+	  Gtk::AccelKey(keybindings_.config_
+			.key_map()["compile"]),
+	  [this]() {
+	    notebook_.OnSaveFile();
+	    std::string path =
+	      notebook_.CurrentPagePath();
+	    terminal_.SetFolderCommand(path);
+	    terminal_.Compile();
+	  });
 
-  this->signal_button_release_event().
-    connect(sigc::mem_fun(*this,&Window::OnMouseRelease),false);
+    this->signal_button_release_event().
+      connect(sigc::mem_fun(*this,&Window::OnMouseRelease),false);
   terminal_.Terminal().signal_button_release_event().
     connect(sigc::mem_fun(*this,&Window::OnMouseRelease),false);
   

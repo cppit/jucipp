@@ -40,6 +40,7 @@ namespace Notebook {
     int CurrentPage();
     Gtk::Box& entry_view();
     Gtk::Notebook& Notebook();
+    std::string CurrentPagePath();
     void OnBufferChange();
     void BufferChangeHandler(Glib::RefPtr<Gtk::TextBuffer>
                                                buffer);
