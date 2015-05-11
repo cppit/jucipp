@@ -564,6 +564,10 @@ void Notebook::Controller::PopupSetSize(Gtk::ScrolledWindow &scroll,
   }
 }
 
+std::string Notebook::Controller::CurrentPagePath(){
+  return text_vec_.at(CurrentPage())->path();
+}
+
 void Notebook::Controller::FindPopupPosition(Gtk::TextView& textview,
                                              int popup_x,
                                              int popup_y,
