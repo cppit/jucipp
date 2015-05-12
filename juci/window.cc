@@ -4,8 +4,11 @@ Window::Window() :
   window_box_(Gtk::ORIENTATION_VERTICAL),
   main_config_(),
   keybindings_(main_config_.keybindings_cfg()),
-  notebook_(this,keybindings(), main_config_.source_cfg(), main_config_.dir_cfg()),
-  menu_(keybindings())  {
+  notebook_(this,keybindings(),
+            main_config_.source_cfg(),
+            main_config_.dir_cfg()),
+  menu_(keybindings()),
+  api_(menu_, notebook_) {
   set_title("juCi++");
   set_default_size(600, 400);
   add(window_box_);
@@ -42,37 +45,41 @@ Window::Window() :
 					[this]() {
 					  notebook_.OnSaveFile();
 					});
-  
-   keybindings_.action_group_menu()->add(Gtk::Action::create("ProjectCompileAndRun",
-                                                            "Compile And Run"),
-                                        Gtk::AccelKey(keybindings_.config_
-   						     .key_map()["compile_and_run"]),
-                                        [this]() {
-					   terminal_.
-					     SetFolderCommand("/home/gm/ClionProjects/testi/CM.txt");
-					   std::string p = notebook_.directories().GetCmakeVarValue("/home/gm/ClionProjects/testi", "project");
-   					  terminal_.CompileAndRun(p);
-                                        });
+    keybindings_.
+      action_group_menu()->
+      add(Gtk::Action::create("ProjectCompileAndRun",
+			      "Compile And Run"),
+	  Gtk::AccelKey(keybindings_.config_
+			.key_map()["compile_and_run"]),
+	  [this]() {
+	    notebook_.OnSaveFile();
+	    std::string path = notebook_.CurrentPagePath();
+	    terminal_.SetFolderCommand(path);
+	    if(terminal_.Compile()) {
+	      std::string executable = notebook_.directories().
+		GetCmakeVarValue(path,"add_executable");
+	      terminal_.Run(executable);
+		}
+	  });
    
-   keybindings_.action_group_menu()->add(Gtk::Action::create("ProjectCompile",
-							     "Compile"),
-					 Gtk::AccelKey(keybindings_.config_
-						       .key_map()["compile"]),
-					 [this]() {
-					   terminal_.
-					     SetFolderCommand("/home/gm/ClionProjects/testi/CM.txt");
-					   std::string p = notebook_.directories().GetCmakeVarValue("/home/gm/ClionProjects/testi", "project");
-					   terminal_.CompileAndRun(p);
-					 });
+    keybindings_.
+      action_group_menu()->
+      add(Gtk::Action::create("ProjectCompile",
+			      "Compile"),
+	  Gtk::AccelKey(keybindings_.config_
+			.key_map()["compile"]),
+	  [this]() {
+	    notebook_.OnSaveFile();
+	    std::string path =
+	      notebook_.CurrentPagePath();
+	    terminal_.SetFolderCommand(path);
+	    terminal_.Compile();
+	  });
 
-  this->signal_button_release_event().
-    connect(sigc::mem_fun(*this,&Window::OnMouseRelease),false);
+    this->signal_button_release_event().
+      connect(sigc::mem_fun(*this,&Window::OnMouseRelease),false);
   terminal_.Terminal().signal_button_release_event().
     connect(sigc::mem_fun(*this,&Window::OnMouseRelease),false);
-  
-  PluginApi::menu_ = &menu_;
-  PluginApi::notebook_ = &notebook_;
-  PluginApi::InitPlugins();
 
   add_accel_group(keybindings_.ui_manager_menu()->get_accel_group());
   add_accel_group(keybindings_.ui_manager_hidden()->get_accel_group());

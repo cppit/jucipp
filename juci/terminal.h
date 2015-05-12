@@ -3,6 +3,7 @@
 
 #include <mutex>
 #include "gtkmm.h"
+#include <boost/filesystem.hpp>
 
 namespace Terminal {
 
@@ -22,16 +23,18 @@ namespace Terminal {
     Controller();
     Gtk::HBox& view() {return view_.view();}
     Gtk::TextView& Terminal(){return view_.textview();}
-    void SetFolderCommand(std::string path);
-    void CompileAndRun(std::string project_name);
+    void SetFolderCommand(boost::filesystem::path CMake_path);
+    void Run(std::string executable);
+    bool Compile();
   private:
     void ExecuteCommand(std::string command);
     bool OnButtonRealeaseEvent(GdkEventKey* key);
     bool ExistInConsole(std::string string);
-    bool FindExecutable(std::string executable);
+    //  bool FindExecutable(std::string executable);
     void PrintMessage(std::string message);
     Terminal::View view_;
     std::string folder_command_;
+    std::string path_;
     std::mutex running;
     const std::string cmake_sucsess = "Build files have been written to:";
     const std::string make_built = "Built target";
