@@ -12,15 +12,11 @@
 
 using namespace boost::log;
 
-#define TRACE(x) BOOST_LOG_TRIVIAL(trace)     << __func__ << "(" << __LINE__ << "): " << #x << "=<" << x << ">\n";
-#define DEBUG(x) BOOST_LOG_TRIVIAL(debug)     << __func__ << "(" << __LINE__ << "): " << #x << "=<" << x << ">\n";
-#define INFO(x) BOOST_LOG_TRIVIAL(info)       << __func__ << "(" << __LINE__ << "): " << #x << "=<" << x << ">\n";
-#define WARNING(x) BOOST_LOG_TRIVIAL(warning) << __func__ << "(" << __LINE__ << "): " << #x << "=<" << x << ">\n";
-#define ERROR(x) BOOST_LOG_TRIVIAL(error)     << __func__ << "(" << __LINE__ << "): " << #x << "=<" << x << ">\n";
-#define FATAL(x) BOOST_LOG_TRIVIAL(fatal)     << __func__ << "(" << __LINE__ << "): " << #x << "=<" << x << ">\n";
-
-void init_logging() {
-  add_file_log("juci.log");
-}
+#define TRACE(x) BOOST_LOG_TRIVIAL(trace)     << __func__ << "(" << __LINE__ << "): " << #x << "=<" << x << ">";
+#define DEBUG(x) BOOST_LOG_TRIVIAL(debug)     << __func__ << "(" << __LINE__ << "): " << #x << "=<" << x << ">";
+#define INFO(x) BOOST_LOG_TRIVIAL(info)       << __func__ << "(" << __LINE__ << "): \""  x << "\"";
+#define WARNING(x) BOOST_LOG_TRIVIAL(warning) << __func__ << "(" << __LINE__ << "): " << #x << "=<" << x << ">";
+#define ERROR(x) BOOST_LOG_TRIVIAL(error)     << __func__ << "(" << __LINE__ << "): " << #x << "=<" << x << ">";
+#define FATAL(x) BOOST_LOG_TRIVIAL(fatal)     << __func__ << "(" << __LINE__ << "): " << #x << "=<" << x << ">";
 
 #endif  // JUCI_LOGGING_H_

@@ -1,4 +1,5 @@
 #include "window.h"
+#include "logging.h"
 
 Window::Window() :
   window_box_(Gtk::ORIENTATION_VERTICAL),
@@ -6,6 +7,7 @@ Window::Window() :
   keybindings_(main_config_.keybindings_cfg()),
   notebook_(this,keybindings(), main_config_.source_cfg(), main_config_.dir_cfg()),
   menu_(keybindings())  {
+  INFO("Creating window");
   set_title("juCi++");
   set_default_size(600, 400);
   add(window_box_);
@@ -83,6 +85,7 @@ Window::Window() :
   window_box_.pack_start(notebook_.view());
   window_box_.pack_end(terminal_.view(),Gtk::PACK_SHRINK);
   show_all_children();
+  INFO("Window created");
   } // Window constructor
 
 void Window::OnWindowHide() {

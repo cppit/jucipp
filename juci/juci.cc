@@ -7,7 +7,8 @@ int main(int argc, char *argv[]) {
                                                                 argv,
                                                                 "no.sout.juci");
 
-  init_logging();
+  add_file_log("juci.log");
+  INFO("Logging initalized");
   Window window;
   return app->run(window);
 }
