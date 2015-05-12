@@ -92,16 +92,16 @@ int Directories::Controller::count(const std::string path) {
         while (std::getline(ifs, line)) {
           if (line.find(command_name+"(", 0) != std::string::npos
               || line.find(command_name+" (", 0) != std::string::npos ) {
-            size_t variabel_start = line.find("{", 0);
-            size_t variabel_end = line.find("}", variabel_start);
-            project_name_var = line.substr(variabel_start+1,
-                                           (variabel_end)-variabel_start-1);
+            size_t variable_start = line.find("{", 0);
+            size_t variable_end = line.find("}", variable_start);
+            project_name_var = line.substr(variable_start+1,
+                                           (variable_end)-variable_start-1);
             boost::algorithm::trim(project_name_var);
-            if (variabel_start == std::string::npos) { //  not a variabel
-              variabel_start = line.find("(", 0);
-              variabel_end = line.find(")", variabel_start);
-              return line.substr(variabel_start+1,
-                                 (variabel_end)-variabel_start-1);
+            if (variable_start == std::string::npos) { //  not a variable
+              variable_start = line.find("(", 0);
+              variable_end = line.find(")", variable_start);
+              return line.substr(variable_start+1,
+                                 (variable_end)-variable_start-1);
             }
             break;
           }
@@ -111,11 +111,11 @@ int Directories::Controller::count(const std::string path) {
           if (line.find("set(", 0) != std::string::npos
               || line.find("set (", 0) != std::string::npos) {
             if( line.find(project_name_var, 0) != std::string::npos) {
-              size_t variabel_start = line.find(project_name_var, 0)
+              size_t variable_start = line.find(project_name_var, 0)
                 +project_name_var.length();
-              size_t variabel_end = line.find(")", variabel_start);
-              project_name = line.substr(variabel_start+1,
-                                         variabel_end-variabel_start-1);
+              size_t variable_end = line.find(")", variable_start);
+              project_name = line.substr(variable_start+1,
+                                         variable_end-variable_start-1);
               boost::algorithm::trim(project_name);
               return project_name;
             }
