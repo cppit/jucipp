@@ -1,4 +1,5 @@
 #include "window.h"
+#include "logging.h"
 
 int main(int argc, char *argv[]) {
   Glib::RefPtr<Gtk::Application> app = Gtk::Application::create(
