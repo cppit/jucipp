@@ -10,7 +10,6 @@
 #include <boost/log/sources/severity_logger.hpp>
 #include <boost/log/sources/record_ostream.hpp>
 
-
 using namespace boost::log;
 
 #define TRACE(x) BOOST_LOG_TRIVIAL(trace)     << __func__ << "(" << __LINE__ << "): " << #x << "=<" << x << ">\n";
@@ -20,9 +19,8 @@ using namespace boost::log;
 #define ERROR(x) BOOST_LOG_TRIVIAL(error)     << __func__ << "(" << __LINE__ << "): " << #x << "=<" << x << ">\n";
 #define FATAL(x) BOOST_LOG_TRIVIAL(fatal)     << __func__ << "(" << __LINE__ << "): " << #x << "=<" << x << ">\n";
 
-void init() {
+void init_logging() {
   add_file_log("juci.log");
 }
-
 
 #endif  // JUCI_LOGGING_H_

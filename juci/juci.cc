@@ -6,8 +6,7 @@ int main(int argc, char *argv[]) {
                                                                 argv,
                                                                 "no.sout.juci");
 
+  init_logging();
   Window window;
-
-  //api::LoadPlugin("juci_api_test");
   return app->run(window);
 }
