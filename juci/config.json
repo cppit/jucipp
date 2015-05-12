@@ -36,6 +36,7 @@
             "#",
             "~",
             ".idea",
+            ".so",
             "in-lowercase.pls"
         ],
         "exceptions": [

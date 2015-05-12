@@ -1,4 +1,5 @@
 #include "directories.h"
+#include "logging.h"
 
 Directories::Controller::Controller(Directories::Config& cfg) :
   config_(cfg) {
@@ -8,6 +9,7 @@ Directories::Controller::Controller(Directories::Config& cfg) :
 
 void Directories::Controller::
 open_folder(const boost::filesystem::path& dir_path) {
+  INFO("Open folder");
   m_refTreeModel = Gtk::TreeStore::create(view());
   m_TreeView.set_model(m_refTreeModel);
   m_TreeView.remove_all_columns();
@@ -17,6 +19,7 @@ open_folder(const boost::filesystem::path& dir_path) {
   Gtk::TreeModel::Row row;
   list_dirs(dir_path, row, row_id);
   m_refTreeModel->set_sort_column(0, Gtk::SortType::SORT_ASCENDING);
+  INFO("Folder opened");
 }
 
 bool Directories::Controller::IsIgnored(std::string path) {
@@ -80,6 +83,7 @@ int Directories::Controller::count(const std::string path) {
 
   std::string Directories::Controller::
   GetCmakeVarValue(const boost::filesystem::path& dir_path, std::string command_name) {
+    INFO("fetches cmake variable value for: "+command_name);
     std::string project_name;
     std::string project_name_var;
     boost::filesystem::directory_iterator end_itr;
@@ -100,6 +104,7 @@ int Directories::Controller::count(const std::string path) {
             if (variable_start == std::string::npos) { //  not a variable
               variable_start = line.find("(", 0);
               variable_end = line.find(")", variable_start);
+              INFO("Wasn't a variable, returning value");
               return line.substr(variable_start+1,
                                  (variable_end)-variable_start-1);
             }
@@ -117,6 +122,7 @@ int Directories::Controller::count(const std::string path) {
               project_name = line.substr(variable_start+1,
                                          variable_end-variable_start-1);
               boost::algorithm::trim(project_name);
+              INFO("found variable, returning value");
               return project_name;
             }
           }
@@ -124,6 +130,7 @@ int Directories::Controller::count(const std::string path) {
         break;
       }
     }
+    INFO("Couldn't find value in CMakeLists.txt");
     return "no project name";
   }
 

@@ -1,4 +1,5 @@
 #include "api.h"
+#include "logging.h"
 
 Menu::Controller* PluginApi::menu_;
 Notebook::Controller* PluginApi::notebook_;
@@ -13,8 +14,6 @@ PluginApi::PluginApi(Menu::Controller& menu_ctl_,
 }
 
 PluginApi::~PluginApi() {
-  delete menu_;
-  delete notebook_;
   menu_ = NULL;
   notebook_ = NULL;
 }
