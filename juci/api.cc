@@ -12,6 +12,13 @@ PluginApi::PluginApi(Menu::Controller& menu_ctl_,
   InitPlugins();
 }
 
+PluginApi::~PluginApi() {
+  delete menu_;
+  delete notebook_;
+  menu_ = NULL;
+  notebook_ = NULL;
+}
+
 std::string PluginApi::ProjectPath() {
   int MAXPATHLEN = 50;
   char temp[MAXPATHLEN];
