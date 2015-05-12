@@ -5,76 +5,83 @@ Window::Window() :
   window_box_(Gtk::ORIENTATION_VERTICAL),
   main_config_(),
   keybindings_(main_config_.keybindings_cfg()),
-  notebook_(this,keybindings(), main_config_.source_cfg(), main_config_.dir_cfg()),
-  menu_(keybindings())  {
-  INFO("Creating window");
+  notebook_(this,keybindings(),
+            main_config_.source_cfg(),
+            main_config_.dir_cfg()),
+  menu_(keybindings()),
+  api_(menu_, notebook_) {
+  INFO("Create Window");
   set_title("juCi++");
   set_default_size(600, 400);
   add(window_box_);
   keybindings_.action_group_menu()->add(Gtk::Action::create("FileQuit",
-							    Gtk::Stock::QUIT),
-					[this]() {
-					  OnWindowHide();
-					});
+                                                            Gtk::Stock::QUIT),
+                                        [this]() {
+                                          OnWindowHide();
+                                        });
   keybindings_.action_group_menu()->add(Gtk::Action::create("FileOpenFile",
-							    Gtk::Stock::OPEN),
-					[this]() {
-					  OnOpenFile();
-					});
+                                                            Gtk::Stock::OPEN),
+                                        [this]() {
+                                          OnOpenFile();
+                                        });
   keybindings_.action_group_menu()->add(Gtk::Action::create("FileOpenFolder",
-                                                           "Open folder"),
-                                       Gtk::AccelKey(keybindings_.config_
-						     .key_map()["open_folder"]),
-                                       [this]() {
-                                         OnFileOpenFolder();
-                                       });
+                                                            "Open folder"),
+                                        Gtk::AccelKey(keybindings_.config_
+                                                      .key_map()["open_folder"]),
+                                        [this]() {
+                                          OnFileOpenFolder();
+                                        });
 
   keybindings_.action_group_menu()->add(Gtk::Action::create("FileSaveAs",
-							    "Save as"),
-					Gtk::AccelKey(keybindings_.config_
-						      .key_map()["save_as"]),
-					[this]() {
-					  notebook_.OnSaveFile();
-					});
-
-    keybindings_.action_group_menu()->add(Gtk::Action::create("FileSave",
-							    "Save"),
-					Gtk::AccelKey(keybindings_.config_
-						      .key_map()["save"]),
-					[this]() {
-					  notebook_.OnSaveFile();
-					});
-  
-   keybindings_.action_group_menu()->add(Gtk::Action::create("ProjectCompileAndRun",
-                                                            "Compile And Run"),
+                                                            "Save as"),
                                         Gtk::AccelKey(keybindings_.config_
-   						     .key_map()["compile_and_run"]),
+                                                      .key_map()["save_as"]),
                                         [this]() {
-					   terminal_.
-					     SetFolderCommand("/home/gm/ClionProjects/testi/CM.txt");
-					   std::string p = notebook_.directories().get_project_name("/home/gm/ClionProjects/testi");
-   					  terminal_.CompileAndRun(p);
+                                          notebook_.OnSaveFile();
                                         });
-   
-   keybindings_.action_group_menu()->add(Gtk::Action::create("ProjectCompile",
-							     "Compile"),
-					 Gtk::AccelKey(keybindings_.config_
-						       .key_map()["compile"]),
-					 [this]() {
-					   terminal_.
-					     SetFolderCommand("/home/gm/ClionProjects/testi/CM.txt");
-					   std::string p = notebook_.directories().get_project_name("/home/gm/ClionProjects/testi");
-					   terminal_.CompileAndRun(p);
-					 });
+
+  keybindings_.action_group_menu()->add(Gtk::Action::create("FileSave",
+                                                            "Save"),
+                                        Gtk::AccelKey(keybindings_.config_
+                                                      .key_map()["save"]),
+                                        [this]() {
+                                          notebook_.OnSaveFile();
+                                        });
+  keybindings_.
+    action_group_menu()->
+    add(Gtk::Action::create("ProjectCompileAndRun",
+                            "Compile And Run"),
+        Gtk::AccelKey(keybindings_.config_
+                      .key_map()["compile_and_run"]),
+        [this]() {
+          notebook_.OnSaveFile();
+          std::string path = notebook_.CurrentPagePath();
+          terminal_.SetFolderCommand(path);
+          if(terminal_.Compile()) {
+            std::string executable = notebook_.directories().
+              GetCmakeVarValue(path,"add_executable");
+            terminal_.Run(executable);
+          }
+        });
+
+  keybindings_.
+    action_group_menu()->
+    add(Gtk::Action::create("ProjectCompile",
+                            "Compile"),
+        Gtk::AccelKey(keybindings_.config_
+                      .key_map()["compile"]),
+        [this]() {
+          notebook_.OnSaveFile();
+          std::string path =
+            notebook_.CurrentPagePath();
+          terminal_.SetFolderCommand(path);
+          terminal_.Compile();
+        });
 
   this->signal_button_release_event().
     connect(sigc::mem_fun(*this,&Window::OnMouseRelease),false);
   terminal_.Terminal().signal_button_release_event().
     connect(sigc::mem_fun(*this,&Window::OnMouseRelease),false);
-  
-  PluginApi::menu_ = &menu_;
-  PluginApi::notebook_ = &notebook_;
-  PluginApi::InitPlugins();
 
   add_accel_group(keybindings_.ui_manager_menu()->get_accel_group());
   add_accel_group(keybindings_.ui_manager_hidden()->get_accel_group());
@@ -86,15 +93,15 @@ Window::Window() :
   window_box_.pack_end(terminal_.view(),Gtk::PACK_SHRINK);
   show_all_children();
   INFO("Window created");
-  } // Window constructor
+} // Window constructor
 
 void Window::OnWindowHide() {
   hide();
 }
 void Window::OnFileOpenFolder() {
   Gtk::FileChooserDialog dialog("Please choose a folder",
-          Gtk::FILE_CHOOSER_ACTION_SELECT_FOLDER);
-  
+                                Gtk::FILE_CHOOSER_ACTION_SELECT_FOLDER);
+
   dialog.set_transient_for(*this);
   //Add response buttons the the dialog:
   dialog.add_button("_Cancel", Gtk::RESPONSE_CANCEL);
@@ -104,79 +111,78 @@ void Window::OnFileOpenFolder() {
 
   //Handle the response:
   switch(result)
-  {
+    {
     case(Gtk::RESPONSE_OK):
-    {
-      std::cout << "Folder selected: " << dialog.get_filename()
-          << std::endl;
-      notebook_.directories().open_folder(dialog.get_filename());
-      std::cout << dialog.get_filename()<< std::endl;
-      break;
-    }
+      {
+        std::cout << "Folder selected: " << dialog.get_filename()
+                  << std::endl;
+        notebook_.directories().open_folder(dialog.get_filename());
+        std::cout << dialog.get_filename()<< std::endl;
+        break;
+      }
     case(Gtk::RESPONSE_CANCEL):
-    {
-      std::cout << "Cancel clicked." << std::endl;
-      break;
-    }
+      {
+        std::cout << "Cancel clicked." << std::endl;
+        break;
+      }
     default:
-    {
-      std::cout << "Unexpected button clicked." << std::endl;
-      break;
+      {
+        std::cout << "Unexpected button clicked." << std::endl;
+        break;
+      }
     }
-  }
 }
 
 
 void Window::OnOpenFile() {
   Gtk::FileChooserDialog dialog("Please choose a file",
-            Gtk::FILE_CHOOSER_ACTION_OPEN);
-    dialog.set_transient_for(*this);
-    dialog.set_position(Gtk::WindowPosition::WIN_POS_CENTER_ALWAYS);
+                                Gtk::FILE_CHOOSER_ACTION_OPEN);
+  dialog.set_transient_for(*this);
+  dialog.set_position(Gtk::WindowPosition::WIN_POS_CENTER_ALWAYS);
 
-    //Add response buttons the the dialog:
-    dialog.add_button("_Cancel", Gtk::RESPONSE_CANCEL);
-    dialog.add_button("_Open", Gtk::RESPONSE_OK);
+  //Add response buttons the the dialog:
+  dialog.add_button("_Cancel", Gtk::RESPONSE_CANCEL);
+  dialog.add_button("_Open", Gtk::RESPONSE_OK);
 
-    //Add filters, so that only certain file types can be selected:
-    Glib::RefPtr<Gtk::FileFilter> filter_text = Gtk::FileFilter::create();
-    filter_text->set_name("Text files");
-    filter_text->add_mime_type("text/plain");
-    dialog.add_filter(filter_text);
+  //Add filters, so that only certain file types can be selected:
+  Glib::RefPtr<Gtk::FileFilter> filter_text = Gtk::FileFilter::create();
+  filter_text->set_name("Text files");
+  filter_text->add_mime_type("text/plain");
+  dialog.add_filter(filter_text);
 
-    Glib::RefPtr<Gtk::FileFilter> filter_cpp = Gtk::FileFilter::create();
-    filter_cpp->set_name("C/C++ files");
-    filter_cpp->add_mime_type("text/x-c");
-    filter_cpp->add_mime_type("text/x-c++");
-    filter_cpp->add_mime_type("text/x-c-header");
-    dialog.add_filter(filter_cpp);
+  Glib::RefPtr<Gtk::FileFilter> filter_cpp = Gtk::FileFilter::create();
+  filter_cpp->set_name("C/C++ files");
+  filter_cpp->add_mime_type("text/x-c");
+  filter_cpp->add_mime_type("text/x-c++");
+  filter_cpp->add_mime_type("text/x-c-header");
+  dialog.add_filter(filter_cpp);
 
-    Glib::RefPtr<Gtk::FileFilter> filter_any = Gtk::FileFilter::create();
-    filter_any->set_name("Any files");
-    filter_any->add_pattern("*");
-    dialog.add_filter(filter_any);
+  Glib::RefPtr<Gtk::FileFilter> filter_any = Gtk::FileFilter::create();
+  filter_any->set_name("Any files");
+  filter_any->add_pattern("*");
+  dialog.add_filter(filter_any);
 
-    int result = dialog.run();
+  int result = dialog.run();
 
-    switch (result) {
-        case(Gtk::RESPONSE_OK): {
-            std::cout << "Open clicked." << std::endl;
-            std::string path = dialog.get_filename();
-	    
-            std::cout << "File selected: " << path << std::endl;
-	    notebook_.OnOpenFile(path);
-            break;
-        }
-        case(Gtk::RESPONSE_CANCEL): {
-            std::cout << "Cancel clicked." << std::endl;
-            break;
-        }
-        default: {
-            std::cout << "Unexpected button clicked." << std::endl;
-            break;
-        }
-    }
+  switch (result) {
+  case(Gtk::RESPONSE_OK): {
+    std::cout << "Open clicked." << std::endl;
+    std::string path = dialog.get_filename();
+
+    std::cout << "File selected: " << path << std::endl;
+    notebook_.OnOpenFile(path);
+    break;
+  }
+  case(Gtk::RESPONSE_CANCEL): {
+    std::cout << "Cancel clicked." << std::endl;
+    break;
+  }
+  default: {
+    std::cout << "Unexpected button clicked." << std::endl;
+    break;
+  }
+  }
 }
 bool Window::OnMouseRelease(GdkEventButton *button){
   return notebook_.OnMouseRelease(button);
 }
-

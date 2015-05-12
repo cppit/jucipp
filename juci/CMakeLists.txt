@@ -132,8 +132,8 @@ link_directories(
   ${LIBCLANG_LIBRARY_DIRS}
   )
 #module:
-set_target_properties(${module} PROPERTIES PREFIX ""
- LIBRARY_OUTPUT_DIRECTORY "/usr/lib/python2.7/dist-packages/")
+set_target_properties(${module} PROPERTIES PREFIX "")
+# LIBRARY_OUTPUT_DIRECTORY "/usr/lib/python2.7/dist-packages/")
 target_link_libraries(${module} ${PYTHON_LIBRARIES} ${Boost_LIBRARIES})
 #executable:
 target_link_libraries(${project_name} ${LIVCLANG_LIBRARIES} ${LCL_LIBRARIES} ${GTKMM_LIBRARIES} ${Boost_LIBRARIES} ${PYTHON_LIBRARIES})
