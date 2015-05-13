@@ -1,10 +1,23 @@
 #include "api.h"
+#include "logging.h"
 
 Menu::Controller* PluginApi::menu_;
 Notebook::Controller* PluginApi::notebook_;
 /////////////////////////////
 //// API ServiceProvider ////
 /////////////////////////////
+PluginApi::PluginApi(Menu::Controller& menu_ctl_,
+                     Notebook::Controller& notebook_ctl_) {
+  menu_ = &menu_ctl_;
+  notebook_ = &notebook_ctl_;
+  InitPlugins();
+}
+
+PluginApi::~PluginApi() {
+  menu_ = NULL;
+  notebook_ = NULL;
+}
+
 std::string PluginApi::ProjectPath() {
   int MAXPATHLEN = 50;
   char temp[MAXPATHLEN];
@@ -107,7 +120,7 @@ void libjuci::ReplaceWord(const std::string word) {
 }
 
 void libjuci::ReplaceLine(const std::string line) {
-  std::cout << "unimplemented function: 'libjuci::ReplaceLine()' called"
+  std::cout << "unimplemented: " << __func__ << " called"
             << std::endl;
 }
 std::string libjuci::GetWord() {
@@ -201,16 +214,7 @@ void libjuci::IterToWordEnd(Gtk::TextIter &iter) {
 }
 
 Glib::RefPtr<Gtk::TextBuffer> libjuci::BufferFromNotebook() {
-  // finding focused view
-  // int i = 0;
-  // while (!PluginApi::notebook_->source_vec_.at(i)->view().has_focus()) {
-  //   i++;
-  // while(!PluginApi::notebook_->CurrentTextView().has_focus()) {
-  //   i++;
-  // }
   return Glib::RefPtr<Gtk::TextBuffer>(PluginApi::notebook_
-                                       // ->source_vec_.at(i)
-                                       // ->view().get_buffer());
                                        ->CurrentTextView().get_buffer());
 }
 

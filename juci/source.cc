@@ -5,9 +5,7 @@
 #include <fstream>
 #include <boost/timer/timer.hpp>
 #include "notebook.h"
-
-#define log( var )                                                      \
-  std::cout << "source.cc (" << __LINE__ << ") " << #var  << std::endl
+#include "logging.h"
 
 Source::Location::
 Location(int line_number, int column_offset) :
@@ -267,7 +265,9 @@ HighlightToken(clang::Token *token,
 // Constructor for Controller
 Source::Controller::Controller(const Source::Config &config,
                                Notebook::Controller *notebook) :
-  model_(config), notebook_(notebook) { }
+  model_(config), notebook_(notebook) {
+  INFO("Source Controller with childs constructed");
+}
 
 // Source::Controller::view()
 // return shared_ptr to the view

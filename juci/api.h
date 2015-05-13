@@ -12,6 +12,8 @@
 ////////////////////
 class PluginApi {
 public:
+  PluginApi(Menu::Controller&, Notebook::Controller&);
+  ~PluginApi();
   static Menu::Controller* menu_;
   static Notebook::Controller* notebook_;
   static void InitPlugins();
@@ -25,7 +27,6 @@ public:
                                 const std::string menu_func_name,
                                 const std::string plugin_path,
                                 const std::string menu_keybinding);
-  // text-buffer functions
   static void ReplaceWord(const std::string word);
   static void ReplaceLine(const std::string line);
 protected:
@@ -64,11 +65,10 @@ namespace libjuci {
   namespace bp = boost::python;
   bp::api::object OpenPythonScript(const std::string path,
                                    bp::api::object python_name_space);
-
   void LoadPlugin(const std::string& plugin_name);
   void LoadPluginFunction(const std::string &function_name,
                           const std::string &plugin_path);
 
   void InitPlugin(const std::string& plugin_path);
-}  // libjuci
+}  // namespace libjuci
 #endif  // JUCI_API_H_

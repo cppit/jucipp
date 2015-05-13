@@ -33,7 +33,7 @@ void Terminal::Controller::Compile(){
 
 void Terminal::Controller::Run(std::string executable) {
   PrintMessage("juCi++ execute: " + executable + "\n");
-  ExecuteCommand("./"+executable, "w");
+  ExecuteCommand("./"+executable, "r");
 }
 
 void Terminal::Controller::PrintMessage(std::string message){
@@ -50,37 +50,17 @@ bool Terminal::Controller::ExistInConsole(std::string string) {
 }
 
 void Terminal::Controller::ExecuteCommand(std::string command, std::string mode) {
-
+  command = folder_command_+command;
   std::cout << "EXECUTE COMMAND: "<< command << std::endl;
-  if(mode == "w"){
-    command =  path_ + " " +command + " > some_file.txt";
-    system(command.c_str());
-  }else{
-    
-    FILE* p = popen(command.c_str(), mode.c_str());
-    command = folder_command_+command;
-    if (p == NULL) {
-      PrintMessage("juCi++ ERROR: Failed to run command" + command + "\n");
-    }else {
-      char buffer[1028];
-      while (fgets(buffer, 1028, p) != NULL) {
-	PrintMessage(buffer);
-      }
-      pclose(p); 
+  FILE* p = popen(command.c_str(), mode.c_str());
+
+  if (p == NULL) {
+    PrintMessage("juCi++ ERROR: Failed to run command" + command + "\n");
+  }else {
+    char buffer[1028];
+    while (fgets(buffer, 1028, p) != NULL) {
+      PrintMessage(buffer);
     }
+    pclose(p); 
   }
-
-
-
-  // // run a process and create a streambuf that reads its stdout and stderr
-  //  redi::ipstream proc(command, redi::pstreams::pstderr);
-  //  std::string line;
-  //  // read child's stdout
-  //  while (std::getline(proc.out(), line))
-  //    PrintMessage(line+ "\n");
-
-  //  // read child's stderr
-  //  while (std::getline(proc.err(), line))
-  //    PrintMessage(line+ "\n");
-
 }

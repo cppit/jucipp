@@ -1,4 +1,5 @@
 #include "directories.h"
+#include "logging.h"
 
 Directories::Controller::Controller(Directories::Config& cfg) :
   config_(cfg) {
@@ -8,6 +9,7 @@ Directories::Controller::Controller(Directories::Config& cfg) :
 
 void Directories::Controller::
 open_folder(const boost::filesystem::path& dir_path) {
+  INFO("Open folder");
   m_refTreeModel = Gtk::TreeStore::create(view());
   m_TreeView.set_model(m_refTreeModel);
   m_TreeView.remove_all_columns();
@@ -17,6 +19,7 @@ open_folder(const boost::filesystem::path& dir_path) {
   Gtk::TreeModel::Row row;
   list_dirs(dir_path, row, row_id);
   m_refTreeModel->set_sort_column(0, Gtk::SortType::SORT_ASCENDING);
+  INFO("Folder opened");
 }
 
 bool Directories::Controller::IsIgnored(std::string path) {
@@ -80,6 +83,7 @@ int Directories::Controller::count(const std::string path) {
 
   std::string Directories::Controller::
   GetCmakeVarValue(const boost::filesystem::path& dir_path, std::string command_name) {
+    INFO("fetches cmake variable value for: "+command_name);
     std::string project_name;
     std::string project_name_var;
     boost::filesystem::directory_iterator end_itr;
@@ -92,42 +96,50 @@ int Directories::Controller::count(const std::string path) {
         while (std::getline(ifs, line)) {
           if (line.find(command_name+"(", 0) != std::string::npos
               || line.find(command_name+" (", 0) != std::string::npos ) {
-            size_t variabel_start = line.find("{", 0);
-            size_t variabel_end = line.find("}", variabel_start);
-            project_name_var = line.substr(variabel_start+1,
-                                           (variabel_end)-variabel_start-1);
+	    size_t variable_start = line.find("{", 0);
+	    size_t variable_end = line.find("}", variable_start);
+	    project_name_var = line.substr(variable_start+1,
+					   (variable_end)-variable_start-1);
             boost::algorithm::trim(project_name_var);
-            if (variabel_start == std::string::npos) { //  not a variabel
-              variabel_start = line.find("(", 0);
+            if (variable_start == std::string::npos) { //  not a variabel
+              variable_start = line.find("(", 0);
 	      
-	      variabel_end = line.find(' ', variabel_start);
-	      if(variabel_end != std::string::npos){
-		return line.substr(variabel_start+1,
-				   (variabel_end)-variabel_start-1);
+	      variable_end = line.find(' ', variable_start);
+	      if(variable_end != std::string::npos){
+		return line.substr(variable_start+1,
+				   (variable_end)-variable_start-1);
 	      }
-	      variabel_end = line.find("#", variabel_start);
-	      if(variabel_end != std::string::npos){
-		return line.substr(variabel_start+1,
-				   (variabel_end)-variabel_start-1);
+	      variable_end = line.find("#", variable_start);
+	      if(variable_end != std::string::npos){
+		return line.substr(variable_start+1,
+				   (variable_end)-variable_start-1);
 	      }
-	      variabel_end = line.find(")", variabel_start);
-              return line.substr(variabel_start+1,
-                                 (variabel_end)-variabel_start-1);
+	      variable_end = line.find(")", variable_start);
+              return line.substr(variable_start+1,
+                                 (variable_end)-variable_start-1);
+             if (variable_start == std::string::npos) { //  not a variable
+               variable_start = line.find("(", 0);
+               variable_end = line.find(")", variable_start);
+               INFO("Wasn't a variable, returning value");
+               return line.substr(variable_start+1,
+                                  (variable_end)-variable_start-1);
             }
             break;
           }
         }
+	}
         std::ifstream ifs2(itr->path().string());
         while (std::getline(ifs2, line)) {
           if (line.find("set(", 0) != std::string::npos
               || line.find("set (", 0) != std::string::npos) {
             if( line.find(project_name_var, 0) != std::string::npos) {
-              size_t variabel_start = line.find(project_name_var, 0)
+              size_t variable_start = line.find(project_name_var, 0)
                 +project_name_var.length();
-              size_t variabel_end = line.find(")", variabel_start);
-              project_name = line.substr(variabel_start+1,
-                                         variabel_end-variabel_start-1);
+              size_t variable_end = line.find(")", variable_start);
+              project_name = line.substr(variable_start+1,
+                                         variable_end-variable_start-1);
               boost::algorithm::trim(project_name);
+              INFO("found variable, returning value");
               return project_name;
             }
           }
@@ -135,6 +147,7 @@ int Directories::Controller::count(const std::string path) {
         break;
       }
     }
+    INFO("Couldn't find value in CMakeLists.txt");
     return "no project name";
   }
 
