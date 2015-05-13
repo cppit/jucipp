@@ -362,6 +362,7 @@ void Source::Controller::OnOpenFile(const string &filepath) {
       if (!go) {
         std::thread parse([this]() {
             if (parsing.try_lock()) {
+              INFO("Starting parsing");
               while (true) {
                 const std::string raw = buffer()->get_text().raw();
                 std::map<std::string, std::string> buffers;
@@ -376,6 +377,7 @@ void Source::Controller::OnOpenFile(const string &filepath) {
                 }
               }
               parsing.unlock();
+              INFO("Parsing completed");
             }
           });
         parse.detach();
@@ -385,10 +387,12 @@ void Source::Controller::OnOpenFile(const string &filepath) {
   buffer()->signal_begin_user_action().connect([this]() {
       if (go) {
         syntax.lock();
+        INFO("Updating syntax");
         view().
           OnUpdateSyntax(model().ExtractTokens(0, buffer()->get_text().size()),
                          model().config());
         go = false;
+        INFO("Syntax updated");
         syntax.unlock();
       }
     });

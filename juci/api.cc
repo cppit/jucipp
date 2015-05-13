@@ -38,7 +38,7 @@ void PluginApi::ReplaceWord(std::string word) {
 }
 
 void PluginApi::ReplaceLine(std::string line) {
-  std::cout << "unimplemented: " << __func__ << std::endl;
+  WARNING("use of unimplemented method");
 }
 
 std::string PluginApi::GetWord() {

@@ -2,7 +2,7 @@
 #plugin handler
 import sys, os, glob
 cwd = os.getcwd()
-sys.path.append(cwd)
+sys.path.append(cwd+"/lib")
 
 import juci_to_python_api as juci
 def loadplugins():
