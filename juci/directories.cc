@@ -99,7 +99,18 @@ int Directories::Controller::count(const std::string path) {
             boost::algorithm::trim(project_name_var);
             if (variabel_start == std::string::npos) { //  not a variabel
               variabel_start = line.find("(", 0);
-              variabel_end = line.find(")", variabel_start);
+	      
+	      variabel_end = line.find(' ', variabel_start);
+	      if(variabel_end != std::string::npos){
+		return line.substr(variabel_start+1,
+				   (variabel_end)-variabel_start-1);
+	      }
+	      variabel_end = line.find("#", variabel_start);
+	      if(variabel_end != std::string::npos){
+		return line.substr(variabel_start+1,
+				   (variabel_end)-variabel_start-1);
+	      }
+	      variabel_end = line.find(")", variabel_start);
               return line.substr(variabel_start+1,
                                  (variabel_end)-variabel_start-1);
             }

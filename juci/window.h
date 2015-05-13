@@ -25,11 +25,12 @@ public:
   
   Keybindings::Controller& keybindings() { return keybindings_; }
  private:
+  std::mutex running;
+  Gtk::VPaned paned_;
   //signal handlers
   void OnWindowHide();
   void OnOpenFile();
   void OnFileOpenFolder();
-
   bool OnMouseRelease(GdkEventButton* button);  
 };
 

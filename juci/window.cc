@@ -49,14 +49,23 @@ Window::Window() :
 	  Gtk::AccelKey(keybindings_.config_
 			.key_map()["compile_and_run"]),
 	  [this]() {
-	    notebook_.OnSaveFile();
-	    std::string path = notebook_.CurrentPagePath();
-	    terminal_.SetFolderCommand(path);
-	    if(terminal_.Compile()) {
-	      std::string executable = notebook_.directories().
-		GetCmakeVarValue(path,"add_executable");
-	      terminal_.Run(executable);
-		}
+	    if (running.try_lock()) {
+	      std::thread execute([=]() {
+		  notebook_.OnSaveFile();
+		  std::string path = notebook_.CurrentPagePath();
+		  int pos = path.find_last_of("/\\");
+		  if(pos != std::string::npos){
+		    path.erase(path.begin()+pos,path.end());
+		    terminal_.SetFolderCommand(path);
+		  }
+		  terminal_.Compile();
+		  std::string executable = notebook_.directories().
+		    GetCmakeVarValue(path,"add_executable");
+		  terminal_.Run(executable);
+		});
+	      execute.detach();
+	      running.unlock();
+	    }
 	  });
    
     keybindings_.
@@ -66,11 +75,20 @@ Window::Window() :
 	  Gtk::AccelKey(keybindings_.config_
 			.key_map()["compile"]),
 	  [this]() {
-	    notebook_.OnSaveFile();
-	    std::string path =
-	      notebook_.CurrentPagePath();
-	    terminal_.SetFolderCommand(path);
-	    terminal_.Compile();
+	    if (running.try_lock()) {
+	      std::thread execute([=]() {
+		  notebook_.OnSaveFile();
+		  std::string path =  notebook_.CurrentPagePath();
+		  int pos = path.find_last_of("/\\");
+		  if(pos != std::string::npos){
+		    path.erase(path.begin()+pos,path.end());
+		    terminal_.SetFolderCommand(path);
+		  }
+		  terminal_.Compile();
+		});
+	      execute.detach();
+	      running.unlock();
+	    }
 	  });
 
     this->signal_button_release_event().
@@ -87,9 +105,12 @@ Window::Window() :
   keybindings_.BuildMenu();
 
   window_box_.pack_start(menu_.view(), Gtk::PACK_SHRINK);
+
   window_box_.pack_start(notebook_.entry_view(), Gtk::PACK_SHRINK);
-  window_box_.pack_start(notebook_.view());
-  window_box_.pack_end(terminal_.view(),Gtk::PACK_SHRINK);
+  paned_.set_position(300);
+  paned_.pack1(notebook_.view(), true, false);
+  paned_.pack2(terminal_.view(), true, true);
+  window_box_.pack_end(paned_);
   show_all_children();
   } // Window constructor
 
