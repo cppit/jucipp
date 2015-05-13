@@ -111,6 +111,9 @@ add_executable(${project_name}
   terminal.cc
   )
 
+set(EXECUTABLE_OUTPUT_PATH ${PROJECT_BINARY_DIR}/bin)
+
+
 add_library(${module} SHARED
   api
   api_ext
@@ -132,8 +135,8 @@ link_directories(
   ${LIBCLANG_LIBRARY_DIRS}
   )
 #module:
-set_target_properties(${module} PROPERTIES PREFIX "")
-# LIBRARY_OUTPUT_DIRECTORY "/usr/lib/python2.7/dist-packages/")
+set_target_properties(${module} PROPERTIES PREFIX ""
+LIBRARY_OUTPUT_DIRECTORY "${CMAKE_SOURCE_DIR}/lib/")
 target_link_libraries(${module} ${PYTHON_LIBRARIES} ${Boost_LIBRARIES})
 #executable:
 target_link_libraries(${project_name} ${LIVCLANG_LIBRARIES} ${LCL_LIBRARIES} ${GTKMM_LIBRARIES} ${Boost_LIBRARIES} ${PYTHON_LIBRARIES})
