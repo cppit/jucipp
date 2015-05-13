@@ -643,17 +643,23 @@ void Notebook::Controller:: OnSaveFile() {
 
 
 std::string Notebook::Controller::OnSaveFileAs(){
-    INFO("Notebook save as");
+  INFO("Notebook save as");
   Gtk::FileChooserDialog dialog("Please choose a file",
 				Gtk::FILE_CHOOSER_ACTION_SAVE);
+  DEBUG("SET TRANSISTEN FPR");
   dialog.set_transient_for(*window_);
   dialog.set_position(Gtk::WindowPosition::WIN_POS_CENTER_ALWAYS);
   dialog.add_button("_Cancel", Gtk::RESPONSE_CANCEL);
   dialog.add_button("_Save", Gtk::RESPONSE_OK);
+  //dialog.set_current_name("Untitled");
+  DEBUG("RUN DIALOG");
   int result = dialog.run();
+  DEBUG("DIALOG RUNNING");
    switch (result) {
         case(Gtk::RESPONSE_OK): {
+	  DEBUG("get_filename()");
             std::string path = dialog.get_filename();
+	    DEBUG_VAR(path);
 	    unsigned pos = path.find_last_of("/\\");
 	    std::cout << path<< std::endl;
 	    //notebook_.OnSaveFile(path);

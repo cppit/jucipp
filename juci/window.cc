@@ -54,9 +54,9 @@ Window::Window() :
 	  Gtk::AccelKey(keybindings_.config_
 			.key_map()["compile_and_run"]),
 	  [this]() {
+	    notebook_.OnSaveFile();
 	    if (running.try_lock()) {
 	      std::thread execute([=]() {
-		  notebook_.OnSaveFile();
 		  std::string path = notebook_.CurrentPagePath();
 		  int pos = path.find_last_of("/\\");
 		  if(pos != std::string::npos){
@@ -80,9 +80,9 @@ Window::Window() :
 	  Gtk::AccelKey(keybindings_.config_
 			.key_map()["compile"]),
 	  [this]() {
+	    notebook_.OnSaveFile();
 	    if (running.try_lock()) {
-	      std::thread execute([=]() {
-		  notebook_.OnSaveFile();
+	      std::thread execute([=]() {		  
 		  std::string path =  notebook_.CurrentPagePath();
 		  int pos = path.find_last_of("/\\");
 		  if(pos != std::string::npos){
