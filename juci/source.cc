@@ -136,6 +136,7 @@ GetAutoCompleteSuggestions(int line_number,
                            int column,
                            std::vector<Source::AutoCompleteData>
                            *suggestions) {
+  INFO("Getting auto complete suggestions");
   parsing.lock();
   std::map<std::string, std::string> buffers;
   notebook_->MapBuffers(&buffers);
@@ -143,6 +144,8 @@ GetAutoCompleteSuggestions(int line_number,
                                      line_number,
                                      column,
                                      suggestions);
+  DEBUG("Number of suggestions");
+  DEBUG_VAR(suggestions->size());
   parsing.unlock();
 }
 

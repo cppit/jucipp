@@ -3,7 +3,9 @@
 
 MainConfig::MainConfig() :
   keybindings_cfg_(), source_cfg_() {
+  INFO("Reading config file");
   boost::property_tree::json_parser::read_json("config.json", cfg_);
+  INFO("Config file read");
   GenerateSource();
   GenerateKeybindings();
   GenerateDirectoryFilter();

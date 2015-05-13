@@ -1,4 +1,5 @@
 #include "notebook.h"
+#include "logging.h"
 #include <fstream>
 
 Notebook::Model::Model() {
@@ -18,6 +19,7 @@ Notebook::Controller::Controller(Gtk::Window* window, Keybindings::Controller& k
   source_config_(source_cfg),
   directories_(dir_cfg),
   index_(0, 1) {
+  INFO("Create notebook");
   window_ = window;
   OnNewPage("juCi++");
   refClipboard_ = Gtk::Clipboard::get();
@@ -159,7 +161,7 @@ bool Notebook::Controller::GeneratePopup(int key_id) {
   Gtk::TextIter tmp = CurrentTextView().get_buffer()->get_insert()->get_iter();
   Gtk::TextIter tmp1 = CurrentTextView().get_buffer()->get_insert()->get_iter();
   Gtk::TextIter line =
-  CurrentTextView().get_buffer()->get_iter_at_line(tmp.get_line());
+    CurrentTextView().get_buffer()->get_iter_at_line(tmp.get_line());
   if (end.backward_char() && end.backward_char()) {
     bool illegal_chars =
     end.backward_search("\"", Gtk::TEXT_SEARCH_VISIBLE_ONLY, tmp, tmp1, line)
@@ -201,16 +203,14 @@ bool Notebook::Controller::GeneratePopup(int key_id) {
       case clang::CompletionChunk_ResultType:
         return_value = chunk.chunk();
         break;
-      case clang::CompletionChunk_Informative:
-        break;
-      default:
-        ss << chunk.chunk();
-        break;
+      case clang::CompletionChunk_Informative: break;
+      default: ss << chunk.chunk(); break;
       }
     }
-    items[ss.str() + " --> " + return_value] = ss.str();
+    if (ss.str().length() > 0) { // if length is 0 the result is empty
+      items[ss.str() + " --> " + return_value] = ss.str();
+    }
   }
-  //  Replace over with get suggestions from zalox! OVER IS JUST FOR TESTING
   Gtk::ScrolledWindow popup_scroll_;
   Gtk::ListViewText listview_(1, false, Gtk::SelectionMode::SELECTION_SINGLE);
   popup_scroll_.set_policy(Gtk::PolicyType::POLICY_NEVER,
