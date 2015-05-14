@@ -1,5 +1,6 @@
-#include "notebook.h"
 #include <fstream>
+#include "notebook.h"
+#include "logging.h"
 
 Notebook::Model::Model() {
   cc_extension_ = ".cc";
@@ -24,11 +25,13 @@ Notebook::Controller::Controller(Gtk::Window* window, Keybindings::Controller& k
   ispopup = false;
   view().pack1(directories_.widget(), true, true);
   CreateKeybindings(keybindings);
+  INFO("Notebook Controller Sucsess");
 }  // Constructor
 
 
 void Notebook::Controller::CreateKeybindings(Keybindings::Controller
                                              &keybindings) {
+  INFO("Notebook create signal handlers");
   directories().m_TreeView.signal_row_activated()
     .connect(sigc::mem_fun(*this,
                            &Notebook::Controller::OnDirectoryNavigation));
@@ -138,6 +141,7 @@ void Notebook::Controller::CreateKeybindings(Keybindings::Controller
             [this]() {
               Search(false);
             });
+  INFO("Notebook signal handlers sucsess");
 }
 
 bool Notebook::Controller:: OnMouseRelease(GdkEventButton* button) {
@@ -153,6 +157,7 @@ bool Notebook::Controller::OnKeyRelease(GdkEventKey* key) {
 }
 
 bool Notebook::Controller::GeneratePopup(int key_id) {
+    INFO("Notebook genereate popup, getting iters");
   //  Get function to fill popup with suggests item vector under is for testing
   Gtk::TextIter beg = CurrentTextView().get_buffer()->get_insert()->get_iter();
   Gtk::TextIter end = CurrentTextView().get_buffer()->get_insert()->get_iter();
@@ -165,6 +170,7 @@ bool Notebook::Controller::GeneratePopup(int key_id) {
     end.backward_search("\"", Gtk::TEXT_SEARCH_VISIBLE_ONLY, tmp, tmp1, line)
     ||
       end.backward_search("//", Gtk::TEXT_SEARCH_VISIBLE_ONLY, tmp, tmp1, line);
+    INFO("Notebook genereate popup, checking key_id");
       if (illegal_chars) {
         return false;
       }
@@ -187,6 +193,7 @@ bool Notebook::Controller::GeneratePopup(int key_id) {
   } else {
     return false;
   }
+  INFO("Notebook genereate popup, getting autocompletions");
   std::vector<Source::AutoCompleteData> acdata;
   text_vec_.at(CurrentPage())->
     GetAutoCompleteSuggestions(beg.get_line()+1,
@@ -229,16 +236,19 @@ bool Notebook::Controller::GeneratePopup(int key_id) {
   popup_.get_vbox()->pack_start(popup_scroll_);
   popup_.set_transient_for(*window_);
   popup_.show_all();
-
+  INFO("Notebook genereate popup, moving popup");
   int popup_x = popup_.get_width();
   int popup_y = items.size() * 20;
   PopupSetSize(popup_scroll_, popup_x, popup_y);
   int x, y;
   FindPopupPosition(CurrentTextView(), popup_x, popup_y, x, y);
   popup_.move(x, y+15);
+  INFO("Notebook genereate popup, create handler");
   PopupSelectHandler(popup_, listview_, &items);
   ispopup = true;
+  INFO("Notebook genereate popup, run popup");
   popup_.run();
+  INFO("Notebook genereate popup, hide popup");
   popup_.hide();
   ispopup = false;
   return true;
@@ -261,6 +271,7 @@ bool Notebook::Controller::ScrollEventCallback(GdkEventScroll* scroll_event) {
   return true;
 }
 Notebook::Controller::~Controller() {
+  INFO("Notebook destructor");
   for (auto &i : text_vec_) delete i;
   for (auto &i : linenumbers_vec_) delete i;
   for (auto &i : editor_vec_) delete i;
@@ -276,6 +287,7 @@ Gtk::Box& Notebook::Controller::entry_view() {
 }
 
 void Notebook::Controller::OnNewPage(std::string name) {
+  INFO("Notebook Generate new page");
   OnCreatePage();
   text_vec_.back()->OnNewEmptyFile();
   Notebook().append_page(*editor_vec_.back(), name);
@@ -294,6 +306,7 @@ MapBuffers(std::map<std::string, std::string> *buffers) {
 }
 
 void Notebook::Controller::OnOpenFile(std::string path) {
+  INFO("Notebook open file");
   OnCreatePage();
   text_vec_.back()->OnOpenFile(path);
   text_vec_.back()->set_is_saved(true);
@@ -309,6 +322,7 @@ void Notebook::Controller::OnOpenFile(std::string path) {
 }
 
 void Notebook::Controller::OnCreatePage() {
+  INFO("Notebook create page");
   text_vec_.push_back(new Source::Controller(source_config(), this));
   linenumbers_vec_.push_back(new Source::Controller(source_config(), this));
   scrolledline_vec_.push_back(new Gtk::ScrolledWindow());
@@ -329,6 +343,7 @@ void Notebook::Controller::OnCreatePage() {
 }
 
 void Notebook::Controller::OnCloseCurrentPage() {
+  INFO("Notebook close page");
   // TODO(oyvang) zalox, forgi)
   // Save a temp file, in case you close one you dont want to close?
   if (Pages() != 0) {
@@ -372,6 +387,7 @@ void Notebook::Controller::OnEditCut() {
 }
 
 std::string Notebook::Controller::GetCursorWord() {
+  INFO("Notebook get cursor word");
   int page = CurrentPage();
   std::string word;
   Gtk::TextIter start, end;
@@ -399,6 +415,7 @@ void Notebook::Controller::OnEditSearch() {
 }
 
 void Notebook::Controller::Search(bool forward) {
+    INFO("Notebook search");
   int page = CurrentPage();
   std::string search_word;
   search_word = entry_.text();
@@ -460,6 +477,7 @@ void Notebook::Controller::OnBufferChange() {
 void Notebook::Controller
 ::OnDirectoryNavigation(const Gtk::TreeModel::Path& path,
                         Gtk::TreeViewColumn* column) {
+    INFO("Notebook directory navigation");
   Gtk::TreeModel::iterator iter = directories().m_refTreeModel->get_iter(path);
   if (iter) {
     Gtk::TreeModel::Row row = *iter;
@@ -539,6 +557,7 @@ void Notebook::Controller::PopupSelectHandler(Gtk::Dialog &popup,
 void Notebook::Controller::PopupSetSize(Gtk::ScrolledWindow &scroll,
                                         int &current_x,
                                         int &current_y) {
+    INFO("Notebook popup set size");
   int textview_x = CurrentTextView().get_width();
   int textview_y = 150;
   bool is_never_scroll_x = true;
@@ -573,6 +592,7 @@ void Notebook::Controller::FindPopupPosition(Gtk::TextView& textview,
                                              int popup_y,
                                              int &x,
                                              int &y) {
+    INFO("Notebook popup find position");
   Gdk::Rectangle temp1, temp2;
   textview.get_cursor_locations(
                                 CurrentTextView().
@@ -602,6 +622,7 @@ void Notebook::Controller::FindPopupPosition(Gtk::TextView& textview,
 }
 
 void Notebook::Controller:: OnSaveFile() {
+    INFO("Notebook save file");
   if (text_vec_.at(CurrentPage())->is_saved()) {
     std::ofstream file;
     file.open (text_vec_.at(CurrentPage())->path());
@@ -622,16 +643,23 @@ void Notebook::Controller:: OnSaveFile() {
 
 
 std::string Notebook::Controller::OnSaveFileAs(){
+  INFO("Notebook save as");
   Gtk::FileChooserDialog dialog("Please choose a file",
 				Gtk::FILE_CHOOSER_ACTION_SAVE);
+  DEBUG("SET TRANSISTEN FPR");
   dialog.set_transient_for(*window_);
   dialog.set_position(Gtk::WindowPosition::WIN_POS_CENTER_ALWAYS);
   dialog.add_button("_Cancel", Gtk::RESPONSE_CANCEL);
   dialog.add_button("_Save", Gtk::RESPONSE_OK);
+  //dialog.set_current_name("Untitled");
+  DEBUG("RUN DIALOG");
   int result = dialog.run();
+  DEBUG("DIALOG RUNNING");
    switch (result) {
         case(Gtk::RESPONSE_OK): {
+	  DEBUG("get_filename()");
             std::string path = dialog.get_filename();
+	    DEBUG_VAR(path);
 	    unsigned pos = path.find_last_of("/\\");
 	    std::cout << path<< std::endl;
 	    //notebook_.OnSaveFile(path);

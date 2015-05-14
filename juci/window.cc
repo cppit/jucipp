@@ -33,53 +33,71 @@ Window::Window() :
                                         });
 
   keybindings_.action_group_menu()->add(Gtk::Action::create("FileSaveAs",
-                                                            "Save as"),
-                                        Gtk::AccelKey(keybindings_.config_
-                                                      .key_map()["save_as"]),
-                                        [this]() {
-                                          notebook_.OnSaveFile();
-                                        });
+							    "Save as"),
+					Gtk::AccelKey(keybindings_.config_
+						      .key_map()["save_as"]),
+					[this]() {
+					  notebook_.OnSaveFile();
+					});
 
   keybindings_.action_group_menu()->add(Gtk::Action::create("FileSave",
-                                                            "Save"),
-                                        Gtk::AccelKey(keybindings_.config_
-                                                      .key_map()["save"]),
-                                        [this]() {
-                                          notebook_.OnSaveFile();
-                                        });
+							    "Save"),
+					Gtk::AccelKey(keybindings_.config_
+						      .key_map()["save"]),
+					[this]() {
+					  notebook_.OnSaveFile();
+					});
   keybindings_.
-    action_group_menu()->
-    add(Gtk::Action::create("ProjectCompileAndRun",
-                            "Compile And Run"),
-        Gtk::AccelKey(keybindings_.config_
-                      .key_map()["compile_and_run"]),
-        [this]() {
-          notebook_.OnSaveFile();
-          std::string path = notebook_.CurrentPagePath();
-          terminal_.SetFolderCommand(path);
-          if(terminal_.Compile()) {
-            std::string executable = notebook_.directories().
-              GetCmakeVarValue(path,"add_executable");
-            terminal_.Run(executable);
-          }
-        });
+      action_group_menu()->
+      add(Gtk::Action::create("ProjectCompileAndRun",
+			      "Compile And Run"),
+	  Gtk::AccelKey(keybindings_.config_
+			.key_map()["compile_and_run"]),
+	  [this]() {
+	    notebook_.OnSaveFile();
+	    if (running.try_lock()) {
+	      std::thread execute([=]() {
+		  std::string path = notebook_.CurrentPagePath();
+		  int pos = path.find_last_of("/\\");
+		  if(pos != std::string::npos){
+		    path.erase(path.begin()+pos,path.end());
+		    terminal_.SetFolderCommand(path);
+		  }
+		  terminal_.Compile();
+		  std::string executable = notebook_.directories().
+		    GetCmakeVarValue(path,"add_executable");
+		  terminal_.Run(executable);
+		});
+	      execute.detach();
+	      running.unlock();
+	    }
+	  });
+   
+    keybindings_.
+      action_group_menu()->
+      add(Gtk::Action::create("ProjectCompile",
+			      "Compile"),
+	  Gtk::AccelKey(keybindings_.config_
+			.key_map()["compile"]),
+	  [this]() {
+	    notebook_.OnSaveFile();
+	    if (running.try_lock()) {
+	      std::thread execute([=]() {		  
+		  std::string path =  notebook_.CurrentPagePath();
+		  int pos = path.find_last_of("/\\");
+		  if(pos != std::string::npos){
+		    path.erase(path.begin()+pos,path.end());
+		    terminal_.SetFolderCommand(path);
+		  }
+		  terminal_.Compile();
+		});
+	      execute.detach();
+	      running.unlock();
+	    }
+	  });
 
-  keybindings_.
-    action_group_menu()->
-    add(Gtk::Action::create("ProjectCompile",
-                            "Compile"),
-        Gtk::AccelKey(keybindings_.config_
-                      .key_map()["compile"]),
-        [this]() {
-          notebook_.OnSaveFile();
-          std::string path =
-            notebook_.CurrentPagePath();
-          terminal_.SetFolderCommand(path);
-          terminal_.Compile();
-        });
-
-  this->signal_button_release_event().
-    connect(sigc::mem_fun(*this,&Window::OnMouseRelease),false);
+    this->signal_button_release_event().
+      connect(sigc::mem_fun(*this,&Window::OnMouseRelease),false);
   terminal_.Terminal().signal_button_release_event().
     connect(sigc::mem_fun(*this,&Window::OnMouseRelease),false);
 
@@ -88,9 +106,12 @@ Window::Window() :
   keybindings_.BuildMenu();
 
   window_box_.pack_start(menu_.view(), Gtk::PACK_SHRINK);
+
   window_box_.pack_start(notebook_.entry_view(), Gtk::PACK_SHRINK);
-  window_box_.pack_start(notebook_.view());
-  window_box_.pack_end(terminal_.view(),Gtk::PACK_SHRINK);
+  paned_.set_position(300);
+  paned_.pack1(notebook_.view(), true, false);
+  paned_.pack2(terminal_.view(), true, true);
+  window_box_.pack_end(paned_);
   show_all_children();
   INFO("Window created");
 } // Window constructor

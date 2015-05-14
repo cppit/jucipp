@@ -96,21 +96,38 @@ int Directories::Controller::count(const std::string path) {
         while (std::getline(ifs, line)) {
           if (line.find(command_name+"(", 0) != std::string::npos
               || line.find(command_name+" (", 0) != std::string::npos ) {
-            size_t variable_start = line.find("{", 0);
-            size_t variable_end = line.find("}", variable_start);
-            project_name_var = line.substr(variable_start+1,
-                                           (variable_end)-variable_start-1);
+	    size_t variable_start = line.find("{", 0);
+	    size_t variable_end = line.find("}", variable_start);
+	    project_name_var = line.substr(variable_start+1,
+					   (variable_end)-variable_start-1);
             boost::algorithm::trim(project_name_var);
-            if (variable_start == std::string::npos) { //  not a variable
+            if (variable_start == std::string::npos) { //  not a variabel
               variable_start = line.find("(", 0);
-              variable_end = line.find(")", variable_start);
-              INFO("Wasn't a variable, returning value");
+	      
+	      variable_end = line.find(' ', variable_start);
+	      if(variable_end != std::string::npos){
+		return line.substr(variable_start+1,
+				   (variable_end)-variable_start-1);
+	      }
+	      variable_end = line.find("#", variable_start);
+	      if(variable_end != std::string::npos){
+		return line.substr(variable_start+1,
+				   (variable_end)-variable_start-1);
+	      }
+	      variable_end = line.find(")", variable_start);
               return line.substr(variable_start+1,
                                  (variable_end)-variable_start-1);
+             if (variable_start == std::string::npos) { //  not a variable
+               variable_start = line.find("(", 0);
+               variable_end = line.find(")", variable_start);
+               INFO("Wasn't a variable, returning value");
+               return line.substr(variable_start+1,
+                                  (variable_end)-variable_start-1);
             }
             break;
           }
         }
+	}
         std::ifstream ifs2(itr->path().string());
         while (std::getline(ifs2, line)) {
           if (line.find("set(", 0) != std::string::npos

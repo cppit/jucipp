@@ -356,7 +356,7 @@ void Source::Controller::OnOpenFile(const string &filepath) {
                                    notebook_->index());
     view().OnUpdateSyntax(model().ExtractTokens(start_offset, end_offset),
                           model().config());
-  }
+  
 
   buffer()->signal_end_user_action().connect([this]() {
       if (!go) {
@@ -396,6 +396,7 @@ void Source::Controller::OnOpenFile(const string &filepath) {
         syntax.unlock();
       }
     });
+  }
 }
 Glib::RefPtr<Gtk::TextBuffer> Source::Controller::buffer() {
   return view().get_buffer();
