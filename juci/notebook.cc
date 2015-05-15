@@ -160,7 +160,7 @@ bool Notebook::Controller::OnKeyRelease(GdkEventKey* key) {
 bool Notebook::Controller::GeneratePopup(int key_id) {
   INFO("Notebook genereate popup, getting iters");
   std::string path = text_vec_.at(CurrentPage())->path();
-  if(!LeagalExtension(path.substr(path.find_last_of(".") + 1))) return false;
+  if (!LegalExtension(path.substr(path.find_last_of(".") + 1))) return false;
   //  Get function to fill popup with suggests item vector under is for testing
   Gtk::TextIter beg = CurrentTextView().get_buffer()->get_insert()->get_iter();
   Gtk::TextIter end = CurrentTextView().get_buffer()->get_insert()->get_iter();
@@ -715,19 +715,19 @@ void Notebook::Controller::AskToSaveDialog() {
   }
 }
 
-bool Notebook::Controller::LeagalExtension(std::string e) {
+bool Notebook::Controller::LegalExtension(std::string e) {
   std::transform(e.begin(), e.end(),e.begin(), ::tolower);
   std::vector<std::string> extensions =
-  text_vec_.at(CurrentPage).leagalParseExtensions();
-    
-  if(std::find(extensions.begin(), extensions.end(), e)) {
+    source_config().extensiontable();
   
-  // if(e=="c" ||e=="cc" ||e=="cpp" ||e=="cxx" || e=="c++"||
-  //    e=="h" ||e=="hh" ||e=="hpp" ||e=="hxx" || e=="h++"){
-       DEBUG("Leagal extension");
-     return true;
-   }
-    DEBUG("Ileagal extension");
+  if (find(extensions.begin(), extensions.end(), e) != extensions.end()) {
+    DEBUG("Legal extension");
+    return true;
+        
+    // if(e=="c" ||e=="cc" ||e=="cpp" ||e=="cxx" || e=="c++"||
+    //    e=="h" ||e=="hh" ||e=="hpp" ||e=="hxx" || e=="h++"){
+  }
+  DEBUG("Ilegal extension");
   return false;
 }
 

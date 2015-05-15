@@ -18,9 +18,16 @@
             "705": "comment"
         },
         "extensions": [
-            "ext1",
-            "ext2",
-            "ext3"
+            "c",
+            "cc",
+            "cpp",
+	"cxx",
+	"c++",
+	"h",
+	"hh",
+	"hpp",
+	"hxx",
+	"h++"
         ]
     },
     "keybindings": {

@@ -20,7 +20,7 @@ namespace Source {
     Config();
     const std::unordered_map<std::string, std::string>& tagtable() const;
     const std::unordered_map<std::string, std::string>& typetable() const;
-    std::vector<std::string>& extensiontable();
+    const std::vector<std::string>& extensiontable() const;
     void SetTagTable(const std::unordered_map<std::string, std::string>
                      &tagtable);
     void InsertTag(const std::string &key, const std::string &value);
