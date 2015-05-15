@@ -59,7 +59,7 @@ Window::Window() :
 	      std::thread execute([=]() {
 		  std::string path = notebook_.CurrentPagePath();
 		  int pos = path.find_last_of("/\\");
-		  if(pos != std::string::npos){
+		  if(pos != std::string::npos) {
 		    path.erase(path.begin()+pos,path.end());
 		    terminal_.SetFolderCommand(path);
 		  }

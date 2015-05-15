@@ -16,7 +16,12 @@
             "702": "keyword",
             "703": "own",
             "705": "comment"
-        }
+        },
+        "extensions": [
+            "ext1",
+            "ext2",
+            "ext3"
+        ]
     },
     "keybindings": {
 	"split_window": "<control><alt>s",

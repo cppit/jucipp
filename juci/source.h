@@ -20,16 +20,18 @@ namespace Source {
     Config();
     const std::unordered_map<std::string, std::string>& tagtable() const;
     const std::unordered_map<std::string, std::string>& typetable() const;
+    std::vector<std::string>& extensiontable();
     void SetTagTable(const std::unordered_map<std::string, std::string>
                      &tagtable);
     void InsertTag(const std::string &key, const std::string &value);
     void SetTypeTable(const std::unordered_map<std::string, std::string>
                       &tagtable);
     void InsertType(const std::string &key, const std::string &value);
-
+    void InsertExtension(const std::string &ext);
   private:
     std::unordered_map<std::string, std::string> tagtable_;
     std::unordered_map<std::string, std::string> typetable_;
+    std::vector<std::string> extensiontable_;
     std::string background_;
   };  // class Config
 

@@ -70,9 +70,18 @@ const std::unordered_map<string, string>& Source::Config::typetable() const {
   return typetable_;
 }
 
+ std::vector<string>& Source::Config::extensiontable() {
+  return extensiontable_;
+}
+
 void Source::Config::InsertTag(const string &key, const string &value) {
   tagtable_[key] = value;
 }
+
+void Source::Config::InsertExtension(const string &ext) {
+  extensiontable_.push_back(ext);
+}
+
 // Source::View::Config::SetTagTable()
 // sets the tagtable for the view
 void Source::Config::

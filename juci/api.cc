@@ -8,9 +8,12 @@ Notebook::Controller* PluginApi::notebook_;
 /////////////////////////////
 PluginApi::PluginApi(Menu::Controller& menu_ctl_,
                      Notebook::Controller& notebook_ctl_) {
+  DEBUG("Adding pointers for the API");
   menu_ = &menu_ctl_;
   notebook_ = &notebook_ctl_;
+  DEBUG("Initiating plugins(from plugins.py)..");
   InitPlugins();
+  DEBUG("Plugins initiated..");
 }
 
 PluginApi::~PluginApi() {
@@ -61,6 +64,7 @@ void PluginApi::InitPlugins() {
 }
 
 void PluginApi::AddMenuElement(std::string plugin_name) {
+  DEBUG("Adding menu element for "+plugin_name);
   AddMenuXml(plugin_name, "PluginMenu");
   std::string plugin_action_name = plugin_name+"Menu";
   menu_->keybindings_.action_group_menu()

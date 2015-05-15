@@ -13,7 +13,8 @@ Notebook::View::View() : notebook_() {
   view_.set_position(120);
 }
 
-Notebook::Controller::Controller(Gtk::Window* window, Keybindings::Controller& keybindings,
+Notebook::Controller::Controller(Gtk::Window* window,
+                                 Keybindings::Controller& keybindings,
                                  Source::Config& source_cfg,
                                  Directories::Config& dir_cfg) :
   source_config_(source_cfg),
