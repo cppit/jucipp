@@ -19,6 +19,7 @@ Terminal::Controller::Controller() {
 
 void Terminal::Controller::SetFolderCommand( boost::filesystem::path
 					     CMake_path) {
+  
   path_ = CMake_path.string();
   folder_command_ = "cd "+ path_ + "; ";
 }
