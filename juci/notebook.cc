@@ -723,9 +723,6 @@ bool Notebook::Controller::LegalExtension(std::string e) {
   if (find(extensions.begin(), extensions.end(), e) != extensions.end()) {
     DEBUG("Legal extension");
     return true;
-        
-    // if(e=="c" ||e=="cc" ||e=="cpp" ||e=="cxx" || e=="c++"||
-    //    e=="h" ||e=="hh" ||e=="hpp" ||e=="hxx" || e=="h++"){
   }
   DEBUG("Ilegal extension");
   return false;
