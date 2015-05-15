@@ -95,7 +95,6 @@ Window::Window() :
 	      running.unlock();
 	    }
 	  });
-
     this->signal_button_release_event().
       connect(sigc::mem_fun(*this,&Window::OnMouseRelease),false);
   terminal_.Terminal().signal_button_release_event().

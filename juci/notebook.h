@@ -89,6 +89,7 @@ namespace Notebook {
                       int &current_x,
                       int &current_y);
     void AskToSaveDialog();
+    bool LeagalExtension(std::string extension);
     Glib::RefPtr<Gtk::Builder> m_refBuilder;
     Glib::RefPtr<Gio::SimpleActionGroup> refActionGroup;
     Source::Config source_config_;
