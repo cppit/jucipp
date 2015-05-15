@@ -3,6 +3,7 @@
 
 Directories::Controller::Controller(Directories::Config& cfg) :
   config_(cfg) {
+  DEBUG("adding treeview to scrolledwindow");
   m_ScrolledWindow.add(m_TreeView);
   m_ScrolledWindow.set_policy(Gtk::POLICY_AUTOMATIC, Gtk::POLICY_AUTOMATIC);
 }
@@ -13,16 +14,20 @@ open_folder(const boost::filesystem::path& dir_path) {
   m_refTreeModel = Gtk::TreeStore::create(view());
   m_TreeView.set_model(m_refTreeModel);
   m_TreeView.remove_all_columns();
+  DEBUG("Getting project name from CMakeLists.txt");
   std::string project_name = GetCmakeVarValue(dir_path, "project");
   m_TreeView.append_column(project_name, view().m_col_name);
   int row_id = 0;
   Gtk::TreeModel::Row row;
+  DEBUG("Listing directories");
   list_dirs(dir_path, row, row_id);
+  DEBUG("Sorting directories");
   m_refTreeModel->set_sort_column(0, Gtk::SortType::SORT_ASCENDING);
-  INFO("Folder opened");
+  DEBUG("Folder opened");
 }
 
 bool Directories::Controller::IsIgnored(std::string path) {
+  DEBUG("Checking if file-/directory is filtered");
   std::transform(path.begin(), path.end(), path.begin(), ::tolower);
   //  std::cout << "ignored?: " << path << std::endl;
   if (config().IsException(path)) {
@@ -36,17 +41,18 @@ bool Directories::Controller::IsIgnored(std::string path) {
 void Directories::Controller::
 list_dirs(const boost::filesystem::path& dir_path,
           Gtk::TreeModel::Row &parent,
-          unsigned row_id) { 
+          unsigned row_id) {
+  
   boost::filesystem::directory_iterator end_itr;
   unsigned dir_counter = row_id;
   unsigned file_counter = 0;
   Gtk::TreeModel::Row child;
   Gtk::TreeModel::Row row;
-
+  DEBUG_VAR(dir_path);
   // Fill the treeview
   for ( boost::filesystem::directory_iterator itr( dir_path );
         itr != end_itr;
-        ++itr ) {
+        ++itr ) {   
     if (!IsIgnored(itr->path().filename().string())) {
       if (boost::filesystem::is_directory(itr->status())) {
         if (count(itr->path().string()) > count(dir_path.string())) {  // is child
