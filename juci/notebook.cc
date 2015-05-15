@@ -272,7 +272,7 @@ bool Notebook::Controller::ScrollEventCallback(GdkEventScroll* scroll_event) {
 }
 Notebook::Controller::~Controller() {
   INFO("Notebook destructor");
-  for (auto &i : text_vec_) delete i;
+  for (auto &i : text_vec_)  delete i;
   for (auto &i : linenumbers_vec_) delete i;
   for (auto &i : editor_vec_) delete i;
   for (auto &i : scrolledtext_vec_) delete i;

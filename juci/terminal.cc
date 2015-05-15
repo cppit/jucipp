@@ -1,8 +1,7 @@
 #include "terminal.h"
 #include <iostream>
 #include <thread>
-// #include <pstream.h>
-// #include <string>
+#include "logging.h"
 
 
 Terminal::View::View(){
@@ -19,31 +18,43 @@ Terminal::Controller::Controller() {
 
 void Terminal::Controller::SetFolderCommand( boost::filesystem::path
 					     CMake_path) {
-  
+  INFO("Terminal: SetFolderCommand");
   path_ = CMake_path.string();
   folder_command_ = "cd "+ path_ + "; ";
 }
 
 void Terminal::Controller::Compile(){
+  INFO("Terminal: Compile");
   Terminal().get_buffer()->set_text("");
+  DEBUG("Terminal: Compile: running cmake command");
   ExecuteCommand("cmake .", "r");
   if (ExistInConsole(cmake_sucsess)){
+    DEBUG("Terminal: Compile: running make command");
     ExecuteCommand("make", "r");
-  } 
+  }
+  PrintMessage("\n");
+  DEBUG("Terminal: Compile: compile done");
 }
 
 void Terminal::Controller::Run(std::string executable) {
+  INFO("Terminal: Run");
   PrintMessage("juCi++ execute: " + executable + "\n");
+  DEBUG("Terminal: Compile: running run command: ");
+  DEBUG_VAR(executable);
   ExecuteCommand("./"+executable, "r");
+  PrintMessage("\n");
 }
 
 void Terminal::Controller::PrintMessage(std::string message){
+  INFO("Terminal: PrintMessage");
   Terminal().get_buffer()->
     insert(Terminal().get_buffer()-> end(),"> "+message);
 }
 
 
 bool Terminal::Controller::ExistInConsole(std::string string) {
+    INFO("Terminal: ExistInConsole");
+    DEBUG("Terminal: PrintMessage: finding string in buffer");
   double pos = Terminal().get_buffer()->
     get_text().find(string);
   if (pos == std::string::npos) return false;
@@ -51,8 +62,10 @@ bool Terminal::Controller::ExistInConsole(std::string string) {
 }
 
 void Terminal::Controller::ExecuteCommand(std::string command, std::string mode) {
+  INFO("Terminal: ExecuteCommand");
   command = folder_command_+command;
-  std::cout << "EXECUTE COMMAND: "<< command << std::endl;
+  DEBUG("Terminal: PrintMessage: Running command");
+  DEBUG_VAR(command);
   FILE* p = popen(command.c_str(), mode.c_str());
 
   if (p == NULL) {
