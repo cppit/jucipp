@@ -25,7 +25,7 @@ Notebook::Controller::Controller(Gtk::Window* window, Keybindings::Controller& k
   ispopup = false;
   view().pack1(directories_.widget(), true, true);
   CreateKeybindings(keybindings);
-  INFO("Notebook Controller Sucsess");
+  INFO("Notebook Controller Success");
 }  // Constructor
 
 

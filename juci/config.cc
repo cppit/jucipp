@@ -4,6 +4,7 @@
 MainConfig::MainConfig() :
   keybindings_cfg_(), source_cfg_() {
   boost::property_tree::json_parser::read_json("config.json", cfg_);
+  
   GenerateSource();
   GenerateKeybindings();
   GenerateDirectoryFilter();
@@ -28,10 +29,8 @@ void MainConfig::GenerateKeybindings() {
   std::string line;
   std::ifstream menu_xml("menu.xml");
   if (menu_xml.is_open()) {
-    while (getline(menu_xml, line)) {
-      keybindings_cfg_.AppendXml(line);
-    }
-    
+    while (getline(menu_xml, line))
+      keybindings_cfg_.AppendXml(line);   
   }
   boost::property_tree::ptree keys_json = cfg_.get_child("keybindings");
   for (auto &i : keys_json)
