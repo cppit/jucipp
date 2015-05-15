@@ -316,9 +316,7 @@ void Notebook::Controller::OnOpenFile(std::string path) {
   Notebook().set_current_page(Pages()-1);
   Notebook().set_focus_child(text_vec_.back()->view());
   OnBufferChange();
-
-  
-  
+  text_vec_.back()->set_is_changed(false);
 }
 
 void Notebook::Controller::OnCreatePage() {
@@ -344,9 +342,10 @@ void Notebook::Controller::OnCreatePage() {
 
 void Notebook::Controller::OnCloseCurrentPage() {
   INFO("Notebook close page");
-  // TODO(oyvang) zalox, forgi)
-  // Save a temp file, in case you close one you dont want to close?
   if (Pages() != 0) {
+    if(text_vec_.back()->is_changed()){
+      AskToSaveDialog();
+    }
     int page = CurrentPage();
     Notebook().remove_page(page);
     delete text_vec_.at(page);
@@ -473,6 +472,7 @@ void Notebook::Controller::OnBufferChange() {
     ScrollEventCallback(scroll);
     delete scroll;
   }
+  text_vec_.at(page)->set_is_changed(true);
 }
 void Notebook::Controller
 ::OnDirectoryNavigation(const Gtk::TreeModel::Path& path,
@@ -644,7 +644,7 @@ void Notebook::Controller:: OnSaveFile() {
 
 std::string Notebook::Controller::OnSaveFileAs(){
   INFO("Notebook save as");
-  Gtk::FileChooserDialog dialog("Please choose a file",
+  Gtk::FileChooserDialog dialog("Please choose a file", 
 				Gtk::FILE_CHOOSER_ACTION_SAVE);
   DEBUG("SET TRANSISTEN FPR");
   dialog.set_transient_for(*window_);
@@ -675,5 +675,40 @@ std::string Notebook::Controller::OnSaveFileAs(){
         }
     }
    return "";
+}
+
+void Notebook::Controller::AskToSaveDialog() {
+  INFO("AskToSaveDialog");
+  DEBUG("AskToSaveDialog: Finding file path");
+  Gtk::MessageDialog dialog(*window_, "Save file!",
+			    false, Gtk::MESSAGE_QUESTION, Gtk::BUTTONS_YES_NO);
+  dialog.set_secondary_text(
+          "Do you want to save: " +
+			    text_vec_.at(CurrentPage())->path()+" ?");
+  DEBUG("AskToSaveDialog: run dialog");
+  int result = dialog.run();
+
+  //Handle the response:
+  DEBUG("AskToSaveDialog: switch response");
+  switch(result)
+  {
+    case(Gtk::RESPONSE_YES):
+    {
+      DEBUG("AskToSaveDialog: save file: yes, trying to save file");
+      OnSaveFile();
+      DEBUG("AskToSaveDialog: save file: yes, saved sucess");
+      break;
+    }
+    case(Gtk::RESPONSE_NO):
+    {
+      DEBUG("AskToSaveDialog: save file: no");
+      break;
+    }
+    default:
+    {
+           DEBUG("AskToSaveDialog: unexpected action: Default switch");
+      break;
+    }
+  }
 }
 

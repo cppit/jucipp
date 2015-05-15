@@ -88,6 +88,7 @@ namespace Notebook {
     void PopupSetSize(Gtk::ScrolledWindow& scroll,
                       int &current_x,
                       int &current_y);
+    void AskToSaveDialog();
     Glib::RefPtr<Gtk::Builder> m_refBuilder;
     Glib::RefPtr<Gio::SimpleActionGroup> refActionGroup;
     Source::Config source_config_;

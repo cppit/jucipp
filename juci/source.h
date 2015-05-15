@@ -150,8 +150,10 @@ namespace Source {
                                     *suggestions);
     Glib::RefPtr<Gtk::TextBuffer> buffer();
     bool is_saved() { return is_saved_; }
+    bool is_changed() { return is_changed_; }
     std::string path() { return model().file_path(); }
     void set_is_saved(bool isSaved) { is_saved_ = isSaved; }
+    void set_is_changed(bool isChanged) { is_changed_ = isChanged; }
     void set_file_path(std::string path) { model().set_file_path(path); }
     
 
@@ -162,6 +164,7 @@ namespace Source {
     std::mutex parsing;
     bool go = false;
     bool is_saved_ = false;
+    bool is_changed_ = false;
 
   protected:
     View view_;
