@@ -21,13 +21,13 @@
             "c",
             "cc",
             "cpp",
-	"cxx",
-	"c++",
-	"h",
-	"hh",
-	"hpp",
-	"hxx",
-	"h++"
+	    "cxx",
+	    "c++",
+	    "h",
+	    "hh",
+	    "hpp",
+	    "hxx",
+	    "h++"
         ]
     },
     "keybindings": {
