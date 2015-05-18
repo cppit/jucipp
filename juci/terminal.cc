@@ -12,7 +12,8 @@ Terminal::View::View(){
 }
 
 
-Terminal::Controller::Controller() {
+Terminal::Controller::Controller(Terminal::Config& cfg) :
+  config_(cfg) {  
   folder_command_ = "";
 }
 

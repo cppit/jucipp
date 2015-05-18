@@ -20,13 +20,15 @@ namespace Terminal {
   
   class Controller {  
   public:
-    Controller();
+    Controller(Terminal::Config& cfg);
     Gtk::HBox& view() {return view_.view();}
     Gtk::TextView& Terminal(){return view_.textview();}
     void SetFolderCommand(boost::filesystem::path CMake_path);
     void Run(std::string executable);
     void Compile();
+    Terminal::Config& config() { return config_; }
   private:
+    Terminal::Config config_;
     void ExecuteCommand(std::string command, std::string mode);
     bool OnButtonRealeaseEvent(GdkEventKey* key);
     bool ExistInConsole(std::string string);

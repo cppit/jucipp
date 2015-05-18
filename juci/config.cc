@@ -8,6 +8,7 @@ MainConfig::MainConfig() :
   GenerateSource();
   GenerateKeybindings();
   GenerateDirectoryFilter();
+  GenerateTerminalCommands();
 }
 
 void MainConfig::GenerateSource() {
@@ -27,6 +28,14 @@ void MainConfig::GenerateSource() {
   }
   
   DEBUG("Source cfg fetched");
+}
+
+void MainConfig::GenerateTerminalCommands() {
+  boost::property_tree::ptree source_json = cfg_.get_child("project");
+  boost::property_tree::ptree commands_json = source_json.get_child("compile_commands");
+   for (auto &i : commands_json) {
+     terminal_cfg_.InsertCompileCommand(i.second.get_value<std::string>());
+  }
 }
 
 void MainConfig::GenerateKeybindings() {

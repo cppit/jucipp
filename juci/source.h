@@ -157,7 +157,6 @@ namespace Source {
     void set_is_saved(bool isSaved) { is_saved_ = isSaved; }
     void set_is_changed(bool isChanged) { is_changed_ = isChanged; }
     void set_file_path(std::string path) { model().set_file_path(path); }
-    
 
   private:
     void OnLineEdit();
