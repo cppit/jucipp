@@ -31,16 +31,22 @@
         ]
     },
     "keybindings": {
-	"split_window": "<control><alt>s",
         "new_file": "<control>n",
 	"new_h_file": "<control><alt>h",
-	"new_cc_file": "<alt>c",
-	"close_tab": "<control>w",
+	"new_cc_file": "<control><alt>c",
         "open_folder": "<control><alt>o",
         "open_file": "<control>o",
-        "edit_undo": "<control>z",
 	"save": "<control>s",
 	"save_as": "<control><shift>s",
+       
+        "split_window": "<control><alt>s",
+	"close_tab": "<control>w",
+
+        "edit_copy": "<control>c",
+        "edit_cut": "<control>x",
+        "edit_paste": "<control>v",
+        "edit_undo": "<control>z",
+        "edit_find": "<control>f",
 	"compile_and_run": "<control><alt>r",
 	"compile": "<control>r"
     },
