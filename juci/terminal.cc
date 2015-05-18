@@ -4,6 +4,18 @@
 #include "logging.h"
 
 
+Terminal::Config::Config() {
+}
+Terminal::Config::Config(Terminal::Config& original) {
+  for (auto it = 0; original.compile_commands().size(); ++it) {
+    InsertCompileCommand(original.compile_commands().at(it));
+  }
+}
+
+void Terminal::Config::InsertCompileCommand(std::string command){
+  compile_commands_.push_back(command);
+}
+
 Terminal::View::View(){
   scrolledwindow_.add(textview_);
   scrolledwindow_.set_size_request(-1,150);
@@ -27,13 +39,18 @@ void Terminal::Controller::Compile(){
   INFO("Terminal: Compile");
   Terminal().get_buffer()->set_text("");
   DEBUG("Terminal: Compile: running cmake command");
-  ExecuteCommand("rm -rf ./build", "r");
-  ExecuteCommand("mkdir ./build", "r");
-  ExecuteCommand("cmake -B./build -H.", "r");
-  if (ExistInConsole(cmake_sucsess)){
-    DEBUG("Terminal: Compile: running make command");
-    ExecuteCommand("cd ./build/; make", "r");
+  std::vector<std::string> commands = config().compile_commands();
+  for (auto it = 0; it < commands.size(); ++it) {
+    ExecuteCommand(commands.at(it), "r");
+    
   }
+  // ExecuteCommand("rm -rf ./.build", "r");
+  // ExecuteCommand("mkdir ./.build", "r");
+  // ExecuteCommand("cmake -B./build -H.", "r");
+  // if (ExistInConsole(cmake_sucsess)){
+  //   DEBUG("Terminal: Compile: running make command");
+  //   ExecuteCommand("cd ./.build/; make", "r");
+  // }
   PrintMessage("\n");
   DEBUG("Terminal: Compile: compile done");
 }

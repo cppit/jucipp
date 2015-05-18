@@ -719,7 +719,6 @@ bool Notebook::Controller::LegalExtension(std::string e) {
   std::transform(e.begin(), e.end(),e.begin(), ::tolower);
   std::vector<std::string> extensions =
     source_config().extensiontable();
-   std::cout << e << std::endl;
   if (find(extensions.begin(), extensions.end(), e) != extensions.end()) {
     DEBUG("Legal extension");
     return true;
