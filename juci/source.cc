@@ -70,7 +70,7 @@ const std::unordered_map<string, string>& Source::Config::typetable() const {
   return typetable_;
 }
 
-const std::vector<string>& Source::Config::extensiontable() const{
+std::vector<string>& Source::Config::extensiontable(){
   return extensiontable_;
 }
 

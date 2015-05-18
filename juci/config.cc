@@ -26,7 +26,6 @@ void MainConfig::GenerateSource() {
   for (auto &i : extensions_json) {
     source_cfg_.InsertExtension(i.second.get_value<std::string>());
   }
-  
   DEBUG("Source cfg fetched");
 }
 

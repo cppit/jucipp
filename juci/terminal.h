@@ -7,6 +7,16 @@
 
 namespace Terminal {
 
+  class Config {
+  public:
+    Config ();
+    Config(Terminal::Config& original);
+    std::vector<std::string>& compile_commands() {return &compile_commands_;}
+    void InsertCompileCommand(std::string command);
+  private:
+    std::vector<std::string> compile_commands_;
+  };
+ 
   class View {
   public:
     View();   
