@@ -16,7 +16,9 @@ Window::Window() :
   set_default_size(600, 400);
   add(window_box_);
   keybindings_.action_group_menu()->add(Gtk::Action::create("FileQuit",
-                                                            Gtk::Stock::QUIT),
+                                                            "Quit juCi++"),
+                                        Gtk::AccelKey(keybindings_.config_
+                                                      .key_map()["quit"]),
                                         [this]() {
                                           OnWindowHide();
                                         });

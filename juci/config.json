@@ -38,6 +38,7 @@
         "open_file": "<control>o",
 	"save": "<control>s",
 	"save_as": "<control><shift>s",
+        "quit": "<control>q",
        
         "split_window": "<control><alt>s",
 	"close_tab": "<control>w",
