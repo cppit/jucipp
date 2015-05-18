@@ -38,6 +38,7 @@ void Terminal::Controller::SetFolderCommand( boost::filesystem::path
 
 void Terminal::Controller::Compile(){
   INFO("Terminal: Compile");
+
   Terminal().get_buffer()->set_text("");
   DEBUG("Terminal: Compile: running cmake command");
   std::vector<std::string> commands = config().compile_commands();
@@ -45,13 +46,6 @@ void Terminal::Controller::Compile(){
     ExecuteCommand(commands.at(it), "r");
     
   }
-  // ExecuteCommand("rm -rf ./.build", "r");
-  // ExecuteCommand("mkdir ./.build", "r");
-  // ExecuteCommand("cmake -B./build -H.", "r");
-  // if (ExistInConsole(cmake_sucsess)){
-  //   DEBUG("Terminal: Compile: running make command");
-  //   ExecuteCommand("cd ./.build/; make", "r");
-  // }
   PrintMessage("\n");
   DEBUG("Terminal: Compile: compile done");
 }
@@ -61,7 +55,7 @@ void Terminal::Controller::Run(std::string executable) {
   PrintMessage("juCi++ execute: " + executable + "\n");
   DEBUG("Terminal: Compile: running run command: ");
   DEBUG_VAR(executable);
-  ExecuteCommand("cd ./build/; ./"+executable, "r");
+  ExecuteCommand("cd ./.build/; ./"+executable, "r");
   PrintMessage("\n");
 }
 
