@@ -31,11 +31,16 @@ void MainConfig::GenerateSource() {
 
 void MainConfig::GenerateTerminalCommands() {
   boost::property_tree::ptree source_json = cfg_.get_child("project");
-  boost::property_tree::ptree commands_json = source_json.get_child("compile_commands");
-   for (auto &i : commands_json) {
-     terminal_cfg_.InsertCompileCommand(i.second.get_value<std::string>());
+  boost::property_tree::ptree compile_commands_json = source_json.get_child("compile_commands");
+  boost::property_tree::ptree run_commands_json = source_json.get_child("run_commands");
+  for (auto &i : compile_commands_json) {
+    terminal_cfg_.InsertCompileCommand(i.second.get_value<std::string>());
+  }
+  for (auto &i : run_commands_json) {
+    terminal_cfg_.SetRunCommand(i.second.get_value<std::string>());
   }
 }
+                   }
 
 void MainConfig::GenerateKeybindings() {
   DEBUG("Fetching keybindings");

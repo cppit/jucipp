@@ -57,6 +57,9 @@
         ]
     },
     "project": {
+        "run_path": [
+            ".build"
+        ],
         "compile_commands": [
             "rm -rf ./.build",
             "mkdir build",
