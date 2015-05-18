@@ -57,10 +57,12 @@
         ]
     },
     "project": {
-	
+        "run_commands": [
+            "./.build/"
+        ],
         "compile_commands": [
             "rm -rf ./.build",
-            "mkdir build",
+            "mkdir ./.build",
             "cmake -B./.build -H.",
             "cd ./.build/; make"
         ]

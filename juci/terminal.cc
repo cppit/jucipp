@@ -6,7 +6,8 @@
 
 Terminal::Config::Config() {
 }
-Terminal::Config::Config(Terminal::Config& original) {
+Terminal::Config::Config(Terminal::Config& original) :
+  run_command_(original.run_command_){
   for (auto it = 0; it<original.compile_commands().size(); ++it) {
     InsertCompileCommand(original.compile_commands().at(it));
   }
@@ -14,6 +15,10 @@ Terminal::Config::Config(Terminal::Config& original) {
 
 void Terminal::Config::InsertCompileCommand(std::string command){
   compile_commands_.push_back(command);
+}
+
+void Terminal::Config::SetRunCommand(std::string command){
+  run_command_ = command;
 }
 
 Terminal::View::View(){
@@ -55,7 +60,7 @@ void Terminal::Controller::Run(std::string executable) {
   PrintMessage("juCi++ execute: " + executable + "\n");
   DEBUG("Terminal: Compile: running run command: ");
   DEBUG_VAR(executable);
-  ExecuteCommand("cd"+config().run_command() + "; ./"+executable, "r");
+  ExecuteCommand("cd "+config().run_command() + "; ./"+executable, "r");
   PrintMessage("\n");
 }
 
@@ -80,6 +85,7 @@ void Terminal::Controller::ExecuteCommand(std::string command, std::string mode)
   command = folder_command_+command;
   DEBUG("Terminal: PrintMessage: Running command");
   FILE* p = NULL;
+  std::cout << command << std::endl;
   p = popen(command.c_str(), mode.c_str());
   std::cout << "KJØRTE FINT!" << std::endl;
   if (p == NULL) {

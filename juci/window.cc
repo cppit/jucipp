@@ -122,7 +122,6 @@ void Window::OnWindowHide() {
 void Window::OnFileOpenFolder() {
   Gtk::FileChooserDialog dialog("Please choose a folder",
                                 Gtk::FILE_CHOOSER_ACTION_SELECT_FOLDER);
-
   dialog.set_transient_for(*this);
   //Add response buttons the the dialog:
   dialog.add_button("_Cancel", Gtk::RESPONSE_CANCEL);
