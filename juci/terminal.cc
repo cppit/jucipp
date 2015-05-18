@@ -7,7 +7,7 @@
 Terminal::Config::Config() {
 }
 Terminal::Config::Config(Terminal::Config& original) {
-  for (auto it = 0; original.compile_commands().size(); ++it) {
+  for (auto it = 0; it<original.compile_commands().size(); ++it) {
     InsertCompileCommand(original.compile_commands().at(it));
   }
 }
