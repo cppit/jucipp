@@ -55,7 +55,7 @@ void Terminal::Controller::Run(std::string executable) {
   PrintMessage("juCi++ execute: " + executable + "\n");
   DEBUG("Terminal: Compile: running run command: ");
   DEBUG_VAR(executable);
-  ExecuteCommand("cd ./.build/; ./"+executable, "r");
+  ExecuteCommand("cd"+config().run_command() + "; ./"+executable, "r");
   PrintMessage("\n");
 }
 

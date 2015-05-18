@@ -13,8 +13,11 @@ namespace Terminal {
     Config(Terminal::Config& original);
     std::vector<std::string>& compile_commands() { return compile_commands_; }
     void InsertCompileCommand(std::string command);
+    std::string& run_command() { return run_command_; }
+    void SetRunCommand(std::string command);
   private:
     std::vector<std::string> compile_commands_;
+    std::string run_command_;
   };
  
   class View {
