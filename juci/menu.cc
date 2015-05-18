@@ -15,7 +15,7 @@ Menu::Controller::Controller(Keybindings::Controller& keybindings) :
   menu_view_(Gtk::ORIENTATION_VERTICAL),
   keybindings_(keybindings) {
   keybindings_.action_group_menu()->add(Gtk::Action::create("FileNew",
-                                                            Gtk::Stock::FILE));
+                                                            "New File"));
   keybindings_.action_group_menu()->add(Gtk::Action::create("EditMenu",
                                                             Gtk::Stock::EDIT));
   keybindings_.action_group_menu()->add(Gtk::Action::create("WindowMenu",

@@ -21,7 +21,9 @@ Window::Window() :
                                           OnWindowHide();
                                         });
   keybindings_.action_group_menu()->add(Gtk::Action::create("FileOpenFile",
-                                                            Gtk::Stock::OPEN),
+                                                            "Open file"),
+                                        Gtk::AccelKey(keybindings_.config_
+                                                      .key_map()["open_file"]),
                                         [this]() {
                                           OnOpenFile();
                                         });
@@ -42,7 +44,7 @@ Window::Window() :
 					});
 
   keybindings_.action_group_menu()->add(Gtk::Action::create("FileSave",
-							    "Save"),
+							    "Save file"),
 					Gtk::AccelKey(keybindings_.config_
 						      .key_map()["save"]),
 					[this]() {
