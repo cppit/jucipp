@@ -7,6 +7,19 @@
 
 namespace Terminal {
 
+  class Config {
+  public:
+    Config ();
+    Config(Terminal::Config& original);
+    std::vector<std::string>& compile_commands() { return compile_commands_; }
+    void InsertCompileCommand(std::string command);
+    std::string& run_command() { return run_command_; }
+    void SetRunCommand(std::string command);
+  private:
+    std::vector<std::string> compile_commands_;
+    std::string run_command_;
+  };
+ 
   class View {
   public:
     View();   
@@ -20,13 +33,15 @@ namespace Terminal {
   
   class Controller {  
   public:
-    Controller();
+    Controller(Terminal::Config& cfg);
     Gtk::HBox& view() {return view_.view();}
     Gtk::TextView& Terminal(){return view_.textview();}
     void SetFolderCommand(boost::filesystem::path CMake_path);
     void Run(std::string executable);
     void Compile();
+    Terminal::Config& config() { return config_; }
   private:
+    Terminal::Config config_;
     void ExecuteCommand(std::string command, std::string mode);
     bool OnButtonRealeaseEvent(GdkEventKey* key);
     bool ExistInConsole(std::string string);

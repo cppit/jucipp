@@ -20,16 +20,19 @@ namespace Source {
     Config();
     const std::unordered_map<std::string, std::string>& tagtable() const;
     const std::unordered_map<std::string, std::string>& typetable() const;
+     std::vector<std::string>& extensiontable();
     void SetTagTable(const std::unordered_map<std::string, std::string>
                      &tagtable);
     void InsertTag(const std::string &key, const std::string &value);
     void SetTypeTable(const std::unordered_map<std::string, std::string>
                       &tagtable);
     void InsertType(const std::string &key, const std::string &value);
-
+    void InsertExtension(const std::string &ext);
+        std::vector<std::string> extensiontable_;
   private:
     std::unordered_map<std::string, std::string> tagtable_;
     std::unordered_map<std::string, std::string> typetable_;
+
     std::string background_;
   };  // class Config
 
@@ -150,10 +153,11 @@ namespace Source {
                                     *suggestions);
     Glib::RefPtr<Gtk::TextBuffer> buffer();
     bool is_saved() { return is_saved_; }
+    bool is_changed() { return is_changed_; }
     std::string path() { return model().file_path(); }
     void set_is_saved(bool isSaved) { is_saved_ = isSaved; }
+    void set_is_changed(bool isChanged) { is_changed_ = isChanged; }
     void set_file_path(std::string path) { model().set_file_path(path); }
-    
 
   private:
     void OnLineEdit();
@@ -162,6 +166,7 @@ namespace Source {
     std::mutex parsing;
     bool go = false;
     bool is_saved_ = false;
+    bool is_changed_ = false;
 
   protected:
     View view_;

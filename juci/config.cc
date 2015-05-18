@@ -9,39 +9,55 @@ MainConfig::MainConfig() :
   GenerateSource();
   GenerateKeybindings();
   GenerateDirectoryFilter();
+  GenerateTerminalCommands();
 }
 
 void MainConfig::GenerateSource() {
-  INFO("Generating source cfg");
+  DEBUG("Fetching source cfg");
   boost::property_tree::ptree source_json = cfg_.get_child("source");
   boost::property_tree::ptree syntax_json = source_json.get_child("syntax");
   boost::property_tree::ptree colors_json = source_json.get_child("colors");
+  boost::property_tree::ptree extensions_json = source_json.get_child("extensions");
   for (auto &i : colors_json) {
     source_cfg_.InsertTag(i.first, i.second.get_value<std::string>());
   }
   for (auto &i : syntax_json) {
     source_cfg_.InsertType(i.first, i.second.get_value<std::string>());
   }
-  INFO("Source cfg generated");
+  for (auto &i : extensions_json) {
+    source_cfg_.InsertExtension(i.second.get_value<std::string>());
+  }
+  DEBUG("Source cfg fetched");
+}
+
+void MainConfig::GenerateTerminalCommands() {
+  boost::property_tree::ptree source_json = cfg_.get_child("project");
+  boost::property_tree::ptree compile_commands_json = source_json.get_child("compile_commands");
+  boost::property_tree::ptree run_commands_json = source_json.get_child("run_commands");
+  for (auto &i : compile_commands_json) {
+    terminal_cfg_.InsertCompileCommand(i.second.get_value<std::string>());
+  }
+  for (auto &i : run_commands_json) {
+    terminal_cfg_.SetRunCommand(i.second.get_value<std::string>());
+  }
 }
 
 void MainConfig::GenerateKeybindings() {
-  INFO("Generating keybindings");
+  DEBUG("Fetching keybindings");
   std::string line;
   std::ifstream menu_xml("menu.xml");
   if (menu_xml.is_open()) {
-    while (getline(menu_xml, line)) {
-      keybindings_cfg_.AppendXml(line);
-    }
-    
+    while (getline(menu_xml, line))
+      keybindings_cfg_.AppendXml(line);   
   }
   boost::property_tree::ptree keys_json = cfg_.get_child("keybindings");
   for (auto &i : keys_json)
     keybindings_cfg_.key_map()[i.first] = i.second.get_value<std::string>();
-  INFO("Keybindings generated");
+  DEBUG("Keybindings fetched");
 }
 
 void MainConfig::GenerateDirectoryFilter() {
+  DEBUG("Fetching directory filter");
   boost::property_tree::ptree dir_json = cfg_.get_child("directoryfilter");
   boost::property_tree::ptree ignore_json = dir_json.get_child("ignore");
   boost::property_tree::ptree except_json = dir_json.get_child("exceptions");
@@ -49,6 +65,5 @@ void MainConfig::GenerateDirectoryFilter() {
     dir_cfg_.AddException(i.second.get_value<std::string>());
   for ( auto &i : ignore_json )
     dir_cfg_.AddIgnore(i.second.get_value<std::string>());
+  DEBUG("Directory filter fetched");
 }
-
-

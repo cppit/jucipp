@@ -15,7 +15,7 @@ namespace Keybindings {
     Config();
     std::string& menu_xml() { return menu_xml_; }
     std::unordered_map<std::string, std::string>& key_map() { return key_map_; }
-    void AppendXml(std::string &child);    
+    void AppendXml(std::string &child);
     void SetMenu(std::string &menu_xml);
     void SetKeyMap(std::unordered_map<std::string, std::string> &key_map);
   private:

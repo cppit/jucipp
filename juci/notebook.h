@@ -68,7 +68,7 @@ namespace Notebook {
     Gtk::Paned& view();
     bool GeneratePopup(int key);
     void Search(bool forward);
-    const Source::Config& source_config() { return source_config_; }
+    Source::Config& source_config() { return source_config_; }
     bool OnMouseRelease(GdkEventButton* button);
     bool OnKeyRelease(GdkEventKey* key);
     std::string OnSaveFileAs();
@@ -88,6 +88,8 @@ namespace Notebook {
     void PopupSetSize(Gtk::ScrolledWindow& scroll,
                       int &current_x,
                       int &current_y);
+    void AskToSaveDialog();
+    bool LegalExtension(std::string extension);
     Glib::RefPtr<Gtk::Builder> m_refBuilder;
     Glib::RefPtr<Gio::SimpleActionGroup> refActionGroup;
     Source::Config source_config_;

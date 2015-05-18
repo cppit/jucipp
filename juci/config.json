@@ -16,7 +16,19 @@
             "702": "keyword",
             "703": "own",
             "705": "comment"
-        }
+        },
+        "extensions": [
+            "c",
+            "cc",
+            "cpp",
+	    "cxx",
+	    "c++",
+	    "h",
+	    "hh",
+	    "hpp",
+	    "hxx",
+	    "h++"
+        ]
     },
     "keybindings": {
 	"split_window": "<control><alt>s",
@@ -27,7 +39,7 @@
         "edit_undo": "<control>z",
 	"save": "<control>s",
 	"save_as": "<control><shift>s",
-	"compile_and_run": "<control><alt>r>",
+	"compile_and_run": "<control><alt>r",
 	"compile": "<control>r"
     },
     "directoryfilter": {
@@ -43,7 +55,18 @@
             "cmakelists.txt",
             "in-lowercase.pls"
         ]
-        },
+    },
+    "project": {
+        "run_commands": [
+            "./.build/"
+        ],
+        "compile_commands": [
+            "rm -rf ./.build",
+            "mkdir ./.build",
+            "cmake -B./.build -H.",
+            "cd ./.build/; make"
+        ]
+    },
     "example": {
 	"key": "value",
 	"key2": [

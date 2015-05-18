@@ -70,9 +70,18 @@ const std::unordered_map<string, string>& Source::Config::typetable() const {
   return typetable_;
 }
 
+std::vector<string>& Source::Config::extensiontable(){
+  return extensiontable_;
+}
+
 void Source::Config::InsertTag(const string &key, const string &value) {
   tagtable_[key] = value;
 }
+
+void Source::Config::InsertExtension(const string &ext) {
+  extensiontable_.push_back(ext);
+}
+
 // Source::View::Config::SetTagTable()
 // sets the tagtable for the view
 void Source::Config::
@@ -295,21 +304,6 @@ string extract_file_path(const std::string &file_path) {
   return file_path.substr(0, file_path.find_last_of('/'));
 }
 
-std::vector<std::string> extentions() {
-  return {".h", ".cc", ".cpp", ".hpp"};
-}
-
-bool check_extention(const std::string &file_path) {
-  std::string extention = file_path.substr(file_path.find_last_of('.'),
-                                           file_path.size());
-  for (auto &ex : extentions()) {
-    if (extention == ex) {
-      return true;
-    }
-  }
-  return false;
-}
-
 void Source::View::OnUpdateSyntax(const std::vector<Source::Range> &ranges,
                                   const Source::Config &config) {
   if (ranges.empty() || ranges.size() == 0) {
@@ -335,8 +329,8 @@ void Source::View::OnUpdateSyntax(const std::vector<Source::Range> &ranges,
       buffer->get_iter_at_line_offset(linum_start, begin);
     Gtk::TextIter end_iter  =
       buffer->get_iter_at_line_offset(linum_end, end);
-      buffer->apply_tag_by_name(config.typetable().at(type),
-                                begin_iter, end_iter);
+    buffer->apply_tag_by_name(config.typetable().at(type),
+                              begin_iter, end_iter);
   }
 }
 
@@ -349,7 +343,7 @@ void Source::Controller::OnOpenFile(const string &filepath) {
   buffer()->set_text(s.get_content());
   int start_offset = buffer()->begin().get_offset();
   int end_offset = buffer()->end().get_offset();
-  if (check_extention(filepath)) {
+  if (!notebook_->LegalExtension(filepath.substr(filepath.find_last_of(".") + 1))) {
     view().ApplyConfig(model().config());
     model().InitSyntaxHighlighting(filepath,
                                    extract_file_path(filepath),
@@ -359,46 +353,45 @@ void Source::Controller::OnOpenFile(const string &filepath) {
                                    notebook_->index());
     view().OnUpdateSyntax(model().ExtractTokens(start_offset, end_offset),
                           model().config());
-  
 
-  buffer()->signal_end_user_action().connect([this]() {
-      if (!go) {
-        std::thread parse([this]() {
-            if (parsing.try_lock()) {
-              INFO("Starting parsing");
-              while (true) {
-                const std::string raw = buffer()->get_text().raw();
-                std::map<std::string, std::string> buffers;
-                notebook_->MapBuffers(&buffers);
-                buffers[model().file_path()] = raw;
-                if (model().ReParse(buffers) == 0 &&
-                    raw == buffer()->get_text().raw()) {
-                  syntax.lock();
-                  go = true;
-                  syntax.unlock();
-                  break;
+    buffer()->signal_end_user_action().connect([this]() {
+        if (!go) {
+          std::thread parse([this]() {
+              if (parsing.try_lock()) {
+                INFO("Starting parsing");
+                while (true) {
+                  const std::string raw = buffer()->get_text().raw();
+                  std::map<std::string, std::string> buffers;
+                  notebook_->MapBuffers(&buffers);
+                  buffers[model().file_path()] = raw;
+                  if (model().ReParse(buffers) == 0 &&
+                      raw == buffer()->get_text().raw()) {
+                    syntax.lock();
+                    go = true;
+                    syntax.unlock();
+                    break;
+                  }
                 }
+                parsing.unlock();
+                INFO("Parsing completed");
               }
-              parsing.unlock();
-              INFO("Parsing completed");
-            }
-          });
-        parse.detach();
-      }
-    });
+            });
+          parse.detach();
+        }
+      });
 
-  buffer()->signal_begin_user_action().connect([this]() {
-      if (go) {
-        syntax.lock();
-        INFO("Updating syntax");
-        view().
-          OnUpdateSyntax(model().ExtractTokens(0, buffer()->get_text().size()),
-                         model().config());
-        go = false;
-        INFO("Syntax updated");
-        syntax.unlock();
-      }
-    });
+    buffer()->signal_begin_user_action().connect([this]() {
+        if (go) {
+          syntax.lock();
+          INFO("Updating syntax");
+          view().
+            OnUpdateSyntax(model().ExtractTokens(0, buffer()->get_text().size()),
+                           model().config());
+          go = false;
+          INFO("Syntax updated");
+          syntax.unlock();
+        }
+      });
   }
 }
 Glib::RefPtr<Gtk::TextBuffer> Source::Controller::buffer() {

@@ -5,6 +5,7 @@ Window::Window() :
   window_box_(Gtk::ORIENTATION_VERTICAL),
   main_config_(),
   keybindings_(main_config_.keybindings_cfg()),
+  terminal_(main_config_.terminal_cfg()),
   notebook_(this,keybindings(),
             main_config_.source_cfg(),
             main_config_.dir_cfg()),
@@ -49,29 +50,29 @@ Window::Window() :
 					});
   keybindings_.
       action_group_menu()->
-      add(Gtk::Action::create("ProjectCompileAndRun",
-			      "Compile And Run"),
-	  Gtk::AccelKey(keybindings_.config_
-			.key_map()["compile_and_run"]),
-	  [this]() {
-	    if (running.try_lock()) {
-	      std::thread execute([=]() {
-		  notebook_.OnSaveFile();
-		  std::string path = notebook_.CurrentPagePath();
-		  int pos = path.find_last_of("/\\");
-		  if(pos != std::string::npos){
-		    path.erase(path.begin()+pos,path.end());
-		    terminal_.SetFolderCommand(path);
-		  }
-		  terminal_.Compile();
-		  std::string executable = notebook_.directories().
-		    GetCmakeVarValue(path,"add_executable");
-		  terminal_.Run(executable);
-		});
-	      execute.detach();
-	      running.unlock();
-	    }
-	  });
+    add(Gtk::Action::create("ProjectCompileAndRun",
+			    "Compile And Run"),
+	Gtk::AccelKey(keybindings_.config_
+		      .key_map()["compile_and_run"]),
+	[this]() {
+	  notebook_.OnSaveFile();
+	  if (running.try_lock()) {
+	    std::thread execute([=]() {
+		std::string path = notebook_.CurrentPagePath();
+		int pos = path.find_last_of("/\\");
+		if(pos != std::string::npos) {
+		  path.erase(path.begin()+pos,path.end());
+		  terminal_.SetFolderCommand(path);
+		}
+		terminal_.Compile();
+		std::string executable = notebook_.directories().
+		  GetCmakeVarValue(path,"add_executable");
+		terminal_.Run(executable);
+	      });
+	    execute.detach();
+	    running.unlock();
+	  }
+	});
    
     keybindings_.
       action_group_menu()->
@@ -80,9 +81,9 @@ Window::Window() :
 	  Gtk::AccelKey(keybindings_.config_
 			.key_map()["compile"]),
 	  [this]() {
+	    notebook_.OnSaveFile();
 	    if (running.try_lock()) {
-	      std::thread execute([=]() {
-		  notebook_.OnSaveFile();
+	      std::thread execute([=]() {		  
 		  std::string path =  notebook_.CurrentPagePath();
 		  int pos = path.find_last_of("/\\");
 		  if(pos != std::string::npos){
@@ -95,7 +96,6 @@ Window::Window() :
 	      running.unlock();
 	    }
 	  });
-
     this->signal_button_release_event().
       connect(sigc::mem_fun(*this,&Window::OnMouseRelease),false);
   terminal_.Terminal().signal_button_release_event().
@@ -122,7 +122,6 @@ void Window::OnWindowHide() {
 void Window::OnFileOpenFolder() {
   Gtk::FileChooserDialog dialog("Please choose a folder",
                                 Gtk::FILE_CHOOSER_ACTION_SELECT_FOLDER);
-
   dialog.set_transient_for(*this);
   //Add response buttons the the dialog:
   dialog.add_button("_Cancel", Gtk::RESPONSE_CANCEL);
