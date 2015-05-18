@@ -27,10 +27,12 @@ void Terminal::Controller::Compile(){
   INFO("Terminal: Compile");
   Terminal().get_buffer()->set_text("");
   DEBUG("Terminal: Compile: running cmake command");
-  ExecuteCommand("cmake .", "r");
+  ExecuteCommand("rm -rf ./build", "r");
+  ExecuteCommand("mkdir ./build", "r");
+  ExecuteCommand("cmake -B./build -H.", "r");
   if (ExistInConsole(cmake_sucsess)){
     DEBUG("Terminal: Compile: running make command");
-    ExecuteCommand("make", "r");
+    ExecuteCommand("cd ./build/; make", "r");
   }
   PrintMessage("\n");
   DEBUG("Terminal: Compile: compile done");
@@ -41,7 +43,7 @@ void Terminal::Controller::Run(std::string executable) {
   PrintMessage("juCi++ execute: " + executable + "\n");
   DEBUG("Terminal: Compile: running run command: ");
   DEBUG_VAR(executable);
-  ExecuteCommand("./"+executable, "r");
+  ExecuteCommand("cd ./build/; ./"+executable, "r");
   PrintMessage("\n");
 }
 
@@ -65,16 +67,18 @@ void Terminal::Controller::ExecuteCommand(std::string command, std::string mode)
   INFO("Terminal: ExecuteCommand");
   command = folder_command_+command;
   DEBUG("Terminal: PrintMessage: Running command");
-  DEBUG_VAR(command);
-  FILE* p = popen(command.c_str(), mode.c_str());
-
+  FILE* p = NULL;
+  p = popen(command.c_str(), mode.c_str());
+  std::cout << "KJØRTE FINT!" << std::endl;
   if (p == NULL) {
     PrintMessage("juCi++ ERROR: Failed to run command" + command + "\n");
   }else {
+    std::cout << "SKRIVER UT KOMMANDO RESULAT" << std::endl;
     char buffer[1028];
     while (fgets(buffer, 1028, p) != NULL) {
       PrintMessage(buffer);
     }
     pclose(p); 
   }
+
 }

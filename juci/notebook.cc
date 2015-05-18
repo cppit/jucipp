@@ -3,8 +3,8 @@
 #include "logging.h"
 
 Notebook::Model::Model() {
-  cc_extension_ = ".cc";
-  h_extension_  = ".h";
+  cc_extension_ = ".cpp";
+  h_extension_  = ".hpp";
   scrollvalue_ = 50;
 }
 
@@ -17,7 +17,6 @@ Notebook::Controller::Controller(Gtk::Window* window,
                                  Keybindings::Controller& keybindings,
                                  Source::Config& source_cfg,
                                  Directories::Config& dir_cfg) :
-  source_config_(source_cfg),
   directories_(dir_cfg),
   index_(0, 1) {
   window_ = window;
@@ -25,6 +24,7 @@ Notebook::Controller::Controller(Gtk::Window* window,
   refClipboard_ = Gtk::Clipboard::get();
   ispopup = false;
   view().pack1(directories_.widget(), true, true);
+  source_config_ = source_cfg;
   CreateKeybindings(keybindings);
   INFO("Notebook Controller Success");
 }  // Constructor
@@ -719,7 +719,7 @@ bool Notebook::Controller::LegalExtension(std::string e) {
   std::transform(e.begin(), e.end(),e.begin(), ::tolower);
   std::vector<std::string> extensions =
     source_config().extensiontable();
-  
+   std::cout << e << std::endl;
   if (find(extensions.begin(), extensions.end(), e) != extensions.end()) {
     DEBUG("Legal extension");
     return true;

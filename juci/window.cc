@@ -49,29 +49,29 @@ Window::Window() :
 					});
   keybindings_.
       action_group_menu()->
-      add(Gtk::Action::create("ProjectCompileAndRun",
-			      "Compile And Run"),
-	  Gtk::AccelKey(keybindings_.config_
-			.key_map()["compile_and_run"]),
-	  [this]() {
-	    notebook_.OnSaveFile();
-	    if (running.try_lock()) {
-	      std::thread execute([=]() {
-		  std::string path = notebook_.CurrentPagePath();
-		  int pos = path.find_last_of("/\\");
-		  if(pos != std::string::npos) {
-		    path.erase(path.begin()+pos,path.end());
-		    terminal_.SetFolderCommand(path);
-		  }
-		  terminal_.Compile();
-		  std::string executable = notebook_.directories().
-		    GetCmakeVarValue(path,"add_executable");
-		  terminal_.Run(executable);
-		});
-	      execute.detach();
-	      running.unlock();
-	    }
-	  });
+    add(Gtk::Action::create("ProjectCompileAndRun",
+			    "Compile And Run"),
+	Gtk::AccelKey(keybindings_.config_
+		      .key_map()["compile_and_run"]),
+	[this]() {
+	  notebook_.OnSaveFile();
+	  if (running.try_lock()) {
+	    std::thread execute([=]() {
+		std::string path = notebook_.CurrentPagePath();
+		int pos = path.find_last_of("/\\");
+		if(pos != std::string::npos) {
+		  path.erase(path.begin()+pos,path.end());
+		  terminal_.SetFolderCommand(path);
+		}
+		terminal_.Compile();
+		std::string executable = notebook_.directories().
+		  GetCmakeVarValue(path,"add_executable");
+		terminal_.Run(executable);
+	      });
+	    execute.detach();
+	    running.unlock();
+	  }
+	});
    
     keybindings_.
       action_group_menu()->
