@@ -54,7 +54,8 @@ namespace Notebook {
     void OnFileNewEmptyfile();
     void OnFileNewHeaderFile();
     void OnFileOpenFolder();
-    void OnSaveFile();
+    bool OnSaveFile();
+    bool OnSaveFile(std::string path);
     void OnDirectoryNavigation(const Gtk::TreeModel::Path& path,
                                Gtk::TreeViewColumn* column);
     void OnNewPage(std::string name);

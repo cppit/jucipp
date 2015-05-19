@@ -32,7 +32,9 @@ public:
   void OnWindowHide();
   void OnOpenFile();
   void OnFileOpenFolder();
-  bool OnMouseRelease(GdkEventButton* button);  
+  bool OnMouseRelease(GdkEventButton* button);
+  bool SaveFile();
+  bool SaveFileAs();
 };
 
 #endif  // JUCI_WINDOW_H

@@ -33,23 +33,28 @@ Window::Window() :
                                           OnFileOpenFolder();
                                         });
 
-  keybindings_.action_group_menu()->add(Gtk::Action::create("FileSaveAs",
-							    "Save as"),
-					Gtk::AccelKey(keybindings_.config_
-						      .key_map()["save_as"]),
-					[this]() {
-					  notebook_.OnSaveFile();
-					});
-
-  keybindings_.action_group_menu()->add(Gtk::Action::create("FileSave",
-							    "Save"),
-					Gtk::AccelKey(keybindings_.config_
-						      .key_map()["save"]),
-					[this]() {
-					  notebook_.OnSaveFile();
-					});
   keybindings_.
-      action_group_menu()->
+    action_group_menu()->
+    add(Gtk::Action::create("FileSaveAs",
+			    "Save as"),
+	Gtk::AccelKey(keybindings_.config_
+		      .key_map()["save_as"]),
+	[this]() {
+	  SaveFileAs();
+	});
+
+  keybindings_.
+    action_group_menu()->
+    add(Gtk::Action::create("FileSave",
+			    "Save"),
+	Gtk::AccelKey(keybindings_.config_
+		      .key_map()["save"]),
+	[this]() {
+	  SaveFile();
+	});
+  
+  keybindings_.
+    action_group_menu()->
     add(Gtk::Action::create("ProjectCompileAndRun",
 			    "Compile And Run"),
 	Gtk::AccelKey(keybindings_.config_
@@ -205,4 +210,21 @@ void Window::OnOpenFile() {
 }
 bool Window::OnMouseRelease(GdkEventButton *button){
   return notebook_.OnMouseRelease(button);
+}
+
+bool Window::SaveFile() {
+  if(notebook_.OnSaveFile()) {
+    terminal_.PrintMessage("File saved to: " +
+			   notebook_.CurrentPagePath()+"\n");
+    return true;
+  }
+  return false;
+}
+bool Window::SaveFileAs() {
+  if(notebook_.OnSaveFile(notebook_.OnSaveFileAs())){
+    terminal_.PrintMessage("File saved to: " +
+			   notebook_.CurrentPagePath()+"\n");
+    return true;
+  }
+  return false;
 }

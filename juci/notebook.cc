@@ -624,15 +624,21 @@ void Notebook::Controller::FindPopupPosition(Gtk::TextView& textview,
   }
 }
 
-void Notebook::Controller:: OnSaveFile() {
+bool Notebook::Controller:: OnSaveFile() {
     INFO("Notebook save file");
   if (text_vec_.at(CurrentPage())->is_saved()) {
     std::ofstream file;
     file.open (text_vec_.at(CurrentPage())->path());
     file << CurrentTextView().get_buffer()->get_text();
     file.close();
+    return true;
   } else {
-    std::string path = OnSaveFileAs();
+    return OnSaveFile(OnSaveFileAs());
+  }
+  return false;
+}
+bool Notebook::Controller:: OnSaveFile(std::string path) {
+    INFO("Notebook save file with path");
     if (path != "") {
       std::ofstream file;
       file.open (path);
@@ -640,8 +646,9 @@ void Notebook::Controller:: OnSaveFile() {
       file.close();
       text_vec_.at(CurrentPage())->set_file_path(path);
       text_vec_.at(CurrentPage())->set_is_saved(true);
+      return true;
     }
-  } 
+  return false;
 }
 
 
@@ -658,26 +665,22 @@ std::string Notebook::Controller::OnSaveFileAs(){
   DEBUG("RUN DIALOG");
   int result = dialog.run();
   DEBUG("DIALOG RUNNING");
-   switch (result) {
-        case(Gtk::RESPONSE_OK): {
-	  DEBUG("get_filename()");
-            std::string path = dialog.get_filename();
-	    DEBUG_VAR(path);
-	    unsigned pos = path.find_last_of("/\\");
-	    std::cout << path<< std::endl;
-	    //notebook_.OnSaveFile(path);
-	    return path;
-            break;
-        }
-        case(Gtk::RESPONSE_CANCEL): {
-            break;
-        }
-        default: {
-            std::cout << "Unexpected button clicked." << std::endl;
-            break;
-        }
-    }
-   return "";
+  switch (result) {
+  case(Gtk::RESPONSE_OK): {
+    DEBUG("get_filename()");
+    std::string path = dialog.get_filename();
+    unsigned pos = path.find_last_of("/\\");
+     return path;
+  }
+  case(Gtk::RESPONSE_CANCEL): {
+    break;
+  }
+  default: {
+    DEBUG("Unexpected button clicked."); 
+    break;
+  }
+  }
+  return "";
 }
 
 void Notebook::Controller::AskToSaveDialog() {
