@@ -218,6 +218,7 @@ bool Window::SaveFile() {
 			   notebook_.CurrentPagePath()+"\n");
     return true;
   }
+  terminal_.PrintMessage("File not saved");
   return false;
 }
 bool Window::SaveFileAs() {
@@ -226,5 +227,6 @@ bool Window::SaveFileAs() {
 			   notebook_.CurrentPagePath()+"\n");
     return true;
   }
+  terminal_.PrintMessage("File not saved");
   return false;
 }
