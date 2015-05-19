@@ -6,7 +6,7 @@
         <menuitem action='FileNewCC'/>          
         <menuitem action='FileNewH'/>           
       </menu>                                     
-      <menuitem action='FileOpenFile'/>           
+      <menuitem action='FileOpenFile'/>
       <menuitem action='FileOpenFolder'/>
       <menuitem action='FileSave'/>
       <menuitem action='FileSaveAs'/>

@@ -16,12 +16,16 @@ Window::Window() :
   set_default_size(600, 400);
   add(window_box_);
   keybindings_.action_group_menu()->add(Gtk::Action::create("FileQuit",
-                                                            Gtk::Stock::QUIT),
+                                                            "Quit juCi++"),
+                                        Gtk::AccelKey(keybindings_.config_
+                                                      .key_map()["quit"]),
                                         [this]() {
                                           OnWindowHide();
                                         });
   keybindings_.action_group_menu()->add(Gtk::Action::create("FileOpenFile",
-                                                            Gtk::Stock::OPEN),
+                                                            "Open file"),
+                                        Gtk::AccelKey(keybindings_.config_
+                                                      .key_map()["open_file"]),
                                         [this]() {
                                           OnOpenFile();
                                         });
@@ -33,6 +37,21 @@ Window::Window() :
                                           OnFileOpenFolder();
                                         });
 
+  keybindings_.action_group_menu()->add(Gtk::Action::create("FileSaveAs",
+							    "Save as"),
+					Gtk::AccelKey(keybindings_.config_
+						      .key_map()["save_as"]),
+					[this]() {
+					  notebook_.OnSaveFile();
+					});
+
+  keybindings_.action_group_menu()->add(Gtk::Action::create("FileSave",
+							    "Save file"),
+					Gtk::AccelKey(keybindings_.config_
+						      .key_map()["save"]),
+					[this]() {
+					  notebook_.OnSaveFile();
+					});
   keybindings_.
     action_group_menu()->
     add(Gtk::Action::create("FileSaveAs",

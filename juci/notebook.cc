@@ -42,17 +42,17 @@ void Notebook::Controller::CreateKeybindings(Keybindings::Controller
                             Gtk::Stock::FILE));
 
   keybindings.action_group_menu()->
-    add(Gtk::Action::create("FileNewStandard",
-                            Gtk::Stock::NEW,
-                            "New empty file",
-                            "Create a new file"),
+    add(Gtk::Action::create("FileNewStandard",                     
+                            "New empty file"),
+        Gtk::AccelKey(keybindings.config_
+                      .key_map()["new_file"]),
         [this]() {
           is_new_file_ = true;
           OnFileNewEmptyfile();
         });
   keybindings.action_group_menu()->
     add(Gtk::Action::create("FileNewCC",
-                            "New cc file"),
+                            "New source file"),
         Gtk::AccelKey(keybindings.config_
                       .key_map()["new_cc_file"]),
         [this]() {
@@ -61,7 +61,7 @@ void Notebook::Controller::CreateKeybindings(Keybindings::Controller
         });
   keybindings.action_group_menu()->
     add(Gtk::Action::create("FileNewH",
-                            "New h file"),
+                            "New header file"),
         Gtk::AccelKey(keybindings.config_
                       .key_map()["new_h_file"]),
         [this]() {
@@ -78,7 +78,9 @@ void Notebook::Controller::CreateKeybindings(Keybindings::Controller
         });
   keybindings.action_group_menu()->
     add(Gtk::Action::create("EditFind",
-                            Gtk::Stock::FIND),
+                            "Find"),
+        Gtk::AccelKey(keybindings.config_
+                      .key_map()["edit_find"]),
         [this]() {
           is_new_file_ = false;
           OnEditSearch();
@@ -86,19 +88,26 @@ void Notebook::Controller::CreateKeybindings(Keybindings::Controller
         });
   keybindings.action_group_menu()->
     add(Gtk::Action::create("EditCopy",
-                            Gtk::Stock::COPY),
+                            "Copy"),
+         Gtk::AccelKey(keybindings.config_
+                      .key_map()["edit_copy"]),
+       
         [this]() {
           OnEditCopy();
         });
   keybindings.action_group_menu()->
     add(Gtk::Action::create("EditCut",
-                            Gtk::Stock::CUT),
+                            "Cut"),
+         Gtk::AccelKey(keybindings.config_
+                      .key_map()["edit_cut"]),
         [this]() {
           OnEditCut();
         });
   keybindings.action_group_menu()->
     add(Gtk::Action::create("EditPaste",
-                            Gtk::Stock::PASTE),
+                            "Paste"),
+         Gtk::AccelKey(keybindings.config_
+                      .key_map()["edit_paste"]),
         [this]() {
           OnEditPaste();
         });
