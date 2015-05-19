@@ -36,22 +36,6 @@ Window::Window() :
                                         [this]() {
                                           OnFileOpenFolder();
                                         });
-
-  keybindings_.action_group_menu()->add(Gtk::Action::create("FileSaveAs",
-							    "Save as"),
-					Gtk::AccelKey(keybindings_.config_
-						      .key_map()["save_as"]),
-					[this]() {
-					  notebook_.OnSaveFile();
-					});
-
-  keybindings_.action_group_menu()->add(Gtk::Action::create("FileSave",
-							    "Save file"),
-					Gtk::AccelKey(keybindings_.config_
-						      .key_map()["save"]),
-					[this]() {
-					  notebook_.OnSaveFile();
-					});
   keybindings_.
     action_group_menu()->
     add(Gtk::Action::create("FileSaveAs",
