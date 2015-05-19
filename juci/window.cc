@@ -60,7 +60,7 @@ Window::Window() :
 	Gtk::AccelKey(keybindings_.config_
 		      .key_map()["compile_and_run"]),
 	[this]() {
-	  notebook_.OnSaveFile();
+	  SaveFile();
 	  if (running.try_lock()) {
 	    std::thread execute([=]() {
 		std::string path = notebook_.CurrentPagePath();
@@ -86,7 +86,7 @@ Window::Window() :
 	  Gtk::AccelKey(keybindings_.config_
 			.key_map()["compile"]),
 	  [this]() {
-	    notebook_.OnSaveFile();
+	    SaveFile();
 	    if (running.try_lock()) {
 	      std::thread execute([=]() {		  
 		  std::string path =  notebook_.CurrentPagePath();
