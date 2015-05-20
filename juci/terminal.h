@@ -40,12 +40,12 @@ namespace Terminal {
     void Run(std::string executable);
     void Compile();
     Terminal::Config& config() { return config_; }
+    void PrintMessage(std::string message);
   private:
     Terminal::Config config_;
     void ExecuteCommand(std::string command, std::string mode);
     bool OnButtonRealeaseEvent(GdkEventKey* key);
     bool ExistInConsole(std::string string);
-    void PrintMessage(std::string message);
     Terminal::View view_;
     std::string folder_command_;
     std::string path_;

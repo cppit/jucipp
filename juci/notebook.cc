@@ -43,17 +43,17 @@ void Notebook::Controller::CreateKeybindings(Keybindings::Controller
                             Gtk::Stock::FILE));
 
   keybindings.action_group_menu()->
-    add(Gtk::Action::create("FileNewStandard",
-                            Gtk::Stock::NEW,
-                            "New empty file",
-                            "Create a new file"),
+    add(Gtk::Action::create("FileNewStandard",                     
+                            "New empty file"),
+        Gtk::AccelKey(keybindings.config_
+                      .key_map()["new_file"]),
         [this]() {
           is_new_file_ = true;
           OnFileNewEmptyfile();
         });
   keybindings.action_group_menu()->
     add(Gtk::Action::create("FileNewCC",
-                            "New cc file"),
+                            "New source file"),
         Gtk::AccelKey(keybindings.config_
                       .key_map()["new_cc_file"]),
         [this]() {
@@ -62,7 +62,7 @@ void Notebook::Controller::CreateKeybindings(Keybindings::Controller
         });
   keybindings.action_group_menu()->
     add(Gtk::Action::create("FileNewH",
-                            "New h file"),
+                            "New header file"),
         Gtk::AccelKey(keybindings.config_
                       .key_map()["new_h_file"]),
         [this]() {
@@ -79,7 +79,9 @@ void Notebook::Controller::CreateKeybindings(Keybindings::Controller
         });
   keybindings.action_group_menu()->
     add(Gtk::Action::create("EditFind",
-                            Gtk::Stock::FIND),
+                            "Find"),
+        Gtk::AccelKey(keybindings.config_
+                      .key_map()["edit_find"]),
         [this]() {
           is_new_file_ = false;
           OnEditSearch();
@@ -87,19 +89,26 @@ void Notebook::Controller::CreateKeybindings(Keybindings::Controller
         });
   keybindings.action_group_menu()->
     add(Gtk::Action::create("EditCopy",
-                            Gtk::Stock::COPY),
+                            "Copy"),
+         Gtk::AccelKey(keybindings.config_
+                      .key_map()["edit_copy"]),
+       
         [this]() {
           OnEditCopy();
         });
   keybindings.action_group_menu()->
     add(Gtk::Action::create("EditCut",
-                            Gtk::Stock::CUT),
+                            "Cut"),
+         Gtk::AccelKey(keybindings.config_
+                      .key_map()["edit_cut"]),
         [this]() {
           OnEditCut();
         });
   keybindings.action_group_menu()->
     add(Gtk::Action::create("EditPaste",
-                            Gtk::Stock::PASTE),
+                            "Paste"),
+         Gtk::AccelKey(keybindings.config_
+                      .key_map()["edit_paste"]),
         [this]() {
           OnEditPaste();
         });
@@ -623,15 +632,21 @@ void Notebook::Controller::FindPopupPosition(Gtk::TextView& textview,
   }
 }
 
-void Notebook::Controller:: OnSaveFile() {
+bool Notebook::Controller:: OnSaveFile() {
     INFO("Notebook save file");
   if (text_vec_.at(CurrentPage())->is_saved()) {
     std::ofstream file;
     file.open (text_vec_.at(CurrentPage())->path());
     file << CurrentTextView().get_buffer()->get_text();
     file.close();
+    return true;
   } else {
-    std::string path = OnSaveFileAs();
+    return OnSaveFile(OnSaveFileAs());
+  }
+  return false;
+}
+bool Notebook::Controller:: OnSaveFile(std::string path) {
+    INFO("Notebook save file with path");
     if (path != "") {
       std::ofstream file;
       file.open (path);
@@ -639,8 +654,9 @@ void Notebook::Controller:: OnSaveFile() {
       file.close();
       text_vec_.at(CurrentPage())->set_file_path(path);
       text_vec_.at(CurrentPage())->set_is_saved(true);
+      return true;
     }
-  } 
+  return false;
 }
 
 
@@ -657,26 +673,22 @@ std::string Notebook::Controller::OnSaveFileAs(){
   DEBUG("RUN DIALOG");
   int result = dialog.run();
   DEBUG("DIALOG RUNNING");
-   switch (result) {
-        case(Gtk::RESPONSE_OK): {
-	  DEBUG("get_filename()");
-            std::string path = dialog.get_filename();
-	    DEBUG_VAR(path);
-	    unsigned pos = path.find_last_of("/\\");
-	    std::cout << path<< std::endl;
-	    //notebook_.OnSaveFile(path);
-	    return path;
-            break;
-        }
-        case(Gtk::RESPONSE_CANCEL): {
-            break;
-        }
-        default: {
-            std::cout << "Unexpected button clicked." << std::endl;
-            break;
-        }
-    }
-   return "";
+  switch (result) {
+  case(Gtk::RESPONSE_OK): {
+    DEBUG("get_filename()");
+    std::string path = dialog.get_filename();
+    unsigned pos = path.find_last_of("/\\");
+     return path;
+  }
+  case(Gtk::RESPONSE_CANCEL): {
+    break;
+  }
+  default: {
+    DEBUG("Unexpected button clicked."); 
+    break;
+  }
+  }
+  return "";
 }
 
 void Notebook::Controller::AskToSaveDialog() {
