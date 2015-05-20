@@ -72,6 +72,8 @@ namespace Notebook {
     bool OnMouseRelease(GdkEventButton* button);
     bool OnKeyRelease(GdkEventKey* key);
     std::string OnSaveFileAs();
+    bool LegalExtension(std::string extension);
+
   protected:
     void TextViewHandlers(Gtk::TextView& textview);
     void PopupSelectHandler(Gtk::Dialog &popup,
@@ -89,7 +91,6 @@ namespace Notebook {
                       int &current_x,
                       int &current_y);
     void AskToSaveDialog();
-    bool LegalExtension(std::string extension);
     Glib::RefPtr<Gtk::Builder> m_refBuilder;
     Glib::RefPtr<Gio::SimpleActionGroup> refActionGroup;
     Source::Config source_config_;

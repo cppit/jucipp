@@ -1,5 +1,4 @@
 #include "source.h"
-#include <iostream>
 #include "sourcefile.h"
 #include <boost/property_tree/json_parser.hpp>
 #include <fstream>
@@ -343,7 +342,7 @@ void Source::Controller::OnOpenFile(const string &filepath) {
   buffer()->set_text(s.get_content());
   int start_offset = buffer()->begin().get_offset();
   int end_offset = buffer()->end().get_offset();
-  if (!notebook_->LegalExtension(filepath.substr(filepath.find_last_of(".") + 1))) {
+  if (notebook_->LegalExtension(filepath.substr(filepath.find_last_of(".") + 1))) {
     view().ApplyConfig(model().config());
     model().InitSyntaxHighlighting(filepath,
                                    extract_file_path(filepath),

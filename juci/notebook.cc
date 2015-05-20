@@ -21,7 +21,7 @@ Notebook::Controller::Controller(Gtk::Window* window,
   index_(0, 1) {
   INFO("Create notebook");
   window_ = window;
-  OnNewPage("juCi++");
+  OnNewPage("untitled");
   refClipboard_ = Gtk::Clipboard::get();
   ispopup = false;
   view().pack1(directories_.widget(), true, true);
