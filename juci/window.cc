@@ -82,30 +82,30 @@ Window::Window() :
 	  }
 	});
    
-    keybindings_.
-      action_group_menu()->
-      add(Gtk::Action::create("ProjectCompile",
-			      "Compile"),
-	  Gtk::AccelKey(keybindings_.config_
-			.key_map()["compile"]),
-	  [this]() {
-	    SaveFile();
-	    if (running.try_lock()) {
-	      std::thread execute([=]() {		  
-		  std::string path =  notebook_.CurrentPagePath();
-		  int pos = path.find_last_of("/\\");
-		  if(pos != std::string::npos){
-		    path.erase(path.begin()+pos,path.end());
-		    terminal_.SetFolderCommand(path);
-		  }
-		  terminal_.Compile();
-                  running.unlock();
-		});
-	      execute.detach();
-	    }
-	  });
-    this->signal_button_release_event().
-      connect(sigc::mem_fun(*this,&Window::OnMouseRelease),false);
+  keybindings_.
+    action_group_menu()->
+    add(Gtk::Action::create("ProjectCompile",
+                            "Compile"),
+        Gtk::AccelKey(keybindings_.config_
+                      .key_map()["compile"]),
+        [this]() {
+          SaveFile();
+          if (running.try_lock()) {
+            std::thread execute([=]() {		  
+                std::string path =  notebook_.CurrentPagePath();
+                int pos = path.find_last_of("/\\");
+                if(pos != std::string::npos){
+                  path.erase(path.begin()+pos,path.end());
+                  terminal_.SetFolderCommand(path);
+                }
+                terminal_.Compile();
+                running.unlock();
+              });
+            execute.detach();
+          }
+        });
+  this->signal_button_release_event().
+    connect(sigc::mem_fun(*this,&Window::OnMouseRelease),false);
   terminal_.Terminal().signal_button_release_event().
     connect(sigc::mem_fun(*this,&Window::OnMouseRelease),false);
 
@@ -142,20 +142,15 @@ void Window::OnFileOpenFolder() {
     {
     case(Gtk::RESPONSE_OK):
       {
-        std::cout << "Folder selected: " << dialog.get_filename()
-                  << std::endl;
         notebook_.directories().open_folder(dialog.get_filename());
-        std::cout << dialog.get_filename()<< std::endl;
         break;
       }
     case(Gtk::RESPONSE_CANCEL):
       {
-        std::cout << "Cancel clicked." << std::endl;
         break;
       }
     default:
       {
-        std::cout << "Unexpected button clicked." << std::endl;
         break;
       }
     }
@@ -194,19 +189,14 @@ void Window::OnOpenFile() {
 
   switch (result) {
   case(Gtk::RESPONSE_OK): {
-    std::cout << "Open clicked." << std::endl;
     std::string path = dialog.get_filename();
-
-    std::cout << "File selected: " << path << std::endl;
     notebook_.OnOpenFile(path);
     break;
   }
   case(Gtk::RESPONSE_CANCEL): {
-    std::cout << "Cancel clicked." << std::endl;
     break;
   }
   default: {
-    std::cout << "Unexpected button clicked." << std::endl;
     break;
   }
   }
