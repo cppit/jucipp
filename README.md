@@ -10,7 +10,7 @@ The IDE supports autocompletion on accessor specifiers such as dot and arrow. Th
 The IDE also supports syntax highligthing even in C++11 and C++14.
 
 ## Plugins
-There are expantion oppertunities with usage of python plugins.
+There are expansion oppertunities with usage of python plugins.
 
 ## Configuration
 Configuration description will arrive shortly after source code is added.
