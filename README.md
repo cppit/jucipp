@@ -18,7 +18,7 @@ Configuration description will arrive shortly after source code is added.
 Please install these dependencies on your system.
 
 * libclang
-* [libclangmm](http://github.com/cppit/libclangmm/)
+* [libclangmm](http://github.com/cppit/libclangmm/tree/juci)
 * cmake
 * make
 * clang or gcc (compiler)
