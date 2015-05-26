@@ -76,9 +76,9 @@ Window::Window() :
 		std::string executable = notebook_.directories().
 		  GetCmakeVarValue(path,"add_executable");
 		terminal_.Run(executable);
+		running.unlock();
 	      });
 	    execute.detach();
-	    running.unlock();
 	  }
 	});
    
@@ -99,9 +99,9 @@ Window::Window() :
 		    terminal_.SetFolderCommand(path);
 		  }
 		  terminal_.Compile();
+		   running.unlock();
 		});
 	      execute.detach();
-	      running.unlock();
 	    }
 	  });
     this->signal_button_release_event().

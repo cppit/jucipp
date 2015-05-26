@@ -12,28 +12,29 @@ def initPlugin():
 snippets = {}
 
 snippets["for"] = """\
-for(#int i=0; #i<#v.size(); #i++) {
-   std::cout << v[i] << std::endl;
+for(int i=0; i<v.size(); i++) {
+  // std::cout << v[i] << std::endl;
+  // Write code here
 }
 """
 
 snippets["if"] = """\
-if(#) {
-    # 
+if(true) {
+    // Write code here
 }
 """
 
 snippets["ifelse"] = """\
-if(#) {
-    #
+if(false) {
+    // Write code here
 } else {
-    #
+    // Write code here
 }
 """
 
 snippets["while"] = """\
-while(#) {
-    #
+while(condition) {
+    // Write code here
 }
 """
 
