@@ -1,12 +1,13 @@
-# juCi++ an lightweight C++-IDE
-juCi++ is an lightweight C++-IDE written in C++.
+# juCi++ a lightweight C++-IDE with support for C++11 and C++14.
+juCi++ is a lightweight C++-IDE written in C++. You can write plugins
+in Python and configure the IDE from the config.json file.
 
 
-## Auto Completion
-Awesome auto completion!
+## Autocompletion
+The IDE supports autocompletion on accessor specifiers such as dot and arrow. The autocompletion has excellent support for C++11/14.
 
 ## Syntax Highlighting
-Configurable syntax highlighting with C++14 support!
+The IDE also supports syntax highligthing even in C++11 and C++14.
 
 ## Plugins
 There are expantion oppertunities with usage of python plugins.
