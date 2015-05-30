@@ -9,6 +9,12 @@ The IDE supports autocompletion on accessor specifiers such as dot and arrow. Th
 ## Syntax Highlighting
 The IDE also supports syntax highligthing even in C++11 and C++14.
 
+## To get C++11 and C++14 support
+If you want support for external libraries and C++11 and C++14 you need to make sure you add a parameter to the cmake command. This will make compile_commands.json wich tells juCi++ all the paramters for the compiler. There is a bug where juCi++ sometimes puts the compile_commands.json file in the incorrect folder. Please make sure this file exists and that the contents of it covers all your files.
+```sh
+$ cmake . -DCMAKE_EXPORT_COMPILE_COMMANDS=ON
+```
+
 ## Plugins
 There are expansion oppertunities with usage of python plugins.
 
