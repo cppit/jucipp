@@ -162,9 +162,9 @@ namespace Source {
   private:
     void OnLineEdit();
     void OnSaveFile();
-    std::mutex syntax;
     std::mutex parsing;
-    bool go = false;
+    Glib::Dispatcher parsing_done;
+    size_t raw_size=0;
     bool is_saved_ = false;
     bool is_changed_ = false;
 

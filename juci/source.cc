@@ -5,6 +5,7 @@
 #include <boost/timer/timer.hpp>
 #include "notebook.h"
 #include "logging.h"
+#include <algorithm>
 
 Source::Location::
 Location(int line_number, int column_offset) :
@@ -353,44 +354,38 @@ void Source::Controller::OnOpenFile(const string &filepath) {
     view().OnUpdateSyntax(model().ExtractTokens(start_offset, end_offset),
                           model().config());
 
+    //OnUpdateSyntax must happen in main thread, so the parse-thread
+    //sends a signal to the main thread that it is to call the following function:
+    parsing_done.connect([this](){
+      INFO("Updating syntax");
+      view().
+      OnUpdateSyntax(model().ExtractTokens(0, std::min(buffer()->get_text().size(), raw_size)),
+                     model().config());
+      INFO("Syntax updated");
+    });
+    
     buffer()->signal_end_user_action().connect([this]() {
-        if (!go) {
-          std::thread parse([this]() {
-              if (parsing.try_lock()) {
-                INFO("Starting parsing");
-                while (true) {
-                  const std::string raw = buffer()->get_text().raw();
-                  std::map<std::string, std::string> buffers;
-                  notebook_->MapBuffers(&buffers);
-                  buffers[model().file_path()] = raw;
-                  if (model().ReParse(buffers) == 0 &&
-                      raw == buffer()->get_text().raw()) {
-                    syntax.lock();
-                    go = true;
-                    syntax.unlock();
-                    break;
-                  }
-                }
-                parsing.unlock();
-                INFO("Parsing completed");
-              }
-            });
-          parse.detach();
+      std::thread parse([this]() {
+        if (parsing.try_lock()) {
+          INFO("Starting parsing");
+          while (true) {
+            const std::string raw = buffer()->get_text().raw();
+            raw_size=raw.size();
+            std::map<std::string, std::string> buffers;
+            notebook_->MapBuffers(&buffers);
+            buffers[model().file_path()] = raw;
+            if (model().ReParse(buffers) == 0 &&
+                raw == buffer()->get_text().raw()) {
+              break;
+            }
+          }
+          parsing.unlock();
+          parsing_done();
+          INFO("Parsing completed");
         }
       });
-
-    buffer()->signal_begin_user_action().connect([this]() {
-        if (go) {
-          syntax.lock();
-          INFO("Updating syntax");
-          view().
-            OnUpdateSyntax(model().ExtractTokens(0, buffer()->get_text().size()),
-                           model().config());
-          go = false;
-          INFO("Syntax updated");
-          syntax.unlock();
-        }
-      });
+      parse.detach();
+    });
   }
 }
 Glib::RefPtr<Gtk::TextBuffer> Source::Controller::buffer() {

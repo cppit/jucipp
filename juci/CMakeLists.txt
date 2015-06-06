@@ -1,12 +1,17 @@
 cmake_minimum_required (VERSION 2.8.4)
 set(project_name juci)
 set(module juci_to_python_api)
-
 project (${project_name})
 add_definitions(-DBOOST_LOG_DYN_LINK)
-set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -std=c++11 -pthread")
+set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -O3 -std=c++11 -pthread")
 set(CMAKE_MODULE_PATH ${CMAKE_MODULE_PATH} "${CMAKE_CURRENT_LIST_DIR}/cmake/Modules/")
 
+#You are of course using Homebrew:
+if(APPLE)
+  set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -L/usr/local/opt/gettext/lib -I/usr/local/opt/gettext/include -undefined dynamic_lookup") #TODO: fix this
+  set(CMAKE_MACOSX_RPATH 1)
+  set(ENV{PKG_CONFIG_PATH} "$ENV{PKG_CONFIG_PATH}:/usr/local/lib/pkgconfig:/opt/X11/lib/pkgconfig")
+endif()
 INCLUDE(FindPkgConfig)
 
 message("Searcing for libclang")
