@@ -115,7 +115,7 @@ InitSyntaxHighlighting(const std::string &filepath,
                        int end_offset,
                        clang::Index *index) {
   set_project_path(project_path);
-  std::vector<const char*> arguments = get_compilation_commands();
+  std::vector<string> arguments = get_compilation_commands();
   tu_ = clang::TranslationUnit(index,
                                filepath,
                                arguments,
@@ -202,16 +202,16 @@ const Source::Config& Source::Model::config() const {
   return config_;
 }
 
-std::vector<const char*> Source::Model::
+std::vector<std::string> Source::Model::
 get_compilation_commands() {
   clang::CompilationDatabase db(project_path()+"/");
   clang::CompileCommands commands(file_path(), &db);
   std::vector<clang::CompileCommand> cmds = commands.get_commands();
-  std::vector<const char*> arguments;
+  std::vector<std::string> arguments;
   for (auto &i : cmds) {
     std::vector<std::string> lol = i.get_command_as_args();
     for (int a = 1; a < lol.size()-4; a++) {
-      arguments.emplace_back(lol[a].c_str());
+      arguments.emplace_back(lol[a]);
     }
   }
   return arguments;

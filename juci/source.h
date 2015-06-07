@@ -135,7 +135,7 @@ namespace Source {
                         int token_kind);
     void HighlightCursor(clang::Token *token,
                         std::vector<Range> *source_ranges);
-    std::vector<const char*> get_compilation_commands();
+    std::vector<std::string> get_compilation_commands();
   };
 
   class Controller {
