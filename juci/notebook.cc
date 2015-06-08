@@ -1,6 +1,7 @@
 #include <fstream>
 #include "notebook.h"
 #include "logging.h"
+#include <regex>
 
 Notebook::Model::Model() {
   cc_extension_ = ".cpp";
@@ -159,6 +160,76 @@ bool Notebook::Controller:: OnMouseRelease(GdkEventButton* button) {
   if (button->button == 1 && ispopup) {
     popup_.response(Gtk::RESPONSE_DELETE_EVENT);
     return true;
+  }
+  return false;
+}
+
+bool Notebook::Controller::OnKeyPress(GdkEventKey* key) {
+  //Indent as in previous line, and indent left after if/else/etc
+  if(key->keyval==GDK_KEY_Return && key->state==0) {
+    Gtk::TextIter insert_it = Buffer(text_vec_.at(CurrentPage()))->get_insert()->get_iter();
+    Gtk::TextIter line_it = Buffer(text_vec_.at(CurrentPage()))->get_iter_at_line(insert_it.get_line());
+    std::string line(Buffer(text_vec_.at(CurrentPage()))->get_text(line_it, insert_it));
+    std::smatch sm;
+    const std::regex bracket_regex("^( *).*\\{ *$");
+    const std::regex no_bracket_statement_regex("^( *)(if|else|else if|try|catch|while)[^\\}]*$");
+    const std::regex no_bracket_regex("^( *).*$");
+    if(std::regex_match(line, sm, bracket_regex)) {
+      Buffer(text_vec_.at(CurrentPage()))->insert_at_cursor("\n"+sm[1].str()+"  ");
+    }
+    else if(std::regex_match(line, sm, no_bracket_statement_regex)) {
+      Buffer(text_vec_.at(CurrentPage()))->insert_at_cursor("\n"+sm[1].str()+"  ");
+    }
+    else if(std::regex_match(line, sm, no_bracket_regex)) {
+      Buffer(text_vec_.at(CurrentPage()))->insert_at_cursor("\n"+sm[1].str());
+    }
+    return true;
+  }
+  //Indent right when clicking tab, no matter where in the line the cursor is. Also works on selected text.
+  if(key->keyval==GDK_KEY_Tab && key->state==0) {
+    Gtk::TextIter selection_start, selection_end;
+    Buffer(text_vec_.at(CurrentPage()))->get_selection_bounds(selection_start, selection_end);
+    int line_start=selection_start.get_line();
+    int line_end=selection_end.get_line();
+    for(int line=line_start;line<=line_end;line++) {
+      Gtk::TextIter line_it = Buffer(text_vec_.at(CurrentPage()))->get_iter_at_line(line);
+      Buffer(text_vec_.at(CurrentPage()))->insert(line_it, "  ");
+    }
+    return true;
+  }
+  //Indent left when clicking shift-tab, no matter where in the line the cursor is. Also works on selected text.
+  else if((key->keyval==GDK_KEY_ISO_Left_Tab || key->keyval==GDK_KEY_Tab) && key->state==GDK_SHIFT_MASK) {
+    Gtk::TextIter selection_start, selection_end;
+    Buffer(text_vec_.at(CurrentPage()))->get_selection_bounds(selection_start, selection_end);
+    int line_start=selection_start.get_line();
+    int line_end=selection_end.get_line();
+    for(int line=line_start;line<=line_end;line++) {
+      Gtk::TextIter line_it = Buffer(text_vec_.at(CurrentPage()))->get_iter_at_line(line);
+      Gtk::TextIter line_plus_it=line_it;
+      line_plus_it++;
+      line_plus_it++;
+      std::string start(Buffer(text_vec_.at(CurrentPage()))->get_text(line_it, line_plus_it));
+      if(start=="  ")
+        Buffer(text_vec_.at(CurrentPage()))->erase(line_it, line_plus_it);
+    }
+    return true;
+  }
+  //Indent left when writing } on a new line
+  else if(key->keyval==GDK_KEY_braceright) {
+    Gtk::TextIter insert_it = Buffer(text_vec_.at(CurrentPage()))->get_insert()->get_iter();
+    Gtk::TextIter line_it = Buffer(text_vec_.at(CurrentPage()))->get_iter_at_line(insert_it.get_line());
+    Gtk::TextIter line_plus_it=line_it;
+    line_plus_it++;
+    line_plus_it++;
+    std::string start(Buffer(text_vec_.at(CurrentPage()))->get_text(line_it, line_plus_it));
+    std::string line(Buffer(text_vec_.at(CurrentPage()))->get_text(line_it, insert_it));
+    for(auto &c: line) {
+      if(c!=' ')
+        return false;
+    }
+    if(start=="  ")
+      Buffer(text_vec_.at(CurrentPage()))->erase(line_it, line_plus_it);
+    return false;
   }
   return false;
 }
@@ -547,6 +618,9 @@ void Notebook::Controller::TextViewHandlers(Gtk::TextView& textview) {
 
   textview.signal_button_release_event().
     connect(sigc::mem_fun(*this, &Notebook::Controller::OnMouseRelease), false);
+
+  textview.signal_key_press_event().
+    connect(sigc::mem_fun(*this, &Notebook::Controller::OnKeyPress), false);
 
   textview.signal_key_release_event().
     connect(sigc::mem_fun(*this, &Notebook::Controller::OnKeyRelease), false);
