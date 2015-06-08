@@ -359,7 +359,7 @@ void Source::Controller::OnOpenFile(const string &filepath) {
     parsing_done.connect([this](){
       INFO("Updating syntax");
       view().
-      OnUpdateSyntax(model().ExtractTokens(0, std::min(buffer()->get_text().size(), raw_size)),
+      OnUpdateSyntax(model().ExtractTokens(0, buffer()->get_text().size()),
                      model().config());
       INFO("Syntax updated");
     });
@@ -370,7 +370,6 @@ void Source::Controller::OnOpenFile(const string &filepath) {
           INFO("Starting parsing");
           while (true) {
             const std::string raw = buffer()->get_text().raw();
-            raw_size=raw.size();
             std::map<std::string, std::string> buffers;
             notebook_->MapBuffers(&buffers);
             buffers[model().file_path()] = raw;

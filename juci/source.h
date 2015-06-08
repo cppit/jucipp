@@ -164,7 +164,6 @@ namespace Source {
     void OnSaveFile();
     std::mutex parsing;
     Glib::Dispatcher parsing_done;
-    size_t raw_size=0;
     bool is_saved_ = false;
     bool is_changed_ = false;
 
