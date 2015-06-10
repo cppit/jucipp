@@ -88,6 +88,14 @@ else()
   message("Gtkmm link dirs ${GTKMM_LIBRARIES}")
   message(FATAL_ERROR "The gtkmm libraries are required. Quitting.")
 endif()
+
+pkg_check_modules(GTKSVMM gtksourceviewmm-3.0)
+if(${GTKSVMM_FOUND})
+  message("Gtksourceviewmm libraries found. Continuing")
+else()
+  message(FATAL_ERROR "The gtksourceviewmm libraries are required. Quitting.")
+endif()
+
 # name of the executable on Windows will be example.exe
 add_executable(${project_name}
   #list of every needed file to create the executable
@@ -129,11 +137,13 @@ include_directories(
   ${Boost_INCLUDE_DIRS}
   ${PYTHON_INCLUDE_DIRS}
   ${GTKMM_INCLUDE_DIRS}
+  ${GTKSVMM_INCLUDE_DIRS}
   ${LCL_INCLUDE_DIRS}
   ${LIBCLANG_INCLUDE_DIRS}
   )
 link_directories(
   ${GTKMM_LIBRARY_DIRS}
+  ${GTKSVMM_LIBRARY_DIRS}
   ${Boost_LIBRARY_DIRS}
   ${PYTHON_INCLUDE_DIRS}
   ${LCL_LIBRARY_DIRS}
@@ -144,6 +154,6 @@ set_target_properties(${module} PROPERTIES PREFIX ""
 LIBRARY_OUTPUT_DIRECTORY "${CMAKE_SOURCE_DIR}/lib/")
 target_link_libraries(${module} ${PYTHON_LIBRARIES} ${Boost_LIBRARIES})
 #executable:
-target_link_libraries(${project_name} ${LIVCLANG_LIBRARIES} ${LCL_LIBRARIES} ${GTKMM_LIBRARIES} ${Boost_LIBRARIES} ${PYTHON_LIBRARIES})
+target_link_libraries(${project_name} ${LIVCLANG_LIBRARIES} ${LCL_LIBRARIES} ${GTKMM_LIBRARIES} ${GTKSVMM_LIBRARIES} ${Boost_LIBRARIES} ${PYTHON_LIBRARIES})
 
 

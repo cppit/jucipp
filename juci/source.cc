@@ -29,6 +29,9 @@ Range(const Source::Range &org) :
 //////////////
 Source::View::View() {
   override_font(Pango::FontDescription("Monospace"));
+  set_show_line_numbers(true);
+  set_highlight_current_line(true);
+  set_smart_home_end(Gsv::SMART_HOME_END_ALWAYS);
 }
 
 string Source::View::GetLine(const Gtk::TextIter &begin) {

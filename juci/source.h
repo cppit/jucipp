@@ -8,6 +8,7 @@
 #include <thread>
 #include <mutex>
 #include <string>
+#include "gtksourceviewmm.h"
 
 namespace Notebook {
   class Controller;
@@ -60,7 +61,7 @@ namespace Source {
     int kind_;
   };
 
-  class View : public Gtk::TextView {
+  class View : public Gsv::View {
   public:
     View();
     virtual ~View() { }
