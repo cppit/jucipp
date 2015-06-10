@@ -5,6 +5,7 @@
 #include <boost/timer/timer.hpp>
 #include "notebook.h"
 #include "logging.h"
+#include <algorithm>
 
 Source::Location::
 Location(int line_number, int column_offset) :
@@ -28,6 +29,9 @@ Range(const Source::Range &org) :
 //////////////
 Source::View::View() {
   override_font(Pango::FontDescription("Monospace"));
+  set_show_line_numbers(true);
+  set_highlight_current_line(true);
+  set_smart_home_end(Gsv::SMART_HOME_END_ALWAYS);
 }
 
 string Source::View::GetLine(const Gtk::TextIter &begin) {
@@ -114,7 +118,7 @@ InitSyntaxHighlighting(const std::string &filepath,
                        int end_offset,
                        clang::Index *index) {
   set_project_path(project_path);
-  std::vector<const char*> arguments = get_compilation_commands();
+  std::vector<string> arguments = get_compilation_commands();
   tu_ = clang::TranslationUnit(index,
                                filepath,
                                arguments,
@@ -201,16 +205,16 @@ const Source::Config& Source::Model::config() const {
   return config_;
 }
 
-std::vector<const char*> Source::Model::
+std::vector<std::string> Source::Model::
 get_compilation_commands() {
   clang::CompilationDatabase db(project_path()+"/");
   clang::CompileCommands commands(file_path(), &db);
   std::vector<clang::CompileCommand> cmds = commands.get_commands();
-  std::vector<const char*> arguments;
+  std::vector<std::string> arguments;
   for (auto &i : cmds) {
     std::vector<std::string> lol = i.get_command_as_args();
     for (int a = 1; a < lol.size()-4; a++) {
-      arguments.emplace_back(lol[a].c_str());
+      arguments.emplace_back(lol[a]);
     }
   }
   return arguments;
@@ -353,44 +357,37 @@ void Source::Controller::OnOpenFile(const string &filepath) {
     view().OnUpdateSyntax(model().ExtractTokens(start_offset, end_offset),
                           model().config());
 
+    //OnUpdateSyntax must happen in main thread, so the parse-thread
+    //sends a signal to the main thread that it is to call the following function:
+    parsing_done.connect([this](){
+      INFO("Updating syntax");
+      view().
+      OnUpdateSyntax(model().ExtractTokens(0, buffer()->get_text().size()),
+                     model().config());
+      INFO("Syntax updated");
+    });
+    
     buffer()->signal_end_user_action().connect([this]() {
-        if (!go) {
-          std::thread parse([this]() {
-              if (parsing.try_lock()) {
-                INFO("Starting parsing");
-                while (true) {
-                  const std::string raw = buffer()->get_text().raw();
-                  std::map<std::string, std::string> buffers;
-                  notebook_->MapBuffers(&buffers);
-                  buffers[model().file_path()] = raw;
-                  if (model().ReParse(buffers) == 0 &&
-                      raw == buffer()->get_text().raw()) {
-                    syntax.lock();
-                    go = true;
-                    syntax.unlock();
-                    break;
-                  }
-                }
-                parsing.unlock();
-                INFO("Parsing completed");
-              }
-            });
-          parse.detach();
+      std::thread parse([this]() {
+        if (parsing.try_lock()) {
+          INFO("Starting parsing");
+          while (true) {
+            const std::string raw = buffer()->get_text().raw();
+            std::map<std::string, std::string> buffers;
+            notebook_->MapBuffers(&buffers);
+            buffers[model().file_path()] = raw;
+            if (model().ReParse(buffers) == 0 &&
+                raw == buffer()->get_text().raw()) {
+              break;
+            }
+          }
+          parsing.unlock();
+          parsing_done();
+          INFO("Parsing completed");
         }
       });
-
-    buffer()->signal_begin_user_action().connect([this]() {
-        if (go) {
-          syntax.lock();
-          INFO("Updating syntax");
-          view().
-            OnUpdateSyntax(model().ExtractTokens(0, buffer()->get_text().size()),
-                           model().config());
-          go = false;
-          INFO("Syntax updated");
-          syntax.unlock();
-        }
-      });
+      parse.detach();
+    });
   }
 }
 Glib::RefPtr<Gtk::TextBuffer> Source::Controller::buffer() {

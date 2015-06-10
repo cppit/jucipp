@@ -8,6 +8,7 @@
 #include <thread>
 #include <mutex>
 #include <string>
+#include "gtksourceviewmm.h"
 
 namespace Notebook {
   class Controller;
@@ -60,7 +61,7 @@ namespace Source {
     int kind_;
   };
 
-  class View : public Gtk::TextView {
+  class View : public Gsv::View {
   public:
     View();
     virtual ~View() { }
@@ -135,7 +136,7 @@ namespace Source {
                         int token_kind);
     void HighlightCursor(clang::Token *token,
                         std::vector<Range> *source_ranges);
-    std::vector<const char*> get_compilation_commands();
+    std::vector<std::string> get_compilation_commands();
   };
 
   class Controller {
@@ -162,9 +163,8 @@ namespace Source {
   private:
     void OnLineEdit();
     void OnSaveFile();
-    std::mutex syntax;
     std::mutex parsing;
-    bool go = false;
+    Glib::Dispatcher parsing_done;
     bool is_saved_ = false;
     bool is_changed_ = false;
 

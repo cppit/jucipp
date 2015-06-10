@@ -1,6 +1,7 @@
 #include <fstream>
 #include "notebook.h"
 #include "logging.h"
+#include <regex>
 
 Notebook::Model::Model() {
   cc_extension_ = ".cpp";
@@ -163,6 +164,77 @@ bool Notebook::Controller:: OnMouseRelease(GdkEventButton* button) {
   return false;
 }
 
+bool Notebook::Controller::OnKeyPress(GdkEventKey* key) {
+  //Indent as in previous line, and indent left after if/else/etc
+  if(key->keyval==GDK_KEY_Return && key->state==0) {
+    Gtk::TextIter insert_it = Buffer(text_vec_.at(CurrentPage()))->get_insert()->get_iter();
+    Gtk::TextIter line_it = Buffer(text_vec_.at(CurrentPage()))->get_iter_at_line(insert_it.get_line());
+    std::string line(Buffer(text_vec_.at(CurrentPage()))->get_text(line_it, insert_it));
+    std::smatch sm;
+    const std::regex bracket_regex("^( *).*\\{ *$");
+    const std::regex no_bracket_statement_regex("^( *)(if|else|else if|try|catch|while)[^\\}]*$");
+    const std::regex no_bracket_regex("^( *).*$");
+    if(std::regex_match(line, sm, bracket_regex)) {
+      Buffer(text_vec_.at(CurrentPage()))->insert_at_cursor("\n"+sm[1].str()+"  ");
+    }
+    else if(std::regex_match(line, sm, no_bracket_statement_regex)) {
+      Buffer(text_vec_.at(CurrentPage()))->insert_at_cursor("\n"+sm[1].str()+"  ");
+    }
+    else if(std::regex_match(line, sm, no_bracket_regex)) {
+      Buffer(text_vec_.at(CurrentPage()))->insert_at_cursor("\n"+sm[1].str());
+    }
+    CurrentTextView().scroll_to(Buffer(text_vec_.at(CurrentPage()))->get_insert());
+    return true;
+  }
+  //Indent right when clicking tab, no matter where in the line the cursor is. Also works on selected text.
+  if(key->keyval==GDK_KEY_Tab && key->state==0) {
+    Gtk::TextIter selection_start, selection_end;
+    Buffer(text_vec_.at(CurrentPage()))->get_selection_bounds(selection_start, selection_end);
+    int line_start=selection_start.get_line();
+    int line_end=selection_end.get_line();
+    for(int line=line_start;line<=line_end;line++) {
+      Gtk::TextIter line_it = Buffer(text_vec_.at(CurrentPage()))->get_iter_at_line(line);
+      Buffer(text_vec_.at(CurrentPage()))->insert(line_it, "  ");
+    }
+    return true;
+  }
+  //Indent left when clicking shift-tab, no matter where in the line the cursor is. Also works on selected text.
+  else if((key->keyval==GDK_KEY_ISO_Left_Tab || key->keyval==GDK_KEY_Tab) && key->state==GDK_SHIFT_MASK) {
+    Gtk::TextIter selection_start, selection_end;
+    Buffer(text_vec_.at(CurrentPage()))->get_selection_bounds(selection_start, selection_end);
+    int line_start=selection_start.get_line();
+    int line_end=selection_end.get_line();
+    for(int line=line_start;line<=line_end;line++) {
+      Gtk::TextIter line_it = Buffer(text_vec_.at(CurrentPage()))->get_iter_at_line(line);
+      Gtk::TextIter line_plus_it=line_it;
+      line_plus_it++;
+      line_plus_it++;
+      std::string start(Buffer(text_vec_.at(CurrentPage()))->get_text(line_it, line_plus_it));
+      if(start=="  ")
+        Buffer(text_vec_.at(CurrentPage()))->erase(line_it, line_plus_it);
+    }
+    return true;
+  }
+  //Indent left when writing } on a new line
+  else if(key->keyval==GDK_KEY_braceright) {
+    Gtk::TextIter insert_it = Buffer(text_vec_.at(CurrentPage()))->get_insert()->get_iter();
+    Gtk::TextIter line_it = Buffer(text_vec_.at(CurrentPage()))->get_iter_at_line(insert_it.get_line());
+    Gtk::TextIter line_plus_it=line_it;
+    line_plus_it++;
+    line_plus_it++;
+    std::string start(Buffer(text_vec_.at(CurrentPage()))->get_text(line_it, line_plus_it));
+    std::string line(Buffer(text_vec_.at(CurrentPage()))->get_text(line_it, insert_it));
+    for(auto &c: line) {
+      if(c!=' ')
+        return false;
+    }
+    if(start=="  ")
+      Buffer(text_vec_.at(CurrentPage()))->erase(line_it, line_plus_it);
+    return false;
+  }
+  return false;
+}
+
 bool Notebook::Controller::OnKeyRelease(GdkEventKey* key) {
   return GeneratePopup(key->keyval);
 }
@@ -265,29 +337,11 @@ bool Notebook::Controller::GeneratePopup(int key_id) {
   return true;
 }
 
-bool Notebook::Controller::ScrollEventCallback(GdkEventScroll* scroll_event) {
-  int page = CurrentPage();
-  int direction_y = scroll_event->delta_y;
-  int direction_x = scroll_event->delta_x;
-
-  Glib::RefPtr<Gtk::Adjustment> adj =
-    scrolledtext_vec_.at(page)->
-    get_vscrollbar()->get_adjustment();
-  if ( direction_y != 0 ) {
-    int dir_val = direction_y == -1 ? -model_.scrollvalue_:+model_.scrollvalue_;
-    adj->set_value(adj->get_value()+dir_val);
-    text_vec_.at(page)->view().set_vadjustment(adj);
-    linenumbers_vec_.at(page)->view().set_vadjustment(adj);
-  }
-  return true;
-}
 Notebook::Controller::~Controller() {
   INFO("Notebook destructor");
   for (auto &i : text_vec_)  delete i;
-  for (auto &i : linenumbers_vec_) delete i;
   for (auto &i : editor_vec_) delete i;
   for (auto &i : scrolledtext_vec_) delete i;
-  for (auto &i : scrolledline_vec_) delete i;
 }
 
 Gtk::Paned& Notebook::Controller::view() {
@@ -326,27 +380,15 @@ void Notebook::Controller::OnOpenFile(std::string path) {
   Notebook().show_all_children();
   Notebook().set_current_page(Pages()-1);
   Notebook().set_focus_child(text_vec_.back()->view());
-  OnBufferChange();
   text_vec_.back()->set_is_changed(false);
 }
 
 void Notebook::Controller::OnCreatePage() {
   INFO("Notebook create page");
   text_vec_.push_back(new Source::Controller(source_config(), this));
-  linenumbers_vec_.push_back(new Source::Controller(source_config(), this));
-  scrolledline_vec_.push_back(new Gtk::ScrolledWindow());
   scrolledtext_vec_.push_back(new Gtk::ScrolledWindow());
   editor_vec_.push_back(new Gtk::HBox());
   scrolledtext_vec_.back()->add(text_vec_.back()->view());
-  scrolledline_vec_.back()->add(linenumbers_vec_.back()->view());
-  linenumbers_vec_.back()->view().get_buffer()->set_text("1 ");
-  linenumbers_vec_.back()->view().override_color(Gdk::RGBA("Black"));
-  linenumbers_vec_.back()->
-    view().set_justification(Gtk::Justification::JUSTIFY_RIGHT);
-  scrolledline_vec_.back()->get_vscrollbar()->hide();
-  linenumbers_vec_.back()->view().set_editable(false);
-  linenumbers_vec_.back()->view().set_sensitive(false);
-  editor_vec_.back()->pack_start(*scrolledline_vec_.back(), false, false);
   editor_vec_.back()->pack_start(*scrolledtext_vec_.back(), true, true);
   TextViewHandlers(text_vec_.back()->view());
 }
@@ -360,14 +402,10 @@ void Notebook::Controller::OnCloseCurrentPage() {
     int page = CurrentPage();
     Notebook().remove_page(page);
     delete text_vec_.at(page);
-    delete linenumbers_vec_.at(page);
     delete scrolledtext_vec_.at(page);
-    delete scrolledline_vec_.at(page);
     delete editor_vec_.at(page);
     text_vec_.erase(text_vec_.begin()+ page);
-    linenumbers_vec_.erase(linenumbers_vec_.begin()+page);
     scrolledtext_vec_.erase(scrolledtext_vec_.begin()+page);
-    scrolledline_vec_.erase(scrolledline_vec_.begin()+page);
     editor_vec_.erase(editor_vec_.begin()+page);
   }
 }
@@ -455,36 +493,6 @@ void Notebook::Controller::Search(bool forward) {
   }
 }
 
-void Notebook::Controller::OnBufferChange() {
-  int page =  CurrentPage();
-  int text_nr = Buffer(text_vec_.at(page))->get_line_count();
-  int line_nr =  Buffer(linenumbers_vec_.at(page))->get_line_count();
-  while (line_nr < text_nr) {
-    line_nr++;
-    Buffer(linenumbers_vec_.at(page))->
-      insert(Buffer(linenumbers_vec_.at(page))->end(),
-             "\n"+std::to_string(line_nr)+" ");
-  }
-  while (line_nr > text_nr) {
-    Gtk::TextIter iter =
-      Buffer(linenumbers_vec_.at(page))->get_iter_at_line(line_nr);
-    iter.backward_char();
-    line_nr--;
-    Buffer(linenumbers_vec_.at(page))->
-      erase(iter,
-            Buffer(linenumbers_vec_.at(page))->end());
-  }
-  if (Buffer(text_vec_.at(page))->get_insert()->get_iter().starts_line() &&
-      Buffer(text_vec_.at(page))->get_insert()->get_iter().get_line() ==
-      Buffer(text_vec_.at(page))->end().get_line()) {
-    GdkEventScroll* scroll = new GdkEventScroll;
-    scroll->delta_y = 1.0;
-    scroll->delta_x = 0.0;
-    ScrollEventCallback(scroll);
-    delete scroll;
-  }
-  text_vec_.at(page)->set_is_changed(true);
-}
 void Notebook::Controller
 ::OnDirectoryNavigation(const Gtk::TreeModel::Path& path,
                         Gtk::TreeViewColumn* column) {
@@ -529,10 +537,6 @@ Gtk::Notebook& Notebook::Controller::Notebook() {
 
 void Notebook::Controller::BufferChangeHandler(Glib::RefPtr<Gtk::TextBuffer>
                                                buffer) {
-  buffer->signal_changed().connect(
-                                   [this]() {
-                                     OnBufferChange();
-                                   });
   buffer->signal_end_user_action().connect(
                                    [this]() {                                     
                                      //UpdateHistory();
@@ -540,13 +544,11 @@ void Notebook::Controller::BufferChangeHandler(Glib::RefPtr<Gtk::TextBuffer>
 }
 
 void Notebook::Controller::TextViewHandlers(Gtk::TextView& textview) {
-  textview.get_buffer()->signal_changed().connect(
-                                                  [this]() {
-                                                    OnBufferChange();
-                                                  });
-
   textview.signal_button_release_event().
     connect(sigc::mem_fun(*this, &Notebook::Controller::OnMouseRelease), false);
+
+  textview.signal_key_press_event().
+    connect(sigc::mem_fun(*this, &Notebook::Controller::OnKeyPress), false);
 
   textview.signal_key_release_event().
     connect(sigc::mem_fun(*this, &Notebook::Controller::OnKeyRelease), false);

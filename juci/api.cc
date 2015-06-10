@@ -12,7 +12,9 @@ PluginApi::PluginApi(Menu::Controller& menu_ctl_,
   menu_ = &menu_ctl_;
   notebook_ = &notebook_ctl_;
   DEBUG("Initiating plugins(from plugins.py)..");
-  InitPlugins();
+#ifndef __APPLE__
+  InitPlugins(); //TODO: fix this
+#endif
   DEBUG("Plugins initiated..");
 }
 
