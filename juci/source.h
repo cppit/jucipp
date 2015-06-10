@@ -152,7 +152,7 @@ namespace Source {
                                     int column,
                                     std::vector<AutoCompleteData>
                                     *suggestions);
-    Glib::RefPtr<Gtk::TextBuffer> buffer();
+    Glib::RefPtr<Gsv::Buffer> buffer();
     bool is_saved() { return is_saved_; }
     bool is_changed() { return is_changed_; }
     std::string path() { return model().file_path(); }

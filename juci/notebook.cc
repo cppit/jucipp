@@ -120,8 +120,31 @@ void Notebook::Controller::CreateKeybindings(Keybindings::Controller
         Gtk::AccelKey(keybindings.config_
                       .key_map()["edit_undo"]),
         [this]() {
-          //OnUndo();
-        });  
+	  INFO("On undo");
+          Glib::RefPtr<Gsv::UndoManager> undo_manager =
+	    CurrentTextView().get_source_buffer()->get_undo_manager();
+          if (Pages() != 0 && undo_manager->can_undo()) {
+            undo_manager->undo();
+          }
+          INFO("Done undo");
+        }
+	);
+
+  keybindings.action_group_menu()->
+    add(Gtk::Action::create("EditRedo",
+                            "Redo"),
+        Gtk::AccelKey(keybindings.config_
+                      .key_map()["edit_redo"]),
+        [this]() {
+          INFO("On Redo");
+          Glib::RefPtr<Gsv::UndoManager> undo_manager =
+          CurrentTextView().get_source_buffer()->get_undo_manager();
+          if (Pages() != 0 && undo_manager->can_redo()) {
+            undo_manager->redo();
+          }
+          INFO("Done Redo");
+        });
+
   entry_.view_.entry().signal_activate().
     connect(
             [this]() {
@@ -515,7 +538,8 @@ void Notebook::Controller
   }
 }
 
-Gtk::TextView&  Notebook::Controller::CurrentTextView() {
+Source::View& Notebook::Controller::CurrentTextView() {
+  INFO("Getting sourceview");
   return text_vec_.at(CurrentPage())->view();
 }
 

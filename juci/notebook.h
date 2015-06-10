@@ -36,7 +36,7 @@ namespace Notebook {
                Directories::Config& dir_cfg);
     ~Controller();
     Glib::RefPtr<Gtk::TextBuffer> Buffer(Source::Controller *source);
-    Gtk::TextView& CurrentTextView();
+    Source::View& CurrentTextView();
     int CurrentPage();
     Gtk::Box& entry_view();
     Gtk::Notebook& Notebook();

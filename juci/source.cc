@@ -28,6 +28,7 @@ Range(const Source::Range &org) :
 //// View ////
 //////////////
 Source::View::View() {
+  Gsv::init();
   override_font(Pango::FontDescription("Monospace"));
   set_show_line_numbers(true);
   set_highlight_current_line(true);
@@ -360,36 +361,36 @@ void Source::Controller::OnOpenFile(const string &filepath) {
     //OnUpdateSyntax must happen in main thread, so the parse-thread
     //sends a signal to the main thread that it is to call the following function:
     parsing_done.connect([this](){
-      INFO("Updating syntax");
-      view().
-      OnUpdateSyntax(model().ExtractTokens(0, buffer()->get_text().size()),
-                     model().config());
-      INFO("Syntax updated");
-    });
+	INFO("Updating syntax");
+	view().
+	  OnUpdateSyntax(model().ExtractTokens(0, buffer()->get_text().size()),
+			 model().config());
+	INFO("Syntax updated");
+      });
     
     buffer()->signal_end_user_action().connect([this]() {
-      std::thread parse([this]() {
-        if (parsing.try_lock()) {
-          INFO("Starting parsing");
-          while (true) {
-            const std::string raw = buffer()->get_text().raw();
-            std::map<std::string, std::string> buffers;
-            notebook_->MapBuffers(&buffers);
-            buffers[model().file_path()] = raw;
-            if (model().ReParse(buffers) == 0 &&
-                raw == buffer()->get_text().raw()) {
-              break;
-            }
-          }
-          parsing.unlock();
-          parsing_done();
-          INFO("Parsing completed");
-        }
+	std::thread parse([this]() {
+	    if (parsing.try_lock()) {
+	      INFO("Starting parsing");
+	      while (true) {
+		const std::string raw = buffer()->get_text().raw();
+		std::map<std::string, std::string> buffers;
+		notebook_->MapBuffers(&buffers);
+		buffers[model().file_path()] = raw;
+		if (model().ReParse(buffers) == 0 &&
+		    raw == buffer()->get_text().raw()) {
+		  break;
+		}
+	      }
+	      parsing.unlock();
+	      parsing_done();
+	      INFO("Parsing completed");
+	    }
+	  });
+	parse.detach();
       });
-      parse.detach();
-    });
   }
 }
-Glib::RefPtr<Gtk::TextBuffer> Source::Controller::buffer() {
-  return view().get_buffer();
+Glib::RefPtr<Gsv::Buffer> Source::Controller::buffer() {
+  return view().get_source_buffer();
 }

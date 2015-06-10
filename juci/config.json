@@ -47,6 +47,7 @@
         "edit_cut": "<control>x",
         "edit_paste": "<control>v",
         "edit_undo": "<control>z",
+	"edit_redo": "<control>y",
         "edit_find": "<control>f",
 	"compile_and_run": "<control><alt>r",
 	"compile": "<control>r"
