@@ -102,8 +102,8 @@ namespace Notebook {
     bool is_new_file_;
     Entry::Controller entry_;
 
-    std::vector<Source::Controller*> text_vec_, linenumbers_vec_;
-    std::vector<Gtk::ScrolledWindow*> scrolledtext_vec_, scrolledline_vec_;
+    std::vector<Source::Controller*> text_vec_;
+    std::vector<Gtk::ScrolledWindow*> scrolledtext_vec_;
     std::vector<Gtk::HBox*> editor_vec_;
     std::list<Gtk::TargetEntry> listTargets_;
     Gtk::TextIter search_match_end_;
