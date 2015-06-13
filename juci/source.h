@@ -17,8 +17,6 @@ namespace Notebook {
 namespace Source {
   class Config {
   public:
-    Config(const Config &original);
-    Config();
     const std::unordered_map<std::string, std::string>& tagtable() const;
     const std::unordered_map<std::string, std::string>& typetable() const;
      std::vector<std::string>& extensiontable();
@@ -30,6 +28,8 @@ namespace Source {
     void InsertType(const std::string &key, const std::string &value);
     void InsertExtension(const std::string &ext);
         std::vector<std::string> extensiontable_;
+    unsigned tab_size; //TODO: Have to clean away all the simple setter and getter methods at some point. It creates too much unnecessary code
+    std::string tab;
   private:
     std::unordered_map<std::string, std::string> tagtable_;
     std::unordered_map<std::string, std::string> typetable_;
@@ -70,9 +70,8 @@ namespace Source {
                     const Config &config);
     void OnUpdateSyntax(const std::vector<Range> &locations,
                         const Config &config);
-
-  private:
-    std::string GetLine(const Gtk::TextIter &begin);
+    std::string GetLine(size_t line_number);
+    std::string GetLineBeforeInsert();
   };  // class View
 
   class AutoCompleteChunk {
@@ -159,6 +158,7 @@ namespace Source {
     void set_is_saved(bool isSaved) { is_saved_ = isSaved; }
     void set_is_changed(bool isChanged) { is_changed_ = isChanged; }
     void set_file_path(std::string path) { model().set_file_path(path); }
+    bool OnKeyPress(GdkEventKey* key);
 
   private:
     void OnLineEdit();

@@ -71,7 +71,6 @@ namespace Notebook {
     void Search(bool forward);
     Source::Config& source_config() { return source_config_; }
     bool OnMouseRelease(GdkEventButton* button);
-    bool OnKeyPress(GdkEventKey* key);
     bool OnKeyRelease(GdkEventKey* key);
     std::string OnSaveFileAs();
     bool LegalExtension(std::string extension);

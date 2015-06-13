@@ -47,7 +47,7 @@ void Terminal::Controller::Compile(){
   Terminal().get_buffer()->set_text("");
   DEBUG("Terminal: Compile: running cmake command");
   std::vector<std::string> commands = config().compile_commands();
-  for (auto it = 0; it < commands.size(); ++it) {
+  for (size_t it = 0; it < commands.size(); ++it) {
     ExecuteCommand(commands.at(it), "r");
     
   }

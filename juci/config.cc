@@ -15,6 +15,9 @@ MainConfig::MainConfig() :
 void MainConfig::GenerateSource() {
   DEBUG("Fetching source cfg");
   boost::property_tree::ptree source_json = cfg_.get_child("source");
+  source_cfg_.tab_size=source_json.get<unsigned>("tab_size");
+  for(unsigned c=0;c<source_cfg_.tab_size;c++)
+    source_cfg_.tab+=" ";
   boost::property_tree::ptree syntax_json = source_json.get_child("syntax");
   boost::property_tree::ptree colors_json = source_json.get_child("colors");
   boost::property_tree::ptree extensions_json = source_json.get_child("extensions");

@@ -28,7 +28,8 @@
 	    "hpp",
 	    "hxx",
 	    "h++"
-        ]
+        ],
+	"tab_size": 2
     },
     "keybindings": {
         "new_file": "<control>n",

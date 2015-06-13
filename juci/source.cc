@@ -6,6 +6,7 @@
 #include "notebook.h"
 #include "logging.h"
 #include <algorithm>
+#include <regex>
 
 Source::Location::
 Location(int line_number, int column_offset) :
@@ -28,18 +29,26 @@ Range(const Source::Range &org) :
 //// View ////
 //////////////
 Source::View::View() {
-  Gsv::init();
   override_font(Pango::FontDescription("Monospace"));
   set_show_line_numbers(true);
   set_highlight_current_line(true);
   set_smart_home_end(Gsv::SMART_HOME_END_BEFORE);
 }
 
-string Source::View::GetLine(const Gtk::TextIter &begin) {
-  Gtk::TextIter end(begin);
-  while (!end.ends_line())
-    end++;
-  return begin.get_text(end);
+string Source::View::GetLine(size_t line_number) {
+  Gtk::TextIter line_it = get_source_buffer()->get_iter_at_line(line_number);
+  Gtk::TextIter line_end_it = line_it;
+  while(!line_end_it.ends_line())
+    line_end_it++;
+  std::string line(get_source_buffer()->get_text(line_it, line_end_it));
+  return line;
+}
+
+string Source::View::GetLineBeforeInsert() {
+  Gtk::TextIter insert_it = get_source_buffer()->get_insert()->get_iter();
+  Gtk::TextIter line_it = get_source_buffer()->get_iter_at_line(insert_it.get_line());
+  std::string line(get_source_buffer()->get_text(line_it, insert_it));
+  return line;
 }
 
 // Source::View::ApplyTheme()
@@ -52,15 +61,6 @@ void Source::View::ApplyConfig(const Source::Config &config) {
 
 
 
-
-// Source::View::Config::Config(Config &config)
-// copy-constructor
-Source::Config::Config(const Source::Config &original) {
-  SetTagTable(original.tagtable());
-  SetTypeTable(original.typetable());
-}
-
-Source::Config::Config() {}
 
 // Source::View::Config::tagtable()
 // returns a const refrence to the tagtable
@@ -283,6 +283,7 @@ Source::Controller::Controller(const Source::Config &config,
                                Notebook::Controller *notebook) :
   model_(config), notebook_(notebook) {
   INFO("Source Controller with childs constructed");
+  view().signal_key_press_event().connect(sigc::mem_fun(*this, &Source::Controller::OnKeyPress), false);
 }
 
 // Source::Controller::view()
@@ -391,6 +392,105 @@ void Source::Controller::OnOpenFile(const string &filepath) {
       });
   }
 }
+
 Glib::RefPtr<Gsv::Buffer> Source::Controller::buffer() {
   return view().get_source_buffer();
+}
+
+bool Source::Controller::OnKeyPress(GdkEventKey* key) {
+  const std::regex bracket_regex("^( *).*\\{ *$");
+  const std::regex no_bracket_statement_regex("^( *)(if|else if|catch|while) *\\(.*[^;}] *$");
+  const std::regex no_bracket_no_para_statement_regex("^( *)(else|try|do) *$");
+  const std::regex spaces_regex("^( *).*$");
+  
+  //Indent as in previous line, and indent right after if/else/etc
+  if(key->keyval==GDK_KEY_Return && key->state==0) {
+    string line(view().GetLineBeforeInsert());
+    std::smatch sm;
+    if(std::regex_match(line, sm, bracket_regex)) {
+      buffer()->insert_at_cursor("\n"+sm[1].str()+model().config().tab);
+    }
+    else if(std::regex_match(line, sm, no_bracket_statement_regex)) {
+      buffer()->insert_at_cursor("\n"+sm[1].str()+model().config().tab);
+    }
+    else if(std::regex_match(line, sm, no_bracket_no_para_statement_regex)) {
+      buffer()->insert_at_cursor("\n"+sm[1].str()+model().config().tab);
+    }
+    else if(std::regex_match(line, sm, spaces_regex)) {
+      buffer()->insert_at_cursor("\n"+sm[1].str());
+    }
+    view().scroll_to(buffer()->get_insert());
+    return true;
+  }
+  //Indent right when clicking tab, no matter where in the line the cursor is. Also works on selected text.
+  if(key->keyval==GDK_KEY_Tab && key->state==0) {
+    Gtk::TextIter selection_start, selection_end;
+    buffer()->get_selection_bounds(selection_start, selection_end);
+    int line_start=selection_start.get_line();
+    int line_end=selection_end.get_line();
+    for(int line=line_start;line<=line_end;line++) {
+      Gtk::TextIter line_it = buffer()->get_iter_at_line(line);
+      buffer()->insert(line_it, model().config().tab);
+    }
+    return true;
+  }
+  //Indent left when clicking shift-tab, no matter where in the line the cursor is. Also works on selected text.
+  else if((key->keyval==GDK_KEY_ISO_Left_Tab || key->keyval==GDK_KEY_Tab) && key->state==GDK_SHIFT_MASK) {
+    Gtk::TextIter selection_start, selection_end;
+    buffer()->get_selection_bounds(selection_start, selection_end);
+    int line_start=selection_start.get_line();
+    int line_end=selection_end.get_line();
+    
+    for(int line_nr=line_start;line_nr<=line_end;line_nr++) {
+      string line=view().GetLine(line_nr);
+      if(!(line.size()>=model().config().tab_size && line.substr(0, model().config().tab_size)==model().config().tab))
+        return true;
+    }
+    
+    for(int line_nr=line_start;line_nr<=line_end;line_nr++) {
+      Gtk::TextIter line_it = buffer()->get_iter_at_line(line_nr);
+      Gtk::TextIter line_plus_it=line_it;
+      
+      for(unsigned c=0;c<model().config().tab_size;c++)
+        line_plus_it++;
+      buffer()->erase(line_it, line_plus_it);
+    }
+    return true;
+  }
+  //Indent left when writing } on a new line
+  else if(key->keyval==GDK_KEY_braceright) {
+    string line=view().GetLineBeforeInsert();
+    if(line.size()>=model().config().tab_size) {
+      for(auto c: line) {
+        if(c!=' ')
+          return false;
+      }
+      Gtk::TextIter insert_it = buffer()->get_insert()->get_iter();
+      Gtk::TextIter line_it = buffer()->get_iter_at_line(insert_it.get_line());
+      Gtk::TextIter line_plus_it=line_it;
+      for(unsigned c=0;c<model().config().tab_size;c++)
+        line_plus_it++;
+      
+      buffer()->erase(line_it, line_plus_it);
+    }
+    return false;
+  }
+  //"Smart" backspace key
+  else if(key->keyval==GDK_KEY_BackSpace) {
+    Gtk::TextIter insert_it=buffer()->get_insert()->get_iter();
+    int line_nr=insert_it.get_line();
+    if(line_nr>0) {
+      string line=view().GetLine(line_nr);
+      string previous_line=view().GetLine(line_nr-1);
+      smatch sm;
+      if(std::regex_match(previous_line, sm, spaces_regex)) {
+        if(line==sm[1]) {
+          Gtk::TextIter line_it = buffer()->get_iter_at_line(line_nr);
+          buffer()->erase(line_it, insert_it);
+        }
+      }
+    }
+  }
+
+  return false;
 }
