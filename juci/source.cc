@@ -433,7 +433,7 @@ bool Source::Controller::OnKeyPress(GdkEventKey* key) {
     else if(std::regex_match(line, sm, spaces_regex)) {
       std::smatch sm2;
       size_t line_nr=buffer()->get_insert()->get_iter().get_line();
-      if(line_nr>0 && sm[1].str().size()>=2) {
+      if(line_nr>0 && sm[1].str().size()>=model().config().tab_size) {
         string previous_line=view().GetLine(line_nr-1);
         if(std::regex_match(previous_line, sm2, no_bracket_statement_regex))
           buffer()->insert_at_cursor("\n"+sm2[1].str());
