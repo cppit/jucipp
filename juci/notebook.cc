@@ -290,7 +290,6 @@ bool Notebook::Controller::GeneratePopup(int key_id) {
 
 Notebook::Controller::~Controller() {
   INFO("Notebook destructor");
-  for (auto &i : text_vec_)  delete i;
   for (auto &i : editor_vec_) delete i;
   for (auto &i : scrolledtext_vec_) delete i;
 }
@@ -336,7 +335,7 @@ void Notebook::Controller::OnOpenFile(std::string path) {
 
 void Notebook::Controller::OnCreatePage() {
   INFO("Notebook create page");
-  text_vec_.push_back(new Source::Controller(source_config(), this));
+  text_vec_.emplace_back(new Source::Controller(source_config(), this));
   scrolledtext_vec_.push_back(new Gtk::ScrolledWindow());
   editor_vec_.push_back(new Gtk::HBox());
   scrolledtext_vec_.back()->add(text_vec_.back()->view());
@@ -352,7 +351,6 @@ void Notebook::Controller::OnCloseCurrentPage() {
     }
     int page = CurrentPage();
     Notebook().remove_page(page);
-    delete text_vec_.at(page);
     delete scrolledtext_vec_.at(page);
     delete editor_vec_.at(page);
     text_vec_.erase(text_vec_.begin()+ page);
@@ -371,17 +369,17 @@ void Notebook::Controller::OnFileNewHeaderFile() {
 }
 void Notebook::Controller::OnEditCopy() {
   if (Pages() != 0) {
-    Buffer(text_vec_.at(CurrentPage()))->copy_clipboard(refClipboard_);
+    Buffer(*text_vec_.at(CurrentPage()))->copy_clipboard(refClipboard_);
   }
 }
 void Notebook::Controller::OnEditPaste() {
   if (Pages() != 0) {
-    Buffer(text_vec_.at(CurrentPage()))->paste_clipboard(refClipboard_);
+    Buffer(*text_vec_.at(CurrentPage()))->paste_clipboard(refClipboard_);
   }
 }
 void Notebook::Controller::OnEditCut() {
   if (Pages() != 0) {
-    Buffer(text_vec_.at(CurrentPage()))->cut_clipboard(refClipboard_);
+    Buffer(*text_vec_.at(CurrentPage()))->cut_clipboard(refClipboard_);
   }
 }
 
@@ -390,8 +388,8 @@ std::string Notebook::Controller::GetCursorWord() {
   int page = CurrentPage();
   std::string word;
   Gtk::TextIter start, end;
-  start = Buffer(text_vec_.at(page))->get_insert()->get_iter();
-  end = Buffer(text_vec_.at(page))->get_insert()->get_iter();
+  start = Buffer(*text_vec_.at(page))->get_insert()->get_iter();
+  end = Buffer(*text_vec_.at(page))->get_insert()->get_iter();
   if (!end.ends_line()) {
     while (!end.ends_word()) {
       end.forward_char();
@@ -402,14 +400,14 @@ std::string Notebook::Controller::GetCursorWord() {
       start.backward_char();
     }
   }
-  word = Buffer(text_vec_.at(page))->get_text(start, end);
+  word = Buffer(*text_vec_.at(page))->get_text(start, end);
   // TODO(Oyvang) fix selected text
   return word;
 }
 
 void Notebook::Controller::OnEditSearch() {
   search_match_end_ =
-    Buffer(text_vec_.at(CurrentPage()))->get_iter_at_offset(0);
+    Buffer(*text_vec_.at(CurrentPage()))->get_iter_at_offset(0);
   entry_.OnShowSearch(GetCursorWord());
 }
 
@@ -423,7 +421,7 @@ void Notebook::Controller::Search(bool forward) {
   if ( !forward ) {
     if ( search_match_start_ == 0 ||
          search_match_start_.get_line_offset() == 0) {
-      search_match_start_ = Buffer(text_vec_.at(CurrentPage()))->end();
+      search_match_start_ = Buffer(*text_vec_.at(CurrentPage()))->end();
     }
     search_match_start_.
       backward_search(search_word,
@@ -433,7 +431,7 @@ void Notebook::Controller::Search(bool forward) {
                       search_match_end_);
   } else {
     if ( search_match_end_ == 0 ) {
-      search_match_end_ = Buffer(text_vec_.at(CurrentPage()))->begin();
+      search_match_end_ = Buffer(*text_vec_.at(CurrentPage()))->begin();
     }
     search_match_end_.
       forward_search(search_word,
@@ -476,8 +474,8 @@ int Notebook::Controller::CurrentPage() {
 }
 
 Glib::RefPtr<Gtk::TextBuffer>
-Notebook::Controller::Buffer(Source::Controller *source) {
-  return source->view().get_buffer();
+Notebook::Controller::Buffer(Source::Controller &source) {
+  return source.view().get_buffer();
 }
 
 int Notebook::Controller::Pages() {

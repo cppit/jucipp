@@ -129,7 +129,7 @@ namespace Source {
     Config config_;
     std::string file_path_;
     std::string project_path_;
-    clang::TranslationUnit tu_;
+    std::unique_ptr<clang::TranslationUnit> tu_; //use unique_ptr since it is not initialized in constructor
     void HighlightToken(clang::Token *token,
                         std::vector<Range> *source_ranges,
                         int token_kind);

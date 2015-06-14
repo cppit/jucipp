@@ -35,7 +35,7 @@ namespace Notebook {
                Source::Config& config,
                Directories::Config& dir_cfg);
     ~Controller();
-    Glib::RefPtr<Gtk::TextBuffer> Buffer(Source::Controller *source);
+    Glib::RefPtr<Gtk::TextBuffer> Buffer(Source::Controller &source);
     Source::View& CurrentTextView();
     int CurrentPage();
     Gtk::Box& entry_view();
@@ -101,7 +101,7 @@ namespace Notebook {
     bool is_new_file_;
     Entry::Controller entry_;
 
-    std::vector<Source::Controller*> text_vec_;
+    std::vector<std::unique_ptr<Source::Controller> > text_vec_;
     std::vector<Gtk::ScrolledWindow*> scrolledtext_vec_;
     std::vector<Gtk::HBox*> editor_vec_;
     std::list<Gtk::TargetEntry> listTargets_;

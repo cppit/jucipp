@@ -120,10 +120,10 @@ InitSyntaxHighlighting(const std::string &filepath,
                        clang::Index *index) {
   set_project_path(project_path);
   std::vector<string> arguments = get_compilation_commands();
-  tu_ = clang::TranslationUnit(index,
+  tu_ = std::unique_ptr<clang::TranslationUnit>(new clang::TranslationUnit(index,
                                filepath,
                                arguments,
-                               buffers);
+                               buffers));
 }
 
 // Source::View::UpdateLine
@@ -136,7 +136,7 @@ OnLineEdit(const std::vector<Source::Range> &locations,
 // Source::Model::UpdateLine
 int Source::Model::
 ReParse(const std::map<std::string, std::string> &buffer) {
-  return tu_.ReparseTranslationUnit(file_path(), buffer);
+  return tu_->ReparseTranslationUnit(file_path(), buffer);
 }
 
 
@@ -168,7 +168,7 @@ GetAutoCompleteSuggestions(const std::map<std::string, std::string> &buffers,
                            int column,
                            std::vector<Source::AutoCompleteData>
                            *suggestions) {
-  clang::CodeCompleteResults results(&tu_,
+  clang::CodeCompleteResults results(tu_.get(),
                                      file_path(),
                                      buffers,
                                      line_number,
@@ -224,10 +224,10 @@ get_compilation_commands() {
 std::vector<Source::Range> Source::Model::
 ExtractTokens(int start_offset, int end_offset) {
   std::vector<Source::Range> ranges;
-  clang::SourceLocation start(&tu_, file_path(), start_offset);
-  clang::SourceLocation end(&tu_, file_path(), end_offset);
+  clang::SourceLocation start(tu_.get(), file_path(), start_offset);
+  clang::SourceLocation end(tu_.get(), file_path(), end_offset);
   clang::SourceRange range(&start, &end);
-  clang::Tokens tokens(&tu_, &range);
+  clang::Tokens tokens(tu_.get(), &range);
   std::vector<clang::Token> tks = tokens.tokens();
   for (auto &token : tks) {
     switch (token.kind()) {
@@ -244,8 +244,8 @@ ExtractTokens(int start_offset, int end_offset) {
 void Source::Model::
 HighlightCursor(clang::Token *token,
                 std::vector<Source::Range> *source_ranges) {
-  clang::SourceLocation location = token->get_source_location(&tu_);
-  clang::Cursor cursor(&tu_, &location);
+  clang::SourceLocation location = token->get_source_location(tu_.get());
+  clang::Cursor cursor(tu_.get(), &location);
   clang::SourceRange range(&cursor);
   clang::SourceLocation begin(&range, true);
   clang::SourceLocation end(&range, false);
@@ -261,7 +261,7 @@ void Source::Model::
 HighlightToken(clang::Token *token,
                std::vector<Source::Range> *source_ranges,
                int token_kind) {
-  clang::SourceRange range = token->get_source_range(&tu_);
+  clang::SourceRange range = token->get_source_range(tu_.get());
   unsigned begin_line_num, begin_offset, end_line_num, end_offset;
   clang::SourceLocation begin(&range, true);
   clang::SourceLocation end(&range, false);
