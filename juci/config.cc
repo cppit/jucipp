@@ -28,7 +28,7 @@ void MainConfig::GenerateSource() {
       source_cfg.show_line_numbers = i.second.get_value<std::string>() == "1" ? true : false;
       std::cout << source_cfg.show_line_numbers << std::endl;
     }
-    if (i.first.compare("highlight_current_line")) {
+    if (i.first == "highlight_current_line") {
       source_cfg.highlight_current_line = i.second.get_value<std::string>() == "1" ? true : false;
       std::cout << source_cfg.highlight_current_line << std::endl;
     }
