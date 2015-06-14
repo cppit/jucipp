@@ -406,7 +406,7 @@ Glib::RefPtr<Gsv::Buffer> Source::Controller::buffer() {
 
 bool Source::Controller::OnKeyPress(GdkEventKey* key) {
   const std::regex bracket_regex("^( *).*\\{ *$");
-  const std::regex no_bracket_statement_regex("^( *)(if|else if|catch|while) *\\(.*[^;}] *$");
+  const std::regex no_bracket_statement_regex("^( *)(if|for|else if|catch|while) *\\(.*[^;}] *$");
   const std::regex no_bracket_no_para_statement_regex("^( *)(else|try|do) *$");
   const std::regex spaces_regex("^( *).*$");
   
@@ -415,18 +415,37 @@ bool Source::Controller::OnKeyPress(GdkEventKey* key) {
     string line(view().GetLineBeforeInsert());
     std::smatch sm;
     if(std::regex_match(line, sm, bracket_regex)) {
-      buffer()->insert_at_cursor("\n"+sm[1].str()+model().config().tab);
+      buffer()->insert_at_cursor("\n"+sm[1].str()+model().config().tab+"\n"+sm[1].str()+"}");
+      auto insert_it = buffer()->get_insert()->get_iter();
+      for(size_t c=0;c<model().config().tab_size+sm[1].str().size();c++)
+        insert_it--;
+      view().scroll_to(buffer()->get_insert());
+      buffer()->place_cursor(insert_it);
     }
     else if(std::regex_match(line, sm, no_bracket_statement_regex)) {
       buffer()->insert_at_cursor("\n"+sm[1].str()+model().config().tab);
+      view().scroll_to(buffer()->get_insert());
     }
     else if(std::regex_match(line, sm, no_bracket_no_para_statement_regex)) {
       buffer()->insert_at_cursor("\n"+sm[1].str()+model().config().tab);
+      view().scroll_to(buffer()->get_insert());
     }
     else if(std::regex_match(line, sm, spaces_regex)) {
-      buffer()->insert_at_cursor("\n"+sm[1].str());
+      std::smatch sm2;
+      size_t line_nr=buffer()->get_insert()->get_iter().get_line();
+      if(line_nr>0 && sm[1].str().size()>=2) {
+        string previous_line=view().GetLine(line_nr-1);
+        if(std::regex_match(previous_line, sm2, no_bracket_statement_regex))
+          buffer()->insert_at_cursor("\n"+sm2[1].str());
+        else if(std::regex_match(previous_line, sm2, no_bracket_no_para_statement_regex))
+          buffer()->insert_at_cursor("\n"+sm2[1].str());
+        else
+          buffer()->insert_at_cursor("\n"+sm[1].str());
+      }
+      else
+        buffer()->insert_at_cursor("\n"+sm[1].str());
+      view().scroll_to(buffer()->get_insert());
     }
-    view().scroll_to(buffer()->get_insert());
     return true;
   }
   //Indent right when clicking tab, no matter where in the line the cursor is. Also works on selected text.
