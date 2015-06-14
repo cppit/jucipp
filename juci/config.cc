@@ -2,7 +2,7 @@
 #include "logging.h"
 
 MainConfig::MainConfig() :
-  keybindings_cfg_(), source_cfg_() {
+  keybindings_cfg_(), source_cfg() {
   INFO("Reading config file");
   boost::property_tree::json_parser::read_json("config.json", cfg_);
   INFO("Config file read");
@@ -14,21 +14,41 @@ MainConfig::MainConfig() :
 
 void MainConfig::GenerateSource() {
   DEBUG("Fetching source cfg");
-  boost::property_tree::ptree source_json = cfg_.get_child("source");
-  source_cfg_.tab_size=source_json.get<unsigned>("tab_size");
-  for(unsigned c=0;c<source_cfg_.tab_size;c++)
-    source_cfg_.tab+=" ";
-  boost::property_tree::ptree syntax_json = source_json.get_child("syntax");
-  boost::property_tree::ptree colors_json = source_json.get_child("colors");
-  boost::property_tree::ptree extensions_json = source_json.get_child("extensions");
+  // boost::property_tree::ptree
+  auto source_json = cfg_.get_child("source");
+  auto syntax_json = source_json.get_child("syntax");
+  auto colors_json = source_json.get_child("colors");
+  auto extensions_json = source_json.get_child("extensions");
+  auto visual_json = source_json.get_child("visual");
+  for (auto &i : visual_json) {
+    if (i.first == "background") {
+	source_cfg.background = i.second.get_value<std::string>();
+    }
+    if (i.first == "show_line_numbers") {
+      source_cfg.show_line_numbers = i.second.get_value<std::string>() == "1" ? true : false;
+      std::cout << source_cfg.show_line_numbers << std::endl;
+    }
+    if (i.first.compare("highlight_current_line")) {
+      source_cfg.highlight_current_line = i.second.get_value<std::string>() == "1" ? true : false;
+      std::cout << source_cfg.highlight_current_line << std::endl;
+    }
+    if (i.first == "font") {
+      source_cfg.font = i.second.get_value<std::string>();
+      std::cout << source_cfg.font << std::endl;
+    }
+  }
+  source_cfg.tab_size = source_json.get<unsigned>("tab_size");
+  for (unsigned c = 0; c < source_cfg.tab_size; c++) {
+    source_cfg.tab+=" ";
+  }
   for (auto &i : colors_json) {
-    source_cfg_.InsertTag(i.first, i.second.get_value<std::string>());
+    source_cfg.InsertTag(i.first, i.second.get_value<std::string>());
   }
   for (auto &i : syntax_json) {
-    source_cfg_.InsertType(i.first, i.second.get_value<std::string>());
+    source_cfg.InsertType(i.first, i.second.get_value<std::string>());
   }
   for (auto &i : extensions_json) {
-    source_cfg_.InsertExtension(i.second.get_value<std::string>());
+    source_cfg.InsertExtension(i.second.get_value<std::string>());
   }
   DEBUG("Source cfg fetched");
 }

@@ -21,37 +21,42 @@
             "c",
             "cc",
             "cpp",
-	    "cxx",
-	    "c++",
-	    "h",
-	    "hh",
-	    "hpp",
-	    "hxx",
-	    "h++"
+            "cxx",
+            "c++",
+            "h",
+            "hh",
+            "hpp",
+            "hxx",
+            "h++"
         ],
-	"tab_size": 2
+        "visual": {
+            "background": "white",
+            "font": "Monospace",
+            "show_line_numbers": 1,
+            "highlight_current_line": 1
+        },
+        "tab_size": 2,
+        "tab_char": "<space>"
     },
     "keybindings": {
         "new_file": "<control>n",
-	"new_h_file": "<control><alt>h",
-	"new_cc_file": "<control><alt>c",
+        "new_h_file": "<control><alt>h",
+        "new_cc_file": "<control><alt>c",
         "open_folder": "<control><alt>o",
         "open_file": "<control>o",
-	"save": "<control>s",
-	"save_as": "<control><shift>s",
+        "save": "<control>s",
+        "save_as": "<control><shift>s",
         "quit": "<control>q",
-       
         "split_window": "<control><alt>s",
-	"close_tab": "<control>w",
-
+        "close_tab": "<control>w",
         "edit_copy": "<control>c",
         "edit_cut": "<control>x",
         "edit_paste": "<control>v",
         "edit_undo": "<control>z",
-	"edit_redo": "<control>y",
+        "edit_redo": "<control>y",
         "edit_find": "<control>f",
-	"compile_and_run": "<control><alt>r",
-	"compile": "<control>r"
+        "compile_and_run": "<control><alt>r",
+        "compile": "<control>r"
     },
     "directoryfilter": {
         "ignore": [
@@ -76,16 +81,16 @@
             "mkdir ./.build",
             "cmake -DCMAKE_EXPORT_COMPILE_COMMANDS=ON -B./.build -H.",
             "cd ./.build/; make",
-	    "cp ./.build/compile_commands.json compile_commands.json"
+            "cp ./.build/compile_commands.json compile_commands.json"
         ]
     },
     "example": {
-	"key": "value",
-	"key2": [
-	    "val1",
-	    "val2",
-	    3
-	],
-	"key3": "value"
+        "key": "value",
+        "key2": [
+            "val1",
+            "val2",
+            3
+        ],
+        "key3": "value"
     }
 }

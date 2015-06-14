@@ -13,7 +13,6 @@ int main(int argc, char *argv[]) {
                                                                 argc,
                                                                 argv,
                                                                 "no.sout.juci");
-  Gsv::init();
   init_logging();
   Window window;
   return app->run(window);
