@@ -435,15 +435,20 @@ bool Source::Controller::OnKeyPress(GdkEventKey* key) {
       size_t line_nr=buffer()->get_insert()->get_iter().get_line();
       if(line_nr>0 && sm[1].str().size()>=model().config().tab_size) {
         string previous_line=view().GetLine(line_nr-1);
-        if(std::regex_match(previous_line, sm2, no_bracket_statement_regex))
-          buffer()->insert_at_cursor("\n"+sm2[1].str());
-        else if(std::regex_match(previous_line, sm2, no_bracket_no_para_statement_regex))
-          buffer()->insert_at_cursor("\n"+sm2[1].str());
-        else
-          buffer()->insert_at_cursor("\n"+sm[1].str());
+        if(!std::regex_match(previous_line, sm2, bracket_regex)) {
+          if(std::regex_match(previous_line, sm2, no_bracket_statement_regex)) {
+            buffer()->insert_at_cursor("\n"+sm2[1].str());
+            view().scroll_to(buffer()->get_insert());
+            return true;
+          }
+          else if(std::regex_match(previous_line, sm2, no_bracket_no_para_statement_regex)) {
+            buffer()->insert_at_cursor("\n"+sm2[1].str());
+            view().scroll_to(buffer()->get_insert());
+            return true;
+          }
+        }
       }
-      else
-        buffer()->insert_at_cursor("\n"+sm[1].str());
+      buffer()->insert_at_cursor("\n"+sm[1].str());
       view().scroll_to(buffer()->get_insert());
     }
     return true;
