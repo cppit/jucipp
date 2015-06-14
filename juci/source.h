@@ -143,6 +143,7 @@ namespace Source {
     Controller(const Source::Config &config,
                Notebook::Controller *notebook);
     Controller();
+    ~Controller();
     View& view();
     Model& model();
     void OnNewEmptyFile();

@@ -286,6 +286,11 @@ Source::Controller::Controller(const Source::Config &config,
   view().signal_key_press_event().connect(sigc::mem_fun(*this, &Source::Controller::OnKeyPress), false);
 }
 
+Source::Controller::~Controller() {
+  parsing.lock(); //Be sure not to destroy while still parsing with libclang
+  parsing.unlock();
+}
+
 // Source::Controller::view()
 // return shared_ptr to the view
 Source::View& Source::Controller::view() {
@@ -345,7 +350,9 @@ void Source::Controller::OnOpenFile(const string &filepath) {
   std::map<std::string, std::string> buffers;
   notebook_->MapBuffers(&buffers);
   buffers[filepath] = s.get_content();
+  buffer()->get_undo_manager()->begin_not_undoable_action();
   buffer()->set_text(s.get_content());
+  buffer()->get_undo_manager()->end_not_undoable_action();
   int start_offset = buffer()->begin().get_offset();
   int end_offset = buffer()->end().get_offset();
   if (notebook_->LegalExtension(filepath.substr(filepath.find_last_of(".") + 1))) {
