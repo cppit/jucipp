@@ -26,15 +26,12 @@ void MainConfig::GenerateSource() {
     }
     if (i.first == "show_line_numbers") {
       source_cfg.show_line_numbers = i.second.get_value<std::string>() == "1" ? true : false;
-      std::cout << source_cfg.show_line_numbers << std::endl;
     }
     if (i.first == "highlight_current_line") {
       source_cfg.highlight_current_line = i.second.get_value<std::string>() == "1" ? true : false;
-      std::cout << source_cfg.highlight_current_line << std::endl;
     }
     if (i.first == "font") {
       source_cfg.font = i.second.get_value<std::string>();
-      std::cout << source_cfg.font << std::endl;
     }
   }
   source_cfg.tab_size = source_json.get<unsigned>("tab_size");
