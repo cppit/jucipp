@@ -28,13 +28,12 @@ namespace Source {
     void InsertType(const std::string &key, const std::string &value);
     void InsertExtension(const std::string &ext);
         std::vector<std::string> extensiontable_;
-    unsigned tab_size; //TODO: Have to clean away all the simple setter and getter methods at some point. It creates too much unnecessary code
-    std::string tab;
+    // TODO: Have to clean away all the simple setter and getter methods at some point. It creates too much unnecessary code
+    unsigned tab_size;
+    bool show_line_numbers, highlight_current_line;
+    std::string tab, background, font;
   private:
-    std::unordered_map<std::string, std::string> tagtable_;
-    std::unordered_map<std::string, std::string> typetable_;
-
-    std::string background_;
+    std::unordered_map<std::string, std::string> tagtable_, typetable_;
   };  // class Config
 
   class Location {

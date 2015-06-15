@@ -11,8 +11,8 @@
 
 class MainConfig {
 public:
+  Source::Config source_cfg;
   MainConfig();
-  Source::Config& source_cfg() { return source_cfg_; }
   Keybindings::Config& keybindings_cfg() { return keybindings_cfg_; }
   Directories::Config& dir_cfg() { return dir_cfg_; }
   Terminal::Config& terminal_cfg() { return terminal_cfg_; }
@@ -24,7 +24,6 @@ public:
 private:
   boost::property_tree::ptree cfg_;
   boost::property_tree::ptree key_tree_;
-  Source::Config source_cfg_;
   Keybindings::Config keybindings_cfg_;
   Directories::Config dir_cfg_;
   Terminal::Config terminal_cfg_;

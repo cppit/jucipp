@@ -7,7 +7,7 @@ Window::Window() :
   keybindings_(main_config_.keybindings_cfg()),
   terminal_(main_config_.terminal_cfg()),
   notebook_(this,keybindings(),
-            main_config_.source_cfg(),
+            main_config_.source_cfg,
             main_config_.dir_cfg()),
   menu_(keybindings()),
   api_(menu_, notebook_) {

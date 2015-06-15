@@ -29,9 +29,7 @@ Range(const Source::Range &org) :
 //// View ////
 //////////////
 Source::View::View() {
-  override_font(Pango::FontDescription("Monospace"));
-  set_show_line_numbers(true);
-  set_highlight_current_line(true);
+  Gsv::init();
   set_smart_home_end(Gsv::SMART_HOME_END_BEFORE);
 }
 
@@ -54,13 +52,13 @@ string Source::View::GetLineBeforeInsert() {
 // Source::View::ApplyTheme()
 // Applies theme in textview
 void Source::View::ApplyConfig(const Source::Config &config) {
+  override_font(Pango::FontDescription(config.font));
+  set_show_line_numbers(config.show_line_numbers);
+  set_highlight_current_line(config.highlight_current_line);
   for (auto &item : config.tagtable()) {
     get_buffer()->create_tag(item.first)->property_foreground() = item.second;
   }
 }
-
-
-
 
 // Source::View::Config::tagtable()
 // returns a const refrence to the tagtable
@@ -355,8 +353,8 @@ void Source::Controller::OnOpenFile(const string &filepath) {
   buffer()->get_undo_manager()->end_not_undoable_action();
   int start_offset = buffer()->begin().get_offset();
   int end_offset = buffer()->end().get_offset();
+  view().ApplyConfig(model().config());
   if (notebook_->LegalExtension(filepath.substr(filepath.find_last_of(".") + 1))) {
-    view().ApplyConfig(model().config());
     model().InitSyntaxHighlighting(filepath,
                                    extract_file_path(filepath),
                                    buffers,
@@ -409,7 +407,7 @@ bool Source::Controller::OnKeyPress(GdkEventKey* key) {
   const std::regex no_bracket_statement_regex("^( *)(if|for|else if|catch|while) *\\(.*[^;}] *$");
   const std::regex no_bracket_no_para_statement_regex("^( *)(else|try|do) *$");
   const std::regex spaces_regex("^( *).*$");
-  
+
   //Indent as in previous line, and indent right after if/else/etc
   if(key->keyval==GDK_KEY_Return && key->state==0) {
     string line(view().GetLineBeforeInsert());
@@ -522,6 +520,5 @@ bool Source::Controller::OnKeyPress(GdkEventKey* key) {
       }
     }
   }
-
   return false;
 }
