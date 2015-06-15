@@ -1,6 +1,8 @@
 #include <fstream>
 #include "notebook.h"
 #include "logging.h"
+#include <gtksourceview/gtksource.h> // c-library
+
 
 Notebook::Model::Model() {
   cc_extension_ = ".cpp";
@@ -412,8 +414,8 @@ void Notebook::Controller::OnEditSearch() {
 }
 
 void Notebook::Controller::Search(bool forward) {
-    INFO("Notebook search");
-  int page = CurrentPage();
+  INFO("Notebook search");
+  /* int page = CurrentPage();
   std::string search_word;
   search_word = entry_.text();
   Gtk::TextIter test;
@@ -440,6 +442,14 @@ void Notebook::Controller::Search(bool forward) {
                      search_match_start_,
                      search_match_end_);
   }
+*/
+  auto buffer = CurrentTextView().get_source_buffer();
+  auto settings = gtk_source_search_settings_new();
+  gtk_source_search_settings_set_search_text(settings, entry_.text().c_str());
+  auto context = gtk_source_search_context_new(buffer->gobj(), settings);
+  gtk_source_search_context_set_highlight(context, forward);
+  auto itr = buffer->get_insert()->get_iter().gobj();
+  gtk_source_search_context_forward(context, itr, NULL, NULL);
 }
 
 void Notebook::Controller
