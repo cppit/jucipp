@@ -420,8 +420,12 @@ void Notebook::Controller::Search(bool forward) {
   auto buffer = CurrentTextView().get_source_buffer();
   auto settings = gtk_source_search_settings_new();
   gtk_source_search_settings_set_search_text(settings, entry_.text().c_str());
+gtk_source_search_settings_set_wrap_around(settings, TRUE);
   auto context = gtk_source_search_context_new(buffer->gobj(), settings);
   gtk_source_search_context_set_highlight(context, forward);
+  
+  
+
   auto itr = buffer->get_insert()->get_iter().gobj();
   gtk_source_search_context_forward(context,
                                     end ? end.gobj() : itr,
