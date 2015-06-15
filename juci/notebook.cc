@@ -29,6 +29,8 @@ Notebook::Controller::Controller(Gtk::Window* window,
   ispopup = false;
   view().pack1(directories_.widget(), true, true);
   CreateKeybindings(keybindings);
+  end = CurrentTextView().get_source_buffer()->end();
+  start = CurrentTextView().get_source_buffer()->end();
   INFO("Notebook Controller Success");
 }  // Constructor
 
@@ -415,41 +417,17 @@ void Notebook::Controller::OnEditSearch() {
 
 void Notebook::Controller::Search(bool forward) {
   INFO("Notebook search");
-  /* int page = CurrentPage();
-  std::string search_word;
-  search_word = entry_.text();
-  Gtk::TextIter test;
-
-  if ( !forward ) {
-    if ( search_match_start_ == 0 ||
-         search_match_start_.get_line_offset() == 0) {
-      search_match_start_ = Buffer(*text_vec_.at(CurrentPage()))->end();
-    }
-    search_match_start_.
-      backward_search(search_word,
-                      Gtk::TextSearchFlags::TEXT_SEARCH_TEXT_ONLY |
-                      Gtk::TextSearchFlags::TEXT_SEARCH_VISIBLE_ONLY,
-                      search_match_start_,
-                      search_match_end_);
-  } else {
-    if ( search_match_end_ == 0 ) {
-      search_match_end_ = Buffer(*text_vec_.at(CurrentPage()))->begin();
-    }
-    search_match_end_.
-      forward_search(search_word,
-                     Gtk::TextSearchFlags::TEXT_SEARCH_TEXT_ONLY |
-                     Gtk::TextSearchFlags::TEXT_SEARCH_VISIBLE_ONLY,
-                     search_match_start_,
-                     search_match_end_);
-  }
-*/
   auto buffer = CurrentTextView().get_source_buffer();
   auto settings = gtk_source_search_settings_new();
   gtk_source_search_settings_set_search_text(settings, entry_.text().c_str());
   auto context = gtk_source_search_context_new(buffer->gobj(), settings);
   gtk_source_search_context_set_highlight(context, forward);
   auto itr = buffer->get_insert()->get_iter().gobj();
-  gtk_source_search_context_forward(context, itr, NULL, NULL);
+  gtk_source_search_context_forward(context,
+                                    end ? end.gobj() : itr,
+                                    start.gobj(),
+                                    end.gobj());
+  CurrentTextView().scroll_to(end);
 }
 
 void Notebook::Controller

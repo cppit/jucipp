@@ -74,6 +74,7 @@ namespace Notebook {
     bool OnKeyRelease(GdkEventKey* key);
     std::string OnSaveFileAs();
     bool LegalExtension(std::string extension);
+    Gtk::TextIter start, end;
 
   protected:
     void TextViewHandlers(Gtk::TextView& textview);
