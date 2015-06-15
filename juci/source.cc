@@ -49,12 +49,13 @@ string Source::View::GetLineBeforeInsert() {
   return line;
 }
 
-// Source::View::ApplyTheme()
+// Source::View::ApplyConfig
 // Applies theme in textview
 void Source::View::ApplyConfig(const Source::Config &config) {
   override_font(Pango::FontDescription(config.font));
   set_show_line_numbers(config.show_line_numbers);
   set_highlight_current_line(config.highlight_current_line);
+  this->override_background_color(Gdk::RGBA(config.background));
   for (auto &item : config.tagtable()) {
     get_buffer()->create_tag(item.first)->property_foreground() = item.second;
   }
