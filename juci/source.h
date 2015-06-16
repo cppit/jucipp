@@ -64,7 +64,6 @@ namespace Source {
   public:
     View();
     virtual ~View() { }
-    void ApplyConfig(const Config &config);
     void OnLineEdit(const std::vector<Range> &locations,
                     const Config &config);
     void OnUpdateSyntax(const std::vector<Range> &locations,
@@ -91,10 +90,8 @@ namespace Source {
     std::vector<AutoCompleteChunk> chunks_;
   };
 
-  class Model{
+  class Parser{
   public:
-    // constructor for Source::Model
-    explicit Model(const Source::Config &config);
     // inits the syntax highligthing on file open
     void InitSyntaxHighlighting(const std::string &filepath,
                                 const std::string &project_path,
@@ -103,31 +100,18 @@ namespace Source {
                                 int start_offset,
                                 int end_offset,
                                 clang::Index *index);
-    // sets the filepath for this mvc
-    void set_file_path(const std::string &file_path);
-    // sets the project path for this mvc
-    void set_project_path(const std::string &project_path);
-
-    // gets the file_path member
-    const std::string& file_path() const;
-    // gets the project_path member
-    const std::string& project_path() const;
-    // gets the config member
-    const Config& config() const;
     void GetAutoCompleteSuggestions(const std::map<std::string, std::string>
                                      &buffers,
                                      int line_number,
                                      int column,
                                      std::vector<AutoCompleteData>
                                      *suggestions);
-    ~Model() { }
     int ReParse(const std::map<std::string, std::string> &buffers);
     std::vector<Range> ExtractTokens(int, int);
 
+    std::string file_path;
+    std::string project_path;
   private:
-    Config config_;
-    std::string file_path_;
-    std::string project_path_;
     std::unique_ptr<clang::TranslationUnit> tu_; //use unique_ptr since it is not initialized in constructor
     void HighlightToken(clang::Token *token,
                         std::vector<Range> *source_ranges,
@@ -140,11 +124,9 @@ namespace Source {
   class Controller {
   public:
     Controller(const Source::Config &config,
-               Notebook::Controller *notebook);
+               Notebook::Controller &notebook);
     Controller();
     ~Controller();
-    View& view();
-    Model& model();
     void OnNewEmptyFile();
     void OnOpenFile(const std::string &filename);
     void GetAutoCompleteSuggestions(int line_number,
@@ -152,26 +134,22 @@ namespace Source {
                                     std::vector<AutoCompleteData>
                                     *suggestions);
     Glib::RefPtr<Gsv::Buffer> buffer();
-    bool is_saved() { return is_saved_; }
-    bool is_changed() { return is_changed_; }
-    std::string path() { return model().file_path(); }
-    void set_is_saved(bool isSaved) { is_saved_ = isSaved; }
-    void set_is_changed(bool isChanged) { is_changed_ = isChanged; }
-    void set_file_path(std::string path) { model().set_file_path(path); }
     bool OnKeyPress(GdkEventKey* key);
-
+    
+    bool is_saved = false; //TODO: Is never set to false in Notebook::Controller
+    bool is_changed = false; //TODO: Is never set to true
+    
+    Parser parser;
+    View view;
+    
   private:
     void OnLineEdit();
     void OnSaveFile();
     std::mutex parsing;
     Glib::Dispatcher parsing_done;
-    bool is_saved_ = false;
-    bool is_changed_ = false;
-
-  protected:
-    View view_;
-    Model model_;
-    Notebook::Controller *notebook_;
+    
+    const Config& config;
+    Notebook::Controller& notebook; //TODO: should maybe be const, but that involves a small change in libclangmm
   };  // class Controller
 }  // namespace Source
 #endif  // JUCI_SOURCE_H_
