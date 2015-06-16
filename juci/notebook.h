@@ -62,7 +62,7 @@ namespace Notebook {
     void OnOpenFile(std::string filename);
     void OnCreatePage();
     bool ScrollEventCallback(GdkEventScroll* scroll_event);
-    void MapBuffers(std::map<std::string, std::string> *buffers);
+    void MapBuffers(std::map<std::string, std::string> *buffers) const;
     clang::Index* index() { return &index_; }
     int Pages();
     Directories::Controller& directories() { return directories_; }
