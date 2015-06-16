@@ -240,7 +240,7 @@ HighlightToken(clang::Token *token,
 // Constructor for Controller
 Source::Controller::Controller(const Source::Config &config,
                                Notebook::Controller &notebook) :
-  config(config), notebook(notebook), is_saved(false), is_changed(false) {
+  config(config), notebook(notebook) {
   INFO("Source Controller with childs constructed");
   view.signal_key_press_event().connect(sigc::mem_fun(*this, &Source::Controller::OnKeyPress), false);
   view.set_smart_home_end(Gsv::SMART_HOME_END_BEFORE);
