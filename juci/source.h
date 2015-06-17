@@ -146,7 +146,12 @@ namespace Source {
     void OnLineEdit();
     void OnSaveFile();
     std::mutex parsing;
-    Glib::Dispatcher parsing_done;
+    Glib::Dispatcher parse_done;
+    Glib::Dispatcher parse_start;
+    std::map<std::string, std::string> parse_thread_buffers;
+    std::mutex parse_thread_buffers_mutex;
+    std::atomic<bool> parse_thread_go;
+    std::atomic<bool> parse_thread_mapped;
     
     const Config& config;
     Notebook::Controller& notebook; //TODO: should maybe be const, but that involves a small change in libclangmm

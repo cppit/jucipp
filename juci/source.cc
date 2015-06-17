@@ -240,7 +240,7 @@ HighlightToken(clang::Token *token,
 // Constructor for Controller
 Source::Controller::Controller(const Source::Config &config,
                                Notebook::Controller &notebook) :
-  config(config), notebook(notebook) {
+  config(config), notebook(notebook), parse_thread_go(false), parse_thread_mapped(false) {
   INFO("Source Controller with childs constructed");
   view.signal_key_press_event().connect(sigc::mem_fun(*this, &Source::Controller::OnKeyPress), false);
   view.set_smart_home_end(Gsv::SMART_HOME_END_BEFORE);
@@ -316,36 +316,51 @@ void Source::Controller::OnOpenFile(const string &filepath) {
                                    notebook.index());
     view.OnUpdateSyntax(parser.ExtractTokens(start_offset, end_offset), config);
 
-    //OnUpdateSyntax must happen in main thread, so the parse-thread
-    //sends a signal to the main thread that it is to call the following function:
-    parsing_done.connect([this](){
-      INFO("Updating syntax");
-      view.
-        OnUpdateSyntax(parser.ExtractTokens(0, buffer()->get_text().size()), config);
-      INFO("Syntax updated");
+    //GTK-calls must happen in main thread, so the parse_thread
+    //sends signals to the main thread that it is to call the following functions:
+    parse_start.connect([this]{
+      if(parse_thread_buffers_mutex.try_lock()) {
+        notebook.MapBuffers(&this->parse_thread_buffers);
+        parse_thread_mapped=true;
+        parse_thread_buffers_mutex.unlock();
+      }
+      parse_thread_go=true;
+    });
+
+    parse_done.connect([this](){
+      if(parse_thread_mapped) {
+        INFO("Updating syntax");
+        view.
+          OnUpdateSyntax(parser.ExtractTokens(0, buffer()->get_text().size()), config);
+        INFO("Syntax updated");
+      }
+      else {
+        parse_thread_go=true;
+      }
     });
     
-    buffer()->signal_end_user_action().connect([this]() {
-	std::thread parse([this]() {
-	    if (parsing.try_lock()) {
-	      INFO("Starting parsing");
-	      while (true) {
-		const std::string raw = buffer()->get_text().raw();
-		std::map<std::string, std::string> buffers;
-		notebook.MapBuffers(&buffers);
-		buffers[parser.file_path] = raw;
-		if (parser.ReParse(buffers) == 0 &&
-		    raw == buffer()->get_text().raw()) {
-		  break;
-		}
-	      }
-	      parsing.unlock();
-	      parsing_done();
-	      INFO("Parsing completed");
-	    }
-	  });
-	parse.detach();
-      });
+    std::thread parse_thread([this]() {
+      while(true) {
+        while(!parse_thread_go) std::this_thread::yield();
+        if(!parse_thread_mapped) {
+          parse_thread_go=false;
+          parse_start();
+        }
+        else if (parse_thread_mapped && parsing.try_lock() && parse_thread_buffers_mutex.try_lock()) {
+          parser.ReParse(this->parse_thread_buffers);
+          parse_thread_go=false;
+          parsing.unlock();
+          parse_thread_buffers_mutex.unlock();
+          parse_done();
+        }
+      }
+    });
+    parse_thread.detach();
+    
+    buffer()->signal_changed().connect([this]() {
+      parse_thread_mapped=false;
+      parse_thread_go=true;
+    });
   }
 }
 
