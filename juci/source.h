@@ -8,6 +8,7 @@
 #include <thread>
 #include <mutex>
 #include <string>
+#include <atomic>
 #include "gtksourceviewmm.h"
 
 namespace Notebook {
