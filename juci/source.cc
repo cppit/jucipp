@@ -3,7 +3,6 @@
 #include <boost/property_tree/json_parser.hpp>
 #include <fstream>
 #include <boost/timer/timer.hpp>
-#include "notebook.h"
 #include "logging.h"
 #include <algorithm>
 #include <regex>
@@ -89,9 +88,21 @@ SetTagTable(const std::unordered_map<string, string> &tagtable) {
   tagtable_ = tagtable;
 }
 
+bool Source::Config::legal_extension(std::string e) const {
+  std::transform(e.begin(), e.end(),e.begin(), ::tolower);
+  if (find(extensiontable_.begin(), extensiontable_.end(), e) != extensiontable_.end()) {
+    DEBUG("Legal extension");
+    return true;
+  }
+  DEBUG("Ilegal extension");
+  return false;
+}
+
 ///////////////
-//// Model ////
+//// Parser ///
 ///////////////
+clang::Index Source::Parser::clang_index(0, 1);
+
 void Source::Parser::
 InitSyntaxHighlighting(const std::string &filepath,
                        const std::string &project_path,
@@ -106,6 +117,16 @@ InitSyntaxHighlighting(const std::string &filepath,
                                filepath,
                                arguments,
                                buffers));
+}
+
+std::map<std::string, std::string> Source::Parser::
+get_buffer_map() const {
+  std::map<std::string, std::string> buffer_map;
+  for (auto &controller : controllers) {
+    buffer_map.operator[](controller->parser.file_path) =
+    controller->buffer()->get_text().raw();
+  }
+  return buffer_map;
 }
 
 // Source::View::UpdateLine
@@ -133,9 +154,7 @@ GetAutoCompleteSuggestions(int line_number,
                            *suggestions) {
   INFO("Getting auto complete suggestions");
   parsing.lock();
-  std::map<std::string, std::string> buffers;
-  notebook.MapBuffers(&buffers);
-  parser.GetAutoCompleteSuggestions(buffers,
+  parser.GetAutoCompleteSuggestions(parser.get_buffer_map(),
                                      line_number,
                                      column,
                                      suggestions);
@@ -239,8 +258,8 @@ HighlightToken(clang::Token *token,
 // Source::Controller::Controller()
 // Constructor for Controller
 Source::Controller::Controller(const Source::Config &config,
-                               Notebook::Controller &notebook) :
-  config(config), notebook(notebook), parse_thread_go(false), parse_thread_mapped(false) {
+                               std::vector<std::unique_ptr<Source::Controller> > &controllers) :
+  config(config), parser(controllers), parse_thread_go(false), parse_thread_mapped(false) {
   INFO("Source Controller with childs constructed");
   view.signal_key_press_event().connect(sigc::mem_fun(*this, &Source::Controller::OnKeyPress), false);
   view.set_smart_home_end(Gsv::SMART_HOME_END_BEFORE);
@@ -299,30 +318,29 @@ void Source::View::OnUpdateSyntax(const std::vector<Source::Range> &ranges,
 void Source::Controller::OnOpenFile(const string &filepath) {
   parser.file_path=filepath;
   sourcefile s(filepath);
-  std::map<std::string, std::string> buffers;
-  notebook.MapBuffers(&buffers);
-  buffers[filepath] = s.get_content();
+  auto buffer_map=parser.get_buffer_map();
+  buffer_map[filepath] = s.get_content();
   buffer()->get_undo_manager()->begin_not_undoable_action();
   buffer()->set_text(s.get_content());
   buffer()->get_undo_manager()->end_not_undoable_action();
   int start_offset = buffer()->begin().get_offset();
   int end_offset = buffer()->end().get_offset();
-  if (notebook.LegalExtension(filepath.substr(filepath.find_last_of(".") + 1))) {
+  if (config.legal_extension(filepath.substr(filepath.find_last_of(".") + 1))) {
     parser.InitSyntaxHighlighting(filepath,
                                    parser.file_path.substr(0, parser.file_path.find_last_of('/')),
-                                   buffers,
+                                   buffer_map,
                                    start_offset,
                                    end_offset,
-                                   notebook.index());
+                                   &Parser::clang_index);
     view.OnUpdateSyntax(parser.ExtractTokens(start_offset, end_offset), config);
 
     //GTK-calls must happen in main thread, so the parse_thread
     //sends signals to the main thread that it is to call the following functions:
     parse_start.connect([this]{
-      if(parse_thread_buffers_mutex.try_lock()) {
-        notebook.MapBuffers(&this->parse_thread_buffers);
+      if(parse_thread_buffer_map_mutex.try_lock()) {
+        this->parse_thread_buffer_map=parser.get_buffer_map();
         parse_thread_mapped=true;
-        parse_thread_buffers_mutex.unlock();
+        parse_thread_buffer_map_mutex.unlock();
       }
       parse_thread_go=true;
     });
@@ -346,11 +364,11 @@ void Source::Controller::OnOpenFile(const string &filepath) {
           parse_thread_go=false;
           parse_start();
         }
-        else if (parse_thread_mapped && parsing.try_lock() && parse_thread_buffers_mutex.try_lock()) {
-          parser.ReParse(this->parse_thread_buffers);
+        else if (parse_thread_mapped && parsing.try_lock() && parse_thread_buffer_map_mutex.try_lock()) {
+          parser.ReParse(this->parse_thread_buffer_map);
           parse_thread_go=false;
           parsing.unlock();
-          parse_thread_buffers_mutex.unlock();
+          parse_thread_buffer_map_mutex.unlock();
           parse_done();
         }
       }

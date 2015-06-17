@@ -18,8 +18,7 @@ Notebook::Controller::Controller(Gtk::Window* window,
                                  Source::Config& source_cfg,
                                  Directories::Config& dir_cfg) :
   directories_(dir_cfg),
-  source_config_(source_cfg),
-  index_(0, 1) {
+  source_config_(source_cfg) {
   INFO("Create notebook");
   window_ = window;
   OnNewPage("untitled");
@@ -193,7 +192,7 @@ bool Notebook::Controller::OnKeyRelease(GdkEventKey* key) {
 bool Notebook::Controller::GeneratePopup(int key_id) {
   INFO("Notebook genereate popup, getting iters");
   std::string path = text_vec_.at(CurrentPage())->parser.file_path;
-  if (!LegalExtension(path.substr(path.find_last_of(".") + 1))) return false;
+  if (!source_config().legal_extension(path.substr(path.find_last_of(".") + 1))) return false;
   //  Get function to fill popup with suggests item vector under is for testing
   Gtk::TextIter beg = CurrentTextView().get_buffer()->get_insert()->get_iter();
   Gtk::TextIter end = CurrentTextView().get_buffer()->get_insert()->get_iter();
@@ -312,14 +311,6 @@ void Notebook::Controller::OnNewPage(std::string name) {
 
 }
 
-void Notebook::Controller::
-MapBuffers(std::map<std::string, std::string> *buffers) const {
-  for (auto &buffer : text_vec_) {
-    buffers->operator[](buffer->parser.file_path) =
-      buffer->buffer()->get_text().raw();
-  }
-}
-
 void Notebook::Controller::OnOpenFile(std::string path) {
   INFO("Notebook open file");
   OnCreatePage();
@@ -334,7 +325,7 @@ void Notebook::Controller::OnOpenFile(std::string path) {
 
 void Notebook::Controller::OnCreatePage() {
   INFO("Notebook create page");
-  text_vec_.emplace_back(new Source::Controller(source_config(), *this));
+  text_vec_.emplace_back(new Source::Controller(source_config(), text_vec_));
   scrolledtext_vec_.push_back(new Gtk::ScrolledWindow());
   editor_vec_.push_back(new Gtk::HBox());
   scrolledtext_vec_.back()->add(text_vec_.back()->view);
@@ -672,17 +663,5 @@ void Notebook::Controller::AskToSaveDialog() {
       break;
     }
   }
-}
-
-bool Notebook::Controller::LegalExtension(std::string e) {
-  std::transform(e.begin(), e.end(),e.begin(), ::tolower);
-  std::vector<std::string> extensions =
-    source_config().extensiontable();
-  if (find(extensions.begin(), extensions.end(), e) != extensions.end()) {
-    DEBUG("Legal extension");
-    return true;
-  }
-  DEBUG("Ilegal extension");
-  return false;
 }
 

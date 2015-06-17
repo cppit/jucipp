@@ -29,6 +29,7 @@ namespace Source {
     void InsertType(const std::string &key, const std::string &value);
     void InsertExtension(const std::string &ext);
         std::vector<std::string> extensiontable_;
+    bool legal_extension(std::string e) const ;
     // TODO: Have to clean away all the simple setter and getter methods at some point. It creates too much unnecessary code
     unsigned tab_size;
     bool show_line_numbers, highlight_current_line;
@@ -90,9 +91,13 @@ namespace Source {
       chunks_(chunks) { }
     std::vector<AutoCompleteChunk> chunks_;
   };
+  
+  class Controller;
 
   class Parser{
   public:
+    Parser(std::vector<std::unique_ptr<Source::Controller> > &controllers):
+      controllers(controllers) {}
     // inits the syntax highligthing on file open
     void InitSyntaxHighlighting(const std::string &filepath,
                                 const std::string &project_path,
@@ -112,6 +117,8 @@ namespace Source {
 
     std::string file_path;
     std::string project_path;
+    static clang::Index clang_index;
+    std::map<std::string, std::string> get_buffer_map() const;
   private:
     std::unique_ptr<clang::TranslationUnit> tu_; //use unique_ptr since it is not initialized in constructor
     void HighlightToken(clang::Token *token,
@@ -120,13 +127,14 @@ namespace Source {
     void HighlightCursor(clang::Token *token,
                         std::vector<Range> *source_ranges);
     std::vector<std::string> get_compilation_commands();
+    //controllers is needed here, no way around that I think
+    std::vector<std::unique_ptr<Source::Controller> > &controllers;
   };
 
   class Controller {
   public:
     Controller(const Source::Config &config,
-               Notebook::Controller &notebook);
-    Controller();
+               std::vector<std::unique_ptr<Source::Controller> > &controllers);
     ~Controller();
     void OnNewEmptyFile();
     void OnOpenFile(const std::string &filename);
@@ -136,6 +144,7 @@ namespace Source {
                                     *suggestions);
     Glib::RefPtr<Gsv::Buffer> buffer();
     bool OnKeyPress(GdkEventKey* key);
+    bool LegalExtension(std::string e);
     
     bool is_saved = false; //TODO: Is never set to false in Notebook::Controller
     bool is_changed = false; //TODO: Is never set to true
@@ -149,13 +158,12 @@ namespace Source {
     std::mutex parsing;
     Glib::Dispatcher parse_done;
     Glib::Dispatcher parse_start;
-    std::map<std::string, std::string> parse_thread_buffers;
-    std::mutex parse_thread_buffers_mutex;
+    std::map<std::string, std::string> parse_thread_buffer_map;
+    std::mutex parse_thread_buffer_map_mutex;
     std::atomic<bool> parse_thread_go;
     std::atomic<bool> parse_thread_mapped;
     
     const Config& config;
-    Notebook::Controller& notebook; //TODO: should maybe be const, but that involves a small change in libclangmm
   };  // class Controller
 }  // namespace Source
 #endif  // JUCI_SOURCE_H_
