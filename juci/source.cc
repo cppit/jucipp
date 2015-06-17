@@ -258,7 +258,7 @@ HighlightToken(clang::Token *token,
 // Source::Controller::Controller()
 // Constructor for Controller
 Source::Controller::Controller(const Source::Config &config,
-                               std::vector<std::unique_ptr<Source::Controller> > &controllers) :
+                               const std::vector<std::unique_ptr<Source::Controller> > &controllers) :
   config(config), parser(controllers), parse_thread_go(false), parse_thread_mapped(false) {
   INFO("Source Controller with childs constructed");
   view.signal_key_press_event().connect(sigc::mem_fun(*this, &Source::Controller::OnKeyPress), false);

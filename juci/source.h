@@ -96,7 +96,7 @@ namespace Source {
 
   class Parser{
   public:
-    Parser(std::vector<std::unique_ptr<Source::Controller> > &controllers):
+    Parser(const std::vector<std::unique_ptr<Source::Controller> > &controllers):
       controllers(controllers) {}
     // inits the syntax highligthing on file open
     void InitSyntaxHighlighting(const std::string &filepath,
@@ -128,13 +128,13 @@ namespace Source {
                         std::vector<Range> *source_ranges);
     std::vector<std::string> get_compilation_commands();
     //controllers is needed here, no way around that I think
-    std::vector<std::unique_ptr<Source::Controller> > &controllers;
+    const std::vector<std::unique_ptr<Source::Controller> > &controllers;
   };
 
   class Controller {
   public:
     Controller(const Source::Config &config,
-               std::vector<std::unique_ptr<Source::Controller> > &controllers);
+               const std::vector<std::unique_ptr<Source::Controller> > &controllers);
     ~Controller();
     void OnNewEmptyFile();
     void OnOpenFile(const std::string &filename);
