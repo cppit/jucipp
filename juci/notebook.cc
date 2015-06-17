@@ -416,20 +416,25 @@ void Notebook::Controller::OnEditSearch() {
 
 void Notebook::Controller::Search(bool forward) {
   INFO("Notebook search");
+
+  // fetch buffer and greate settings
   auto buffer = CurrentTextView().get_source_buffer();
   auto settings = gtk_source_search_settings_new();
+
+  // get search text from entry
   gtk_source_search_settings_set_search_text(settings, entry_.text().c_str());
-gtk_source_search_settings_set_wrap_around(settings, TRUE);
+
+  // make sure the search continues
+  gtk_source_search_settings_set_wrap_around(settings, true);
   auto context = gtk_source_search_context_new(buffer->gobj(), settings);
   gtk_source_search_context_set_highlight(context, forward);
-  
-  
-
   auto itr = buffer->get_insert()->get_iter().gobj();
   gtk_source_search_context_forward(context,
                                     end ? end.gobj() : itr,
                                     start.gobj(),
                                     end.gobj());
+
+  buffer->apply_tag_by_name("search", start, end);
   CurrentTextView().scroll_to(end);
 }
 
