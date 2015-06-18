@@ -229,11 +229,9 @@ bool Notebook::Controller::GeneratePopup(int key_id) {
     return false;
   }
   INFO("Notebook genereate popup, getting autocompletions");
-  std::vector<Source::AutoCompleteData> acdata;
-  text_vec_.at(CurrentPage())->
-    GetAutoCompleteSuggestions(beg.get_line()+1,
-                               beg.get_line_offset()+2,
-                               &acdata);
+  std::vector<Source::AutoCompleteData> acdata=text_vec_.at(CurrentPage())->parser.
+    get_autocomplete_suggestions(beg.get_line()+1,
+                               beg.get_line_offset()+2);
   std::map<std::string, std::string> items;
   for (auto &data : acdata) {
     std::stringstream ss;

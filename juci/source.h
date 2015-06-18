@@ -98,6 +98,7 @@ namespace Source {
   public:
     Parser(const std::vector<std::unique_ptr<Source::Controller> > &controllers):
       controllers(controllers) {}
+    ~Parser();
     // inits the syntax highligthing on file open
     void InitSyntaxHighlighting(const std::string &filepath,
                                 const std::string &project_path,
@@ -106,12 +107,7 @@ namespace Source {
                                 int start_offset,
                                 int end_offset,
                                 clang::Index *index);
-    void GetAutoCompleteSuggestions(const std::map<std::string, std::string>
-                                     &buffers,
-                                     int line_number,
-                                     int column,
-                                     std::vector<AutoCompleteData>
-                                     *suggestions);
+    std::vector<Source::AutoCompleteData> get_autocomplete_suggestions(int line_number, int column);
     int ReParse(const std::map<std::string, std::string> &buffers);
     std::vector<Range> ExtractTokens(int, int);
 
@@ -119,6 +115,7 @@ namespace Source {
     std::string project_path;
     static clang::Index clang_index;
     std::map<std::string, std::string> get_buffer_map() const;
+    std::mutex parsing_mutex;
   private:
     std::unique_ptr<clang::TranslationUnit> tu_; //use unique_ptr since it is not initialized in constructor
     void HighlightToken(clang::Token *token,
@@ -138,13 +135,8 @@ namespace Source {
     ~Controller();
     void OnNewEmptyFile();
     void OnOpenFile(const std::string &filename);
-    void GetAutoCompleteSuggestions(int line_number,
-                                    int column,
-                                    std::vector<AutoCompleteData>
-                                    *suggestions);
     Glib::RefPtr<Gsv::Buffer> buffer();
     bool OnKeyPress(GdkEventKey* key);
-    bool LegalExtension(std::string e);
     
     bool is_saved = false; //TODO: Is never set to false in Notebook::Controller
     bool is_changed = false; //TODO: Is never set to true
@@ -155,7 +147,6 @@ namespace Source {
   private:
     void OnLineEdit();
     void OnSaveFile();
-    std::mutex parsing;
     Glib::Dispatcher parse_done;
     Glib::Dispatcher parse_start;
     std::thread parse_thread;

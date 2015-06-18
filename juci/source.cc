@@ -88,7 +88,7 @@ SetTagTable(const std::unordered_map<string, string> &tagtable) {
   tagtable_ = tagtable;
 }
 
-bool Source::Config::legal_extension(std::string e) const {
+bool Source::Config::legal_extension(std::string e) const {/Users/eidheim/test/jucipp/juci
   std::transform(e.begin(), e.end(),e.begin(), ::tolower);
   if (find(extensiontable_.begin(), extensiontable_.end(), e) != extensiontable_.end()) {
     DEBUG("Legal extension");
@@ -102,6 +102,11 @@ bool Source::Config::legal_extension(std::string e) const {
 //// Parser ///
 ///////////////
 clang::Index Source::Parser::clang_index(0, 1);
+
+Source::Parser::~Parser() {
+  parsing_mutex.lock(); //Be sure not to destroy while still parsing with libclang
+  parsing_mutex.unlock();
+}
 
 void Source::Parser::
 InitSyntaxHighlighting(const std::string &filepath,
@@ -142,36 +147,16 @@ ReParse(const std::map<std::string, std::string> &buffer) {
   return tu_->ReparseTranslationUnit(file_path, buffer);
 }
 
-
-// Source::Controller::OnLineEdit()
-// fired when a line in the buffer is edited
-void Source::Controller::OnLineEdit() { }
-
-void Source::Controller::
-GetAutoCompleteSuggestions(int line_number,
-                           int column,
-                           std::vector<Source::AutoCompleteData>
-                           *suggestions) {
+std::vector<Source::AutoCompleteData> Source::Parser::
+get_autocomplete_suggestions(int line_number,
+                           int column) {
   INFO("Getting auto complete suggestions");
-  parsing.lock();
-  parser.GetAutoCompleteSuggestions(parser.get_buffer_map(),
-                                     line_number,
-                                     column,
-                                     suggestions);
-  DEBUG("Number of suggestions");
-  DEBUG_VAR(suggestions->size());
-  parsing.unlock();
-}
-
-void Source::Parser::
-GetAutoCompleteSuggestions(const std::map<std::string, std::string> &buffers,
-                           int line_number,
-                           int column,
-                           std::vector<Source::AutoCompleteData>
-                           *suggestions) {
+  std::vector<Source::AutoCompleteData> suggestions;
+  auto buffer_map=get_buffer_map();
+  parsing_mutex.lock();
   clang::CodeCompleteResults results(tu_.get(),
                                      file_path,
-                                     buffers,
+                                     buffer_map,
                                      line_number,
                                      column);
   for (int i = 0; i < results.size(); i++) {
@@ -180,8 +165,12 @@ GetAutoCompleteSuggestions(const std::map<std::string, std::string> &buffers,
     for (auto &chunk : chunks_) {
       chunks.emplace_back(chunk);
     }
-    suggestions->emplace_back(chunks);
+    suggestions.emplace_back(chunks);
   }
+  parsing_mutex.unlock();
+  DEBUG("Number of suggestions");
+  DEBUG_VAR(suggestions.size());
+  return suggestions;
 }
 
 std::vector<std::string> Source::Parser::
@@ -274,8 +263,6 @@ Source::Controller::Controller(const Source::Config &config,
 
 Source::Controller::~Controller() {
   parse_thread_stop=true;
-  parsing.lock(); //Be sure not to destroy while still parsing with libclang
-  parsing.unlock();
   if(parse_thread.joinable())
     parse_thread.join();
 }
@@ -370,10 +357,10 @@ void Source::Controller::OnOpenFile(const string &filepath) {
           parse_thread_go=false;
           parse_start();
         }
-        else if (parse_thread_mapped && parsing.try_lock() && parse_thread_buffer_map_mutex.try_lock()) {
+        else if (parse_thread_mapped && parser.parsing_mutex.try_lock() && parse_thread_buffer_map_mutex.try_lock()) {
           parser.ReParse(this->parse_thread_buffer_map);
           parse_thread_go=false;
-          parsing.unlock();
+          parser.parsing_mutex.unlock();
           parse_thread_buffer_map_mutex.unlock();
           parse_done();
         }
