@@ -362,7 +362,8 @@ void Source::Controller::OnOpenFile(const string &filepath) {
     
     parse_thread=std::thread([this]() {
       while(true) {
-        while(!parse_thread_go && !parse_thread_stop) std::this_thread::yield();
+        while(!parse_thread_go && !parse_thread_stop)
+          std::this_thread::sleep_for(std::chrono::milliseconds(10));
 	if(parse_thread_stop)
 	  break;
         if(!parse_thread_mapped) {
