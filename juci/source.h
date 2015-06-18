@@ -66,28 +66,23 @@ namespace Source {
   public:
     View();
     virtual ~View() { }
-    void OnUpdateSyntax(const std::vector<Range> &locations,
-                        const Config &config);
     std::string GetLine(size_t line_number);
     std::string GetLineBeforeInsert();
   };  // class View
 
   class AutoCompleteChunk {
   public:
-    explicit AutoCompleteChunk(const clang::CompletionChunk &chunk) :
-      chunk_(chunk.chunk()), kind_(chunk.kind()) { }
-    const std::string& chunk() const { return chunk_; }
-    const clang::CompletionChunkKind& kind() const { return kind_; }
-  private:
-    std::string chunk_;
-    enum clang::CompletionChunkKind kind_;
+    explicit AutoCompleteChunk(const clang::CompletionChunk &clang_chunk) :
+      chunk(clang_chunk.chunk()), kind(clang_chunk.kind()) { }
+    std::string chunk;
+    enum clang::CompletionChunkKind kind;
   };
 
   class AutoCompleteData {
   public:
     explicit AutoCompleteData(const std::vector<AutoCompleteChunk> &chunks) :
-      chunks_(chunks) { }
-    std::vector<AutoCompleteChunk> chunks_;
+      chunks(chunks) { }
+    std::vector<AutoCompleteChunk> chunks;
   };
   
   class Controller;
@@ -131,6 +126,7 @@ namespace Source {
     Controller(const Source::Config &config,
                const std::vector<std::unique_ptr<Source::Controller> > &controllers);
     ~Controller();
+    void update_syntax(const std::vector<Range> &locations);
     void OnNewEmptyFile();
     void OnOpenFile(const std::string &filename);
     Glib::RefPtr<Gsv::Buffer> buffer();

@@ -236,13 +236,13 @@ bool Notebook::Controller::GeneratePopup(int key_id) {
   for (auto &data : acdata) {
     std::stringstream ss;
     std::string return_value;
-    for (auto &chunk : data.chunks_) {
-      switch (chunk.kind()) {
+    for (auto &chunk : data.chunks) {
+      switch (chunk.kind) {
       case clang::CompletionChunk_ResultType:
-        return_value = chunk.chunk();
+        return_value = chunk.chunk;
         break;
       case clang::CompletionChunk_Informative: break;
-      default: ss << chunk.chunk(); break;
+      default: ss << chunk.chunk; break;
       }
     }
     if (ss.str().length() > 0) { // if length is 0 the result is empty

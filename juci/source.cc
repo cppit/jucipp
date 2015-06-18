@@ -260,20 +260,11 @@ Source::Controller::~Controller() {
     parse_thread.join();
 }
 
-void Source::Controller::OnNewEmptyFile() {
-  string filename("/tmp/juci_t");
-  sourcefile s(filename);
-  parser.file_path=filename;
-  parser.project_path=filename;
-  s.save("");
-}
-
-void Source::View::OnUpdateSyntax(const std::vector<Source::Range> &ranges,
-                                  const Source::Config &config) {
+void Source::Controller::update_syntax(const std::vector<Source::Range> &ranges) {
   if (ranges.empty() || ranges.size() == 0) {
     return;
   }
-  Glib::RefPtr<Gtk::TextBuffer> buffer = get_buffer();
+  auto buffer = view.get_buffer();
   buffer->remove_all_tags(buffer->begin(), buffer->end());
   for (auto &range : ranges) {
     std::string type = std::to_string(range.kind());
@@ -298,6 +289,14 @@ void Source::View::OnUpdateSyntax(const std::vector<Source::Range> &ranges,
   }
 }
 
+void Source::Controller::OnNewEmptyFile() {
+  string filename("/tmp/juci_t");
+  sourcefile s(filename);
+  parser.file_path=filename;
+  parser.project_path=filename;
+  s.save("");
+}
+
 void Source::Controller::OnOpenFile(const string &filepath) {
   parser.file_path=filepath;
   sourcefile s(filepath);
@@ -315,7 +314,7 @@ void Source::Controller::OnOpenFile(const string &filepath) {
                                    start_offset,
                                    end_offset,
                                    &Parser::clang_index);
-    view.OnUpdateSyntax(parser.ExtractTokens(start_offset, end_offset), config);
+    update_syntax(parser.ExtractTokens(start_offset, end_offset));
 
     //GTK-calls must happen in main thread, so the parse_thread
     //sends signals to the main thread that it is to call the following functions:
@@ -331,8 +330,7 @@ void Source::Controller::OnOpenFile(const string &filepath) {
     parse_done.connect([this](){
       if(parse_thread_mapped) {
         INFO("Updating syntax");
-        view.
-          OnUpdateSyntax(parser.ExtractTokens(0, buffer()->get_text().size()), config);
+        update_syntax(parser.ExtractTokens(0, buffer()->get_text().size()));
         INFO("Syntax updated");
       }
       else {
