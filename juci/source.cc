@@ -259,7 +259,7 @@ HighlightToken(clang::Token *token,
 // Constructor for Controller
 Source::Controller::Controller(const Source::Config &config,
                                const std::vector<std::unique_ptr<Source::Controller> > &controllers) :
-  config(config), parser(controllers), parse_thread_go(false), parse_thread_mapped(false) {
+  config(config), parser(controllers), parse_thread_go(false), parse_thread_mapped(false), parse_thread_stop(false) {
   INFO("Source Controller with childs constructed");
   view.signal_key_press_event().connect(sigc::mem_fun(*this, &Source::Controller::OnKeyPress), false);
   view.set_smart_home_end(Gsv::SMART_HOME_END_BEFORE);
@@ -273,8 +273,10 @@ Source::Controller::Controller(const Source::Config &config,
 }
 
 Source::Controller::~Controller() {
+  parse_thread_stop=true;
   parsing.lock(); //Be sure not to destroy while still parsing with libclang
   parsing.unlock();
+  parse_thread.join();
 }
 
 void Source::Controller::OnNewEmptyFile() {
@@ -357,9 +359,11 @@ void Source::Controller::OnOpenFile(const string &filepath) {
       }
     });
     
-    std::thread parse_thread([this]() {
+    parse_thread=std::thread([this]() {
       while(true) {
-        while(!parse_thread_go) std::this_thread::yield();
+        while(!parse_thread_go && !parse_thread_stop) std::this_thread::yield();
+	if(parse_thread_stop)
+	  break;
         if(!parse_thread_mapped) {
           parse_thread_go=false;
           parse_start();
@@ -373,7 +377,6 @@ void Source::Controller::OnOpenFile(const string &filepath) {
         }
       }
     });
-    parse_thread.detach();
     
     buffer()->signal_changed().connect([this]() {
       parse_thread_mapped=false;

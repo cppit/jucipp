@@ -158,10 +158,12 @@ namespace Source {
     std::mutex parsing;
     Glib::Dispatcher parse_done;
     Glib::Dispatcher parse_start;
+    std::thread parse_thread;
     std::map<std::string, std::string> parse_thread_buffer_map;
     std::mutex parse_thread_buffer_map_mutex;
     std::atomic<bool> parse_thread_go;
     std::atomic<bool> parse_thread_mapped;
+    std::atomic<bool> parse_thread_stop;
     
     const Config& config;
   };  // class Controller
