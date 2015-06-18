@@ -88,7 +88,7 @@ SetTagTable(const std::unordered_map<string, string> &tagtable) {
   tagtable_ = tagtable;
 }
 
-bool Source::Config::legal_extension(std::string e) const {/Users/eidheim/test/jucipp/juci
+bool Source::Config::legal_extension(std::string e) const {
   std::transform(e.begin(), e.end(),e.begin(), ::tolower);
   if (find(extensiontable_.begin(), extensiontable_.end(), e) != extensiontable_.end()) {
     DEBUG("Legal extension");
@@ -132,13 +132,6 @@ get_buffer_map() const {
     controller->buffer()->get_text().raw();
   }
   return buffer_map;
-}
-
-// Source::View::UpdateLine
-void Source::View::
-OnLineEdit(const std::vector<Source::Range> &locations,
-           const Source::Config &config) {
-  OnUpdateSyntax(locations, config);
 }
 
 // Source::Model::UpdateLine

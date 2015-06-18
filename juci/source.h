@@ -66,8 +66,6 @@ namespace Source {
   public:
     View();
     virtual ~View() { }
-    void OnLineEdit(const std::vector<Range> &locations,
-                    const Config &config);
     void OnUpdateSyntax(const std::vector<Range> &locations,
                         const Config &config);
     std::string GetLine(size_t line_number);
@@ -145,8 +143,6 @@ namespace Source {
     View view;
     
   private:
-    void OnLineEdit();
-    void OnSaveFile();
     Glib::Dispatcher parse_done;
     Glib::Dispatcher parse_start;
     std::thread parse_thread;
