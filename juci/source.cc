@@ -276,7 +276,8 @@ Source::Controller::~Controller() {
   parse_thread_stop=true;
   parsing.lock(); //Be sure not to destroy while still parsing with libclang
   parsing.unlock();
-  parse_thread.join();
+  if(parse_thread.joinable())
+    parse_thread.join();
 }
 
 void Source::Controller::OnNewEmptyFile() {
