@@ -39,13 +39,13 @@ void MainConfig::GenerateSource() {
     source_cfg.tab+=" ";
   }
   for (auto &i : colors_json) {
-    source_cfg.InsertTag(i.first, i.second.get_value<std::string>());
+    source_cfg.tags[i.first]=i.second.get_value<std::string>();
   }
   for (auto &i : syntax_json) {
-    source_cfg.InsertType(i.first, i.second.get_value<std::string>());
+    source_cfg.types[i.first]=i.second.get_value<std::string>();
   }
   for (auto &i : extensions_json) {
-    source_cfg.InsertExtension(i.second.get_value<std::string>());
+    source_cfg.extensions.emplace_back(i.second.get_value<std::string>());
   }
   DEBUG("Source cfg fetched");
 }

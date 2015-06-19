@@ -301,7 +301,7 @@ Gtk::Box& Notebook::Controller::entry_view() {
 void Notebook::Controller::OnNewPage(std::string name) {
   INFO("Notebook Generate new page");
   OnCreatePage();
-  text_vec_.back()->OnNewEmptyFile();
+  text_vec_.back()->on_new_empty_file();
   Notebook().append_page(*editor_vec_.back(), name);
   Notebook().show_all_children();
   Notebook().set_current_page(Pages()-1);
@@ -312,7 +312,7 @@ void Notebook::Controller::OnNewPage(std::string name) {
 void Notebook::Controller::OnOpenFile(std::string path) {
   INFO("Notebook open file");
   OnCreatePage();
-  text_vec_.back()->OnOpenFile(path);
+  text_vec_.back()->on_open_file(path);
   text_vec_.back()->is_saved=true;
   unsigned pos = path.find_last_of("/\\");
   Notebook().append_page(*editor_vec_.back(), path.substr(pos+1));
