@@ -20,8 +20,7 @@ Notebook::Controller::Controller(Gtk::Window* window,
                                  Source::Config& source_cfg,
                                  Directories::Config& dir_cfg) :
   directories_(dir_cfg),
-  source_config_(source_cfg),
-  index_(0, 1) {
+  source_config_(source_cfg) {
   INFO("Create notebook");
   window_ = window;
   OnNewPage("untitled");
@@ -197,7 +196,7 @@ bool Notebook::Controller::OnKeyRelease(GdkEventKey* key) {
 bool Notebook::Controller::GeneratePopup(int key_id) {
   INFO("Notebook genereate popup, getting iters");
   std::string path = text_vec_.at(CurrentPage())->parser.file_path;
-  if (!LegalExtension(path.substr(path.find_last_of(".") + 1))) return false;
+  if (!source_config().legal_extension(path.substr(path.find_last_of(".") + 1))) return false;
   //  Get function to fill popup with suggests item vector under is for testing
   Gtk::TextIter beg = CurrentTextView().get_buffer()->get_insert()->get_iter();
   Gtk::TextIter end = CurrentTextView().get_buffer()->get_insert()->get_iter();
@@ -234,22 +233,20 @@ bool Notebook::Controller::GeneratePopup(int key_id) {
     return false;
   }
   INFO("Notebook genereate popup, getting autocompletions");
-  std::vector<Source::AutoCompleteData> acdata;
-  text_vec_.at(CurrentPage())->
-    GetAutoCompleteSuggestions(beg.get_line()+1,
-                               beg.get_line_offset()+2,
-                               &acdata);
+  std::vector<Source::AutoCompleteData> acdata=text_vec_.at(CurrentPage())->parser.
+    get_autocomplete_suggestions(beg.get_line()+1,
+                               beg.get_line_offset()+2);
   std::map<std::string, std::string> items;
   for (auto &data : acdata) {
     std::stringstream ss;
     std::string return_value;
-    for (auto &chunk : data.chunks_) {
-      switch (chunk.kind()) {
+    for (auto &chunk : data.chunks) {
+      switch (chunk.kind) {
       case clang::CompletionChunk_ResultType:
-        return_value = chunk.chunk();
+        return_value = chunk.chunk;
         break;
       case clang::CompletionChunk_Informative: break;
-      default: ss << chunk.chunk(); break;
+      default: ss << chunk.chunk; break;
       }
     }
     if (ss.str().length() > 0) { // if length is 0 the result is empty
@@ -308,7 +305,7 @@ Gtk::Box& Notebook::Controller::entry_view() {
 void Notebook::Controller::OnNewPage(std::string name) {
   INFO("Notebook Generate new page");
   OnCreatePage();
-  text_vec_.back()->OnNewEmptyFile();
+  text_vec_.back()->on_new_empty_file();
   Notebook().append_page(*editor_vec_.back(), name);
   Notebook().show_all_children();
   Notebook().set_current_page(Pages()-1);
@@ -316,21 +313,15 @@ void Notebook::Controller::OnNewPage(std::string name) {
 
 }
 
-void Notebook::Controller::
-MapBuffers(std::map<std::string, std::string> *buffers) const {
-  for (auto &buffer : text_vec_) {
-    buffers->operator[](buffer->parser.file_path) =
-      buffer->buffer()->get_text().raw();
-  }
-}
-
 void Notebook::Controller::OnOpenFile(std::string path) {
   INFO("Notebook open file");
   OnCreatePage();
-  text_vec_.back()->OnOpenFile(path);
-  text_vec_.back()->is_saved=true;
-  unsigned pos = path.find_last_of("/\\");
-  Notebook().append_page(*editor_vec_.back(), path.substr(pos+1));
+  text_vec_.back()->on_open_file(path);
+  size_t pos = path.find_last_of("/\\");
+  std::string filename=path;
+  if(pos!=std::string::npos)
+    filename=path.substr(pos+1);
+  Notebook().append_page(*editor_vec_.back(), filename);
   Notebook().show_all_children();
   Notebook().set_current_page(Pages()-1);
   Notebook().set_focus_child(text_vec_.back()->view);
@@ -338,18 +329,29 @@ void Notebook::Controller::OnOpenFile(std::string path) {
 
 void Notebook::Controller::OnCreatePage() {
   INFO("Notebook create page");
-  text_vec_.emplace_back(new Source::Controller(source_config(), *this));
+  text_vec_.emplace_back(new Source::Controller(source_config(), text_vec_));
   scrolledtext_vec_.push_back(new Gtk::ScrolledWindow());
   editor_vec_.push_back(new Gtk::HBox());
   scrolledtext_vec_.back()->add(text_vec_.back()->view);
   editor_vec_.back()->pack_start(*scrolledtext_vec_.back(), true, true);
   TextViewHandlers(text_vec_.back()->view);
+  //Add star on tab label when the page is not saved:
+  text_vec_.back()->signal_buffer_changed=[this](bool was_saved) {
+    if(was_saved) {
+      std::string path=text_vec_.at(CurrentPage())->parser.file_path;
+      size_t pos = path.find_last_of("/\\");
+      std::string filename=path;
+      if(pos!=std::string::npos)
+        filename=path.substr(pos+1);
+      Notebook().set_tab_label_text(*Notebook().get_nth_page(CurrentPage()), filename+"*");
+    }
+  };
 }
 
 void Notebook::Controller::OnCloseCurrentPage() {
   INFO("Notebook close page");
   if (Pages() != 0) {
-    if(text_vec_.back()->is_changed){
+    if(!text_vec_.back()->is_saved){
       AskToSaveDialog();
     }
     int page = CurrentPage();
@@ -578,17 +580,8 @@ void Notebook::Controller::FindPopupPosition(Gtk::TextView& textview,
 }
 
 bool Notebook::Controller:: OnSaveFile() {
-    INFO("Notebook save file");
-  if (text_vec_.at(CurrentPage())->is_saved) {
-    std::ofstream file;
-    file.open (text_vec_.at(CurrentPage())->parser.file_path);
-    file << CurrentTextView().get_buffer()->get_text();
-    file.close();
-    return true;
-  } else {
-    return OnSaveFile(OnSaveFileAs());
-  }
-  return false;
+  std::string path=text_vec_.at(CurrentPage())->parser.file_path;
+  return OnSaveFile(path);
 }
 bool Notebook::Controller:: OnSaveFile(std::string path) {
     INFO("Notebook save file with path");
@@ -598,6 +591,11 @@ bool Notebook::Controller:: OnSaveFile(std::string path) {
       file << CurrentTextView().get_buffer()->get_text();
       file.close();
       text_vec_.at(CurrentPage())->parser.file_path=path;
+      size_t pos = path.find_last_of("/\\");
+      std::string filename=path;
+      if(pos!=std::string::npos)
+        filename=path.substr(pos+1);
+      Notebook().set_tab_label_text(*Notebook().get_nth_page(CurrentPage()), filename);
       text_vec_.at(CurrentPage())->is_saved=true;
       return true;
     }
@@ -669,17 +667,5 @@ void Notebook::Controller::AskToSaveDialog() {
       break;
     }
   }
-}
-
-bool Notebook::Controller::LegalExtension(std::string e) {
-  std::transform(e.begin(), e.end(),e.begin(), ::tolower);
-  std::vector<std::string> extensions =
-    source_config().extensiontable();
-  if (find(extensions.begin(), extensions.end(), e) != extensions.end()) {
-    DEBUG("Legal extension");
-    return true;
-  }
-  DEBUG("Ilegal extension");
-  return false;
 }
 

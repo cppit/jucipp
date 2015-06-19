@@ -8,6 +8,7 @@
 #include <thread>
 #include <mutex>
 #include <string>
+#include <atomic>
 #include "gtksourceviewmm.h"
 
 namespace Notebook {
@@ -17,139 +18,118 @@ namespace Notebook {
 namespace Source {
   class Config {
   public:
-    const std::unordered_map<std::string, std::string>& tagtable() const;
-    const std::unordered_map<std::string, std::string>& typetable() const;
-     std::vector<std::string>& extensiontable();
-    void SetTagTable(const std::unordered_map<std::string, std::string>
-                     &tagtable);
-    void InsertTag(const std::string &key, const std::string &value);
-    void SetTypeTable(const std::unordered_map<std::string, std::string>
-                      &tagtable);
-    void InsertType(const std::string &key, const std::string &value);
-    void InsertExtension(const std::string &ext);
-        std::vector<std::string> extensiontable_;
-    // TODO: Have to clean away all the simple setter and getter methods at some point. It creates too much unnecessary code
+    bool legal_extension(std::string e) const ;
     unsigned tab_size;
     bool show_line_numbers, highlight_current_line;
     std::string tab, background, font;
-  private:
-    std::unordered_map<std::string, std::string> tagtable_, typetable_;
+    std::vector<std::string> extensions;
+    std::unordered_map<std::string, std::string> tags, types;
   };  // class Config
 
   class Location {
   public:
-    Location(const Location &location);
-    Location(int line_number, int column_offset);
-    int line_number() const { return line_number_; }
-    int column_offset() const { return column_offset_; }
-  private:
-    int line_number_;
-    int column_offset_;
+    Location(int line_number, int column_offset):
+      line_number(line_number), column_offset(column_offset) {}
+    int line_number;
+    int column_offset;
   };
 
   class Range {
   public:
-    Range(const Location &start, const Location &end, int kind);
-    Range(const Range &org);
-    const Location& start() const { return start_; }
-    const Location& end() const { return end_; }
-    int kind() const { return kind_; }
-  private:
-    Location start_;
-    Location end_;
-    int kind_;
+    Range(const Location &start, const Location &end, int kind):
+      start(start), end(end), kind(kind) {}
+    Location start;
+    Location end;
+    int kind;
   };
 
   class View : public Gsv::View {
   public:
     View();
-    virtual ~View() { }
-    void OnLineEdit(const std::vector<Range> &locations,
-                    const Config &config);
-    void OnUpdateSyntax(const std::vector<Range> &locations,
-                        const Config &config);
-    std::string GetLine(size_t line_number);
-    std::string GetLineBeforeInsert();
+    std::string get_line(size_t line_number);
+    std::string get_line_before_insert();
   };  // class View
 
   class AutoCompleteChunk {
   public:
-    explicit AutoCompleteChunk(const clang::CompletionChunk &chunk) :
-      chunk_(chunk.chunk()), kind_(chunk.kind()) { }
-    const std::string& chunk() const { return chunk_; }
-    const clang::CompletionChunkKind& kind() const { return kind_; }
-  private:
-    std::string chunk_;
-    enum clang::CompletionChunkKind kind_;
+    explicit AutoCompleteChunk(const clang::CompletionChunk &clang_chunk) :
+      chunk(clang_chunk.chunk()), kind(clang_chunk.kind()) { }
+    std::string chunk;
+    enum clang::CompletionChunkKind kind;
   };
 
   class AutoCompleteData {
   public:
     explicit AutoCompleteData(const std::vector<AutoCompleteChunk> &chunks) :
-      chunks_(chunks) { }
-    std::vector<AutoCompleteChunk> chunks_;
+      chunks(chunks) { }
+    std::vector<AutoCompleteChunk> chunks;
   };
+  
+  class Controller;
 
   class Parser{
   public:
+    Parser(const std::vector<std::unique_ptr<Source::Controller> > &controllers):
+      controllers(controllers) {}
+    ~Parser();
     // inits the syntax highligthing on file open
-    void InitSyntaxHighlighting(const std::string &filepath,
+    void init_syntax_highlighting(const std::string &filepath,
                                 const std::string &project_path,
                                 const std::map<std::string, std::string>
                                 &buffers,
                                 int start_offset,
                                 int end_offset,
                                 clang::Index *index);
-    void GetAutoCompleteSuggestions(const std::map<std::string, std::string>
-                                     &buffers,
-                                     int line_number,
-                                     int column,
-                                     std::vector<AutoCompleteData>
-                                     *suggestions);
-    int ReParse(const std::map<std::string, std::string> &buffers);
-    std::vector<Range> ExtractTokens(int, int);
+    std::vector<Source::AutoCompleteData> get_autocomplete_suggestions(int line_number, int column);
+    int reparse(const std::map<std::string, std::string> &buffers);
+    std::vector<Range> extract_tokens(int, int);
 
     std::string file_path;
     std::string project_path;
+    static clang::Index clang_index;
+    std::map<std::string, std::string> get_buffer_map() const;
+    std::mutex parsing_mutex;
   private:
     std::unique_ptr<clang::TranslationUnit> tu_; //use unique_ptr since it is not initialized in constructor
-    void HighlightToken(clang::Token *token,
+    void highlight_token(clang::Token *token,
                         std::vector<Range> *source_ranges,
                         int token_kind);
-    void HighlightCursor(clang::Token *token,
+    void highlight_cursor(clang::Token *token,
                         std::vector<Range> *source_ranges);
     std::vector<std::string> get_compilation_commands();
+    //controllers is needed here, no way around that I think
+    const std::vector<std::unique_ptr<Source::Controller> > &controllers;
   };
 
   class Controller {
   public:
     Controller(const Source::Config &config,
-               Notebook::Controller &notebook);
-    Controller();
+               const std::vector<std::unique_ptr<Source::Controller> > &controllers);
     ~Controller();
-    void OnNewEmptyFile();
-    void OnOpenFile(const std::string &filename);
-    void GetAutoCompleteSuggestions(int line_number,
-                                    int column,
-                                    std::vector<AutoCompleteData>
-                                    *suggestions);
+    void update_syntax(const std::vector<Range> &locations);
+    void on_new_empty_file();
+    void on_open_file(const std::string &filename);
     Glib::RefPtr<Gsv::Buffer> buffer();
-    bool OnKeyPress(GdkEventKey* key);
+    bool on_key_press(GdkEventKey* key);
     
-    bool is_saved = false; //TODO: Is never set to false in Notebook::Controller
-    bool is_changed = false; //TODO: Is never set to true
+    bool is_saved = true;
     
     Parser parser;
     View view;
     
+    std::function<void(bool was_saved)> signal_buffer_changed;
+    
   private:
-    void OnLineEdit();
-    void OnSaveFile();
-    std::mutex parsing;
-    Glib::Dispatcher parsing_done;
+    Glib::Dispatcher parse_done;
+    Glib::Dispatcher parse_start;
+    std::thread parse_thread;
+    std::map<std::string, std::string> parse_thread_buffer_map;
+    std::mutex parse_thread_buffer_map_mutex;
+    std::atomic<bool> parse_thread_go;
+    std::atomic<bool> parse_thread_mapped;
+    std::atomic<bool> parse_thread_stop;
     
     const Config& config;
-    Notebook::Controller& notebook; //TODO: should maybe be const, but that involves a small change in libclangmm
   };  // class Controller
 }  // namespace Source
 #endif  // JUCI_SOURCE_H_
