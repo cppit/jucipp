@@ -112,11 +112,12 @@ namespace Source {
     Glib::RefPtr<Gsv::Buffer> buffer();
     bool on_key_press(GdkEventKey* key);
     
-    bool is_saved = false; //TODO: Is never set to false in Notebook::Controller
-    bool is_changed = false; //TODO: Is never set to true
+    bool is_saved = true;
     
     Parser parser;
     View view;
+    
+    std::function<void(bool was_saved)> signal_buffer_changed;
     
   private:
     Glib::Dispatcher parse_done;

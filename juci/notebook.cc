@@ -313,9 +313,11 @@ void Notebook::Controller::OnOpenFile(std::string path) {
   INFO("Notebook open file");
   OnCreatePage();
   text_vec_.back()->on_open_file(path);
-  text_vec_.back()->is_saved=true;
-  unsigned pos = path.find_last_of("/\\");
-  Notebook().append_page(*editor_vec_.back(), path.substr(pos+1));
+  size_t pos = path.find_last_of("/\\");
+  std::string filename=path;
+  if(pos!=std::string::npos)
+    filename=path.substr(pos+1);
+  Notebook().append_page(*editor_vec_.back(), filename);
   Notebook().show_all_children();
   Notebook().set_current_page(Pages()-1);
   Notebook().set_focus_child(text_vec_.back()->view);
@@ -329,12 +331,23 @@ void Notebook::Controller::OnCreatePage() {
   scrolledtext_vec_.back()->add(text_vec_.back()->view);
   editor_vec_.back()->pack_start(*scrolledtext_vec_.back(), true, true);
   TextViewHandlers(text_vec_.back()->view);
+  //Add star on tab label when the page is not saved:
+  text_vec_.back()->signal_buffer_changed=[this](bool was_saved) {
+    if(was_saved) {
+      std::string path=text_vec_.at(CurrentPage())->parser.file_path;
+      size_t pos = path.find_last_of("/\\");
+      std::string filename=path;
+      if(pos!=std::string::npos)
+        filename=path.substr(pos+1);
+      Notebook().set_tab_label_text(*Notebook().get_nth_page(CurrentPage()), filename+"*");
+    }
+  };
 }
 
 void Notebook::Controller::OnCloseCurrentPage() {
   INFO("Notebook close page");
   if (Pages() != 0) {
-    if(text_vec_.back()->is_changed){
+    if(!text_vec_.back()->is_saved){
       AskToSaveDialog();
     }
     int page = CurrentPage();
@@ -570,17 +583,8 @@ void Notebook::Controller::FindPopupPosition(Gtk::TextView& textview,
 }
 
 bool Notebook::Controller:: OnSaveFile() {
-    INFO("Notebook save file");
-  if (text_vec_.at(CurrentPage())->is_saved) {
-    std::ofstream file;
-    file.open (text_vec_.at(CurrentPage())->parser.file_path);
-    file << CurrentTextView().get_buffer()->get_text();
-    file.close();
-    return true;
-  } else {
-    return OnSaveFile(OnSaveFileAs());
-  }
-  return false;
+  std::string path=text_vec_.at(CurrentPage())->parser.file_path;
+  return OnSaveFile(path);
 }
 bool Notebook::Controller:: OnSaveFile(std::string path) {
     INFO("Notebook save file with path");
@@ -590,6 +594,11 @@ bool Notebook::Controller:: OnSaveFile(std::string path) {
       file << CurrentTextView().get_buffer()->get_text();
       file.close();
       text_vec_.at(CurrentPage())->parser.file_path=path;
+      size_t pos = path.find_last_of("/\\");
+      std::string filename=path;
+      if(pos!=std::string::npos)
+        filename=path.substr(pos+1);
+      Notebook().set_tab_label_text(*Notebook().get_nth_page(CurrentPage()), filename);
       text_vec_.at(CurrentPage())->is_saved=true;
       return true;
     }

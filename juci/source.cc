@@ -299,12 +299,14 @@ void Source::Controller::on_open_file(const string &filepath) {
         }
       }
     });
-    
-    buffer()->signal_changed().connect([this]() {
-      parse_thread_mapped=false;
-      parse_thread_go=true;
-    });
   }
+  buffer()->signal_changed().connect([this]() {
+    if(signal_buffer_changed)
+      signal_buffer_changed(is_saved);
+    is_saved=false;
+    parse_thread_mapped=false;
+    parse_thread_go=true;
+  });
 }
 
 Glib::RefPtr<Gsv::Buffer> Source::Controller::buffer() {
