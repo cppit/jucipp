@@ -194,6 +194,13 @@ Source::Controller::Controller(const Source::Config &config,
   for (auto &item : config.tags) {
     buffer()->create_tag(item.first)->property_foreground() = item.second;
   }
+  buffer()->signal_changed().connect([this]() {
+    if(signal_buffer_changed)
+      signal_buffer_changed(is_saved);
+    is_saved=false;
+    parse_thread_mapped=false;
+    parse_thread_go=true;
+  });
 }
 
 Source::Controller::~Controller() {
@@ -232,7 +239,7 @@ void Source::Controller::update_syntax(const std::vector<Source::Range> &ranges)
 }
 
 void Source::Controller::on_new_empty_file() {
-  string filename("/tmp/juci_t");
+  string filename("/tmp/untitled");
   sourcefile s(filename);
   parser.file_path=filename;
   parser.project_path=filename;
@@ -246,6 +253,7 @@ void Source::Controller::on_open_file(const string &filepath) {
   buffer_map[filepath] = s.get_content();
   buffer()->get_undo_manager()->begin_not_undoable_action();
   buffer()->set_text(s.get_content());
+  is_saved=true;
   buffer()->get_undo_manager()->end_not_undoable_action();
   int start_offset = buffer()->begin().get_offset();
   int end_offset = buffer()->end().get_offset();
@@ -300,13 +308,6 @@ void Source::Controller::on_open_file(const string &filepath) {
       }
     });
   }
-  buffer()->signal_changed().connect([this]() {
-    if(signal_buffer_changed)
-      signal_buffer_changed(is_saved);
-    is_saved=false;
-    parse_thread_mapped=false;
-    parse_thread_go=true;
-  });
 }
 
 Glib::RefPtr<Gsv::Buffer> Source::Controller::buffer() {
