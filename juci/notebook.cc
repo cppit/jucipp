@@ -426,16 +426,31 @@ void Notebook::Controller::Search(bool forward) {
   // get search text from entry
   gtk_source_search_settings_set_search_text(settings, entry_.text().c_str());
 
-  // make sure the search continues
+  // make sure the search continues at top again
   gtk_source_search_settings_set_wrap_around(settings, true);
+
   auto context = gtk_source_search_context_new(buffer->gobj(), settings);
-  gtk_source_search_context_set_highlight(context, forward);
-  auto itr = buffer->get_insert()->get_iter().gobj();
-  gtk_source_search_context_forward(context,
-                                    end ? end.gobj() : itr,
+
+  // makes the search mark all results
+  gtk_source_search_context_set_highlight(context, true);
+  
+  // gets iter at user input
+  auto itr = buffer->get_insert()->get_iter();
+  DEBUG("Removing search tag")
+  buffer->remove_tag_by_name("search", start ? start : itr, end ? end : itr);
+  DEBUG("Before search");
+  if (forward) {
+        gtk_source_search_context_forward(context,
+                                    end ? end.gobj() : itr.gobj(),
                                     start.gobj(),
                                     end.gobj());
-
+  } else {
+        gtk_source_search_context_backward(context,
+                                    start ? end.gobj() : itr.gobj(),
+                                    start.gobj(),
+                                    end.gobj());
+  }
+  DEBUG("Before mark of search");
   buffer->apply_tag_by_name("search", start, end);
   CurrentTextView().scroll_to(end);
 }
