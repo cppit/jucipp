@@ -107,6 +107,7 @@ namespace Source {
                const std::vector<std::unique_ptr<Source::Controller> > &controllers);
     ~Controller();
     void update_syntax(const std::vector<Range> &locations);
+    void set_handlers();
     void on_new_empty_file();
     void on_open_file(const std::string &filename);
     Glib::RefPtr<Gsv::Buffer> buffer();

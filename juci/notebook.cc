@@ -301,18 +301,16 @@ Gtk::Box& Notebook::Controller::entry_view() {
 void Notebook::Controller::OnNewPage(std::string name) {
   INFO("Notebook Generate new page");
   OnCreatePage();
-  text_vec_.back()->on_new_empty_file();
   Notebook().append_page(*editor_vec_.back(), name);
   Notebook().show_all_children();
   Notebook().set_current_page(Pages()-1);
   Notebook().set_focus_child(text_vec_.at(Pages()-1)->view);
-
+  text_vec_.back()->on_new_empty_file();
 }
 
 void Notebook::Controller::OnOpenFile(std::string path) {
   INFO("Notebook open file");
   OnCreatePage();
-  text_vec_.back()->on_open_file(path);
   size_t pos = path.find_last_of("/\\");
   std::string filename=path;
   if(pos!=std::string::npos)
@@ -321,6 +319,7 @@ void Notebook::Controller::OnOpenFile(std::string path) {
   Notebook().show_all_children();
   Notebook().set_current_page(Pages()-1);
   Notebook().set_focus_child(text_vec_.back()->view);
+  text_vec_.back()->on_open_file(path);
 }
 
 void Notebook::Controller::OnCreatePage() {
@@ -339,7 +338,7 @@ void Notebook::Controller::OnCreatePage() {
       std::string filename=path;
       if(pos!=std::string::npos)
         filename=path.substr(pos+1);
-      Notebook().set_tab_label_text(*Notebook().get_nth_page(CurrentPage()), filename+"*");
+      Notebook().set_tab_label_text(*(Notebook().get_nth_page(CurrentPage())), filename+"*");
     }
   };
 }

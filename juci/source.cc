@@ -183,7 +183,7 @@ highlight_token(clang::Token *token,
 // Constructor for Controller
 Source::Controller::Controller(const Source::Config &config,
                                const std::vector<std::unique_ptr<Source::Controller> > &controllers) :
-  config(config), parser(controllers), parse_thread_go(false), parse_thread_mapped(false), parse_thread_stop(false) {
+  config(config), parser(controllers), parse_thread_go(true), parse_thread_mapped(false), parse_thread_stop(false) {
   INFO("Source Controller with childs constructed");
   view.signal_key_press_event().connect(sigc::mem_fun(*this, &Source::Controller::on_key_press), false);
   view.set_smart_home_end(Gsv::SMART_HOME_END_BEFORE);
@@ -194,13 +194,6 @@ Source::Controller::Controller(const Source::Config &config,
   for (auto &item : config.tags) {
     buffer()->create_tag(item.first)->property_foreground() = item.second;
   }
-  buffer()->signal_changed().connect([this]() {
-    if(signal_buffer_changed)
-      signal_buffer_changed(is_saved);
-    is_saved=false;
-    parse_thread_mapped=false;
-    parse_thread_go=true;
-  });
 }
 
 Source::Controller::~Controller() {
@@ -238,12 +231,23 @@ void Source::Controller::update_syntax(const std::vector<Source::Range> &ranges)
   }
 }
 
+void Source::Controller::set_handlers() {
+  buffer()->signal_changed().connect([this]() {
+    if(signal_buffer_changed)
+      signal_buffer_changed(is_saved);
+    is_saved=false;
+    parse_thread_mapped=false;
+    parse_thread_go=true;
+  });
+}
+
 void Source::Controller::on_new_empty_file() {
   string filename("/tmp/untitled");
   sourcefile s(filename);
   parser.file_path=filename;
   parser.project_path=filename;
   s.save("");
+  set_handlers();
 }
 
 void Source::Controller::on_open_file(const string &filepath) {
@@ -253,8 +257,8 @@ void Source::Controller::on_open_file(const string &filepath) {
   buffer_map[filepath] = s.get_content();
   buffer()->get_undo_manager()->begin_not_undoable_action();
   buffer()->set_text(s.get_content());
-  is_saved=true;
   buffer()->get_undo_manager()->end_not_undoable_action();
+  set_handlers();
   int start_offset = buffer()->begin().get_offset();
   int end_offset = buffer()->end().get_offset();
   if (config.legal_extension(filepath.substr(filepath.find_last_of(".") + 1))) {
