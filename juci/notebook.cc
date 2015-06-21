@@ -306,6 +306,7 @@ void Notebook::Controller::OnNewPage(std::string name) {
   Notebook().set_current_page(Pages()-1);
   Notebook().set_focus_child(text_vec_.at(Pages()-1)->view);
   text_vec_.back()->on_new_empty_file();
+  set_source_handlers(*text_vec_.back());
 }
 
 void Notebook::Controller::OnOpenFile(std::string path) {
@@ -320,6 +321,7 @@ void Notebook::Controller::OnOpenFile(std::string path) {
   Notebook().set_current_page(Pages()-1);
   Notebook().set_focus_child(text_vec_.back()->view);
   text_vec_.back()->on_open_file(path);
+  set_source_handlers(*text_vec_.back());
 }
 
 void Notebook::Controller::OnCreatePage() {
@@ -329,24 +331,12 @@ void Notebook::Controller::OnCreatePage() {
   editor_vec_.push_back(new Gtk::HBox());
   scrolledtext_vec_.back()->add(text_vec_.back()->view);
   editor_vec_.back()->pack_start(*scrolledtext_vec_.back(), true, true);
-  TextViewHandlers(text_vec_.back()->view);
-  //Add star on tab label when the page is not saved:
-  text_vec_.back()->signal_buffer_changed=[this](bool was_saved) {
-    if(was_saved) {
-      std::string path=text_vec_.at(CurrentPage())->parser.file_path;
-      size_t pos = path.find_last_of("/\\");
-      std::string filename=path;
-      if(pos!=std::string::npos)
-        filename=path.substr(pos+1);
-      Notebook().set_tab_label_text(*(Notebook().get_nth_page(CurrentPage())), filename+"*");
-    }
-  };
 }
 
 void Notebook::Controller::OnCloseCurrentPage() {
   INFO("Notebook close page");
   if (Pages() != 0) {
-    if(!text_vec_.back()->is_saved){
+    if(!text_vec_.at(CurrentPage())->is_saved){
       AskToSaveDialog();
     }
     int page = CurrentPage();
@@ -493,12 +483,25 @@ void Notebook::Controller::BufferChangeHandler(Glib::RefPtr<Gtk::TextBuffer>
                                    });
 }
 
-void Notebook::Controller::TextViewHandlers(Gtk::TextView& textview) {
-  textview.signal_button_release_event().
+void Notebook::Controller::set_source_handlers(Source::Controller& controller) {
+  controller.view.signal_button_release_event().
     connect(sigc::mem_fun(*this, &Notebook::Controller::OnMouseRelease), false);
 
-  textview.signal_key_release_event().
+  controller.view.signal_key_release_event().
     connect(sigc::mem_fun(*this, &Notebook::Controller::OnKeyRelease), false);
+
+  //Add star on tab label when the page is not saved:
+  controller.buffer()->signal_changed().connect([this]() {
+    if(text_vec_.at(CurrentPage())->is_saved) {
+      std::string path=text_vec_.at(CurrentPage())->parser.file_path;
+      size_t pos = path.find_last_of("/\\");
+      std::string filename=path;
+      if(pos!=std::string::npos)
+        filename=path.substr(pos+1);
+      Notebook().set_tab_label_text(*(Notebook().get_nth_page(CurrentPage())), filename+"*");
+    }
+    text_vec_.at(CurrentPage())->is_saved=false;
+  });
 }
 
 void Notebook::Controller::PopupSelectHandler(Gtk::Dialog &popup,

@@ -74,7 +74,7 @@ namespace Notebook {
     bool LegalExtension(std::string extension);
 
   protected:
-    void TextViewHandlers(Gtk::TextView& textview);
+    void set_source_handlers(Source::Controller& controller);
     void PopupSelectHandler(Gtk::Dialog &popup,
                             Gtk::ListViewText &listview,
                             std::map<std::string, std::string>

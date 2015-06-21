@@ -118,8 +118,6 @@ namespace Source {
     Parser parser;
     View view;
     
-    std::function<void(bool was_saved)> signal_buffer_changed;
-    
   private:
     Glib::Dispatcher parse_done;
     Glib::Dispatcher parse_start;
