@@ -58,9 +58,7 @@ namespace Notebook {
     bool OnSaveFile(std::string path);
     void OnDirectoryNavigation(const Gtk::TreeModel::Path& path,
                                Gtk::TreeViewColumn* column);
-    void OnNewPage(std::string name);
     void OnOpenFile(std::string filename);
-    void OnCreatePage();
     bool ScrollEventCallback(GdkEventScroll* scroll_event);
     int Pages();
     Directories::Controller& directories() { return directories_; }
@@ -72,7 +70,7 @@ namespace Notebook {
     bool OnKeyRelease(GdkEventKey* key);
     std::string OnSaveFileAs();
     bool LegalExtension(std::string extension);
-
+    std::string project_path;
   protected:
     void set_source_handlers(Source::Controller& controller);
     void PopupSelectHandler(Gtk::Dialog &popup,

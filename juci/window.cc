@@ -142,7 +142,9 @@ void Window::OnFileOpenFolder() {
     {
     case(Gtk::RESPONSE_OK):
       {
-        notebook_.directories().open_folder(dialog.get_filename());
+        std::string project_path=dialog.get_filename();
+        notebook_.project_path=project_path;
+        notebook_.directories().open_folder(project_path);
         break;
       }
     case(Gtk::RESPONSE_CANCEL):
