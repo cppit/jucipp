@@ -21,7 +21,6 @@ Notebook::Controller::Controller(Gtk::Window* window,
   source_config_(source_cfg) {
   INFO("Create notebook");
   window_ = window;
-  OnNewPage("untitled");
   refClipboard_ = Gtk::Clipboard::get();
   ispopup = false;
   view().pack1(directories_.widget(), true, true);
@@ -147,7 +146,7 @@ void Notebook::Controller::CreateKeybindings(Keybindings::Controller
     connect(
             [this]() {
               if (is_new_file_) {
-                OnNewPage(entry_.text());
+                //OnNewPage(entry_.text()); //TODO: rewrite new file (the file needs to be created before opened with Source::Controller in order to choose the correct view implementation)
                 entry_.OnHideEntries(is_new_file_);
               } else {
                 Search(true);
@@ -156,7 +155,7 @@ void Notebook::Controller::CreateKeybindings(Keybindings::Controller
   entry_.button_apply().signal_clicked().
     connect(
             [this]() {
-              OnNewPage(entry_.text());
+              //OnNewPage(entry_.text()); //TODO: rewrite new file (the file needs to be created before opened with Source::Controller in order to choose the correct view implementation)
               entry_.OnHideEntries(is_new_file_);
             });
   entry_.button_close().signal_clicked().
@@ -191,7 +190,7 @@ bool Notebook::Controller::OnKeyRelease(GdkEventKey* key) {
 
 bool Notebook::Controller::GeneratePopup(int key_id) {
   INFO("Notebook genereate popup, getting iters");
-  std::string path = text_vec_.at(CurrentPage())->parser.file_path;
+  std::string path = text_vec_.at(CurrentPage())->view->file_path;
   if (!source_config().legal_extension(path.substr(path.find_last_of(".") + 1))) return false;
   //  Get function to fill popup with suggests item vector under is for testing
   Gtk::TextIter beg = CurrentTextView().get_buffer()->get_insert()->get_iter();
@@ -229,7 +228,7 @@ bool Notebook::Controller::GeneratePopup(int key_id) {
     return false;
   }
   INFO("Notebook genereate popup, getting autocompletions");
-  std::vector<Source::AutoCompleteData> acdata=text_vec_.at(CurrentPage())->parser.
+  std::vector<Source::AutoCompleteData> acdata=text_vec_.at(CurrentPage())->view->
     get_autocomplete_suggestions(beg.get_line()+1,
                                beg.get_line_offset()+2);
   std::map<std::string, std::string> items;
@@ -298,21 +297,14 @@ Gtk::Box& Notebook::Controller::entry_view() {
   return entry_.view();
 }
 
-void Notebook::Controller::OnNewPage(std::string name) {
-  INFO("Notebook Generate new page");
-  OnCreatePage();
-  text_vec_.back()->on_new_empty_file();
-  Notebook().append_page(*editor_vec_.back(), name);
-  Notebook().show_all_children();
-  Notebook().set_current_page(Pages()-1);
-  Notebook().set_focus_child(text_vec_.at(Pages()-1)->view);
-
-}
-
 void Notebook::Controller::OnOpenFile(std::string path) {
   INFO("Notebook open file");
-  OnCreatePage();
-  text_vec_.back()->on_open_file(path);
+  INFO("Notebook create page");
+  text_vec_.emplace_back(new Source::Controller(source_config(), path, project_path));
+  scrolledtext_vec_.push_back(new Gtk::ScrolledWindow());
+  editor_vec_.push_back(new Gtk::HBox());
+  scrolledtext_vec_.back()->add(*text_vec_.back()->view);
+  editor_vec_.back()->pack_start(*scrolledtext_vec_.back(), true, true);
   size_t pos = path.find_last_of("/\\");
   std::string filename=path;
   if(pos!=std::string::npos)
@@ -320,34 +312,14 @@ void Notebook::Controller::OnOpenFile(std::string path) {
   Notebook().append_page(*editor_vec_.back(), filename);
   Notebook().show_all_children();
   Notebook().set_current_page(Pages()-1);
-  Notebook().set_focus_child(text_vec_.back()->view);
-}
-
-void Notebook::Controller::OnCreatePage() {
-  INFO("Notebook create page");
-  text_vec_.emplace_back(new Source::Controller(source_config(), text_vec_));
-  scrolledtext_vec_.push_back(new Gtk::ScrolledWindow());
-  editor_vec_.push_back(new Gtk::HBox());
-  scrolledtext_vec_.back()->add(text_vec_.back()->view);
-  editor_vec_.back()->pack_start(*scrolledtext_vec_.back(), true, true);
-  TextViewHandlers(text_vec_.back()->view);
-  //Add star on tab label when the page is not saved:
-  text_vec_.back()->signal_buffer_changed=[this](bool was_saved) {
-    if(was_saved) {
-      std::string path=text_vec_.at(CurrentPage())->parser.file_path;
-      size_t pos = path.find_last_of("/\\");
-      std::string filename=path;
-      if(pos!=std::string::npos)
-        filename=path.substr(pos+1);
-      Notebook().set_tab_label_text(*Notebook().get_nth_page(CurrentPage()), filename+"*");
-    }
-  };
+  Notebook().set_focus_child(*text_vec_.back()->view);
+  set_source_handlers(*text_vec_.back());
 }
 
 void Notebook::Controller::OnCloseCurrentPage() {
   INFO("Notebook close page");
   if (Pages() != 0) {
-    if(!text_vec_.back()->is_saved){
+    if(!text_vec_.at(CurrentPage())->is_saved){
       AskToSaveDialog();
     }
     int page = CurrentPage();
@@ -467,7 +439,7 @@ void Notebook::Controller
 
 Source::View& Notebook::Controller::CurrentTextView() {
   INFO("Getting sourceview");
-  return text_vec_.at(CurrentPage())->view;
+  return *text_vec_.at(CurrentPage())->view;
 }
 
 int Notebook::Controller::CurrentPage() {
@@ -476,7 +448,7 @@ int Notebook::Controller::CurrentPage() {
 
 Glib::RefPtr<Gtk::TextBuffer>
 Notebook::Controller::Buffer(Source::Controller &source) {
-  return source.view.get_buffer();
+  return source.view->get_buffer();
 }
 
 int Notebook::Controller::Pages() {
@@ -494,12 +466,25 @@ void Notebook::Controller::BufferChangeHandler(Glib::RefPtr<Gtk::TextBuffer>
                                    });
 }
 
-void Notebook::Controller::TextViewHandlers(Gtk::TextView& textview) {
-  textview.signal_button_release_event().
+void Notebook::Controller::set_source_handlers(Source::Controller& controller) {
+  controller.view->signal_button_release_event().
     connect(sigc::mem_fun(*this, &Notebook::Controller::OnMouseRelease), false);
 
-  textview.signal_key_release_event().
+  controller.view->signal_key_release_event().
     connect(sigc::mem_fun(*this, &Notebook::Controller::OnKeyRelease), false);
+
+  //Add star on tab label when the page is not saved:
+  controller.buffer()->signal_changed().connect([this]() {
+    if(text_vec_.at(CurrentPage())->is_saved) {
+      std::string path=text_vec_.at(CurrentPage())->view->file_path;
+      size_t pos = path.find_last_of("/\\");
+      std::string filename=path;
+      if(pos!=std::string::npos)
+        filename=path.substr(pos+1);
+      Notebook().set_tab_label_text(*(Notebook().get_nth_page(CurrentPage())), filename+"*");
+    }
+    text_vec_.at(CurrentPage())->is_saved=false;
+  });
 }
 
 void Notebook::Controller::PopupSelectHandler(Gtk::Dialog &popup,
@@ -545,7 +530,7 @@ void Notebook::Controller::PopupSetSize(Gtk::ScrolledWindow &scroll,
 }
 
 std::string Notebook::Controller::CurrentPagePath(){
-  return text_vec_.at(CurrentPage())->parser.file_path;
+  return text_vec_.at(CurrentPage())->view->file_path;
 }
 
 void Notebook::Controller::FindPopupPosition(Gtk::TextView& textview,
@@ -583,7 +568,7 @@ void Notebook::Controller::FindPopupPosition(Gtk::TextView& textview,
 }
 
 bool Notebook::Controller:: OnSaveFile() {
-  std::string path=text_vec_.at(CurrentPage())->parser.file_path;
+  std::string path=text_vec_.at(CurrentPage())->view->file_path;
   return OnSaveFile(path);
 }
 bool Notebook::Controller:: OnSaveFile(std::string path) {
@@ -593,7 +578,7 @@ bool Notebook::Controller:: OnSaveFile(std::string path) {
       file.open (path);
       file << CurrentTextView().get_buffer()->get_text();
       file.close();
-      text_vec_.at(CurrentPage())->parser.file_path=path;
+      text_vec_.at(CurrentPage())->view->file_path=path;
       size_t pos = path.find_last_of("/\\");
       std::string filename=path;
       if(pos!=std::string::npos)
@@ -644,7 +629,7 @@ void Notebook::Controller::AskToSaveDialog() {
 			    false, Gtk::MESSAGE_QUESTION, Gtk::BUTTONS_YES_NO);
   dialog.set_secondary_text(
           "Do you want to save: " +
-			    text_vec_.at(CurrentPage())->parser.file_path+" ?");
+			    text_vec_.at(CurrentPage())->view->file_path+" ?");
   DEBUG("AskToSaveDialog: run dialog");
   int result = dialog.run();
 
