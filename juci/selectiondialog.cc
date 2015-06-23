@@ -1,6 +1,6 @@
 #include "selectiondialog.h"
 
-SelectionDialog::SelectionDialog(Source::View& view): Gtk::Dialog(), view(view), 
+SelectionDialog::SelectionDialog(Gtk::TextView& text_view): Gtk::Dialog(), text_view(text_view), 
       list_view_text(1, false, Gtk::SelectionMode::SELECTION_SINGLE) {
   scrolled_window.set_policy(Gtk::PolicyType::POLICY_NEVER, Gtk::PolicyType::POLICY_NEVER);
   list_view_text.set_enable_search(true);
@@ -15,7 +15,7 @@ void SelectionDialog::show(const std::map<std::string, std::string>& rows) {
   }
   scrolled_window.add(list_view_text);
   get_vbox()->pack_start(scrolled_window);
-  set_transient_for((Gtk::Window&)(*view.get_toplevel()));
+  set_transient_for((Gtk::Window&)(*text_view.get_toplevel()));
   show_all();
   int popup_x = get_width();
   int popup_y = rows.size() * 20;
@@ -39,7 +39,7 @@ bool SelectionDialog::close(GdkEventFocus*) {
 
 void SelectionDialog::adjust(int current_x, int current_y) {
   INFO("SelectionDialog set size");
-  int view_x = view.get_width();
+  int view_x = text_view.get_width();
   int view_y = 150;
   bool is_never_scroll_x = true;
   bool is_never_scroll_y = true;
@@ -62,22 +62,22 @@ void SelectionDialog::adjust(int current_x, int current_y) {
   
   INFO("SelectionDialog set position");
   Gdk::Rectangle temp1, temp2;
-  view.get_cursor_locations(view.get_source_buffer()->get_insert()->get_iter(), temp1, temp2);
+  text_view.get_cursor_locations(text_view.get_buffer()->get_insert()->get_iter(), temp1, temp2);
   int view_edge_x = 0;
   int view_edge_y = 0;
   int x, y;
-  view.buffer_to_window_coords(Gtk::TextWindowType::TEXT_WINDOW_WIDGET, 
+  text_view.buffer_to_window_coords(Gtk::TextWindowType::TEXT_WINDOW_WIDGET, 
                                temp1.get_x(), temp1.get_y(), x, y);
-  Glib::RefPtr<Gdk::Window> gdkw = view.get_window(Gtk::TextWindowType::TEXT_WINDOW_WIDGET);
+  Glib::RefPtr<Gdk::Window> gdkw = text_view.get_window(Gtk::TextWindowType::TEXT_WINDOW_WIDGET);
   gdkw->get_origin(view_edge_x, view_edge_y);
 
   x += view_edge_x;
   y += view_edge_y;
-  if ((view_edge_x-x)*-1 > view.get_width()-current_x) {
+  if ((view_edge_x-x)*-1 > text_view.get_width()-current_x) {
     x -= current_x;
     if (x < view_edge_x) x = view_edge_x;
   }
-  if ((view_edge_y-y)*-1 > view.get_height()-current_y) {
+  if ((view_edge_y-y)*-1 > text_view.get_height()-current_y) {
     y -= (current_y+14) + 15;
     if (x < view_edge_y) y = view_edge_y +15;
   }

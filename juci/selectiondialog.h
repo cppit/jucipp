@@ -4,7 +4,7 @@
 
 class SelectionDialog : public Gtk::Dialog {
 public:
-  SelectionDialog(Source::View& view);
+  SelectionDialog(Gtk::TextView& text_view);
   void show(const std::map<std::string, std::string>& rows);
   bool close(GdkEventFocus*);
   
@@ -13,7 +13,7 @@ public:
 private:
   void adjust(int current_x, int current_y);
   
-  Source::View& view;
+  Gtk::TextView& text_view;
   Gtk::ScrolledWindow scrolled_window;
   Gtk::ListViewText list_view_text;
 };

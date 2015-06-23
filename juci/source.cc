@@ -21,7 +21,7 @@ bool Source::Config::legal_extension(std::string e) const {
 //////////////
 //// View ////
 //////////////
-Source::View::View(const Config& config, const std::string& file_path, const std::string& project_path):
+Source::View::View(const Source::Config& config, const std::string& file_path, const std::string& project_path):
 config(config), file_path(file_path), project_path(project_path) {
   Gsv::init();
   set_smart_home_end(Gsv::SMART_HOME_END_BEFORE);
@@ -50,13 +50,52 @@ string Source::View::get_line_before_insert() {
   return line;
 }
 
+bool Source::View::on_key_press(GdkEventKey* key) {
+  //Indent right when clicking tab, no matter where in the line the cursor is. Also works on selected text.
+  if(key->keyval==GDK_KEY_Tab && key->state==0) {
+    Gtk::TextIter selection_start, selection_end;
+    get_source_buffer()->get_selection_bounds(selection_start, selection_end);
+    int line_start=selection_start.get_line();
+    int line_end=selection_end.get_line();
+    for(int line=line_start;line<=line_end;line++) {
+      Gtk::TextIter line_it = get_source_buffer()->get_iter_at_line(line);
+      get_source_buffer()->insert(line_it, config.tab);
+    }
+    return true;
+  }
+  //Indent left when clicking shift-tab, no matter where in the line the cursor is. Also works on selected text.
+  else if((key->keyval==GDK_KEY_ISO_Left_Tab || key->keyval==GDK_KEY_Tab) && key->state==GDK_SHIFT_MASK) {
+    Gtk::TextIter selection_start, selection_end;
+    get_source_buffer()->get_selection_bounds(selection_start, selection_end);
+    int line_start=selection_start.get_line();
+    int line_end=selection_end.get_line();
+    
+    for(int line_nr=line_start;line_nr<=line_end;line_nr++) {
+      string line=get_line(line_nr);
+      if(!(line.size()>=config.tab_size && line.substr(0, config.tab_size)==config.tab))
+        return true;
+    }
+    
+    for(int line_nr=line_start;line_nr<=line_end;line_nr++) {
+      Gtk::TextIter line_it = get_source_buffer()->get_iter_at_line(line_nr);
+      Gtk::TextIter line_plus_it=line_it;
+      
+      for(unsigned c=0;c<config.tab_size;c++)
+        line_plus_it++;
+      get_source_buffer()->erase(line_it, line_plus_it);
+    }
+    return true;
+  }
+  return false;
+}
+
 //////////////////
 //// ClangView ///
 //////////////////
 clang::Index Source::ClangView::clang_index(0, 1);
 
-Source::ClangView::ClangView(const Config& config, const std::string& file_path, const std::string& project_path):
-Source::View::View(config, file_path, project_path),
+Source::ClangView::ClangView(const Source::Config& config, const std::string& file_path, const std::string& project_path):
+Source::View(config, file_path, project_path),
 parse_thread_go(true), parse_thread_mapped(false), parse_thread_stop(false) {
   override_font(Pango::FontDescription(config.font));
   override_background_color(Gdk::RGBA(config.background));
@@ -410,41 +449,6 @@ bool Source::ClangView::on_key_press(GdkEventKey* key) {
     }
     return true;
   }
-  //Indent right when clicking tab, no matter where in the line the cursor is. Also works on selected text.
-  if(key->keyval==GDK_KEY_Tab && key->state==0) {
-    Gtk::TextIter selection_start, selection_end;
-    get_source_buffer()->get_selection_bounds(selection_start, selection_end);
-    int line_start=selection_start.get_line();
-    int line_end=selection_end.get_line();
-    for(int line=line_start;line<=line_end;line++) {
-      Gtk::TextIter line_it = get_source_buffer()->get_iter_at_line(line);
-      get_source_buffer()->insert(line_it, config.tab);
-    }
-    return true;
-  }
-  //Indent left when clicking shift-tab, no matter where in the line the cursor is. Also works on selected text.
-  else if((key->keyval==GDK_KEY_ISO_Left_Tab || key->keyval==GDK_KEY_Tab) && key->state==GDK_SHIFT_MASK) {
-    Gtk::TextIter selection_start, selection_end;
-    get_source_buffer()->get_selection_bounds(selection_start, selection_end);
-    int line_start=selection_start.get_line();
-    int line_end=selection_end.get_line();
-    
-    for(int line_nr=line_start;line_nr<=line_end;line_nr++) {
-      string line=get_line(line_nr);
-      if(!(line.size()>=config.tab_size && line.substr(0, config.tab_size)==config.tab))
-        return true;
-    }
-    
-    for(int line_nr=line_start;line_nr<=line_end;line_nr++) {
-      Gtk::TextIter line_it = get_source_buffer()->get_iter_at_line(line_nr);
-      Gtk::TextIter line_plus_it=line_it;
-      
-      for(unsigned c=0;c<config.tab_size;c++)
-        line_plus_it++;
-      get_source_buffer()->erase(line_it, line_plus_it);
-    }
-    return true;
-  }
   //Indent left when writing } on a new line
   else if(key->keyval==GDK_KEY_braceright) {
     string line=get_line_before_insert();
@@ -479,7 +483,8 @@ bool Source::ClangView::on_key_press(GdkEventKey* key) {
       }
     }
   }
-  return false;
+  
+  return Source::View::on_key_press(key);
 }
 
 ////////////////////
@@ -489,8 +494,7 @@ bool Source::ClangView::on_key_press(GdkEventKey* key) {
 // Source::Controller::Controller()
 // Constructor for Controller
 Source::Controller::Controller(const Source::Config &config,
-                               const std::string& file_path, std::string project_path) :
-  config(config) {
+                               const std::string& file_path, std::string project_path) {
   if(project_path=="") {
     project_path=boost::filesystem::path(file_path).parent_path().string();
   }
