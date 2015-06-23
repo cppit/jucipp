@@ -373,7 +373,7 @@ void Notebook::Controller::set_source_handlers(Source::Controller& controller) {
 }
 
 std::string Notebook::Controller::CurrentPagePath(){
-  return text_vec_.at(CurrentPage())->parser.file_path;
+  return text_vec_.at(CurrentPage())->view->file_path;
 }
 
 bool Notebook::Controller:: OnSaveFile() {
