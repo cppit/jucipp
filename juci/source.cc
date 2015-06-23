@@ -288,6 +288,18 @@ bool Source::ClangView::on_key_press(GdkEventKey* key) {
     string line(get_line_before_insert());
     std::smatch sm;
     if(std::regex_match(line, sm, bracket_regex)) {
+      size_t line_nr=get_source_buffer()->get_insert()->get_iter().get_line();
+      if((line_nr+1)<get_source_buffer()->get_line_count()) {
+        string next_line=get_line(line_nr+1);
+        std::smatch sm2;
+        if(std::regex_match(next_line, sm2, spaces_regex)) {
+          if(sm2[1].str()==sm[1].str()+config.tab) {
+            get_source_buffer()->insert_at_cursor("\n"+sm[1].str()+config.tab);
+            scroll_to(get_source_buffer()->get_insert());
+            return true;
+          }
+        }
+      }
       get_source_buffer()->insert_at_cursor("\n"+sm[1].str()+config.tab+"\n"+sm[1].str()+"}");
       auto insert_it = get_source_buffer()->get_insert()->get_iter();
       for(size_t c=0;c<config.tab_size+sm[1].str().size();c++)
