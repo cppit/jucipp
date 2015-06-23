@@ -181,7 +181,7 @@ get_autocomplete_suggestions(int line_number, int column) {
 
 std::vector<std::string> Source::ClangView::
 get_compilation_commands() {
-  clang::CompilationDatabase db(project_path+"/");
+  clang::CompilationDatabase db(project_path);
   clang::CompileCommands commands(file_path, &db);
   std::vector<clang::CompileCommand> cmds = commands.get_commands();
   std::vector<std::string> arguments;
@@ -408,9 +408,7 @@ Source::Controller::Controller(const Source::Config &config,
                                const std::string& file_path, std::string project_path) :
   config(config) {
   if(project_path=="") {
-    size_t last_of=file_path.find_last_of("\\/");
-    if(last_of!=std::string::npos)
-      project_path=file_path.substr(0, last_of);
+    project_path=boost::filesystem::path(file_path).parent_path().string();
   }
   if (config.legal_extension(file_path.substr(file_path.find_last_of(".") + 1)))
     view=std::unique_ptr<View>(new ClangView(config, file_path, project_path));
