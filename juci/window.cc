@@ -104,10 +104,6 @@ Window::Window() :
             execute.detach();
           }
         });
-  this->signal_button_release_event().
-    connect(sigc::mem_fun(*this,&Window::OnMouseRelease),false);
-  terminal_.Terminal().signal_button_release_event().
-    connect(sigc::mem_fun(*this,&Window::OnMouseRelease),false);
 
   add_accel_group(keybindings_.ui_manager_menu()->get_accel_group());
   add_accel_group(keybindings_.ui_manager_hidden()->get_accel_group());
@@ -202,9 +198,6 @@ void Window::OnOpenFile() {
     break;
   }
   }
-}
-bool Window::OnMouseRelease(GdkEventButton *button){
-  return notebook_.OnMouseRelease(button);
 }
 
 bool Window::SaveFile() {

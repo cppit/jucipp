@@ -103,6 +103,7 @@ namespace Source {
                         std::vector<Range> *source_ranges);
     std::vector<std::string> get_compilation_commands();
     bool on_key_press(GdkEventKey* key);
+    bool on_key_release(GdkEventKey* key);
     
     Glib::Dispatcher parse_done;
     Glib::Dispatcher parse_start;

@@ -6,6 +6,7 @@
 #include "logging.h"
 #include <algorithm>
 #include <regex>
+#include "selectiondialog.h"
 
 bool Source::Config::legal_extension(std::string e) const {
   std::transform(e.begin(), e.end(),e.begin(), ::tolower);
@@ -119,6 +120,7 @@ parse_thread_go(true), parse_thread_mapped(false), parse_thread_stop(false) {
   });
   
   signal_key_press_event().connect(sigc::mem_fun(*this, &Source::ClangView::on_key_press), false);
+  signal_key_release_event().connect(sigc::mem_fun(*this, &Source::ClangView::on_key_release), false);
 }
 
 Source::ClangView::~ClangView() {
@@ -273,6 +275,76 @@ highlight_token(clang::Token *token,
                                                begin_offset),
                               Source::Location(end_line_num,
                                                end_offset), token_kind);
+}
+
+bool Source::ClangView::on_key_release(GdkEventKey* key) {
+  INFO("Source::ClangView::on_key_release getting iters");
+  //  Get function to fill popup with suggests item vector under is for testing
+  Gtk::TextIter beg = get_source_buffer()->get_insert()->get_iter();
+  Gtk::TextIter end = get_source_buffer()->get_insert()->get_iter();
+  Gtk::TextIter tmp = get_source_buffer()->get_insert()->get_iter();
+  Gtk::TextIter tmp1 = get_source_buffer()->get_insert()->get_iter();
+  Gtk::TextIter line = get_source_buffer()->get_iter_at_line(tmp.get_line());
+  if (end.backward_char() && end.backward_char()) {
+    bool illegal_chars =
+    end.backward_search("\"", Gtk::TEXT_SEARCH_VISIBLE_ONLY, tmp, tmp1, line)
+    ||
+      end.backward_search("//", Gtk::TEXT_SEARCH_VISIBLE_ONLY, tmp, tmp1, line);
+    INFO("Source::ClangView::on_key_release checking key->keyval");
+      if (illegal_chars) {
+        return false;
+      }
+      std::string c = get_source_buffer()->get_text(end, beg);
+      switch (key->keyval) {
+      case 46:
+        break;
+      case 58:
+        if (c != "::") return false;
+        break;
+      case 60:
+        if (c != "->") return false;
+        break;
+      case 62:
+        if (c != "->") return false;
+        break;
+      default:
+        return false;
+      }
+  } else {
+    return false;
+  }
+  INFO("Source::ClangView::on_key_release getting autocompletions");
+  std::vector<Source::AutoCompleteData> acdata=get_autocomplete_suggestions(beg.get_line()+1,
+                                                                            beg.get_line_offset()+2);
+  std::map<std::string, std::string> rows;
+  for (auto &data : acdata) {
+    std::stringstream ss;
+    std::string return_value;
+    for (auto &chunk : data.chunks) {
+      switch (chunk.kind) {
+      case clang::CompletionChunk_ResultType:
+        return_value = chunk.chunk;
+        break;
+      case clang::CompletionChunk_Informative: break;
+      default: ss << chunk.chunk; break;
+      }
+    }
+    if (ss.str().length() > 0) { // if length is 0 the result is empty
+      rows[ss.str() + " --> " + return_value] = ss.str();
+    }
+  }
+  if (rows.empty()) {
+    rows["No suggestions found..."] = "";
+  }
+  
+  SelectionDialog selection_dialog(*this);
+  selection_dialog.on_select=[this, &rows](Gtk::ListViewText& list_view_text){
+    std::string selected = rows.at(list_view_text.get_text(list_view_text.get_selected()[0]));
+    get_source_buffer()->insert_at_cursor(selected);
+  };
+  selection_dialog.show(rows);
+  
+  return true;
 }
 
 //TODO: replace indentation methods with a better implementation or
