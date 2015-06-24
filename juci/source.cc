@@ -50,9 +50,33 @@ string Source::View::get_line_before_insert() {
   return line;
 }
 
+//Basic indentation
 bool Source::View::on_key_press(GdkEventKey* key) {
+  const std::regex spaces_regex(std::string("^(")+config.tab_char+"*).*$");
+  //Indent as in next or previous line
+  if(key->keyval==GDK_KEY_Return && key->state==0) {
+    int line_nr=get_source_buffer()->get_insert()->get_iter().get_line();
+    string line(get_line_before_insert());
+    std::smatch sm;
+    if(std::regex_match(line, sm, spaces_regex)) {
+      if((line_nr+1)<get_source_buffer()->get_line_count()) {
+        string next_line=get_line(line_nr+1);
+        std::smatch sm2;
+        if(std::regex_match(next_line, sm2, spaces_regex)) {
+          if(sm2[1].str().size()>sm[1].str().size()) {
+            get_source_buffer()->insert_at_cursor("\n"+sm2[1].str());
+            scroll_to(get_source_buffer()->get_insert());
+            return true;
+          }
+        }
+      }
+      get_source_buffer()->insert_at_cursor("\n"+sm[1].str());
+      scroll_to(get_source_buffer()->get_insert());
+      return true;
+    }
+  }
   //Indent right when clicking tab, no matter where in the line the cursor is. Also works on selected text.
-  if(key->keyval==GDK_KEY_Tab && key->state==0) {
+  else if(key->keyval==GDK_KEY_Tab && key->state==0) {
     Gtk::TextIter selection_start, selection_end;
     get_source_buffer()->get_selection_bounds(selection_start, selection_end);
     int line_start=selection_start.get_line();
@@ -85,6 +109,22 @@ bool Source::View::on_key_press(GdkEventKey* key) {
       get_source_buffer()->erase(line_it, line_plus_it);
     }
     return true;
+  }
+  //"Smart" backspace key
+  else if(key->keyval==GDK_KEY_BackSpace) {
+    Gtk::TextIter insert_it=get_source_buffer()->get_insert()->get_iter();
+    int line_nr=insert_it.get_line();
+    if(line_nr>0) {
+      string line=get_line(line_nr);
+      string previous_line=get_line(line_nr-1);
+      smatch sm;
+      if(std::regex_match(previous_line, sm, spaces_regex)) {
+        if(line==sm[1] || line==(std::string(sm[1])+config.tab) || (line+config.tab==sm[1])) {
+          Gtk::TextIter line_it = get_source_buffer()->get_iter_at_line(line_nr);
+          get_source_buffer()->erase(line_it, insert_it);
+        }
+      }
+    }
   }
   return false;
 }
@@ -386,15 +426,15 @@ bool Source::ClangView::on_key_release(GdkEventKey* key) {
   return true;
 }
 
-//TODO: replace indentation methods with a better implementation or
-//maybe use libclang
+//Clang indentation
+//TODO: replace indentation methods with a better implementation or maybe use libclang
 bool Source::ClangView::on_key_press(GdkEventKey* key) {
-  const std::regex bracket_regex("^( *).*\\{ *$");
-  const std::regex no_bracket_statement_regex("^( *)(if|for|else if|catch|while) *\\(.*[^;}] *$");
-  const std::regex no_bracket_no_para_statement_regex("^( *)(else|try|do) *$");
-  const std::regex spaces_regex("^( *).*$");
+  const std::regex bracket_regex(std::string("^(")+config.tab_char+"*).*\\{ *$");
+  const std::regex no_bracket_statement_regex(std::string("^(")+config.tab_char+"*)(if|for|else if|catch|while) *\\(.*[^;}] *$");
+  const std::regex no_bracket_no_para_statement_regex(std::string("^(")+config.tab_char+"*)(else|try|do) *$");
+  const std::regex spaces_regex(std::string("^(")+config.tab_char+"*).*$");
   
-  //Indent as in previous line, and indent right after if/else/etc
+  //Indent depending on if/else/etc and brackets
   if(key->keyval==GDK_KEY_Return && key->state==0) {
     string line(get_line_before_insert());
     std::smatch sm;
@@ -417,14 +457,17 @@ bool Source::ClangView::on_key_press(GdkEventKey* key) {
         insert_it--;
       scroll_to(get_source_buffer()->get_insert());
       get_source_buffer()->place_cursor(insert_it);
+      return true;
     }
     else if(std::regex_match(line, sm, no_bracket_statement_regex)) {
       get_source_buffer()->insert_at_cursor("\n"+sm[1].str()+config.tab);
       scroll_to(get_source_buffer()->get_insert());
+      return true;
     }
     else if(std::regex_match(line, sm, no_bracket_no_para_statement_regex)) {
       get_source_buffer()->insert_at_cursor("\n"+sm[1].str()+config.tab);
       scroll_to(get_source_buffer()->get_insert());
+      return true;
     }
     else if(std::regex_match(line, sm, spaces_regex)) {
       std::smatch sm2;
@@ -444,17 +487,14 @@ bool Source::ClangView::on_key_press(GdkEventKey* key) {
           }
         }
       }
-      get_source_buffer()->insert_at_cursor("\n"+sm[1].str());
-      scroll_to(get_source_buffer()->get_insert());
     }
-    return true;
   }
   //Indent left when writing } on a new line
   else if(key->keyval==GDK_KEY_braceright) {
     string line=get_line_before_insert();
     if(line.size()>=config.tab_size) {
       for(auto c: line) {
-        if(c!=' ')
+        if(c!=config.tab_char)
           return false;
       }
       Gtk::TextIter insert_it = get_source_buffer()->get_insert()->get_iter();
@@ -466,22 +506,6 @@ bool Source::ClangView::on_key_press(GdkEventKey* key) {
       get_source_buffer()->erase(line_it, line_plus_it);
     }
     return false;
-  }
-  //"Smart" backspace key
-  else if(key->keyval==GDK_KEY_BackSpace) {
-    Gtk::TextIter insert_it=get_source_buffer()->get_insert()->get_iter();
-    int line_nr=insert_it.get_line();
-    if(line_nr>0) {
-      string line=get_line(line_nr);
-      string previous_line=get_line(line_nr-1);
-      smatch sm;
-      if(std::regex_match(previous_line, sm, spaces_regex)) {
-        if(line==sm[1]) {
-          Gtk::TextIter line_it = get_source_buffer()->get_iter_at_line(line_nr);
-          get_source_buffer()->erase(line_it, insert_it);
-        }
-      }
-    }
   }
   
   return Source::View::on_key_press(key);
