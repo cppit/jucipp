@@ -87,11 +87,9 @@ void Terminal::Controller::ExecuteCommand(std::string command, std::string mode)
   FILE* p = NULL;
   std::cout << command << std::endl;
   p = popen(command.c_str(), mode.c_str());
-  std::cout << "KJØRTE FINT!" << std::endl;
   if (p == NULL) {
     PrintMessage("juCi++ ERROR: Failed to run command" + command + "\n");
   }else {
-    std::cout << "SKRIVER UT KOMMANDO RESULAT" << std::endl;
     char buffer[1028];
     while (fgets(buffer, 1028, p) != NULL) {
       PrintMessage(buffer);

@@ -17,13 +17,12 @@ Notebook::Controller::Controller(Gtk::Window* window,
                                  Keybindings::Controller& keybindings,
                                  Source::Config& source_cfg,
                                  Directories::Config& dir_cfg) :
-  directories_(dir_cfg),
-  source_config_(source_cfg) {
+  directories(dir_cfg),
+  source_config(source_cfg) {
   INFO("Create notebook");
   window_ = window;
   refClipboard_ = Gtk::Clipboard::get();
-  ispopup = false;
-  view().pack1(directories_.widget(), true, true);
+  view().pack1(directories.widget(), true, true);
   CreateKeybindings(keybindings);
   INFO("Notebook Controller Success");
 }  // Constructor
@@ -32,7 +31,7 @@ Notebook::Controller::Controller(Gtk::Window* window,
 void Notebook::Controller::CreateKeybindings(Keybindings::Controller
                                              &keybindings) {
   INFO("Notebook create signal handlers");
-  directories().m_TreeView.signal_row_activated()
+  directories.m_TreeView.signal_row_activated()
     .connect(sigc::mem_fun(*this,
                            &Notebook::Controller::OnDirectoryNavigation));
 
@@ -176,114 +175,6 @@ void Notebook::Controller::CreateKeybindings(Keybindings::Controller
   INFO("Notebook signal handlers sucsess");
 }
 
-bool Notebook::Controller:: OnMouseRelease(GdkEventButton* button) {
-  if (button->button == 1 && ispopup) {
-    popup_.response(Gtk::RESPONSE_DELETE_EVENT);
-    return true;
-  }
-  return false;
-}
-
-bool Notebook::Controller::OnKeyRelease(GdkEventKey* key) {
-  return GeneratePopup(key->keyval);
-}
-
-bool Notebook::Controller::GeneratePopup(int key_id) {
-  INFO("Notebook genereate popup, getting iters");
-  std::string path = text_vec_.at(CurrentPage())->view->file_path;
-  if (!source_config().legal_extension(path.substr(path.find_last_of(".") + 1))) return false;
-  //  Get function to fill popup with suggests item vector under is for testing
-  Gtk::TextIter beg = CurrentTextView().get_buffer()->get_insert()->get_iter();
-  Gtk::TextIter end = CurrentTextView().get_buffer()->get_insert()->get_iter();
-  Gtk::TextIter tmp = CurrentTextView().get_buffer()->get_insert()->get_iter();
-  Gtk::TextIter tmp1 = CurrentTextView().get_buffer()->get_insert()->get_iter();
-  Gtk::TextIter line =
-    CurrentTextView().get_buffer()->get_iter_at_line(tmp.get_line());
-  if (end.backward_char() && end.backward_char()) {
-    bool illegal_chars =
-    end.backward_search("\"", Gtk::TEXT_SEARCH_VISIBLE_ONLY, tmp, tmp1, line)
-    ||
-      end.backward_search("//", Gtk::TEXT_SEARCH_VISIBLE_ONLY, tmp, tmp1, line);
-    INFO("Notebook genereate popup, checking key_id");
-      if (illegal_chars) {
-        return false;
-      }
-      std::string c = text_vec_[CurrentPage()]->buffer()->get_text(end, beg);
-      switch (key_id) {
-      case 46:
-        break;
-      case 58:
-        if (c != "::") return false;
-        break;
-      case 60:
-        if (c != "->") return false;
-        break;
-      case 62:
-        if (c != "->") return false;
-        break;
-      default:
-        return false;
-      }
-  } else {
-    return false;
-  }
-  INFO("Notebook genereate popup, getting autocompletions");
-  std::vector<Source::AutoCompleteData> acdata=text_vec_.at(CurrentPage())->view->
-    get_autocomplete_suggestions(beg.get_line()+1,
-                               beg.get_line_offset()+2);
-  std::map<std::string, std::string> items;
-  for (auto &data : acdata) {
-    std::stringstream ss;
-    std::string return_value;
-    for (auto &chunk : data.chunks) {
-      switch (chunk.kind) {
-      case clang::CompletionChunk_ResultType:
-        return_value = chunk.chunk;
-        break;
-      case clang::CompletionChunk_Informative: break;
-      default: ss << chunk.chunk; break;
-      }
-    }
-    if (ss.str().length() > 0) { // if length is 0 the result is empty
-      items[ss.str() + " --> " + return_value] = ss.str();
-    }
-  }
-  Gtk::ScrolledWindow popup_scroll_;
-  Gtk::ListViewText listview_(1, false, Gtk::SelectionMode::SELECTION_SINGLE);
-  popup_scroll_.set_policy(Gtk::PolicyType::POLICY_NEVER,
-                           Gtk::PolicyType::POLICY_NEVER);
-  listview_.set_enable_search(true);
-  listview_.set_headers_visible(false);
-  listview_.set_hscroll_policy(Gtk::ScrollablePolicy::SCROLL_NATURAL);
-  listview_.set_activate_on_single_click(true);
-  if (items.empty()) {
-    items["No suggestions found..."] = "";
-  }
-  for (auto &i : items) {
-    listview_.append(i.first);
-  }
-  popup_scroll_.add(listview_);
-  popup_.get_vbox()->pack_start(popup_scroll_);
-  popup_.set_transient_for(*window_);
-  popup_.show_all();
-  INFO("Notebook genereate popup, moving popup");
-  int popup_x = popup_.get_width();
-  int popup_y = items.size() * 20;
-  PopupSetSize(popup_scroll_, popup_x, popup_y);
-  int x, y;
-  FindPopupPosition(CurrentTextView(), popup_x, popup_y, x, y);
-  popup_.move(x, y+15);
-  INFO("Notebook genereate popup, create handler");
-  PopupSelectHandler(popup_, listview_, &items);
-  ispopup = true;
-  INFO("Notebook genereate popup, run popup");
-  popup_.run();
-  INFO("Notebook genereate popup, hide popup");
-  popup_.hide();
-  ispopup = false;
-  return true;
-}
-
 Notebook::Controller::~Controller() {
   INFO("Notebook destructor");
   for (auto &i : editor_vec_) delete i;
@@ -300,7 +191,7 @@ Gtk::Box& Notebook::Controller::entry_view() {
 void Notebook::Controller::OnOpenFile(std::string path) {
   INFO("Notebook open file");
   INFO("Notebook create page");
-  text_vec_.emplace_back(new Source::Controller(source_config(), path, project_path));
+  text_vec_.emplace_back(new Source::Controller(source_config, path, project_path));
   scrolledtext_vec_.push_back(new Gtk::ScrolledWindow());
   editor_vec_.push_back(new Gtk::HBox());
   scrolledtext_vec_.back()->add(*text_vec_.back()->view);
@@ -313,7 +204,18 @@ void Notebook::Controller::OnOpenFile(std::string path) {
   Notebook().show_all_children();
   Notebook().set_current_page(Pages()-1);
   Notebook().set_focus_child(*text_vec_.back()->view);
-  set_source_handlers(*text_vec_.back());
+  //Add star on tab label when the page is not saved:
+  text_vec_.back()->buffer()->signal_changed().connect([this]() {
+    if(text_vec_.at(CurrentPage())->is_saved) {
+      std::string path=text_vec_.at(CurrentPage())->view->file_path;
+      size_t pos = path.find_last_of("/\\");
+      std::string filename=path;
+      if(pos!=std::string::npos)
+        filename=path.substr(pos+1);
+      Notebook().set_tab_label_text(*(Notebook().get_nth_page(CurrentPage())), filename+"*");
+    }
+    text_vec_.at(CurrentPage())->is_saved=false;
+  });
 }
 
 void Notebook::Controller::OnCloseCurrentPage() {
@@ -419,18 +321,18 @@ void Notebook::Controller
 ::OnDirectoryNavigation(const Gtk::TreeModel::Path& path,
                         Gtk::TreeViewColumn* column) {
     INFO("Notebook directory navigation");
-  Gtk::TreeModel::iterator iter = directories().m_refTreeModel->get_iter(path);
+  Gtk::TreeModel::iterator iter = directories.m_refTreeModel->get_iter(path);
   if (iter) {
     Gtk::TreeModel::Row row = *iter;
-    std::string upath = Glib::ustring(row[directories().view().m_col_path]);
+    std::string upath = Glib::ustring(row[directories.view().m_col_path]);
     boost::filesystem::path fs_path(upath);
     if (boost::filesystem::is_directory(fs_path)) {
-      directories().m_TreeView.row_expanded(path) ?
-        directories().m_TreeView.collapse_row(path) :
-        directories().m_TreeView.expand_row(path, false);
+      directories.m_TreeView.row_expanded(path) ?
+        directories.m_TreeView.collapse_row(path) :
+        directories.m_TreeView.expand_row(path, false);
     } else {
       std::stringstream sstm;
-      sstm << row[directories().view().m_col_path];
+      sstm << row[directories.view().m_col_path];
       std::string file = sstm.str();
       OnOpenFile(file);
     }
@@ -466,105 +368,8 @@ void Notebook::Controller::BufferChangeHandler(Glib::RefPtr<Gtk::TextBuffer>
                                    });
 }
 
-void Notebook::Controller::set_source_handlers(Source::Controller& controller) {
-  controller.view->signal_button_release_event().
-    connect(sigc::mem_fun(*this, &Notebook::Controller::OnMouseRelease), false);
-
-  controller.view->signal_key_release_event().
-    connect(sigc::mem_fun(*this, &Notebook::Controller::OnKeyRelease), false);
-
-  //Add star on tab label when the page is not saved:
-  controller.buffer()->signal_changed().connect([this]() {
-    if(text_vec_.at(CurrentPage())->is_saved) {
-      std::string path=text_vec_.at(CurrentPage())->view->file_path;
-      size_t pos = path.find_last_of("/\\");
-      std::string filename=path;
-      if(pos!=std::string::npos)
-        filename=path.substr(pos+1);
-      Notebook().set_tab_label_text(*(Notebook().get_nth_page(CurrentPage())), filename+"*");
-    }
-    text_vec_.at(CurrentPage())->is_saved=false;
-  });
-}
-
-void Notebook::Controller::PopupSelectHandler(Gtk::Dialog &popup,
-                                              Gtk::ListViewText &listview,
-                                              std::map<std::string, std::string>
-                                              *items) {
-  listview.signal_row_activated().
-    connect([this, &listview, &popup, items](const Gtk::TreeModel::Path& path,
-                                             Gtk::TreeViewColumn*) {
-              std::string selected = items->
-                at(listview.get_text(listview.get_selected()[0]));
-              CurrentTextView().get_buffer()->insert_at_cursor(selected);
-              popup.response(Gtk::RESPONSE_DELETE_EVENT);
-            });
-}
-void Notebook::Controller::PopupSetSize(Gtk::ScrolledWindow &scroll,
-                                        int &current_x,
-                                        int &current_y) {
-    INFO("Notebook popup set size");
-  int textview_x = CurrentTextView().get_width();
-  int textview_y = 150;
-  bool is_never_scroll_x = true;
-  bool is_never_scroll_y = true;
-  if (current_x > textview_x) {
-    current_x = textview_x;
-    is_never_scroll_x = false;
-  }
-  if (current_y > textview_y) {
-    current_y = textview_y;
-    is_never_scroll_y = false;
-  }
-  scroll.set_size_request(current_x, current_y);
-  if (!is_never_scroll_x && !is_never_scroll_y) {
-    scroll.set_policy(Gtk::PolicyType::POLICY_AUTOMATIC,
-                      Gtk::PolicyType::POLICY_AUTOMATIC);
-  } else if (!is_never_scroll_x && is_never_scroll_y) {
-    scroll.set_policy(Gtk::PolicyType::POLICY_AUTOMATIC,
-                      Gtk::PolicyType::POLICY_NEVER);
-  } else if (is_never_scroll_x && !is_never_scroll_y) {
-    scroll.set_policy(Gtk::PolicyType::POLICY_NEVER,
-                      Gtk::PolicyType::POLICY_AUTOMATIC);
-  }
-}
-
 std::string Notebook::Controller::CurrentPagePath(){
   return text_vec_.at(CurrentPage())->view->file_path;
-}
-
-void Notebook::Controller::FindPopupPosition(Gtk::TextView& textview,
-                                             int popup_x,
-                                             int popup_y,
-                                             int &x,
-                                             int &y) {
-    INFO("Notebook popup find position");
-  Gdk::Rectangle temp1, temp2;
-  textview.get_cursor_locations(
-                                CurrentTextView().
-                                get_buffer()->get_insert()->
-                                get_iter(), temp1, temp2);
-  int textview_edge_x = 0;
-  int textview_edge_y = 0;
-  textview.buffer_to_window_coords(
-                                   Gtk::TextWindowType::TEXT_WINDOW_WIDGET,
-                                   temp1.get_x(),
-                                   temp1.get_y(),
-                                   x, y);
-  Glib::RefPtr<Gdk::Window> gdkw =
-    CurrentTextView().get_window(Gtk::TextWindowType::TEXT_WINDOW_WIDGET);
-  gdkw->get_origin(textview_edge_x, textview_edge_y);
-
-  x += textview_edge_x;
-  y += textview_edge_y;
-  if ((textview_edge_x-x)*-1 > textview.get_width()-popup_x) {
-    x -= popup_x;
-    if (x < textview_edge_x) x = textview_edge_x;
-  }
-  if ((textview_edge_y-y)*-1 > textview.get_height()-popup_y) {
-    y -= (popup_y+14) + 15;
-    if (x < textview_edge_y) y = textview_edge_y +15;
-  }
 }
 
 bool Notebook::Controller:: OnSaveFile() {

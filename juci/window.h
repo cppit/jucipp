@@ -32,7 +32,6 @@ public:
   void OnWindowHide();
   void OnOpenFile();
   void OnFileOpenFolder();
-  bool OnMouseRelease(GdkEventButton* button);
   bool SaveFile();
   bool SaveFileAs();
 };

@@ -61,40 +61,20 @@ namespace Notebook {
     void OnOpenFile(std::string filename);
     bool ScrollEventCallback(GdkEventScroll* scroll_event);
     int Pages();
-    Directories::Controller& directories() { return directories_; }
     Gtk::Paned& view();
-    bool GeneratePopup(int key);
     void Search(bool forward);
-    Source::Config& source_config() { return source_config_; }
-    bool OnMouseRelease(GdkEventButton* button);
-    bool OnKeyRelease(GdkEventKey* key);
     std::string OnSaveFileAs();
-    bool LegalExtension(std::string extension);
     std::string project_path;
-  protected:
-    void set_source_handlers(Source::Controller& controller);
-    void PopupSelectHandler(Gtk::Dialog &popup,
-                            Gtk::ListViewText &listview,
-                            std::map<std::string, std::string>
-                            *items);
+    Directories::Controller directories;
   private:
     void CreateKeybindings(Keybindings::Controller& keybindings);
-    void FindPopupPosition(Gtk::TextView& textview,
-                           int popup_x,
-                           int popup_y,
-                           int &x,
-                           int &y);
-    void PopupSetSize(Gtk::ScrolledWindow& scroll,
-                      int &current_x,
-                      int &current_y);
     void AskToSaveDialog();
     Glib::RefPtr<Gtk::Builder> m_refBuilder;
     Glib::RefPtr<Gio::SimpleActionGroup> refActionGroup;
-    Source::Config source_config_;
-    Directories::Controller directories_;
+    Source::Config& source_config;
     View view_;
     Model model_;
-    bool is_new_file_;
+    bool is_new_file_; //TODO: Remove this
     Entry::Controller entry_;
 
     std::vector<std::unique_ptr<Source::Controller> > text_vec_;
@@ -104,8 +84,6 @@ namespace Notebook {
     Gtk::TextIter search_match_end_;
     Gtk::TextIter search_match_start_;
     Glib::RefPtr<Gtk::Clipboard> refClipboard_;
-    bool ispopup;
-    Gtk::Dialog popup_;
     Gtk::Window* window_;
   };  // class controller
 }  // namespace Notebook

@@ -73,7 +73,7 @@ Window::Window() :
 		  terminal_.SetFolderCommand(path);
 		}
 		terminal_.Compile();
-		std::string executable = notebook_.directories().
+		std::string executable = notebook_.directories.
 		  GetCmakeVarValue(path,"add_executable");
 		terminal_.Run(executable);
                 running.unlock();
@@ -104,10 +104,6 @@ Window::Window() :
             execute.detach();
           }
         });
-  this->signal_button_release_event().
-    connect(sigc::mem_fun(*this,&Window::OnMouseRelease),false);
-  terminal_.Terminal().signal_button_release_event().
-    connect(sigc::mem_fun(*this,&Window::OnMouseRelease),false);
 
   add_accel_group(keybindings_.ui_manager_menu()->get_accel_group());
   add_accel_group(keybindings_.ui_manager_hidden()->get_accel_group());
@@ -144,7 +140,7 @@ void Window::OnFileOpenFolder() {
       {
         std::string project_path=dialog.get_filename();
         notebook_.project_path=project_path;
-        notebook_.directories().open_folder(project_path);
+        notebook_.directories.open_folder(project_path);
         break;
       }
     case(Gtk::RESPONSE_CANCEL):
@@ -202,9 +198,6 @@ void Window::OnOpenFile() {
     break;
   }
   }
-}
-bool Window::OnMouseRelease(GdkEventButton *button){
-  return notebook_.OnMouseRelease(button);
 }
 
 bool Window::SaveFile() {

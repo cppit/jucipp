@@ -11,10 +11,6 @@
 #include <atomic>
 #include "gtksourceviewmm.h"
 
-namespace Notebook {
-  class Controller;
-}
-
 namespace Source {
   class Config {
   public:
@@ -22,6 +18,7 @@ namespace Source {
     unsigned tab_size;
     bool show_line_numbers, highlight_current_line;
     std::string tab, background, font;
+    char tab_char=' ';
     std::vector<std::string> extensions;
     std::unordered_map<std::string, std::string> tags, types;
   };  // class Config
@@ -60,25 +57,31 @@ namespace Source {
 
   class View : public Gsv::View {
   public:
-    View(const Config& config, const std::string& file_path, const std::string& project_path);
+    View(const Source::Config& config, const std::string& file_path, const std::string& project_path);
     std::string get_line(size_t line_number);
     std::string get_line_before_insert();
-    virtual std::vector<Source::AutoCompleteData> get_autocomplete_suggestions(int line_number, int column) {return std::vector<Source::AutoCompleteData>();}
     std::string file_path;
     std::string project_path;
   protected:
-    const Config& config;
+    const Source::Config& config;
+    bool on_key_press(GdkEventKey* key);
   };  // class View
   
   class GenericView : public View {
   public:
-    GenericView(const Config& config, const std::string& file_path, const std::string& project_path):
-    View(config, file_path, project_path) {}
+    GenericView(const Source::Config& config, const std::string& file_path, const std::string& project_path):
+    View(config, file_path, project_path) {
+      signal_key_press_event().connect(sigc::mem_fun(*this, &Source::GenericView::on_key_press), false);
+    }
+  private:
+    bool on_key_press(GdkEventKey* key) {
+      return Source::View::on_key_press(key);
+    }
   };
   
   class ClangView : public View {
   public:
-    ClangView(const Config& config, const std::string& file_path, const std::string& project_path);
+    ClangView(const Source::Config& config, const std::string& file_path, const std::string& project_path);
     ~ClangView();
     // inits the syntax highligthing on file open
     void init_syntax_highlighting(const std::map<std::string, std::string>
@@ -103,6 +106,7 @@ namespace Source {
                         std::vector<Range> *source_ranges);
     std::vector<std::string> get_compilation_commands();
     bool on_key_press(GdkEventKey* key);
+    bool on_key_release(GdkEventKey* key);
     
     Glib::Dispatcher parse_done;
     Glib::Dispatcher parse_start;
@@ -122,10 +126,7 @@ namespace Source {
     
     bool is_saved = true;
     
-    std::unique_ptr<View> view;
-    
-  private:
-    const Config& config;
+    std::unique_ptr<Source::View> view;
   };  // class Controller
 }  // namespace Source
 #endif  // JUCI_SOURCE_H_
