@@ -1,4 +1,6 @@
-# juCi++ a lightweight C++-IDE with support for C++11 and C++14.
+# juCi++
+###### a lightweight C++-IDE with support for C++11 and C++14.
+## About
 juCi++ is a lightweight C++-IDE written in C++. You can write plugins
 in Python and configure the IDE from the config.json file.
 
