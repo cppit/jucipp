@@ -1,3 +1,6 @@
+#ifndef JUCI_JUCI_H_
+#define JUCI_JUCI_H_
+
 #include "window.h"
 #include "logging.h"
 
@@ -13,3 +16,5 @@ private:
   std::string directory;
   std::vector<std::string> files;
 };
+
+#endif // JUCI_JUCI_H_

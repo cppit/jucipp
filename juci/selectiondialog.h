@@ -1,3 +1,6 @@
+#ifndef JUCI_SELECTIONDIALOG_H_
+#define JUCI_SELECTIONDIALOG_H_
+
 #include "gtkmm.h"
 #include "logging.h"
 #include "source.h"
@@ -17,3 +20,5 @@ private:
   Gtk::ScrolledWindow scrolled_window;
   Gtk::ListViewText list_view_text;
 };
+
+#endif  // JUCI_SELECTIONDIALOG_H_

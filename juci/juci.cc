@@ -37,7 +37,7 @@ void Juci::on_activate() {
   if(directory!="") {
     //TODO: use the following instead, window->notebook_.open_directory(directory);
     window->notebook_.project_path=directory;
-    window->notebook_.directories().open_folder(directory);
+    window->notebook_.directories.open_folder(directory);
   }
   for(auto &f: files)
     window->notebook_.OnOpenFile(f);

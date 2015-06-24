@@ -73,7 +73,7 @@ Window::Window() :
 		  terminal_.SetFolderCommand(path);
 		}
 		terminal_.Compile();
-		std::string executable = notebook_.directories().
+		std::string executable = notebook_.directories.
 		  GetCmakeVarValue(path,"add_executable");
 		terminal_.Run(executable);
                 running.unlock();
@@ -140,7 +140,7 @@ void Window::OnFileOpenFolder() {
       {
         std::string project_path=dialog.get_filename();
         notebook_.project_path=project_path;
-        notebook_.directories().open_folder(project_path);
+        notebook_.directories.open_folder(project_path);
         break;
       }
     case(Gtk::RESPONSE_CANCEL):

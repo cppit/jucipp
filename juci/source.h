@@ -11,10 +11,6 @@
 #include <atomic>
 #include "gtksourceviewmm.h"
 
-namespace Notebook {
-  class Controller;
-}
-
 namespace Source {
   class Config {
   public:

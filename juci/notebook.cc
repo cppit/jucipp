@@ -17,12 +17,12 @@ Notebook::Controller::Controller(Gtk::Window* window,
                                  Keybindings::Controller& keybindings,
                                  Source::Config& source_cfg,
                                  Directories::Config& dir_cfg) :
-  directories_(dir_cfg),
-  source_config_(source_cfg) {
+  directories(dir_cfg),
+  source_config(source_cfg) {
   INFO("Create notebook");
   window_ = window;
   refClipboard_ = Gtk::Clipboard::get();
-  view().pack1(directories_.widget(), true, true);
+  view().pack1(directories.widget(), true, true);
   CreateKeybindings(keybindings);
   INFO("Notebook Controller Success");
 }  // Constructor
@@ -31,7 +31,7 @@ Notebook::Controller::Controller(Gtk::Window* window,
 void Notebook::Controller::CreateKeybindings(Keybindings::Controller
                                              &keybindings) {
   INFO("Notebook create signal handlers");
-  directories().m_TreeView.signal_row_activated()
+  directories.m_TreeView.signal_row_activated()
     .connect(sigc::mem_fun(*this,
                            &Notebook::Controller::OnDirectoryNavigation));
 
@@ -191,7 +191,7 @@ Gtk::Box& Notebook::Controller::entry_view() {
 void Notebook::Controller::OnOpenFile(std::string path) {
   INFO("Notebook open file");
   INFO("Notebook create page");
-  text_vec_.emplace_back(new Source::Controller(source_config(), path, project_path));
+  text_vec_.emplace_back(new Source::Controller(source_config, path, project_path));
   scrolledtext_vec_.push_back(new Gtk::ScrolledWindow());
   editor_vec_.push_back(new Gtk::HBox());
   scrolledtext_vec_.back()->add(*text_vec_.back()->view);
@@ -204,7 +204,18 @@ void Notebook::Controller::OnOpenFile(std::string path) {
   Notebook().show_all_children();
   Notebook().set_current_page(Pages()-1);
   Notebook().set_focus_child(*text_vec_.back()->view);
-  set_source_handlers(*text_vec_.back());
+  //Add star on tab label when the page is not saved:
+  text_vec_.back()->buffer()->signal_changed().connect([this]() {
+    if(text_vec_.at(CurrentPage())->is_saved) {
+      std::string path=text_vec_.at(CurrentPage())->view->file_path;
+      size_t pos = path.find_last_of("/\\");
+      std::string filename=path;
+      if(pos!=std::string::npos)
+        filename=path.substr(pos+1);
+      Notebook().set_tab_label_text(*(Notebook().get_nth_page(CurrentPage())), filename+"*");
+    }
+    text_vec_.at(CurrentPage())->is_saved=false;
+  });
 }
 
 void Notebook::Controller::OnCloseCurrentPage() {
@@ -310,18 +321,18 @@ void Notebook::Controller
 ::OnDirectoryNavigation(const Gtk::TreeModel::Path& path,
                         Gtk::TreeViewColumn* column) {
     INFO("Notebook directory navigation");
-  Gtk::TreeModel::iterator iter = directories().m_refTreeModel->get_iter(path);
+  Gtk::TreeModel::iterator iter = directories.m_refTreeModel->get_iter(path);
   if (iter) {
     Gtk::TreeModel::Row row = *iter;
-    std::string upath = Glib::ustring(row[directories().view().m_col_path]);
+    std::string upath = Glib::ustring(row[directories.view().m_col_path]);
     boost::filesystem::path fs_path(upath);
     if (boost::filesystem::is_directory(fs_path)) {
-      directories().m_TreeView.row_expanded(path) ?
-        directories().m_TreeView.collapse_row(path) :
-        directories().m_TreeView.expand_row(path, false);
+      directories.m_TreeView.row_expanded(path) ?
+        directories.m_TreeView.collapse_row(path) :
+        directories.m_TreeView.expand_row(path, false);
     } else {
       std::stringstream sstm;
-      sstm << row[directories().view().m_col_path];
+      sstm << row[directories.view().m_col_path];
       std::string file = sstm.str();
       OnOpenFile(file);
     }
@@ -355,21 +366,6 @@ void Notebook::Controller::BufferChangeHandler(Glib::RefPtr<Gtk::TextBuffer>
                                    [this]() {                                     
                                      //UpdateHistory();
                                    });
-}
-
-void Notebook::Controller::set_source_handlers(Source::Controller& controller) {
-  //Add star on tab label when the page is not saved:
-  controller.buffer()->signal_changed().connect([this]() {
-    if(text_vec_.at(CurrentPage())->is_saved) {
-      std::string path=text_vec_.at(CurrentPage())->view->file_path;
-      size_t pos = path.find_last_of("/\\");
-      std::string filename=path;
-      if(pos!=std::string::npos)
-        filename=path.substr(pos+1);
-      Notebook().set_tab_label_text(*(Notebook().get_nth_page(CurrentPage())), filename+"*");
-    }
-    text_vec_.at(CurrentPage())->is_saved=false;
-  });
 }
 
 std::string Notebook::Controller::CurrentPagePath(){

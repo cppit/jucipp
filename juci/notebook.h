@@ -61,25 +61,20 @@ namespace Notebook {
     void OnOpenFile(std::string filename);
     bool ScrollEventCallback(GdkEventScroll* scroll_event);
     int Pages();
-    Directories::Controller& directories() { return directories_; }
     Gtk::Paned& view();
     void Search(bool forward);
-    Source::Config& source_config() { return source_config_; }
     std::string OnSaveFileAs();
-    bool LegalExtension(std::string extension);
     std::string project_path;
-  protected:
-    void set_source_handlers(Source::Controller& controller);
+    Directories::Controller directories;
   private:
     void CreateKeybindings(Keybindings::Controller& keybindings);
     void AskToSaveDialog();
     Glib::RefPtr<Gtk::Builder> m_refBuilder;
     Glib::RefPtr<Gio::SimpleActionGroup> refActionGroup;
-    Source::Config source_config_;
-    Directories::Controller directories_;
+    Source::Config& source_config;
     View view_;
     Model model_;
-    bool is_new_file_;
+    bool is_new_file_; //TODO: Remove this
     Entry::Controller entry_;
 
     std::vector<std::unique_ptr<Source::Controller> > text_vec_;
