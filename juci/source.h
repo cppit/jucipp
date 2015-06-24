@@ -11,10 +11,6 @@
 #include <atomic>
 #include "gtksourceviewmm.h"
 
-namespace Notebook {
-  class Controller;
-}
-
 namespace Source {
   class Config {
   public:
@@ -22,6 +18,7 @@ namespace Source {
     unsigned tab_size;
     bool show_line_numbers, highlight_current_line;
     std::string tab, background, font;
+    char tab_char=' ';
     std::vector<std::string> extensions;
     std::unordered_map<std::string, std::string> tags, types;
   };  // class Config
@@ -43,13 +40,6 @@ namespace Source {
     int kind;
   };
 
-  class View : public Gsv::View {
-  public:
-    View();
-    std::string get_line(size_t line_number);
-    std::string get_line_before_insert();
-  };  // class View
-
   class AutoCompleteChunk {
   public:
     explicit AutoCompleteChunk(const clang::CompletionChunk &clang_chunk) :
@@ -64,18 +54,37 @@ namespace Source {
       chunks(chunks) { }
     std::vector<AutoCompleteChunk> chunks;
   };
-  
-  class Controller;
 
-  class Parser{
+  class View : public Gsv::View {
   public:
-    Parser(const std::vector<std::unique_ptr<Source::Controller> > &controllers):
-      controllers(controllers) {}
-    ~Parser();
+    View(const Source::Config& config, const std::string& file_path, const std::string& project_path);
+    std::string get_line(size_t line_number);
+    std::string get_line_before_insert();
+    std::string file_path;
+    std::string project_path;
+  protected:
+    const Source::Config& config;
+    bool on_key_press(GdkEventKey* key);
+  };  // class View
+  
+  class GenericView : public View {
+  public:
+    GenericView(const Source::Config& config, const std::string& file_path, const std::string& project_path):
+    View(config, file_path, project_path) {
+      signal_key_press_event().connect(sigc::mem_fun(*this, &Source::GenericView::on_key_press), false);
+    }
+  private:
+    bool on_key_press(GdkEventKey* key) {
+      return Source::View::on_key_press(key);
+    }
+  };
+  
+  class ClangView : public View {
+  public:
+    ClangView(const Source::Config& config, const std::string& file_path, const std::string& project_path);
+    ~ClangView();
     // inits the syntax highligthing on file open
-    void init_syntax_highlighting(const std::string &filepath,
-                                const std::string &project_path,
-                                const std::map<std::string, std::string>
+    void init_syntax_highlighting(const std::map<std::string, std::string>
                                 &buffers,
                                 int start_offset,
                                 int end_offset,
@@ -83,9 +92,8 @@ namespace Source {
     std::vector<Source::AutoCompleteData> get_autocomplete_suggestions(int line_number, int column);
     int reparse(const std::map<std::string, std::string> &buffers);
     std::vector<Range> extract_tokens(int, int);
-
-    std::string file_path;
-    std::string project_path;
+    void update_syntax(const std::vector<Range> &locations);
+    
     static clang::Index clang_index;
     std::map<std::string, std::string> get_buffer_map() const;
     std::mutex parsing_mutex;
@@ -97,29 +105,9 @@ namespace Source {
     void highlight_cursor(clang::Token *token,
                         std::vector<Range> *source_ranges);
     std::vector<std::string> get_compilation_commands();
-    //controllers is needed here, no way around that I think
-    const std::vector<std::unique_ptr<Source::Controller> > &controllers;
-  };
-
-  class Controller {
-  public:
-    Controller(const Source::Config &config,
-               const std::vector<std::unique_ptr<Source::Controller> > &controllers);
-    ~Controller();
-    void update_syntax(const std::vector<Range> &locations);
-    void on_new_empty_file();
-    void on_open_file(const std::string &filename);
-    Glib::RefPtr<Gsv::Buffer> buffer();
     bool on_key_press(GdkEventKey* key);
+    bool on_key_release(GdkEventKey* key);
     
-    bool is_saved = true;
-    
-    Parser parser;
-    View view;
-    
-    std::function<void(bool was_saved)> signal_buffer_changed;
-    
-  private:
     Glib::Dispatcher parse_done;
     Glib::Dispatcher parse_start;
     std::thread parse_thread;
@@ -128,8 +116,17 @@ namespace Source {
     std::atomic<bool> parse_thread_go;
     std::atomic<bool> parse_thread_mapped;
     std::atomic<bool> parse_thread_stop;
+  };
+
+  class Controller {
+  public:
+    Controller(const Source::Config &config,
+               const std::string& file_path, std::string project_path);
+    Glib::RefPtr<Gsv::Buffer> buffer();
     
-    const Config& config;
+    bool is_saved = true;
+    
+    std::unique_ptr<Source::View> view;
   };  // class Controller
 }  // namespace Source
 #endif  // JUCI_SOURCE_H_
