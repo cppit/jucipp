@@ -186,7 +186,7 @@ void Notebook::Controller::OnOpenFile(std::string path) {
   //Add star on tab label when the page is not saved:
   text_vec_.back()->buffer()->signal_changed().connect([this]() {
     if(text_vec_.at(CurrentPage())->is_saved) {
-      std::string path=text_vec_.at(CurrentPage())->view->file_path;
+      std::string path=CurrentTextView().file_path;
       size_t pos = path.find_last_of("/\\");
       std::string filename=path;
       if(pos!=std::string::npos)
@@ -328,12 +328,8 @@ Gtk::Notebook& Notebook::Controller::Notebook() {
   return view_.notebook();
 }
 
-std::string Notebook::Controller::CurrentPagePath(){
-  return text_vec_.at(CurrentPage())->view->file_path;
-}
-
 bool Notebook::Controller:: OnSaveFile() {
-  std::string path=text_vec_.at(CurrentPage())->view->file_path;
+  std::string path=CurrentTextView().file_path;
   return OnSaveFile(path);
 }
 bool Notebook::Controller:: OnSaveFile(std::string path) {
@@ -343,7 +339,7 @@ bool Notebook::Controller:: OnSaveFile(std::string path) {
       file.open (path);
       file << CurrentTextView().get_buffer()->get_text();
       file.close();
-      text_vec_.at(CurrentPage())->view->file_path=path;
+      CurrentTextView().file_path=path;
       size_t pos = path.find_last_of("/\\");
       std::string filename=path;
       if(pos!=std::string::npos)
@@ -373,8 +369,7 @@ std::string Notebook::Controller::OnSaveFileAs(){
   case(Gtk::RESPONSE_OK): {
     DEBUG("get_filename()");
     std::string path = dialog.get_filename();
-    unsigned pos = path.find_last_of("/\\");
-     return path;
+    return path;
   }
   case(Gtk::RESPONSE_CANCEL): {
     break;
@@ -394,7 +389,7 @@ void Notebook::Controller::AskToSaveDialog() {
 			    false, Gtk::MESSAGE_QUESTION, Gtk::BUTTONS_YES_NO);
   dialog.set_secondary_text(
           "Do you want to save: " +
-			    text_vec_.at(CurrentPage())->view->file_path+" ?");
+			    CurrentTextView().file_path+" ?");
   DEBUG("AskToSaveDialog: run dialog");
   int result = dialog.run();
 

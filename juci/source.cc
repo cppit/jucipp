@@ -268,7 +268,7 @@ get_compilation_commands() {
   std::vector<std::string> arguments;
   for (auto &i : cmds) {
     std::vector<std::string> lol = i.get_command_as_args();
-    for (int a = 1; a < lol.size()-4; a++) {
+    for (size_t a = 1; a < lol.size()-4; a++) {
       arguments.emplace_back(lol[a]);
     }
   }
@@ -439,7 +439,7 @@ bool Source::ClangView::on_key_press(GdkEventKey* key) {
     string line(get_line_before_insert());
     std::smatch sm;
     if(std::regex_match(line, sm, bracket_regex)) {
-      size_t line_nr=get_source_buffer()->get_insert()->get_iter().get_line();
+      int line_nr=get_source_buffer()->get_insert()->get_iter().get_line();
       if((line_nr+1)<get_source_buffer()->get_line_count()) {
         string next_line=get_line(line_nr+1);
         std::smatch sm2;

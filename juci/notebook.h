@@ -32,7 +32,6 @@ namespace Notebook {
     Source::View& CurrentTextView();
     int CurrentPage();
     Gtk::Notebook& Notebook();
-    std::string CurrentPagePath();
     void OnCloseCurrentPage();
     std::string GetCursorWord();
     void OnEditCopy();

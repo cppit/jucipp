@@ -66,8 +66,8 @@ Window::Window() :
 	  SaveFile();
 	  if (running.try_lock()) {
 	    std::thread execute([=]() {
-		std::string path = notebook_.CurrentPagePath();
-		int pos = path.find_last_of("/\\");
+		std::string path = notebook_.CurrentTextView().file_path;
+		size_t pos = path.find_last_of("/\\");
 		if(pos != std::string::npos) {
 		  path.erase(path.begin()+pos,path.end());
 		  terminal_.SetFolderCommand(path);
@@ -92,8 +92,8 @@ Window::Window() :
           SaveFile();
           if (running.try_lock()) {
             std::thread execute([=]() {		  
-                std::string path =  notebook_.CurrentPagePath();
-                int pos = path.find_last_of("/\\");
+                std::string path =  notebook_.CurrentTextView().file_path;
+                size_t pos = path.find_last_of("/\\");
                 if(pos != std::string::npos){
                   path.erase(path.begin()+pos,path.end());
                   terminal_.SetFolderCommand(path);
@@ -203,7 +203,7 @@ void Window::OnOpenFile() {
 bool Window::SaveFile() {
   if(notebook_.OnSaveFile()) {
     terminal_.PrintMessage("File saved to: " +
-			   notebook_.CurrentPagePath()+"\n");
+			   notebook_.CurrentTextView().file_path+"\n");
     return true;
   }
   terminal_.PrintMessage("File not saved");
@@ -212,7 +212,7 @@ bool Window::SaveFile() {
 bool Window::SaveFileAs() {
   if(notebook_.OnSaveFile(notebook_.OnSaveFileAs())){
     terminal_.PrintMessage("File saved to: " +
-			   notebook_.CurrentPagePath()+"\n");
+			   notebook_.CurrentTextView().file_path+"\n");
     return true;
   }
   terminal_.PrintMessage("File not saved");

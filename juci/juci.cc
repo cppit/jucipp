@@ -16,7 +16,7 @@ int Juci::on_command_line(const Glib::RefPtr<Gio::ApplicationCommandLine> &cmd) 
   char **argv = cmd->get_arguments(argc);
   ctx.parse(argc, argv);
   if(argc>=2) {
-    for(size_t c=1;c<argc;c++) {
+    for(int c=1;c<argc;c++) {
       boost::filesystem::path p=boost::filesystem::canonical(argv[c]);
       if(boost::filesystem::exists(p)) {
         if(boost::filesystem::is_regular_file(p))

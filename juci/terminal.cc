@@ -8,7 +8,7 @@ Terminal::Config::Config() {
 }
 Terminal::Config::Config(Terminal::Config& original) :
   run_command_(original.run_command_){
-  for (auto it = 0; it<original.compile_commands().size(); ++it) {
+  for (size_t it = 0; it<original.compile_commands().size(); ++it) {
     InsertCompileCommand(original.compile_commands().at(it));
   }
 }
