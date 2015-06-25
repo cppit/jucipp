@@ -1,74 +1,61 @@
 #include "entry.h"
-Entry::View::View() :
-  view_(Gtk::ORIENTATION_HORIZONTAL),
-  button_apply_(Gtk::Stock::APPLY),
-  button_close_(Gtk::Stock::CLOSE),
-  button_next_("Next"),
-  button_prev_("Prev"){
-}
-Gtk::Box& Entry::View::view() {
-  return view_;
-}
-void Entry::View::OnShowSetFilenName(std::string exstension) {
-  entry_.set_max_length(50);
-  entry_.set_text(exstension);
-  view_.pack_start(entry_);
-  view_.pack_end(button_close_, Gtk::PACK_SHRINK);
-  view_.pack_end(button_apply_, Gtk::PACK_SHRINK); 
-}
-void Entry::View::OnShowSearch(std::string current){
-  entry_.set_max_length(50);
-  entry_.set_text(current);
-  view_.pack_start(entry_);
-  view_.pack_start(button_next_, Gtk::PACK_SHRINK);
-  view_.pack_start(button_prev_, Gtk::PACK_SHRINK);
-  view_.pack_end(button_close_, Gtk::PACK_SHRINK);
-}
-void Entry::View::OnHideEntry(bool is_new_file)
-{
-  view_.remove(entry_);
-  view_.remove(button_close_);
-  if(!is_new_file){
-    view_.remove(button_next_);
-    view_.remove(button_prev_);
-  }else{
-    view_.remove(button_apply_);
-  }
+
+Entry::Entry() :
+  Gtk::Box(Gtk::ORIENTATION_HORIZONTAL),
+  button_apply_set_filename(Gtk::Stock::APPLY),
+  button_close(Gtk::Stock::CLOSE),
+  button_next("Next"),
+  button_prev("Prev"){
+  entry.signal_activate().connect([this](){
+    if(activate) {
+      activate();
+    }
+  });
+  entry.signal_key_press_event().connect(sigc::mem_fun(*this, &Entry::on_key_press), false);
 }
 
-Entry::Controller::Controller() {					
-}
-Gtk::Box& Entry::Controller::view() {
-  return view_.view();
-}
-void Entry::Controller::OnShowSetFilenName(std::string exstension) {
-  view_.OnShowSetFilenName(exstension);
-  view_.view().show_all();
-  view_.entry().grab_focus();
-  view_.entry().set_position(0);
-}
-void Entry::Controller::OnShowSearch(std::string current){
-  view_.OnShowSearch(current);
-  view_.view().show_all();
-  view_.entry().grab_focus();
-  view_.entry().set_position(0);
-}
-void Entry::Controller::OnHideEntries(bool is_new_file){
-  view_.OnHideEntry(is_new_file);
-}
-std::string Entry::Controller::text(){
-  return view_.entry().get_text();
-}
-Gtk::Button& Entry::Controller::button_apply(){
-  return view_.button_apply();
-}
-Gtk::Button& Entry::Controller::button_close(){
-  return view_.button_close();
-}
-Gtk::Button& Entry::Controller::button_next(){
-  return view_.button_next();
-}
-Gtk::Button& Entry::Controller::button_prev(){
-  return view_.button_prev();
+bool Entry::on_key_press(GdkEventKey* key) {
+  if(key->keyval==GDK_KEY_Escape)
+    hide();
+  return false;
 }
 
+void Entry::show_set_filename() {
+  hide();
+  entry.set_max_length(50);
+  entry.set_text("");
+  pack_start(entry);
+  pack_end(button_close, Gtk::PACK_SHRINK);
+  pack_end(button_apply_set_filename, Gtk::PACK_SHRINK);
+  show_all();
+  entry.grab_focus();
+  entry.set_position(0);
+  activate=[this](){
+    button_apply_set_filename.clicked();
+  };
+}
+
+void Entry::show_search(const std::string& current){
+  hide();
+  entry.set_max_length(50);
+  entry.set_text(current);
+  pack_start(entry);
+  pack_start(button_next, Gtk::PACK_SHRINK);
+  pack_start(button_prev, Gtk::PACK_SHRINK);
+  pack_end(button_close, Gtk::PACK_SHRINK);
+  show_all();
+  entry.grab_focus();
+  entry.set_position(0);
+  activate=[this](){
+    button_next.clicked();
+  };
+}
+void Entry::hide() {
+  auto widgets=get_children();
+  for(auto &w: widgets)
+    remove(*w);
+}
+
+std::string Entry::operator()() {
+  return entry.get_text();
+}

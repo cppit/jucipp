@@ -2,12 +2,6 @@
 #include "notebook.h"
 #include "logging.h"
 
-Notebook::Model::Model() {
-  cc_extension_ = ".cpp";
-  h_extension_  = ".hpp";
-  scrollvalue_ = 50;
-}
-
 Notebook::View::View() : notebook_() {
   view_.pack2(notebook_);
   view_.set_position(120);
@@ -40,31 +34,12 @@ void Notebook::Controller::CreateKeybindings(Keybindings::Controller
                             Gtk::Stock::FILE));
 
   keybindings.action_group_menu()->
-    add(Gtk::Action::create("FileNewStandard",                     
-                            "New empty file"),
+    add(Gtk::Action::create("FileNewFile",                     
+                            "New file"),
         Gtk::AccelKey(keybindings.config_
                       .key_map()["new_file"]),
         [this]() {
-          is_new_file_ = true;
-          OnFileNewEmptyfile();
-        });
-  keybindings.action_group_menu()->
-    add(Gtk::Action::create("FileNewCC",
-                            "New source file"),
-        Gtk::AccelKey(keybindings.config_
-                      .key_map()["new_cc_file"]),
-        [this]() {
-          is_new_file_ = true;
-          OnFileNewCCFile();
-        });
-  keybindings.action_group_menu()->
-    add(Gtk::Action::create("FileNewH",
-                            "New header file"),
-        Gtk::AccelKey(keybindings.config_
-                      .key_map()["new_h_file"]),
-        [this]() {
-          is_new_file_ = true;
-          OnFileNewHeaderFile();
+          OnFileNewFile();
         });
   keybindings.action_group_menu()->
     add(Gtk::Action::create("WindowCloseTab",
@@ -80,7 +55,6 @@ void Notebook::Controller::CreateKeybindings(Keybindings::Controller
         Gtk::AccelKey(keybindings.config_
                       .key_map()["edit_find"]),
         [this]() {
-          is_new_file_ = false;
           OnEditSearch();
           // TODO(Oyvang)  Zalox, Forgi)Create function OnEditFind();
         });
@@ -141,33 +115,41 @@ void Notebook::Controller::CreateKeybindings(Keybindings::Controller
           INFO("Done Redo");
         });
 
-  entry_.view_.entry().signal_activate().
+  entry.button_apply_set_filename.signal_clicked().connect([this]() {
+    std::string filename=entry();
+    if(filename!="") {
+      if(project_path!="" && !boost::filesystem::path(filename).is_absolute())
+        filename=project_path+"/"+filename;
+      boost::filesystem::path p(filename);
+      if(boost::filesystem::exists(p)) {
+        //TODO: alert user that file already exists
+      }
+      else {
+        std::ofstream f(p.string().c_str());
+        if(f) {
+          OnOpenFile(boost::filesystem::canonical(p).string());
+          if(project_path!="")
+            directories.open_folder(project_path); //TODO: Do refresh instead
+        }
+        else {
+          //TODO: alert user of error creating file
+        }
+        f.close();
+      }
+    }
+    entry.hide();
+  });
+  entry.button_close.signal_clicked().
     connect(
             [this]() {
-              if (is_new_file_) {
-                //OnNewPage(entry_.text()); //TODO: rewrite new file (the file needs to be created before opened with Source::Controller in order to choose the correct view implementation)
-                entry_.OnHideEntries(is_new_file_);
-              } else {
-                Search(true);
-              }
+              entry.hide();
             });
-  entry_.button_apply().signal_clicked().
-    connect(
-            [this]() {
-              //OnNewPage(entry_.text()); //TODO: rewrite new file (the file needs to be created before opened with Source::Controller in order to choose the correct view implementation)
-              entry_.OnHideEntries(is_new_file_);
-            });
-  entry_.button_close().signal_clicked().
-    connect(
-            [this]() {
-              entry_.OnHideEntries(is_new_file_);
-            });
-  entry_.button_next().signal_clicked().
+  entry.button_next.signal_clicked().
     connect(
             [this]() {
               Search(true);
             });
-  entry_.button_prev().signal_clicked().
+  entry.button_prev.signal_clicked().
     connect(
             [this]() {
               Search(false);
@@ -183,9 +165,6 @@ Notebook::Controller::~Controller() {
 
 Gtk::Paned& Notebook::Controller::view() {
   return view_.view();
-}
-Gtk::Box& Notebook::Controller::entry_view() {
-  return entry_.view();
 }
 
 void Notebook::Controller::OnOpenFile(std::string path) {
@@ -233,28 +212,22 @@ void Notebook::Controller::OnCloseCurrentPage() {
     editor_vec_.erase(editor_vec_.begin()+page);
   }
 }
-void Notebook::Controller::OnFileNewEmptyfile() {
-  entry_.OnShowSetFilenName("");
-}
-void Notebook::Controller::OnFileNewCCFile() {
-  entry_.OnShowSetFilenName(model_.cc_extension_);
-}
-void Notebook::Controller::OnFileNewHeaderFile() {
-  entry_.OnShowSetFilenName(model_.h_extension_);
+void Notebook::Controller::OnFileNewFile() {
+  entry.show_set_filename();
 }
 void Notebook::Controller::OnEditCopy() {
   if (Pages() != 0) {
-    Buffer(*text_vec_.at(CurrentPage()))->copy_clipboard(refClipboard_);
+    CurrentTextView().get_buffer()->copy_clipboard(refClipboard_);
   }
 }
 void Notebook::Controller::OnEditPaste() {
   if (Pages() != 0) {
-    Buffer(*text_vec_.at(CurrentPage()))->paste_clipboard(refClipboard_);
+    CurrentTextView().get_buffer()->paste_clipboard(refClipboard_);
   }
 }
 void Notebook::Controller::OnEditCut() {
   if (Pages() != 0) {
-    Buffer(*text_vec_.at(CurrentPage()))->cut_clipboard(refClipboard_);
+    CurrentTextView().get_buffer()->cut_clipboard(refClipboard_);
   }
 }
 
@@ -263,8 +236,8 @@ std::string Notebook::Controller::GetCursorWord() {
   int page = CurrentPage();
   std::string word;
   Gtk::TextIter start, end;
-  start = Buffer(*text_vec_.at(page))->get_insert()->get_iter();
-  end = Buffer(*text_vec_.at(page))->get_insert()->get_iter();
+  start = CurrentTextView().get_buffer()->get_insert()->get_iter();
+  end = CurrentTextView().get_buffer()->get_insert()->get_iter();
   if (!end.ends_line()) {
     while (!end.ends_word()) {
       end.forward_char();
@@ -275,28 +248,28 @@ std::string Notebook::Controller::GetCursorWord() {
       start.backward_char();
     }
   }
-  word = Buffer(*text_vec_.at(page))->get_text(start, end);
+  word = CurrentTextView().get_buffer()->get_text(start, end);
   // TODO(Oyvang) fix selected text
   return word;
 }
 
 void Notebook::Controller::OnEditSearch() {
   search_match_end_ =
-    Buffer(*text_vec_.at(CurrentPage()))->get_iter_at_offset(0);
-  entry_.OnShowSearch(GetCursorWord());
+    CurrentTextView().get_buffer()->get_iter_at_offset(0);
+  entry.show_search(GetCursorWord());
 }
 
 void Notebook::Controller::Search(bool forward) {
     INFO("Notebook search");
   int page = CurrentPage();
   std::string search_word;
-  search_word = entry_.text();
+  search_word = entry();
   Gtk::TextIter test;
 
   if ( !forward ) {
     if ( search_match_start_ == 0 ||
          search_match_start_.get_line_offset() == 0) {
-      search_match_start_ = Buffer(*text_vec_.at(CurrentPage()))->end();
+      search_match_start_ = CurrentTextView().get_buffer()->end();
     }
     search_match_start_.
       backward_search(search_word,
@@ -306,7 +279,7 @@ void Notebook::Controller::Search(bool forward) {
                       search_match_end_);
   } else {
     if ( search_match_end_ == 0 ) {
-      search_match_end_ = Buffer(*text_vec_.at(CurrentPage()))->begin();
+      search_match_end_ = CurrentTextView().get_buffer()->begin();
     }
     search_match_end_.
       forward_search(search_word,
@@ -348,24 +321,11 @@ int Notebook::Controller::CurrentPage() {
   return Notebook().get_current_page();
 }
 
-Glib::RefPtr<Gtk::TextBuffer>
-Notebook::Controller::Buffer(Source::Controller &source) {
-  return source.view->get_buffer();
-}
-
 int Notebook::Controller::Pages() {
   return Notebook().get_n_pages();
 }
 Gtk::Notebook& Notebook::Controller::Notebook() {
   return view_.notebook();
-}
-
-void Notebook::Controller::BufferChangeHandler(Glib::RefPtr<Gtk::TextBuffer>
-                                               buffer) {
-  buffer->signal_end_user_action().connect(
-                                   [this]() {                                     
-                                     //UpdateHistory();
-                                   });
 }
 
 std::string Notebook::Controller::CurrentPagePath(){

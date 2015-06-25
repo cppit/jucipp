@@ -111,7 +111,7 @@ Window::Window() :
 
   window_box_.pack_start(menu_.view(), Gtk::PACK_SHRINK);
 
-  window_box_.pack_start(notebook_.entry_view(), Gtk::PACK_SHRINK);
+  window_box_.pack_start(notebook_.entry, Gtk::PACK_SHRINK);
   paned_.set_position(300);
   paned_.pack1(notebook_.view(), true, false);
   paned_.pack2(terminal_.view(), true, true);

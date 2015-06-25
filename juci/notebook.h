@@ -11,15 +11,9 @@
 #include <map>
 #include <sigc++/sigc++.h>
 #include "clangmm.h"
+#include "keybindings.h"
 
 namespace Notebook {
-  class Model {
-  public:
-    Model();
-    std::string cc_extension_;
-    std::string h_extension_;
-    int scrollvalue_;
-  };
   class View {
   public:
     View();
@@ -35,37 +29,29 @@ namespace Notebook {
                Source::Config& config,
                Directories::Config& dir_cfg);
     ~Controller();
-    Glib::RefPtr<Gtk::TextBuffer> Buffer(Source::Controller &source);
     Source::View& CurrentTextView();
     int CurrentPage();
-    Gtk::Box& entry_view();
     Gtk::Notebook& Notebook();
     std::string CurrentPagePath();
-    void OnBufferChange();
-    void BufferChangeHandler(Glib::RefPtr<Gtk::TextBuffer>
-                                               buffer);
     void OnCloseCurrentPage();
     std::string GetCursorWord();
     void OnEditCopy();
     void OnEditCut();
     void OnEditPaste();
     void OnEditSearch();
-    void OnFileNewCCFile();
-    void OnFileNewEmptyfile();
-    void OnFileNewHeaderFile();
-    void OnFileOpenFolder();
+    void OnFileNewFile();
     bool OnSaveFile();
     bool OnSaveFile(std::string path);
     void OnDirectoryNavigation(const Gtk::TreeModel::Path& path,
                                Gtk::TreeViewColumn* column);
     void OnOpenFile(std::string filename);
-    bool ScrollEventCallback(GdkEventScroll* scroll_event);
     int Pages();
     Gtk::Paned& view();
     void Search(bool forward);
     std::string OnSaveFileAs();
     std::string project_path;
-    Directories::Controller directories;
+    Directories::Controller directories; //Todo: make private after creating open_directory()
+    Entry entry;
   private:
     void CreateKeybindings(Keybindings::Controller& keybindings);
     void AskToSaveDialog();
@@ -73,9 +59,6 @@ namespace Notebook {
     Glib::RefPtr<Gio::SimpleActionGroup> refActionGroup;
     Source::Config& source_config;
     View view_;
-    Model model_;
-    bool is_new_file_; //TODO: Remove this
-    Entry::Controller entry_;
 
     std::vector<std::unique_ptr<Source::Controller> > text_vec_;
     std::vector<Gtk::ScrolledWindow*> scrolledtext_vec_;
