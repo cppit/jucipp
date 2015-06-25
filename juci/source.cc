@@ -145,11 +145,12 @@ parse_thread_go(true), parse_thread_mapped(false), parse_thread_stop(false) {
   
   int start_offset = get_source_buffer()->begin().get_offset();
   int end_offset = get_source_buffer()->end().get_offset();
-  init_syntax_highlighting(get_buffer_map(),
+  std::map<std::string, std::string> empty_buffer_map;
+  empty_buffer_map[file_path]=""; //for faster file opening
+  init_syntax_highlighting(empty_buffer_map,
                            start_offset,
                            end_offset,
                            &ClangView::clang_index);
-  update_syntax(extract_tokens(start_offset, end_offset));
   
   //GTK-calls must happen in main thread, so the parse_thread
   //sends signals to the main thread that it is to call the following functions:
@@ -272,6 +273,8 @@ get_compilation_commands() {
       arguments.emplace_back(lol[a]);
     }
   }
+  if(boost::filesystem::path(file_path).extension()==".h") //TODO: temporary fix for .h-files (parse as c++)
+    arguments.emplace_back("-xc++");
   return arguments;
 }
 
