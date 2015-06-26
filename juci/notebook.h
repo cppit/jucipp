@@ -12,20 +12,18 @@
 #include <sigc++/sigc++.h>
 #include "clangmm.h"
 #include "keybindings.h"
+#include "terminal.h"
 
 namespace Notebook {
-  class View {
+  class View : public Gtk::Paned {
   public:
     View();
-    Gtk::Paned& view() {return view_;}
-    Gtk::Notebook& notebook() {return notebook_; }
-  protected:
-    Gtk::Paned view_;
-    Gtk::Notebook notebook_;
+    Gtk::Notebook notebook;
   };
   class Controller {
   public:
-    Controller(Gtk::Window* window, Keybindings::Controller& keybindings,
+    Controller(Keybindings::Controller& keybindings,
+               Terminal::Controller& terminal,
                Source::Config& config,
                Directories::Config& dir_cfg);
     ~Controller();
@@ -45,8 +43,8 @@ namespace Notebook {
                                Gtk::TreeViewColumn* column);
     void OnOpenFile(std::string filename);
     int Pages();
-    Gtk::Paned& view();
     void Search(bool forward);
+    View view;
     std::string OnSaveFileAs();
     std::string project_path;
     Directories::Controller directories; //Todo: make private after creating open_directory()
@@ -56,8 +54,8 @@ namespace Notebook {
     void AskToSaveDialog();
     Glib::RefPtr<Gtk::Builder> m_refBuilder;
     Glib::RefPtr<Gio::SimpleActionGroup> refActionGroup;
+    Terminal::Controller& terminal;
     Source::Config& source_config;
-    View view_;
 
     std::vector<std::unique_ptr<Source::Controller> > text_vec_;
     std::vector<Gtk::ScrolledWindow*> scrolledtext_vec_;
@@ -66,7 +64,6 @@ namespace Notebook {
     Gtk::TextIter search_match_end_;
     Gtk::TextIter search_match_start_;
     Glib::RefPtr<Gtk::Clipboard> refClipboard_;
-    Gtk::Window* window_;
   };  // class controller
 }  // namespace Notebook
 #endif  // JUCI_NOTEBOOK_H_

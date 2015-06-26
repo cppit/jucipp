@@ -2,7 +2,7 @@
 #include "logging.h"
 
 MainConfig::MainConfig() :
-  keybindings_cfg_(), source_cfg() {
+  keybindings_cfg(), source_cfg() {
   INFO("Reading config file");
   boost::property_tree::json_parser::read_json("config.json", cfg_);
   INFO("Config file read");
@@ -22,7 +22,7 @@ void MainConfig::GenerateSource() {
   auto visual_json = source_json.get_child("visual");
   for (auto &i : visual_json) {
     if (i.first == "background") {
-	source_cfg.background = i.second.get_value<std::string>();
+	     source_cfg.background = i.second.get_value<std::string>();
     }
     if (i.first == "show_line_numbers") {
       source_cfg.show_line_numbers = i.second.get_value<std::string>() == "1" ? true : false;
@@ -55,10 +55,10 @@ void MainConfig::GenerateTerminalCommands() {
   boost::property_tree::ptree compile_commands_json = source_json.get_child("compile_commands");
   boost::property_tree::ptree run_commands_json = source_json.get_child("run_commands");
   for (auto &i : compile_commands_json) {
-    terminal_cfg_.InsertCompileCommand(i.second.get_value<std::string>());
+    terminal_cfg.compile_commands.emplace_back(i.second.get_value<std::string>());
   }
   for (auto &i : run_commands_json) {
-    terminal_cfg_.SetRunCommand(i.second.get_value<std::string>());
+    terminal_cfg.run_command=(i.second.get_value<std::string>()); //TODO: run_commands array->one run_command?
   }
 }
 
@@ -68,11 +68,11 @@ void MainConfig::GenerateKeybindings() {
   std::ifstream menu_xml("menu.xml");
   if (menu_xml.is_open()) {
     while (getline(menu_xml, line))
-      keybindings_cfg_.AppendXml(line);   
+      keybindings_cfg.AppendXml(line);   
   }
   boost::property_tree::ptree keys_json = cfg_.get_child("keybindings");
   for (auto &i : keys_json)
-    keybindings_cfg_.key_map()[i.first] = i.second.get_value<std::string>();
+    keybindings_cfg.key_map()[i.first] = i.second.get_value<std::string>();
   DEBUG("Keybindings fetched");
 }
 
@@ -82,8 +82,8 @@ void MainConfig::GenerateDirectoryFilter() {
   boost::property_tree::ptree ignore_json = dir_json.get_child("ignore");
   boost::property_tree::ptree except_json = dir_json.get_child("exceptions");
   for ( auto &i : except_json )
-    dir_cfg_.AddException(i.second.get_value<std::string>());
+    dir_cfg.AddException(i.second.get_value<std::string>());
   for ( auto &i : ignore_json )
-    dir_cfg_.AddIgnore(i.second.get_value<std::string>());
+    dir_cfg.AddIgnore(i.second.get_value<std::string>());
   DEBUG("Directory filter fetched");
 }

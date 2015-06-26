@@ -2,6 +2,7 @@
 #define JUCI_TERMINAL_H_
 
 #include <mutex>
+#include <functional>
 #include "gtkmm.h"
 #include <boost/filesystem.hpp>
 
@@ -9,44 +10,32 @@ namespace Terminal {
 
   class Config {
   public:
-    Config ();
-    Config(Terminal::Config& original);
-    std::vector<std::string>& compile_commands() { return compile_commands_; }
-    void InsertCompileCommand(std::string command);
-    std::string& run_command() { return run_command_; }
-    void SetRunCommand(std::string command);
-  private:
-    std::vector<std::string> compile_commands_;
-    std::string run_command_;
+    std::vector<std::string> compile_commands;
+    std::string run_command;
   };
  
-  class View {
+  class View : public Gtk::HBox {
   public:
-    View();   
-    Gtk::HBox& view() {return view_;}
-    Gtk::TextView& textview() {return textview_;}
-  private:
-    Gtk::HBox view_;
-    Gtk::TextView textview_;
-    Gtk::ScrolledWindow scrolledwindow_;
+    View();
+    Gtk::TextView text_view;
+    Gtk::ScrolledWindow scrolled_window;
   };  // class view
   
   class Controller {  
   public:
     Controller(Terminal::Config& cfg);
-    Gtk::HBox& view() {return view_.view();}
-    Gtk::TextView& Terminal(){return view_.textview();}
     void SetFolderCommand(boost::filesystem::path CMake_path);
     void Run(std::string executable);
     void Compile();
-    Terminal::Config& config() { return config_; }
-    void PrintMessage(std::string message);
+    int PrintMessage(std::string message);
+    void PrintMessage(int line_nr, std::string message);
+    std::function<void()> PrintMessage(std::string start_msg, std::string stop_msg);
+    Terminal::View view;
   private:
-    Terminal::Config config_;
+    Terminal::Config& config;
     void ExecuteCommand(std::string command, std::string mode);
     bool OnButtonRealeaseEvent(GdkEventKey* key);
     bool ExistInConsole(std::string string);
-    Terminal::View view_;
     std::string folder_command_;
     std::string path_;
     const std::string cmake_sucsess = "Build files have been written to:";

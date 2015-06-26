@@ -2,21 +2,21 @@
 #include "notebook.h"
 #include "logging.h"
 
-Notebook::View::View() : notebook_() {
-  view_.pack2(notebook_);
-  view_.set_position(120);
+Notebook::View::View() {
+  pack2(notebook);
+  set_position(120);
 }
 
-Notebook::Controller::Controller(Gtk::Window* window,
-                                 Keybindings::Controller& keybindings,
+Notebook::Controller::Controller(Keybindings::Controller& keybindings,
+                                 Terminal::Controller& terminal,
                                  Source::Config& source_cfg,
                                  Directories::Config& dir_cfg) :
+  terminal(terminal),
   directories(dir_cfg),
   source_config(source_cfg) {
   INFO("Create notebook");
-  window_ = window;
   refClipboard_ = Gtk::Clipboard::get();
-  view().pack1(directories.widget(), true, true);
+  view.pack1(directories.widget(), true, true);
   CreateKeybindings(keybindings);
   INFO("Notebook Controller Success");
 }  // Constructor
@@ -163,14 +163,10 @@ Notebook::Controller::~Controller() {
   for (auto &i : scrolledtext_vec_) delete i;
 }
 
-Gtk::Paned& Notebook::Controller::view() {
-  return view_.view();
-}
-
 void Notebook::Controller::OnOpenFile(std::string path) {
   INFO("Notebook open file");
   INFO("Notebook create page");
-  text_vec_.emplace_back(new Source::Controller(source_config, path, project_path));
+  text_vec_.emplace_back(new Source::Controller(source_config, path, project_path, terminal));
   scrolledtext_vec_.push_back(new Gtk::ScrolledWindow());
   editor_vec_.push_back(new Gtk::HBox());
   scrolledtext_vec_.back()->add(*text_vec_.back()->view);
@@ -233,7 +229,6 @@ void Notebook::Controller::OnEditCut() {
 
 std::string Notebook::Controller::GetCursorWord() {
   INFO("Notebook get cursor word");
-  int page = CurrentPage();
   std::string word;
   Gtk::TextIter start, end;
   start = CurrentTextView().get_buffer()->get_insert()->get_iter();
@@ -261,7 +256,6 @@ void Notebook::Controller::OnEditSearch() {
 
 void Notebook::Controller::Search(bool forward) {
     INFO("Notebook search");
-  int page = CurrentPage();
   std::string search_word;
   search_word = entry();
   Gtk::TextIter test;
@@ -325,7 +319,7 @@ int Notebook::Controller::Pages() {
   return Notebook().get_n_pages();
 }
 Gtk::Notebook& Notebook::Controller::Notebook() {
-  return view_.notebook();
+  return view.notebook;
 }
 
 bool Notebook::Controller:: OnSaveFile() {
@@ -354,10 +348,9 @@ bool Notebook::Controller:: OnSaveFile(std::string path) {
 
 std::string Notebook::Controller::OnSaveFileAs(){
   INFO("Notebook save as");
-  Gtk::FileChooserDialog dialog("Please choose a file", 
+  Gtk::FileChooserDialog dialog((Gtk::Window&)(*view.get_toplevel()), "Please choose a file", 
 				Gtk::FILE_CHOOSER_ACTION_SAVE);
   DEBUG("SET TRANSISTEN FPR");
-  dialog.set_transient_for(*window_);
   dialog.set_position(Gtk::WindowPosition::WIN_POS_CENTER_ALWAYS);
   dialog.add_button("_Cancel", Gtk::RESPONSE_CANCEL);
   dialog.add_button("_Save", Gtk::RESPONSE_OK);
@@ -385,7 +378,7 @@ std::string Notebook::Controller::OnSaveFileAs(){
 void Notebook::Controller::AskToSaveDialog() {
   INFO("AskToSaveDialog");
   DEBUG("AskToSaveDialog: Finding file path");
-  Gtk::MessageDialog dialog(*window_, "Save file!",
+  Gtk::MessageDialog dialog((Gtk::Window&)(*view.get_toplevel()), "Save file!",
 			    false, Gtk::MESSAGE_QUESTION, Gtk::BUTTONS_YES_NO);
   dialog.set_secondary_text(
           "Do you want to save: " +

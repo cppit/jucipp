@@ -134,8 +134,8 @@ bool Source::View::on_key_press(GdkEventKey* key) {
 //////////////////
 clang::Index Source::ClangView::clang_index(0, 1);
 
-Source::ClangView::ClangView(const Source::Config& config, const std::string& file_path, const std::string& project_path):
-Source::View(config, file_path, project_path),
+Source::ClangView::ClangView(const Source::Config& config, const std::string& file_path, const std::string& project_path, Terminal::Controller& terminal):
+Source::View(config, file_path, project_path), terminal(terminal),
 parse_thread_go(true), parse_thread_mapped(false), parse_thread_stop(false) {
   override_font(Pango::FontDescription(config.font));
   override_background_color(Gdk::RGBA(config.background));
@@ -163,10 +163,15 @@ parse_thread_go(true), parse_thread_mapped(false), parse_thread_stop(false) {
     parse_thread_go=true;
   });
   
-  parse_done.connect([this](){
+  auto first_time_parse_done=this->terminal.PrintMessage("Parsing "+file_path, "finished");
+  parse_done.connect([this, first_time_parse_done](){
     if(parse_thread_mapped) {
       INFO("Updating syntax");
       update_syntax(extract_tokens(0, get_source_buffer()->get_text().size()));
+      if(first_time_parse) {
+        first_time_parse_done();
+        first_time_parse=false;
+      }
       INFO("Syntax updated");
     }
     else {
@@ -521,12 +526,12 @@ bool Source::ClangView::on_key_press(GdkEventKey* key) {
 // Source::Controller::Controller()
 // Constructor for Controller
 Source::Controller::Controller(const Source::Config &config,
-                               const std::string& file_path, std::string project_path) {
+                               const std::string& file_path, std::string project_path, Terminal::Controller& terminal) {
   if(project_path=="") {
     project_path=boost::filesystem::path(file_path).parent_path().string();
   }
   if (config.legal_extension(file_path.substr(file_path.find_last_of(".") + 1)))
-    view=std::unique_ptr<View>(new ClangView(config, file_path, project_path));
+    view=std::unique_ptr<View>(new ClangView(config, file_path, project_path, terminal));
   else
     view=std::unique_ptr<View>(new GenericView(config, file_path, project_path));
   INFO("Source Controller with childs constructed");

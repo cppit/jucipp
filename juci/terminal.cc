@@ -1,36 +1,18 @@
 #include "terminal.h"
 #include <iostream>
 #include <thread>
+#include <atomic>
 #include "logging.h"
 
-
-Terminal::Config::Config() {
-}
-Terminal::Config::Config(Terminal::Config& original) :
-  run_command_(original.run_command_){
-  for (size_t it = 0; it<original.compile_commands().size(); ++it) {
-    InsertCompileCommand(original.compile_commands().at(it));
-  }
-}
-
-void Terminal::Config::InsertCompileCommand(std::string command){
-  compile_commands_.push_back(command);
-}
-
-void Terminal::Config::SetRunCommand(std::string command){
-  run_command_ = command;
-}
-
 Terminal::View::View(){
-  scrolledwindow_.add(textview_);
-  scrolledwindow_.set_size_request(-1,150);
-  view_.add(scrolledwindow_);
-  textview_.set_editable(false);
+  text_view.set_editable(false);
+  scrolled_window.add(text_view);
+  add(scrolled_window);
 }
 
 
 Terminal::Controller::Controller(Terminal::Config& cfg) :
-  config_(cfg) {  
+  config(cfg) {  
   folder_command_ = "";
 }
 
@@ -44,9 +26,9 @@ void Terminal::Controller::SetFolderCommand( boost::filesystem::path
 void Terminal::Controller::Compile(){
   INFO("Terminal: Compile");
 
-  Terminal().get_buffer()->set_text("");
+  view.text_view.get_buffer()->set_text("");
   DEBUG("Terminal: Compile: running cmake command");
-  std::vector<std::string> commands = config().compile_commands();
+  std::vector<std::string> commands = config.compile_commands;
   for (size_t it = 0; it < commands.size(); ++it) {
     ExecuteCommand(commands.at(it), "r");
     
@@ -60,21 +42,58 @@ void Terminal::Controller::Run(std::string executable) {
   PrintMessage("juCi++ execute: " + executable + "\n");
   DEBUG("Terminal: Compile: running run command: ");
   DEBUG_VAR(executable);
-  ExecuteCommand("cd "+config().run_command() + "; ./"+executable, "r");
+  ExecuteCommand("cd "+config.run_command + "; ./"+executable, "r");
   PrintMessage("\n");
 }
 
-void Terminal::Controller::PrintMessage(std::string message){
+int Terminal::Controller::PrintMessage(std::string message){
   INFO("Terminal: PrintMessage");
-  Terminal().get_buffer()->
-    insert(Terminal().get_buffer()-> end(),"> "+message);
+  view.text_view.get_buffer()->insert(view.text_view.get_buffer()->end(), "> "+message);
+  auto mark_end=view.text_view.get_buffer()->create_mark(view.text_view.get_buffer()->end());
+  view.text_view.scroll_to(mark_end);
+  return mark_end->get_iter().get_line();
 }
 
+void Terminal::Controller::PrintMessage(int line_nr, std::string message){
+  INFO("Terminal: PrintMessage at line " << line_nr);
+  auto iter=view.text_view.get_buffer()->get_iter_at_line(line_nr);
+  while(!iter.ends_line())
+    iter++;
+  view.text_view.get_buffer()->insert(iter, message);
+}
+
+std::function<void()> Terminal::Controller::PrintMessage(std::string start_msg, std::string done_msg) {
+  int line_nr=PrintMessage(start_msg+"...\n");
+  
+  std::shared_ptr<std::atomic<bool> > stop(new std::atomic<bool>(false));
+  std::shared_ptr<Glib::Dispatcher> waiting_print(new Glib::Dispatcher());
+  waiting_print->connect([this, line_nr](){
+    PrintMessage(line_nr-1, ".");
+  });
+  
+  std::shared_ptr<std::thread> wait_thread(new std::thread([this, stop, waiting_print](){
+    size_t c=0;
+    while(!*stop) {
+      if(c%100==0)
+        (*waiting_print)();
+      std::this_thread::sleep_for(std::chrono::milliseconds(10));
+      c++;
+    }
+  }));
+  
+  std::function<void()> done=[this, line_nr, stop, done_msg, waiting_print, wait_thread](){
+    *stop=true;
+    PrintMessage(line_nr-1, done_msg);
+    if(wait_thread->joinable())
+      wait_thread->join(); //waiting_print has to be destroyed in main thread
+  };
+  return done;
+}
 
 bool Terminal::Controller::ExistInConsole(std::string string) {
     INFO("Terminal: ExistInConsole");
     DEBUG("Terminal: PrintMessage: finding string in buffer");
-  double pos = Terminal().get_buffer()->
+  double pos = view.text_view.get_buffer()->
     get_text().find(string);
   if (pos == std::string::npos) return false;
   return true;
