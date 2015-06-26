@@ -244,13 +244,15 @@ std::vector<Source::AutoCompleteData> Source::ClangView::
 get_autocomplete_suggestions(int line_number, int column) {
   INFO("Getting auto complete suggestions");
   std::vector<Source::AutoCompleteData> suggestions;
-  auto buffer_map=get_buffer_map();
+  std::map<std::string, std::string> buffer_map;
+  buffer_map[file_path]=get_source_buffer()->get_text(get_source_buffer()->begin(), get_source_buffer()->get_insert()->get_iter());
+  buffer_map[file_path]+="\n";
   parsing_mutex.lock();
   clang::CodeCompleteResults results(tu_.get(),
                                      file_path,
                                      buffer_map,
                                      line_number,
-                                     column);
+                                     column-1);
   for (int i = 0; i < results.size(); i++) {
     const vector<clang::CompletionChunk> chunks_ = results.get(i).get_chunks();
     std::vector<AutoCompleteChunk> chunks;
