@@ -163,16 +163,12 @@ parse_thread_go(true), parse_thread_mapped(false), parse_thread_stop(false) {
     parse_thread_go=true;
   });
   
-  first_time_parse_done=this->terminal.PrintMessage("Parsing "+file_path, "finished");
+  parsing_in_progress=this->terminal.print_in_progress("Parsing "+file_path);
   parse_done.connect([this](){
     if(parse_thread_mapped) {
       INFO("Updating syntax");
       update_syntax(extract_tokens(0, get_source_buffer()->get_text().size()));
-      if(first_time_parse) {
-        first_time_parse_done();
-        first_time_parse_done=[](){};
-        first_time_parse=false;
-      }
+      parsing_in_progress->done("done");
       INFO("Syntax updated");
     }
     else {
@@ -210,13 +206,13 @@ parse_thread_go(true), parse_thread_mapped(false), parse_thread_stop(false) {
 }
 
 Source::ClangView::~ClangView() {
+  //TODO: Is it possible to stop the clang-process in progress?
+  parsing_in_progress->cancel("canceled");
   parse_thread_stop=true;
   if(parse_thread.joinable())
     parse_thread.join();
   parsing_mutex.lock(); //Be sure not to destroy while still parsing with libclang
   parsing_mutex.unlock();
-  if(first_time_parse)
-    first_time_parse_done(); //This function must be run if it is not run already
 }
 
 void Source::ClangView::

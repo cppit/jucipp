@@ -121,6 +121,8 @@ Window::Window() :
 } // Window constructor
 
 void Window::OnWindowHide() {
+  for(size_t c=0;c<notebook.text_vec_.size();c++)
+    notebook.OnCloseCurrentPage(); //TODO: This only works on one page at the momemt. Change to notebook.close_page(page_nr);
   hide();
 }
 void Window::OnFileOpenFolder() {
@@ -202,19 +204,19 @@ void Window::OnOpenFile() {
 
 bool Window::SaveFile() {
   if(notebook.OnSaveFile()) {
-    terminal.PrintMessage("File saved to: " +
+    terminal.print("File saved to: " +
 			   notebook.CurrentTextView().file_path+"\n");
     return true;
   }
-  terminal.PrintMessage("File not saved");
+  terminal.print("File not saved");
   return false;
 }
 bool Window::SaveFileAs() {
   if(notebook.OnSaveFile(notebook.OnSaveFileAs())){
-    terminal.PrintMessage("File saved to: " +
+    terminal.print("File saved to: " +
 			   notebook.CurrentTextView().file_path+"\n");
     return true;
   }
-  terminal.PrintMessage("File not saved");
+  terminal.print("File not saved");
   return false;
 }

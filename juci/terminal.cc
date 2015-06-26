@@ -1,15 +1,53 @@
 #include "terminal.h"
 #include <iostream>
-#include <thread>
-#include <atomic>
 #include "logging.h"
+
+Terminal::InProgress::InProgress(Controller& terminal, const std::string& start_msg): 
+    start_msg(start_msg), terminal(terminal), stop(false) {
+  waiting_print.connect([this](){
+    this->terminal.print(line_nr-1, ".");
+  });
+  start();
+}
+
+Terminal::InProgress::~InProgress() {
+  stop=true;
+  if(wait_thread.joinable())
+    wait_thread.join();
+}
+
+void Terminal::InProgress::start() {
+  line_nr=this->terminal.print(start_msg+"...\n");
+  wait_thread=std::thread([this](){
+    size_t c=0;
+    while(!stop) {
+      if(c%100==0)
+        waiting_print();
+      std::this_thread::sleep_for(std::chrono::milliseconds(10));
+      c++;
+    }
+  });
+}
+
+void Terminal::InProgress::done(const std::string& msg) {
+  if(!stop) {
+    stop=true;
+    this->terminal.print(line_nr-1, msg);
+  }
+}
+
+void Terminal::InProgress::cancel(const std::string& msg) {
+  if(!stop) {
+    stop=true;
+    this->terminal.print(line_nr-1, msg);
+  }
+}
 
 Terminal::View::View(){
   text_view.set_editable(false);
   scrolled_window.add(text_view);
   add(scrolled_window);
 }
-
 
 Terminal::Controller::Controller(Terminal::Config& cfg) :
   config(cfg) {  
@@ -33,20 +71,20 @@ void Terminal::Controller::Compile(){
     ExecuteCommand(commands.at(it), "r");
     
   }
-  PrintMessage("\n");
+  print("\n");
   DEBUG("Terminal: Compile: compile done");
 }
 
 void Terminal::Controller::Run(std::string executable) {
   INFO("Terminal: Run");
-  PrintMessage("juCi++ execute: " + executable + "\n");
+  print("juCi++ execute: " + executable + "\n");
   DEBUG("Terminal: Compile: running run command: ");
   DEBUG_VAR(executable);
   ExecuteCommand("cd "+config.run_command + "; ./"+executable, "r");
-  PrintMessage("\n");
+  print("\n");
 }
 
-int Terminal::Controller::PrintMessage(std::string message){
+int Terminal::Controller::print(std::string message){
   INFO("Terminal: PrintMessage");
   view.text_view.get_buffer()->insert(view.text_view.get_buffer()->end(), "> "+message);
   auto mark_end=view.text_view.get_buffer()->create_mark(view.text_view.get_buffer()->end());
@@ -54,7 +92,7 @@ int Terminal::Controller::PrintMessage(std::string message){
   return mark_end->get_iter().get_line();
 }
 
-void Terminal::Controller::PrintMessage(int line_nr, std::string message){
+void Terminal::Controller::print(int line_nr, std::string message){
   INFO("Terminal: PrintMessage at line " << line_nr);
   auto iter=view.text_view.get_buffer()->get_iter_at_line(line_nr);
   while(!iter.ends_line())
@@ -62,33 +100,9 @@ void Terminal::Controller::PrintMessage(int line_nr, std::string message){
   view.text_view.get_buffer()->insert(iter, message);
 }
 
-//TODO: this was way too dirty, return a class instead.
-std::function<void()> Terminal::Controller::PrintMessage(std::string start_msg, std::string done_msg) {
-  int line_nr=PrintMessage(start_msg+"...\n");
-  
-  std::shared_ptr<std::atomic<bool> > stop(new std::atomic<bool>(false));
-  std::shared_ptr<Glib::Dispatcher> waiting_print(new Glib::Dispatcher());
-  waiting_print->connect([this, line_nr](){
-    PrintMessage(line_nr-1, ".");
-  });
-  
-  std::shared_ptr<std::thread> wait_thread(new std::thread([this, stop, waiting_print](){
-    size_t c=0;
-    while(!*stop) {
-      if(c%100==0)
-        (*waiting_print)();
-      std::this_thread::sleep_for(std::chrono::milliseconds(10));
-      c++;
-    }
-  }));
-  
-  std::function<void()> done=[this, line_nr, stop, done_msg, waiting_print, wait_thread](){
-    *stop=true;
-    PrintMessage(line_nr-1, done_msg);
-    if(wait_thread->joinable())
-      wait_thread->join(); //waiting_print has to be destroyed in main thread
-  };
-  return done;
+std::shared_ptr<Terminal::InProgress> Terminal::Controller::print_in_progress(std::string start_msg) {
+  std::shared_ptr<Terminal::InProgress> in_progress=std::shared_ptr<Terminal::InProgress>(new Terminal::InProgress(*this, start_msg));
+  return in_progress;
 }
 
 bool Terminal::Controller::ExistInConsole(std::string string) {
@@ -108,11 +122,11 @@ void Terminal::Controller::ExecuteCommand(std::string command, std::string mode)
   std::cout << command << std::endl;
   p = popen(command.c_str(), mode.c_str());
   if (p == NULL) {
-    PrintMessage("juCi++ ERROR: Failed to run command" + command + "\n");
+    print("juCi++ ERROR: Failed to run command" + command + "\n");
   }else {
     char buffer[1028];
     while (fgets(buffer, 1028, p) != NULL) {
-      PrintMessage(buffer);
+      print(buffer);
     }
     pclose(p); 
   }

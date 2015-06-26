@@ -5,9 +5,10 @@
 #include <functional>
 #include "gtkmm.h"
 #include <boost/filesystem.hpp>
+#include <thread>
+#include <atomic>
 
 namespace Terminal {
-
   class Config {
   public:
     std::vector<std::string> compile_commands;
@@ -21,15 +22,34 @@ namespace Terminal {
     Gtk::ScrolledWindow scrolled_window;
   };  // class view
   
+  class Controller;
+  
+  //Temporary solution for displaying functions in progress, and when they are done.
+  class InProgress {
+  public:
+    InProgress(Controller& terminal, const std::string& start_msg);
+    ~InProgress();
+    void done(const std::string& msg);
+    void cancel(const std::string& msg);
+  private:
+    void start();
+    Controller& terminal;
+    std::string start_msg;
+    int line_nr;
+    std::atomic<bool> stop;
+    Glib::Dispatcher waiting_print;
+    std::thread wait_thread;
+  };
+  
   class Controller {  
   public:
     Controller(Terminal::Config& cfg);
     void SetFolderCommand(boost::filesystem::path CMake_path);
     void Run(std::string executable);
     void Compile();
-    int PrintMessage(std::string message);
-    void PrintMessage(int line_nr, std::string message);
-    std::function<void()> PrintMessage(std::string start_msg, std::string stop_msg);
+    int print(std::string message);
+    void print(int line_nr, std::string message);
+    std::shared_ptr<InProgress> print_in_progress(std::string start_msg);
     Terminal::View view;
   private:
     Terminal::Config& config;

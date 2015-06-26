@@ -49,6 +49,7 @@ namespace Notebook {
     std::string project_path;
     Directories::Controller directories; //Todo: make private after creating open_directory()
     Entry entry;
+    std::vector<std::unique_ptr<Source::Controller> > text_vec_;
   private:
     void CreateKeybindings(Keybindings::Controller& keybindings);
     void AskToSaveDialog();
@@ -57,7 +58,6 @@ namespace Notebook {
     Terminal::Controller& terminal;
     Source::Config& source_config;
 
-    std::vector<std::unique_ptr<Source::Controller> > text_vec_;
     std::vector<Gtk::ScrolledWindow*> scrolledtext_vec_;
     std::vector<Gtk::HBox*> editor_vec_;
     std::list<Gtk::TargetEntry> listTargets_;
