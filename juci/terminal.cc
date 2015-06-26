@@ -2,12 +2,11 @@
 #include <iostream>
 #include "logging.h"
 
-Terminal::InProgress::InProgress(Controller& terminal, const std::string& start_msg): 
-    start_msg(start_msg), terminal(terminal), stop(false) {
+Terminal::InProgress::InProgress(Controller& terminal, const std::string& start_msg): terminal(terminal), stop(false) {
   waiting_print.connect([this](){
     this->terminal.print(line_nr-1, ".");
   });
-  start();
+  start(start_msg);
 }
 
 Terminal::InProgress::~InProgress() {
@@ -16,8 +15,8 @@ Terminal::InProgress::~InProgress() {
     wait_thread.join();
 }
 
-void Terminal::InProgress::start() {
-  line_nr=this->terminal.print(start_msg+"...\n");
+void Terminal::InProgress::start(const std::string& msg) {
+  line_nr=this->terminal.print(msg+"...\n");
   wait_thread=std::thread([this](){
     size_t c=0;
     while(!stop) {

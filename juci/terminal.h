@@ -32,9 +32,8 @@ namespace Terminal {
     void done(const std::string& msg);
     void cancel(const std::string& msg);
   private:
-    void start();
+    void start(const std::string& msg);
     Controller& terminal;
-    std::string start_msg;
     int line_nr;
     std::atomic<bool> stop;
     Glib::Dispatcher waiting_print;
