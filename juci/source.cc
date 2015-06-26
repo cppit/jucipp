@@ -163,13 +163,14 @@ parse_thread_go(true), parse_thread_mapped(false), parse_thread_stop(false) {
     parse_thread_go=true;
   });
   
-  auto first_time_parse_done=this->terminal.PrintMessage("Parsing "+file_path, "finished");
-  parse_done.connect([this, first_time_parse_done](){
+  first_time_parse_done=this->terminal.PrintMessage("Parsing "+file_path, "finished");
+  parse_done.connect([this](){
     if(parse_thread_mapped) {
       INFO("Updating syntax");
       update_syntax(extract_tokens(0, get_source_buffer()->get_text().size()));
       if(first_time_parse) {
         first_time_parse_done();
+        first_time_parse_done=[](){};
         first_time_parse=false;
       }
       INFO("Syntax updated");
@@ -214,6 +215,8 @@ Source::ClangView::~ClangView() {
     parse_thread.join();
   parsing_mutex.lock(); //Be sure not to destroy while still parsing with libclang
   parsing_mutex.unlock();
+  if(first_time_parse)
+    first_time_parse_done(); //This function must be run if it is not run already
 }
 
 void Source::ClangView::

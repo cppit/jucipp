@@ -110,6 +110,7 @@ namespace Source {
     bool on_key_release(GdkEventKey* key);
     Terminal::Controller& terminal;
     bool first_time_parse=true;
+    std::function<void()> first_time_parse_done;
     
     Glib::Dispatcher parse_done;
     Glib::Dispatcher parse_start;
