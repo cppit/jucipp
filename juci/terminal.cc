@@ -62,6 +62,7 @@ void Terminal::Controller::PrintMessage(int line_nr, std::string message){
   view.text_view.get_buffer()->insert(iter, message);
 }
 
+//TODO: this was way too dirty, return a class instead.
 std::function<void()> Terminal::Controller::PrintMessage(std::string start_msg, std::string done_msg) {
   int line_nr=PrintMessage(start_msg+"...\n");
   
