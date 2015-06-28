@@ -132,7 +132,7 @@ bool Source::View::on_key_press(GdkEventKey* key) {
 //////////////////
 //// ClangView ///
 //////////////////
-clang::Index Source::ClangView::clang_index(0, 1);
+clang::Index Source::ClangView::clang_index(0, 0);
 
 Source::ClangView::ClangView(const Source::Config& config, const std::string& file_path, const std::string& project_path, Terminal::Controller& terminal):
 Source::View(config, file_path, project_path), terminal(terminal),
@@ -145,12 +145,25 @@ parse_thread_go(true), parse_thread_mapped(false), parse_thread_stop(false) {
   
   int start_offset = get_source_buffer()->begin().get_offset();
   int end_offset = get_source_buffer()->end().get_offset();
-  std::map<std::string, std::string> empty_buffer_map;
-  empty_buffer_map[file_path]=""; //for faster file opening
-  init_syntax_highlighting(empty_buffer_map,
+  auto buffer_map=get_buffer_map();
+  //Remove includes for first parse for initial syntax highlighting
+  auto& str=buffer_map[file_path];
+  std::size_t pos=0;
+  while((pos=str.find("#include", pos))!=std::string::npos) {
+    auto start_pos=pos;
+    pos=str.find('\n', pos+8);
+    if(pos==std::string::npos)
+      break;
+    if(start_pos==0 || str[start_pos-1]=='\n') {
+      str.replace(start_pos, pos-start_pos, pos-start_pos, ' ');
+    }
+    pos++;
+  }
+  init_syntax_highlighting(buffer_map,
                            start_offset,
                            end_offset,
                            &ClangView::clang_index);
+  update_syntax(extract_tokens(0, get_source_buffer()->get_text().size())); //TODO: replace get_source_buffer()->get_text().size()
   
   //GTK-calls must happen in main thread, so the parse_thread
   //sends signals to the main thread that it is to call the following functions:
