@@ -27,11 +27,11 @@ config(config), file_path(file_path), project_path(project_path) {
   set_smart_home_end(Gsv::SMART_HOME_END_BEFORE);
   set_show_line_numbers(config.show_line_numbers);
   set_highlight_current_line(config.highlight_current_line);
-      
   sourcefile s(file_path);
   get_source_buffer()->get_undo_manager()->begin_not_undoable_action();
   get_source_buffer()->set_text(s.get_content());
   get_source_buffer()->get_undo_manager()->end_not_undoable_action();
+  search_start = search_end = this->get_buffer()->end();
 }
 
 string Source::View::get_line(size_t line_number) {
@@ -132,10 +132,10 @@ bool Source::View::on_key_press(GdkEventKey* key) {
 //////////////////
 //// ClangView ///
 //////////////////
-clang::Index Source::ClangView::clang_index(0, 1);
+clang::Index Source::ClangView::clang_index(0, 0);
 
-Source::ClangView::ClangView(const Source::Config& config, const std::string& file_path, const std::string& project_path):
-Source::View(config, file_path, project_path),
+Source::ClangView::ClangView(const Source::Config& config, const std::string& file_path, const std::string& project_path, Terminal::Controller& terminal):
+Source::View(config, file_path, project_path), terminal(terminal),
 parse_thread_go(true), parse_thread_mapped(false), parse_thread_stop(false) {
   override_font(Pango::FontDescription(config.font));
   override_background_color(Gdk::RGBA(config.background));
@@ -145,11 +145,25 @@ parse_thread_go(true), parse_thread_mapped(false), parse_thread_stop(false) {
   
   int start_offset = get_source_buffer()->begin().get_offset();
   int end_offset = get_source_buffer()->end().get_offset();
-  init_syntax_highlighting(get_buffer_map(),
+  auto buffer_map=get_buffer_map();
+  //Remove includes for first parse for initial syntax highlighting
+  auto& str=buffer_map[file_path];
+  std::size_t pos=0;
+  while((pos=str.find("#include", pos))!=std::string::npos) {
+    auto start_pos=pos;
+    pos=str.find('\n', pos+8);
+    if(pos==std::string::npos)
+      break;
+    if(start_pos==0 || str[start_pos-1]=='\n') {
+      str.replace(start_pos, pos-start_pos, pos-start_pos, ' ');
+    }
+    pos++;
+  }
+  init_syntax_highlighting(buffer_map,
                            start_offset,
                            end_offset,
                            &ClangView::clang_index);
-  update_syntax(extract_tokens(start_offset, end_offset));
+  update_syntax(extract_tokens(0, get_source_buffer()->get_text().size())); //TODO: replace get_source_buffer()->get_text().size()
   
   //GTK-calls must happen in main thread, so the parse_thread
   //sends signals to the main thread that it is to call the following functions:
@@ -162,10 +176,12 @@ parse_thread_go(true), parse_thread_mapped(false), parse_thread_stop(false) {
     parse_thread_go=true;
   });
   
+  parsing_in_progress=this->terminal.print_in_progress("Parsing "+file_path);
   parse_done.connect([this](){
     if(parse_thread_mapped) {
       INFO("Updating syntax");
       update_syntax(extract_tokens(0, get_source_buffer()->get_text().size()));
+      parsing_in_progress->done("done");
       INFO("Syntax updated");
     }
     else {
@@ -203,6 +219,8 @@ parse_thread_go(true), parse_thread_mapped(false), parse_thread_stop(false) {
 }
 
 Source::ClangView::~ClangView() {
+  //TODO: Is it possible to stop the clang-process in progress?
+  parsing_in_progress->cancel("canceled");
   parse_thread_stop=true;
   if(parse_thread.joinable())
     parse_thread.join();
@@ -239,13 +257,15 @@ std::vector<Source::AutoCompleteData> Source::ClangView::
 get_autocomplete_suggestions(int line_number, int column) {
   INFO("Getting auto complete suggestions");
   std::vector<Source::AutoCompleteData> suggestions;
-  auto buffer_map=get_buffer_map();
+  std::map<std::string, std::string> buffer_map;
+  buffer_map[file_path]=get_source_buffer()->get_text(get_source_buffer()->begin(), get_source_buffer()->get_insert()->get_iter());
+  buffer_map[file_path]+="\n";
   parsing_mutex.lock();
   clang::CodeCompleteResults results(tu_.get(),
                                      file_path,
                                      buffer_map,
                                      line_number,
-                                     column);
+                                     column-1);
   for (int i = 0; i < results.size(); i++) {
     const vector<clang::CompletionChunk> chunks_ = results.get(i).get_chunks();
     std::vector<AutoCompleteChunk> chunks;
@@ -268,10 +288,12 @@ get_compilation_commands() {
   std::vector<std::string> arguments;
   for (auto &i : cmds) {
     std::vector<std::string> lol = i.get_command_as_args();
-    for (int a = 1; a < lol.size()-4; a++) {
+    for (size_t a = 1; a < lol.size()-4; a++) {
       arguments.emplace_back(lol[a]);
     }
   }
+  if(boost::filesystem::path(file_path).extension()==".h") //TODO: temporary fix for .h-files (parse as c++)
+    arguments.emplace_back("-xc++");
   return arguments;
 }
 
@@ -439,7 +461,7 @@ bool Source::ClangView::on_key_press(GdkEventKey* key) {
     string line(get_line_before_insert());
     std::smatch sm;
     if(std::regex_match(line, sm, bracket_regex)) {
-      size_t line_nr=get_source_buffer()->get_insert()->get_iter().get_line();
+      int line_nr=get_source_buffer()->get_insert()->get_iter().get_line();
       if((line_nr+1)<get_source_buffer()->get_line_count()) {
         string next_line=get_line(line_nr+1);
         std::smatch sm2;
@@ -518,12 +540,12 @@ bool Source::ClangView::on_key_press(GdkEventKey* key) {
 // Source::Controller::Controller()
 // Constructor for Controller
 Source::Controller::Controller(const Source::Config &config,
-                               const std::string& file_path, std::string project_path) {
+                               const std::string& file_path, std::string project_path, Terminal::Controller& terminal) {
   if(project_path=="") {
     project_path=boost::filesystem::path(file_path).parent_path().string();
   }
   if (config.legal_extension(file_path.substr(file_path.find_last_of(".") + 1)))
-    view=std::unique_ptr<View>(new ClangView(config, file_path, project_path));
+    view=std::unique_ptr<View>(new ClangView(config, file_path, project_path, terminal));
   else
     view=std::unique_ptr<View>(new GenericView(config, file_path, project_path));
   INFO("Source Controller with childs constructed");

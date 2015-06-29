@@ -10,6 +10,7 @@
 #include <string>
 #include <atomic>
 #include "gtksourceviewmm.h"
+#include "terminal.h"
 
 namespace Source {
   class Config {
@@ -62,6 +63,7 @@ namespace Source {
     std::string get_line_before_insert();
     std::string file_path;
     std::string project_path;
+    Gtk::TextIter search_start, search_end;
   protected:
     const Source::Config& config;
     bool on_key_press(GdkEventKey* key);
@@ -81,7 +83,7 @@ namespace Source {
   
   class ClangView : public View {
   public:
-    ClangView(const Source::Config& config, const std::string& file_path, const std::string& project_path);
+    ClangView(const Source::Config& config, const std::string& file_path, const std::string& project_path, Terminal::Controller& terminal);
     ~ClangView();
     // inits the syntax highligthing on file open
     void init_syntax_highlighting(const std::map<std::string, std::string>
@@ -107,6 +109,8 @@ namespace Source {
     std::vector<std::string> get_compilation_commands();
     bool on_key_press(GdkEventKey* key);
     bool on_key_release(GdkEventKey* key);
+    Terminal::Controller& terminal;
+    std::shared_ptr<Terminal::InProgress> parsing_in_progress;
     
     Glib::Dispatcher parse_done;
     Glib::Dispatcher parse_start;
@@ -121,7 +125,7 @@ namespace Source {
   class Controller {
   public:
     Controller(const Source::Config &config,
-               const std::string& file_path, std::string project_path);
+               const std::string& file_path, std::string project_path, Terminal::Controller& terminal);
     Glib::RefPtr<Gsv::Buffer> buffer();
     
     bool is_saved = true;

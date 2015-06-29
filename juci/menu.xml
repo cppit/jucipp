@@ -1,11 +1,7 @@
 <ui>                                                   
   <menubar name='MenuBar'>                            
     <menu action='FileMenu'>                        
-      <menu action='FileNew'>                     
-        <menuitem action='FileNewStandard'/>    
-        <menuitem action='FileNewCC'/>          
-        <menuitem action='FileNewH'/>           
-      </menu>                                     
+      <menuitem action='FileNewFile'/>
       <menuitem action='FileOpenFile'/>
       <menuitem action='FileOpenFolder'/>
       <menuitem action='FileSave'/>

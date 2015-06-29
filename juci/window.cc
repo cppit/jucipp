@@ -4,13 +4,13 @@
 Window::Window() :
   window_box_(Gtk::ORIENTATION_VERTICAL),
   main_config_(),
-  keybindings_(main_config_.keybindings_cfg()),
-  terminal_(main_config_.terminal_cfg()),
-  notebook_(this,keybindings(),
+  keybindings_(main_config_.keybindings_cfg),
+  terminal(main_config_.terminal_cfg),
+  notebook(keybindings(), terminal,
             main_config_.source_cfg,
-            main_config_.dir_cfg()),
+            main_config_.dir_cfg),
   menu_(keybindings()),
-  api_(menu_, notebook_) {
+  api_(menu_, notebook) {
   INFO("Create Window");
   set_title("juCi++");
   set_default_size(600, 400);
@@ -66,16 +66,16 @@ Window::Window() :
 	  SaveFile();
 	  if (running.try_lock()) {
 	    std::thread execute([=]() {
-		std::string path = notebook_.CurrentPagePath();
-		int pos = path.find_last_of("/\\");
+		std::string path = notebook.CurrentTextView().file_path;
+		size_t pos = path.find_last_of("/\\");
 		if(pos != std::string::npos) {
 		  path.erase(path.begin()+pos,path.end());
-		  terminal_.SetFolderCommand(path);
+		  terminal.SetFolderCommand(path);
 		}
-		terminal_.Compile();
-		std::string executable = notebook_.directories.
+		terminal.Compile();
+		std::string executable = notebook.directories.
 		  GetCmakeVarValue(path,"add_executable");
-		terminal_.Run(executable);
+		terminal.Run(executable);
                 running.unlock();
 	      });
 	    execute.detach();
@@ -92,13 +92,13 @@ Window::Window() :
           SaveFile();
           if (running.try_lock()) {
             std::thread execute([=]() {		  
-                std::string path =  notebook_.CurrentPagePath();
-                int pos = path.find_last_of("/\\");
+                std::string path =  notebook.CurrentTextView().file_path;
+                size_t pos = path.find_last_of("/\\");
                 if(pos != std::string::npos){
                   path.erase(path.begin()+pos,path.end());
-                  terminal_.SetFolderCommand(path);
+                  terminal.SetFolderCommand(path);
                 }
-                terminal_.Compile();
+                terminal.Compile();
                 running.unlock();
               });
             execute.detach();
@@ -111,16 +111,18 @@ Window::Window() :
 
   window_box_.pack_start(menu_.view(), Gtk::PACK_SHRINK);
 
-  window_box_.pack_start(notebook_.entry_view(), Gtk::PACK_SHRINK);
+  window_box_.pack_start(notebook.entry, Gtk::PACK_SHRINK);
   paned_.set_position(300);
-  paned_.pack1(notebook_.view(), true, false);
-  paned_.pack2(terminal_.view(), true, true);
+  paned_.pack1(notebook.view, true, false);
+  paned_.pack2(terminal.view, true, true);
   window_box_.pack_end(paned_);
   show_all_children();
   INFO("Window created");
 } // Window constructor
 
 void Window::OnWindowHide() {
+  for(size_t c=0;c<notebook.text_vec_.size();c++)
+    notebook.OnCloseCurrentPage(); //TODO: This only works on one page at the momemt. Change to notebook.close_page(page_nr);
   hide();
 }
 void Window::OnFileOpenFolder() {
@@ -139,8 +141,8 @@ void Window::OnFileOpenFolder() {
     case(Gtk::RESPONSE_OK):
       {
         std::string project_path=dialog.get_filename();
-        notebook_.project_path=project_path;
-        notebook_.directories.open_folder(project_path);
+        notebook.project_path=project_path;
+        notebook.directories.open_folder(project_path);
         break;
       }
     case(Gtk::RESPONSE_CANCEL):
@@ -188,7 +190,7 @@ void Window::OnOpenFile() {
   switch (result) {
   case(Gtk::RESPONSE_OK): {
     std::string path = dialog.get_filename();
-    notebook_.OnOpenFile(path);
+    notebook.OnOpenFile(path);
     break;
   }
   case(Gtk::RESPONSE_CANCEL): {
@@ -201,20 +203,20 @@ void Window::OnOpenFile() {
 }
 
 bool Window::SaveFile() {
-  if(notebook_.OnSaveFile()) {
-    terminal_.PrintMessage("File saved to: " +
-			   notebook_.CurrentPagePath()+"\n");
+  if(notebook.OnSaveFile()) {
+    terminal.print("File saved to: " +
+			   notebook.CurrentTextView().file_path+"\n");
     return true;
   }
-  terminal_.PrintMessage("File not saved");
+  terminal.print("File not saved");
   return false;
 }
 bool Window::SaveFileAs() {
-  if(notebook_.OnSaveFile(notebook_.OnSaveFileAs())){
-    terminal_.PrintMessage("File saved to: " +
-			   notebook_.CurrentPagePath()+"\n");
+  if(notebook.OnSaveFile(notebook.OnSaveFileAs())){
+    terminal.print("File saved to: " +
+			   notebook.CurrentTextView().file_path+"\n");
     return true;
   }
-  terminal_.PrintMessage("File not saved");
+  terminal.print("File not saved");
   return false;
 }
