@@ -27,11 +27,11 @@ config(config), file_path(file_path), project_path(project_path) {
   set_smart_home_end(Gsv::SMART_HOME_END_BEFORE);
   set_show_line_numbers(config.show_line_numbers);
   set_highlight_current_line(config.highlight_current_line);
-      
   sourcefile s(file_path);
   get_source_buffer()->get_undo_manager()->begin_not_undoable_action();
   get_source_buffer()->set_text(s.get_content());
   get_source_buffer()->get_undo_manager()->end_not_undoable_action();
+  search_start = search_end = this->get_buffer()->end();
 }
 
 string Source::View::get_line(size_t line_number) {

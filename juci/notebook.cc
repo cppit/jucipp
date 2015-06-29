@@ -1,6 +1,8 @@
 #include <fstream>
 #include "notebook.h"
 #include "logging.h"
+#include <gtksourceview/gtksource.h> // c-library
+
 
 Notebook::View::View() {
   pack2(notebook);
@@ -55,8 +57,7 @@ void Notebook::Controller::CreateKeybindings(Keybindings::Controller
         Gtk::AccelKey(keybindings.config_
                       .key_map()["edit_find"]),
         [this]() {
-          OnEditSearch();
-          // TODO(Oyvang)  Zalox, Forgi)Create function OnEditFind();
+	  entry.show_search("");
         });
   keybindings.action_group_menu()->
     add(Gtk::Action::create("EditCopy",
@@ -65,15 +66,19 @@ void Notebook::Controller::CreateKeybindings(Keybindings::Controller
                       .key_map()["edit_copy"]),
        
         [this]() {
-          OnEditCopy();
+	  if (Pages() != 0) {
+	    CurrentTextView().get_buffer()->copy_clipboard(refClipboard_);
+	  }
         });
   keybindings.action_group_menu()->
     add(Gtk::Action::create("EditCut",
                             "Cut"),
          Gtk::AccelKey(keybindings.config_
-                      .key_map()["edit_cut"]),
+		       .key_map()["edit_cut"]),
         [this]() {
-          OnEditCut();
+	  if (Pages() != 0) {
+	    CurrentTextView().get_buffer()->cut_clipboard(refClipboard_);
+	  }
         });
   keybindings.action_group_menu()->
     add(Gtk::Action::create("EditPaste",
@@ -81,7 +86,9 @@ void Notebook::Controller::CreateKeybindings(Keybindings::Controller
          Gtk::AccelKey(keybindings.config_
                       .key_map()["edit_paste"]),
         [this]() {
-          OnEditPaste();
+	  if (Pages() != 0) {
+	    CurrentTextView().get_buffer()->paste_clipboard(refClipboard_);
+	  }
         });
 
   keybindings.action_group_menu()->
@@ -147,12 +154,12 @@ void Notebook::Controller::CreateKeybindings(Keybindings::Controller
   entry.button_next.signal_clicked().
     connect(
             [this]() {
-              Search(true);
+              search(true);
             });
   entry.button_prev.signal_clicked().
     connect(
             [this]() {
-              Search(false);
+              search(false);
             });
   INFO("Notebook signal handlers sucsess");
 }
@@ -171,7 +178,7 @@ void Notebook::Controller::OnOpenFile(std::string path) {
   editor_vec_.push_back(new Gtk::HBox());
   scrolledtext_vec_.back()->add(*text_vec_.back()->view);
   editor_vec_.back()->pack_start(*scrolledtext_vec_.back(), true, true);
-  size_t pos = path.find_last_of("/\\");
+  size_t pos = path.find_last_of("/\\");  // TODO #windows
   std::string filename=path;
   if(pos!=std::string::npos)
     filename=path.substr(pos+1);
@@ -211,77 +218,39 @@ void Notebook::Controller::OnCloseCurrentPage() {
 void Notebook::Controller::OnFileNewFile() {
   entry.show_set_filename();
 }
-void Notebook::Controller::OnEditCopy() {
-  if (Pages() != 0) {
-    CurrentTextView().get_buffer()->copy_clipboard(refClipboard_);
-  }
-}
-void Notebook::Controller::OnEditPaste() {
-  if (Pages() != 0) {
-    CurrentTextView().get_buffer()->paste_clipboard(refClipboard_);
-  }
-}
-void Notebook::Controller::OnEditCut() {
-  if (Pages() != 0) {
-    CurrentTextView().get_buffer()->cut_clipboard(refClipboard_);
-  }
-}
 
-std::string Notebook::Controller::GetCursorWord() {
-  INFO("Notebook get cursor word");
-  std::string word;
-  Gtk::TextIter start, end;
-  start = CurrentTextView().get_buffer()->get_insert()->get_iter();
-  end = CurrentTextView().get_buffer()->get_insert()->get_iter();
-  if (!end.ends_line()) {
-    while (!end.ends_word()) {
-      end.forward_char();
-    }
-  }
-  if (!start.starts_line()) {
-    while (!start.starts_word()) {
-      start.backward_char();
-    }
-  }
-  word = CurrentTextView().get_buffer()->get_text(start, end);
-  // TODO(Oyvang) fix selected text
-  return word;
-}
-
-void Notebook::Controller::OnEditSearch() {
-  search_match_end_ =
-    CurrentTextView().get_buffer()->get_iter_at_offset(0);
-  entry.show_search(GetCursorWord());
-}
-
-void Notebook::Controller::Search(bool forward) {
-    INFO("Notebook search");
-  std::string search_word;
-  search_word = entry();
-  Gtk::TextIter test;
-
-  if ( !forward ) {
-    if ( search_match_start_ == 0 ||
-         search_match_start_.get_line_offset() == 0) {
-      search_match_start_ = CurrentTextView().get_buffer()->end();
-    }
-    search_match_start_.
-      backward_search(search_word,
-                      Gtk::TextSearchFlags::TEXT_SEARCH_TEXT_ONLY |
-                      Gtk::TextSearchFlags::TEXT_SEARCH_VISIBLE_ONLY,
-                      search_match_start_,
-                      search_match_end_);
+void Notebook::Controller::search(bool forward) {
+  INFO("Notebook search");
+  auto start = CurrentTextView().search_start;
+  auto end = CurrentTextView().search_end;
+  // fetch buffer and greate settings
+  auto buffer = CurrentTextView().get_source_buffer();
+  auto settings = gtk_source_search_settings_new();
+  // get search text from entry
+  gtk_source_search_settings_set_search_text(settings, entry().c_str());
+  // make sure the search continues
+  gtk_source_search_settings_set_wrap_around(settings, true);
+  auto context = gtk_source_search_context_new(buffer->gobj(), settings);
+  gtk_source_search_context_set_highlight(context, forward);
+  auto itr = buffer->get_insert()->get_iter();
+  buffer->remove_tag_by_name("search", start ? start : itr, end ? end : itr);
+  if (forward) {
+    DEBUG("Doing forward search");
+    gtk_source_search_context_forward(context,
+				      end ? end.gobj() : itr.gobj(),
+				      start.gobj(),
+				      end.gobj());
   } else {
-    if ( search_match_end_ == 0 ) {
-      search_match_end_ = CurrentTextView().get_buffer()->begin();
-    }
-    search_match_end_.
-      forward_search(search_word,
-                     Gtk::TextSearchFlags::TEXT_SEARCH_TEXT_ONLY |
-                     Gtk::TextSearchFlags::TEXT_SEARCH_VISIBLE_ONLY,
-                     search_match_start_,
-                     search_match_end_);
+    DEBUG("Doing backward search");
+    gtk_source_search_context_backward(context,
+				       start ? start.gobj() : itr.gobj(),
+				       start.gobj(),
+				       end.gobj());
   }
+  buffer->apply_tag_by_name("search", start, end);
+  CurrentTextView().scroll_to(end);
+  CurrentTextView().search_start = start;
+  CurrentTextView().search_end = end;
 }
 
 void Notebook::Controller

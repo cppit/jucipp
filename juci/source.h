@@ -63,6 +63,7 @@ namespace Source {
     std::string get_line_before_insert();
     std::string file_path;
     std::string project_path;
+    Gtk::TextIter search_start, search_end;
   protected:
     const Source::Config& config;
     bool on_key_press(GdkEventKey* key);

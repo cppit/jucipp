@@ -31,11 +31,6 @@ namespace Notebook {
     int CurrentPage();
     Gtk::Notebook& Notebook();
     void OnCloseCurrentPage();
-    std::string GetCursorWord();
-    void OnEditCopy();
-    void OnEditCut();
-    void OnEditPaste();
-    void OnEditSearch();
     void OnFileNewFile();
     bool OnSaveFile();
     bool OnSaveFile(std::string path);
@@ -43,7 +38,7 @@ namespace Notebook {
                                Gtk::TreeViewColumn* column);
     void OnOpenFile(std::string filename);
     int Pages();
-    void Search(bool forward);
+    void search(bool forward);
     View view;
     std::string OnSaveFileAs();
     std::string project_path;
@@ -61,8 +56,6 @@ namespace Notebook {
     std::vector<Gtk::ScrolledWindow*> scrolledtext_vec_;
     std::vector<Gtk::HBox*> editor_vec_;
     std::list<Gtk::TargetEntry> listTargets_;
-    Gtk::TextIter search_match_end_;
-    Gtk::TextIter search_match_start_;
     Glib::RefPtr<Gtk::Clipboard> refClipboard_;
   };  // class controller
 }  // namespace Notebook
