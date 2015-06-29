@@ -41,8 +41,6 @@
     },
     "keybindings": {
         "new_file": "<control>n",
-        "new_h_file": "<control><alt>h",
-        "new_cc_file": "<control><alt>c",
         "open_folder": "<control><alt>o",
         "open_file": "<control>o",
         "save": "<control>s",

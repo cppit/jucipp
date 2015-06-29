@@ -15,13 +15,11 @@ public:
   Gtk::Box window_box_;
   virtual ~Window() { }
 
-  
-//private:
   MainConfig main_config_;
   Keybindings::Controller keybindings_;
   Menu::Controller menu_;
-  Notebook::Controller notebook_;
-  Terminal::Controller terminal_;
+  Notebook::Controller notebook;
+  Terminal::Controller terminal;
   PluginApi api_;
   
   Keybindings::Controller& keybindings() { return keybindings_; }
@@ -32,7 +30,6 @@ public:
   void OnWindowHide();
   void OnOpenFile();
   void OnFileOpenFolder();
-  bool OnMouseRelease(GdkEventButton* button);
   bool SaveFile();
   bool SaveFileAs();
 };

@@ -4,32 +4,22 @@
 #include <gtksourceview/gtksource.h> // c-library
 
 
-Notebook::Model::Model() {
-  cc_extension_ = ".cpp";
-  h_extension_  = ".hpp";
-  scrollvalue_ = 50;
+Notebook::View::View() {
+  pack2(notebook);
+  set_position(120);
 }
 
-Notebook::View::View() : notebook_() {
-  view_.pack2(notebook_);
-  view_.set_position(120);
-}
-
-Notebook::Controller::Controller(Gtk::Window* window,
-                                 Keybindings::Controller& keybindings,
+Notebook::Controller::Controller(Keybindings::Controller& keybindings,
+                                 Terminal::Controller& terminal,
                                  Source::Config& source_cfg,
                                  Directories::Config& dir_cfg) :
-  directories_(dir_cfg),
-  source_config_(source_cfg) {
+  terminal(terminal),
+  directories(dir_cfg),
+  source_config(source_cfg) {
   INFO("Create notebook");
-  window_ = window;
-  OnNewPage("untitled");
   refClipboard_ = Gtk::Clipboard::get();
-  ispopup = false;
-  view().pack1(directories_.widget(), true, true);
+  view.pack1(directories.widget(), true, true);
   CreateKeybindings(keybindings);
-  end = CurrentTextView().get_source_buffer()->end();
-  start = CurrentTextView().get_source_buffer()->end();
   INFO("Notebook Controller Success");
 }  // Constructor
 
@@ -37,7 +27,7 @@ Notebook::Controller::Controller(Gtk::Window* window,
 void Notebook::Controller::CreateKeybindings(Keybindings::Controller
                                              &keybindings) {
   INFO("Notebook create signal handlers");
-  directories().m_TreeView.signal_row_activated()
+  directories.m_TreeView.signal_row_activated()
     .connect(sigc::mem_fun(*this,
                            &Notebook::Controller::OnDirectoryNavigation));
 
@@ -46,31 +36,12 @@ void Notebook::Controller::CreateKeybindings(Keybindings::Controller
                             Gtk::Stock::FILE));
 
   keybindings.action_group_menu()->
-    add(Gtk::Action::create("FileNewStandard",                     
-                            "New empty file"),
+    add(Gtk::Action::create("FileNewFile",                     
+                            "New file"),
         Gtk::AccelKey(keybindings.config_
                       .key_map()["new_file"]),
         [this]() {
-          is_new_file_ = true;
-          OnFileNewEmptyfile();
-        });
-  keybindings.action_group_menu()->
-    add(Gtk::Action::create("FileNewCC",
-                            "New source file"),
-        Gtk::AccelKey(keybindings.config_
-                      .key_map()["new_cc_file"]),
-        [this]() {
-          is_new_file_ = true;
-          OnFileNewCCFile();
-        });
-  keybindings.action_group_menu()->
-    add(Gtk::Action::create("FileNewH",
-                            "New header file"),
-        Gtk::AccelKey(keybindings.config_
-                      .key_map()["new_h_file"]),
-        [this]() {
-          is_new_file_ = true;
-          OnFileNewHeaderFile();
+          OnFileNewFile();
         });
   keybindings.action_group_menu()->
     add(Gtk::Action::create("WindowCloseTab",
@@ -86,9 +57,7 @@ void Notebook::Controller::CreateKeybindings(Keybindings::Controller
         Gtk::AccelKey(keybindings.config_
                       .key_map()["edit_find"]),
         [this]() {
-          is_new_file_ = false;
-          OnEditSearch();
-          // TODO(Oyvang)  Zalox, Forgi)Create function OnEditFind();
+	  entry.show_search("");
         });
   keybindings.action_group_menu()->
     add(Gtk::Action::create("EditCopy",
@@ -97,15 +66,19 @@ void Notebook::Controller::CreateKeybindings(Keybindings::Controller
                       .key_map()["edit_copy"]),
        
         [this]() {
-          OnEditCopy();
+	  if (Pages() != 0) {
+	    CurrentTextView().get_buffer()->copy_clipboard(refClipboard_);
+	  }
         });
   keybindings.action_group_menu()->
     add(Gtk::Action::create("EditCut",
                             "Cut"),
          Gtk::AccelKey(keybindings.config_
-                      .key_map()["edit_cut"]),
+		       .key_map()["edit_cut"]),
         [this]() {
-          OnEditCut();
+	  if (Pages() != 0) {
+	    CurrentTextView().get_buffer()->cut_clipboard(refClipboard_);
+	  }
         });
   keybindings.action_group_menu()->
     add(Gtk::Action::create("EditPaste",
@@ -113,7 +86,9 @@ void Notebook::Controller::CreateKeybindings(Keybindings::Controller
          Gtk::AccelKey(keybindings.config_
                       .key_map()["edit_paste"]),
         [this]() {
-          OnEditPaste();
+	  if (Pages() != 0) {
+	    CurrentTextView().get_buffer()->paste_clipboard(refClipboard_);
+	  }
         });
 
   keybindings.action_group_menu()->
@@ -147,146 +122,46 @@ void Notebook::Controller::CreateKeybindings(Keybindings::Controller
           INFO("Done Redo");
         });
 
-  entry_.view_.entry().signal_activate().
+  entry.button_apply_set_filename.signal_clicked().connect([this]() {
+    std::string filename=entry();
+    if(filename!="") {
+      if(project_path!="" && !boost::filesystem::path(filename).is_absolute())
+        filename=project_path+"/"+filename;
+      boost::filesystem::path p(filename);
+      if(boost::filesystem::exists(p)) {
+        //TODO: alert user that file already exists
+      }
+      else {
+        std::ofstream f(p.string().c_str());
+        if(f) {
+          OnOpenFile(boost::filesystem::canonical(p).string());
+          if(project_path!="")
+            directories.open_folder(project_path); //TODO: Do refresh instead
+        }
+        else {
+          //TODO: alert user of error creating file
+        }
+        f.close();
+      }
+    }
+    entry.hide();
+  });
+  entry.button_close.signal_clicked().
     connect(
             [this]() {
-              if (is_new_file_) {
-                OnNewPage(entry_.text());
-                entry_.OnHideEntries(is_new_file_);
-              } else {
-                Search(true);
-              }
+              entry.hide();
             });
-  entry_.button_apply().signal_clicked().
+  entry.button_next.signal_clicked().
     connect(
             [this]() {
-              OnNewPage(entry_.text());
-              entry_.OnHideEntries(is_new_file_);
+              search(true);
             });
-  entry_.button_close().signal_clicked().
+  entry.button_prev.signal_clicked().
     connect(
             [this]() {
-              entry_.OnHideEntries(is_new_file_);
-            });
-  entry_.button_next().signal_clicked().
-    connect(
-            [this]() {
-              Search(true);
-            });
-  entry_.button_prev().signal_clicked().
-    connect(
-            [this]() {
-              Search(false);
+              search(false);
             });
   INFO("Notebook signal handlers sucsess");
-}
-
-bool Notebook::Controller:: OnMouseRelease(GdkEventButton* button) {
-  if (button->button == 1 && ispopup) {
-    popup_.response(Gtk::RESPONSE_DELETE_EVENT);
-    return true;
-  }
-  return false;
-}
-
-bool Notebook::Controller::OnKeyRelease(GdkEventKey* key) {
-  return GeneratePopup(key->keyval);
-}
-
-bool Notebook::Controller::GeneratePopup(int key_id) {
-  INFO("Notebook genereate popup, getting iters");
-  std::string path = text_vec_.at(CurrentPage())->parser.file_path;
-  if (!source_config().legal_extension(path.substr(path.find_last_of(".") + 1))) return false;
-  //  Get function to fill popup with suggests item vector under is for testing
-  Gtk::TextIter beg = CurrentTextView().get_buffer()->get_insert()->get_iter();
-  Gtk::TextIter end = CurrentTextView().get_buffer()->get_insert()->get_iter();
-  Gtk::TextIter tmp = CurrentTextView().get_buffer()->get_insert()->get_iter();
-  Gtk::TextIter tmp1 = CurrentTextView().get_buffer()->get_insert()->get_iter();
-  Gtk::TextIter line =
-    CurrentTextView().get_buffer()->get_iter_at_line(tmp.get_line());
-  if (end.backward_char() && end.backward_char()) {
-    bool illegal_chars =
-    end.backward_search("\"", Gtk::TEXT_SEARCH_VISIBLE_ONLY, tmp, tmp1, line)
-    ||
-      end.backward_search("//", Gtk::TEXT_SEARCH_VISIBLE_ONLY, tmp, tmp1, line);
-    INFO("Notebook genereate popup, checking key_id");
-      if (illegal_chars) {
-        return false;
-      }
-      std::string c = text_vec_[CurrentPage()]->buffer()->get_text(end, beg);
-      switch (key_id) {
-      case 46:
-        break;
-      case 58:
-        if (c != "::") return false;
-        break;
-      case 60:
-        if (c != "->") return false;
-        break;
-      case 62:
-        if (c != "->") return false;
-        break;
-      default:
-        return false;
-      }
-  } else {
-    return false;
-  }
-  INFO("Notebook genereate popup, getting autocompletions");
-  std::vector<Source::AutoCompleteData> acdata=text_vec_.at(CurrentPage())->parser.
-    get_autocomplete_suggestions(beg.get_line()+1,
-                               beg.get_line_offset()+2);
-  std::map<std::string, std::string> items;
-  for (auto &data : acdata) {
-    std::stringstream ss;
-    std::string return_value;
-    for (auto &chunk : data.chunks) {
-      switch (chunk.kind) {
-      case clang::CompletionChunk_ResultType:
-        return_value = chunk.chunk;
-        break;
-      case clang::CompletionChunk_Informative: break;
-      default: ss << chunk.chunk; break;
-      }
-    }
-    if (ss.str().length() > 0) { // if length is 0 the result is empty
-      items[ss.str() + " --> " + return_value] = ss.str();
-    }
-  }
-  Gtk::ScrolledWindow popup_scroll_;
-  Gtk::ListViewText listview_(1, false, Gtk::SelectionMode::SELECTION_SINGLE);
-  popup_scroll_.set_policy(Gtk::PolicyType::POLICY_NEVER,
-                           Gtk::PolicyType::POLICY_NEVER);
-  listview_.set_enable_search(true);
-  listview_.set_headers_visible(false);
-  listview_.set_hscroll_policy(Gtk::ScrollablePolicy::SCROLL_NATURAL);
-  listview_.set_activate_on_single_click(true);
-  if (items.empty()) {
-    items["No suggestions found..."] = "";
-  }
-  for (auto &i : items) {
-    listview_.append(i.first);
-  }
-  popup_scroll_.add(listview_);
-  popup_.get_vbox()->pack_start(popup_scroll_);
-  popup_.set_transient_for(*window_);
-  popup_.show_all();
-  INFO("Notebook genereate popup, moving popup");
-  int popup_x = popup_.get_width();
-  int popup_y = items.size() * 20;
-  PopupSetSize(popup_scroll_, popup_x, popup_y);
-  int x, y;
-  FindPopupPosition(CurrentTextView(), popup_x, popup_y, x, y);
-  popup_.move(x, y+15);
-  INFO("Notebook genereate popup, create handler");
-  PopupSelectHandler(popup_, listview_, &items);
-  ispopup = true;
-  INFO("Notebook genereate popup, run popup");
-  popup_.run();
-  INFO("Notebook genereate popup, hide popup");
-  popup_.hide();
-  ispopup = false;
-  return true;
 }
 
 Notebook::Controller::~Controller() {
@@ -295,63 +170,40 @@ Notebook::Controller::~Controller() {
   for (auto &i : scrolledtext_vec_) delete i;
 }
 
-Gtk::Paned& Notebook::Controller::view() {
-  return view_.view();
-}
-Gtk::Box& Notebook::Controller::entry_view() {
-  return entry_.view();
-}
-
-void Notebook::Controller::OnNewPage(std::string name) {
-  INFO("Notebook Generate new page");
-  OnCreatePage();
-  text_vec_.back()->on_new_empty_file();
-  Notebook().append_page(*editor_vec_.back(), name);
-  Notebook().show_all_children();
-  Notebook().set_current_page(Pages()-1);
-  Notebook().set_focus_child(text_vec_.at(Pages()-1)->view);
-
-}
-
 void Notebook::Controller::OnOpenFile(std::string path) {
   INFO("Notebook open file");
-  OnCreatePage();
-  text_vec_.back()->on_open_file(path);
-  size_t pos = path.find_last_of("/\\");
+  INFO("Notebook create page");
+  text_vec_.emplace_back(new Source::Controller(source_config, path, project_path, terminal));
+  scrolledtext_vec_.push_back(new Gtk::ScrolledWindow());
+  editor_vec_.push_back(new Gtk::HBox());
+  scrolledtext_vec_.back()->add(*text_vec_.back()->view);
+  editor_vec_.back()->pack_start(*scrolledtext_vec_.back(), true, true);
+  size_t pos = path.find_last_of("/\\");  // TODO #windows
   std::string filename=path;
   if(pos!=std::string::npos)
     filename=path.substr(pos+1);
   Notebook().append_page(*editor_vec_.back(), filename);
   Notebook().show_all_children();
   Notebook().set_current_page(Pages()-1);
-  Notebook().set_focus_child(text_vec_.back()->view);
-}
-
-void Notebook::Controller::OnCreatePage() {
-  INFO("Notebook create page");
-  text_vec_.emplace_back(new Source::Controller(source_config(), text_vec_));
-  scrolledtext_vec_.push_back(new Gtk::ScrolledWindow());
-  editor_vec_.push_back(new Gtk::HBox());
-  scrolledtext_vec_.back()->add(text_vec_.back()->view);
-  editor_vec_.back()->pack_start(*scrolledtext_vec_.back(), true, true);
-  TextViewHandlers(text_vec_.back()->view);
+  Notebook().set_focus_child(*text_vec_.back()->view);
   //Add star on tab label when the page is not saved:
-  text_vec_.back()->signal_buffer_changed=[this](bool was_saved) {
-    if(was_saved) {
-      std::string path=text_vec_.at(CurrentPage())->parser.file_path;
+  text_vec_.back()->buffer()->signal_changed().connect([this]() {
+    if(text_vec_.at(CurrentPage())->is_saved) {
+      std::string path=CurrentTextView().file_path;
       size_t pos = path.find_last_of("/\\");
       std::string filename=path;
       if(pos!=std::string::npos)
         filename=path.substr(pos+1);
-      Notebook().set_tab_label_text(*Notebook().get_nth_page(CurrentPage()), filename+"*");
+      Notebook().set_tab_label_text(*(Notebook().get_nth_page(CurrentPage())), filename+"*");
     }
-  };
+    text_vec_.at(CurrentPage())->is_saved=false;
+  });
 }
 
 void Notebook::Controller::OnCloseCurrentPage() {
   INFO("Notebook close page");
   if (Pages() != 0) {
-    if(!text_vec_.back()->is_saved){
+    if(!text_vec_.at(CurrentPage())->is_saved){
       AskToSaveDialog();
     }
     int page = CurrentPage();
@@ -363,99 +215,60 @@ void Notebook::Controller::OnCloseCurrentPage() {
     editor_vec_.erase(editor_vec_.begin()+page);
   }
 }
-void Notebook::Controller::OnFileNewEmptyfile() {
-  entry_.OnShowSetFilenName("");
-}
-void Notebook::Controller::OnFileNewCCFile() {
-  entry_.OnShowSetFilenName(model_.cc_extension_);
-}
-void Notebook::Controller::OnFileNewHeaderFile() {
-  entry_.OnShowSetFilenName(model_.h_extension_);
-}
-void Notebook::Controller::OnEditCopy() {
-  if (Pages() != 0) {
-    Buffer(*text_vec_.at(CurrentPage()))->copy_clipboard(refClipboard_);
-  }
-}
-void Notebook::Controller::OnEditPaste() {
-  if (Pages() != 0) {
-    Buffer(*text_vec_.at(CurrentPage()))->paste_clipboard(refClipboard_);
-  }
-}
-void Notebook::Controller::OnEditCut() {
-  if (Pages() != 0) {
-    Buffer(*text_vec_.at(CurrentPage()))->cut_clipboard(refClipboard_);
-  }
+void Notebook::Controller::OnFileNewFile() {
+  entry.show_set_filename();
 }
 
-std::string Notebook::Controller::GetCursorWord() {
-  INFO("Notebook get cursor word");
-  int page = CurrentPage();
-  std::string word;
-  Gtk::TextIter start, end;
-  start = Buffer(*text_vec_.at(page))->get_insert()->get_iter();
-  end = Buffer(*text_vec_.at(page))->get_insert()->get_iter();
-  if (!end.ends_line()) {
-    while (!end.ends_word()) {
-      end.forward_char();
-    }
-  }
-  if (!start.starts_line()) {
-    while (!start.starts_word()) {
-      start.backward_char();
-    }
-  }
-  word = Buffer(*text_vec_.at(page))->get_text(start, end);
-  // TODO(Oyvang) fix selected text
-  return word;
-}
-
-void Notebook::Controller::OnEditSearch() {
-  search_match_end_ =
-    Buffer(*text_vec_.at(CurrentPage()))->get_iter_at_offset(0);
-  entry_.OnShowSearch(GetCursorWord());
-}
-
-void Notebook::Controller::Search(bool forward) {
+void Notebook::Controller::search(bool forward) {
   INFO("Notebook search");
-
+  auto start = CurrentTextView().search_start;
+  auto end = CurrentTextView().search_end;
   // fetch buffer and greate settings
   auto buffer = CurrentTextView().get_source_buffer();
   auto settings = gtk_source_search_settings_new();
-
   // get search text from entry
-  gtk_source_search_settings_set_search_text(settings, entry_.text().c_str());
-
+  gtk_source_search_settings_set_search_text(settings, entry().c_str());
   // make sure the search continues
   gtk_source_search_settings_set_wrap_around(settings, true);
   auto context = gtk_source_search_context_new(buffer->gobj(), settings);
   gtk_source_search_context_set_highlight(context, forward);
-  auto itr = buffer->get_insert()->get_iter().gobj();
-  gtk_source_search_context_forward(context,
-                                    end ? end.gobj() : itr,
-                                    start.gobj(),
-                                    end.gobj());
-
+  auto itr = buffer->get_insert()->get_iter();
+  buffer->remove_tag_by_name("search", start ? start : itr, end ? end : itr);
+  if (forward) {
+    DEBUG("Doing forward search");
+    gtk_source_search_context_forward(context,
+				      end ? end.gobj() : itr.gobj(),
+				      start.gobj(),
+				      end.gobj());
+  } else {
+    DEBUG("Doing backward search");
+    gtk_source_search_context_backward(context,
+				       start ? start.gobj() : itr.gobj(),
+				       start.gobj(),
+				       end.gobj());
+  }
   buffer->apply_tag_by_name("search", start, end);
   CurrentTextView().scroll_to(end);
+  CurrentTextView().search_start = start;
+  CurrentTextView().search_end = end;
 }
 
 void Notebook::Controller
 ::OnDirectoryNavigation(const Gtk::TreeModel::Path& path,
                         Gtk::TreeViewColumn* column) {
     INFO("Notebook directory navigation");
-  Gtk::TreeModel::iterator iter = directories().m_refTreeModel->get_iter(path);
+  Gtk::TreeModel::iterator iter = directories.m_refTreeModel->get_iter(path);
   if (iter) {
     Gtk::TreeModel::Row row = *iter;
-    std::string upath = Glib::ustring(row[directories().view().m_col_path]);
+    std::string upath = Glib::ustring(row[directories.view().m_col_path]);
     boost::filesystem::path fs_path(upath);
     if (boost::filesystem::is_directory(fs_path)) {
-      directories().m_TreeView.row_expanded(path) ?
-        directories().m_TreeView.collapse_row(path) :
-        directories().m_TreeView.expand_row(path, false);
+      directories.m_TreeView.row_expanded(path) ?
+        directories.m_TreeView.collapse_row(path) :
+        directories.m_TreeView.expand_row(path, false);
     } else {
       std::stringstream sstm;
-      sstm << row[directories().view().m_col_path];
+      sstm << row[directories.view().m_col_path];
       std::string file = sstm.str();
       OnOpenFile(file);
     }
@@ -464,123 +277,22 @@ void Notebook::Controller
 
 Source::View& Notebook::Controller::CurrentTextView() {
   INFO("Getting sourceview");
-  return text_vec_.at(CurrentPage())->view;
+  return *text_vec_.at(CurrentPage())->view;
 }
 
 int Notebook::Controller::CurrentPage() {
   return Notebook().get_current_page();
 }
 
-Glib::RefPtr<Gtk::TextBuffer>
-Notebook::Controller::Buffer(Source::Controller &source) {
-  return source.view.get_buffer();
-}
-
 int Notebook::Controller::Pages() {
   return Notebook().get_n_pages();
 }
 Gtk::Notebook& Notebook::Controller::Notebook() {
-  return view_.notebook();
-}
-
-void Notebook::Controller::BufferChangeHandler(Glib::RefPtr<Gtk::TextBuffer>
-                                               buffer) {
-  buffer->signal_end_user_action().connect(
-                                   [this]() {                                     
-                                     //UpdateHistory();
-                                   });
-}
-
-void Notebook::Controller::TextViewHandlers(Gtk::TextView& textview) {
-  textview.signal_button_release_event().
-    connect(sigc::mem_fun(*this, &Notebook::Controller::OnMouseRelease), false);
-
-  textview.signal_key_release_event().
-    connect(sigc::mem_fun(*this, &Notebook::Controller::OnKeyRelease), false);
-}
-
-void Notebook::Controller::PopupSelectHandler(Gtk::Dialog &popup,
-                                              Gtk::ListViewText &listview,
-                                              std::map<std::string, std::string>
-                                              *items) {
-  listview.signal_row_activated().
-    connect([this, &listview, &popup, items](const Gtk::TreeModel::Path& path,
-                                             Gtk::TreeViewColumn*) {
-              std::string selected = items->
-                at(listview.get_text(listview.get_selected()[0]));
-              CurrentTextView().get_buffer()->insert_at_cursor(selected);
-              popup.response(Gtk::RESPONSE_DELETE_EVENT);
-            });
-}
-void Notebook::Controller::PopupSetSize(Gtk::ScrolledWindow &scroll,
-                                        int &current_x,
-                                        int &current_y) {
-    INFO("Notebook popup set size");
-  int textview_x = CurrentTextView().get_width();
-  int textview_y = 150;
-  bool is_never_scroll_x = true;
-  bool is_never_scroll_y = true;
-  if (current_x > textview_x) {
-    current_x = textview_x;
-    is_never_scroll_x = false;
-  }
-  if (current_y > textview_y) {
-    current_y = textview_y;
-    is_never_scroll_y = false;
-  }
-  scroll.set_size_request(current_x, current_y);
-  if (!is_never_scroll_x && !is_never_scroll_y) {
-    scroll.set_policy(Gtk::PolicyType::POLICY_AUTOMATIC,
-                      Gtk::PolicyType::POLICY_AUTOMATIC);
-  } else if (!is_never_scroll_x && is_never_scroll_y) {
-    scroll.set_policy(Gtk::PolicyType::POLICY_AUTOMATIC,
-                      Gtk::PolicyType::POLICY_NEVER);
-  } else if (is_never_scroll_x && !is_never_scroll_y) {
-    scroll.set_policy(Gtk::PolicyType::POLICY_NEVER,
-                      Gtk::PolicyType::POLICY_AUTOMATIC);
-  }
-}
-
-std::string Notebook::Controller::CurrentPagePath(){
-  return text_vec_.at(CurrentPage())->parser.file_path;
-}
-
-void Notebook::Controller::FindPopupPosition(Gtk::TextView& textview,
-                                             int popup_x,
-                                             int popup_y,
-                                             int &x,
-                                             int &y) {
-    INFO("Notebook popup find position");
-  Gdk::Rectangle temp1, temp2;
-  textview.get_cursor_locations(
-                                CurrentTextView().
-                                get_buffer()->get_insert()->
-                                get_iter(), temp1, temp2);
-  int textview_edge_x = 0;
-  int textview_edge_y = 0;
-  textview.buffer_to_window_coords(
-                                   Gtk::TextWindowType::TEXT_WINDOW_WIDGET,
-                                   temp1.get_x(),
-                                   temp1.get_y(),
-                                   x, y);
-  Glib::RefPtr<Gdk::Window> gdkw =
-    CurrentTextView().get_window(Gtk::TextWindowType::TEXT_WINDOW_WIDGET);
-  gdkw->get_origin(textview_edge_x, textview_edge_y);
-
-  x += textview_edge_x;
-  y += textview_edge_y;
-  if ((textview_edge_x-x)*-1 > textview.get_width()-popup_x) {
-    x -= popup_x;
-    if (x < textview_edge_x) x = textview_edge_x;
-  }
-  if ((textview_edge_y-y)*-1 > textview.get_height()-popup_y) {
-    y -= (popup_y+14) + 15;
-    if (x < textview_edge_y) y = textview_edge_y +15;
-  }
+  return view.notebook;
 }
 
 bool Notebook::Controller:: OnSaveFile() {
-  std::string path=text_vec_.at(CurrentPage())->parser.file_path;
+  std::string path=CurrentTextView().file_path;
   return OnSaveFile(path);
 }
 bool Notebook::Controller:: OnSaveFile(std::string path) {
@@ -590,7 +302,7 @@ bool Notebook::Controller:: OnSaveFile(std::string path) {
       file.open (path);
       file << CurrentTextView().get_buffer()->get_text();
       file.close();
-      text_vec_.at(CurrentPage())->parser.file_path=path;
+      CurrentTextView().file_path=path;
       size_t pos = path.find_last_of("/\\");
       std::string filename=path;
       if(pos!=std::string::npos)
@@ -605,10 +317,9 @@ bool Notebook::Controller:: OnSaveFile(std::string path) {
 
 std::string Notebook::Controller::OnSaveFileAs(){
   INFO("Notebook save as");
-  Gtk::FileChooserDialog dialog("Please choose a file", 
+  Gtk::FileChooserDialog dialog((Gtk::Window&)(*view.get_toplevel()), "Please choose a file", 
 				Gtk::FILE_CHOOSER_ACTION_SAVE);
   DEBUG("SET TRANSISTEN FPR");
-  dialog.set_transient_for(*window_);
   dialog.set_position(Gtk::WindowPosition::WIN_POS_CENTER_ALWAYS);
   dialog.add_button("_Cancel", Gtk::RESPONSE_CANCEL);
   dialog.add_button("_Save", Gtk::RESPONSE_OK);
@@ -620,8 +331,7 @@ std::string Notebook::Controller::OnSaveFileAs(){
   case(Gtk::RESPONSE_OK): {
     DEBUG("get_filename()");
     std::string path = dialog.get_filename();
-    unsigned pos = path.find_last_of("/\\");
-     return path;
+    return path;
   }
   case(Gtk::RESPONSE_CANCEL): {
     break;
@@ -637,11 +347,11 @@ std::string Notebook::Controller::OnSaveFileAs(){
 void Notebook::Controller::AskToSaveDialog() {
   INFO("AskToSaveDialog");
   DEBUG("AskToSaveDialog: Finding file path");
-  Gtk::MessageDialog dialog(*window_, "Save file!",
+  Gtk::MessageDialog dialog((Gtk::Window&)(*view.get_toplevel()), "Save file!",
 			    false, Gtk::MESSAGE_QUESTION, Gtk::BUTTONS_YES_NO);
   dialog.set_secondary_text(
           "Do you want to save: " +
-			    text_vec_.at(CurrentPage())->parser.file_path+" ?");
+			    CurrentTextView().file_path+" ?");
   DEBUG("AskToSaveDialog: run dialog");
   int result = dialog.run();
 

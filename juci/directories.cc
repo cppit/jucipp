@@ -43,8 +43,6 @@ list_dirs(const boost::filesystem::path& dir_path,
           unsigned row_id) {
   
   boost::filesystem::directory_iterator end_itr;
-  unsigned dir_counter = row_id;
-  unsigned file_counter = 0;
   Gtk::TreeModel::Row child;
   Gtk::TreeModel::Row row;
   DEBUG("");
@@ -82,7 +80,7 @@ list_dirs(const boost::filesystem::path& dir_path,
 
 int Directories::Controller::count(const std::string path) {
   int count = 0;
-  for (int i = 0; i < path.size(); i++)
+  for (size_t i = 0; i < path.size(); i++)
     if (path[i] == '/')
       count++;
   return count;

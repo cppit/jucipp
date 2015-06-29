@@ -3,7 +3,7 @@ set(project_name juci)
 set(module juci_to_python_api)
 project (${project_name})
 add_definitions(-DBOOST_LOG_DYN_LINK)
-set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -O3 -std=c++11 -pthread")
+set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -O3 -std=c++11 -pthread -Wall -Wno-reorder")
 set(CMAKE_MODULE_PATH ${CMAKE_MODULE_PATH} "${CMAKE_CURRENT_LIST_DIR}/cmake/Modules/")
 
 #You are of course using Homebrew:
@@ -99,6 +99,7 @@ endif()
 # name of the executable on Windows will be example.exe
 add_executable(${project_name}
   #list of every needed file to create the executable
+  juci.h
   juci.cc	
   keybindings.h
   keybindings.cc
@@ -106,6 +107,8 @@ add_executable(${project_name}
   menu.cc
   source.h
   source.cc
+  selectiondialog.h
+  selectiondialog.cc
   config.h
   config.cc
   sourcefile.h

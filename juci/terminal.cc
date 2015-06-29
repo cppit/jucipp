@@ -1,36 +1,55 @@
 #include "terminal.h"
 #include <iostream>
-#include <thread>
 #include "logging.h"
 
-
-Terminal::Config::Config() {
+Terminal::InProgress::InProgress(Controller& terminal, const std::string& start_msg): terminal(terminal), stop(false) {
+  waiting_print.connect([this](){
+    this->terminal.print(line_nr-1, ".");
+  });
+  start(start_msg);
 }
-Terminal::Config::Config(Terminal::Config& original) :
-  run_command_(original.run_command_){
-  for (auto it = 0; it<original.compile_commands().size(); ++it) {
-    InsertCompileCommand(original.compile_commands().at(it));
+
+Terminal::InProgress::~InProgress() {
+  stop=true;
+  if(wait_thread.joinable())
+    wait_thread.join();
+}
+
+void Terminal::InProgress::start(const std::string& msg) {
+  line_nr=this->terminal.print(msg+"...\n");
+  wait_thread=std::thread([this](){
+    size_t c=0;
+    while(!stop) {
+      if(c%100==0)
+        waiting_print();
+      std::this_thread::sleep_for(std::chrono::milliseconds(10));
+      c++;
+    }
+  });
+}
+
+void Terminal::InProgress::done(const std::string& msg) {
+  if(!stop) {
+    stop=true;
+    this->terminal.print(line_nr-1, msg);
   }
 }
 
-void Terminal::Config::InsertCompileCommand(std::string command){
-  compile_commands_.push_back(command);
-}
-
-void Terminal::Config::SetRunCommand(std::string command){
-  run_command_ = command;
+void Terminal::InProgress::cancel(const std::string& msg) {
+  if(!stop) {
+    stop=true;
+    this->terminal.print(line_nr-1, msg);
+  }
 }
 
 Terminal::View::View(){
-  scrolledwindow_.add(textview_);
-  scrolledwindow_.set_size_request(-1,150);
-  view_.add(scrolledwindow_);
-  textview_.set_editable(false);
+  text_view.set_editable(false);
+  scrolled_window.add(text_view);
+  add(scrolled_window);
 }
 
-
 Terminal::Controller::Controller(Terminal::Config& cfg) :
-  config_(cfg) {  
+  config(cfg) {  
   folder_command_ = "";
 }
 
@@ -44,37 +63,51 @@ void Terminal::Controller::SetFolderCommand( boost::filesystem::path
 void Terminal::Controller::Compile(){
   INFO("Terminal: Compile");
 
-  Terminal().get_buffer()->set_text("");
+  view.text_view.get_buffer()->set_text("");
   DEBUG("Terminal: Compile: running cmake command");
-  std::vector<std::string> commands = config().compile_commands();
+  std::vector<std::string> commands = config.compile_commands;
   for (size_t it = 0; it < commands.size(); ++it) {
     ExecuteCommand(commands.at(it), "r");
     
   }
-  PrintMessage("\n");
+  print("\n");
   DEBUG("Terminal: Compile: compile done");
 }
 
 void Terminal::Controller::Run(std::string executable) {
   INFO("Terminal: Run");
-  PrintMessage("juCi++ execute: " + executable + "\n");
+  print("juCi++ execute: " + executable + "\n");
   DEBUG("Terminal: Compile: running run command: ");
   DEBUG_VAR(executable);
-  ExecuteCommand("cd "+config().run_command() + "; ./"+executable, "r");
-  PrintMessage("\n");
+  ExecuteCommand("cd "+config.run_command + "; ./"+executable, "r");
+  print("\n");
 }
 
-void Terminal::Controller::PrintMessage(std::string message){
+int Terminal::Controller::print(std::string message){
   INFO("Terminal: PrintMessage");
-  Terminal().get_buffer()->
-    insert(Terminal().get_buffer()-> end(),"> "+message);
+  view.text_view.get_buffer()->insert(view.text_view.get_buffer()->end(), "> "+message);
+  auto mark_end=view.text_view.get_buffer()->create_mark(view.text_view.get_buffer()->end());
+  view.text_view.scroll_to(mark_end);
+  return mark_end->get_iter().get_line();
 }
 
+void Terminal::Controller::print(int line_nr, std::string message){
+  INFO("Terminal: PrintMessage at line " << line_nr);
+  auto iter=view.text_view.get_buffer()->get_iter_at_line(line_nr);
+  while(!iter.ends_line())
+    iter++;
+  view.text_view.get_buffer()->insert(iter, message);
+}
+
+std::shared_ptr<Terminal::InProgress> Terminal::Controller::print_in_progress(std::string start_msg) {
+  std::shared_ptr<Terminal::InProgress> in_progress=std::shared_ptr<Terminal::InProgress>(new Terminal::InProgress(*this, start_msg));
+  return in_progress;
+}
 
 bool Terminal::Controller::ExistInConsole(std::string string) {
     INFO("Terminal: ExistInConsole");
     DEBUG("Terminal: PrintMessage: finding string in buffer");
-  double pos = Terminal().get_buffer()->
+  double pos = view.text_view.get_buffer()->
     get_text().find(string);
   if (pos == std::string::npos) return false;
   return true;
@@ -87,14 +120,12 @@ void Terminal::Controller::ExecuteCommand(std::string command, std::string mode)
   FILE* p = NULL;
   std::cout << command << std::endl;
   p = popen(command.c_str(), mode.c_str());
-  std::cout << "KJØRTE FINT!" << std::endl;
   if (p == NULL) {
-    PrintMessage("juCi++ ERROR: Failed to run command" + command + "\n");
+    print("juCi++ ERROR: Failed to run command" + command + "\n");
   }else {
-    std::cout << "SKRIVER UT KOMMANDO RESULAT" << std::endl;
     char buffer[1028];
     while (fgets(buffer, 1028, p) != NULL) {
-      PrintMessage(buffer);
+      print(buffer);
     }
     pclose(p); 
   }
