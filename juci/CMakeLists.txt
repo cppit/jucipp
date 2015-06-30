@@ -125,6 +125,8 @@ add_executable(${project_name}
   directories.cc
   terminal.h
   terminal.cc
+  tooltips.h
+  tooltips.cc
   )
 
 set(EXECUTABLE_OUTPUT_PATH ${PROJECT_BINARY_DIR}/bin)

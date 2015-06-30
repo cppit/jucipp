@@ -136,7 +136,7 @@ clang::Index Source::ClangView::clang_index(0, 0);
 
 Source::ClangView::ClangView(const Source::Config& config, const std::string& file_path, const std::string& project_path, Terminal::Controller& terminal):
 Source::View(config, file_path, project_path), terminal(terminal),
-parse_thread_go(true), parse_thread_mapped(false), parse_thread_stop(false) {
+parse_thread_go(true), parse_thread_mapped(false), parse_thread_stop(false), diagnostic_tooltips(*this) {
   override_font(Pango::FontDescription(config.font));
   override_background_color(Gdk::RGBA(config.background));
   for (auto &item : config.tags) {
@@ -183,6 +183,7 @@ parse_thread_go(true), parse_thread_mapped(false), parse_thread_stop(false) {
       update_syntax(extract_tokens(0, get_source_buffer()->get_text().size()));
       parsing_in_progress->done("done");
       INFO("Syntax updated");
+      update_diagnostics();
     }
     else {
       parse_thread_go=true;
@@ -216,6 +217,8 @@ parse_thread_go(true), parse_thread_mapped(false), parse_thread_stop(false) {
   
   signal_key_press_event().connect(sigc::mem_fun(*this, &Source::ClangView::on_key_press), false);
   signal_key_release_event().connect(sigc::mem_fun(*this, &Source::ClangView::on_key_release), false);
+  signal_motion_notify_event().connect(sigc::mem_fun(*this, &Source::ClangView::on_motion_notify_event), false);
+  get_buffer()->signal_mark_set().connect(sigc::mem_fun(*this, &Source::ClangView::on_mark_set), false);
 }
 
 Source::ClangView::~ClangView() {
@@ -343,6 +346,52 @@ void Source::ClangView::update_syntax(const std::vector<Source::Range> &ranges) 
     buffer->get_iter_at_line_offset(linum_end, end);
     buffer->apply_tag_by_name(config.types.at(type),
                               begin_iter, end_iter);
+  }
+}
+
+void Source::ClangView::update_diagnostics() {
+  diagnostic_tooltips.clear();
+  auto diagnostics=tu_->get_diagnostics();
+  auto buffer=get_source_buffer();
+  for(auto& diagnostic: diagnostics) {
+    if(diagnostic.path==file_path) {
+      auto start=buffer->get_iter_at_offset(diagnostic.start_location.offset);
+      auto end=buffer->get_iter_at_offset(diagnostic.end_location.offset);
+      diagnostic_tooltips.add(diagnostic.severity_spelling+": "+diagnostic.spelling, get_source_buffer()->create_mark(start), get_source_buffer()->create_mark(end));
+      auto tag=buffer->create_tag();
+      tag->property_underline()=Pango::Underline::UNDERLINE_ERROR;
+      if(diagnostic.severity<=CXDiagnostic_Warning) {
+        //TODO: get color from config.json
+        tag->set_property("underline-rgba", Gdk::RGBA("orange"));
+      }
+      else {
+        //TODO: get color from config.json
+        tag->set_property("underline-rgba", Gdk::RGBA("red"));
+      }
+      buffer->apply_tag(tag, start, end);
+    }
+  }
+  on_mark_set(get_buffer()->get_insert()->get_iter(), get_buffer()->get_mark("insert"));
+}
+
+bool Source::ClangView::on_motion_notify_event(GdkEventMotion* event) {
+  Gdk::Rectangle rectangle(event->x, event->y, 1, 1);
+  diagnostic_tooltips.show(rectangle);
+  auto cursor=Gdk::Cursor::create(Gdk::CursorType::XTERM);
+  get_window(Gtk::TextWindowType::TEXT_WINDOW_TEXT)->set_cursor(cursor);
+  return false;
+}
+
+void Source::ClangView::on_mark_set(const Gtk::TextBuffer::iterator& iterator, const Glib::RefPtr<Gtk::TextBuffer::Mark>& mark) {
+  if(mark->get_name()=="insert") {
+    Gdk::Rectangle rectangle;
+    get_iter_location(iterator, rectangle);
+    int location_window_x, location_window_y;
+    buffer_to_window_coords(Gtk::TextWindowType::TEXT_WINDOW_TEXT, rectangle.get_x(), rectangle.get_y(), location_window_x, location_window_y);
+    rectangle.set_x(location_window_x-2);
+    rectangle.set_y(location_window_y);
+    rectangle.set_width(4);
+    diagnostic_tooltips.show(rectangle);
   }
 }
 

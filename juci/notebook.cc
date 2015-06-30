@@ -187,6 +187,7 @@ void Notebook::Controller::OnOpenFile(std::string path) {
   Notebook().set_current_page(Pages()-1);
   Notebook().set_focus_child(*text_vec_.back()->view);
   //Add star on tab label when the page is not saved:
+  //TODO: instead use Gtk::TextBuffer::set_modified and Gtk::TextBuffer::get_modified
   text_vec_.back()->buffer()->signal_changed().connect([this]() {
     if(text_vec_.at(CurrentPage())->is_saved) {
       std::string path=CurrentTextView().file_path;

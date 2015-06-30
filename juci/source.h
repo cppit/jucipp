@@ -11,6 +11,7 @@
 #include <atomic>
 #include "gtksourceviewmm.h"
 #include "terminal.h"
+#include "tooltips.h"
 
 namespace Source {
   class Config {
@@ -95,6 +96,10 @@ namespace Source {
     int reparse(const std::map<std::string, std::string> &buffers);
     std::vector<Range> extract_tokens(int, int);
     void update_syntax(const std::vector<Range> &locations);
+    void update_diagnostics();
+    Tooltips diagnostic_tooltips;
+    bool on_motion_notify_event(GdkEventMotion* event);
+    void on_mark_set(const Gtk::TextBuffer::iterator& iterator, const Glib::RefPtr<Gtk::TextBuffer::Mark>& mark);
     
     static clang::Index clang_index;
     std::map<std::string, std::string> get_buffer_map() const;
