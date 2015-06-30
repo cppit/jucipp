@@ -58,7 +58,7 @@ void Tooltips::add(const std::string& text, Glib::RefPtr<Gtk::TextBuffer::Mark> 
 }
 
 void Tooltips::show(const Gdk::Rectangle& rectangle) {
-  init_adjustments();
+  tooltips_rectangle=Gdk::Rectangle();
   for(auto& tooltip: tooltips) {
     tooltip->update();
     if(rectangle.intersects(tooltip->text_rectangle)) {
@@ -71,7 +71,7 @@ void Tooltips::show(const Gdk::Rectangle& rectangle) {
 }
 
 void Tooltips::show() {
-  init_adjustments();
+  tooltips_rectangle=Gdk::Rectangle();
   for(auto& tooltip: tooltips) {
     tooltip->update();
     tooltip->show_all();
@@ -80,7 +80,6 @@ void Tooltips::show() {
 }
 
 void Tooltips::hide() {
-  init_adjustments();
   for(auto& tooltip: tooltips) {
     tooltip->hide();
   }

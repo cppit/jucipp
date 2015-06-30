@@ -24,8 +24,6 @@ private:
 class Tooltips {
 public:
   Tooltips(Gtk::TextView& text_view): text_view(text_view) {}
-
-  void init_adjustments() {tooltips_rectangle=Gdk::Rectangle();}
   
   void clear() {tooltips.clear();}
   
