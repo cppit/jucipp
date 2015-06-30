@@ -32,6 +32,8 @@ public:
   void add(const std::string& text, Glib::RefPtr<Gtk::TextBuffer::Mark> start_mark, Glib::RefPtr<Gtk::TextBuffer::Mark> end_mark);
   
   void show(const Gdk::Rectangle& rectangle);
+  void show();
+  void hide();
   
   Gdk::Rectangle tooltips_rectangle;
 private:

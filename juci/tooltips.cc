@@ -69,3 +69,19 @@ void Tooltips::show(const Gdk::Rectangle& rectangle) {
       tooltip->hide();
   }
 }
+
+void Tooltips::show() {
+  init_adjustments();
+  for(auto& tooltip: tooltips) {
+    tooltip->update();
+    tooltip->show_all();
+    tooltip->adjust();
+  }
+}
+
+void Tooltips::hide() {
+  init_adjustments();
+  for(auto& tooltip: tooltips) {
+    tooltip->hide();
+  }
+}
