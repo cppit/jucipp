@@ -217,8 +217,8 @@ parse_thread_go(true), parse_thread_mapped(false), parse_thread_stop(false), dia
   
   signal_key_press_event().connect(sigc::mem_fun(*this, &Source::ClangView::on_key_press), false);
   signal_key_release_event().connect(sigc::mem_fun(*this, &Source::ClangView::on_key_release), false);
-  signal_motion_notify_event().connect(sigc::mem_fun(*this, &Source::ClangView::on_motion_notify_event), false);
-  get_buffer()->signal_mark_set().connect(sigc::mem_fun(*this, &Source::ClangView::on_mark_set), false);
+  signal_motion_notify_event().connect(sigc::mem_fun(*this, &Source::ClangView::clangview_on_motion_notify_event), false);
+  get_buffer()->signal_mark_set().connect(sigc::mem_fun(*this, &Source::ClangView::clangview_on_mark_set), false);
 }
 
 Source::ClangView::~ClangView() {
@@ -375,10 +375,10 @@ void Source::ClangView::update_diagnostics() {
       buffer->apply_tag(tag, start, end);
     }
   }
-  on_mark_set(get_buffer()->get_insert()->get_iter(), get_buffer()->get_mark("insert"));
+  clangview_on_mark_set(get_buffer()->get_insert()->get_iter(), get_buffer()->get_mark("insert"));
 }
 
-bool Source::ClangView::on_motion_notify_event(GdkEventMotion* event) {
+bool Source::ClangView::clangview_on_motion_notify_event(GdkEventMotion* event) {
   Gdk::Rectangle rectangle(event->x, event->y, 1, 1);
   diagnostic_tooltips.show(rectangle);
   auto cursor=Gdk::Cursor::create(Gdk::CursorType::XTERM);
@@ -386,7 +386,7 @@ bool Source::ClangView::on_motion_notify_event(GdkEventMotion* event) {
   return false;
 }
 
-void Source::ClangView::on_mark_set(const Gtk::TextBuffer::iterator& iterator, const Glib::RefPtr<Gtk::TextBuffer::Mark>& mark) {
+void Source::ClangView::clangview_on_mark_set(const Gtk::TextBuffer::iterator& iterator, const Glib::RefPtr<Gtk::TextBuffer::Mark>& mark) {
   if(mark->get_name()=="insert") {
     Gdk::Rectangle rectangle;
     get_iter_location(iterator, rectangle);
