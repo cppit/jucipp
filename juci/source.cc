@@ -360,13 +360,17 @@ void Source::ClangView::update_diagnostics() {
       diagnostic_tooltips.add(diagnostic.severity_spelling+": "+diagnostic.spelling, get_source_buffer()->create_mark(start), get_source_buffer()->create_mark(end));
       auto tag=buffer->create_tag();
       tag->property_underline()=Pango::Underline::UNDERLINE_ERROR;
-      if(diagnostic.severity<=CXDiagnostic_Warning) {
-        //TODO: get color from config.json
-        tag->set_property("underline-rgba", Gdk::RGBA("orange"));
-      }
-      else {
-        //TODO: get color from config.json
-        tag->set_property("underline-rgba", Gdk::RGBA("red"));
+      auto tag_class=G_OBJECT_GET_CLASS(tag->gobj()); //For older GTK+ 3 versions:
+      auto param_spec=g_object_class_find_property(tag_class, "underline-rgba");
+      if(param_spec!=NULL) {
+        if(diagnostic.severity<=CXDiagnostic_Warning) {
+          //TODO: get color from config.json
+          tag->set_property("underline-rgba", Gdk::RGBA("orange"));
+        }
+        else {
+          //TODO: get color from config.json
+          tag->set_property("underline-rgba", Gdk::RGBA("red"));
+        }
       }
       buffer->apply_tag(tag, start, end);
     }
