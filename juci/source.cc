@@ -381,8 +381,6 @@ void Source::ClangView::update_diagnostics() {
 bool Source::ClangView::clangview_on_motion_notify_event(GdkEventMotion* event) {
   Gdk::Rectangle rectangle(event->x, event->y, 1, 1);
   diagnostic_tooltips.show(rectangle);
-  auto cursor=Gdk::Cursor::create(Gdk::CursorType::XTERM);
-  get_window(Gtk::TextWindowType::TEXT_WINDOW_TEXT)->set_cursor(cursor);
   return false;
 }
 
