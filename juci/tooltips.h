@@ -6,7 +6,7 @@
 
 class Tooltip : public Gtk::Dialog {
 public:
-  Tooltip(Gtk::TextView& text_view, const std::string& label_text, Glib::RefPtr<Gtk::TextBuffer::Mark> start_mark, Glib::RefPtr<Gtk::TextBuffer::Mark> end_mark, Gdk::Rectangle &tooltips_rectangle);
+  Tooltip(Gtk::TextView& text_view, const std::string& label_text, Glib::RefPtr<Gtk::TextBuffer::Mark> start_mark, Glib::RefPtr<Gtk::TextBuffer::Mark> end_mark);
   
   void update();
   void adjust();
@@ -18,7 +18,6 @@ public:
 
 private:
   Gtk::TextView& text_view;
-  Gdk::Rectangle &tooltips_rectangle;
 };
 
 class Tooltips {
@@ -29,11 +28,11 @@ public:
   
   void add(const std::string& text, Glib::RefPtr<Gtk::TextBuffer::Mark> start_mark, Glib::RefPtr<Gtk::TextBuffer::Mark> end_mark);
   
-  void show(const Gdk::Rectangle& rectangle);
-  void show();
+  void show(const Gdk::Rectangle& rectangle, bool clear_tooltips_rectangle=true);
+  void show(bool clear_tooltips_rectangle=true);
   void hide();
   
-  Gdk::Rectangle tooltips_rectangle;
+  static Gdk::Rectangle tooltips_rectangle;
 private:
   Gtk::TextView& text_view;
   std::vector<std::unique_ptr<Tooltip> > tooltips;

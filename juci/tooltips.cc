@@ -1,10 +1,11 @@
 #include "tooltips.h"
-#include <iostream>
+
+Gdk::Rectangle Tooltips::tooltips_rectangle=Gdk::Rectangle();
 
 Tooltip::Tooltip(Gtk::TextView& text_view, const std::string& label_text, 
-Glib::RefPtr<Gtk::TextBuffer::Mark> start_mark, Glib::RefPtr<Gtk::TextBuffer::Mark> end_mark, Gdk::Rectangle &tooltips_rectangle): 
+Glib::RefPtr<Gtk::TextBuffer::Mark> start_mark, Glib::RefPtr<Gtk::TextBuffer::Mark> end_mark):
 text_view(text_view), Gtk::Dialog("", (Gtk::Window&)*text_view.get_toplevel()), label(label_text), 
-start_mark(start_mark), end_mark(end_mark), tooltips_rectangle(tooltips_rectangle) {
+start_mark(start_mark), end_mark(end_mark) {
   get_content_area()->add(label);
   property_decorated()=false;
   set_accept_focus(false);
@@ -40,13 +41,13 @@ void Tooltip::adjust() {
   rectangle.set_width(tooltip_width);
   rectangle.set_height(tooltip_height);
   
-  if(tooltips_rectangle.get_width()!=0) {
-    if(rectangle.intersects(tooltips_rectangle))
-      rectangle.set_y(tooltips_rectangle.get_y()-tooltip_height);
-    tooltips_rectangle.join(rectangle);
+  if(Tooltips::tooltips_rectangle.get_width()!=0) {
+    if(rectangle.intersects(Tooltips::tooltips_rectangle))
+      rectangle.set_y(Tooltips::tooltips_rectangle.get_y()-tooltip_height);
+    Tooltips::tooltips_rectangle.join(rectangle);
   }
   else
-    tooltips_rectangle=rectangle;
+    Tooltips::tooltips_rectangle=rectangle;
 
   if(rectangle.get_y()<0)
     rectangle.set_y(0);
@@ -54,11 +55,14 @@ void Tooltip::adjust() {
 }
 
 void Tooltips::add(const std::string& text, Glib::RefPtr<Gtk::TextBuffer::Mark> start_mark, Glib::RefPtr<Gtk::TextBuffer::Mark> end_mark) {
-  tooltips.emplace_back(new Tooltip(text_view, text, start_mark, end_mark, tooltips_rectangle));
+  tooltips.emplace_back(new Tooltip(text_view, text, start_mark, end_mark));
 }
 
-void Tooltips::show(const Gdk::Rectangle& rectangle) {
-  tooltips_rectangle=Gdk::Rectangle();
+//If you want to show tooltips from several Tooltips-objects at once, you might want to set clear_tooltips_rectangle=true only on the first one.
+//If not, they would overlap (clear_tooltips_rectangle=false to avoid this on the following Tooltips-objects)
+void Tooltips::show(const Gdk::Rectangle& rectangle, bool clear_tooltips_rectangle) {
+  if(clear_tooltips_rectangle)
+    tooltips_rectangle=Gdk::Rectangle();
   for(auto& tooltip: tooltips) {
     tooltip->update();
     if(rectangle.intersects(tooltip->text_rectangle)) {
@@ -70,8 +74,10 @@ void Tooltips::show(const Gdk::Rectangle& rectangle) {
   }
 }
 
-void Tooltips::show() {
-  tooltips_rectangle=Gdk::Rectangle();
+//See Tooltips::show(const Gdk::Rectangle& rectangle, bool clear_tooltips_rectangle=true)
+void Tooltips::show(bool clear_tooltips_rectangle) {
+  if(clear_tooltips_rectangle)
+    tooltips_rectangle=Gdk::Rectangle();
   for(auto& tooltip: tooltips) {
     tooltip->update();
     tooltip->show_all();
