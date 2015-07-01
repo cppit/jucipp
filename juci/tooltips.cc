@@ -72,6 +72,7 @@ void Tooltips::show(const Gdk::Rectangle& rectangle, bool clear_tooltips_rectang
     else
       tooltip->hide();
   }
+  text_view.grab_focus();
 }
 
 //See Tooltips::show(const Gdk::Rectangle& rectangle, bool clear_tooltips_rectangle=true)
@@ -83,6 +84,7 @@ void Tooltips::show(bool clear_tooltips_rectangle) {
     tooltip->show_all();
     tooltip->adjust();
   }
+  text_view.grab_focus();
 }
 
 void Tooltips::hide() {
