@@ -366,7 +366,8 @@ void Source::ClangView::update_diagnostics() {
       auto tooltip_widget=std::make_shared<Gtk::TextView>(Gtk::TextBuffer::create(buffer->get_tag_table()));
       tooltip_widget->set_editable(false);
       tooltip_widget->get_buffer()->insert_with_tag(tooltip_widget->get_buffer()->get_insert()->get_iter(), diagnostic.severity_spelling, diagnostic_tag_name);
-      tooltip_widget->get_buffer()->insert_at_cursor(": "+diagnostic.spelling);
+      tooltip_widget->get_buffer()->insert_at_cursor(": \n"+diagnostic.spelling);
+      //TODO: Insert newlines in tooltip_widget->get_buffer() (use 80 chars, then newline?)
       diagnostic_tooltips.emplace_back(tooltip_widget, *this, get_source_buffer()->create_mark(start), get_source_buffer()->create_mark(end));
       
       auto tag=buffer->create_tag();
@@ -381,7 +382,6 @@ void Source::ClangView::update_diagnostics() {
       buffer->apply_tag(tag, start, end);
     }
   }
-  clangview_on_mark_set(get_buffer()->get_insert()->get_iter(), get_buffer()->get_mark("insert"));
 }
 
 bool Source::ClangView::clangview_on_motion_notify_event(GdkEventMotion* event) {
