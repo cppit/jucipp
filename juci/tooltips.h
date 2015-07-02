@@ -4,7 +4,7 @@
 #include <string>
 #include <list>
 
-class Tooltip : public Gtk::Dialog {
+class Tooltip : public Gtk::Window {
 public:
   Tooltip(std::shared_ptr<Gtk::Widget> widget, Gtk::TextView& text_view, Glib::RefPtr<Gtk::TextBuffer::Mark> start_mark, Glib::RefPtr<Gtk::TextBuffer::Mark> end_mark);
   

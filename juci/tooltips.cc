@@ -5,11 +5,13 @@ Gdk::Rectangle Tooltips::drawn_tooltips_rectangle=Gdk::Rectangle();
 
 Tooltip::Tooltip(std::shared_ptr<Gtk::Widget> widget, Gtk::TextView& text_view, 
 Glib::RefPtr<Gtk::TextBuffer::Mark> start_mark, Glib::RefPtr<Gtk::TextBuffer::Mark> end_mark):
-widget(widget), text_view(text_view), Gtk::Dialog("", (Gtk::Window&)*text_view.get_toplevel()), 
+widget(widget), text_view(text_view), Gtk::Window(Gtk::WindowType::WINDOW_POPUP), 
 start_mark(start_mark), end_mark(end_mark) {
-  get_content_area()->add(*widget);
+  add(*widget);
   property_decorated()=false;
   set_accept_focus(false);
+  set_skip_taskbar_hint(true);
+  set_default_size(0, 0);
   signal_realize().connect([this](){
     adjust(); //Fix for older GTK+ versions?
   });
