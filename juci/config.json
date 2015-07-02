@@ -8,7 +8,9 @@
             "type": "#0066FF",
             "keyword": "blue",
             "comment": "grey",
-            "own": "pink"
+            "own": "pink",
+            "diagnostic_warning": "orange",
+            "diagnostic_error": "red"
         },
         "syntax": {
             "43": "type",

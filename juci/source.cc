@@ -136,7 +136,7 @@ clang::Index Source::ClangView::clang_index(0, 0);
 
 Source::ClangView::ClangView(const Source::Config& config, const std::string& file_path, const std::string& project_path, Terminal::Controller& terminal):
 Source::View(config, file_path, project_path), terminal(terminal),
-parse_thread_go(true), parse_thread_mapped(false), parse_thread_stop(false), diagnostic_tooltips(*this) {
+parse_thread_go(true), parse_thread_mapped(false), parse_thread_stop(false) {
   override_font(Pango::FontDescription(config.font));
   override_background_color(Gdk::RGBA(config.background));
   for (auto &item : config.tags) {
@@ -357,20 +357,26 @@ void Source::ClangView::update_diagnostics() {
     if(diagnostic.path==file_path) {
       auto start=buffer->get_iter_at_offset(diagnostic.start_location.offset);
       auto end=buffer->get_iter_at_offset(diagnostic.end_location.offset);
-      diagnostic_tooltips.add(diagnostic.severity_spelling+": "+diagnostic.spelling, get_source_buffer()->create_mark(start), get_source_buffer()->create_mark(end));
+      std::string diagnostic_tag_name;
+      if(diagnostic.severity<=CXDiagnostic_Warning)
+        diagnostic_tag_name="diagnostic_warning";
+      else
+        diagnostic_tag_name="diagnostic_error";
+      
+      auto tooltip_widget=std::make_shared<Gtk::TextView>(Gtk::TextBuffer::create(buffer->get_tag_table()));
+      tooltip_widget->set_editable(false);
+      tooltip_widget->get_buffer()->insert_with_tag(tooltip_widget->get_buffer()->get_insert()->get_iter(), diagnostic.severity_spelling, diagnostic_tag_name);
+      tooltip_widget->get_buffer()->insert_at_cursor(": "+diagnostic.spelling);
+      diagnostic_tooltips.emplace_back(tooltip_widget, *this, get_source_buffer()->create_mark(start), get_source_buffer()->create_mark(end));
+      
       auto tag=buffer->create_tag();
       tag->property_underline()=Pango::Underline::UNDERLINE_ERROR;
       auto tag_class=G_OBJECT_GET_CLASS(tag->gobj()); //For older GTK+ 3 versions:
       auto param_spec=g_object_class_find_property(tag_class, "underline-rgba");
       if(param_spec!=NULL) {
-        if(diagnostic.severity<=CXDiagnostic_Warning) {
-          //TODO: get color from config.json
-          tag->set_property("underline-rgba", Gdk::RGBA("orange"));
-        }
-        else {
-          //TODO: get color from config.json
-          tag->set_property("underline-rgba", Gdk::RGBA("red"));
-        }
+        auto diagnostic_tag=buffer->get_tag_table()->lookup(diagnostic_tag_name);
+        if(diagnostic_tag!=0)
+          tag->set_property("underline-rgba", diagnostic_tag->property_foreground_rgba().get_value());
       }
       buffer->apply_tag(tag, start, end);
     }
@@ -380,6 +386,7 @@ void Source::ClangView::update_diagnostics() {
 
 bool Source::ClangView::clangview_on_motion_notify_event(GdkEventMotion* event) {
   Gdk::Rectangle rectangle(event->x, event->y, 1, 1);
+  diagnostic_tooltips.init();
   diagnostic_tooltips.show(rectangle);
   return false;
 }
@@ -393,6 +400,7 @@ void Source::ClangView::clangview_on_mark_set(const Gtk::TextBuffer::iterator& i
     rectangle.set_x(location_window_x-2);
     rectangle.set_y(location_window_y);
     rectangle.set_width(4);
+    diagnostic_tooltips.init();
     diagnostic_tooltips.show(rectangle);
   }
 }

@@ -2,40 +2,32 @@
 #define JUCI_TOOLTIPS_H_
 #include "gtkmm.h"
 #include <string>
-#include <vector>
+#include <list>
 
 class Tooltip : public Gtk::Dialog {
 public:
-  Tooltip(Gtk::TextView& text_view, const std::string& label_text, Glib::RefPtr<Gtk::TextBuffer::Mark> start_mark, Glib::RefPtr<Gtk::TextBuffer::Mark> end_mark);
+  Tooltip(std::shared_ptr<Gtk::Widget> widget, Gtk::TextView& text_view, Glib::RefPtr<Gtk::TextBuffer::Mark> start_mark, Glib::RefPtr<Gtk::TextBuffer::Mark> end_mark);
   
   void update();
   void adjust();
   
-  Gtk::Label label;
+  Gdk::Rectangle activation_rectangle;
+  bool adjusted=false;
+private:
+  std::shared_ptr<Gtk::Widget> widget;
   Glib::RefPtr<Gtk::TextBuffer::Mark> start_mark;
   Glib::RefPtr<Gtk::TextBuffer::Mark> end_mark;
-  Gdk::Rectangle text_rectangle;
-
-private:
   Gtk::TextView& text_view;
 };
 
-class Tooltips {
+class Tooltips : public std::list<Tooltip> {
 public:
-  Tooltips(Gtk::TextView& text_view): text_view(text_view) {}
-  
-  void clear() {tooltips.clear();}
-  
-  void add(const std::string& text, Glib::RefPtr<Gtk::TextBuffer::Mark> start_mark, Glib::RefPtr<Gtk::TextBuffer::Mark> end_mark);
-  
-  void show(const Gdk::Rectangle& rectangle, bool clear_tooltips_rectangle=true);
-  void show(bool clear_tooltips_rectangle=true);
+  void init() {drawn_tooltips_rectangle=Gdk::Rectangle();}
+  void show(const Gdk::Rectangle& rectangle);
+  void show();
   void hide();
   
-  static Gdk::Rectangle tooltips_rectangle;
-private:
-  Gtk::TextView& text_view;
-  std::vector<std::unique_ptr<Tooltip> > tooltips;
+  static Gdk::Rectangle drawn_tooltips_rectangle;
 };
 
 #endif  // JUCI_TOOLTIPS_H_
