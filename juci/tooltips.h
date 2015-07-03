@@ -6,18 +6,18 @@
 
 class Tooltip : public Gtk::Window {
 public:
-  Tooltip(std::shared_ptr<Gtk::Widget> widget, Gtk::TextView& text_view, Glib::RefPtr<Gtk::TextBuffer::Mark> start_mark, Glib::RefPtr<Gtk::TextBuffer::Mark> end_mark);
+  Tooltip(std::shared_ptr<Gtk::TextView> tooltip_widget, Gtk::TextView& text_view, Glib::RefPtr<Gtk::TextBuffer::Mark> start_mark, Glib::RefPtr<Gtk::TextBuffer::Mark> end_mark);
   
   void update();
   void adjust();
   
   Gdk::Rectangle activation_rectangle;
-  bool adjusted=false;
 private:
-  std::shared_ptr<Gtk::Widget> widget;
+  std::shared_ptr<Gtk::TextView> tooltip_widget;
   Glib::RefPtr<Gtk::TextBuffer::Mark> start_mark;
   Glib::RefPtr<Gtk::TextBuffer::Mark> end_mark;
   Gtk::TextView& text_view;
+  int tooltip_width, tooltip_height;
 };
 
 class Tooltips : public std::list<Tooltip> {
