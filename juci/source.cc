@@ -307,7 +307,9 @@ extract_tokens(int start_offset, int end_offset) {
   clang::SourceLocation end(tu_.get(), file_path, end_offset);
   clang::SourceRange range(&start, &end);
   clang::Tokens tokens(tu_.get(), &range);
-  std::vector<clang::Token> tks = tokens.tokens();
+  tokens.get_token_types(tu_.get());
+  std::vector<clang::Token>& tks = tokens.tokens();
+  update_types(tks);
   for (auto &token : tks) {
     switch (token.kind()) {
     case 0: highlight_cursor(&token, &ranges); break;  // PunctuationToken
@@ -352,34 +354,63 @@ void Source::ClangView::update_syntax(const std::vector<Source::Range> &ranges) 
 void Source::ClangView::update_diagnostics() {
   diagnostic_tooltips.clear();
   auto diagnostics=tu_->get_diagnostics();
-  auto buffer=get_source_buffer();
   for(auto& diagnostic: diagnostics) {
     if(diagnostic.path==file_path) {
-      auto start=buffer->get_iter_at_offset(diagnostic.start_location.offset);
-      auto end=buffer->get_iter_at_offset(diagnostic.end_location.offset);
+      auto start=get_buffer()->get_iter_at_offset(diagnostic.start_location.offset);
+      auto end=get_buffer()->get_iter_at_offset(diagnostic.end_location.offset);
       std::string diagnostic_tag_name;
       if(diagnostic.severity<=CXDiagnostic_Warning)
         diagnostic_tag_name="diagnostic_warning";
       else
         diagnostic_tag_name="diagnostic_error";
       
-      auto tooltip_widget=std::make_shared<Gtk::TextView>(Gtk::TextBuffer::create(buffer->get_tag_table()));
-      tooltip_widget->set_editable(false);
-      tooltip_widget->get_buffer()->insert_with_tag(tooltip_widget->get_buffer()->get_insert()->get_iter(), diagnostic.severity_spelling, diagnostic_tag_name);
-      tooltip_widget->get_buffer()->insert_at_cursor(": \n"+diagnostic.spelling);
-      //TODO: Insert newlines to diagnostic.spelling (use 80 chars, then newline?)
-      diagnostic_tooltips.emplace_back(tooltip_widget, *this, get_source_buffer()->create_mark(start), get_source_buffer()->create_mark(end));
+      std::string spelling=diagnostic.spelling;
+      std::string severity_spelling=diagnostic.severity_spelling;
+      auto get_tooltip_buffer=[this, spelling, severity_spelling, diagnostic_tag_name]() {
+        auto tooltip_buffer=Gtk::TextBuffer::create(get_buffer()->get_tag_table());
+        tooltip_buffer->insert_with_tag(tooltip_buffer->get_insert()->get_iter(), severity_spelling, diagnostic_tag_name);
+        tooltip_buffer->insert_at_cursor(":\n"+spelling);
+        //TODO: Insert newlines to diagnostic.spelling (use 80 chars, then newline?)
+        return tooltip_buffer;
+      };
+      diagnostic_tooltips.emplace_back(get_tooltip_buffer, *this, get_buffer()->create_mark(start), get_buffer()->create_mark(end));
       
-      auto tag=buffer->create_tag();
+      auto tag=get_buffer()->create_tag();
       tag->property_underline()=Pango::Underline::UNDERLINE_ERROR;
       auto tag_class=G_OBJECT_GET_CLASS(tag->gobj()); //For older GTK+ 3 versions:
       auto param_spec=g_object_class_find_property(tag_class, "underline-rgba");
       if(param_spec!=NULL) {
-        auto diagnostic_tag=buffer->get_tag_table()->lookup(diagnostic_tag_name);
+        auto diagnostic_tag=get_buffer()->get_tag_table()->lookup(diagnostic_tag_name);
         if(diagnostic_tag!=0)
           tag->set_property("underline-rgba", diagnostic_tag->property_foreground_rgba().get_value());
       }
-      buffer->apply_tag(tag, start, end);
+      get_buffer()->apply_tag(tag, start, end);
+    }
+  }
+}
+
+void Source::ClangView::update_types(std::vector<clang::Token>& tokens) {
+  type_tooltips.clear();
+  for(auto& token: tokens) {
+    if(token.type!="") {
+      clang::SourceRange range(tu_.get(), &token);
+      clang::SourceLocation start(&range, true);
+      clang::SourceLocation end(&range, false);
+      std::string path;
+      unsigned start_offset, end_offset;
+      start.get_location_info(&path, NULL, NULL, &start_offset);
+      end.get_location_info(NULL, NULL, NULL, &end_offset);
+      if(path==file_path) {
+        auto start=get_buffer()->get_iter_at_offset(start_offset);
+        auto end=get_buffer()->get_iter_at_offset(end_offset);
+        auto get_tooltip_buffer=[this, token]() {
+          auto tooltip_buffer=Gtk::TextBuffer::create(get_buffer()->get_tag_table());
+          tooltip_buffer->insert_at_cursor("Type: "+token.type);
+          return tooltip_buffer;
+        };
+        
+        type_tooltips.emplace_back(get_tooltip_buffer, *this, get_buffer()->create_mark(start), get_buffer()->create_mark(end));
+      }
     }
   }
 }
@@ -387,6 +418,7 @@ void Source::ClangView::update_diagnostics() {
 bool Source::ClangView::clangview_on_motion_notify_event(GdkEventMotion* event) {
   Gdk::Rectangle rectangle(event->x, event->y, 1, 1);
   diagnostic_tooltips.init();
+  type_tooltips.show(rectangle);
   diagnostic_tooltips.show(rectangle);
   return false;
 }
@@ -401,6 +433,7 @@ void Source::ClangView::clangview_on_mark_set(const Gtk::TextBuffer::iterator& i
     rectangle.set_y(location_window_y);
     rectangle.set_width(4);
     diagnostic_tooltips.init();
+    type_tooltips.show(rectangle);
     diagnostic_tooltips.show(rectangle);
   }
 }

@@ -97,7 +97,9 @@ namespace Source {
     std::vector<Range> extract_tokens(int, int);
     void update_syntax(const std::vector<Range> &locations);
     void update_diagnostics();
+    void update_types(std::vector<clang::Token>& tokens);
     Tooltips diagnostic_tooltips;
+    Tooltips type_tooltips;
     bool clangview_on_motion_notify_event(GdkEventMotion* event);
     void clangview_on_mark_set(const Gtk::TextBuffer::iterator& iterator, const Glib::RefPtr<Gtk::TextBuffer::Mark>& mark);
     

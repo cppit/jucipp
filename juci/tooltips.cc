@@ -3,19 +3,14 @@
 
 Gdk::Rectangle Tooltips::drawn_tooltips_rectangle=Gdk::Rectangle();
 
-Tooltip::Tooltip(std::shared_ptr<Gtk::TextView> tooltip_widget, Gtk::TextView& text_view, 
+Tooltip::Tooltip(std::function<Glib::RefPtr<Gtk::TextBuffer>()> get_buffer, Gtk::TextView& text_view, 
 Glib::RefPtr<Gtk::TextBuffer::Mark> start_mark, Glib::RefPtr<Gtk::TextBuffer::Mark> end_mark):
-tooltip_widget(tooltip_widget), text_view(text_view), Gtk::Window(Gtk::WindowType::WINDOW_POPUP), 
-start_mark(start_mark), end_mark(end_mark) {
-  add(*tooltip_widget);
-  property_decorated()=false;
-  set_accept_focus(false);
-  set_skip_taskbar_hint(true);
-  set_default_size(0, 0);
-  
-  auto layout=Pango::Layout::create(tooltip_widget->get_pango_context());
-  layout->set_text(tooltip_widget->get_buffer()->get_text());
-  layout->get_pixel_size(tooltip_width, tooltip_height);
+get_buffer(get_buffer), text_view(text_view), 
+start_mark(start_mark), end_mark(end_mark) {}
+
+Tooltip::~Tooltip() {
+  text_view.get_buffer()->delete_mark(start_mark);
+  text_view.get_buffer()->delete_mark(end_mark);
 }
 
 void Tooltip::update() {
@@ -38,6 +33,24 @@ void Tooltip::update() {
 }
 
 void Tooltip::adjust() {
+  if(!window) {
+    //init window
+    window=std::unique_ptr<Gtk::Window>(new Gtk::Window(Gtk::WindowType::WINDOW_POPUP));
+    
+    window->property_decorated()=false;
+    window->set_accept_focus(false);
+    window->set_skip_taskbar_hint(true);
+    window->set_default_size(0, 0);
+
+    tooltip_widget=std::unique_ptr<Gtk::TextView>(new Gtk::TextView(this->get_buffer()));
+    tooltip_widget->set_editable(false);
+    window->add(*tooltip_widget);
+
+    auto layout=Pango::Layout::create(tooltip_widget->get_pango_context());
+    layout->set_text(tooltip_widget->get_buffer()->get_text());
+    layout->get_pixel_size(tooltip_width, tooltip_height);
+  }
+  
   int root_x, root_y;
   text_view.get_window(Gtk::TextWindowType::TEXT_WINDOW_TEXT)->get_root_coords(activation_rectangle.get_x(), activation_rectangle.get_y(), root_x, root_y);
   Gdk::Rectangle rectangle;
@@ -54,7 +67,7 @@ void Tooltip::adjust() {
   else
     Tooltips::drawn_tooltips_rectangle=rectangle;
 
-  move(rectangle.get_x(), rectangle.get_y());
+  window->move(rectangle.get_x(), rectangle.get_y());
 }
 
 void Tooltips::show(const Gdk::Rectangle& rectangle) {
@@ -62,10 +75,10 @@ void Tooltips::show(const Gdk::Rectangle& rectangle) {
     tooltip.update();
     if(rectangle.intersects(tooltip.activation_rectangle)) {
       tooltip.adjust();
-      tooltip.show_all();
+      tooltip.window->show_all();
     }
-    else
-      tooltip.hide();
+    else if(tooltip.window)
+      tooltip.window->hide();
   }
 }
 
@@ -73,12 +86,13 @@ void Tooltips::show() {
   for(auto& tooltip: *this) {
     tooltip.update();
     tooltip.adjust();
-    tooltip.show_all();
+    tooltip.window->show_all();
   }
 }
 
 void Tooltips::hide() {
   for(auto& tooltip: *this) {
-    tooltip.hide();
+    if(tooltip.window)
+      tooltip.window->hide();
   }
 }

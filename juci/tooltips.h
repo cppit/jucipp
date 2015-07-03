@@ -4,16 +4,19 @@
 #include <string>
 #include <list>
 
-class Tooltip : public Gtk::Window {
+class Tooltip {
 public:
-  Tooltip(std::shared_ptr<Gtk::TextView> tooltip_widget, Gtk::TextView& text_view, Glib::RefPtr<Gtk::TextBuffer::Mark> start_mark, Glib::RefPtr<Gtk::TextBuffer::Mark> end_mark);
+  Tooltip(std::function<Glib::RefPtr<Gtk::TextBuffer>()> get_buffer, Gtk::TextView& text_view, Glib::RefPtr<Gtk::TextBuffer::Mark> start_mark, Glib::RefPtr<Gtk::TextBuffer::Mark> end_mark);
+  ~Tooltip();
   
   void update();
   void adjust();
   
   Gdk::Rectangle activation_rectangle;
+  std::unique_ptr<Gtk::Window> window;
 private:
-  std::shared_ptr<Gtk::TextView> tooltip_widget;
+  std::function<Glib::RefPtr<Gtk::TextBuffer>()> get_buffer;
+  std::unique_ptr<Gtk::TextView> tooltip_widget;
   Glib::RefPtr<Gtk::TextBuffer::Mark> start_mark;
   Glib::RefPtr<Gtk::TextBuffer::Mark> end_mark;
   Gtk::TextView& text_view;
