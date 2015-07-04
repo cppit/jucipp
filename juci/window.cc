@@ -14,7 +14,7 @@ Window::Window() :
   INFO("Create Window");
   set_title("juCi++");
   set_default_size(600, 400);
-  set_events(Gdk::POINTER_MOTION_MASK);
+  set_events(Gdk::POINTER_MOTION_MASK|Gdk::FOCUS_CHANGE_MASK);
   add(window_box_);
   keybindings_.action_group_menu()->add(Gtk::Action::create("FileQuit",
                                                             "Quit juCi++"),

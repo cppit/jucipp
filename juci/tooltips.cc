@@ -37,6 +37,8 @@ void Tooltip::adjust() {
     //init window
     window=std::unique_ptr<Gtk::Window>(new Gtk::Window(Gtk::WindowType::WINDOW_POPUP));
     
+    window->set_events(Gdk::POINTER_MOTION_MASK);
+    window->signal_motion_notify_event().connect(sigc::mem_fun(*this, &Tooltip::tooltip_on_motion_notify_event), false);
     window->property_decorated()=false;
     window->set_accept_focus(false);
     window->set_skip_taskbar_hint(true);
@@ -68,6 +70,11 @@ void Tooltip::adjust() {
     Tooltips::drawn_tooltips_rectangle=rectangle;
 
   window->move(rectangle.get_x(), rectangle.get_y());
+}
+
+bool Tooltip::tooltip_on_motion_notify_event(GdkEventMotion* event) {
+  window->hide();
+  return false;
 }
 
 void Tooltips::show(const Gdk::Rectangle& rectangle) {

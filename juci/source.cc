@@ -218,6 +218,7 @@ parse_thread_go(true), parse_thread_mapped(false), parse_thread_stop(false) {
   signal_key_press_event().connect(sigc::mem_fun(*this, &Source::ClangView::on_key_press), false);
   signal_key_release_event().connect(sigc::mem_fun(*this, &Source::ClangView::on_key_release), false);
   signal_motion_notify_event().connect(sigc::mem_fun(*this, &Source::ClangView::clangview_on_motion_notify_event), false);
+  signal_focus_out_event().connect(sigc::mem_fun(*this, &Source::ClangView::clangview_on_focus_out_event), false);
   get_buffer()->signal_mark_set().connect(sigc::mem_fun(*this, &Source::ClangView::clangview_on_mark_set), false);
 }
 
@@ -436,6 +437,12 @@ void Source::ClangView::clangview_on_mark_set(const Gtk::TextBuffer::iterator& i
     type_tooltips.show(rectangle);
     diagnostic_tooltips.show(rectangle);
   }
+}
+
+bool Source::ClangView::clangview_on_focus_out_event(GdkEventFocus* event) {
+    diagnostic_tooltips.hide();
+    type_tooltips.hide();
+    return false;
 }
 
 void Source::ClangView::

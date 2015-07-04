@@ -102,6 +102,7 @@ namespace Source {
     Tooltips type_tooltips;
     bool clangview_on_motion_notify_event(GdkEventMotion* event);
     void clangview_on_mark_set(const Gtk::TextBuffer::iterator& iterator, const Glib::RefPtr<Gtk::TextBuffer::Mark>& mark);
+    bool clangview_on_focus_out_event(GdkEventFocus* event);
     
     static clang::Index clang_index;
     std::map<std::string, std::string> get_buffer_map() const;

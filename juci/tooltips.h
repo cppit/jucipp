@@ -15,6 +15,8 @@ public:
   Gdk::Rectangle activation_rectangle;
   std::unique_ptr<Gtk::Window> window;
 private:
+  bool tooltip_on_motion_notify_event(GdkEventMotion* event);
+  
   std::function<Glib::RefPtr<Gtk::TextBuffer>()> get_buffer;
   std::unique_ptr<Gtk::TextView> tooltip_widget;
   Glib::RefPtr<Gtk::TextBuffer::Mark> start_mark;

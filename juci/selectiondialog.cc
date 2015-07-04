@@ -2,6 +2,8 @@
 
 SelectionDialog::SelectionDialog(Gtk::TextView& text_view): Gtk::Dialog(), text_view(text_view), 
       list_view_text(1, false, Gtk::SelectionMode::SELECTION_SINGLE) {
+  property_decorated()=false;
+  set_skip_taskbar_hint(true);
   scrolled_window.set_policy(Gtk::PolicyType::POLICY_NEVER, Gtk::PolicyType::POLICY_NEVER);
   list_view_text.set_enable_search(true);
   list_view_text.set_headers_visible(false);
