@@ -102,6 +102,7 @@ namespace Source {
     bool clangview_on_motion_notify_event(GdkEventMotion* event);
     void clangview_on_mark_set(const Gtk::TextBuffer::iterator& iterator, const Glib::RefPtr<Gtk::TextBuffer::Mark>& mark);
     bool clangview_on_focus_out_event(GdkEventFocus* event);
+    bool clangview_on_scroll_event(GdkEventScroll* event);
     
     static clang::Index clang_index;
     std::map<std::string, std::string> get_buffer_map() const;
@@ -109,7 +110,7 @@ namespace Source {
   private:
     std::unique_ptr<clang::TranslationUnit> clang_tu;
     std::unique_ptr<clang::Tokens> clang_tokens;
-    bool clang_tokens_ready=false;
+    bool clang_updated=false;
     void highlight_token(clang::Token *token,
                         std::vector<Range> *source_ranges,
                         int token_kind);

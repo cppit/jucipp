@@ -185,9 +185,9 @@ parse_thread_go(true), parse_thread_mapped(false), parse_thread_stop(false) {
       update_syntax(extract_tokens(0, get_source_buffer()->get_text().size()));
       update_diagnostics();
       update_types();
+      clang_updated=true;
       parsing_in_progress->done("done");
       INFO("Syntax updated");
-      clang_tokens_ready=true;
     }
     else {
       parse_thread_go=true;
@@ -216,7 +216,7 @@ parse_thread_go(true), parse_thread_mapped(false), parse_thread_stop(false) {
   
   get_source_buffer()->signal_changed().connect([this]() {
     parse_thread_mapped=false;
-    clang_tokens_ready=false;
+    clang_updated=false;
     parse_thread_go=true;
   });
   
@@ -224,6 +224,7 @@ parse_thread_go(true), parse_thread_mapped(false), parse_thread_stop(false) {
   signal_key_release_event().connect(sigc::mem_fun(*this, &Source::ClangView::on_key_release), false);
   signal_motion_notify_event().connect(sigc::mem_fun(*this, &Source::ClangView::clangview_on_motion_notify_event), false);
   signal_focus_out_event().connect(sigc::mem_fun(*this, &Source::ClangView::clangview_on_focus_out_event), false);
+  signal_scroll_event().connect(sigc::mem_fun(*this, &Source::ClangView::clangview_on_scroll_event), false);
   get_buffer()->signal_mark_set().connect(sigc::mem_fun(*this, &Source::ClangView::clangview_on_mark_set), false);
 }
 
@@ -408,11 +409,9 @@ void Source::ClangView::update_types() {
         auto get_tooltip_buffer=[this, c]() {
           auto tooltip_buffer=Gtk::TextBuffer::create(get_buffer()->get_tag_table());
           tooltip_buffer->insert_at_cursor("Type: "+(*clang_tokens)[c].type);
-          if(clang_tokens_ready) {
-            auto brief_comment=clang_tokens->get_brief_comment(c);
-            if(brief_comment!="")
-              tooltip_buffer->insert_at_cursor("\n\n"+brief_comment);
-          }
+          auto brief_comment=clang_tokens->get_brief_comment(c);
+          if(brief_comment!="")
+            tooltip_buffer->insert_at_cursor("\n\n"+brief_comment);
           return tooltip_buffer;
         };
         
@@ -423,32 +422,51 @@ void Source::ClangView::update_types() {
 }
 
 bool Source::ClangView::clangview_on_motion_notify_event(GdkEventMotion* event) {
-  Gdk::Rectangle rectangle(event->x, event->y, 1, 1);
-  diagnostic_tooltips.init();
-  type_tooltips.show(rectangle);
-  diagnostic_tooltips.show(rectangle);
+  if(clang_updated) {
+    Gdk::Rectangle rectangle(event->x, event->y, 1, 1);
+    diagnostic_tooltips.init();
+    type_tooltips.show(rectangle);
+    diagnostic_tooltips.show(rectangle);
+  }
+  else {
+    type_tooltips.hide();
+    diagnostic_tooltips.hide();
+  }
+    
   return false;
 }
 
 void Source::ClangView::clangview_on_mark_set(const Gtk::TextBuffer::iterator& iterator, const Glib::RefPtr<Gtk::TextBuffer::Mark>& mark) {
   if(mark->get_name()=="insert") {
-    Gdk::Rectangle rectangle;
-    get_iter_location(iterator, rectangle);
-    int location_window_x, location_window_y;
-    buffer_to_window_coords(Gtk::TextWindowType::TEXT_WINDOW_TEXT, rectangle.get_x(), rectangle.get_y(), location_window_x, location_window_y);
-    rectangle.set_x(location_window_x-2);
-    rectangle.set_y(location_window_y);
-    rectangle.set_width(4);
-    diagnostic_tooltips.init();
-    type_tooltips.show(rectangle);
-    diagnostic_tooltips.show(rectangle);
+    if(clang_updated) {
+      Gdk::Rectangle rectangle;
+      get_iter_location(iterator, rectangle);
+      int location_window_x, location_window_y;
+      buffer_to_window_coords(Gtk::TextWindowType::TEXT_WINDOW_TEXT, rectangle.get_x(), rectangle.get_y(), location_window_x, location_window_y);
+      rectangle.set_x(location_window_x-2);
+      rectangle.set_y(location_window_y);
+      rectangle.set_width(4);
+      diagnostic_tooltips.init();
+      type_tooltips.show(rectangle);
+      diagnostic_tooltips.show(rectangle);
+    }
+    else {
+      type_tooltips.hide();
+      diagnostic_tooltips.hide();
+    }
   }
 }
 
 bool Source::ClangView::clangview_on_focus_out_event(GdkEventFocus* event) {
-    diagnostic_tooltips.hide();
     type_tooltips.hide();
+    diagnostic_tooltips.hide();
     return false;
+}
+
+bool Source::ClangView::clangview_on_scroll_event(GdkEventScroll* event) {
+  type_tooltips.hide();
+  diagnostic_tooltips.hide();
+  return false;
 }
 
 void Source::ClangView::
