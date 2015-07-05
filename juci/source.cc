@@ -241,7 +241,7 @@ init_syntax_highlighting(const std::map<std::string, std::string>
                          int end_offset,
                          clang::Index *index) {
   std::vector<string> arguments = get_compilation_commands();
-  tu_ = std::unique_ptr<clang::TranslationUnit>(new clang::TranslationUnit(index,
+  clang_tu = std::unique_ptr<clang::TranslationUnit>(new clang::TranslationUnit(index,
                                                                            file_path,
                                                                            arguments,
                                                                            buffers));
@@ -256,7 +256,7 @@ get_buffer_map() const {
 
 int Source::ClangView::
 reparse(const std::map<std::string, std::string> &buffer) {
-  return tu_->ReparseTranslationUnit(file_path, buffer);
+  return clang_tu->ReparseTranslationUnit(file_path, buffer);
 }
 
 std::vector<Source::AutoCompleteData> Source::ClangView::
@@ -267,7 +267,7 @@ get_autocomplete_suggestions(int line_number, int column) {
   buffer_map[file_path]=get_source_buffer()->get_text(get_source_buffer()->begin(), get_source_buffer()->get_insert()->get_iter());
   buffer_map[file_path]+="\n";
   parsing_mutex.lock();
-  clang::CodeCompleteResults results(tu_.get(),
+  clang::CodeCompleteResults results(clang_tu.get(),
                                      file_path,
                                      buffer_map,
                                      line_number,
@@ -306,14 +306,12 @@ get_compilation_commands() {
 std::vector<Source::Range> Source::ClangView::
 extract_tokens(int start_offset, int end_offset) {
   std::vector<Source::Range> ranges;
-  clang::SourceLocation start(tu_.get(), file_path, start_offset);
-  clang::SourceLocation end(tu_.get(), file_path, end_offset);
+  clang::SourceLocation start(clang_tu.get(), file_path, start_offset);
+  clang::SourceLocation end(clang_tu.get(), file_path, end_offset);
   clang::SourceRange range(&start, &end);
-  clang::Tokens tokens(tu_.get(), &range);
-  tokens.get_token_types(tu_.get());
-  std::vector<clang::Token>& tks = tokens.tokens();
-  update_types(tks);
-  for (auto &token : tks) {
+  clang_tokens=std::unique_ptr<clang::Tokens>(new clang::Tokens(clang_tu.get(), &range));
+  update_types();
+  for (auto &token : *clang_tokens) {
     switch (token.kind()) {
     case 0: highlight_cursor(&token, &ranges); break;  // PunctuationToken
     case 1: highlight_token(&token, &ranges, 702); break;  // KeywordToken
@@ -356,24 +354,22 @@ void Source::ClangView::update_syntax(const std::vector<Source::Range> &ranges) 
 
 void Source::ClangView::update_diagnostics() {
   diagnostic_tooltips.clear();
-  auto diagnostics=tu_->get_diagnostics();
-  for(auto& diagnostic: diagnostics) {
-    if(diagnostic.path==file_path) {
-      auto start=get_buffer()->get_iter_at_offset(diagnostic.start_location.offset);
-      auto end=get_buffer()->get_iter_at_offset(diagnostic.end_location.offset);
+  clang_tu->update_diagnostics();
+  for(size_t c=0;c<clang_tu->diagnostics.size();c++) {
+    if(clang_tu->diagnostics[c].path==file_path) {
+      auto start=get_buffer()->get_iter_at_offset(clang_tu->diagnostics[c].start_location.offset);
+      auto end=get_buffer()->get_iter_at_offset(clang_tu->diagnostics[c].end_location.offset);
       std::string diagnostic_tag_name;
-      if(diagnostic.severity<=CXDiagnostic_Warning)
+      if(clang_tu->diagnostics[c].severity<=CXDiagnostic_Warning)
         diagnostic_tag_name="diagnostic_warning";
       else
         diagnostic_tag_name="diagnostic_error";
       
-      std::string spelling=diagnostic.spelling;
-      std::string severity_spelling=diagnostic.severity_spelling;
-      auto get_tooltip_buffer=[this, spelling, severity_spelling, diagnostic_tag_name]() {
+      auto get_tooltip_buffer=[this, c, diagnostic_tag_name]() {        
         auto tooltip_buffer=Gtk::TextBuffer::create(get_buffer()->get_tag_table());
-        tooltip_buffer->insert_with_tag(tooltip_buffer->get_insert()->get_iter(), severity_spelling, diagnostic_tag_name);
-        tooltip_buffer->insert_at_cursor(":\n"+spelling);
-        //TODO: Insert newlines to diagnostic.spelling (use 80 chars, then newline?)
+        tooltip_buffer->insert_with_tag(tooltip_buffer->get_insert()->get_iter(), clang_tu->diagnostics[c].severity_spelling, diagnostic_tag_name);
+        tooltip_buffer->insert_at_cursor(":\n"+clang_tu->diagnostics[c].spelling);
+        //TODO: Insert newlines to clang_tu->diagnostics[c].spelling (use 80 chars, then newline?)
         return tooltip_buffer;
       };
       diagnostic_tooltips.emplace_back(get_tooltip_buffer, *this, get_buffer()->create_mark(start), get_buffer()->create_mark(end));
@@ -392,11 +388,12 @@ void Source::ClangView::update_diagnostics() {
   }
 }
 
-void Source::ClangView::update_types(std::vector<clang::Token>& tokens) {
+void Source::ClangView::update_types() {
   type_tooltips.clear();
-  for(auto& token: tokens) {
-    if(token.type!="") {
-      clang::SourceRange range(tu_.get(), &token);
+  clang_tokens->update_types(clang_tu.get());
+  for(size_t c=0;c<clang_tokens->size();c++) {
+    if((*clang_tokens)[c].type!="") {
+      clang::SourceRange range(clang_tu.get(), &((*clang_tokens)[c]));
       clang::SourceLocation start(&range, true);
       clang::SourceLocation end(&range, false);
       std::string path;
@@ -406,9 +403,9 @@ void Source::ClangView::update_types(std::vector<clang::Token>& tokens) {
       if(path==file_path) {
         auto start=get_buffer()->get_iter_at_offset(start_offset);
         auto end=get_buffer()->get_iter_at_offset(end_offset);
-        auto get_tooltip_buffer=[this, token]() {
+        auto get_tooltip_buffer=[this, c]() {
           auto tooltip_buffer=Gtk::TextBuffer::create(get_buffer()->get_tag_table());
-          tooltip_buffer->insert_at_cursor("Type: "+token.type);
+          tooltip_buffer->insert_at_cursor("Type: "+(*clang_tokens)[c].type);
           return tooltip_buffer;
         };
         
@@ -450,8 +447,8 @@ bool Source::ClangView::clangview_on_focus_out_event(GdkEventFocus* event) {
 void Source::ClangView::
 highlight_cursor(clang::Token *token,
                 std::vector<Source::Range> *source_ranges) {
-  clang::SourceLocation location = token->get_source_location(tu_.get());
-  clang::Cursor cursor(tu_.get(), &location);
+  clang::SourceLocation location = token->get_source_location(clang_tu.get());
+  clang::Cursor cursor(clang_tu.get(), &location);
   clang::SourceRange range(&cursor);
   clang::SourceLocation begin(&range, true);
   clang::SourceLocation end(&range, false);
@@ -467,7 +464,7 @@ void Source::ClangView::
 highlight_token(clang::Token *token,
                std::vector<Source::Range> *source_ranges,
                int token_kind) {
-  clang::SourceRange range = token->get_source_range(tu_.get());
+  clang::SourceRange range = token->get_source_range(clang_tu.get());
   unsigned begin_line_num, begin_offset, end_line_num, end_offset;
   clang::SourceLocation begin(&range, true);
   clang::SourceLocation end(&range, false);

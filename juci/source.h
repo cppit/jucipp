@@ -96,7 +96,7 @@ namespace Source {
     std::vector<Range> extract_tokens(int, int);
     void update_syntax(const std::vector<Range> &locations);
     void update_diagnostics();
-    void update_types(std::vector<clang::Token>& tokens);
+    void update_types();
     Tooltips diagnostic_tooltips;
     Tooltips type_tooltips;
     bool clangview_on_motion_notify_event(GdkEventMotion* event);
@@ -107,7 +107,8 @@ namespace Source {
     std::map<std::string, std::string> get_buffer_map() const;
     std::mutex parsing_mutex;
   private:
-    std::unique_ptr<clang::TranslationUnit> tu_; //use unique_ptr since it is not initialized in constructor
+    std::unique_ptr<clang::TranslationUnit> clang_tu;
+    std::unique_ptr<clang::Tokens> clang_tokens;
     void highlight_token(clang::Token *token,
                         std::vector<Range> *source_ranges,
                         int token_kind);
