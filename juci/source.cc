@@ -406,6 +406,9 @@ void Source::ClangView::update_types() {
         auto get_tooltip_buffer=[this, c]() {
           auto tooltip_buffer=Gtk::TextBuffer::create(get_buffer()->get_tag_table());
           tooltip_buffer->insert_at_cursor("Type: "+(*clang_tokens)[c].type);
+          auto brief_comment=clang_tokens->get_brief_comment(c);
+          if(brief_comment!="")
+            tooltip_buffer->insert_at_cursor("\n\n"+brief_comment);
           return tooltip_buffer;
         };
         
