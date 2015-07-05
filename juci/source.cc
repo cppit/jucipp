@@ -7,6 +7,7 @@
 #include <algorithm>
 #include <regex>
 #include "selectiondialog.h"
+#include "singletons.h"
 
 bool Source::Config::legal_extension(std::string e) const {
   std::transform(e.begin(), e.end(),e.begin(), ::tolower);
@@ -21,17 +22,23 @@ bool Source::Config::legal_extension(std::string e) const {
 //////////////
 //// View ////
 //////////////
-Source::View::View(const Source::Config& config, const std::string& file_path, const std::string& project_path):
-config(config), file_path(file_path), project_path(project_path) {
+Source::View::View(const std::string& file_path, const std::string& project_path):
+file_path(file_path), project_path(project_path) {
   Gsv::init();
   set_smart_home_end(Gsv::SMART_HOME_END_BEFORE);
-  set_show_line_numbers(config.show_line_numbers);
-  set_highlight_current_line(config.highlight_current_line);
+  set_show_line_numbers(Singletons::Config::source()->show_line_numbers);
+  set_highlight_current_line(Singletons::Config::source()->highlight_current_line);
   sourcefile s(file_path);
   get_source_buffer()->get_undo_manager()->begin_not_undoable_action();
   get_source_buffer()->set_text(s.get_content());
   get_source_buffer()->get_undo_manager()->end_not_undoable_action();
   search_start = search_end = this->get_buffer()->end();
+  
+  override_font(Pango::FontDescription(Singletons::Config::source()->font));
+  override_background_color(Gdk::RGBA(Singletons::Config::source()->background));
+  for (auto &item : Singletons::Config::source()->tags) {
+    get_source_buffer()->create_tag(item.first)->property_foreground() = item.second;
+  }
 }
 
 string Source::View::get_line(size_t line_number) {
@@ -52,7 +59,8 @@ string Source::View::get_line_before_insert() {
 
 //Basic indentation
 bool Source::View::on_key_press(GdkEventKey* key) {
-  const std::regex spaces_regex(std::string("^(")+config.tab_char+"*).*$");
+  auto config=Singletons::Config::source();
+  const std::regex spaces_regex(std::string("^(")+config->tab_char+"*).*$");
   //Indent as in next or previous line
   if(key->keyval==GDK_KEY_Return && key->state==0) {
     int line_nr=get_source_buffer()->get_insert()->get_iter().get_line();
@@ -83,7 +91,7 @@ bool Source::View::on_key_press(GdkEventKey* key) {
     int line_end=selection_end.get_line();
     for(int line=line_start;line<=line_end;line++) {
       Gtk::TextIter line_it = get_source_buffer()->get_iter_at_line(line);
-      get_source_buffer()->insert(line_it, config.tab);
+      get_source_buffer()->insert(line_it, config->tab);
     }
     return true;
   }
@@ -96,7 +104,7 @@ bool Source::View::on_key_press(GdkEventKey* key) {
     
     for(int line_nr=line_start;line_nr<=line_end;line_nr++) {
       string line=get_line(line_nr);
-      if(!(line.size()>=config.tab_size && line.substr(0, config.tab_size)==config.tab))
+      if(!(line.size()>=config->tab_size && line.substr(0, config->tab_size)==config->tab))
         return true;
     }
     
@@ -104,7 +112,7 @@ bool Source::View::on_key_press(GdkEventKey* key) {
       Gtk::TextIter line_it = get_source_buffer()->get_iter_at_line(line_nr);
       Gtk::TextIter line_plus_it=line_it;
       
-      for(unsigned c=0;c<config.tab_size;c++)
+      for(unsigned c=0;c<config->tab_size;c++)
         line_plus_it++;
       get_source_buffer()->erase(line_it, line_plus_it);
     }
@@ -119,7 +127,7 @@ bool Source::View::on_key_press(GdkEventKey* key) {
       string previous_line=get_line(line_nr-1);
       smatch sm;
       if(std::regex_match(previous_line, sm, spaces_regex)) {
-        if(line==sm[1] || line==(std::string(sm[1])+config.tab) || (line+config.tab==sm[1])) {
+        if(line==sm[1] || line==(std::string(sm[1])+config->tab) || (line+config->tab==sm[1])) {
           Gtk::TextIter line_it = get_source_buffer()->get_iter_at_line(line_nr);
           get_source_buffer()->erase(line_it, insert_it);
         }
@@ -134,15 +142,9 @@ bool Source::View::on_key_press(GdkEventKey* key) {
 //////////////////
 clang::Index Source::ClangView::clang_index(0, 0);
 
-Source::ClangView::ClangView(const Source::Config& config, const std::string& file_path, const std::string& project_path, Terminal::Controller& terminal):
-Source::View(config, file_path, project_path), terminal(terminal),
-parse_thread_go(true), parse_thread_mapped(false), parse_thread_stop(false) {
-  override_font(Pango::FontDescription(config.font));
-  override_background_color(Gdk::RGBA(config.background));
-  for (auto &item : config.tags) {
-    get_source_buffer()->create_tag(item.first)->property_foreground() = item.second;
-  }
-  
+Source::ClangView::ClangView(const std::string& file_path, const std::string& project_path, Terminal::Controller& terminal):
+Source::View(file_path, project_path), terminal(terminal),
+parse_thread_go(true), parse_thread_mapped(false), parse_thread_stop(false) {  
   int start_offset = get_source_buffer()->begin().get_offset();
   int end_offset = get_source_buffer()->end().get_offset();
   auto buffer_map=get_buffer_map();
@@ -332,7 +334,7 @@ void Source::ClangView::update_syntax(const std::vector<Source::Range> &ranges) 
   for (auto &range : ranges) {
     std::string type = std::to_string(range.kind);
     try {
-      config.types.at(type);
+      Singletons::Config::source()->types.at(type);
     } catch (std::exception) {
       continue;
     }
@@ -347,7 +349,7 @@ void Source::ClangView::update_syntax(const std::vector<Source::Range> &ranges) 
     buffer->get_iter_at_line_offset(linum_start, begin);
     Gtk::TextIter end_iter  =
     buffer->get_iter_at_line_offset(linum_end, end);
-    buffer->apply_tag_by_name(config.types.at(type),
+    buffer->apply_tag_by_name(Singletons::Config::source()->types.at(type),
                               begin_iter, end_iter);
   }
 }
@@ -550,10 +552,11 @@ bool Source::ClangView::on_key_release(GdkEventKey* key) {
 //Clang indentation
 //TODO: replace indentation methods with a better implementation or maybe use libclang
 bool Source::ClangView::on_key_press(GdkEventKey* key) {
-  const std::regex bracket_regex(std::string("^(")+config.tab_char+"*).*\\{ *$");
-  const std::regex no_bracket_statement_regex(std::string("^(")+config.tab_char+"*)(if|for|else if|catch|while) *\\(.*[^;}] *$");
-  const std::regex no_bracket_no_para_statement_regex(std::string("^(")+config.tab_char+"*)(else|try|do) *$");
-  const std::regex spaces_regex(std::string("^(")+config.tab_char+"*).*$");
+  auto config=Singletons::Config::source();
+  const std::regex bracket_regex(std::string("^(")+config->tab_char+"*).*\\{ *$");
+  const std::regex no_bracket_statement_regex(std::string("^(")+config->tab_char+"*)(if|for|else if|catch|while) *\\(.*[^;}] *$");
+  const std::regex no_bracket_no_para_statement_regex(std::string("^(")+config->tab_char+"*)(else|try|do) *$");
+  const std::regex spaces_regex(std::string("^(")+config->tab_char+"*).*$");
   
   //Indent depending on if/else/etc and brackets
   if(key->keyval==GDK_KEY_Return && key->state==0) {
@@ -565,35 +568,35 @@ bool Source::ClangView::on_key_press(GdkEventKey* key) {
         string next_line=get_line(line_nr+1);
         std::smatch sm2;
         if(std::regex_match(next_line, sm2, spaces_regex)) {
-          if(sm2[1].str()==sm[1].str()+config.tab) {
-            get_source_buffer()->insert_at_cursor("\n"+sm[1].str()+config.tab);
+          if(sm2[1].str()==sm[1].str()+config->tab) {
+            get_source_buffer()->insert_at_cursor("\n"+sm[1].str()+config->tab);
             scroll_to(get_source_buffer()->get_insert());
             return true;
           }
         }
       }
-      get_source_buffer()->insert_at_cursor("\n"+sm[1].str()+config.tab+"\n"+sm[1].str()+"}");
+      get_source_buffer()->insert_at_cursor("\n"+sm[1].str()+config->tab+"\n"+sm[1].str()+"}");
       auto insert_it = get_source_buffer()->get_insert()->get_iter();
-      for(size_t c=0;c<config.tab_size+sm[1].str().size();c++)
+      for(size_t c=0;c<config->tab_size+sm[1].str().size();c++)
         insert_it--;
       scroll_to(get_source_buffer()->get_insert());
       get_source_buffer()->place_cursor(insert_it);
       return true;
     }
     else if(std::regex_match(line, sm, no_bracket_statement_regex)) {
-      get_source_buffer()->insert_at_cursor("\n"+sm[1].str()+config.tab);
+      get_source_buffer()->insert_at_cursor("\n"+sm[1].str()+config->tab);
       scroll_to(get_source_buffer()->get_insert());
       return true;
     }
     else if(std::regex_match(line, sm, no_bracket_no_para_statement_regex)) {
-      get_source_buffer()->insert_at_cursor("\n"+sm[1].str()+config.tab);
+      get_source_buffer()->insert_at_cursor("\n"+sm[1].str()+config->tab);
       scroll_to(get_source_buffer()->get_insert());
       return true;
     }
     else if(std::regex_match(line, sm, spaces_regex)) {
       std::smatch sm2;
       size_t line_nr=get_source_buffer()->get_insert()->get_iter().get_line();
-      if(line_nr>0 && sm[1].str().size()>=config.tab_size) {
+      if(line_nr>0 && sm[1].str().size()>=config->tab_size) {
         string previous_line=get_line(line_nr-1);
         if(!std::regex_match(previous_line, sm2, bracket_regex)) {
           if(std::regex_match(previous_line, sm2, no_bracket_statement_regex)) {
@@ -613,15 +616,15 @@ bool Source::ClangView::on_key_press(GdkEventKey* key) {
   //Indent left when writing } on a new line
   else if(key->keyval==GDK_KEY_braceright) {
     string line=get_line_before_insert();
-    if(line.size()>=config.tab_size) {
+    if(line.size()>=config->tab_size) {
       for(auto c: line) {
-        if(c!=config.tab_char)
+        if(c!=config->tab_char)
           return false;
       }
       Gtk::TextIter insert_it = get_source_buffer()->get_insert()->get_iter();
       Gtk::TextIter line_it = get_source_buffer()->get_iter_at_line(insert_it.get_line());
       Gtk::TextIter line_plus_it=line_it;
-      for(unsigned c=0;c<config.tab_size;c++)
+      for(unsigned c=0;c<config->tab_size;c++)
         line_plus_it++;
       
       get_source_buffer()->erase(line_it, line_plus_it);
@@ -638,15 +641,14 @@ bool Source::ClangView::on_key_press(GdkEventKey* key) {
 
 // Source::Controller::Controller()
 // Constructor for Controller
-Source::Controller::Controller(const Source::Config &config,
-                               const std::string& file_path, std::string project_path, Terminal::Controller& terminal) {
+Source::Controller::Controller(const std::string& file_path, std::string project_path, Terminal::Controller& terminal) {
   if(project_path=="") {
     project_path=boost::filesystem::path(file_path).parent_path().string();
   }
-  if (config.legal_extension(file_path.substr(file_path.find_last_of(".") + 1)))
-    view=std::unique_ptr<View>(new ClangView(config, file_path, project_path, terminal));
+  if (Singletons::Config::source()->legal_extension(file_path.substr(file_path.find_last_of(".") + 1)))
+    view=std::unique_ptr<View>(new ClangView(file_path, project_path, terminal));
   else
-    view=std::unique_ptr<View>(new GenericView(config, file_path, project_path));
+    view=std::unique_ptr<View>(new GenericView(file_path, project_path));
   INFO("Source Controller with childs constructed");
 }
 

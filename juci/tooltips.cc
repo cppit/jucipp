@@ -1,5 +1,5 @@
 #include "tooltips.h"
-#include <thread>
+#include "singletons.h"
 
 Gdk::Rectangle Tooltips::drawn_tooltips_rectangle=Gdk::Rectangle();
 
@@ -46,11 +46,13 @@ void Tooltip::adjust() {
 
     tooltip_widget=std::unique_ptr<Gtk::TextView>(new Gtk::TextView(this->get_buffer()));
     tooltip_widget->set_editable(false);
+    tooltip_widget->override_background_color(Gdk::RGBA(Singletons::Config::source()->background_tooltips)); 
     window->add(*tooltip_widget);
 
     auto layout=Pango::Layout::create(tooltip_widget->get_pango_context());
     layout->set_text(tooltip_widget->get_buffer()->get_text());
     layout->get_pixel_size(tooltip_width, tooltip_height);
+    tooltip_height+=2;
   }
   
   int root_x, root_y;

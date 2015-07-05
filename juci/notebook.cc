@@ -11,11 +11,9 @@ Notebook::View::View() {
 
 Notebook::Controller::Controller(Keybindings::Controller& keybindings,
                                  Terminal::Controller& terminal,
-                                 Source::Config& source_cfg,
                                  Directories::Config& dir_cfg) :
   terminal(terminal),
-  directories(dir_cfg),
-  source_config(source_cfg) {
+  directories(dir_cfg) {
   INFO("Create notebook");
   refClipboard_ = Gtk::Clipboard::get();
   view.pack1(directories.widget(), true, true);
@@ -173,7 +171,7 @@ Notebook::Controller::~Controller() {
 void Notebook::Controller::OnOpenFile(std::string path) {
   INFO("Notebook open file");
   INFO("Notebook create page");
-  text_vec_.emplace_back(new Source::Controller(source_config, path, project_path, terminal));
+  text_vec_.emplace_back(new Source::Controller(path, project_path, terminal));
   scrolledtext_vec_.push_back(new Gtk::ScrolledWindow());
   editor_vec_.push_back(new Gtk::HBox());
   scrolledtext_vec_.back()->add(*text_vec_.back()->view);

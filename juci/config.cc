@@ -2,7 +2,7 @@
 #include "logging.h"
 
 MainConfig::MainConfig() :
-  keybindings_cfg(), source_cfg() {
+  keybindings_cfg() {
   INFO("Reading config file");
   boost::property_tree::json_parser::read_json("config.json", cfg_);
   INFO("Config file read");
@@ -13,6 +13,7 @@ MainConfig::MainConfig() :
 }
 
 void MainConfig::GenerateSource() {
+  auto source_cfg=Singletons::Config::source();
   DEBUG("Fetching source cfg");
   // boost::property_tree::ptree
   auto source_json = cfg_.get_child("source");
@@ -22,30 +23,33 @@ void MainConfig::GenerateSource() {
   auto visual_json = source_json.get_child("visual");
   for (auto &i : visual_json) {
     if (i.first == "background") {
-	     source_cfg.background = i.second.get_value<std::string>();
+	     source_cfg->background = i.second.get_value<std::string>();
+    }
+    if (i.first == "background_tooltips") {
+	     source_cfg->background_tooltips = i.second.get_value<std::string>();
     }
     if (i.first == "show_line_numbers") {
-      source_cfg.show_line_numbers = i.second.get_value<std::string>() == "1" ? true : false;
+      source_cfg->show_line_numbers = i.second.get_value<std::string>() == "1" ? true : false;
     }
     if (i.first == "highlight_current_line") {
-      source_cfg.highlight_current_line = i.second.get_value<std::string>() == "1" ? true : false;
+      source_cfg->highlight_current_line = i.second.get_value<std::string>() == "1" ? true : false;
     }
     if (i.first == "font") {
-      source_cfg.font = i.second.get_value<std::string>();
+      source_cfg->font = i.second.get_value<std::string>();
     }
   }
-  source_cfg.tab_size = source_json.get<unsigned>("tab_size");
-  for (unsigned c = 0; c < source_cfg.tab_size; c++) {
-    source_cfg.tab+=" ";
+  source_cfg->tab_size = source_json.get<unsigned>("tab_size");
+  for (unsigned c = 0; c < source_cfg->tab_size; c++) {
+    source_cfg->tab+=" ";
   }
   for (auto &i : colors_json) {
-    source_cfg.tags[i.first]=i.second.get_value<std::string>();
+    source_cfg->tags[i.first]=i.second.get_value<std::string>();
   }
   for (auto &i : syntax_json) {
-    source_cfg.types[i.first]=i.second.get_value<std::string>();
+    source_cfg->types[i.first]=i.second.get_value<std::string>();
   }
   for (auto &i : extensions_json) {
-    source_cfg.extensions.emplace_back(i.second.get_value<std::string>());
+    source_cfg->extensions.emplace_back(i.second.get_value<std::string>());
   }
   DEBUG("Source cfg fetched");
 }

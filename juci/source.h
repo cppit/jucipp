@@ -19,7 +19,7 @@ namespace Source {
     bool legal_extension(std::string e) const ;
     unsigned tab_size;
     bool show_line_numbers, highlight_current_line;
-    std::string tab, background, font;
+    std::string tab, background, background_tooltips, font;
     char tab_char=' ';
     std::vector<std::string> extensions;
     std::unordered_map<std::string, std::string> tags, types;
@@ -59,21 +59,20 @@ namespace Source {
 
   class View : public Gsv::View {
   public:
-    View(const Source::Config& config, const std::string& file_path, const std::string& project_path);
+    View(const std::string& file_path, const std::string& project_path);
     std::string get_line(size_t line_number);
     std::string get_line_before_insert();
     std::string file_path;
     std::string project_path;
     Gtk::TextIter search_start, search_end;
   protected:
-    const Source::Config& config;
     bool on_key_press(GdkEventKey* key);
   };  // class View
   
   class GenericView : public View {
   public:
-    GenericView(const Source::Config& config, const std::string& file_path, const std::string& project_path):
-    View(config, file_path, project_path) {
+    GenericView(const std::string& file_path, const std::string& project_path):
+    View(file_path, project_path) {
       signal_key_press_event().connect(sigc::mem_fun(*this, &Source::GenericView::on_key_press), false);
     }
   private:
@@ -84,7 +83,7 @@ namespace Source {
   
   class ClangView : public View {
   public:
-    ClangView(const Source::Config& config, const std::string& file_path, const std::string& project_path, Terminal::Controller& terminal);
+    ClangView(const std::string& file_path, const std::string& project_path, Terminal::Controller& terminal);
     ~ClangView();
     // inits the syntax highligthing on file open
     void init_syntax_highlighting(const std::map<std::string, std::string>
@@ -132,8 +131,7 @@ namespace Source {
 
   class Controller {
   public:
-    Controller(const Source::Config &config,
-               const std::string& file_path, std::string project_path, Terminal::Controller& terminal);
+    Controller(const std::string& file_path, std::string project_path, Terminal::Controller& terminal);
     Glib::RefPtr<Gsv::Buffer> buffer();
     
     bool is_saved = true;

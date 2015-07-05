@@ -3,65 +3,64 @@
 
 Window::Window() :
   window_box_(Gtk::ORIENTATION_VERTICAL),
-  main_config_(),
-  keybindings_(main_config_.keybindings_cfg),
-  terminal(main_config_.terminal_cfg),
-  notebook(keybindings(), terminal,
-            main_config_.source_cfg,
-            main_config_.dir_cfg),
-  menu_(keybindings()),
-  api_(menu_, notebook) {
+  main_config(),
+  keybindings(main_config.keybindings_cfg),
+  terminal(main_config.terminal_cfg),
+  notebook(keybindings, terminal,
+            main_config.dir_cfg),
+  menu(keybindings),
+  api(menu, notebook) {
   INFO("Create Window");
   set_title("juCi++");
   set_default_size(600, 400);
   set_events(Gdk::POINTER_MOTION_MASK|Gdk::FOCUS_CHANGE_MASK);
   add(window_box_);
-  keybindings_.action_group_menu()->add(Gtk::Action::create("FileQuit",
+  keybindings.action_group_menu()->add(Gtk::Action::create("FileQuit",
                                                             "Quit juCi++"),
-                                        Gtk::AccelKey(keybindings_.config_
+                                        Gtk::AccelKey(keybindings.config_
                                                       .key_map()["quit"]),
                                         [this]() {
                                           OnWindowHide();
                                         });
-  keybindings_.action_group_menu()->add(Gtk::Action::create("FileOpenFile",
+  keybindings.action_group_menu()->add(Gtk::Action::create("FileOpenFile",
                                                             "Open file"),
-                                        Gtk::AccelKey(keybindings_.config_
+                                        Gtk::AccelKey(keybindings.config_
                                                       .key_map()["open_file"]),
                                         [this]() {
                                           OnOpenFile();
                                         });
-  keybindings_.action_group_menu()->add(Gtk::Action::create("FileOpenFolder",
+  keybindings.action_group_menu()->add(Gtk::Action::create("FileOpenFolder",
                                                             "Open folder"),
-                                        Gtk::AccelKey(keybindings_.config_
+                                        Gtk::AccelKey(keybindings.config_
                                                       .key_map()["open_folder"]),
                                         [this]() {
                                           OnFileOpenFolder();
                                         });
-  keybindings_.
+  keybindings.
     action_group_menu()->
     add(Gtk::Action::create("FileSaveAs",
 			    "Save as"),
-	Gtk::AccelKey(keybindings_.config_
+	Gtk::AccelKey(keybindings.config_
 		      .key_map()["save_as"]),
 	[this]() {
 	  SaveFileAs();
 	});
 
-  keybindings_.
+  keybindings.
     action_group_menu()->
     add(Gtk::Action::create("FileSave",
 			    "Save"),
-	Gtk::AccelKey(keybindings_.config_
+	Gtk::AccelKey(keybindings.config_
 		      .key_map()["save"]),
 	[this]() {
 	  SaveFile();
 	});
   
-  keybindings_.
+  keybindings.
     action_group_menu()->
     add(Gtk::Action::create("ProjectCompileAndRun",
 			    "Compile And Run"),
-	Gtk::AccelKey(keybindings_.config_
+	Gtk::AccelKey(keybindings.config_
 		      .key_map()["compile_and_run"]),
 	[this]() {
 	  SaveFile();
@@ -83,11 +82,11 @@ Window::Window() :
 	  }
 	});
    
-  keybindings_.
+  keybindings.
     action_group_menu()->
     add(Gtk::Action::create("ProjectCompile",
                             "Compile"),
-        Gtk::AccelKey(keybindings_.config_
+        Gtk::AccelKey(keybindings.config_
                       .key_map()["compile"]),
         [this]() {
           SaveFile();
@@ -106,11 +105,11 @@ Window::Window() :
           }
         });
 
-  add_accel_group(keybindings_.ui_manager_menu()->get_accel_group());
-  add_accel_group(keybindings_.ui_manager_hidden()->get_accel_group());
-  keybindings_.BuildMenu();
+  add_accel_group(keybindings.ui_manager_menu()->get_accel_group());
+  add_accel_group(keybindings.ui_manager_hidden()->get_accel_group());
+  keybindings.BuildMenu();
 
-  window_box_.pack_start(menu_.view(), Gtk::PACK_SHRINK);
+  window_box_.pack_start(menu.view(), Gtk::PACK_SHRINK);
 
   window_box_.pack_start(notebook.entry, Gtk::PACK_SHRINK);
   paned_.set_position(300);

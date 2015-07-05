@@ -24,7 +24,6 @@ namespace Notebook {
   public:
     Controller(Keybindings::Controller& keybindings,
                Terminal::Controller& terminal,
-               Source::Config& config,
                Directories::Config& dir_cfg);
     ~Controller();
     Source::View& CurrentTextView();
@@ -51,7 +50,6 @@ namespace Notebook {
     Glib::RefPtr<Gtk::Builder> m_refBuilder;
     Glib::RefPtr<Gio::SimpleActionGroup> refActionGroup;
     Terminal::Controller& terminal;
-    Source::Config& source_config;
 
     std::vector<Gtk::ScrolledWindow*> scrolledtext_vec_;
     std::vector<Gtk::HBox*> editor_vec_;
