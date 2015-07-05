@@ -109,6 +109,7 @@ namespace Source {
   private:
     std::unique_ptr<clang::TranslationUnit> clang_tu;
     std::unique_ptr<clang::Tokens> clang_tokens;
+    bool clang_tokens_ready=false;
     void highlight_token(clang::Token *token,
                         std::vector<Range> *source_ranges,
                         int token_kind);

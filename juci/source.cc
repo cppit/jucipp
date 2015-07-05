@@ -183,9 +183,11 @@ parse_thread_go(true), parse_thread_mapped(false), parse_thread_stop(false) {
     if(parse_thread_mapped) {
       INFO("Updating syntax");
       update_syntax(extract_tokens(0, get_source_buffer()->get_text().size()));
+      update_diagnostics();
+      update_types();
       parsing_in_progress->done("done");
       INFO("Syntax updated");
-      update_diagnostics();
+      clang_tokens_ready=true;
     }
     else {
       parse_thread_go=true;
@@ -214,6 +216,7 @@ parse_thread_go(true), parse_thread_mapped(false), parse_thread_stop(false) {
   
   get_source_buffer()->signal_changed().connect([this]() {
     parse_thread_mapped=false;
+    clang_tokens_ready=false;
     parse_thread_go=true;
   });
   
@@ -310,7 +313,6 @@ extract_tokens(int start_offset, int end_offset) {
   clang::SourceLocation end(clang_tu.get(), file_path, end_offset);
   clang::SourceRange range(&start, &end);
   clang_tokens=std::unique_ptr<clang::Tokens>(new clang::Tokens(clang_tu.get(), &range));
-  update_types();
   for (auto &token : *clang_tokens) {
     switch (token.kind()) {
     case 0: highlight_cursor(&token, &ranges); break;  // PunctuationToken
@@ -406,9 +408,11 @@ void Source::ClangView::update_types() {
         auto get_tooltip_buffer=[this, c]() {
           auto tooltip_buffer=Gtk::TextBuffer::create(get_buffer()->get_tag_table());
           tooltip_buffer->insert_at_cursor("Type: "+(*clang_tokens)[c].type);
-          auto brief_comment=clang_tokens->get_brief_comment(c);
-          if(brief_comment!="")
-            tooltip_buffer->insert_at_cursor("\n\n"+brief_comment);
+          if(clang_tokens_ready) {
+            auto brief_comment=clang_tokens->get_brief_comment(c);
+            if(brief_comment!="")
+              tooltip_buffer->insert_at_cursor("\n\n"+brief_comment);
+          }
           return tooltip_buffer;
         };
         
