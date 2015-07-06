@@ -9,6 +9,10 @@
 #include "selectiondialog.h"
 #include "singletons.h"
 
+namespace sigc {
+  SIGC_FUNCTORS_DEDUCE_RESULT_TYPE_WITH_DECLTYPE
+}
+
 bool Source::Config::legal_extension(std::string e) const {
   std::transform(e.begin(), e.end(),e.begin(), ::tolower);
   if (find(extensions.begin(), extensions.end(), e) != extensions.end()) {
@@ -422,6 +426,7 @@ void Source::ClangView::update_types() {
 }
 
 bool Source::ClangView::clangview_on_motion_notify_event(GdkEventMotion* event) {
+  on_mark_set_timeout_connection.disconnect();
   if(clang_updated) {
     Gdk::Rectangle rectangle(event->x, event->y, 1, 1);
     diagnostic_tooltips.init();
@@ -438,32 +443,36 @@ bool Source::ClangView::clangview_on_motion_notify_event(GdkEventMotion* event) 
 
 void Source::ClangView::clangview_on_mark_set(const Gtk::TextBuffer::iterator& iterator, const Glib::RefPtr<Gtk::TextBuffer::Mark>& mark) {
   if(mark->get_name()=="insert") {
-    if(clang_updated) {
-      Gdk::Rectangle rectangle;
-      get_iter_location(iterator, rectangle);
-      int location_window_x, location_window_y;
-      buffer_to_window_coords(Gtk::TextWindowType::TEXT_WINDOW_TEXT, rectangle.get_x(), rectangle.get_y(), location_window_x, location_window_y);
-      rectangle.set_x(location_window_x-2);
-      rectangle.set_y(location_window_y);
-      rectangle.set_width(4);
-      diagnostic_tooltips.init();
-      type_tooltips.show(rectangle);
-      diagnostic_tooltips.show(rectangle);
-    }
-    else {
-      type_tooltips.hide();
-      diagnostic_tooltips.hide();
-    }
+    on_mark_set_timeout_connection.disconnect();
+    on_mark_set_timeout_connection=Glib::signal_timeout().connect([this]() {
+      if(clang_updated) {
+        Gdk::Rectangle rectangle;
+        get_iter_location(get_buffer()->get_insert()->get_iter(), rectangle);
+        int location_window_x, location_window_y;
+        buffer_to_window_coords(Gtk::TextWindowType::TEXT_WINDOW_TEXT, rectangle.get_x(), rectangle.get_y(), location_window_x, location_window_y);
+        rectangle.set_x(location_window_x-2);
+        rectangle.set_y(location_window_y);
+        rectangle.set_width(4);
+        diagnostic_tooltips.init();
+        type_tooltips.show(rectangle);
+        diagnostic_tooltips.show(rectangle);
+      }
+      return false;
+    }, 500);
+    type_tooltips.hide();
+    diagnostic_tooltips.hide();
   }
 }
 
 bool Source::ClangView::clangview_on_focus_out_event(GdkEventFocus* event) {
+    on_mark_set_timeout_connection.disconnect();
     type_tooltips.hide();
     diagnostic_tooltips.hide();
     return false;
 }
 
 bool Source::ClangView::clangview_on_scroll_event(GdkEventScroll* event) {
+  on_mark_set_timeout_connection.disconnect();
   type_tooltips.hide();
   diagnostic_tooltips.hide();
   return false;

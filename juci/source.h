@@ -85,6 +85,7 @@ namespace Source {
   public:
     ClangView(const std::string& file_path, const std::string& project_path, Terminal::Controller& terminal);
     ~ClangView();
+  private:
     // inits the syntax highligthing on file open
     void init_syntax_highlighting(const std::map<std::string, std::string>
                                 &buffers,
@@ -101,13 +102,14 @@ namespace Source {
     Tooltips type_tooltips;
     bool clangview_on_motion_notify_event(GdkEventMotion* event);
     void clangview_on_mark_set(const Gtk::TextBuffer::iterator& iterator, const Glib::RefPtr<Gtk::TextBuffer::Mark>& mark);
+    sigc::connection on_mark_set_timeout_connection;
     bool clangview_on_focus_out_event(GdkEventFocus* event);
     bool clangview_on_scroll_event(GdkEventScroll* event);
     
     static clang::Index clang_index;
     std::map<std::string, std::string> get_buffer_map() const;
     std::mutex parsing_mutex;
-  private:
+
     std::unique_ptr<clang::TranslationUnit> clang_tu;
     std::unique_ptr<clang::Tokens> clang_tokens;
     bool clang_updated=false;
