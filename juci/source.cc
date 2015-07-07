@@ -6,7 +6,6 @@
 #include "logging.h"
 #include <algorithm>
 #include <regex>
-#include "selectiondialog.h"
 #include "singletons.h"
 
 namespace sigc {
@@ -147,7 +146,7 @@ bool Source::View::on_key_press(GdkEventKey* key) {
 clang::Index Source::ClangView::clang_index(0, 0);
 
 Source::ClangView::ClangView(const std::string& file_path, const std::string& project_path, Terminal::Controller& terminal):
-Source::View(file_path, project_path), terminal(terminal),
+Source::View(file_path, project_path), terminal(terminal), selection_dialog(*this),
 parse_thread_go(true), parse_thread_mapped(false), parse_thread_stop(false) {  
   int start_offset = get_source_buffer()->begin().get_offset();
   int end_offset = get_source_buffer()->end().get_offset();
@@ -443,6 +442,9 @@ bool Source::ClangView::clangview_on_motion_notify_event(GdkEventMotion* event) 
 
 void Source::ClangView::clangview_on_mark_set(const Gtk::TextBuffer::iterator& iterator, const Glib::RefPtr<Gtk::TextBuffer::Mark>& mark) {
   if(mark->get_name()=="insert") {
+    if(selection_dialog.shown) {
+      selection_dialog.hide();
+    }
     on_mark_set_timeout_connection.disconnect();
     on_mark_set_timeout_connection=Glib::signal_timeout().connect([this]() {
       if(clang_updated) {
@@ -472,6 +474,9 @@ bool Source::ClangView::clangview_on_focus_out_event(GdkEventFocus* event) {
 }
 
 bool Source::ClangView::clangview_on_scroll_event(GdkEventScroll* event) {
+  if(selection_dialog.shown)
+    selection_dialog.move();
+
   on_mark_set_timeout_connection.disconnect();
   type_tooltips.hide();
   diagnostic_tooltips.hide();
@@ -511,6 +516,11 @@ highlight_token(clang::Token *token,
 }
 
 bool Source::ClangView::on_key_release(GdkEventKey* key) {
+  if(selection_dialog.shown) {
+    if(selection_dialog.on_key_release(key))
+      return true;
+  }
+  
   INFO("Source::ClangView::on_key_release getting iters");
   //  Get function to fill popup with suggests item vector under is for testing
   Gtk::TextIter beg = get_source_buffer()->get_insert()->get_iter();
@@ -569,13 +579,8 @@ bool Source::ClangView::on_key_release(GdkEventKey* key) {
   if (rows.empty()) {
     rows["No suggestions found..."] = "";
   }
-  
-  SelectionDialog selection_dialog(*this);
-  selection_dialog.on_select=[this, &rows](Gtk::ListViewText& list_view_text){
-    std::string selected = rows.at(list_view_text.get_text(list_view_text.get_selected()[0]));
-    get_source_buffer()->insert_at_cursor(selected);
-  };
-  selection_dialog.show(rows);
+  selection_dialog.rows=std::move(rows);
+  selection_dialog.show();
   
   return true;
 }
@@ -583,6 +588,10 @@ bool Source::ClangView::on_key_release(GdkEventKey* key) {
 //Clang indentation
 //TODO: replace indentation methods with a better implementation or maybe use libclang
 bool Source::ClangView::on_key_press(GdkEventKey* key) {
+  if(selection_dialog.shown) {
+    if(selection_dialog.on_key_press(key))
+      return true;
+  }
   auto config=Singletons::Config::source();
   const std::regex bracket_regex(std::string("^(")+config->tab_char+"*).*\\{ *$");
   const std::regex no_bracket_statement_regex(std::string("^(")+config->tab_char+"*)(if|for|else if|catch|while) *\\(.*[^;}] *$");

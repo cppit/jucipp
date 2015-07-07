@@ -12,6 +12,7 @@
 #include "gtksourceviewmm.h"
 #include "terminal.h"
 #include "tooltips.h"
+#include "selectiondialog.h"
 
 namespace Source {
   class Config {
@@ -93,6 +94,7 @@ namespace Source {
                                 int end_offset,
                                 clang::Index *index);
     std::vector<Source::AutoCompleteData> get_autocomplete_suggestions(int line_number, int column);
+    SelectionDialog selection_dialog;
     int reparse(const std::map<std::string, std::string> &buffers);
     std::vector<Range> extract_tokens(int, int);
     void update_syntax(const std::vector<Range> &locations);
