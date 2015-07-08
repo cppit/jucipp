@@ -451,6 +451,7 @@ void Source::ClangView::clangview_on_mark_set(const Gtk::TextBuffer::iterator& i
     on_mark_set_timeout_connection.disconnect();
   
   if(mark->get_name()=="insert") {
+    autocomplete_cancel=true;
     if(selection_dialog.shown) {
       selection_dialog.hide();
     }
@@ -606,7 +607,6 @@ bool Source::ClangView::on_key_release(GdkEventKey* key) {
     std::thread autocomplete_thread([this, ac_data, line_nr, column_nr, buffer_map](){
       parsing_mutex.lock();
       *ac_data=move(get_autocomplete_suggestions(line_nr, column_nr, *buffer_map));
-      
       autocomplete_done();
       parsing_mutex.unlock();
     });
