@@ -10,7 +10,6 @@ public:
   void show();
   void hide();
   bool close(GdkEventFocus*);
-  void select(bool hide_window=true);
   void move();
   bool on_key_release(GdkEventKey* key);
   bool on_key_press(GdkEventKey* key);
@@ -18,11 +17,14 @@ public:
   std::map<std::string, std::string> rows;
 
   bool shown=false;
+private:
+  void resize();
+    void select(bool hide_window=true);
+  
   Gtk::Entry search_entry;
   Glib::RefPtr<Gtk::TextBuffer::Mark> start_mark;
   int start_offset;
-private:
-  void resize();
+  bool selected;
   
   Gtk::TextView& text_view;
   std::unique_ptr<Gtk::Window> window;

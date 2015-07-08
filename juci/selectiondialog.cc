@@ -58,6 +58,7 @@ void SelectionDialog::show() {
   
   window->show_all();
   shown=true;
+  selected=false;
 }
 
 void SelectionDialog::hide() {
@@ -66,6 +67,7 @@ void SelectionDialog::hide() {
 }
 
 void SelectionDialog::select(bool hide_window) {
+  selected=true;
   auto selected=list_view_text->get_selected();
   std::string select;
   if(selected.size()>0) {
@@ -111,17 +113,19 @@ bool SelectionDialog::on_key_release(GdkEventKey* key) {
 }
 
 bool SelectionDialog::on_key_press(GdkEventKey* key) {
-  if(key->keyval>=GDK_KEY_0 && key->keyval<=GDK_KEY_9)
+  if((key->keyval>=GDK_KEY_0 && key->keyval<=GDK_KEY_9) || 
+     (key->keyval>=GDK_KEY_A && key->keyval<=GDK_KEY_Z) ||
+     (key->keyval>=GDK_KEY_a && key->keyval<=GDK_KEY_z) ||
+     key->keyval==GDK_KEY_underscore || key->keyval==GDK_KEY_BackSpace) {
+    if(selected) {
+      text_view.get_buffer()->erase(start_mark->get_iter(), text_view.get_buffer()->get_insert()->get_iter());
+      selected=false;
+      if(key->keyval==GDK_KEY_BackSpace)
+        return true;
+    }
     return false;
-  if(key->keyval>=GDK_KEY_A && key->keyval<=GDK_KEY_Z)
-    return false;
-  if(key->keyval>=GDK_KEY_a && key->keyval<=GDK_KEY_z)
-    return false;
+  }
   if(key->keyval==GDK_KEY_Shift_L || key->keyval==GDK_KEY_Shift_R || key->keyval==GDK_KEY_Alt_L || key->keyval==GDK_KEY_Alt_R || key->keyval==GDK_KEY_Control_L || key->keyval==GDK_KEY_Control_R || key->keyval==GDK_KEY_Meta_L || key->keyval==GDK_KEY_Meta_R)
-    return false;
-  if(key->keyval==GDK_KEY_underscore)
-    return false;
-  if(key->keyval==GDK_KEY_BackSpace)
     return false;
   if(key->keyval==GDK_KEY_Down) {
     auto it=list_view_text->get_selection()->get_selected();
@@ -147,11 +151,7 @@ bool SelectionDialog::on_key_press(GdkEventKey* key) {
     select(false);
     return true;
   }
-  if(key->keyval==GDK_KEY_Return) {
-    select();
-    return true;
-  }
-  if(key->keyval==GDK_KEY_ISO_Left_Tab || key->keyval==GDK_KEY_Tab) {
+  if(key->keyval==GDK_KEY_Return || key->keyval==GDK_KEY_ISO_Left_Tab || key->keyval==GDK_KEY_Tab) {
     select();
     return true;
   }
