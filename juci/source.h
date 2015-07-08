@@ -20,7 +20,7 @@ namespace Source {
     bool legal_extension(std::string e) const ;
     unsigned tab_size;
     bool show_line_numbers, highlight_current_line;
-    std::string tab, background, background_tooltips, font;
+    std::string tab, background, background_selected, background_tooltips, font;
     char tab_char=' ';
     std::vector<std::string> extensions;
     std::unordered_map<std::string, std::string> tags, types;

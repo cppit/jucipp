@@ -1,4 +1,5 @@
 #include "selectiondialog.h"
+#include <regex>
 #include <iostream>
 using namespace std;
 
@@ -66,13 +67,28 @@ void SelectionDialog::hide() {
 
 void SelectionDialog::select(bool hide_window) {
   auto selected=list_view_text->get_selected();
+  std::string select;
   if(selected.size()>0) {
-    std::string select = rows.at(list_view_text->get_text(selected[0]));
+    select = rows.at(list_view_text->get_text(selected[0]));
     text_view.get_buffer()->erase(start_mark->get_iter(), text_view.get_buffer()->get_insert()->get_iter());
     text_view.get_buffer()->insert(start_mark->get_iter(), select);
   }
   if(hide_window) {
     hide();
+    char find_char=select.back();
+    if(find_char==')' || find_char=='>') {
+      if(find_char==')')
+        find_char='(';
+      else
+        find_char='<';
+      size_t pos=select.find(find_char);
+      if(pos!=std::string::npos) {
+        auto start_offset=start_mark->get_iter().get_offset()+pos+1;
+        auto end_offset=start_mark->get_iter().get_offset()+select.size()-1;
+        if(start_offset!=end_offset)
+          text_view.get_buffer()->select_range(text_view.get_buffer()->get_iter_at_offset(start_offset), text_view.get_buffer()->get_iter_at_offset(end_offset));
+      }
+    }
   }
 }
 

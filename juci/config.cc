@@ -25,16 +25,19 @@ void MainConfig::GenerateSource() {
     if (i.first == "background") {
 	     source_cfg->background = i.second.get_value<std::string>();
     }
-    if (i.first == "background_tooltips") {
+    else if (i.first == "background_selected") {
+       source_cfg->background_selected = i.second.get_value<std::string>();
+    }
+    else if (i.first == "background_tooltips") {
 	     source_cfg->background_tooltips = i.second.get_value<std::string>();
     }
-    if (i.first == "show_line_numbers") {
+    else if (i.first == "show_line_numbers") {
       source_cfg->show_line_numbers = i.second.get_value<std::string>() == "1" ? true : false;
     }
-    if (i.first == "highlight_current_line") {
+    else if (i.first == "highlight_current_line") {
       source_cfg->highlight_current_line = i.second.get_value<std::string>() == "1" ? true : false;
     }
-    if (i.first == "font") {
+    else if (i.first == "font") {
       source_cfg->font = i.second.get_value<std::string>();
     }
   }

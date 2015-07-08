@@ -38,7 +38,9 @@ file_path(file_path), project_path(project_path) {
   search_start = search_end = this->get_buffer()->end();
   
   override_font(Pango::FontDescription(Singletons::Config::source()->font));
+  
   override_background_color(Gdk::RGBA(Singletons::Config::source()->background));
+  override_background_color(Gdk::RGBA(Singletons::Config::source()->background_selected), Gtk::StateFlags::STATE_FLAG_SELECTED);
   for (auto &item : Singletons::Config::source()->tags) {
     get_source_buffer()->create_tag(item.first)->property_foreground() = item.second;
   }
@@ -441,6 +443,9 @@ bool Source::ClangView::clangview_on_motion_notify_event(GdkEventMotion* event) 
 }
 
 void Source::ClangView::clangview_on_mark_set(const Gtk::TextBuffer::iterator& iterator, const Glib::RefPtr<Gtk::TextBuffer::Mark>& mark) {
+  if(get_buffer()->get_has_selection() && mark->get_name()=="selection_bound")
+    on_mark_set_timeout_connection.disconnect();
+  
   if(mark->get_name()=="insert") {
     if(selection_dialog.shown) {
       selection_dialog.hide();
