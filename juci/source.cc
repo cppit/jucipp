@@ -186,13 +186,16 @@ parse_thread_go(true), parse_thread_mapped(false), parse_thread_stop(false) {
   parsing_in_progress=this->terminal.print_in_progress("Parsing "+file_path);
   parse_done.connect([this](){
     if(parse_thread_mapped) {
-      INFO("Updating syntax");
-      update_syntax(extract_tokens(0, get_source_buffer()->get_text().size()));
-      update_diagnostics();
-      update_types();
-      clang_updated=true;
+      if(parsing_mutex.try_lock()) {
+        INFO("Updating syntax");
+        update_syntax(extract_tokens(0, get_source_buffer()->get_text().size()));
+        update_diagnostics();
+        update_types();
+        clang_updated=true;
+        parsing_mutex.unlock();
+        INFO("Syntax updated");
+      }
       parsing_in_progress->done("done");
-      INFO("Syntax updated");
     }
     else {
       parse_thread_go=true;
@@ -219,7 +222,13 @@ parse_thread_go(true), parse_thread_mapped(false), parse_thread_stop(false) {
     }
   });
   
+  autocomplete_done.connect([this](){
+    if(autocomplete_done_function)
+      autocomplete_done_function();
+  });
+  
   get_source_buffer()->signal_changed().connect([this]() {
+    autocomplete_cancel=true;
     parse_thread_mapped=false;
     clang_updated=false;
     parse_thread_go=true;
@@ -269,13 +278,9 @@ reparse(const std::map<std::string, std::string> &buffer) {
 }
 
 std::vector<Source::AutoCompleteData> Source::ClangView::
-get_autocomplete_suggestions(int line_number, int column) {
+get_autocomplete_suggestions(int line_number, int column, std::map<std::string, std::string>& buffer_map) {
   INFO("Getting auto complete suggestions");
   std::vector<Source::AutoCompleteData> suggestions;
-  std::map<std::string, std::string> buffer_map;
-  buffer_map[file_path]=get_source_buffer()->get_text(get_source_buffer()->begin(), get_source_buffer()->get_insert()->get_iter());
-  buffer_map[file_path]+="\n";
-  parsing_mutex.lock();
   clang::CodeCompleteResults results(clang_tu.get(),
                                      file_path,
                                      buffer_map,
@@ -289,7 +294,6 @@ get_autocomplete_suggestions(int line_number, int column) {
     }
     suggestions.emplace_back(chunks);
   }
-  parsing_mutex.unlock();
   DEBUG("Number of suggestions");
   DEBUG_VAR(suggestions.size());
   return suggestions;
@@ -561,33 +565,62 @@ bool Source::ClangView::on_key_release(GdkEventKey* key) {
   } else {
     return false;
   }
-  INFO("Source::ClangView::on_key_release getting autocompletions");
-  std::vector<Source::AutoCompleteData> acdata=get_autocomplete_suggestions(beg.get_line()+1,
-                                                                            beg.get_line_offset()+2);
-  std::map<std::string, std::string> rows;
-  for (auto &data : acdata) {
-    std::stringstream ss;
-    std::string return_value;
-    for (auto &chunk : data.chunks) {
-      switch (chunk.kind) {
-      case clang::CompletionChunk_ResultType:
-        return_value = chunk.chunk;
-        break;
-      case clang::CompletionChunk_Informative: break;
-      default: ss << chunk.chunk; break;
+  if(!autocomplete_running) {
+    autocomplete_running=true;
+    autocomplete_cancel=false;
+    INFO("Source::ClangView::on_key_release getting autocompletions");
+    std::shared_ptr<std::vector<Source::AutoCompleteData> > ac_data=std::make_shared<std::vector<Source::AutoCompleteData> >();
+    autocomplete_done_function=[this, ac_data](){
+      if(!autocomplete_cancel) {
+        std::map<std::string, std::string> rows;
+        for (auto &data : *ac_data) {
+          std::stringstream ss;
+          std::string return_value;
+          for (auto &chunk : data.chunks) {
+            switch (chunk.kind) {
+            case clang::CompletionChunk_ResultType:
+              return_value = chunk.chunk;
+              break;
+            case clang::CompletionChunk_Informative: break;
+            default: ss << chunk.chunk; break;
+            }
+          }
+          if (ss.str().length() > 0) { // if length is 0 the result is empty
+            rows[ss.str() + " --> " + return_value] = ss.str();
+          }
+        }
+        if (rows.empty()) {
+          rows["No suggestions found..."] = "";
+        }
+        selection_dialog.rows=std::move(rows);
+        selection_dialog.show();
       }
-    }
-    if (ss.str().length() > 0) { // if length is 0 the result is empty
-      rows[ss.str() + " --> " + return_value] = ss.str();
-    }
+      autocomplete_running=false;
+    };
+    
+    std::shared_ptr<std::map<std::string, std::string> > buffer_map=std::make_shared<std::map<std::string, std::string> >();
+    (*buffer_map)[file_path]=get_buffer()->get_text(get_buffer()->begin(), get_buffer()->get_insert()->get_iter());
+    (*buffer_map)[file_path]+="\n";
+    auto line_nr=beg.get_line()+1;
+    auto column_nr=beg.get_line_offset()+2;
+    std::thread autocomplete_thread([this, ac_data, line_nr, column_nr, buffer_map](){
+      parsing_mutex.lock();
+      *ac_data=move(get_autocomplete_suggestions(line_nr, column_nr, *buffer_map));
+      
+      autocomplete_done();
+      parsing_mutex.unlock();
+    });
+    
+    autocomplete_thread.detach();
   }
-  if (rows.empty()) {
-    rows["No suggestions found..."] = "";
+  else {
+    std::map<std::string, std::string> rows;
+    rows["Autocomplete already running, try again."] = "";
+    selection_dialog.rows=std::move(rows);
+    selection_dialog.show();
   }
-  selection_dialog.rows=std::move(rows);
-  selection_dialog.show();
   
-  return true;
+  return false;
 }
 
 //Clang indentation

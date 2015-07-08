@@ -93,7 +93,7 @@ namespace Source {
                                 int start_offset,
                                 int end_offset,
                                 clang::Index *index);
-    std::vector<Source::AutoCompleteData> get_autocomplete_suggestions(int line_number, int column);
+    std::vector<Source::AutoCompleteData> get_autocomplete_suggestions(int line_number, int column, std::map<std::string, std::string>& buffer_map);
     SelectionDialog selection_dialog;
     int reparse(const std::map<std::string, std::string> &buffers);
     std::vector<Range> extract_tokens(int, int);
@@ -126,6 +126,10 @@ namespace Source {
     Terminal::Controller& terminal;
     std::shared_ptr<Terminal::InProgress> parsing_in_progress;
     
+    Glib::Dispatcher autocomplete_done;
+    std::function<void()> autocomplete_done_function;
+    bool autocomplete_running=false;
+    bool autocomplete_cancel=false;
     Glib::Dispatcher parse_done;
     Glib::Dispatcher parse_start;
     std::thread parse_thread;
