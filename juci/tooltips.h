@@ -10,7 +10,7 @@ public:
   ~Tooltip();
   
   void update();
-  void adjust();
+  void adjust(bool disregard_drawn=false);
   
   Gdk::Rectangle activation_rectangle;
   std::unique_ptr<Gtk::Window> window;
@@ -28,8 +28,8 @@ private:
 class Tooltips : public std::list<Tooltip> {
 public:
   void init() {drawn_tooltips_rectangle=Gdk::Rectangle();}
-  void show(const Gdk::Rectangle& rectangle);
-  void show();
+  void show(const Gdk::Rectangle& rectangle, bool disregard_drawn=false);
+  void show(bool disregard_drawn=false);
   void hide();
   
   static Gdk::Rectangle drawn_tooltips_rectangle;

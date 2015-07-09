@@ -16,8 +16,8 @@ Tooltip::~Tooltip() {
 void Tooltip::update() {
   auto iter=start_mark->get_iter();
   auto end_iter=end_mark->get_iter();
+  text_view.get_iter_location(iter, activation_rectangle);
   if(iter.get_offset()<end_iter.get_offset()) {
-    text_view.get_iter_location(iter, activation_rectangle);
     iter++;
     while(iter!=end_iter) {
       Gdk::Rectangle rectangle;
@@ -32,7 +32,7 @@ void Tooltip::update() {
   activation_rectangle.set_y(location_window_y);
 }
 
-void Tooltip::adjust() {
+void Tooltip::adjust(bool disregard_drawn) {
   if(!window) {
     //init window
     window=std::unique_ptr<Gtk::Window>(new Gtk::Window(Gtk::WindowType::WINDOW_POPUP));
@@ -63,13 +63,15 @@ void Tooltip::adjust() {
   rectangle.set_width(tooltip_width);
   rectangle.set_height(tooltip_height);
   
-  if(Tooltips::drawn_tooltips_rectangle.get_width()!=0) {
-    if(rectangle.intersects(Tooltips::drawn_tooltips_rectangle))
-      rectangle.set_y(Tooltips::drawn_tooltips_rectangle.get_y()-tooltip_height);
-    Tooltips::drawn_tooltips_rectangle.join(rectangle);
+  if(!disregard_drawn) {
+    if(Tooltips::drawn_tooltips_rectangle.get_width()!=0) {
+      if(rectangle.intersects(Tooltips::drawn_tooltips_rectangle))
+        rectangle.set_y(Tooltips::drawn_tooltips_rectangle.get_y()-tooltip_height);
+      Tooltips::drawn_tooltips_rectangle.join(rectangle);
+    }
+    else
+      Tooltips::drawn_tooltips_rectangle=rectangle;
   }
-  else
-    Tooltips::drawn_tooltips_rectangle=rectangle;
 
   window->move(rectangle.get_x(), rectangle.get_y());
 }
@@ -79,11 +81,11 @@ bool Tooltip::tooltip_on_motion_notify_event(GdkEventMotion* event) {
   return false;
 }
 
-void Tooltips::show(const Gdk::Rectangle& rectangle) {
+void Tooltips::show(const Gdk::Rectangle& rectangle, bool disregard_drawn) {
   for(auto& tooltip: *this) {
     tooltip.update();
     if(rectangle.intersects(tooltip.activation_rectangle)) {
-      tooltip.adjust();
+      tooltip.adjust(disregard_drawn);
       tooltip.window->show_all();
     }
     else if(tooltip.window)
@@ -91,10 +93,10 @@ void Tooltips::show(const Gdk::Rectangle& rectangle) {
   }
 }
 
-void Tooltips::show() {
+void Tooltips::show(bool disregard_drawn) {
   for(auto& tooltip: *this) {
     tooltip.update();
-    tooltip.adjust();
+    tooltip.adjust(disregard_drawn);
     tooltip.window->show_all();
   }
 }

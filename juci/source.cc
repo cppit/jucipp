@@ -287,12 +287,16 @@ get_autocomplete_suggestions(int line_number, int column, std::map<std::string, 
                                      line_number,
                                      column-1);
   for (int i = 0; i < results.size(); i++) {
-    const vector<clang::CompletionChunk> chunks_ = results.get(i).get_chunks();
-    std::vector<AutoCompleteChunk> chunks;
-    for (auto &chunk : chunks_) {
-      chunks.emplace_back(chunk);
+    auto result=results.get(i);
+    const vector<clang::CompletionChunk> chunks_ = result.get_chunks();
+    if(chunks_.size()>0) {
+      std::vector<AutoCompleteChunk> chunks;
+      for (auto &chunk : chunks_) {
+        chunks.emplace_back(chunk);
+      }
+      suggestions.emplace_back(chunks);
+      suggestions.back().brief_comments=result.get_brief_comments();
     }
-    suggestions.emplace_back(chunks);
   }
   DEBUG("Number of suggestions");
   DEBUG_VAR(suggestions.size());
@@ -418,7 +422,7 @@ void Source::ClangView::update_types() {
         auto get_tooltip_buffer=[this, c]() {
           auto tooltip_buffer=Gtk::TextBuffer::create(get_buffer()->get_tag_table());
           tooltip_buffer->insert_at_cursor("Type: "+(*clang_tokens)[c].type);
-          auto brief_comment=clang_tokens->get_brief_comment(c);
+          auto brief_comment=clang_tokens->get_brief_comments(c);
           if(brief_comment!="")
             tooltip_buffer->insert_at_cursor("\n\n"+brief_comment);
           return tooltip_buffer;
@@ -573,7 +577,7 @@ bool Source::ClangView::on_key_release(GdkEventKey* key) {
     std::shared_ptr<std::vector<Source::AutoCompleteData> > ac_data=std::make_shared<std::vector<Source::AutoCompleteData> >();
     autocomplete_done_function=[this, ac_data](){
       if(!autocomplete_cancel) {
-        std::map<std::string, std::string> rows;
+        std::map<std::string, std::pair<std::string, std::string> > rows;
         for (auto &data : *ac_data) {
           std::stringstream ss;
           std::string return_value;
@@ -587,11 +591,12 @@ bool Source::ClangView::on_key_release(GdkEventKey* key) {
             }
           }
           if (ss.str().length() > 0) { // if length is 0 the result is empty
-            rows[ss.str() + " --> " + return_value] = ss.str();
+            auto pair=std::pair<std::string, std::string>(ss.str(), data.brief_comments);
+            rows[ss.str() + " --> " + return_value] = pair;
           }
         }
         if (rows.empty()) {
-          rows["No suggestions found..."] = "";
+          rows["No suggestions found..."] = std::pair<std::string, std::string>();
         }
         selection_dialog.rows=std::move(rows);
         selection_dialog.show();
@@ -614,8 +619,8 @@ bool Source::ClangView::on_key_release(GdkEventKey* key) {
     autocomplete_thread.detach();
   }
   else {
-    std::map<std::string, std::string> rows;
-    rows["Autocomplete already running, try again."] = "";
+    std::map<std::string, std::pair<std::string, std::string> > rows;
+    rows["Autocomplete already running, try again."] = std::pair<std::string, std::string>("", "");
     selection_dialog.rows=std::move(rows);
     selection_dialog.show();
   }

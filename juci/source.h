@@ -56,6 +56,7 @@ namespace Source {
     explicit AutoCompleteData(const std::vector<AutoCompleteChunk> &chunks) :
       chunks(chunks) { }
     std::vector<AutoCompleteChunk> chunks;
+    std::string brief_comments;
   };
 
   class View : public Gsv::View {

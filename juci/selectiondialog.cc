@@ -1,7 +1,5 @@
 #include "selectiondialog.h"
 #include <regex>
-#include <iostream>
-using namespace std;
 
 SelectionDialog::SelectionDialog(Gtk::TextView& text_view): text_view(text_view) {
   
@@ -32,6 +30,9 @@ void SelectionDialog::show() {
     if(shown) {
       select();
     }
+  });
+  list_view_text->signal_cursor_changed().connect([this](){
+    cursor_changed();
   });
   list_view_text->signal_realize().connect([this](){
     resize();
@@ -69,24 +70,26 @@ void SelectionDialog::hide() {
 void SelectionDialog::select(bool hide_window) {
   selected=true;
   auto selected=list_view_text->get_selected();
-  std::string select;
+  std::pair<std::string, std::string> select;
   if(selected.size()>0) {
     select = rows.at(list_view_text->get_text(selected[0]));
     text_view.get_buffer()->erase(start_mark->get_iter(), text_view.get_buffer()->get_insert()->get_iter());
-    text_view.get_buffer()->insert(start_mark->get_iter(), select);
+    text_view.get_buffer()->insert(start_mark->get_iter(), select.first);
   }
   if(hide_window) {
+    if(tooltips)
+      tooltips->hide();
     hide();
-    char find_char=select.back();
+    char find_char=select.first.back();
     if(find_char==')' || find_char=='>') {
       if(find_char==')')
         find_char='(';
       else
         find_char='<';
-      size_t pos=select.find(find_char);
+      size_t pos=select.first.find(find_char);
       if(pos!=std::string::npos) {
         auto start_offset=start_mark->get_iter().get_offset()+pos+1;
-        auto end_offset=start_mark->get_iter().get_offset()+select.size()-1;
+        auto end_offset=start_mark->get_iter().get_offset()+select.first.size()-1;
         if(start_offset!=end_offset)
           text_view.get_buffer()->select_range(text_view.get_buffer()->get_iter_at_offset(start_offset), text_view.get_buffer()->get_iter_at_offset(end_offset));
       }
@@ -137,6 +140,7 @@ bool SelectionDialog::on_key_press(GdkEventKey* key) {
       }
     }
     select(false);
+    cursor_changed();
     return true;
   }
   if(key->keyval==GDK_KEY_Up) {
@@ -149,6 +153,7 @@ bool SelectionDialog::on_key_press(GdkEventKey* key) {
       }
     }
     select(false);
+    cursor_changed();
     return true;
   }
   if(key->keyval==GDK_KEY_Return || key->keyval==GDK_KEY_ISO_Left_Tab || key->keyval==GDK_KEY_Tab) {
@@ -157,6 +162,27 @@ bool SelectionDialog::on_key_press(GdkEventKey* key) {
   }
   hide();
   return false;
+}
+
+void SelectionDialog::cursor_changed() {
+  if(tooltips)
+    tooltips->hide();
+  auto selected=list_view_text->get_selected();
+  if(selected.size()>0) {
+    auto select = rows.at(list_view_text->get_text(selected[0]));
+    if(select.second.size()>0) {
+      tooltips=std::unique_ptr<Tooltips>(new Tooltips());
+      auto tooltip_text=select.second;
+      auto get_tooltip_buffer=[this, tooltip_text]() {        
+        auto tooltip_buffer=Gtk::TextBuffer::create(text_view.get_buffer()->get_tag_table());
+        //TODO: Insert newlines to tooltip_text (use 80 chars, then newline?)
+        tooltip_buffer->insert_at_cursor(tooltip_text);
+        return tooltip_buffer;
+      };
+      tooltips->emplace_back(get_tooltip_buffer, text_view, text_view.get_buffer()->create_mark(start_mark->get_iter()), text_view.get_buffer()->create_mark(text_view.get_buffer()->get_insert()->get_iter()));
+      tooltips->show(true);
+    }
+  }
 }
 
 void SelectionDialog::move() {
