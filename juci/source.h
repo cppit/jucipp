@@ -96,16 +96,16 @@ namespace Source {
                                 clang::Index *index);
     std::vector<Source::AutoCompleteData> get_autocomplete_suggestions(int line_number, int column, std::map<std::string, std::string>& buffer_map);
     SelectionDialog selection_dialog;
+    
     int reparse(const std::map<std::string, std::string> &buffers);
-    std::vector<Range> extract_tokens(int, int);
-    void update_syntax(const std::vector<Range> &locations);
+    void update_syntax();
     void update_diagnostics();
     void update_types();
     Tooltips diagnostic_tooltips;
     Tooltips type_tooltips;
     bool clangview_on_motion_notify_event(GdkEventMotion* event);
     void clangview_on_mark_set(const Gtk::TextBuffer::iterator& iterator, const Glib::RefPtr<Gtk::TextBuffer::Mark>& mark);
-    sigc::connection on_mark_set_timeout_connection;
+    sigc::connection delayed_tooltips_connection;
     bool clangview_on_focus_out_event(GdkEventFocus* event);
     bool clangview_on_scroll_event(GdkEventScroll* event);
     
@@ -115,7 +115,7 @@ namespace Source {
 
     std::unique_ptr<clang::TranslationUnit> clang_tu;
     std::unique_ptr<clang::Tokens> clang_tokens;
-    bool clang_updated=false;
+    bool clang_readable=false;
     void highlight_token(clang::Token *token,
                         std::vector<Range> *source_ranges,
                         int token_kind);
@@ -125,12 +125,14 @@ namespace Source {
     bool on_key_press(GdkEventKey* key);
     bool on_key_release(GdkEventKey* key);
     Terminal::Controller& terminal;
-    std::shared_ptr<Terminal::InProgress> parsing_in_progress;
     
     Glib::Dispatcher autocomplete_done;
-    std::function<void()> autocomplete_done_function;
+    sigc::connection autocomplete_done_connection;
+    
+    sigc::connection delayed_reparse_connection;
+    std::shared_ptr<Terminal::InProgress> parsing_in_progress;
     bool autocomplete_running=false;
-    bool autocomplete_cancel=false;
+    bool cancel_show_autocomplete=false;
     Glib::Dispatcher parse_done;
     Glib::Dispatcher parse_start;
     std::thread parse_thread;

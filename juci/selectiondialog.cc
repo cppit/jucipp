@@ -11,7 +11,7 @@ void SelectionDialog::show() {
   
   window=std::unique_ptr<Gtk::Window>(new Gtk::Window(Gtk::WindowType::WINDOW_POPUP));
   scrolled_window=std::unique_ptr<Gtk::ScrolledWindow>(new Gtk::ScrolledWindow());
-  list_view_text=std::unique_ptr<Gtk::ListViewText>(new Gtk::ListViewText(1, false, Gtk::SelectionMode::SELECTION_SINGLE));
+  list_view_text=std::unique_ptr<Gtk::ListViewText>(new Gtk::ListViewText(1, false, Gtk::SelectionMode::SELECTION_BROWSE));
   
   window->set_default_size(0, 0);
   window->property_decorated()=false;
@@ -22,7 +22,7 @@ void SelectionDialog::show() {
   list_view_text->set_hscroll_policy(Gtk::ScrollablePolicy::SCROLL_NATURAL);
   list_view_text->set_activate_on_single_click(true);
   list_view_text->set_search_entry(search_entry);
-  list_view_text->set_hover_selection(true);
+  list_view_text->set_hover_selection(false);
   list_view_text->set_rules_hint(true);
   //list_view_text->set_fixed_height_mode(true); //TODO: This is buggy on OS X, remember to post an issue on GTK+ 3
 
@@ -108,7 +108,6 @@ bool SelectionDialog::on_key_release(GdkEventKey* key) {
     auto text=text_view.get_buffer()->get_text(start_mark->get_iter(), text_view.get_buffer()->get_insert()->get_iter());
     if(text.size()>0) {
       search_entry.set_text(text);
-      list_view_text->set_search_entry(search_entry);
     }
   }
   
@@ -173,7 +172,7 @@ void SelectionDialog::cursor_changed() {
     if(select.second.size()>0) {
       tooltips=std::unique_ptr<Tooltips>(new Tooltips());
       auto tooltip_text=select.second;
-      auto get_tooltip_buffer=[this, tooltip_text]() {        
+      auto get_tooltip_buffer=[this, tooltip_text]() {
         auto tooltip_buffer=Gtk::TextBuffer::create(text_view.get_buffer()->get_tag_table());
         //TODO: Insert newlines to tooltip_text (use 80 chars, then newline?)
         tooltip_buffer->insert_at_cursor(tooltip_text);

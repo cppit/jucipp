@@ -170,7 +170,7 @@ parse_thread_go(true), parse_thread_mapped(false), parse_thread_stop(false) {
                            start_offset,
                            end_offset,
                            &ClangView::clang_index);
-  update_syntax(extract_tokens(0, get_source_buffer()->get_text().size())); //TODO: replace get_source_buffer()->get_text().size()
+  update_syntax();
   
   //GTK-calls must happen in main thread, so the parse_thread
   //sends signals to the main thread that it is to call the following functions:
@@ -188,10 +188,10 @@ parse_thread_go(true), parse_thread_mapped(false), parse_thread_stop(false) {
     if(parse_thread_mapped) {
       if(parsing_mutex.try_lock()) {
         INFO("Updating syntax");
-        update_syntax(extract_tokens(0, get_source_buffer()->get_text().size()));
+        update_syntax();
         update_diagnostics();
         update_types();
-        clang_updated=true;
+        clang_readable=true;
         parsing_mutex.unlock();
         INFO("Syntax updated");
       }
@@ -221,17 +221,20 @@ parse_thread_go(true), parse_thread_mapped(false), parse_thread_stop(false) {
       }
     }
   });
-  
-  autocomplete_done.connect([this](){
-    if(autocomplete_done_function)
-      autocomplete_done_function();
-  });
-  
+    
   get_source_buffer()->signal_changed().connect([this]() {
-    autocomplete_cancel=true;
+    cancel_show_autocomplete=true;
     parse_thread_mapped=false;
-    clang_updated=false;
-    parse_thread_go=true;
+    delayed_reparse_connection.disconnect();
+    if(!selection_dialog.shown) {
+      delayed_reparse_connection=Glib::signal_timeout().connect([this]() {
+        clang_readable=false;
+        parse_thread_go=true;
+        return false;
+      }, 1000);
+    }
+    type_tooltips.hide();
+    diagnostic_tooltips.hide();
   });
   
   signal_key_press_event().connect(sigc::mem_fun(*this, &Source::ClangView::on_key_press), false);
@@ -263,6 +266,10 @@ init_syntax_highlighting(const std::map<std::string, std::string>
                                                                            file_path,
                                                                            arguments,
                                                                            buffers));
+  clang::SourceLocation start(clang_tu.get(), file_path, 0);
+  clang::SourceLocation end(clang_tu.get(), file_path, buffers.find(file_path)->second.size()-1);
+  clang::SourceRange range(&start, &end);
+  clang_tokens=std::unique_ptr<clang::Tokens>(new clang::Tokens(clang_tu.get(), &range));
 }
 
 std::map<std::string, std::string> Source::ClangView::
@@ -274,7 +281,12 @@ get_buffer_map() const {
 
 int Source::ClangView::
 reparse(const std::map<std::string, std::string> &buffer) {
-  return clang_tu->ReparseTranslationUnit(file_path, buffer);
+  int status = clang_tu->ReparseTranslationUnit(file_path, buffer);
+  clang::SourceLocation start(clang_tu.get(), file_path, 0);
+  clang::SourceLocation end(clang_tu.get(), file_path, parse_thread_buffer_map.find(file_path)->second.size()-1);
+  clang::SourceRange range(&start, &end);
+  clang_tokens=std::unique_ptr<clang::Tokens>(new clang::Tokens(clang_tu.get(), &range));
+  return status;
 }
 
 std::vector<Source::AutoCompleteData> Source::ClangView::
@@ -320,13 +332,8 @@ get_compilation_commands() {
   return arguments;
 }
 
-std::vector<Source::Range> Source::ClangView::
-extract_tokens(int start_offset, int end_offset) {
+void Source::ClangView::update_syntax() {
   std::vector<Source::Range> ranges;
-  clang::SourceLocation start(clang_tu.get(), file_path, start_offset);
-  clang::SourceLocation end(clang_tu.get(), file_path, end_offset);
-  clang::SourceRange range(&start, &end);
-  clang_tokens=std::unique_ptr<clang::Tokens>(new clang::Tokens(clang_tu.get(), &range));
   for (auto &token : *clang_tokens) {
     switch (token.kind()) {
     case 0: highlight_cursor(&token, &ranges); break;  // PunctuationToken
@@ -336,10 +343,6 @@ extract_tokens(int start_offset, int end_offset) {
     case 4: highlight_token(&token, &ranges, 705); break;  // CommentToken
     }
   }
-  return ranges;
-}
-
-void Source::ClangView::update_syntax(const std::vector<Source::Range> &ranges) {
   if (ranges.empty() || ranges.size() == 0) {
     return;
   }
@@ -424,7 +427,7 @@ void Source::ClangView::update_types() {
           tooltip_buffer->insert_at_cursor("Type: "+(*clang_tokens)[c].type);
           auto brief_comment=clang_tokens->get_brief_comments(c);
           if(brief_comment!="")
-            tooltip_buffer->insert_at_cursor("\n\n"+brief_comment);
+            tooltip_buffer->insert_at_cursor("\n\n"+brief_comment+".");
           return tooltip_buffer;
         };
         
@@ -435,8 +438,8 @@ void Source::ClangView::update_types() {
 }
 
 bool Source::ClangView::clangview_on_motion_notify_event(GdkEventMotion* event) {
-  on_mark_set_timeout_connection.disconnect();
-  if(clang_updated) {
+  delayed_tooltips_connection.disconnect();
+  if(clang_readable) {
     Gdk::Rectangle rectangle(event->x, event->y, 1, 1);
     diagnostic_tooltips.init();
     type_tooltips.show(rectangle);
@@ -452,16 +455,16 @@ bool Source::ClangView::clangview_on_motion_notify_event(GdkEventMotion* event) 
 
 void Source::ClangView::clangview_on_mark_set(const Gtk::TextBuffer::iterator& iterator, const Glib::RefPtr<Gtk::TextBuffer::Mark>& mark) {
   if(get_buffer()->get_has_selection() && mark->get_name()=="selection_bound")
-    on_mark_set_timeout_connection.disconnect();
+    delayed_tooltips_connection.disconnect();
   
   if(mark->get_name()=="insert") {
-    autocomplete_cancel=true;
+    cancel_show_autocomplete=true;
     if(selection_dialog.shown) {
       selection_dialog.hide();
     }
-    on_mark_set_timeout_connection.disconnect();
-    on_mark_set_timeout_connection=Glib::signal_timeout().connect([this]() {
-      if(clang_updated) {
+    delayed_tooltips_connection.disconnect();
+    delayed_tooltips_connection=Glib::signal_timeout().connect([this]() {
+      if(clang_readable) {
         Gdk::Rectangle rectangle;
         get_iter_location(get_buffer()->get_insert()->get_iter(), rectangle);
         int location_window_x, location_window_y;
@@ -481,7 +484,7 @@ void Source::ClangView::clangview_on_mark_set(const Gtk::TextBuffer::iterator& i
 }
 
 bool Source::ClangView::clangview_on_focus_out_event(GdkEventFocus* event) {
-    on_mark_set_timeout_connection.disconnect();
+    delayed_tooltips_connection.disconnect();
     type_tooltips.hide();
     diagnostic_tooltips.hide();
     return false;
@@ -491,7 +494,7 @@ bool Source::ClangView::clangview_on_scroll_event(GdkEventScroll* event) {
   if(selection_dialog.shown)
     selection_dialog.move();
 
-  on_mark_set_timeout_connection.disconnect();
+  delayed_tooltips_connection.disconnect();
   type_tooltips.hide();
   diagnostic_tooltips.hide();
   return false;
@@ -570,13 +573,15 @@ bool Source::ClangView::on_key_release(GdkEventKey* key) {
   } else {
     return false;
   }
+  delayed_reparse_connection.disconnect();
   if(!autocomplete_running) {
     autocomplete_running=true;
-    autocomplete_cancel=false;
+    cancel_show_autocomplete=false;
     INFO("Source::ClangView::on_key_release getting autocompletions");
     std::shared_ptr<std::vector<Source::AutoCompleteData> > ac_data=std::make_shared<std::vector<Source::AutoCompleteData> >();
-    autocomplete_done_function=[this, ac_data](){
-      if(!autocomplete_cancel) {
+    autocomplete_done_connection.disconnect();
+    autocomplete_done_connection=autocomplete_done.connect([this, ac_data](){
+      if(!cancel_show_autocomplete) {
         std::map<std::string, std::pair<std::string, std::string> > rows;
         for (auto &data : *ac_data) {
           std::stringstream ss;
@@ -602,7 +607,7 @@ bool Source::ClangView::on_key_release(GdkEventKey* key) {
         selection_dialog.show();
       }
       autocomplete_running=false;
-    };
+    });
     
     std::shared_ptr<std::map<std::string, std::string> > buffer_map=std::make_shared<std::map<std::string, std::string> >();
     (*buffer_map)[file_path]=get_buffer()->get_text(get_buffer()->begin(), get_buffer()->get_insert()->get_iter());
