@@ -1,9 +1,6 @@
 #include "selectiondialog.h"
-#include <regex>
 
-SelectionDialog::SelectionDialog(Gtk::TextView& text_view): text_view(text_view) {
-  
-}
+SelectionDialog::SelectionDialog(Gtk::TextView& text_view): text_view(text_view) {}
 
 void SelectionDialog::show() {
   if(rows.size()==0)

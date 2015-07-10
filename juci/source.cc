@@ -300,15 +300,8 @@ get_autocomplete_suggestions(int line_number, int column, std::map<std::string, 
                                      column-1);
   for (int i = 0; i < results.size(); i++) {
     auto result=results.get(i);
-    const vector<clang::CompletionChunk> chunks_ = result.get_chunks();
-    if(chunks_.size()>0) {
-      std::vector<AutoCompleteChunk> chunks;
-      for (auto &chunk : chunks_) {
-        chunks.emplace_back(chunk);
-      }
-      suggestions.emplace_back(chunks);
-      suggestions.back().brief_comments=result.get_brief_comments();
-    }
+    suggestions.emplace_back(result.get_chunks());
+    suggestions.back().brief_comments=result.get_brief_comments();
   }
   DEBUG("Number of suggestions");
   DEBUG_VAR(suggestions.size());

@@ -43,19 +43,11 @@ namespace Source {
     int kind;
   };
 
-  class AutoCompleteChunk {
-  public:
-    explicit AutoCompleteChunk(const clang::CompletionChunk &clang_chunk) :
-      chunk(clang_chunk.chunk()), kind(clang_chunk.kind()) { }
-    std::string chunk;
-    enum clang::CompletionChunkKind kind;
-  };
-
   class AutoCompleteData {
   public:
-    explicit AutoCompleteData(const std::vector<AutoCompleteChunk> &chunks) :
+    explicit AutoCompleteData(const std::vector<clang::CompletionChunk> &chunks) :
       chunks(chunks) { }
-    std::vector<AutoCompleteChunk> chunks;
+    std::vector<clang::CompletionChunk> chunks;
     std::string brief_comments;
   };
 
