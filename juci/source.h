@@ -60,18 +60,16 @@ namespace Source {
     std::string project_path;
     Gtk::TextIter search_start, search_end;
   protected:
-    bool on_key_press(GdkEventKey* key);
+    bool on_key_press_event(GdkEventKey* key);
   };  // class View
   
   class GenericView : public View {
   public:
     GenericView(const std::string& file_path, const std::string& project_path):
-    View(file_path, project_path) {
-      signal_key_press_event().connect(sigc::mem_fun(*this, &Source::GenericView::on_key_press), false);
-    }
-  private:
-    bool on_key_press(GdkEventKey* key) {
-      return Source::View::on_key_press(key);
+    View(file_path, project_path) {}
+  protected:
+    bool on_key_press_event(GdkEventKey* key) {
+      return Source::View::on_key_press_event(key);
     }
   };
   
@@ -79,6 +77,12 @@ namespace Source {
   public:
     ClangView(const std::string& file_path, const std::string& project_path, Terminal::Controller& terminal);
     ~ClangView();
+  protected:
+    std::unique_ptr<clang::TranslationUnit> clang_tu;
+    std::map<std::string, std::string> get_buffer_map() const;
+    std::mutex parsing_mutex;
+    sigc::connection delayed_reparse_connection;
+    bool on_key_press_event(GdkEventKey* key);
   private:
     // inits the syntax highligthing on file open
     void init_syntax_highlighting(const std::map<std::string, std::string>
@@ -86,9 +90,6 @@ namespace Source {
                                 int start_offset,
                                 int end_offset,
                                 clang::Index *index);
-    std::vector<Source::AutoCompleteData> get_autocomplete_suggestions(int line_number, int column, std::map<std::string, std::string>& buffer_map);
-    SelectionDialog selection_dialog;
-    
     int reparse(const std::map<std::string, std::string> &buffers);
     void update_syntax();
     void update_diagnostics();
@@ -100,12 +101,7 @@ namespace Source {
     sigc::connection delayed_tooltips_connection;
     bool clangview_on_focus_out_event(GdkEventFocus* event);
     bool clangview_on_scroll_event(GdkEventScroll* event);
-    
     static clang::Index clang_index;
-    std::map<std::string, std::string> get_buffer_map() const;
-    std::mutex parsing_mutex;
-
-    std::unique_ptr<clang::TranslationUnit> clang_tu;
     std::unique_ptr<clang::Tokens> clang_tokens;
     bool clang_readable=false;
     void highlight_token(clang::Token *token,
@@ -114,17 +110,9 @@ namespace Source {
     void highlight_cursor(clang::Token *token,
                         std::vector<Range> *source_ranges);
     std::vector<std::string> get_compilation_commands();
-    bool on_key_press(GdkEventKey* key);
-    bool on_key_release(GdkEventKey* key);
     Terminal::Controller& terminal;
-    
-    Glib::Dispatcher autocomplete_done;
-    sigc::connection autocomplete_done_connection;
-    
-    sigc::connection delayed_reparse_connection;
+        
     std::shared_ptr<Terminal::InProgress> parsing_in_progress;
-    bool autocomplete_running=false;
-    bool cancel_show_autocomplete=false;
     Glib::Dispatcher parse_done;
     Glib::Dispatcher parse_start;
     std::thread parse_thread;
@@ -133,6 +121,22 @@ namespace Source {
     std::atomic<bool> parse_thread_go;
     std::atomic<bool> parse_thread_mapped;
     std::atomic<bool> parse_thread_stop;
+  };
+  
+  class ClangViewAutocomplete : public ClangView {
+  public:
+    ClangViewAutocomplete(const std::string& file_path, const std::string& project_path, Terminal::Controller& terminal);
+  protected:
+    bool on_key_press_event(GdkEventKey* key);
+  private:
+    void start_autocomplete();
+    SelectionDialog selection_dialog;
+    std::vector<Source::AutoCompleteData> get_autocomplete_suggestions(int line_number, int column, std::map<std::string, std::string>& buffer_map);
+    Glib::Dispatcher autocomplete_done;
+    sigc::connection autocomplete_done_connection;
+    bool autocomplete_running=false;
+    bool cancel_show_autocomplete=false;
+    char last_keyval=0;
   };
 
   class Controller {

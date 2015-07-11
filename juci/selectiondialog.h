@@ -16,23 +16,23 @@ public:
   bool on_key_press(GdkEventKey* key);
   
   std::map<std::string, std::pair<std::string, std::string> > rows;
-
   bool shown=false;
+  Glib::RefPtr<Gtk::TextBuffer::Mark> start_mark;
 private:
   void resize();
   void select(bool hide_window=true);
   void cursor_changed();
   
   Gtk::Entry search_entry;
-  Glib::RefPtr<Gtk::TextBuffer::Mark> start_mark;
   int start_offset;
-  bool selected;
+  bool row_in_entry;
   
   Gtk::TextView& text_view;
   std::unique_ptr<Gtk::Window> window;
   std::unique_ptr<Gtk::ScrolledWindow> scrolled_window;
   std::unique_ptr<Gtk::ListViewText> list_view_text;
   std::unique_ptr<Tooltips> tooltips;
+  int last_selected;
 };
 
 #endif  // JUCI_SELECTIONDIALOG_H_

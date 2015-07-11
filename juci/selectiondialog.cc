@@ -18,26 +18,22 @@ void SelectionDialog::show() {
   list_view_text->set_headers_visible(false);
   list_view_text->set_hscroll_policy(Gtk::ScrollablePolicy::SCROLL_NATURAL);
   list_view_text->set_activate_on_single_click(true);
-  list_view_text->set_search_entry(search_entry);
   list_view_text->set_hover_selection(false);
   list_view_text->set_rules_hint(true);
   //list_view_text->set_fixed_height_mode(true); //TODO: This is buggy on OS X, remember to post an issue on GTK+ 3
+
+  last_selected=-1;
 
   list_view_text->signal_row_activated().connect([this](const Gtk::TreeModel::Path& path, Gtk::TreeViewColumn*) {
     if(shown) {
       select();
     }
   });
-  list_view_text->signal_cursor_changed().connect([this](){
-    cursor_changed();
-  });
+  list_view_text->signal_cursor_changed().connect(sigc::mem_fun(*this, &SelectionDialog::cursor_changed), true);
   list_view_text->signal_realize().connect([this](){
     resize();
   });
   
-  if(start_mark)
-    text_view.get_buffer()->delete_mark(start_mark);
-  start_mark=text_view.get_buffer()->create_mark(text_view.get_buffer()->get_insert()->get_iter());
   start_offset=start_mark->get_iter().get_offset();
   list_view_text->clear_items();
   for (auto &i : rows) {
@@ -56,16 +52,23 @@ void SelectionDialog::show() {
   
   window->show_all();
   shown=true;
-  selected=false;
+  row_in_entry=false;
+  auto text=text_view.get_buffer()->get_text(start_mark->get_iter(), text_view.get_buffer()->get_insert()->get_iter());
+  if(text.size()>0) {
+    search_entry.set_text(text);
+    list_view_text->set_search_entry(search_entry);
+  }
 }
 
 void SelectionDialog::hide() {
-  window->hide();
+  window->hide();    
   shown=false;
+  if(tooltips)
+    tooltips->hide();
 }
 
 void SelectionDialog::select(bool hide_window) {
-  selected=true;
+  row_in_entry=true;
   auto selected=list_view_text->get_selected();
   std::pair<std::string, std::string> select;
   if(selected.size()>0) {
@@ -74,8 +77,6 @@ void SelectionDialog::select(bool hide_window) {
     text_view.get_buffer()->insert(start_mark->get_iter(), select.first);
   }
   if(hide_window) {
-    if(tooltips)
-      tooltips->hide();
     hide();
     char find_char=select.first.back();
     if(find_char==')' || find_char=='>') {
@@ -105,9 +106,10 @@ bool SelectionDialog::on_key_release(GdkEventKey* key) {
     auto text=text_view.get_buffer()->get_text(start_mark->get_iter(), text_view.get_buffer()->get_insert()->get_iter());
     if(text.size()>0) {
       search_entry.set_text(text);
+      list_view_text->set_search_entry(search_entry);
     }
+    cursor_changed();
   }
-  
   return false;
 }
 
@@ -116,11 +118,12 @@ bool SelectionDialog::on_key_press(GdkEventKey* key) {
      (key->keyval>=GDK_KEY_A && key->keyval<=GDK_KEY_Z) ||
      (key->keyval>=GDK_KEY_a && key->keyval<=GDK_KEY_z) ||
      key->keyval==GDK_KEY_underscore || key->keyval==GDK_KEY_BackSpace) {
-    if(selected) {
+    if(row_in_entry) {
       text_view.get_buffer()->erase(start_mark->get_iter(), text_view.get_buffer()->get_insert()->get_iter());
-      selected=false;
-      if(key->keyval==GDK_KEY_BackSpace)
+      row_in_entry=false;
+      if(key->keyval==GDK_KEY_BackSpace) {
         return true;
+      }
     }
     return false;
   }
@@ -161,24 +164,32 @@ bool SelectionDialog::on_key_press(GdkEventKey* key) {
 }
 
 void SelectionDialog::cursor_changed() {
-  if(tooltips)
-    tooltips->hide();
   auto selected=list_view_text->get_selected();
   if(selected.size()>0) {
-    auto select = rows.at(list_view_text->get_text(selected[0]));
-    if(select.second.size()>0) {
-      tooltips=std::unique_ptr<Tooltips>(new Tooltips());
-      auto tooltip_text=select.second;
-      auto get_tooltip_buffer=[this, tooltip_text]() {
-        auto tooltip_buffer=Gtk::TextBuffer::create(text_view.get_buffer()->get_tag_table());
-        //TODO: Insert newlines to tooltip_text (use 80 chars, then newline?)
-        tooltip_buffer->insert_at_cursor(tooltip_text);
-        return tooltip_buffer;
-      };
-      tooltips->emplace_back(get_tooltip_buffer, text_view, text_view.get_buffer()->create_mark(start_mark->get_iter()), text_view.get_buffer()->create_mark(text_view.get_buffer()->get_insert()->get_iter()));
-      tooltips->show(true);
+    if(selected[0]!=last_selected || last_selected==-1) {
+      if(tooltips)
+        tooltips->hide();
+      auto row = rows.at(list_view_text->get_text(selected[0]));
+      if(row.second.size()>0) {
+        tooltips=std::unique_ptr<Tooltips>(new Tooltips());
+        auto tooltip_text=row.second;
+        auto get_tooltip_buffer=[this, tooltip_text]() {
+          auto tooltip_buffer=Gtk::TextBuffer::create(text_view.get_buffer()->get_tag_table());
+          //TODO: Insert newlines to tooltip_text (use 80 chars, then newline?)
+          tooltip_buffer->insert_at_cursor(tooltip_text);
+          return tooltip_buffer;
+        };
+        tooltips->emplace_back(get_tooltip_buffer, text_view, text_view.get_buffer()->create_mark(start_mark->get_iter()), text_view.get_buffer()->create_mark(text_view.get_buffer()->get_insert()->get_iter()));
+        tooltips->show(true);
+      }
     }
   }
+  else if(tooltips)
+    tooltips->hide();
+  if(selected.size()>0)
+    last_selected=selected[0];
+  else
+    last_selected=-1;
 }
 
 void SelectionDialog::move() {
