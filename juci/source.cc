@@ -587,6 +587,8 @@ bool Source::ClangView::on_key_press_event(GdkEventKey* key) {
 Source::ClangViewAutocomplete::ClangViewAutocomplete(const std::string& file_path, const std::string& project_path, Terminal::Controller& terminal):
 Source::ClangView(file_path, project_path, terminal), selection_dialog(*this) {  
   get_buffer()->signal_changed().connect([this](){
+    if(autocomplete_running || selection_dialog.shown)
+      delayed_reparse_connection.disconnect();
     if(!selection_dialog.shown) {
       auto insert=get_buffer()->get_insert();
       auto iter=insert->get_iter();
