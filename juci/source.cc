@@ -587,8 +587,6 @@ bool Source::ClangView::on_key_press_event(GdkEventKey* key) {
 Source::ClangViewAutocomplete::ClangViewAutocomplete(const std::string& file_path, const std::string& project_path, Terminal::Controller& terminal):
 Source::ClangView(file_path, project_path, terminal), selection_dialog(*this) {  
   get_buffer()->signal_changed().connect([this](){
-    if(autocomplete_running || selection_dialog.shown)
-      delayed_reparse_connection.disconnect();
     if(!selection_dialog.shown) {
       auto insert=get_buffer()->get_insert();
       auto iter=insert->get_iter();
@@ -609,6 +607,9 @@ Source::ClangView(file_path, project_path, terminal), selection_dialog(*this) {
       else if(autocomplete_running)
         cancel_show_autocomplete=true;
     }
+    if(autocomplete_running || selection_dialog.shown)
+      delayed_reparse_connection.disconnect();
+
   });
   get_buffer()->signal_mark_set().connect([this](const Gtk::TextBuffer::iterator& iterator, const Glib::RefPtr<Gtk::TextBuffer::Mark>& mark){
     if(mark->get_name()=="insert") {
@@ -643,7 +644,6 @@ bool Source::ClangViewAutocomplete::on_key_press_event(GdkEventKey *key) {
   return ClangView::on_key_press_event(key);
 }
 void Source::ClangViewAutocomplete::start_autocomplete() {
-  delayed_reparse_connection.disconnect();
   if(!autocomplete_running) {
     autocomplete_running=true;
     cancel_show_autocomplete=false;
