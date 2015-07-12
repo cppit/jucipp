@@ -83,6 +83,7 @@ namespace Source {
     std::mutex parsing_mutex;
     sigc::connection delayed_reparse_connection;
     bool on_key_press_event(GdkEventKey* key);
+    bool on_focus_out_event(GdkEventFocus* event);
   private:
     // inits the syntax highligthing on file open
     void init_syntax_highlighting(const std::map<std::string, std::string>
@@ -99,7 +100,6 @@ namespace Source {
     bool on_motion_notify_event(GdkEventMotion* event);
     void on_mark_set(const Gtk::TextBuffer::iterator& iterator, const Glib::RefPtr<Gtk::TextBuffer::Mark>& mark);
     sigc::connection delayed_tooltips_connection;
-    bool on_focus_out_event(GdkEventFocus* event);
     bool on_scroll_event(GdkEventScroll* event);
     static clang::Index clang_index;
     std::unique_ptr<clang::Tokens> clang_tokens;
@@ -128,6 +128,7 @@ namespace Source {
     ClangViewAutocomplete(const std::string& file_path, const std::string& project_path, Terminal::Controller& terminal);
   protected:
     bool on_key_press_event(GdkEventKey* key);
+    bool on_focus_out_event(GdkEventFocus* event);
   private:
     void autocomplete();
     SelectionDialog selection_dialog;

@@ -580,7 +580,6 @@ bool Source::ClangView::on_key_press_event(GdkEventKey* key) {
 //////////////////////////////
 //// ClangViewAutocomplete ///
 //////////////////////////////
-//TODO: Raise autocomplete window after alt-tab back to application
 Source::ClangViewAutocomplete::ClangViewAutocomplete(const std::string& file_path, const std::string& project_path, Terminal::Controller& terminal):
 Source::ClangView(file_path, project_path, terminal), selection_dialog(*this), autocomplete_cancel_starting(false) {  
   get_buffer()->signal_changed().connect([this](){
@@ -625,7 +624,7 @@ Source::ClangView(file_path, project_path, terminal), selection_dialog(*this), a
   });
   signal_scroll_event().connect([this](GdkEventScroll* event){
     if(selection_dialog.shown)
-      selection_dialog.move();
+      selection_dialog.hide();
     return false;
   }, false);
   signal_key_release_event().connect([this](GdkEventKey* key){
@@ -647,6 +646,15 @@ bool Source::ClangViewAutocomplete::on_key_press_event(GdkEventKey *key) {
   }
   return ClangView::on_key_press_event(key);
 }
+
+bool Source::ClangViewAutocomplete::on_focus_out_event(GdkEventFocus* event) {
+  if(selection_dialog.shown) {
+    selection_dialog.hide();
+  }
+    
+  return Source::ClangView::on_focus_out_event(event);
+}
+
 void Source::ClangViewAutocomplete::autocomplete() {
   if(!autocomplete_starting) {
     autocomplete_starting=true;

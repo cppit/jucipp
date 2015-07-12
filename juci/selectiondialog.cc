@@ -61,8 +61,8 @@ void SelectionDialog::show() {
 }
 
 void SelectionDialog::hide() {
-  window->hide();    
   shown=false;
+  window->hide();
   if(tooltips)
     tooltips->hide();
 }
