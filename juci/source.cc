@@ -561,7 +561,7 @@ bool Source::ClangView::on_key_press_event(GdkEventKey* key) {
     if(line.size()>=config->tab_size) {
       for(auto c: line) {
         if(c!=config->tab_char)
-          return false;
+          return Source::View::on_key_press_event(key);
       }
       Gtk::TextIter insert_it = get_source_buffer()->get_insert()->get_iter();
       Gtk::TextIter line_it = get_source_buffer()->get_iter_at_line(insert_it.get_line());
@@ -571,7 +571,7 @@ bool Source::ClangView::on_key_press_event(GdkEventKey* key) {
       
       get_source_buffer()->erase(line_it, line_plus_it);
     }
-    return false;
+    return Source::View::on_key_press_event(key);
   }
   
   return Source::View::on_key_press_event(key);
