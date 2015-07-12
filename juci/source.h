@@ -131,7 +131,7 @@ namespace Source {
   private:
     void autocomplete();
     SelectionDialog selection_dialog;
-    std::vector<Source::AutoCompleteData> get_autocomplete_suggestions(int line_number, int column, std::map<std::string, std::string>& buffer_map);
+    std::vector<Source::AutoCompleteData> get_autocomplete_suggestions(int line_number, int column, std::map<std::string, std::string>& buffer_map, const std::string& prefix);
     Glib::Dispatcher autocomplete_done;
     sigc::connection autocomplete_done_connection;
     bool autocomplete_starting=false;

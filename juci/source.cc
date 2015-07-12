@@ -588,7 +588,7 @@ Source::ClangView(file_path, project_path, terminal), selection_dialog(*this) {
       return;
     std::string line=" "+get_line_before_insert();
     if((std::count(line.begin(), line.end(), '\"')%2)!=1 && line.find("//")==std::string::npos) {
-      const std::regex in_specified_namespace("^(.*[a-zA-Z0-9_])(->|\\.|::)([a-zA-Z0-9_]*)$");
+      const std::regex in_specified_namespace("^(.*[a-zA-Z0-9_\\)])(->|\\.|::)([a-zA-Z0-9_]*)$");
       const std::regex within_namespace("^(.*)([^a-zA-Z0-9_]+)([a-zA-Z0-9_]{3,})$");
       std::smatch sm;
       if(std::regex_match(line, sm, in_specified_namespace)) {
@@ -672,9 +672,10 @@ void Source::ClangViewAutocomplete::autocomplete() {
             default: ss << chunk.chunk; break;
             }
           }
-          if (ss.str().length() > 0) { // if length is 0 the result is empty
-            if(prefix.size()==0 || ss.str().find(prefix)==0) {
-              auto pair=std::pair<std::string, std::string>(ss.str(), data.brief_comments);
+          auto ss_str=ss.str();
+          if (ss_str.length() > 0) { // if length is 0 the result is empty
+            if(ss_str.size()>=prefix.size() && ss_str.compare(0, prefix.size(), prefix)==0) {
+              auto pair=std::pair<std::string, std::string>(ss_str, data.brief_comments);
               rows[ss.str() + " --> " + return_value] = pair;
             }
           }
@@ -699,9 +700,10 @@ void Source::ClangViewAutocomplete::autocomplete() {
       column_nr--;
     }
     buffer+="\n";
-    std::thread autocomplete_thread([this, ac_data, line_nr, column_nr, buffer_map](){
+    auto prefix_copy=prefix;
+    std::thread autocomplete_thread([this, ac_data, line_nr, column_nr, buffer_map, prefix_copy](){
       parsing_mutex.lock();
-      *ac_data=move(get_autocomplete_suggestions(line_nr, column_nr, *buffer_map));
+      *ac_data=move(get_autocomplete_suggestions(line_nr, column_nr, *buffer_map, prefix_copy));
       autocomplete_done();
       parsing_mutex.unlock();
     });
@@ -711,7 +713,7 @@ void Source::ClangViewAutocomplete::autocomplete() {
 }
 
 std::vector<Source::AutoCompleteData> Source::ClangViewAutocomplete::
-get_autocomplete_suggestions(int line_number, int column, std::map<std::string, std::string>& buffer_map) {
+get_autocomplete_suggestions(int line_number, int column, std::map<std::string, std::string>& buffer_map, const std::string& prefix) {
   INFO("Getting auto complete suggestions");
   std::vector<Source::AutoCompleteData> suggestions;
   clang::CodeCompleteResults results(clang_tu.get(),
@@ -722,8 +724,19 @@ get_autocomplete_suggestions(int line_number, int column, std::map<std::string, 
   for (int i = 0; i < results.size(); i++) {
     auto result=results.get(i);
     if(result.available()) {
-      suggestions.emplace_back(result.get_chunks());
-      suggestions.back().brief_comments=result.get_brief_comments();
+      auto chunks=result.get_chunks();
+      bool match=false;
+      for(auto &chunk: chunks) {
+        if(chunk.kind!=clang::CompletionChunk_ResultType && chunk.kind!=clang::CompletionChunk_Informative) {
+          if(chunk.chunk.size()>=prefix.size() && chunk.chunk.compare(0, prefix.size(), prefix)==0)
+            match=true;
+          break;
+        }
+      }
+      if(match) {
+        suggestions.emplace_back(std::move(chunks));
+        suggestions.back().brief_comments=result.get_brief_comments();
+      }
     }
   }
   DEBUG("Number of suggestions");
