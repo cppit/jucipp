@@ -96,11 +96,11 @@ namespace Source {
     void update_types();
     Tooltips diagnostic_tooltips;
     Tooltips type_tooltips;
-    bool clangview_on_motion_notify_event(GdkEventMotion* event);
-    void clangview_on_mark_set(const Gtk::TextBuffer::iterator& iterator, const Glib::RefPtr<Gtk::TextBuffer::Mark>& mark);
+    bool on_motion_notify_event(GdkEventMotion* event);
+    void on_mark_set(const Gtk::TextBuffer::iterator& iterator, const Glib::RefPtr<Gtk::TextBuffer::Mark>& mark);
     sigc::connection delayed_tooltips_connection;
-    bool clangview_on_focus_out_event(GdkEventFocus* event);
-    bool clangview_on_scroll_event(GdkEventScroll* event);
+    bool on_focus_out_event(GdkEventFocus* event);
+    bool on_scroll_event(GdkEventScroll* event);
     static clang::Index clang_index;
     std::unique_ptr<clang::Tokens> clang_tokens;
     bool clang_readable=false;
@@ -129,14 +129,15 @@ namespace Source {
   protected:
     bool on_key_press_event(GdkEventKey* key);
   private:
-    void start_autocomplete();
+    void autocomplete();
     SelectionDialog selection_dialog;
     std::vector<Source::AutoCompleteData> get_autocomplete_suggestions(int line_number, int column, std::map<std::string, std::string>& buffer_map);
     Glib::Dispatcher autocomplete_done;
     sigc::connection autocomplete_done_connection;
-    bool autocomplete_running=false;
-    bool cancel_show_autocomplete=false;
+    bool autocomplete_starting=false;
+    bool autocomplete_cancel_starting=false;
     char last_keyval=0;
+    std::string prefix;
   };
 
   class Controller {

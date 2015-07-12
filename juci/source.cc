@@ -234,10 +234,7 @@ parse_thread_go(true), parse_thread_mapped(false), parse_thread_stop(false) {
     diagnostic_tooltips.hide();
   });
   
-  signal_motion_notify_event().connect(sigc::mem_fun(*this, &Source::ClangView::clangview_on_motion_notify_event), false);
-  signal_focus_out_event().connect(sigc::mem_fun(*this, &Source::ClangView::clangview_on_focus_out_event), false);
-  signal_scroll_event().connect(sigc::mem_fun(*this, &Source::ClangView::clangview_on_scroll_event), false);
-  get_buffer()->signal_mark_set().connect(sigc::mem_fun(*this, &Source::ClangView::clangview_on_mark_set), false);
+  get_buffer()->signal_mark_set().connect(sigc::mem_fun(*this, &Source::ClangView::on_mark_set), false);
 }
 
 Source::ClangView::~ClangView() {
@@ -406,7 +403,7 @@ void Source::ClangView::update_types() {
   }
 }
 
-bool Source::ClangView::clangview_on_motion_notify_event(GdkEventMotion* event) {
+bool Source::ClangView::on_motion_notify_event(GdkEventMotion* event) {
   delayed_tooltips_connection.disconnect();
   if(clang_readable) {
     Gdk::Rectangle rectangle(event->x, event->y, 1, 1);
@@ -419,10 +416,10 @@ bool Source::ClangView::clangview_on_motion_notify_event(GdkEventMotion* event) 
     diagnostic_tooltips.hide();
   }
     
-  return false;
+  return Source::View::on_motion_notify_event(event);
 }
 
-void Source::ClangView::clangview_on_mark_set(const Gtk::TextBuffer::iterator& iterator, const Glib::RefPtr<Gtk::TextBuffer::Mark>& mark) {
+void Source::ClangView::on_mark_set(const Gtk::TextBuffer::iterator& iterator, const Glib::RefPtr<Gtk::TextBuffer::Mark>& mark) {
   if(get_buffer()->get_has_selection() && mark->get_name()=="selection_bound")
     delayed_tooltips_connection.disconnect();
   
@@ -448,18 +445,18 @@ void Source::ClangView::clangview_on_mark_set(const Gtk::TextBuffer::iterator& i
   }
 }
 
-bool Source::ClangView::clangview_on_focus_out_event(GdkEventFocus* event) {
+bool Source::ClangView::on_focus_out_event(GdkEventFocus* event) {
     delayed_tooltips_connection.disconnect();
     type_tooltips.hide();
     diagnostic_tooltips.hide();
-    return false;
+    return Source::View::on_focus_out_event(event);
 }
 
-bool Source::ClangView::clangview_on_scroll_event(GdkEventScroll* event) {
+bool Source::ClangView::on_scroll_event(GdkEventScroll* event) {
   delayed_tooltips_connection.disconnect();
   type_tooltips.hide();
   diagnostic_tooltips.hide();
-  return false;
+  return Source::View::on_scroll_event(event);
 }
 
 void Source::ClangView::
@@ -587,33 +584,46 @@ bool Source::ClangView::on_key_press_event(GdkEventKey* key) {
 Source::ClangViewAutocomplete::ClangViewAutocomplete(const std::string& file_path, const std::string& project_path, Terminal::Controller& terminal):
 Source::ClangView(file_path, project_path, terminal), selection_dialog(*this) {  
   get_buffer()->signal_changed().connect([this](){
-    if(!selection_dialog.shown) {
-      auto insert=get_buffer()->get_insert();
-      auto iter=insert->get_iter();
-      int line_nr=iter.get_line();
-      auto line_iter=get_buffer()->get_iter_at_line(line_nr);
-      std::string line=get_buffer()->get_text(line_iter, iter);
-      const std::regex method("^(.*)(->|\\.|::)([a-zA-Z0-9_]*)$");
+    std::string line=" "+get_line_before_insert();
+    if((std::count(line.begin(), line.end(), '\"')%2)!=1 && line.find("//")==std::string::npos) {
+      const std::regex in_specified_namespace("^(.*)(->|\\.|::)([a-zA-Z0-9_]*)$");
+      const std::regex within_namespace("^(.*)([^a-zA-Z0-9_]+)([a-zA-Z_][a-zA-Z0-9_]{2,})$");
       std::smatch sm;
-      if(std::regex_match(line, sm, method)) {
-        if(sm[1].str().find("//")==std::string::npos) {
-          if(last_keyval=='.' || last_keyval=='>' || last_keyval==':') {
-            if(sm[3]=="" && !autocomplete_running) {
-              start_autocomplete();
-            }
+      if(std::regex_match(line, sm, in_specified_namespace)) {
+        if(last_keyval=='.' || last_keyval=='>' || last_keyval==':') {
+          if(sm[3]=="" && !autocomplete_starting && !selection_dialog.shown) {
+            prefix="";
+            autocomplete();
           }
+          else if(autocomplete_starting)
+            autocomplete_cancel_starting=true;
         }
       }
-      else if(autocomplete_running)
-        cancel_show_autocomplete=true;
+      else if(std::regex_match(line, sm, within_namespace)) {
+        prefix=sm[3].str();
+        if((last_keyval>='a' && last_keyval<='z') || (last_keyval>='A' && last_keyval<='Z') || (last_keyval>='0' && last_keyval<='9') || last_keyval=='_') {
+          if(!autocomplete_starting && !selection_dialog.shown) {
+            autocomplete();
+          }
+        }
+        else if(last_keyval!=0) {
+          autocomplete_cancel_starting=true;
+          if(selection_dialog.shown)
+            selection_dialog.hide();
+        }
+      }
+      else if(last_keyval!=0) {
+        autocomplete_cancel_starting=true;
+        if(selection_dialog.shown)
+          selection_dialog.hide();
+      }
+      if(autocomplete_starting || selection_dialog.shown)
+        delayed_reparse_connection.disconnect();
     }
-    if(autocomplete_running || selection_dialog.shown)
-      delayed_reparse_connection.disconnect();
-
   });
   get_buffer()->signal_mark_set().connect([this](const Gtk::TextBuffer::iterator& iterator, const Glib::RefPtr<Gtk::TextBuffer::Mark>& mark){
     if(mark->get_name()=="insert") {
-      cancel_show_autocomplete=true;
+      autocomplete_cancel_starting=true;
       if(selection_dialog.shown) {
         selection_dialog.hide();
       }
@@ -635,6 +645,7 @@ Source::ClangView(file_path, project_path, terminal), selection_dialog(*this) {
 }
 
 bool Source::ClangViewAutocomplete::on_key_press_event(GdkEventKey *key) {
+  last_keyval=0;
   if(selection_dialog.shown) {
     delayed_reparse_connection.disconnect();
     if(selection_dialog.on_key_press(key))
@@ -643,18 +654,30 @@ bool Source::ClangViewAutocomplete::on_key_press_event(GdkEventKey *key) {
   last_keyval=key->keyval;
   return ClangView::on_key_press_event(key);
 }
-void Source::ClangViewAutocomplete::start_autocomplete() {
-  if(!autocomplete_running) {
-    autocomplete_running=true;
-    cancel_show_autocomplete=false;
+void Source::ClangViewAutocomplete::autocomplete() {
+  if(!autocomplete_starting) {
+    autocomplete_starting=true;
+    autocomplete_cancel_starting=false;
+    if(prefix.size()==0) {
+      if(selection_dialog.start_mark)
+        get_buffer()->delete_mark(selection_dialog.start_mark);
+      auto start_iter=get_buffer()->get_insert()->get_iter();
+      selection_dialog.start_mark=get_buffer()->create_mark(start_iter);
+    }
     INFO("Source::ClangView::on_key_release getting autocompletions");
     std::shared_ptr<std::vector<Source::AutoCompleteData> > ac_data=std::make_shared<std::vector<Source::AutoCompleteData> >();
-    if(selection_dialog.start_mark)
-      get_buffer()->delete_mark(selection_dialog.start_mark);
-    selection_dialog.start_mark=get_buffer()->create_mark(get_buffer()->get_insert()->get_iter());
     autocomplete_done_connection.disconnect();
     autocomplete_done_connection=autocomplete_done.connect([this, ac_data](){
-      if(!cancel_show_autocomplete) {
+      if(!autocomplete_cancel_starting) {
+        if(prefix.size()>0) {
+          if(selection_dialog.start_mark)
+            get_buffer()->delete_mark(selection_dialog.start_mark);
+          auto start_iter=get_buffer()->get_insert()->get_iter();
+          for(size_t c=0;c<prefix.size();c++)
+            start_iter--;
+          selection_dialog.start_mark=get_buffer()->create_mark(start_iter);
+        }
+        
         std::map<std::string, std::pair<std::string, std::string> > rows;
         for (auto &data : *ac_data) {
           std::stringstream ss;
@@ -669,8 +692,10 @@ void Source::ClangViewAutocomplete::start_autocomplete() {
             }
           }
           if (ss.str().length() > 0) { // if length is 0 the result is empty
-            auto pair=std::pair<std::string, std::string>(ss.str(), data.brief_comments);
-            rows[ss.str() + " --> " + return_value] = pair;
+            if(prefix.size()==0 || ss.str().find(prefix)==0) {
+              auto pair=std::pair<std::string, std::string>(ss.str(), data.brief_comments);
+              rows[ss.str() + " --> " + return_value] = pair;
+            }
           }
         }
         if (rows.empty()) {
@@ -679,18 +704,24 @@ void Source::ClangViewAutocomplete::start_autocomplete() {
         selection_dialog.rows=std::move(rows);
         selection_dialog.show();
       }
-      autocomplete_running=false;
+      autocomplete_starting=false;
     });
     
     std::shared_ptr<std::map<std::string, std::string> > buffer_map=std::make_shared<std::map<std::string, std::string> >();
-    (*buffer_map)[this->file_path]=get_buffer()->get_text(get_buffer()->begin(), get_buffer()->get_insert()->get_iter());
-    (*buffer_map)[this->file_path]+="\n";
+    auto& buffer=(*buffer_map)[this->file_path];
+    buffer=get_buffer()->get_text(get_buffer()->begin(), get_buffer()->get_insert()->get_iter());
     auto iter = get_source_buffer()->get_insert()->get_iter();
     auto line_nr=iter.get_line()+1;
-    auto column_nr=iter.get_line_offset()+2;
+    auto column_nr=iter.get_line_offset()+1;
+    while((buffer.back()>='a' && buffer.back()<='z') || (buffer.back()>='A' && buffer.back()<='Z') || (buffer.back()>='0' && buffer.back()<='9') || buffer.back()=='_') {
+      buffer.pop_back();
+      column_nr--;
+    }
+    buffer+="\n";
     std::thread autocomplete_thread([this, ac_data, line_nr, column_nr, buffer_map](){
       parsing_mutex.lock();
       *ac_data=move(get_autocomplete_suggestions(line_nr, column_nr, *buffer_map));
+      cout << "selection size: " << ac_data->size() << endl;
       autocomplete_done();
       parsing_mutex.unlock();
     });
@@ -707,11 +738,13 @@ get_autocomplete_suggestions(int line_number, int column, std::map<std::string, 
                                      file_path,
                                      buffer_map,
                                      line_number,
-                                     column-1);
+                                     column);
   for (int i = 0; i < results.size(); i++) {
     auto result=results.get(i);
-    suggestions.emplace_back(result.get_chunks());
-    suggestions.back().brief_comments=result.get_brief_comments();
+    if(result.available()) {
+      suggestions.emplace_back(result.get_chunks());
+      suggestions.back().brief_comments=result.get_brief_comments();
+    }
   }
   DEBUG("Number of suggestions");
   DEBUG_VAR(suggestions.size());
