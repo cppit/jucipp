@@ -10,19 +10,17 @@
 class Window : public Gtk::Window {
 public:
   Window();
-  MainConfig& main_config() { return main_config_; }
   // std::string  OnSaveFileAs();
   Gtk::Box window_box_;
   virtual ~Window() { }
 
-  MainConfig main_config_;
-  Keybindings::Controller keybindings_;
-  Menu::Controller menu_;
+  MainConfig main_config;
+  Keybindings::Controller keybindings;
+  Menu::Controller menu;
   Notebook::Controller notebook;
   Terminal::Controller terminal;
-  PluginApi api_;
-  
-  Keybindings::Controller& keybindings() { return keybindings_; }
+  PluginApi api;
+
  private:
   std::mutex running;
   Gtk::VPaned paned_;
