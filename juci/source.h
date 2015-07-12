@@ -136,7 +136,7 @@ namespace Source {
     sigc::connection autocomplete_done_connection;
     bool autocomplete_starting=false;
     bool autocomplete_cancel_starting=false;
-    char last_keyval=0;
+    guint last_keyval=0;
     std::string prefix;
   };
 

@@ -584,39 +584,29 @@ bool Source::ClangView::on_key_press_event(GdkEventKey* key) {
 Source::ClangViewAutocomplete::ClangViewAutocomplete(const std::string& file_path, const std::string& project_path, Terminal::Controller& terminal):
 Source::ClangView(file_path, project_path, terminal), selection_dialog(*this) {  
   get_buffer()->signal_changed().connect([this](){
+    if(last_keyval==GDK_KEY_BackSpace)
+      return;
     std::string line=" "+get_line_before_insert();
     if((std::count(line.begin(), line.end(), '\"')%2)!=1 && line.find("//")==std::string::npos) {
-      const std::regex in_specified_namespace("^(.*)(->|\\.|::)([a-zA-Z0-9_]*)$");
-      const std::regex within_namespace("^(.*)([^a-zA-Z0-9_]+)([a-zA-Z_][a-zA-Z0-9_]{2,})$");
+      const std::regex in_specified_namespace("^(.*[a-zA-Z0-9_])(->|\\.|::)([a-zA-Z0-9_]*)$");
+      const std::regex within_namespace("^(.*)([^a-zA-Z0-9_]+)([a-zA-Z0-9_]{3,})$");
       std::smatch sm;
       if(std::regex_match(line, sm, in_specified_namespace)) {
-        if(last_keyval=='.' || last_keyval=='>' || last_keyval==':') {
-          if(sm[3]=="" && !autocomplete_starting && !selection_dialog.shown) {
-            prefix="";
-            autocomplete();
-          }
-          else if(autocomplete_starting)
-            autocomplete_cancel_starting=true;
+        prefix=sm[3].str();
+        if((prefix.size()==0 || prefix[0]<'0' || prefix[0]>'9') && !autocomplete_starting && !selection_dialog.shown) {
+          autocomplete();
         }
+        else if(last_keyval=='.' && autocomplete_starting)
+          autocomplete_cancel_starting=true;
       }
       else if(std::regex_match(line, sm, within_namespace)) {
         prefix=sm[3].str();
-        if((last_keyval>='a' && last_keyval<='z') || (last_keyval>='A' && last_keyval<='Z') || (last_keyval>='0' && last_keyval<='9') || last_keyval=='_') {
-          if(!autocomplete_starting && !selection_dialog.shown) {
-            autocomplete();
-          }
-        }
-        else if(last_keyval!=0) {
-          autocomplete_cancel_starting=true;
-          if(selection_dialog.shown)
-            selection_dialog.hide();
+        if((prefix.size()==0 || prefix[0]<'0' || prefix[0]>'9') && !autocomplete_starting && !selection_dialog.shown) {
+          autocomplete();
         }
       }
-      else if(last_keyval!=0) {
+      else
         autocomplete_cancel_starting=true;
-        if(selection_dialog.shown)
-          selection_dialog.hide();
-      }
       if(autocomplete_starting || selection_dialog.shown)
         delayed_reparse_connection.disconnect();
     }
@@ -645,38 +635,29 @@ Source::ClangView(file_path, project_path, terminal), selection_dialog(*this) {
 }
 
 bool Source::ClangViewAutocomplete::on_key_press_event(GdkEventKey *key) {
-  last_keyval=0;
+  last_keyval=key->keyval;
   if(selection_dialog.shown) {
     delayed_reparse_connection.disconnect();
     if(selection_dialog.on_key_press(key))
       return true;
   }
-  last_keyval=key->keyval;
   return ClangView::on_key_press_event(key);
 }
 void Source::ClangViewAutocomplete::autocomplete() {
   if(!autocomplete_starting) {
     autocomplete_starting=true;
     autocomplete_cancel_starting=false;
-    if(prefix.size()==0) {
-      if(selection_dialog.start_mark)
-        get_buffer()->delete_mark(selection_dialog.start_mark);
-      auto start_iter=get_buffer()->get_insert()->get_iter();
-      selection_dialog.start_mark=get_buffer()->create_mark(start_iter);
-    }
     INFO("Source::ClangView::on_key_release getting autocompletions");
     std::shared_ptr<std::vector<Source::AutoCompleteData> > ac_data=std::make_shared<std::vector<Source::AutoCompleteData> >();
     autocomplete_done_connection.disconnect();
     autocomplete_done_connection=autocomplete_done.connect([this, ac_data](){
       if(!autocomplete_cancel_starting) {
-        if(prefix.size()>0) {
-          if(selection_dialog.start_mark)
-            get_buffer()->delete_mark(selection_dialog.start_mark);
-          auto start_iter=get_buffer()->get_insert()->get_iter();
-          for(size_t c=0;c<prefix.size();c++)
-            start_iter--;
-          selection_dialog.start_mark=get_buffer()->create_mark(start_iter);
-        }
+        if(selection_dialog.start_mark)
+          get_buffer()->delete_mark(selection_dialog.start_mark);
+        auto start_iter=get_buffer()->get_insert()->get_iter();
+        for(size_t c=0;c<prefix.size();c++)
+          start_iter--;
+        selection_dialog.start_mark=get_buffer()->create_mark(start_iter);
         
         std::map<std::string, std::pair<std::string, std::string> > rows;
         for (auto &data : *ac_data) {

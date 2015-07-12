@@ -34,7 +34,7 @@ void SelectionDialog::show() {
     resize();
   });
   
-  start_offset=start_mark->get_iter().get_offset();
+  show_offset=text_view.get_buffer()->get_insert()->get_iter().get_offset();
   list_view_text->clear_items();
   for (auto &i : rows) {
     list_view_text->append(i.first);
@@ -99,7 +99,7 @@ bool SelectionDialog::on_key_release(GdkEventKey* key) {
   if(key->keyval==GDK_KEY_Down || key->keyval==GDK_KEY_Up)
     return false;
     
-  if(start_offset>text_view.get_buffer()->get_insert()->get_iter().get_offset()) {
+  if(show_offset>text_view.get_buffer()->get_insert()->get_iter().get_offset()) {
     hide();
   }
   else {

@@ -24,7 +24,7 @@ private:
   void cursor_changed();
   
   Gtk::Entry search_entry;
-  int start_offset;
+  int show_offset;
   bool row_in_entry;
   
   Gtk::TextView& text_view;
