@@ -721,7 +721,6 @@ void Source::ClangViewAutocomplete::autocomplete() {
     std::thread autocomplete_thread([this, ac_data, line_nr, column_nr, buffer_map](){
       parsing_mutex.lock();
       *ac_data=move(get_autocomplete_suggestions(line_nr, column_nr, *buffer_map));
-      cout << "selection size: " << ac_data->size() << endl;
       autocomplete_done();
       parsing_mutex.unlock();
     });
