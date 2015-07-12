@@ -580,9 +580,9 @@ bool Source::ClangView::on_key_press_event(GdkEventKey* key) {
 //////////////////////////////
 //// ClangViewAutocomplete ///
 //////////////////////////////
-
+//TODO: Raise autocomplete window after alt-tab back to application
 Source::ClangViewAutocomplete::ClangViewAutocomplete(const std::string& file_path, const std::string& project_path, Terminal::Controller& terminal):
-Source::ClangView(file_path, project_path, terminal), selection_dialog(*this) {  
+Source::ClangView(file_path, project_path, terminal), selection_dialog(*this), autocomplete_cancel_starting(false) {  
   get_buffer()->signal_changed().connect([this](){
     if(last_keyval==GDK_KEY_BackSpace)
       return;
@@ -592,7 +592,9 @@ Source::ClangView(file_path, project_path, terminal), selection_dialog(*this) {
       const std::regex within_namespace("^(.*)([^a-zA-Z0-9_]+)([a-zA-Z0-9_]{3,})$");
       std::smatch sm;
       if(std::regex_match(line, sm, in_specified_namespace)) {
+        prefix_mutex.lock();
         prefix=sm[3].str();
+        prefix_mutex.unlock();
         if((prefix.size()==0 || prefix[0]<'0' || prefix[0]>'9') && !autocomplete_starting && !selection_dialog.shown) {
           autocomplete();
         }
@@ -600,7 +602,9 @@ Source::ClangView(file_path, project_path, terminal), selection_dialog(*this) {
           autocomplete_cancel_starting=true;
       }
       else if(std::regex_match(line, sm, within_namespace)) {
+        prefix_mutex.lock();
         prefix=sm[3].str();
+        prefix_mutex.unlock();
         if((prefix.size()==0 || prefix[0]<'0' || prefix[0]>'9') && !autocomplete_starting && !selection_dialog.shown) {
           autocomplete();
         }
@@ -674,10 +678,8 @@ void Source::ClangViewAutocomplete::autocomplete() {
           }
           auto ss_str=ss.str();
           if (ss_str.length() > 0) { // if length is 0 the result is empty
-            if(ss_str.size()>=prefix.size() && ss_str.compare(0, prefix.size(), prefix)==0) {
-              auto pair=std::pair<std::string, std::string>(ss_str, data.brief_comments);
-              rows[ss.str() + " --> " + return_value] = pair;
-            }
+            auto pair=std::pair<std::string, std::string>(ss_str, data.brief_comments);
+            rows[ss.str() + " --> " + return_value] = pair;
           }
         }
         if (rows.empty()) {
@@ -700,10 +702,9 @@ void Source::ClangViewAutocomplete::autocomplete() {
       column_nr--;
     }
     buffer+="\n";
-    auto prefix_copy=prefix;
-    std::thread autocomplete_thread([this, ac_data, line_nr, column_nr, buffer_map, prefix_copy](){
+    std::thread autocomplete_thread([this, ac_data, line_nr, column_nr, buffer_map](){
       parsing_mutex.lock();
-      *ac_data=move(get_autocomplete_suggestions(line_nr, column_nr, *buffer_map, prefix_copy));
+      *ac_data=move(get_autocomplete_suggestions(line_nr, column_nr, *buffer_map));
       autocomplete_done();
       parsing_mutex.unlock();
     });
@@ -713,7 +714,7 @@ void Source::ClangViewAutocomplete::autocomplete() {
 }
 
 std::vector<Source::AutoCompleteData> Source::ClangViewAutocomplete::
-get_autocomplete_suggestions(int line_number, int column, std::map<std::string, std::string>& buffer_map, const std::string& prefix) {
+get_autocomplete_suggestions(int line_number, int column, std::map<std::string, std::string>& buffer_map) {
   INFO("Getting auto complete suggestions");
   std::vector<Source::AutoCompleteData> suggestions;
   clang::CodeCompleteResults results(clang_tu.get(),
@@ -721,21 +722,26 @@ get_autocomplete_suggestions(int line_number, int column, std::map<std::string, 
                                      buffer_map,
                                      line_number,
                                      column);
-  for (int i = 0; i < results.size(); i++) {
-    auto result=results.get(i);
-    if(result.available()) {
-      auto chunks=result.get_chunks();
-      bool match=false;
-      for(auto &chunk: chunks) {
-        if(chunk.kind!=clang::CompletionChunk_ResultType && chunk.kind!=clang::CompletionChunk_Informative) {
-          if(chunk.chunk.size()>=prefix.size() && chunk.chunk.compare(0, prefix.size(), prefix)==0)
-            match=true;
-          break;
+  if(!autocomplete_cancel_starting) {
+    prefix_mutex.lock();
+    auto prefix_copy=prefix;
+    prefix_mutex.unlock();
+    for (int i = 0; i < results.size(); i++) {
+      auto result=results.get(i);
+      if(result.available()) {
+        auto chunks=result.get_chunks();
+        bool match=false;
+        for(auto &chunk: chunks) {
+          if(chunk.kind!=clang::CompletionChunk_ResultType && chunk.kind!=clang::CompletionChunk_Informative) {
+            if(chunk.chunk.size()>=prefix_copy.size() && chunk.chunk.compare(0, prefix_copy.size(), prefix_copy)==0)
+              match=true;
+            break;
+          }
         }
-      }
-      if(match) {
-        suggestions.emplace_back(std::move(chunks));
-        suggestions.back().brief_comments=result.get_brief_comments();
+        if(match) {
+          suggestions.emplace_back(std::move(chunks));
+          suggestions.back().brief_comments=result.get_brief_comments();
+        }
       }
     }
   }

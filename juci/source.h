@@ -131,13 +131,14 @@ namespace Source {
   private:
     void autocomplete();
     SelectionDialog selection_dialog;
-    std::vector<Source::AutoCompleteData> get_autocomplete_suggestions(int line_number, int column, std::map<std::string, std::string>& buffer_map, const std::string& prefix);
+    std::vector<Source::AutoCompleteData> get_autocomplete_suggestions(int line_number, int column, std::map<std::string, std::string>& buffer_map);
     Glib::Dispatcher autocomplete_done;
     sigc::connection autocomplete_done_connection;
     bool autocomplete_starting=false;
-    bool autocomplete_cancel_starting=false;
+    std::atomic<bool> autocomplete_cancel_starting;
     guint last_keyval=0;
     std::string prefix;
+    std::mutex prefix_mutex;
   };
 
   class Controller {
