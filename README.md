@@ -28,6 +28,9 @@ Please install these dependencies on your system.
 
 * libclang
 * [libclangmm](http://github.com/cppit/libclangmm/)
+* boost
+* gtkmm
+* gtksourceview
 * cmake
 * make
 * clang or gcc (compiler)
