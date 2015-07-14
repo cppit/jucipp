@@ -561,7 +561,7 @@ bool Source::ClangView::on_key_press_event(GdkEventKey* key) {
     if(line.size()>=config->tab_size) {
       for(auto c: line) {
         if(c!=config->tab_char)
-          return false;
+          return Source::View::on_key_press_event(key);
       }
       Gtk::TextIter insert_it = get_source_buffer()->get_insert()->get_iter();
       Gtk::TextIter line_it = get_source_buffer()->get_iter_at_line(insert_it.get_line());
@@ -571,7 +571,7 @@ bool Source::ClangView::on_key_press_event(GdkEventKey* key) {
       
       get_source_buffer()->erase(line_it, line_plus_it);
     }
-    return false;
+    return Source::View::on_key_press_event(key);
   }
   
   return Source::View::on_key_press_event(key);
@@ -580,19 +580,20 @@ bool Source::ClangView::on_key_press_event(GdkEventKey* key) {
 //////////////////////////////
 //// ClangViewAutocomplete ///
 //////////////////////////////
-
 Source::ClangViewAutocomplete::ClangViewAutocomplete(const std::string& file_path, const std::string& project_path, Terminal::Controller& terminal):
-Source::ClangView(file_path, project_path, terminal), selection_dialog(*this) {  
+Source::ClangView(file_path, project_path, terminal), selection_dialog(*this), autocomplete_cancel_starting(false) {  
   get_buffer()->signal_changed().connect([this](){
     if(last_keyval==GDK_KEY_BackSpace)
       return;
     std::string line=" "+get_line_before_insert();
     if((std::count(line.begin(), line.end(), '\"')%2)!=1 && line.find("//")==std::string::npos) {
-      const std::regex in_specified_namespace("^(.*[a-zA-Z0-9_])(->|\\.|::)([a-zA-Z0-9_]*)$");
+      const std::regex in_specified_namespace("^(.*[a-zA-Z0-9_\\)])(->|\\.|::)([a-zA-Z0-9_]*)$");
       const std::regex within_namespace("^(.*)([^a-zA-Z0-9_]+)([a-zA-Z0-9_]{3,})$");
       std::smatch sm;
       if(std::regex_match(line, sm, in_specified_namespace)) {
+        prefix_mutex.lock();
         prefix=sm[3].str();
+        prefix_mutex.unlock();
         if((prefix.size()==0 || prefix[0]<'0' || prefix[0]>'9') && !autocomplete_starting && !selection_dialog.shown) {
           autocomplete();
         }
@@ -600,7 +601,9 @@ Source::ClangView(file_path, project_path, terminal), selection_dialog(*this) {
           autocomplete_cancel_starting=true;
       }
       else if(std::regex_match(line, sm, within_namespace)) {
+        prefix_mutex.lock();
         prefix=sm[3].str();
+        prefix_mutex.unlock();
         if((prefix.size()==0 || prefix[0]<'0' || prefix[0]>'9') && !autocomplete_starting && !selection_dialog.shown) {
           autocomplete();
         }
@@ -621,7 +624,7 @@ Source::ClangView(file_path, project_path, terminal), selection_dialog(*this) {
   });
   signal_scroll_event().connect([this](GdkEventScroll* event){
     if(selection_dialog.shown)
-      selection_dialog.move();
+      selection_dialog.hide();
     return false;
   }, false);
   signal_key_release_event().connect([this](GdkEventKey* key){
@@ -643,6 +646,15 @@ bool Source::ClangViewAutocomplete::on_key_press_event(GdkEventKey *key) {
   }
   return ClangView::on_key_press_event(key);
 }
+
+bool Source::ClangViewAutocomplete::on_focus_out_event(GdkEventFocus* event) {
+  if(selection_dialog.shown) {
+    selection_dialog.hide();
+  }
+    
+  return Source::ClangView::on_focus_out_event(event);
+}
+
 void Source::ClangViewAutocomplete::autocomplete() {
   if(!autocomplete_starting) {
     autocomplete_starting=true;
@@ -672,11 +684,10 @@ void Source::ClangViewAutocomplete::autocomplete() {
             default: ss << chunk.chunk; break;
             }
           }
-          if (ss.str().length() > 0) { // if length is 0 the result is empty
-            if(prefix.size()==0 || ss.str().find(prefix)==0) {
-              auto pair=std::pair<std::string, std::string>(ss.str(), data.brief_comments);
-              rows[ss.str() + " --> " + return_value] = pair;
-            }
+          auto ss_str=ss.str();
+          if (ss_str.length() > 0) { // if length is 0 the result is empty
+            auto pair=std::pair<std::string, std::string>(ss_str, data.brief_comments);
+            rows[ss.str() + " --> " + return_value] = pair;
           }
         }
         if (rows.empty()) {
@@ -719,11 +730,27 @@ get_autocomplete_suggestions(int line_number, int column, std::map<std::string, 
                                      buffer_map,
                                      line_number,
                                      column);
-  for (int i = 0; i < results.size(); i++) {
-    auto result=results.get(i);
-    if(result.available()) {
-      suggestions.emplace_back(result.get_chunks());
-      suggestions.back().brief_comments=result.get_brief_comments();
+  if(!autocomplete_cancel_starting) {
+    prefix_mutex.lock();
+    auto prefix_copy=prefix;
+    prefix_mutex.unlock();
+    for (int i = 0; i < results.size(); i++) {
+      auto result=results.get(i);
+      if(result.available()) {
+        auto chunks=result.get_chunks();
+        bool match=false;
+        for(auto &chunk: chunks) {
+          if(chunk.kind!=clang::CompletionChunk_ResultType && chunk.kind!=clang::CompletionChunk_Informative) {
+            if(chunk.chunk.size()>=prefix_copy.size() && chunk.chunk.compare(0, prefix_copy.size(), prefix_copy)==0)
+              match=true;
+            break;
+          }
+        }
+        if(match) {
+          suggestions.emplace_back(std::move(chunks));
+          suggestions.back().brief_comments=result.get_brief_comments();
+        }
+      }
     }
   }
   DEBUG("Number of suggestions");
