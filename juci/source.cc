@@ -427,13 +427,14 @@ void Source::ClangView::on_mark_set(const Gtk::TextBuffer::iterator& iterator, c
     type_tooltips.hide();
     diagnostic_tooltips.hide();
     
+    //TODO: For testing purposes
     if(clang_readable) {
       for(auto &token: *clang_tokens) {
         if(token.has_type()) {
           auto range_data=token.source_range.get_range_data();
           auto insert_offset=get_buffer()->get_insert()->get_iter().get_offset();
           if(range_data.path==file_path && insert_offset>=range_data.start_offset && insert_offset<=range_data.end_offset) {
-            cout << token.get_type() << endl;
+            //cout << token.get_type() << endl;
           }
         }
       }
