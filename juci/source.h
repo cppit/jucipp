@@ -26,20 +26,12 @@ namespace Source {
     std::unordered_map<std::string, std::string> tags, types;
   };  // class Config
 
-  class Location {
-  public:
-    Location(int line_number, int column_offset):
-      line_number(line_number), column_offset(column_offset) {}
-    int line_number;
-    int column_offset;
-  };
-
   class Range {
   public:
-    Range(const Location &start, const Location &end, int kind):
-      start(start), end(end), kind(kind) {}
-    Location start;
-    Location end;
+    Range(unsigned start_offset, unsigned end_offset, int kind):
+      start_offset(start_offset), end_offset(end_offset), kind(kind) {}
+    unsigned start_offset;
+    unsigned end_offset;
     int kind;
   };
 
@@ -89,8 +81,7 @@ namespace Source {
     void init_syntax_highlighting(const std::map<std::string, std::string>
                                 &buffers,
                                 int start_offset,
-                                int end_offset,
-                                clang::Index *index);
+                                int end_offset);
     int reparse(const std::map<std::string, std::string> &buffers);
     void update_syntax();
     void update_diagnostics();
@@ -104,11 +95,6 @@ namespace Source {
     static clang::Index clang_index;
     std::unique_ptr<clang::Tokens> clang_tokens;
     bool clang_readable=false;
-    void highlight_token(clang::Token *token,
-                        std::vector<Range> *source_ranges,
-                        int token_kind);
-    void highlight_cursor(clang::Token *token,
-                        std::vector<Range> *source_ranges);
     std::vector<std::string> get_compilation_commands();
     Terminal::Controller& terminal;
         
