@@ -65,6 +65,8 @@ void SelectionDialog::hide() {
   window->hide();
   if(tooltips)
     tooltips->hide();
+  if(on_hide)
+    on_hide();
 }
 
 void SelectionDialog::select(bool hide_window) {

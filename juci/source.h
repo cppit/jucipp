@@ -91,6 +91,9 @@ namespace Source {
     bool on_motion_notify_event(GdkEventMotion* event);
     void on_mark_set(const Gtk::TextBuffer::iterator& iterator, const Glib::RefPtr<Gtk::TextBuffer::Mark>& mark);
     sigc::connection delayed_tooltips_connection;
+    Glib::RefPtr<Gtk::TextTag> similar_tokens_tag;
+    std::string last_similar_token_marked;
+    
     bool on_scroll_event(GdkEventScroll* event);
     static clang::Index clang_index;
     std::unique_ptr<clang::Tokens> clang_tokens;

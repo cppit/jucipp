@@ -14,6 +14,7 @@ public:
   void move();
   bool on_key_release(GdkEventKey* key);
   bool on_key_press(GdkEventKey* key);
+  std::function<void()> on_hide;
   
   std::map<std::string, std::pair<std::string, std::string> > rows;
   bool shown=false;
