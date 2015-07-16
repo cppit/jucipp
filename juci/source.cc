@@ -7,7 +7,6 @@
 #include <algorithm>
 #include <regex>
 #include "singletons.h"
-#include "notebook.h" //TODO: remove
 
 namespace sigc {
   SIGC_FUNCTORS_DEDUCE_RESULT_TYPE_WITH_DECLTYPE
@@ -150,7 +149,10 @@ clang::Index Source::ClangView::clang_index(0, 0);
 
 Source::ClangView::ClangView(const std::string& file_path, const std::string& project_path, Terminal::Controller& terminal):
 Source::View(file_path, project_path), terminal(terminal),
-parse_thread_go(true), parse_thread_mapped(false), parse_thread_stop(false) {  
+parse_thread_go(true), parse_thread_mapped(false), parse_thread_stop(false) {
+  similar_token_tag=get_buffer()->create_tag();
+  similar_token_tag->property_weight()=Pango::WEIGHT_BOLD;
+  
   int start_offset = get_source_buffer()->begin().get_offset();
   int end_offset = get_source_buffer()->end().get_offset();
   auto buffer_map=get_buffer_map();
@@ -222,7 +224,7 @@ parse_thread_go(true), parse_thread_mapped(false), parse_thread_stop(false) {
     }
   });
     
-  get_source_buffer()->signal_changed().connect([this]() {
+  get_buffer()->signal_changed().connect([this]() {
     parse_thread_mapped=false;
     delayed_reparse_connection.disconnect();
     delayed_reparse_connection=Glib::signal_timeout().connect([this]() {
@@ -427,14 +429,17 @@ void Source::ClangView::on_mark_set(const Gtk::TextBuffer::iterator& iterator, c
     type_tooltips.hide();
     diagnostic_tooltips.hide();
     
-    //TODO: For testing purposes
+    get_buffer()->remove_tag(similar_token_tag, get_buffer()->begin(), get_buffer()->end());
     if(clang_readable) {
       for(auto &token: *clang_tokens) {
         if(token.has_type()) {
           auto range_data=token.source_range.get_range_data();
-          auto insert_offset=get_buffer()->get_insert()->get_iter().get_offset();
+          auto insert_offset=(unsigned)get_buffer()->get_insert()->get_iter().get_offset();
           if(range_data.path==file_path && insert_offset>=range_data.start_offset && insert_offset<=range_data.end_offset) {
-            //cout << token.get_type() << endl;
+            auto offsets=clang_tokens->get_similar_token_offsets(token);
+            for(auto &offset: offsets) {
+              get_buffer()->apply_tag(similar_token_tag, get_buffer()->get_iter_at_offset(offset.first), get_buffer()->get_iter_at_offset(offset.second));
+            }
           }
         }
       }
@@ -482,6 +487,7 @@ bool Source::ClangView::on_key_press_event(GdkEventKey* key) {
           }
         }
       }
+      //TODO: insert without moving mark backwards.
       get_source_buffer()->insert_at_cursor("\n"+sm[1].str()+config->tab+"\n"+sm[1].str()+"}");
       auto insert_it = get_source_buffer()->get_insert()->get_iter();
       for(size_t c=0;c<config->tab_size+sm[1].str().size();c++)
@@ -594,6 +600,7 @@ Source::ClangView(file_path, project_path, terminal), selection_dialog(*this), a
   }, false);
   signal_key_release_event().connect([this](GdkEventKey* key){
     if(selection_dialog.shown) {
+      delayed_reparse_connection.disconnect(); //TODO: place this somewhere better (buffer_changed maybe)
       if(selection_dialog.on_key_release(key))
         return true;
     }
@@ -605,7 +612,7 @@ Source::ClangView(file_path, project_path, terminal), selection_dialog(*this), a
 bool Source::ClangViewAutocomplete::on_key_press_event(GdkEventKey *key) {
   last_keyval=key->keyval;
   if(selection_dialog.shown) {
-    delayed_reparse_connection.disconnect();
+    delayed_reparse_connection.disconnect(); //TODO: place this somewhere better (buffer_changed maybe)
     if(selection_dialog.on_key_press(key))
       return true;
   }
