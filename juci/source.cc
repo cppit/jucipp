@@ -302,15 +302,15 @@ get_compilation_commands() {
 void Source::ClangView::update_syntax() {
   std::vector<Source::Range> ranges;
   for (auto &token : *clang_tokens) {
-    if(token.kind()==0) // PunctuationToken
+    if(token.get_kind()==0) // PunctuationToken
       ranges.emplace_back(token.offsets.first, token.offsets.second, (int) token.get_cursor().get_kind());
-    else if(token.kind()==1) // KeywordToken
+    else if(token.get_kind()==1) // KeywordToken
       ranges.emplace_back(token.offsets.first, token.offsets.second, 702);
-    else if(token.kind()==2) // IdentifierToken
+    else if(token.get_kind()==2) // IdentifierToken
       ranges.emplace_back(token.offsets.first, token.offsets.second, (int) token.get_cursor().get_kind());
-    else if(token.kind()==3) // LiteralToken
+    else if(token.get_kind()==3) // LiteralToken
       ranges.emplace_back(token.offsets.first, token.offsets.second, 109);
-    else if(token.kind()==4) // CommentToken
+    else if(token.get_kind()==4) // CommentToken
       ranges.emplace_back(token.offsets.first, token.offsets.second, 705);
   }
   if (ranges.empty() || ranges.size() == 0) {
@@ -438,15 +438,18 @@ void Source::ClangView::on_mark_set(const Gtk::TextBuffer::iterator& iterator, c
           auto insert_offset=(unsigned)get_buffer()->get_insert()->get_iter().get_offset();
           if(insert_offset>=token.offsets.first && insert_offset<=token.offsets.second) {
             found=true;
-            auto referenced_usr_and_token_spelling=token.get_cursor().get_referenced_usr()+token.get_token_spelling();
-            if(last_similar_tokens_tagged!=referenced_usr_and_token_spelling) {
-              get_buffer()->remove_tag(similar_tokens_tag, get_buffer()->begin(), get_buffer()->end());
-              auto offsets=clang_tokens->get_similar_token_offsets(token);
-              for(auto &offset: offsets) {
-                get_buffer()->apply_tag(similar_tokens_tag, get_buffer()->get_iter_at_offset(offset.first), get_buffer()->get_iter_at_offset(offset.second));
+            auto referenced=token.get_cursor().get_referenced();
+            if(referenced) {
+              auto usr_and_spelling=referenced.get_usr()+token.get_spelling();
+              if(last_similar_tokens_tagged!=usr_and_spelling) {
+                get_buffer()->remove_tag(similar_tokens_tag, get_buffer()->begin(), get_buffer()->end());
+                auto offsets=clang_tokens->get_similar_token_offsets(token);
+                for(auto &offset: offsets) {
+                  get_buffer()->apply_tag(similar_tokens_tag, get_buffer()->get_iter_at_offset(offset.first), get_buffer()->get_iter_at_offset(offset.second));
+                }
+                last_similar_tokens_tagged=usr_and_spelling;
+                break;
               }
-              last_similar_tokens_tagged=referenced_usr_and_token_spelling;
-              break;
             }
           }
         }
