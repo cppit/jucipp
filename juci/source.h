@@ -92,7 +92,7 @@ namespace Source {
     void on_mark_set(const Gtk::TextBuffer::iterator& iterator, const Glib::RefPtr<Gtk::TextBuffer::Mark>& mark);
     sigc::connection delayed_tooltips_connection;
     Glib::RefPtr<Gtk::TextTag> similar_tokens_tag;
-    std::string last_similar_token_marked;
+    std::string last_similar_tokens_tagged;
     
     bool on_scroll_event(GdkEventScroll* event);
     static clang::Index clang_index;
@@ -119,6 +119,7 @@ namespace Source {
     bool on_key_press_event(GdkEventKey* key);
     bool on_focus_out_event(GdkEventFocus* event);
   private:
+    void start_autocomplete();
     void autocomplete();
     SelectionDialog selection_dialog;
     std::vector<Source::AutoCompleteData> get_autocomplete_suggestions(int line_number, int column, std::map<std::string, std::string>& buffer_map);
