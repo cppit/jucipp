@@ -302,17 +302,16 @@ get_compilation_commands() {
 void Source::ClangView::update_syntax() {
   std::vector<Source::Range> ranges;
   for (auto &token : *clang_tokens) {
-    auto range_data=token.source_range.get_range_data();
     if(token.kind()==0) // PunctuationToken
-      ranges.emplace_back(range_data.start_offset, range_data.end_offset, (int) token.get_cursor().get_kind());
+      ranges.emplace_back(token.offsets.first, token.offsets.second, (int) token.get_cursor().get_kind());
     else if(token.kind()==1) // KeywordToken
-      ranges.emplace_back(range_data.start_offset, range_data.end_offset, 702);
+      ranges.emplace_back(token.offsets.first, token.offsets.second, 702);
     else if(token.kind()==2) // IdentifierToken
-      ranges.emplace_back(range_data.start_offset, range_data.end_offset, (int) token.get_cursor().get_kind());
+      ranges.emplace_back(token.offsets.first, token.offsets.second, (int) token.get_cursor().get_kind());
     else if(token.kind()==3) // LiteralToken
-      ranges.emplace_back(range_data.start_offset, range_data.end_offset, 109);
+      ranges.emplace_back(token.offsets.first, token.offsets.second, 109);
     else if(token.kind()==4) // CommentToken
-      ranges.emplace_back(range_data.start_offset, range_data.end_offset, 705);
+      ranges.emplace_back(token.offsets.first, token.offsets.second, 705);
   }
   if (ranges.empty() || ranges.size() == 0) {
     return;
@@ -338,9 +337,9 @@ void Source::ClangView::update_diagnostics() {
   diagnostic_tooltips.clear();
   auto diagnostics=clang_tu->get_diagnostics();
   for(auto &diagnostic: diagnostics) {
-    if(diagnostic.range.path==file_path) {
-      auto start=get_buffer()->get_iter_at_offset(diagnostic.range.start_offset);
-      auto end=get_buffer()->get_iter_at_offset(diagnostic.range.end_offset);
+    if(diagnostic.path==file_path) {
+      auto start=get_buffer()->get_iter_at_offset(diagnostic.offsets.first);
+      auto end=get_buffer()->get_iter_at_offset(diagnostic.offsets.second);
       std::string diagnostic_tag_name;
       if(diagnostic.severity<=CXDiagnostic_Warning)
         diagnostic_tag_name="diagnostic_warning";
@@ -376,21 +375,18 @@ void Source::ClangView::update_types() {
   type_tooltips.clear();
   for(auto &token: *clang_tokens) {
     if(token.has_type()) {
-      auto range_data=token.source_range.get_range_data();
-      if(range_data.path==file_path) {
-        auto start=get_buffer()->get_iter_at_offset(range_data.start_offset);
-        auto end=get_buffer()->get_iter_at_offset(range_data.end_offset);
-        auto get_tooltip_buffer=[this, &token]() {
-          auto tooltip_buffer=Gtk::TextBuffer::create(get_buffer()->get_tag_table());
-          tooltip_buffer->insert_at_cursor("Type: "+token.get_type());
-          auto brief_comment=token.get_brief_comments();
-          if(brief_comment!="")
-            tooltip_buffer->insert_at_cursor("\n\n"+brief_comment+".");
-          return tooltip_buffer;
-        };
-        
-        type_tooltips.emplace_back(get_tooltip_buffer, *this, get_buffer()->create_mark(start), get_buffer()->create_mark(end));
-      }
+      auto start=get_buffer()->get_iter_at_offset(token.offsets.first);
+      auto end=get_buffer()->get_iter_at_offset(token.offsets.second);
+      auto get_tooltip_buffer=[this, &token]() {
+        auto tooltip_buffer=Gtk::TextBuffer::create(get_buffer()->get_tag_table());
+        tooltip_buffer->insert_at_cursor("Type: "+token.get_type());
+        auto brief_comment=token.get_brief_comments();
+        if(brief_comment!="")
+          tooltip_buffer->insert_at_cursor("\n\n"+brief_comment+".");
+        return tooltip_buffer;
+      };
+      
+      type_tooltips.emplace_back(get_tooltip_buffer, *this, get_buffer()->create_mark(start), get_buffer()->create_mark(end));
     }
   }
 }
@@ -439,9 +435,8 @@ void Source::ClangView::on_mark_set(const Gtk::TextBuffer::iterator& iterator, c
     if(clang_readable) {
       for(auto &token: *clang_tokens) {
         if(token.has_type()) {
-          auto range_data=token.source_range.get_range_data();
           auto insert_offset=(unsigned)get_buffer()->get_insert()->get_iter().get_offset();
-          if(range_data.path==file_path && insert_offset>=range_data.start_offset && insert_offset<=range_data.end_offset) {
+          if(insert_offset>=token.offsets.first && insert_offset<=token.offsets.second) {
             found=true;
             auto referenced_usr_and_token_spelling=token.get_cursor().get_referenced_usr()+token.get_token_spelling();
             if(last_similar_tokens_tagged!=referenced_usr_and_token_spelling) {
