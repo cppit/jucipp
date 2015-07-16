@@ -225,13 +225,7 @@ parse_thread_go(true), parse_thread_mapped(false), parse_thread_stop(false) {
   });
   
   get_buffer()->signal_changed().connect([this]() {
-    parse_thread_mapped=false;
-    clang_readable=false;
-    delayed_reparse_connection.disconnect();
-    delayed_reparse_connection=Glib::signal_timeout().connect([this]() {
-      parse_thread_go=true;
-      return false;
-    }, 1000);
+    start_reparse();
     type_tooltips.hide();
     diagnostic_tooltips.hide();
     if(last_similar_tokens_tagged!="") {
@@ -266,15 +260,23 @@ init_syntax_highlighting(const std::map<std::string, std::string>
   clang_tokens=clang_tu->get_tokens(0, buffers.find(file_path)->second.size()-1);
 }
 
-std::map<std::string, std::string> Source::ClangView::
-get_buffer_map() const {
+std::map<std::string, std::string> Source::ClangView::get_buffer_map() const {
   std::map<std::string, std::string> buffer_map;
   buffer_map[file_path]=get_source_buffer()->get_text().raw();
   return buffer_map;
 }
 
-int Source::ClangView::
-reparse(const std::map<std::string, std::string> &buffer) {
+void Source::ClangView::start_reparse() {
+  parse_thread_mapped=false;
+  clang_readable=false;
+  delayed_reparse_connection.disconnect();
+  delayed_reparse_connection=Glib::signal_timeout().connect([this]() {
+    parse_thread_go=true;
+    return false;
+  }, 1000);
+}
+
+int Source::ClangView::reparse(const std::map<std::string, std::string> &buffer) {
   int status = clang_tu->ReparseTranslationUnit(buffer);
   clang_tokens=clang_tu->get_tokens(0, parse_thread_buffer_map.find(file_path)->second.size()-1);
   return status;
@@ -569,7 +571,7 @@ bool Source::ClangView::on_key_press_event(GdkEventKey* key) {
 Source::ClangViewAutocomplete::ClangViewAutocomplete(const std::string& file_path, const std::string& project_path, Terminal::Controller& terminal):
 Source::ClangView(file_path, project_path, terminal), selection_dialog(*this), autocomplete_cancel_starting(false) {
   selection_dialog.on_hide=[this](){
-    //TODO: start parsing again?
+    start_reparse();
   };
   
   get_buffer()->signal_changed().connect([this](){

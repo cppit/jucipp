@@ -70,12 +70,13 @@ namespace Source {
     ClangView(const std::string& file_path, const std::string& project_path, Terminal::Controller& terminal);
     ~ClangView();
   protected:
+    void start_reparse();
+    bool on_key_press_event(GdkEventKey* key);
+    bool on_focus_out_event(GdkEventFocus* event);
     std::unique_ptr<clang::TranslationUnit> clang_tu;
     std::map<std::string, std::string> get_buffer_map() const;
     std::mutex parsing_mutex;
     sigc::connection delayed_reparse_connection;
-    bool on_key_press_event(GdkEventKey* key);
-    bool on_focus_out_event(GdkEventFocus* event);
   private:
     // inits the syntax highligthing on file open
     void init_syntax_highlighting(const std::map<std::string, std::string>
