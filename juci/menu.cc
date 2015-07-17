@@ -1,4 +1,5 @@
 #include "menu.h"
+#include "singletons.h"
 
 Menu::View::View(Gtk::Orientation orientation) :
   view_(orientation) {
@@ -11,43 +12,42 @@ Gtk::Box &Menu::View::view(
   return view_;
 }
 
-Menu::Controller::Controller(Keybindings::Controller& keybindings) :
-  menu_view_(Gtk::ORIENTATION_VERTICAL),
-  keybindings_(keybindings) {
-  keybindings_.action_group_menu()->add(Gtk::Action::create("FileNew",
+Menu::Controller::Controller() : menu_view_(Gtk::ORIENTATION_VERTICAL) {
+  auto keybindings=Singleton::keybindings();
+  keybindings->action_group_menu->add(Gtk::Action::create("FileNew",
                                                             "New File"));
-  keybindings_.action_group_menu()->add(Gtk::Action::create("EditMenu",
+  keybindings->action_group_menu->add(Gtk::Action::create("EditMenu",
                                                             Gtk::Stock::EDIT));
-  keybindings_.action_group_menu()->add(Gtk::Action::create("WindowMenu",
+  keybindings->action_group_menu->add(Gtk::Action::create("WindowMenu",
                                                             "_Window"));
-  keybindings_.action_group_menu()->add(Gtk::Action::create("WindowSplitWindow",
+  keybindings->action_group_menu->add(Gtk::Action::create("WindowSplitWindow",
                                                             "Split window"),
-                                        Gtk::AccelKey(keybindings_.config_
-						      .key_map()["split_window"]),//"<control><alt>S"),
+                                        Gtk::AccelKey(Singleton::Config::keybindings()
+						      ->key_map["split_window"]),//"<control><alt>S"),
                                         [this]() {
                                           OnWindowSplitWindow();
                                         });
-  keybindings_.action_group_menu()->add(Gtk::Action::create("ProjectMenu",
+  keybindings->action_group_menu->add(Gtk::Action::create("ProjectMenu",
                                                             "P_roject"));
-  keybindings_.action_group_menu()->add(Gtk::Action::create("PluginMenu",
+  keybindings->action_group_menu->add(Gtk::Action::create("PluginMenu",
                                                             "_Plugins"));
-  keybindings_.action_group_menu()->add(Gtk::Action::create("HelpMenu",
+  keybindings->action_group_menu->add(Gtk::Action::create("HelpMenu",
                                                             Gtk::Stock::HELP));
-  keybindings_.action_group_menu()->add(Gtk::Action::create("HelpAbout",
+  keybindings->action_group_menu->add(Gtk::Action::create("HelpAbout",
                                                             Gtk::Stock::ABOUT),
                                         [this]() {
                                           OnHelpAbout();
                                         });
-  keybindings_.action_group_hidden()->add(Gtk::Action::create("Test"),
+  keybindings->action_group_hidden->add(Gtk::Action::create("Test"),
                                           Gtk::AccelKey("<control><alt>K"),
                                           [this]() {
                                             OnHelpAbout();
                                           });
-  //keybindings_.BuildMenu(); // moved to window.cc
-  keybindings_.BuildHiddenMenu();
+  //keybindings->BuildMenu(); // moved to window.cc
+  keybindings->BuildHiddenMenu();
   }  // Controller
 Gtk::Box &Menu::Controller::view() {
-  return menu_view_.view(keybindings_.ui_manager_menu());
+  return menu_view_.view(Singleton::keybindings()->ui_manager_menu);
 }
 void Menu::Controller::OnPluginAddSnippet() {
   //TODO(Forgi add you snippet magic code)

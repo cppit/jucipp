@@ -3,7 +3,6 @@
 
 #include "api.h"
 #include "config.h"
-#include "terminal.h"
 #include <cstddef>
 
 
@@ -15,10 +14,6 @@ public:
   virtual ~Window() { }
 
   MainConfig main_config;
-  Keybindings::Controller keybindings;
-  Menu::Controller menu;
-  Notebook::Controller notebook;
-  Terminal::Controller terminal;
   PluginApi api;
 
  private:

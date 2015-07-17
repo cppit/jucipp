@@ -4,17 +4,9 @@
 #include <boost/property_tree/xml_parser.hpp>
 #include <fstream>
 #include <string>
-#include "singletons.h"
-#include "keybindings.h"
-#include "source.h"
-#include "directories.h"
-#include "terminal.h"
 
 class MainConfig {
 public:
-  Terminal::Config terminal_cfg;
-  Keybindings::Config keybindings_cfg;
-  Directories::Config dir_cfg;
   MainConfig();
   void PrintMenu();
   void GenerateSource();

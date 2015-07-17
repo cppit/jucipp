@@ -1,128 +1,124 @@
 #include "window.h"
 #include "logging.h"
+#include "singletons.h"
 
 Window::Window() :
-  window_box_(Gtk::ORIENTATION_VERTICAL),
-  main_config(),
-  keybindings(main_config.keybindings_cfg),
-  terminal(main_config.terminal_cfg),
-  notebook(keybindings, terminal,
-            main_config.dir_cfg),
-  menu(keybindings),
-  api(menu, notebook) {
+  window_box_(Gtk::ORIENTATION_VERTICAL) {
   INFO("Create Window");
   set_title("juCi++");
   set_default_size(600, 400);
   set_events(Gdk::POINTER_MOTION_MASK|Gdk::FOCUS_CHANGE_MASK|Gdk::SCROLL_MASK);
   add(window_box_);
-  keybindings.action_group_menu()->add(Gtk::Action::create("FileQuit",
+  auto keybindings=Singleton::keybindings();
+  auto keybindings_cfg=Singleton::Config::keybindings();
+  keybindings->action_group_menu->add(Gtk::Action::create("FileQuit",
                                                             "Quit juCi++"),
-                                        Gtk::AccelKey(keybindings.config_
-                                                      .key_map()["quit"]),
+                                        Gtk::AccelKey(keybindings_cfg
+                                                      ->key_map["quit"]),
                                         [this]() {
                                           OnWindowHide();
                                         });
-  keybindings.action_group_menu()->add(Gtk::Action::create("FileOpenFile",
+  keybindings->action_group_menu->add(Gtk::Action::create("FileOpenFile",
                                                             "Open file"),
-                                        Gtk::AccelKey(keybindings.config_
-                                                      .key_map()["open_file"]),
+                                        Gtk::AccelKey(keybindings_cfg
+                                                      ->key_map["open_file"]),
                                         [this]() {
                                           OnOpenFile();
                                         });
-  keybindings.action_group_menu()->add(Gtk::Action::create("FileOpenFolder",
+  keybindings->action_group_menu->add(Gtk::Action::create("FileOpenFolder",
                                                             "Open folder"),
-                                        Gtk::AccelKey(keybindings.config_
-                                                      .key_map()["open_folder"]),
+                                        Gtk::AccelKey(keybindings_cfg
+                                                      ->key_map["open_folder"]),
                                         [this]() {
                                           OnFileOpenFolder();
                                         });
-  keybindings.
-    action_group_menu()->
+  keybindings->
+    action_group_menu->
     add(Gtk::Action::create("FileSaveAs",
 			    "Save as"),
-	Gtk::AccelKey(keybindings.config_
-		      .key_map()["save_as"]),
+	Gtk::AccelKey(keybindings_cfg
+		      ->key_map["save_as"]),
 	[this]() {
 	  SaveFileAs();
 	});
 
-  keybindings.
-    action_group_menu()->
+  keybindings->
+    action_group_menu->
     add(Gtk::Action::create("FileSave",
 			    "Save"),
-	Gtk::AccelKey(keybindings.config_
-		      .key_map()["save"]),
+	Gtk::AccelKey(keybindings_cfg
+		      ->key_map["save"]),
 	[this]() {
 	  SaveFile();
 	});
   
-  keybindings.
-    action_group_menu()->
+  keybindings->
+    action_group_menu->
     add(Gtk::Action::create("ProjectCompileAndRun",
 			    "Compile And Run"),
-	Gtk::AccelKey(keybindings.config_
-		      .key_map()["compile_and_run"]),
+	Gtk::AccelKey(keybindings_cfg
+		      ->key_map["compile_and_run"]),
 	[this]() {
 	  SaveFile();
 	  if (running.try_lock()) {
-	    std::thread execute([=]() {
-		std::string path = notebook.CurrentTextView().file_path;
+	    std::thread execute([this]() {
+		std::string path = Singleton::notebook()->CurrentSourceView()->file_path;
 		size_t pos = path.find_last_of("/\\");
 		if(pos != std::string::npos) {
 		  path.erase(path.begin()+pos,path.end());
-		  terminal.SetFolderCommand(path);
+		  Singleton::terminal()->SetFolderCommand(path);
 		}
-		terminal.Compile();
-		std::string executable = notebook.directories.
+		Singleton::terminal()->Compile();
+		std::string executable = Singleton::notebook()->directories.
 		  GetCmakeVarValue(path,"add_executable");
-		terminal.Run(executable);
+		Singleton::terminal()->Run(executable);
                 running.unlock();
 	      });
 	    execute.detach();
 	  }
 	});
    
-  keybindings.
-    action_group_menu()->
+  keybindings->
+    action_group_menu->
     add(Gtk::Action::create("ProjectCompile",
                             "Compile"),
-        Gtk::AccelKey(keybindings.config_
-                      .key_map()["compile"]),
+        Gtk::AccelKey(keybindings_cfg
+                      ->key_map["compile"]),
         [this]() {
           SaveFile();
           if (running.try_lock()) {
-            std::thread execute([=]() {		  
-                std::string path =  notebook.CurrentTextView().file_path;
+            std::thread execute([this]() {		  
+                std::string path = Singleton::notebook()->CurrentSourceView()->file_path;
                 size_t pos = path.find_last_of("/\\");
                 if(pos != std::string::npos){
                   path.erase(path.begin()+pos,path.end());
-                  terminal.SetFolderCommand(path);
+                  Singleton::terminal()->SetFolderCommand(path);
                 }
-                terminal.Compile();
+                Singleton::terminal()->Compile();
                 running.unlock();
               });
             execute.detach();
           }
         });
 
-  add_accel_group(keybindings.ui_manager_menu()->get_accel_group());
-  add_accel_group(keybindings.ui_manager_hidden()->get_accel_group());
-  keybindings.BuildMenu();
+  add_accel_group(keybindings->ui_manager_menu->get_accel_group());
+  add_accel_group(keybindings->ui_manager_hidden->get_accel_group());
+  keybindings->BuildMenu();
 
-  window_box_.pack_start(menu.view(), Gtk::PACK_SHRINK);
+  window_box_.pack_start(Singleton::menu()->view(), Gtk::PACK_SHRINK);
 
-  window_box_.pack_start(notebook.entry, Gtk::PACK_SHRINK);
+  window_box_.pack_start(Singleton::notebook()->entry, Gtk::PACK_SHRINK);
   paned_.set_position(300);
-  paned_.pack1(notebook.view, true, false);
-  paned_.pack2(terminal.view, true, true);
+  paned_.pack1(Singleton::notebook()->view, true, false);
+  paned_.pack2(Singleton::terminal()->view, true, true);
   window_box_.pack_end(paned_);
   show_all_children();
   INFO("Window created");
 } // Window constructor
 
 void Window::OnWindowHide() {
-  for(size_t c=0;c<notebook.text_vec_.size();c++)
-    notebook.OnCloseCurrentPage(); //TODO: This only works on one page at the momemt. Change to notebook.close_page(page_nr);
+  for(size_t c=0;c<Singleton::notebook()->source_views.size();c++)
+    Singleton::notebook()->OnCloseCurrentPage(); //TODO: This only works on one page at the momemt. Change to Singleton::notebook()->close_page(page_nr);
   hide();
 }
 void Window::OnFileOpenFolder() {
@@ -141,8 +137,8 @@ void Window::OnFileOpenFolder() {
     case(Gtk::RESPONSE_OK):
       {
         std::string project_path=dialog.get_filename();
-        notebook.project_path=project_path;
-        notebook.directories.open_folder(project_path);
+        Singleton::notebook()->project_path=project_path;
+        Singleton::notebook()->directories.open_folder(project_path);
         break;
       }
     case(Gtk::RESPONSE_CANCEL):
@@ -190,7 +186,7 @@ void Window::OnOpenFile() {
   switch (result) {
   case(Gtk::RESPONSE_OK): {
     std::string path = dialog.get_filename();
-    notebook.OnOpenFile(path);
+    Singleton::notebook()->OnOpenFile(path);
     break;
   }
   case(Gtk::RESPONSE_CANCEL): {
@@ -203,20 +199,19 @@ void Window::OnOpenFile() {
 }
 
 bool Window::SaveFile() {
-  if(notebook.OnSaveFile()) {
-    terminal.print("File saved to: " +
-			   notebook.CurrentTextView().file_path+"\n");
+  if(Singleton::notebook()->OnSaveFile()) {
+    Singleton::terminal()->print("File saved to: " +
+			   Singleton::notebook()->CurrentSourceView()->file_path+"\n");
     return true;
   }
-  terminal.print("File not saved");
   return false;
 }
 bool Window::SaveFileAs() {
-  if(notebook.OnSaveFile(notebook.OnSaveFileAs())){
-    terminal.print("File saved to: " +
-			   notebook.CurrentTextView().file_path+"\n");
+  if(Singleton::notebook()->OnSaveFile(Singleton::notebook()->OnSaveFileAs())){
+    Singleton::terminal()->print("File saved to: " +
+			   Singleton::notebook()->CurrentSourceView()->file_path+"\n");
     return true;
   }
-  terminal.print("File not saved");
+  Singleton::terminal()->print("File not saved");
   return false;
 }

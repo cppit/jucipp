@@ -14,7 +14,8 @@
 #include "tooltips.h"
 #include "selectiondialog.h"
 
-namespace Source {
+class Source {
+public:
   class Config {
   public:
     bool legal_extension(std::string e) const ;
@@ -59,25 +60,23 @@ namespace Source {
   public:
     GenericView(const std::string& file_path, const std::string& project_path):
     View(file_path, project_path) {}
-  protected:
-    bool on_key_press_event(GdkEventKey* key) {
-      return Source::View::on_key_press_event(key);
-    }
   };
   
-  class ClangView : public View {
+  class ClangViewParse : public View {
   public:
-    ClangView(const std::string& file_path, const std::string& project_path, Terminal::Controller& terminal);
-    ~ClangView();
+    ClangViewParse(const std::string& file_path, const std::string& project_path);
+    ~ClangViewParse();
   protected:
     void start_reparse();
     bool on_key_press_event(GdkEventKey* key);
     bool on_focus_out_event(GdkEventFocus* event);
     std::unique_ptr<clang::TranslationUnit> clang_tu;
-    std::map<std::string, std::string> get_buffer_map() const;
     std::mutex parsing_mutex;
+    std::unique_ptr<clang::Tokens> clang_tokens;
+    bool clang_readable=false;
     sigc::connection delayed_reparse_connection;
   private:
+    std::map<std::string, std::string> get_buffer_map() const;
     // inits the syntax highligthing on file open
     void init_syntax_highlighting(const std::map<std::string, std::string>
                                 &buffers,
@@ -92,15 +91,10 @@ namespace Source {
     bool on_motion_notify_event(GdkEventMotion* event);
     void on_mark_set(const Gtk::TextBuffer::iterator& iterator, const Glib::RefPtr<Gtk::TextBuffer::Mark>& mark);
     sigc::connection delayed_tooltips_connection;
-    Glib::RefPtr<Gtk::TextTag> similar_tokens_tag;
-    std::string last_similar_tokens_tagged;
     
     bool on_scroll_event(GdkEventScroll* event);
     static clang::Index clang_index;
-    std::unique_ptr<clang::Tokens> clang_tokens;
-    bool clang_readable=false;
     std::vector<std::string> get_compilation_commands();
-    Terminal::Controller& terminal;
         
     std::shared_ptr<Terminal::InProgress> parsing_in_progress;
     Glib::Dispatcher parse_done;
@@ -112,10 +106,10 @@ namespace Source {
     std::atomic<bool> parse_thread_mapped;
     std::atomic<bool> parse_thread_stop;
   };
-  
-  class ClangViewAutocomplete : public ClangView {
+    
+  class ClangViewAutocomplete : public ClangViewParse {
   public:
-    ClangViewAutocomplete(const std::string& file_path, const std::string& project_path, Terminal::Controller& terminal);
+    ClangViewAutocomplete(const std::string& file_path, const std::string& project_path);
   protected:
     bool on_key_press_event(GdkEventKey* key);
     bool on_focus_out_event(GdkEventFocus* event);
@@ -133,14 +127,22 @@ namespace Source {
     std::mutex prefix_mutex;
   };
 
-  class Controller {
+  class ClangViewRefactor : public ClangViewAutocomplete {
   public:
-    Controller(const std::string& file_path, std::string project_path, Terminal::Controller& terminal);
-    Glib::RefPtr<Gsv::Buffer> buffer();
-    
-    bool is_saved = true;
-    
-    std::unique_ptr<Source::View> view;
-  };  // class Controller
-}  // namespace Source
+    ClangViewRefactor(const std::string& file_path, const std::string& project_path);
+  private:
+    Glib::RefPtr<Gtk::TextTag> similar_tokens_tag;
+    std::string last_similar_tokens_tagged;
+  };
+  
+  class ClangView : public ClangViewRefactor {
+  public:
+    ClangView(const std::string& file_path, const std::string& project_path):
+      ClangViewRefactor(file_path, project_path) {}
+  };
+
+  Source(const std::string& file_path, std::string project_path);
+  
+  std::unique_ptr<Source::View> view;
+};  // class Source
 #endif  // JUCI_SOURCE_H_

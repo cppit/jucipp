@@ -1,4 +1,5 @@
 #include "juci.h"
+#include "singletons.h"
 
 void init_logging() {
   add_common_attributes();
@@ -36,11 +37,11 @@ void Juci::on_activate() {
   window->show();
   if(directory!="") {
     //TODO: use the following instead, window->notebook.open_directory(directory);
-    window->notebook.project_path=directory;
-    window->notebook.directories.open_folder(directory);
+    Singleton::notebook()->project_path=directory;
+    Singleton::notebook()->directories.open_folder(directory);
   }
   for(auto &f: files)
-    window->notebook.OnOpenFile(f);
+    Singleton::notebook()->OnOpenFile(f);
 }
 
 int main(int argc, char *argv[]) {

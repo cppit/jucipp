@@ -1,26 +1,21 @@
 #include "api.h"
 #include "logging.h"
+#include "singletons.h"
 
 Menu::Controller* PluginApi::menu_;
 Notebook::Controller* PluginApi::notebook_;
 /////////////////////////////
 //// API ServiceProvider ////
 /////////////////////////////
-PluginApi::PluginApi(Menu::Controller& menu_ctl_,
-                     Notebook::Controller& notebook_ctl_) {
+PluginApi::PluginApi() {
   DEBUG("Adding pointers for the API");
-  menu_ = &menu_ctl_;
-  notebook_ = &notebook_ctl_;
+  notebook_ = Singleton::notebook();
+  menu_ = Singleton::menu();
   DEBUG("Initiating plugins(from plugins.py)..");
 #ifndef __APPLE__
   InitPlugins(); //TODO: fix this
 #endif
   DEBUG("Plugins initiated..");
-}
-
-PluginApi::~PluginApi() {
-  menu_ = NULL;
-  notebook_ = NULL;
 }
 
 std::string PluginApi::ProjectPath() {
@@ -69,7 +64,7 @@ void PluginApi::AddMenuElement(std::string plugin_name) {
   DEBUG("Adding menu element for "+plugin_name);
   AddMenuXml(plugin_name, "PluginMenu");
   std::string plugin_action_name = plugin_name+"Menu";
-  menu_->keybindings_.action_group_menu()
+  Singleton::keybindings()->action_group_menu
     ->add(Gtk::Action::create(plugin_action_name, plugin_name));
 }
 
@@ -79,7 +74,7 @@ void PluginApi::AddSubMenuElement(std::string parent_menu,
                                   std::string plugin_path,
                                   std::string menu_keybinding) {
   AddSubMenuXml(menu_func_name, parent_menu);
-  menu_->keybindings_.action_group_menu()
+  Singleton::keybindings()->action_group_menu
     ->add(Gtk::Action::create(menu_func_name,
                               menu_name),
           Gtk::AccelKey(menu_keybinding),
@@ -89,7 +84,7 @@ void PluginApi::AddSubMenuElement(std::string parent_menu,
 }
 
 void PluginApi::AddMenuXml(std::string plugin_name, std::string parent_menu) {
-  std::string temp_menu = menu_->keybindings_.model_.menu_ui_string();
+  std::string temp_menu = Singleton::keybindings()->menu_ui_string;
   std::size_t plugin_menu_pos = temp_menu.find(parent_menu);
   // +2 gets you outside of the tag:<'menu_name'> ref: keybindings.cc
   plugin_menu_pos+=parent_menu.size() +2;
@@ -99,13 +94,13 @@ void PluginApi::AddMenuXml(std::string plugin_name, std::string parent_menu) {
     "           <menu action='"+plugin_name+"Menu'>               "
     "           </menu>                                           ";
 
-  menu_->keybindings_.model_.menu_ui_string_ =
+  Singleton::keybindings()->menu_ui_string =
     menu_prefix + menu_input + menu_suffix;
 }
 
 void PluginApi::AddSubMenuXml(std::string plugin_name,
                               std::string parent_menu) {
-  std::string temp_menu = menu_->keybindings_.model_.menu_ui_string();
+  std::string temp_menu = Singleton::keybindings()->menu_ui_string;
 
   std::size_t parent_menu_pos = temp_menu.find(parent_menu);
   // +2 gets you outside of the tag:<'menu_name'> ref: keybindings.cc
@@ -114,7 +109,7 @@ void PluginApi::AddSubMenuXml(std::string plugin_name,
   std::string menu_suffix = temp_menu.substr(parent_menu_pos);
 
   std::string menu_input ="<menuitem action='"+plugin_name+"'/>";
-  menu_->keybindings_.model_.menu_ui_string_ =
+  Singleton::keybindings()->menu_ui_string =
     menu_prefix + menu_input + menu_suffix;
 }
 
@@ -221,7 +216,7 @@ void libjuci::IterToWordEnd(Gtk::TextIter &iter) {
 
 Glib::RefPtr<Gtk::TextBuffer> libjuci::BufferFromNotebook() {
   return Glib::RefPtr<Gtk::TextBuffer>(PluginApi::notebook_
-                                       ->CurrentTextView().get_buffer());
+                                       ->CurrentSourceView()->get_buffer());
 }
 
 Gtk::TextIter libjuci::IterFromNotebook() {

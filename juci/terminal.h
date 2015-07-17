@@ -27,13 +27,12 @@ namespace Terminal {
   //Temporary solution for displaying functions in progress, and when they are done.
   class InProgress {
   public:
-    InProgress(Controller& terminal, const std::string& start_msg);
+    InProgress(const std::string& start_msg);
     ~InProgress();
     void done(const std::string& msg);
     void cancel(const std::string& msg);
   private:
     void start(const std::string& msg);
-    Controller& terminal;
     int line_nr;
     std::atomic<bool> stop;
     Glib::Dispatcher waiting_print;
@@ -42,7 +41,7 @@ namespace Terminal {
   
   class Controller {  
   public:
-    Controller(Terminal::Config& cfg);
+    Controller();
     void SetFolderCommand(boost::filesystem::path CMake_path);
     void Run(std::string executable);
     void Compile();
@@ -51,7 +50,6 @@ namespace Terminal {
     std::shared_ptr<InProgress> print_in_progress(std::string start_msg);
     Terminal::View view;
   private:
-    Terminal::Config& config;
     void ExecuteCommand(std::string command, std::string mode);
     bool OnButtonRealeaseEvent(GdkEventKey* key);
     bool ExistInConsole(std::string string);

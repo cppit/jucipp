@@ -2,8 +2,7 @@
 #define JUCI_MENU_H_
 
 #include <iostream>
-#include "gtkmm.h"
-#include "keybindings.h"
+#include <gtkmm.h>
 
 namespace Menu {
   class View {
@@ -15,10 +14,9 @@ namespace Menu {
   };  // class View
   class Controller {
   public:
-    explicit Controller(Keybindings::Controller& keybindings);
+    Controller();
     Gtk::Box &view();
 
-    Keybindings::Controller &keybindings_;
     View menu_view_;
     void OnFileNewEmptyfile();
     void OnFileNewCCFile();

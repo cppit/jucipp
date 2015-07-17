@@ -1,8 +1,8 @@
 #include "directories.h"
 #include "logging.h"
+#include "singletons.h"
 
-Directories::Controller::Controller(Directories::Config& cfg) :
-  config_(cfg) {
+Directories::Controller::Controller() {
   DEBUG("adding treeview to scrolledwindow");
   m_ScrolledWindow.add(m_TreeView);
   m_ScrolledWindow.set_policy(Gtk::POLICY_AUTOMATIC, Gtk::POLICY_AUTOMATIC);
@@ -29,10 +29,10 @@ open_folder(const boost::filesystem::path& dir_path) {
 bool Directories::Controller::IsIgnored(std::string path) {
   DEBUG("Checking if file-/directory is filtered");
   std::transform(path.begin(), path.end(), path.begin(), ::tolower);
-  if (config().IsException(path)) {
+  if (Singleton::Config::directories()->IsException(path)) {
     return false;
   }
-  if (config().IsIgnored(path)) {
+  if (Singleton::Config::directories()->IsIgnored(path)) {
     return true;
   }
   return false;
@@ -154,12 +154,6 @@ GetCmakeVarValue(const boost::filesystem::path& dir_path, std::string command_na
   }
   INFO("Couldn't find value in CMakeLists.txt");
   return "no project name";
-}
-
-Directories::Config::Config() {
-}
-Directories::Config::Config(Directories::Config& cfg) :
-  ignore_list_(cfg.ignore_list()), exception_list_(cfg.exception_list()) {
 }
 
 void Directories::Config::AddIgnore(std::string filter) {
