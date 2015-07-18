@@ -1,6 +1,8 @@
 #include "singletons.h"
 #include "config.h"
 #include "logging.h"
+#include <fstream>
+#include <string>
 
 MainConfig::MainConfig() {
   INFO("Reading config file");
@@ -71,17 +73,17 @@ void MainConfig::GenerateTerminalCommands() {
 }
 
 void MainConfig::GenerateKeybindings() {
-  auto keybindings_cfg=Singleton::Config::keybindings();
+  auto menu=Singleton::menu();
   DEBUG("Fetching keybindings");
   std::string line;
   std::ifstream menu_xml("menu.xml");
   if (menu_xml.is_open()) {
     while (getline(menu_xml, line))
-      keybindings_cfg->AppendXml(line);   
+      menu->ui+=line;   
   }
   boost::property_tree::ptree keys_json = cfg_.get_child("keybindings");
   for (auto &i : keys_json)
-    keybindings_cfg->key_map[i.first] = i.second.get_value<std::string>();
+    menu->key_map[i.first] = i.second.get_value<std::string>();
   DEBUG("Keybindings fetched");
 }
 

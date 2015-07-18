@@ -21,95 +21,55 @@ Notebook::Controller::Controller() :
 
 
 void Notebook::Controller::CreateKeybindings() {
-  auto keybindings=Singleton::keybindings();
-  auto keybindings_cfg=Singleton::Config::keybindings();
+  auto menu=Singleton::menu();
   INFO("Notebook create signal handlers");
-  directories.m_TreeView.signal_row_activated()
-    .connect(sigc::mem_fun(*this,
-                           &Notebook::Controller::OnDirectoryNavigation));
+  directories.m_TreeView.signal_row_activated().connect(sigc::mem_fun(*this, &Notebook::Controller::OnDirectoryNavigation));
 
-  keybindings->action_group_menu->
-    add(Gtk::Action::create("FileMenu",
-                            Gtk::Stock::FILE));
+  menu->action_group->add(Gtk::Action::create("FileMenu", Gtk::Stock::FILE));
 
-  keybindings->action_group_menu->
-    add(Gtk::Action::create("FileNewFile",                     
-                            "New file"),
-        Gtk::AccelKey(keybindings_cfg->key_map["new_file"]),
-        [this]() {
-          OnFileNewFile();
-        });
-  keybindings->action_group_menu->
-    add(Gtk::Action::create("WindowCloseTab",
-                            "Close tab"),
-        Gtk::AccelKey(keybindings_cfg->key_map["close_tab"]),
-        [this]() {
-          OnCloseCurrentPage();
-        });
-  keybindings->action_group_menu->
-    add(Gtk::Action::create("EditFind",
-                            "Find"),
-        Gtk::AccelKey(keybindings_cfg->key_map["edit_find"]),
-        [this]() {
+  menu->action_group->add(Gtk::Action::create("FileNewFile", "New file"), Gtk::AccelKey(menu->key_map["new_file"]), [this]() {
+    OnFileNewFile();
+  });
+  menu->action_group->add(Gtk::Action::create("WindowCloseTab", "Close tab"), Gtk::AccelKey(menu->key_map["close_tab"]), [this]() {
+    OnCloseCurrentPage();
+  });
+  menu->action_group->add(Gtk::Action::create("EditFind", "Find"), Gtk::AccelKey(menu->key_map["edit_find"]), [this]() {
 	  entry.show_search("");
-        });
-  keybindings->action_group_menu->
-    add(Gtk::Action::create("EditCopy",
-                            "Copy"),
-         Gtk::AccelKey(keybindings_cfg->key_map["edit_copy"]),
-       
-        [this]() {
-	  if (Pages() != 0) {
-	    CurrentSourceView()->get_buffer()->copy_clipboard(clipboard);
-	  }
-        });
-  keybindings->action_group_menu->
-    add(Gtk::Action::create("EditCut",
-                            "Cut"),
-         Gtk::AccelKey(keybindings_cfg->key_map["edit_cut"]),
-        [this]() {
+  });
+  menu->action_group->add(Gtk::Action::create("EditCopy", "Copy"), Gtk::AccelKey(menu->key_map["edit_copy"]), [this]() {
+    if (Pages() != 0) {
+      CurrentSourceView()->get_buffer()->copy_clipboard(clipboard);
+    }
+  });
+  menu->action_group->add(Gtk::Action::create("EditCut", "Cut"), Gtk::AccelKey(menu->key_map["edit_cut"]), [this]() {
 	  if (Pages() != 0) {
 	    CurrentSourceView()->get_buffer()->cut_clipboard(clipboard);
 	  }
-        });
-  keybindings->action_group_menu->
-    add(Gtk::Action::create("EditPaste",
-                            "Paste"),
-         Gtk::AccelKey(keybindings_cfg->key_map["edit_paste"]),
-        [this]() {
+  });
+  menu->action_group->add(Gtk::Action::create("EditPaste", "Paste"), Gtk::AccelKey(menu->key_map["edit_paste"]), [this]() {
 	  if (Pages() != 0) {
 	    CurrentSourceView()->get_buffer()->paste_clipboard(clipboard);
 	  }
-        });
+  });
 
-  keybindings->action_group_menu->
-    add(Gtk::Action::create("EditUndo",
-                            "Undo"),
-        Gtk::AccelKey(keybindings_cfg->key_map["edit_undo"]),
-        [this]() {
+  menu->action_group->add(Gtk::Action::create("EditUndo", "Undo"), Gtk::AccelKey(menu->key_map["edit_undo"]), [this]() {
 	  INFO("On undo");
-          Glib::RefPtr<Gsv::UndoManager> undo_manager =
-	    CurrentSourceView()->get_source_buffer()->get_undo_manager();
-          if (Pages() != 0 && undo_manager->can_undo()) {
-            undo_manager->undo();
-          }
-          INFO("Done undo");
-        }
-	);
+    Glib::RefPtr<Gsv::UndoManager> undo_manager = CurrentSourceView()->get_source_buffer()->get_undo_manager();
+    if (Pages() != 0 && undo_manager->can_undo()) {
+      undo_manager->undo();
+    }
+    INFO("Done undo");
+	});
 
-  keybindings->action_group_menu->
-    add(Gtk::Action::create("EditRedo",
-                            "Redo"),
-        Gtk::AccelKey(keybindings_cfg->key_map["edit_redo"]),
-        [this]() {
-          INFO("On Redo");
-          Glib::RefPtr<Gsv::UndoManager> undo_manager =
-          CurrentSourceView()->get_source_buffer()->get_undo_manager();
-          if (Pages() != 0 && undo_manager->can_redo()) {
-            undo_manager->redo();
-          }
-          INFO("Done Redo");
-        });
+  menu->action_group->add(Gtk::Action::create("EditRedo", "Redo"), Gtk::AccelKey(menu->key_map["edit_redo"]), [this]() {
+    INFO("On Redo");
+    Glib::RefPtr<Gsv::UndoManager> undo_manager =
+    CurrentSourceView()->get_source_buffer()->get_undo_manager();
+    if (Pages() != 0 && undo_manager->can_redo()) {
+      undo_manager->redo();
+    }
+    INFO("Done Redo");
+  });
 
   entry.button_apply_set_filename.signal_clicked().connect([this]() {
     std::string filename=entry();

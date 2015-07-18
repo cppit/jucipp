@@ -16,7 +16,7 @@
       <separator/>                               
       <menuitem action='EditFind'/>
       <menuitem action='EditUndo'/>
-	<menuitem action='EditRedo'/>
+      <menuitem action='EditRedo'/>
     </menu>                                         
     <menu action='ProjectMenu'>                      
       <menuitem action='ProjectCompileAndRun'/>         

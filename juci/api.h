@@ -13,7 +13,7 @@
 class PluginApi {
 public:
   PluginApi();
-  static Menu::Controller* menu_;
+  static Menu* menu_;
   static Notebook::Controller* notebook_;
   static void InitPlugins();
   static std::string ProjectPath();

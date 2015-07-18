@@ -2,8 +2,8 @@
 #include "logging.h"
 #include "singletons.h"
 
-Menu::Controller* PluginApi::menu_;
-Notebook::Controller* PluginApi::notebook_;
+Menu* PluginApi::menu_=nullptr;
+Notebook::Controller* PluginApi::notebook_=nullptr;
 /////////////////////////////
 //// API ServiceProvider ////
 /////////////////////////////
@@ -64,8 +64,7 @@ void PluginApi::AddMenuElement(std::string plugin_name) {
   DEBUG("Adding menu element for "+plugin_name);
   AddMenuXml(plugin_name, "PluginMenu");
   std::string plugin_action_name = plugin_name+"Menu";
-  Singleton::keybindings()->action_group_menu
-    ->add(Gtk::Action::create(plugin_action_name, plugin_name));
+  Singleton::menu()->action_group->add(Gtk::Action::create(plugin_action_name, plugin_name));
 }
 
 void PluginApi::AddSubMenuElement(std::string parent_menu,
@@ -74,8 +73,7 @@ void PluginApi::AddSubMenuElement(std::string parent_menu,
                                   std::string plugin_path,
                                   std::string menu_keybinding) {
   AddSubMenuXml(menu_func_name, parent_menu);
-  Singleton::keybindings()->action_group_menu
-    ->add(Gtk::Action::create(menu_func_name,
+  Singleton::menu()->action_group->add(Gtk::Action::create(menu_func_name,
                               menu_name),
           Gtk::AccelKey(menu_keybinding),
           [=]() {
@@ -84,9 +82,9 @@ void PluginApi::AddSubMenuElement(std::string parent_menu,
 }
 
 void PluginApi::AddMenuXml(std::string plugin_name, std::string parent_menu) {
-  std::string temp_menu = Singleton::keybindings()->menu_ui_string;
+  std::string temp_menu = Singleton::menu()->ui;
   std::size_t plugin_menu_pos = temp_menu.find(parent_menu);
-  // +2 gets you outside of the tag:<'menu_name'> ref: keybindings.cc
+  // +2 gets you outside of the tag:<'menu_name'> 
   plugin_menu_pos+=parent_menu.size() +2;
   std::string menu_prefix = temp_menu.substr(0, plugin_menu_pos);
   std::string menu_suffix = temp_menu.substr(plugin_menu_pos);
@@ -94,23 +92,21 @@ void PluginApi::AddMenuXml(std::string plugin_name, std::string parent_menu) {
     "           <menu action='"+plugin_name+"Menu'>               "
     "           </menu>                                           ";
 
-  Singleton::keybindings()->menu_ui_string =
-    menu_prefix + menu_input + menu_suffix;
+  Singleton::menu()->ui = menu_prefix + menu_input + menu_suffix;
 }
 
 void PluginApi::AddSubMenuXml(std::string plugin_name,
                               std::string parent_menu) {
-  std::string temp_menu = Singleton::keybindings()->menu_ui_string;
+  std::string temp_menu = Singleton::menu()->ui;
 
   std::size_t parent_menu_pos = temp_menu.find(parent_menu);
-  // +2 gets you outside of the tag:<'menu_name'> ref: keybindings.cc
+  // +2 gets you outside of the tag:<'menu_name'> 
   parent_menu_pos+=parent_menu.size() +2;
   std::string menu_prefix = temp_menu.substr(0, parent_menu_pos);
   std::string menu_suffix = temp_menu.substr(parent_menu_pos);
 
   std::string menu_input ="<menuitem action='"+plugin_name+"'/>";
-  Singleton::keybindings()->menu_ui_string =
-    menu_prefix + menu_input + menu_suffix;
+  Singleton::menu()->ui = menu_prefix + menu_input + menu_suffix;
 }
 
 ///////////////////////

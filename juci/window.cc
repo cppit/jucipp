@@ -9,56 +9,25 @@ Window::Window() :
   set_default_size(600, 400);
   set_events(Gdk::POINTER_MOTION_MASK|Gdk::FOCUS_CHANGE_MASK|Gdk::SCROLL_MASK);
   add(window_box_);
-  auto keybindings=Singleton::keybindings();
-  auto keybindings_cfg=Singleton::Config::keybindings();
-  keybindings->action_group_menu->add(Gtk::Action::create("FileQuit",
-                                                            "Quit juCi++"),
-                                        Gtk::AccelKey(keybindings_cfg
-                                                      ->key_map["quit"]),
-                                        [this]() {
-                                          OnWindowHide();
-                                        });
-  keybindings->action_group_menu->add(Gtk::Action::create("FileOpenFile",
-                                                            "Open file"),
-                                        Gtk::AccelKey(keybindings_cfg
-                                                      ->key_map["open_file"]),
-                                        [this]() {
-                                          OnOpenFile();
-                                        });
-  keybindings->action_group_menu->add(Gtk::Action::create("FileOpenFolder",
-                                                            "Open folder"),
-                                        Gtk::AccelKey(keybindings_cfg
-                                                      ->key_map["open_folder"]),
-                                        [this]() {
-                                          OnFileOpenFolder();
-                                        });
-  keybindings->
-    action_group_menu->
-    add(Gtk::Action::create("FileSaveAs",
-			    "Save as"),
-	Gtk::AccelKey(keybindings_cfg
-		      ->key_map["save_as"]),
-	[this]() {
+  auto menu=Singleton::menu();
+  menu->action_group->add(Gtk::Action::create("FileQuit", "Quit juCi++"), Gtk::AccelKey(menu->key_map["quit"]), [this]() {
+    OnWindowHide();
+  });
+  menu->action_group->add(Gtk::Action::create("FileOpenFile", "Open file"), Gtk::AccelKey(menu->key_map["open_file"]), [this]() {
+    OnOpenFile();
+  });
+  menu->action_group->add(Gtk::Action::create("FileOpenFolder", "Open folder"), Gtk::AccelKey(menu->key_map["open_folder"]), [this]() {
+    OnFileOpenFolder();
+  });
+  menu->action_group->add(Gtk::Action::create("FileSaveAs", "Save as"), Gtk::AccelKey(menu->key_map["save_as"]), [this]() {
 	  SaveFileAs();
 	});
 
-  keybindings->
-    action_group_menu->
-    add(Gtk::Action::create("FileSave",
-			    "Save"),
-	Gtk::AccelKey(keybindings_cfg
-		      ->key_map["save"]),
-	[this]() {
+  menu->action_group->add(Gtk::Action::create("FileSave", "Save"), Gtk::AccelKey(menu->key_map["save"]), [this]() {
 	  SaveFile();
 	});
   
-  keybindings->
-    action_group_menu->
-    add(Gtk::Action::create("ProjectCompileAndRun",
-			    "Compile And Run"),
-	Gtk::AccelKey(keybindings_cfg
-		      ->key_map["compile_and_run"]),
-	[this]() {
+  menu->action_group->add(Gtk::Action::create("ProjectCompileAndRun", "Compile And Run"), Gtk::AccelKey(menu->key_map["compile_and_run"]), [this]() {
 	  SaveFile();
 	  if (running.try_lock()) {
 	    std::thread execute([this]() {
@@ -78,34 +47,27 @@ Window::Window() :
 	  }
 	});
    
-  keybindings->
-    action_group_menu->
-    add(Gtk::Action::create("ProjectCompile",
-                            "Compile"),
-        Gtk::AccelKey(keybindings_cfg
-                      ->key_map["compile"]),
-        [this]() {
-          SaveFile();
-          if (running.try_lock()) {
-            std::thread execute([this]() {		  
-                std::string path = Singleton::notebook()->CurrentSourceView()->file_path;
-                size_t pos = path.find_last_of("/\\");
-                if(pos != std::string::npos){
-                  path.erase(path.begin()+pos,path.end());
-                  Singleton::terminal()->SetFolderCommand(path);
-                }
-                Singleton::terminal()->Compile();
-                running.unlock();
-              });
-            execute.detach();
+  menu->action_group->add(Gtk::Action::create("ProjectCompile", "Compile"), Gtk::AccelKey(menu->key_map["compile"]), [this]() {
+    SaveFile();
+    if (running.try_lock()) {
+      std::thread execute([this]() {		  
+          std::string path = Singleton::notebook()->CurrentSourceView()->file_path;
+          size_t pos = path.find_last_of("/\\");
+          if(pos != std::string::npos){
+            path.erase(path.begin()+pos,path.end());
+            Singleton::terminal()->SetFolderCommand(path);
           }
+          Singleton::terminal()->Compile();
+          running.unlock();
         });
+      execute.detach();
+    }
+  });
 
-  add_accel_group(keybindings->ui_manager_menu->get_accel_group());
-  add_accel_group(keybindings->ui_manager_hidden->get_accel_group());
-  keybindings->BuildMenu();
+  add_accel_group(menu->ui_manager->get_accel_group());
+  menu->build();
 
-  window_box_.pack_start(Singleton::menu()->view(), Gtk::PACK_SHRINK);
+  window_box_.pack_start(menu->get_widget(), Gtk::PACK_SHRINK);
 
   window_box_.pack_start(Singleton::notebook()->entry, Gtk::PACK_SHRINK);
   paned_.set_position(300);
