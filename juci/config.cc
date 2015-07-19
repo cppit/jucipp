@@ -82,8 +82,15 @@ void MainConfig::GenerateKeybindings() {
       menu->ui+=line;   
   }
   boost::property_tree::ptree keys_json = cfg_.get_child("keybindings");
-  for (auto &i : keys_json)
-    menu->key_map[i.first] = i.second.get_value<std::string>();
+  for (auto &i : keys_json) {
+    auto key=i.second.get_value<std::string>();
+#ifdef __APPLE__
+    auto pos=key.find("<control>");
+    if(pos!=std::string::npos)
+      key.replace(pos, 9, "<meta>");
+#endif
+    menu->key_map[i.first] = key;
+  }
   DEBUG("Keybindings fetched");
 }
 
