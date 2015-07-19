@@ -47,7 +47,8 @@ file_path(file_path), project_path(project_path) {
     get_source_buffer()->create_tag(item.first)->property_foreground() = item.second;
   }
   
-  scroll_to_insert_dispatcher.connect([this](){
+  get_buffer()->place_cursor(get_buffer()->get_iter_at_offset(0));
+  signal_size_allocate().connect([this](Gtk::Allocation& allocation){
     scroll_to(get_buffer()->get_insert());
   });
 }
@@ -66,15 +67,6 @@ string Source::View::get_line_before_insert() {
   Gtk::TextIter line_it = get_source_buffer()->get_iter_at_line(insert_it.get_line());
   std::string line(get_source_buffer()->get_text(line_it, insert_it));
   return line;
-}
-
-//TODO: Fix this dirty hack. Gtk's scroll_to is bugged...
-void Source::View::scroll_to_insert() {
-  std::thread scroll_to_insert_thread([this](){
-    std::this_thread::sleep_for(std::chrono::milliseconds(1000));
-    scroll_to_insert_dispatcher();
-  });
-  scroll_to_insert_thread.detach();
 }
 
 //Basic indentation

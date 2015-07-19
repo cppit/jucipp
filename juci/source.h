@@ -49,7 +49,6 @@ public:
     View(const std::string& file_path, const std::string& project_path);
     std::string get_line(size_t line_number);
     std::string get_line_before_insert();
-    void scroll_to_insert();
     std::string file_path;
     std::string project_path;
     Gtk::TextIter search_start, search_end;
@@ -57,8 +56,6 @@ public:
     std::function<std::pair<std::string, unsigned>()> get_declaration_location;
   protected:
     bool on_key_press_event(GdkEventKey* key);
-  private:
-    Glib::Dispatcher scroll_to_insert_dispatcher;
   };  // class View
   
   class GenericView : public View {

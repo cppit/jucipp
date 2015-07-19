@@ -51,6 +51,10 @@ Terminal::View::View(){
 
 Terminal::Controller::Controller() {  
   folder_command_ = "";
+  view.text_view.signal_size_allocate().connect([this](Gtk::Allocation& allocation){
+    auto iter=view.text_view.get_buffer()->end();
+    view.text_view.scroll_to(iter);
+  });
 }
 
 void Terminal::Controller::SetFolderCommand( boost::filesystem::path
@@ -86,11 +90,7 @@ void Terminal::Controller::Run(std::string executable) {
 int Terminal::Controller::print(std::string message){
   INFO("Terminal: PrintMessage");
   view.text_view.get_buffer()->insert(view.text_view.get_buffer()->end(), "> "+message);
-  auto mark_end=view.text_view.get_buffer()->create_mark(view.text_view.get_buffer()->end());
-  view.text_view.scroll_to(view.text_view.get_buffer()->get_insert());
-  auto line=mark_end->get_iter().get_line();
-  view.text_view.get_buffer()->delete_mark(mark_end);
-  return line;
+  return view.text_view.get_buffer()->end().get_line();
 }
 
 void Terminal::Controller::print(int line_nr, std::string message){

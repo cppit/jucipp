@@ -81,7 +81,7 @@ void Notebook::Controller::CreateKeybindings() {
         if(location.first.size()>0) {
           open_file(location.first);
           CurrentSourceView()->get_buffer()->place_cursor(CurrentSourceView()->get_buffer()->get_iter_at_offset(location.second));
-          CurrentSourceView()->scroll_to_insert();
+          CurrentSourceView()->scroll_to(CurrentSourceView()->get_buffer()->get_insert());
         }
       }
     }
