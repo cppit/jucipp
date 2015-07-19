@@ -148,7 +148,7 @@ void Window::OnOpenFile() {
   switch (result) {
   case(Gtk::RESPONSE_OK): {
     std::string path = dialog.get_filename();
-    Singleton::notebook()->OnOpenFile(path);
+    Singleton::notebook()->open_file(path);
     break;
   }
   case(Gtk::RESPONSE_CANCEL): {

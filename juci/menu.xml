@@ -17,7 +17,10 @@
       <menuitem action='EditFind'/>
       <menuitem action='EditUndo'/>
       <menuitem action='EditRedo'/>
-    </menu>                                         
+    </menu>
+    <menu action='SourceMenu'>                      
+      <menuitem action='SourceGotoDeclaration'/>
+    </menu>    
     <menu action='ProjectMenu'>                      
       <menuitem action='ProjectCompileAndRun'/>         
       <menuitem action='ProjectCompile'/>      

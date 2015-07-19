@@ -8,6 +8,9 @@
 #include <regex>
 #include "singletons.h"
 
+#include <iostream> //TODO: remove
+using namespace std; //TODO: remove
+
 namespace sigc {
   SIGC_FUNCTORS_DEDUCE_RESULT_TYPE_WITH_DECLTYPE
 }
@@ -27,7 +30,6 @@ bool Source::Config::legal_extension(std::string e) const {
 //////////////
 Source::View::View(const std::string& file_path, const std::string& project_path):
 file_path(file_path), project_path(project_path) {
-  Gsv::init();
   set_smart_home_end(Gsv::SMART_HOME_END_BEFORE);
   set_show_line_numbers(Singleton::Config::source()->show_line_numbers);
   set_highlight_current_line(Singleton::Config::source()->highlight_current_line);
@@ -44,6 +46,10 @@ file_path(file_path), project_path(project_path) {
   for (auto &item : Singleton::Config::source()->tags) {
     get_source_buffer()->create_tag(item.first)->property_foreground() = item.second;
   }
+  
+  scroll_to_insert_dispatcher.connect([this](){
+    scroll_to(get_buffer()->get_insert());
+  });
 }
 
 string Source::View::get_line(size_t line_number) {
@@ -62,12 +68,21 @@ string Source::View::get_line_before_insert() {
   return line;
 }
 
+//TODO: Fix this dirty hack. Gtk's scroll_to is bugged...
+void Source::View::scroll_to_insert() {
+  std::thread scroll_to_insert_thread([this](){
+    std::this_thread::sleep_for(std::chrono::milliseconds(1000));
+    scroll_to_insert_dispatcher();
+  });
+  scroll_to_insert_thread.detach();
+}
+
 //Basic indentation
 bool Source::View::on_key_press_event(GdkEventKey* key) {
   auto config=Singleton::Config::source();
   const std::regex spaces_regex(std::string("^(")+config->tab_char+"*).*$");
   //Indent as in next or previous line
-  if(key->keyval==GDK_KEY_Return && key->state==0) {
+  if(key->keyval==GDK_KEY_Return && key->state==0 && !get_buffer()->get_has_selection()) {
     int line_nr=get_source_buffer()->get_insert()->get_iter().get_line();
     string line(get_line_before_insert());
     std::smatch sm;
@@ -124,7 +139,7 @@ bool Source::View::on_key_press_event(GdkEventKey* key) {
     return true;
   }
   //"Smart" backspace key
-  else if(key->keyval==GDK_KEY_BackSpace) {
+  else if(key->keyval==GDK_KEY_BackSpace && !get_buffer()->get_has_selection()) {
     Gtk::TextIter insert_it=get_source_buffer()->get_insert()->get_iter();
     int line_nr=insert_it.get_line();
     if(line_nr>0) {
@@ -421,7 +436,7 @@ void Source::ClangViewParse::on_mark_set(const Gtk::TextBuffer::iterator& iterat
       return false;
     }, 500);
     type_tooltips.hide();
-    diagnostic_tooltips.hide();  
+    diagnostic_tooltips.hide();
   }
 }
 
@@ -442,6 +457,9 @@ bool Source::ClangViewParse::on_scroll_event(GdkEventScroll* event) {
 //Clang indentation
 //TODO: replace indentation methods with a better implementation or maybe use libclang
 bool Source::ClangViewParse::on_key_press_event(GdkEventKey* key) {
+  if(get_buffer()->get_has_selection()) {
+    return Source::View::on_key_press_event(key);
+  }
   auto config=Singleton::Config::source();
   const std::regex bracket_regex(std::string("^(")+config->tab_char+"*).*\\{ *$");
   const std::regex no_bracket_statement_regex(std::string("^(")+config->tab_char+"*)(if|for|else if|catch|while) *\\(.*[^;}] *$");
@@ -766,6 +784,26 @@ Source::ClangViewAutocomplete(file_path, project_path) {
       }
     }
   });
+  
+  get_declaration_location=[this](){
+    std::pair<std::string, unsigned> location;
+    if(clang_readable) {
+      for(auto &token: *clang_tokens) {
+        if(token.has_type()) {
+          auto insert_offset=(unsigned)get_buffer()->get_insert()->get_iter().get_offset();
+          if(insert_offset>=token.offsets.first && insert_offset<=token.offsets.second) {
+            auto referenced=token.get_cursor().get_referenced();
+            if(referenced) {
+              location.first=referenced.get_source_location().get_path();
+              location.second=referenced.get_source_location().get_offset();
+              break;
+            }
+          }
+        }
+      }
+    }
+    return location;
+  };
 }
 
 ////////////////

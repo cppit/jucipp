@@ -4,20 +4,18 @@
 #include <string>
 #include <vector>
 
-using namespace std;
-
 class sourcefile {
 public:
-  explicit sourcefile(const string &filename);
-  vector<string> get_lines();
-  string get_content();
-  string get_line(int line_number);
-  int save(const string &text);
+  explicit sourcefile(const std::string &filename);
+  std::vector<std::string> get_lines();
+  std::string get_content();
+  std::string get_line(int line_number);
+  int save(const std::string &text);
 
 private:
-  void open(const string &filename);
-  vector<string> lines;
-  string filename;
+  void open(const std::string &filename);
+  std::vector<std::string> lines;
+  std::string filename;
 };
 
 #endif  // JUCI_SOURCEFILE_H_

@@ -4,6 +4,8 @@
 #include "singletons.h"
 #include <gtksourceview/gtksource.h> // c-library
 
+#include <iostream> //TODO: remove
+using namespace std; //TODO: remove
 
 Notebook::View::View() {
   pack2(notebook);
@@ -13,6 +15,7 @@ Notebook::View::View() {
 Notebook::Controller::Controller() :
   directories() {
   INFO("Create notebook");
+  Gsv::init();
   clipboard = Gtk::Clipboard::get();
   view.pack1(directories.widget(), true, true);
   CreateKeybindings();
@@ -70,6 +73,19 @@ void Notebook::Controller::CreateKeybindings() {
     }
     INFO("Done Redo");
   });
+  
+  menu->action_group->add(Gtk::Action::create("SourceGotoDeclaration", "Go to declaration"), Gtk::AccelKey(menu->key_map["goto_declaration"]), [this]() {
+    if(CurrentPage()!=-1) {
+      if(CurrentSourceView()->get_declaration_location) {
+        auto location=CurrentSourceView()->get_declaration_location();
+        if(location.first.size()>0) {
+          open_file(location.first);
+          CurrentSourceView()->get_buffer()->place_cursor(CurrentSourceView()->get_buffer()->get_iter_at_offset(location.second));
+          CurrentSourceView()->scroll_to_insert();
+        }
+      }
+    }
+  });
 
   entry.button_apply_set_filename.signal_clicked().connect([this]() {
     std::string filename=entry();
@@ -83,7 +99,7 @@ void Notebook::Controller::CreateKeybindings() {
       else {
         std::ofstream f(p.string().c_str());
         if(f) {
-          OnOpenFile(boost::filesystem::canonical(p).string());
+          open_file(boost::filesystem::canonical(p).string());
           if(project_path!="")
             directories.open_folder(project_path); //TODO: Do refresh instead
         }
@@ -113,14 +129,21 @@ void Notebook::Controller::CreateKeybindings() {
   INFO("Notebook signal handlers sucsess");
 }
 
-void Notebook::Controller::OnOpenFile(std::string path) {
+void Notebook::Controller::open_file(std::string path) {
   INFO("Notebook open file");
   INFO("Notebook create page");
+  for(int c=0;c<Pages();c++) {
+    if(path==source_views.at(c)->view->file_path) {
+      view.notebook.set_current_page(c);
+      return;
+    }
+  }
   source_views.emplace_back(new Source(path, project_path));
   scrolled_windows.emplace_back(new Gtk::ScrolledWindow());
   hboxes.emplace_back(new Gtk::HBox());
   scrolled_windows.back()->add(*source_views.back()->view);
   hboxes.back()->pack_start(*scrolled_windows.back(), true, true);
+  
   boost::filesystem::path file_path(source_views.back()->view->file_path);
   std::string title=file_path.filename().string();
   view.notebook.append_page(*hboxes.back(), title);
@@ -206,7 +229,7 @@ void Notebook::Controller
       std::stringstream sstm;
       sstm << row[directories.view().m_col_path];
       std::string file = sstm.str();
-      OnOpenFile(file);
+      open_file(file);
     }
   }
 }

@@ -29,7 +29,7 @@ namespace Notebook {
     bool OnSaveFile(std::string path);
     void OnDirectoryNavigation(const Gtk::TreeModel::Path& path,
                                Gtk::TreeViewColumn* column);
-    void OnOpenFile(std::string filename);
+    void open_file(std::string filename);
     int Pages();
     void search(bool forward);
     View view;

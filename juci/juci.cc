@@ -41,7 +41,7 @@ void Juci::on_activate() {
     Singleton::notebook()->directories.open_folder(directory);
   }
   for(auto &f: files)
-    Singleton::notebook()->OnOpenFile(f);
+    Singleton::notebook()->open_file(f);
 }
 
 int main(int argc, char *argv[]) {
