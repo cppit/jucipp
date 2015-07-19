@@ -52,8 +52,9 @@ Terminal::View::View(){
 Terminal::Controller::Controller() {  
   folder_command_ = "";
   view.text_view.signal_size_allocate().connect([this](Gtk::Allocation& allocation){
-    auto iter=view.text_view.get_buffer()->end();
-    view.text_view.scroll_to(iter);
+    auto end=view.text_view.get_buffer()->create_mark(view.text_view.get_buffer()->end());
+    view.text_view.scroll_to(end);
+    view.text_view.get_buffer()->delete_mark(end);
   });
 }
 
