@@ -56,6 +56,9 @@ public:
     std::function<std::pair<std::string, unsigned>()> get_declaration_location;
   protected:
     bool on_key_press_event(GdkEventKey* key);
+    bool on_button_press_event(GdkEventButton *event);
+  private:
+    bool user_input_started=false;
   };  // class View
   
   class GenericView : public View {
