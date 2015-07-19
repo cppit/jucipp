@@ -49,8 +49,14 @@ file_path(file_path), project_path(project_path) {
   
   get_buffer()->place_cursor(get_buffer()->get_iter_at_offset(0));
   signal_size_allocate().connect([this](Gtk::Allocation& allocation){
-    if(!user_input_started)
+    if(!after_user_input)
       scroll_to(get_buffer()->get_insert(), 0.0, 1.0, 0.5);
+  });
+  
+  signal_event().connect([this](GdkEvent* event){
+    if(event->type==GDK_KEY_PRESS || event->type==GDK_BUTTON_PRESS || event->type==GDK_SCROLL)
+      after_user_input=true;
+    return false;
   });
 }
 
@@ -72,7 +78,6 @@ string Source::View::get_line_before_insert() {
 
 //Basic indentation
 bool Source::View::on_key_press_event(GdkEventKey* key) {
-  user_input_started=true;
   auto config=Singleton::Config::source();
   const std::regex spaces_regex(std::string("^(")+config->tab_char+"*).*$");
   //Indent as in next or previous line
@@ -149,11 +154,6 @@ bool Source::View::on_key_press_event(GdkEventKey* key) {
     }
   }
   return Gsv::View::on_key_press_event(key);
-}
-
-bool Source::View::on_button_press_event(GdkEventButton *event) {
-  user_input_started=true;
-  return Gsv::View::on_button_press_event(event);
 }
 
 /////////////////////////

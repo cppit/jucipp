@@ -82,6 +82,11 @@ void Notebook::Controller::CreateKeybindings() {
           open_file(location.first);
           CurrentSourceView()->get_buffer()->place_cursor(CurrentSourceView()->get_buffer()->get_iter_at_offset(location.second));
           CurrentSourceView()->scroll_to(CurrentSourceView()->get_buffer()->get_insert(), 0.0, 1.0, 0.5);
+          
+          /*CurrentSourceView()->signal_size_allocate().connect([this](Gtk::Allocation& allocation){
+            auto adj=scrolled_windows.at(CurrentPage())->get_vadjustment();
+            cout << adj->get_upper() << ", " << adj->get_page_size() << endl;
+          });*/
         }
       }
     }
