@@ -20,8 +20,6 @@ protected:
   virtual void resize();
   virtual void cursor_changed();
   
-  bool row_in_entry;
-  
   Gtk::TextView& text_view;
   std::unique_ptr<Gtk::Window> window;
   std::unique_ptr<Gtk::ScrolledWindow> scrolled_window;
@@ -40,9 +38,9 @@ public:
   std::function<void(std::string selected)> on_select;
 };
 
-class CompleteDialog : public SelectionDialogBase {
+class CompletionDialog : public SelectionDialogBase {
 public:
-  CompleteDialog(Gtk::TextView& text_view);
+  CompletionDialog(Gtk::TextView& text_view);
   void show();
   bool on_key_release(GdkEventKey* key);
   bool on_key_press(GdkEventKey* key);

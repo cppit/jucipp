@@ -120,7 +120,7 @@ public:
   private:
     void start_autocomplete();
     void autocomplete();
-    CompleteDialog complete_dialog;
+    CompletionDialog completion_dialog;
     std::vector<Source::AutoCompleteData> get_autocomplete_suggestions(int line_number, int column, std::map<std::string, std::string>& buffer_map);
     Glib::Dispatcher autocomplete_done;
     sigc::connection autocomplete_done_connection;

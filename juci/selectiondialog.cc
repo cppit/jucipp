@@ -61,7 +61,6 @@ void SelectionDialogBase::show() {
   window->show_all();
   search_entry->show();
   shown=true;
-  row_in_entry=false;
 }
 
 void SelectionDialogBase::hide() {
@@ -213,9 +212,9 @@ void SelectionDialog::show() {
   list_view_text->set_cursor(list_view_text->get_model()->get_path(list_view_text->get_model()->children().begin()));
 }
 
-CompleteDialog::CompleteDialog(Gtk::TextView& text_view) : SelectionDialogBase(text_view, true) {}
+CompletionDialog::CompletionDialog(Gtk::TextView& text_view) : SelectionDialogBase(text_view, true) {}
 
-void CompleteDialog::show() {
+void CompletionDialog::show() {
   SelectionDialogBase::show();
   
   show_offset=text_view.get_buffer()->get_insert()->get_iter().get_offset();
@@ -231,9 +230,11 @@ void CompleteDialog::show() {
     search_entry->set_text(text);
     list_view_text->set_search_entry(*search_entry);
   }
+  
+  row_in_entry=false;
 }
 
-void CompleteDialog::select(bool hide_window) {
+void CompletionDialog::select(bool hide_window) {
   row_in_entry=true;
   auto selected=list_view_text->get_selected();
   std::pair<std::string, std::string> select;
@@ -261,7 +262,7 @@ void CompleteDialog::select(bool hide_window) {
   }
 }
 
-bool CompleteDialog::on_key_release(GdkEventKey* key) {
+bool CompletionDialog::on_key_release(GdkEventKey* key) {
   if(key->keyval==GDK_KEY_Down || key->keyval==GDK_KEY_Up)
     return false;
     
@@ -279,7 +280,7 @@ bool CompleteDialog::on_key_release(GdkEventKey* key) {
   return false;
 }
 
-bool CompleteDialog::on_key_press(GdkEventKey* key) {
+bool CompletionDialog::on_key_press(GdkEventKey* key) {
   if((key->keyval>=GDK_KEY_0 && key->keyval<=GDK_KEY_9) || 
      (key->keyval>=GDK_KEY_A && key->keyval<=GDK_KEY_Z) ||
      (key->keyval>=GDK_KEY_a && key->keyval<=GDK_KEY_z) ||
