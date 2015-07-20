@@ -547,32 +547,32 @@ bool Source::ClangViewParse::on_key_press_event(GdkEventKey* key) {
 //// ClangViewAutocomplete ///
 //////////////////////////////
 Source::ClangViewAutocomplete::ClangViewAutocomplete(const std::string& file_path, const std::string& project_path):
-Source::ClangViewParse(file_path, project_path), selection_dialog(*this), autocomplete_cancel_starting(false) {
-  selection_dialog.on_hide=[this](){
+Source::ClangViewParse(file_path, project_path), complete_dialog(*this), autocomplete_cancel_starting(false) {
+  complete_dialog.on_hide=[this](){
     start_reparse();
   };
   
   get_buffer()->signal_changed().connect([this](){
-    if(selection_dialog.shown)
+    if(complete_dialog.shown)
       delayed_reparse_connection.disconnect();
     start_autocomplete();
   });
   get_buffer()->signal_mark_set().connect([this](const Gtk::TextBuffer::iterator& iterator, const Glib::RefPtr<Gtk::TextBuffer::Mark>& mark){
     if(mark->get_name()=="insert") {
       autocomplete_cancel_starting=true;
-      if(selection_dialog.shown) {
-        selection_dialog.hide();
+      if(complete_dialog.shown) {
+        complete_dialog.hide();
       }
     }
   });
   signal_scroll_event().connect([this](GdkEventScroll* event){
-    if(selection_dialog.shown)
-      selection_dialog.hide();
+    if(complete_dialog.shown)
+      complete_dialog.hide();
     return false;
   }, false);
   signal_key_release_event().connect([this](GdkEventKey* key){
-    if(selection_dialog.shown) {
-      if(selection_dialog.on_key_release(key))
+    if(complete_dialog.shown) {
+      if(complete_dialog.on_key_release(key))
         return true;
     }
     
@@ -582,16 +582,16 @@ Source::ClangViewParse(file_path, project_path), selection_dialog(*this), autoco
 
 bool Source::ClangViewAutocomplete::on_key_press_event(GdkEventKey *key) {
   last_keyval=key->keyval;
-  if(selection_dialog.shown) {
-    if(selection_dialog.on_key_press(key))
+  if(complete_dialog.shown) {
+    if(complete_dialog.on_key_press(key))
       return true;
   }
   return ClangViewParse::on_key_press_event(key);
 }
 
 bool Source::ClangViewAutocomplete::on_focus_out_event(GdkEventFocus* event) {
-  if(selection_dialog.shown) {
-    selection_dialog.hide();
+  if(complete_dialog.shown) {
+    complete_dialog.hide();
   }
     
   return Source::ClangViewParse::on_focus_out_event(event);
@@ -613,7 +613,7 @@ void Source::ClangViewAutocomplete::start_autocomplete() {
       prefix_mutex.lock();
       prefix=sm[3].str();
       prefix_mutex.unlock();
-      if((prefix.size()==0 || prefix[0]<'0' || prefix[0]>'9') && !autocomplete_starting && !selection_dialog.shown) {
+      if((prefix.size()==0 || prefix[0]<'0' || prefix[0]>'9') && !autocomplete_starting && !complete_dialog.shown) {
         autocomplete();
       }
       else if(last_keyval=='.' && autocomplete_starting)
@@ -623,13 +623,13 @@ void Source::ClangViewAutocomplete::start_autocomplete() {
       prefix_mutex.lock();
       prefix=sm[3].str();
       prefix_mutex.unlock();
-      if((prefix.size()==0 || prefix[0]<'0' || prefix[0]>'9') && !autocomplete_starting && !selection_dialog.shown) {
+      if((prefix.size()==0 || prefix[0]<'0' || prefix[0]>'9') && !autocomplete_starting && !complete_dialog.shown) {
         autocomplete();
       }
     }
     else
       autocomplete_cancel_starting=true;
-    if(autocomplete_starting || selection_dialog.shown)
+    if(autocomplete_starting || complete_dialog.shown)
       delayed_reparse_connection.disconnect();
   }
 }
@@ -644,12 +644,12 @@ void Source::ClangViewAutocomplete::autocomplete() {
     autocomplete_done_connection=autocomplete_done.connect([this, ac_data](){
       autocomplete_starting=false;
       if(!autocomplete_cancel_starting) {
-        if(selection_dialog.start_mark)
-          get_buffer()->delete_mark(selection_dialog.start_mark);
+        if(complete_dialog.start_mark)
+          get_buffer()->delete_mark(complete_dialog.start_mark);
         auto start_iter=get_buffer()->get_insert()->get_iter();
         for(size_t c=0;c<prefix.size();c++)
           start_iter--;
-        selection_dialog.start_mark=get_buffer()->create_mark(start_iter);
+        complete_dialog.start_mark=get_buffer()->create_mark(start_iter);
         
         std::map<std::string, std::pair<std::string, std::string> > rows;
         for (auto &data : *ac_data) {
@@ -673,8 +673,8 @@ void Source::ClangViewAutocomplete::autocomplete() {
         if (rows.empty()) {
           rows["No suggestions found..."] = std::pair<std::string, std::string>();
         }
-        selection_dialog.rows=std::move(rows);
-        selection_dialog.show();
+        complete_dialog.rows=std::move(rows);
+        complete_dialog.show();
       }
       else
         start_autocomplete();
@@ -740,7 +740,7 @@ get_autocomplete_suggestions(int line_number, int column, std::map<std::string, 
 ////////////////////////////
 
 Source::ClangViewRefactor::ClangViewRefactor(const std::string& file_path, const std::string& project_path):
-Source::ClangViewAutocomplete(file_path, project_path) {
+Source::ClangViewAutocomplete(file_path, project_path), selection_dialog(*this) {
   similar_tokens_tag=get_buffer()->create_tag();
   similar_tokens_tag->property_weight()=Pango::WEIGHT_BOLD;
   
@@ -802,6 +802,22 @@ Source::ClangViewAutocomplete(file_path, project_path) {
       }
     }
     return location;
+  };
+  
+  goto_method=[this](){
+    if(selection_dialog.start_mark)
+      get_buffer()->delete_mark(selection_dialog.start_mark);
+    selection_dialog.start_mark=get_buffer()->create_mark(get_buffer()->get_insert()->get_iter());
+    
+    std::map<std::string, std::pair<std::string, std::string> > rows;
+    rows["Not implemented yet"]=std::pair<std::string, std::string>("1", "");
+    rows["but you can try the selection search"]=std::pair<std::string, std::string>("2", "");
+    rows["search for instance for 'try'"]=std::pair<std::string, std::string>("3", "");
+    selection_dialog.rows=std::move(rows);
+    selection_dialog.on_select=[this](std::string selected) {
+      cout << selected << endl;
+    };
+    selection_dialog.show();
   };
 }
 

@@ -59,6 +59,7 @@
         "edit_redo": "<control>y",
         "edit_find": "<control>f",
         "goto_declaration": "<control>d",
+        "goto_method": "<control>m",
         "compile_and_run": "<control><alt>r",
         "compile": "<control>r"
     },

@@ -20,6 +20,7 @@
     </menu>
     <menu action='SourceMenu'>                      
       <menuitem action='SourceGotoDeclaration'/>
+      <menuitem action='SourceGotoMethod'/>
     </menu>    
     <menu action='ProjectMenu'>                      
       <menuitem action='ProjectCompileAndRun'/>         

@@ -54,6 +54,7 @@ public:
     Gtk::TextIter search_start, search_end;
     
     std::function<std::pair<std::string, unsigned>()> get_declaration_location;
+    std::function<void()> goto_method;
     bool after_user_input=false;
   protected:
     bool on_key_press_event(GdkEventKey* key);
@@ -119,7 +120,7 @@ public:
   private:
     void start_autocomplete();
     void autocomplete();
-    SelectionDialog selection_dialog;
+    CompleteDialog complete_dialog;
     std::vector<Source::AutoCompleteData> get_autocomplete_suggestions(int line_number, int column, std::map<std::string, std::string>& buffer_map);
     Glib::Dispatcher autocomplete_done;
     sigc::connection autocomplete_done_connection;
@@ -136,6 +137,7 @@ public:
   private:
     Glib::RefPtr<Gtk::TextTag> similar_tokens_tag;
     std::string last_similar_tokens_tagged;
+    SelectionDialog selection_dialog;
   };
   
   class ClangView : public ClangViewRefactor {

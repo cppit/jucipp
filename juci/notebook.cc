@@ -82,12 +82,15 @@ void Notebook::Controller::CreateKeybindings() {
           open_file(location.first);
           CurrentSourceView()->get_buffer()->place_cursor(CurrentSourceView()->get_buffer()->get_iter_at_offset(location.second));
           CurrentSourceView()->scroll_to(CurrentSourceView()->get_buffer()->get_insert(), 0.0, 1.0, 0.5);
-          
-          /*CurrentSourceView()->signal_size_allocate().connect([this](Gtk::Allocation& allocation){
-            auto adj=scrolled_windows.at(CurrentPage())->get_vadjustment();
-            cout << adj->get_upper() << ", " << adj->get_page_size() << endl;
-          });*/
         }
+      }
+    }
+  });
+  
+  menu->action_group->add(Gtk::Action::create("SourceGotoMethod", "Go to method"), Gtk::AccelKey(menu->key_map["goto_method"]), [this]() {
+    if(CurrentPage()!=-1) {
+      if(CurrentSourceView()->goto_method) {
+        CurrentSourceView()->goto_method();
       }
     }
   });
