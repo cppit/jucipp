@@ -8,11 +8,13 @@
 class SelectionDialogBase {
 public:
   SelectionDialogBase(Gtk::TextView& text_view, bool popup);
+  virtual void init(); //TODO: use constructor instead of init
+  virtual void append(const std::string& row);
   virtual void show();
   virtual void hide();
   virtual void move();
   
-  std::map<std::string, std::pair<std::string, std::string> > rows;
+  std::map<std::string, std::pair<std::string, std::string> > rows; //TODO: remove, instead add on_select
   std::function<void()> on_hide;
   bool shown=false;
   Glib::RefPtr<Gtk::TextBuffer::Mark> start_mark;
@@ -34,6 +36,7 @@ private:
 class SelectionDialog : public SelectionDialogBase {
 public:
   SelectionDialog(Gtk::TextView& text_view);
+  void init() {SelectionDialogBase::init();}
   void show();
   std::function<void(std::string selected)> on_select;
 };
@@ -41,6 +44,7 @@ public:
 class CompletionDialog : public SelectionDialogBase {
 public:
   CompletionDialog(Gtk::TextView& text_view);
+  void init() {SelectionDialogBase::init();}
   void show();
   bool on_key_release(GdkEventKey* key);
   bool on_key_press(GdkEventKey* key);

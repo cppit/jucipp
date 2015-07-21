@@ -79,6 +79,7 @@ public:
     std::unique_ptr<clang::Tokens> clang_tokens;
     bool clang_readable=false;
     sigc::connection delayed_reparse_connection;
+    sigc::connection delayed_tooltips_connection;
   private:
     std::map<std::string, std::string> get_buffer_map() const;
     // inits the syntax highligthing on file open
@@ -94,7 +95,6 @@ public:
     Tooltips type_tooltips;
     bool on_motion_notify_event(GdkEventMotion* event);
     void on_mark_set(const Gtk::TextBuffer::iterator& iterator, const Glib::RefPtr<Gtk::TextBuffer::Mark>& mark);
-    sigc::connection delayed_tooltips_connection;
     
     bool on_scroll_event(GdkEventScroll* event);
     static clang::Index clang_index;

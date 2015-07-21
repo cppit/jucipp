@@ -1,4 +1,5 @@
 #include "selectiondialog.h"
+#include <algorithm>
 
 namespace sigc {
   SIGC_FUNCTORS_DEDUCE_RESULT_TYPE_WITH_DECLTYPE
@@ -6,10 +7,7 @@ namespace sigc {
 
 SelectionDialogBase::SelectionDialogBase(Gtk::TextView& text_view, bool popup): text_view(text_view), popup(popup) {}
 
-void SelectionDialogBase::show() {
-  if(rows.size()==0)
-    return;
-  
+void SelectionDialogBase::init() {
   if(popup)
     window=std::unique_ptr<Gtk::Window>(new Gtk::Window(Gtk::WindowType::WINDOW_POPUP));
   else
@@ -39,10 +37,13 @@ void SelectionDialogBase::show() {
   });
   
   list_view_text->clear_items();
-  for (auto &i : rows) {
-    list_view_text->append(i.first);
-  }
-  
+}
+
+void SelectionDialogBase::append(const std::string& row) {
+  list_view_text->append(row);
+}
+
+void SelectionDialogBase::show() {
   scrolled_window->add(*list_view_text);
   if(popup)
     window->add(*scrolled_window);
@@ -146,9 +147,12 @@ void SelectionDialog::show() {
   std::shared_ptr<std::string> search_key(new std::string());
   auto filter_model=Gtk::TreeModelFilter::create(list_view_text->get_model());
   filter_model->set_visible_func([this, search_key](const Gtk::TreeModel::const_iterator& iter){
-    std::string row;
-    iter->get_value(0, row);
-    if(row.find(*search_key)!=std::string::npos)
+    std::string row_lc;
+    iter->get_value(0, row_lc);
+    auto search_key_lc=*search_key;
+    std::transform(row_lc.begin(), row_lc.end(), row_lc.begin(), ::tolower);
+    std::transform(search_key_lc.begin(), search_key_lc.end(), search_key_lc.begin(), ::tolower);
+    if(row_lc.find(search_key_lc)!=std::string::npos)
       return true;
     return false;
   });

@@ -652,6 +652,7 @@ void Source::ClangViewAutocomplete::autocomplete() {
         completion_dialog.start_mark=get_buffer()->create_mark(start_iter);
         
         std::map<std::string, std::pair<std::string, std::string> > rows;
+        completion_dialog.init();
         for (auto &data : *ac_data) {
           std::stringstream ss;
           std::string return_value;
@@ -668,10 +669,12 @@ void Source::ClangViewAutocomplete::autocomplete() {
           if (ss_str.length() > 0) { // if length is 0 the result is empty
             auto pair=std::pair<std::string, std::string>(ss_str, data.brief_comments);
             rows[ss.str() + " --> " + return_value] = pair;
+            completion_dialog.append(ss.str() + " --> " + return_value);
           }
         }
         if (rows.empty()) {
           rows["No suggestions found..."] = std::pair<std::string, std::string>();
+          completion_dialog.append("No suggestions found...");
         }
         completion_dialog.rows=std::move(rows);
         completion_dialog.show();
@@ -804,20 +807,26 @@ Source::ClangViewAutocomplete(file_path, project_path), selection_dialog(*this) 
     return location;
   };
   
-  goto_method=[this](){
-    if(selection_dialog.start_mark)
-      get_buffer()->delete_mark(selection_dialog.start_mark);
-    selection_dialog.start_mark=get_buffer()->create_mark(get_buffer()->get_insert()->get_iter());
-    
-    std::map<std::string, std::pair<std::string, std::string> > rows;
-    rows["Not implemented yet"]=std::pair<std::string, std::string>("1", "");
-    rows["but you can try the selection search"]=std::pair<std::string, std::string>("2", "");
-    rows["search for instance for 'try'"]=std::pair<std::string, std::string>("3", "");
-    selection_dialog.rows=std::move(rows);
-    selection_dialog.on_select=[this](std::string selected) {
-      cout << selected << endl;
-    };
-    selection_dialog.show();
+  goto_method=[this](){    
+    if(clang_readable) {
+      if(selection_dialog.start_mark)
+        get_buffer()->delete_mark(selection_dialog.start_mark);
+      selection_dialog.start_mark=get_buffer()->create_mark(get_buffer()->get_insert()->get_iter());
+      std::map<std::string, std::pair<std::string, std::string> > rows;
+      selection_dialog.init();
+      for(auto &method: clang_tokens->get_cxx_methods()) {
+        rows[method.first]=std::pair<std::string, std::string>(std::to_string(method.second), "");
+        selection_dialog.append(method.first);
+      }
+      selection_dialog.rows=std::move(rows);
+      selection_dialog.on_select=[this](std::string selected) {
+        auto offset=stoul(selected);
+        get_buffer()->place_cursor(get_buffer()->get_iter_at_offset(offset));
+        scroll_to(get_buffer()->get_insert(), 0.0, 1.0, 0.5);
+        delayed_tooltips_connection.disconnect();
+      };
+      selection_dialog.show();
+    }
   };
 }
 
