@@ -814,7 +814,10 @@ Source::ClangViewAutocomplete(file_path, project_path), selection_dialog(*this) 
       selection_dialog.start_mark=get_buffer()->create_mark(get_buffer()->get_insert()->get_iter());
       std::map<std::string, std::pair<std::string, std::string> > rows;
       selection_dialog.init();
-      for(auto &method: clang_tokens->get_cxx_methods()) {
+      auto methods=clang_tokens->get_cxx_methods();
+      if(methods.size()==0)
+        return;
+      for(auto &method: methods) {
         rows[method.first]=std::pair<std::string, std::string>(std::to_string(method.second), "");
         selection_dialog.append(method.first);
       }

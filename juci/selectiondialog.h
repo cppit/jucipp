@@ -14,7 +14,7 @@ public:
   virtual void hide();
   virtual void move();
   
-  std::map<std::string, std::pair<std::string, std::string> > rows; //TODO: remove, instead add on_select
+  std::map<std::string, std::pair<std::string, std::string> > rows; //TODO: remove, instead add on_select. Also remember to destroy start_mark in destructor
   std::function<void()> on_hide;
   bool shown=false;
   Glib::RefPtr<Gtk::TextBuffer::Mark> start_mark;
