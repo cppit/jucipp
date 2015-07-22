@@ -120,7 +120,8 @@ public:
   private:
     void start_autocomplete();
     void autocomplete();
-    CompletionDialog completion_dialog;
+    std::unique_ptr<CompletionDialog> completion_dialog;
+    bool completion_dialog_shown=false;
     std::vector<Source::AutoCompleteData> get_autocomplete_suggestions(int line_number, int column, std::map<std::string, std::string>& buffer_map);
     Glib::Dispatcher autocomplete_done;
     sigc::connection autocomplete_done_connection;
@@ -137,7 +138,7 @@ public:
   private:
     Glib::RefPtr<Gtk::TextTag> similar_tokens_tag;
     std::string last_similar_tokens_tagged;
-    SelectionDialog selection_dialog;
+    std::unique_ptr<SelectionDialog> selection_dialog;
   };
   
   class ClangView : public ClangViewRefactor {

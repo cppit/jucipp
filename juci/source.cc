@@ -547,32 +547,28 @@ bool Source::ClangViewParse::on_key_press_event(GdkEventKey* key) {
 //// ClangViewAutocomplete ///
 //////////////////////////////
 Source::ClangViewAutocomplete::ClangViewAutocomplete(const std::string& file_path, const std::string& project_path):
-Source::ClangViewParse(file_path, project_path), completion_dialog(*this), autocomplete_cancel_starting(false) {
-  completion_dialog.on_hide=[this](){
-    start_reparse();
-  };
-  
+Source::ClangViewParse(file_path, project_path), autocomplete_cancel_starting(false) {
   get_buffer()->signal_changed().connect([this](){
-    if(completion_dialog.shown)
+    if(completion_dialog_shown)
       delayed_reparse_connection.disconnect();
     start_autocomplete();
   });
   get_buffer()->signal_mark_set().connect([this](const Gtk::TextBuffer::iterator& iterator, const Glib::RefPtr<Gtk::TextBuffer::Mark>& mark){
     if(mark->get_name()=="insert") {
       autocomplete_cancel_starting=true;
-      if(completion_dialog.shown) {
-        completion_dialog.hide();
+      if(completion_dialog_shown) {
+        completion_dialog->hide();
       }
     }
   });
   signal_scroll_event().connect([this](GdkEventScroll* event){
-    if(completion_dialog.shown)
-      completion_dialog.hide();
+    if(completion_dialog_shown)
+      completion_dialog->hide();
     return false;
   }, false);
   signal_key_release_event().connect([this](GdkEventKey* key){
-    if(completion_dialog.shown) {
-      if(completion_dialog.on_key_release(key))
+    if(completion_dialog_shown) {
+      if(completion_dialog->on_key_release(key))
         return true;
     }
     
@@ -582,16 +578,16 @@ Source::ClangViewParse(file_path, project_path), completion_dialog(*this), autoc
 
 bool Source::ClangViewAutocomplete::on_key_press_event(GdkEventKey *key) {
   last_keyval=key->keyval;
-  if(completion_dialog.shown) {
-    if(completion_dialog.on_key_press(key))
+  if(completion_dialog_shown) {
+    if(completion_dialog->on_key_press(key))
       return true;
   }
   return ClangViewParse::on_key_press_event(key);
 }
 
 bool Source::ClangViewAutocomplete::on_focus_out_event(GdkEventFocus* event) {
-  if(completion_dialog.shown) {
-    completion_dialog.hide();
+  if(completion_dialog_shown) {
+    completion_dialog->hide();
   }
     
   return Source::ClangViewParse::on_focus_out_event(event);
@@ -613,7 +609,7 @@ void Source::ClangViewAutocomplete::start_autocomplete() {
       prefix_mutex.lock();
       prefix=sm[3].str();
       prefix_mutex.unlock();
-      if((prefix.size()==0 || prefix[0]<'0' || prefix[0]>'9') && !autocomplete_starting && !completion_dialog.shown) {
+      if((prefix.size()==0 || prefix[0]<'0' || prefix[0]>'9') && !autocomplete_starting && !completion_dialog_shown) {
         autocomplete();
       }
       else if(last_keyval=='.' && autocomplete_starting)
@@ -623,13 +619,13 @@ void Source::ClangViewAutocomplete::start_autocomplete() {
       prefix_mutex.lock();
       prefix=sm[3].str();
       prefix_mutex.unlock();
-      if((prefix.size()==0 || prefix[0]<'0' || prefix[0]>'9') && !autocomplete_starting && !completion_dialog.shown) {
+      if((prefix.size()==0 || prefix[0]<'0' || prefix[0]>'9') && !autocomplete_starting && !completion_dialog_shown) {
         autocomplete();
       }
     }
     else
       autocomplete_cancel_starting=true;
-    if(autocomplete_starting || completion_dialog.shown)
+    if(autocomplete_starting || completion_dialog_shown)
       delayed_reparse_connection.disconnect();
   }
 }
@@ -644,15 +640,15 @@ void Source::ClangViewAutocomplete::autocomplete() {
     autocomplete_done_connection=autocomplete_done.connect([this, ac_data](){
       autocomplete_starting=false;
       if(!autocomplete_cancel_starting) {
-        if(completion_dialog.start_mark)
-          get_buffer()->delete_mark(completion_dialog.start_mark);
         auto start_iter=get_buffer()->get_insert()->get_iter();
         for(size_t c=0;c<prefix.size();c++)
           start_iter--;
-        completion_dialog.start_mark=get_buffer()->create_mark(start_iter);
-        
-        std::map<std::string, std::pair<std::string, std::string> > rows;
-        completion_dialog.init();
+        completion_dialog=std::unique_ptr<CompletionDialog>(new CompletionDialog(*this, get_buffer()->create_mark(start_iter)));
+        completion_dialog->on_hide=[this](){
+          start_reparse();
+          completion_dialog_shown=false;
+        };
+        auto rows=std::make_shared<std::unordered_map<std::string, std::string> >();
         for (auto &data : *ac_data) {
           std::stringstream ss;
           std::string return_value;
@@ -667,17 +663,37 @@ void Source::ClangViewAutocomplete::autocomplete() {
           }
           auto ss_str=ss.str();
           if (ss_str.length() > 0) { // if length is 0 the result is empty
-            auto pair=std::pair<std::string, std::string>(ss_str, data.brief_comments);
-            rows[ss.str() + " --> " + return_value] = pair;
-            completion_dialog.append(ss.str() + " --> " + return_value);
+            (*rows)[ss.str() + " --> " + return_value] = ss_str;
+            completion_dialog->add_row(ss.str() + " --> " + return_value, data.brief_comments);
           }
         }
-        if (rows.empty()) {
-          rows["No suggestions found..."] = std::pair<std::string, std::string>();
-          completion_dialog.append("No suggestions found...");
+        if (rows->empty()) {
+          (*rows)["No suggestions found..."] = "";
+          completion_dialog->add_row("No suggestions found...");
         }
-        completion_dialog.rows=std::move(rows);
-        completion_dialog.show();
+        completion_dialog->on_select=[this, rows](const std::string& selected, bool finished) {
+          auto row = rows->at(selected);
+          get_buffer()->erase(completion_dialog->start_mark->get_iter(), get_buffer()->get_insert()->get_iter());
+          get_buffer()->insert(completion_dialog->start_mark->get_iter(), row);
+          if(finished) {
+            char find_char=row.back();
+            if(find_char==')' || find_char=='>') {
+              if(find_char==')')
+                find_char='(';
+              else
+                find_char='<';
+              size_t pos=row.find(find_char);
+              if(pos!=std::string::npos) {
+                auto start_offset=completion_dialog->start_mark->get_iter().get_offset()+pos+1;
+                auto end_offset=completion_dialog->start_mark->get_iter().get_offset()+row.size()-1;
+                if(start_offset!=end_offset)
+                  get_buffer()->select_range(get_buffer()->get_iter_at_offset(start_offset), get_buffer()->get_iter_at_offset(end_offset));
+              }
+            }
+          }
+        };
+        completion_dialog_shown=true;
+        completion_dialog->show();
       }
       else
         start_autocomplete();
@@ -743,7 +759,7 @@ get_autocomplete_suggestions(int line_number, int column, std::map<std::string, 
 ////////////////////////////
 
 Source::ClangViewRefactor::ClangViewRefactor(const std::string& file_path, const std::string& project_path):
-Source::ClangViewAutocomplete(file_path, project_path), selection_dialog(*this) {
+Source::ClangViewAutocomplete(file_path, project_path) {
   similar_tokens_tag=get_buffer()->create_tag();
   similar_tokens_tag->property_weight()=Pango::WEIGHT_BOLD;
   
@@ -809,26 +825,22 @@ Source::ClangViewAutocomplete(file_path, project_path), selection_dialog(*this) 
   
   goto_method=[this](){    
     if(clang_readable) {
-      if(selection_dialog.start_mark)
-        get_buffer()->delete_mark(selection_dialog.start_mark);
-      selection_dialog.start_mark=get_buffer()->create_mark(get_buffer()->get_insert()->get_iter());
-      std::map<std::string, std::pair<std::string, std::string> > rows;
-      selection_dialog.init();
+      selection_dialog=std::unique_ptr<SelectionDialog>(new SelectionDialog(*this, get_buffer()->create_mark(get_buffer()->get_insert()->get_iter())));
+      auto rows=std::make_shared<std::unordered_map<std::string, std::string> >();
       auto methods=clang_tokens->get_cxx_methods();
       if(methods.size()==0)
         return;
       for(auto &method: methods) {
-        rows[method.first]=std::pair<std::string, std::string>(std::to_string(method.second), "");
-        selection_dialog.append(method.first);
+        (*rows)[method.first]=std::to_string(method.second);
+        selection_dialog->add_row(method.first);
       }
-      selection_dialog.rows=std::move(rows);
-      selection_dialog.on_select=[this](std::string selected) {
-        auto offset=stoul(selected);
+      selection_dialog->on_select=[this, rows](const std::string& selected, bool finished) {
+        auto offset=stoul(rows->at(selected));
         get_buffer()->place_cursor(get_buffer()->get_iter_at_offset(offset));
         scroll_to(get_buffer()->get_insert(), 0.0, 1.0, 0.5);
         delayed_tooltips_connection.disconnect();
       };
-      selection_dialog.show();
+      selection_dialog->show();
     }
   };
 }
