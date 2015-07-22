@@ -380,7 +380,7 @@ void Source::ClangViewParse::update_diagnostics() {
 void Source::ClangViewParse::update_types() {
   type_tooltips.clear();
   for(auto &token: *clang_tokens) {
-    if(token.has_type()) {
+    if(token.get_kind()==clang::Token_Identifier && token.has_type()) {
       auto start=get_buffer()->get_iter_at_offset(token.offsets.first);
       auto end=get_buffer()->get_iter_at_offset(token.offsets.second);
       auto get_tooltip_buffer=[this, &token]() {
@@ -775,7 +775,7 @@ Source::ClangViewAutocomplete(file_path, project_path) {
       bool found=false;
       if(clang_readable) {
         for(auto &token: *clang_tokens) {
-          if(token.has_type()) {
+          if(token.get_kind()==clang::Token_Identifier && token.has_type()) {
             auto insert_offset=(unsigned)get_buffer()->get_insert()->get_iter().get_offset();
             if(insert_offset>=token.offsets.first && insert_offset<=token.offsets.second) {
               found=true;
