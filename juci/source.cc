@@ -388,7 +388,7 @@ void Source::ClangViewParse::update_types() {
         tooltip_buffer->insert_at_cursor("Type: "+token.get_type());
         auto brief_comment=token.get_brief_comments();
         if(brief_comment!="")
-          tooltip_buffer->insert_at_cursor("\n\n"+brief_comment+".");
+          tooltip_buffer->insert_at_cursor("\n\n"+brief_comment);
         return tooltip_buffer;
       };
       
