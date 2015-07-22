@@ -20,7 +20,7 @@ public:
   Glib::RefPtr<Gtk::TextBuffer::Mark> start_mark;
 protected:
   virtual void resize();
-  virtual void cursor_changed();
+  virtual void update_tooltips();
   Gtk::TextView& text_view;
   
   std::unique_ptr<Gtk::Window> window;

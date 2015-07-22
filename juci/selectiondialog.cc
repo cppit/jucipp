@@ -29,6 +29,19 @@ start_mark(start_mark), show_search_entry(show_search_entry), list_view_text(1, 
     resize();
   });
   
+  list_view_text.signal_event_after().connect([this](GdkEvent* event){
+    if(event->type==GDK_KEY_PRESS || event->type==GDK_BUTTON_PRESS) {
+      update_tooltips();
+    }
+  });
+  if(show_search_entry) {
+    search_entry.signal_event_after().connect([this](GdkEvent* event){
+      if(event->type==GDK_KEY_PRESS || event->type==GDK_BUTTON_PRESS) {
+        update_tooltips();
+      }
+    });
+  }
+  
   scrolled_window.add(list_view_text);
   if(!show_search_entry)
     window->add(scrolled_window);
@@ -51,13 +64,8 @@ void SelectionDialogBase::add_row(const std::string& row, const std::string& too
 }
 
 void SelectionDialogBase::show() {
-  if(list_view_text.get_model()->children().size()>0) {
-    list_view_text.set_cursor(list_view_text.get_model()->get_path(list_view_text.get_model()->children().begin()));
-  }
-
   move();
   window->show_all();
-  search_entry.show();
 }
 
 void SelectionDialogBase::hide() {
@@ -68,8 +76,7 @@ void SelectionDialogBase::hide() {
     on_hide();
 }
 
-//TODO: this is not called when selecting row with mouse, but I guess that is ok. 
-void SelectionDialogBase::cursor_changed() {
+void SelectionDialogBase::update_tooltips() {
   if(list_view_text.get_selected().size()>0) {
     auto it=list_view_text.get_selection()->get_selected();
     std::string row;
@@ -146,6 +153,7 @@ void SelectionDialog::show() {
   SelectionDialogBase::show();
   std::shared_ptr<std::string> search_key(new std::string());
   auto filter_model=Gtk::TreeModelFilter::create(list_view_text.get_model());
+  
   filter_model->set_visible_func([this, search_key](const Gtk::TreeModel::const_iterator& iter){
     std::string row_lc;
     iter->get_value(0, row_lc);
@@ -156,15 +164,19 @@ void SelectionDialog::show() {
       return true;
     return false;
   });
+  
   list_view_text.set_model(filter_model);
+  
   list_view_text.set_search_equal_func([this](const Glib::RefPtr<Gtk::TreeModel>& model, int column, const Glib::ustring& key, const Gtk::TreeModel::iterator& iter) {
     return false;
   });
+  
   search_entry.signal_changed().connect([this, search_key, filter_model](){
     *search_key=search_entry.get_text();
     filter_model->refilter();
     list_view_text.set_search_entry(search_entry); //TODO:Report the need of this to GTK's git (bug)
   });
+  
   search_entry.signal_event().connect([this](GdkEvent* event) {
     if(event->type==GDK_KEY_PRESS) {
       auto key=(GdkEventKey*)event;
@@ -198,6 +210,7 @@ void SelectionDialog::show() {
     }
     return false;
   });
+  
   auto activate=[this](){
     if(on_select && list_view_text.get_selected().size()>0) {
       auto it=list_view_text.get_selection()->get_selected();
@@ -205,18 +218,24 @@ void SelectionDialog::show() {
       it->get_value(0, row);
       on_select(row, true);
     }
-    window->hide();
+    hide();
   };
   search_entry.signal_activate().connect([this, activate](){
     activate();
   });
   list_view_text.signal_row_activated().connect([this, activate](const Gtk::TreeModel::Path& path, Gtk::TreeViewColumn*) {
     activate();
-   });
+  });
+   
   window->signal_focus_out_event().connect([this](GdkEventFocus*){
-    window->hide();
+    hide();
     return true;
   });
+  
+  if(list_view_text.get_model()->children().size()>0) {
+    list_view_text.set_cursor(list_view_text.get_model()->get_path(list_view_text.get_model()->children().begin()));
+    update_tooltips();
+  }
 }
 
 CompletionDialog::CompletionDialog(Gtk::TextView& text_view, Glib::RefPtr<Gtk::TextBuffer::Mark> start_mark) : SelectionDialogBase(text_view, start_mark, false) {}
@@ -256,6 +275,11 @@ void CompletionDialog::show() {
     search_entry.set_text(text);
     list_view_text.set_search_entry(search_entry);
   }
+  
+  if(list_view_text.get_model()->children().size()>0) {
+    list_view_text.set_cursor(list_view_text.get_model()->get_path(list_view_text.get_model()->children().begin()));
+    update_tooltips();
+  }
 }
 
 void CompletionDialog::select(bool hide_window) {
@@ -285,7 +309,12 @@ bool CompletionDialog::on_key_release(GdkEventKey* key) {
     auto text=text_view.get_buffer()->get_text(start_mark->get_iter(), text_view.get_buffer()->get_insert()->get_iter());
     search_entry.set_text(text);
     list_view_text.set_search_entry(search_entry);
-    cursor_changed();
+    if(text=="") {
+      if(list_view_text.get_model()->children().size()>0) {
+        list_view_text.set_cursor(list_view_text.get_model()->get_path(list_view_text.get_model()->children().begin()));
+      }
+    }
+    update_tooltips();
   }
   return false;
 }
@@ -299,11 +328,11 @@ bool CompletionDialog::on_key_press(GdkEventKey* key) {
       text_view.get_buffer()->erase(start_mark->get_iter(), text_view.get_buffer()->get_insert()->get_iter());
       row_in_entry=false;
       if(key->keyval==GDK_KEY_BackSpace) {
-        cursor_changed();
+        update_tooltips();
         return true;
       }
     }
-    cursor_changed();
+    update_tooltips();
     return false;
   }
   if(key->keyval==GDK_KEY_Shift_L || key->keyval==GDK_KEY_Shift_R || key->keyval==GDK_KEY_Alt_L || key->keyval==GDK_KEY_Alt_R || key->keyval==GDK_KEY_Control_L || key->keyval==GDK_KEY_Control_R || key->keyval==GDK_KEY_Meta_L || key->keyval==GDK_KEY_Meta_R)
@@ -319,7 +348,7 @@ bool CompletionDialog::on_key_press(GdkEventKey* key) {
     else
       list_view_text.set_cursor(list_view_text.get_model()->get_path(list_view_text.get_model()->children().begin()));
     select(false);
-    cursor_changed();
+    update_tooltips();
     return true;
   }
   if(key->keyval==GDK_KEY_Up && list_view_text.get_model()->children().size()>0) {
@@ -336,7 +365,7 @@ bool CompletionDialog::on_key_press(GdkEventKey* key) {
       list_view_text.set_cursor(list_view_text.get_model()->get_path(last_it));
     }
     select(false);
-    cursor_changed();
+    update_tooltips();
     return true;
   }
   if(key->keyval==GDK_KEY_Return || key->keyval==GDK_KEY_ISO_Left_Tab || key->keyval==GDK_KEY_Tab) {
