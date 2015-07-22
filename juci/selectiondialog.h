@@ -16,7 +16,7 @@ public:
   virtual void move();
   
   std::function<void()> on_hide;
-  std::function<void(const std::string& selected, bool finished)> on_select;
+  std::function<void(const std::string& selected, bool hide_window)> on_select;
   Glib::RefPtr<Gtk::TextBuffer::Mark> start_mark;
 protected:
   virtual void resize();
@@ -50,7 +50,7 @@ private:
   void select(bool hide_window=true);
   
   int show_offset;
-  bool row_in_entry;
+  bool row_in_entry=false;
 };
 
 #endif  // JUCI_SELECTIONDIALOG_H_

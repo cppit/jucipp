@@ -644,11 +644,32 @@ void Source::ClangViewAutocomplete::autocomplete() {
         for(size_t c=0;c<prefix.size();c++)
           start_iter--;
         completion_dialog=std::unique_ptr<CompletionDialog>(new CompletionDialog(*this, get_buffer()->create_mark(start_iter)));
+        auto rows=std::make_shared<std::unordered_map<std::string, std::string> >();
         completion_dialog->on_hide=[this](){
           start_reparse();
           completion_dialog_shown=false;
         };
-        auto rows=std::make_shared<std::unordered_map<std::string, std::string> >();
+        completion_dialog->on_select=[this, rows](const std::string& selected, bool hide_window) {
+          auto row = rows->at(selected);
+          get_buffer()->erase(completion_dialog->start_mark->get_iter(), get_buffer()->get_insert()->get_iter());
+          get_buffer()->insert(completion_dialog->start_mark->get_iter(), row);
+          if(hide_window) {
+            char find_char=row.back();
+            if(find_char==')' || find_char=='>') {
+              if(find_char==')')
+                find_char='(';
+              else
+                find_char='<';
+              size_t pos=row.find(find_char);
+              if(pos!=std::string::npos) {
+                auto start_offset=completion_dialog->start_mark->get_iter().get_offset()+pos+1;
+                auto end_offset=completion_dialog->start_mark->get_iter().get_offset()+row.size()-1;
+                if(start_offset!=end_offset)
+                  get_buffer()->select_range(get_buffer()->get_iter_at_offset(start_offset), get_buffer()->get_iter_at_offset(end_offset));
+              }
+            }
+          }
+        };
         for (auto &data : *ac_data) {
           std::stringstream ss;
           std::string return_value;
@@ -671,27 +692,6 @@ void Source::ClangViewAutocomplete::autocomplete() {
           (*rows)["No suggestions found..."] = "";
           completion_dialog->add_row("No suggestions found...");
         }
-        completion_dialog->on_select=[this, rows](const std::string& selected, bool finished) {
-          auto row = rows->at(selected);
-          get_buffer()->erase(completion_dialog->start_mark->get_iter(), get_buffer()->get_insert()->get_iter());
-          get_buffer()->insert(completion_dialog->start_mark->get_iter(), row);
-          if(finished) {
-            char find_char=row.back();
-            if(find_char==')' || find_char=='>') {
-              if(find_char==')')
-                find_char='(';
-              else
-                find_char='<';
-              size_t pos=row.find(find_char);
-              if(pos!=std::string::npos) {
-                auto start_offset=completion_dialog->start_mark->get_iter().get_offset()+pos+1;
-                auto end_offset=completion_dialog->start_mark->get_iter().get_offset()+row.size()-1;
-                if(start_offset!=end_offset)
-                  get_buffer()->select_range(get_buffer()->get_iter_at_offset(start_offset), get_buffer()->get_iter_at_offset(end_offset));
-              }
-            }
-          }
-        };
         completion_dialog_shown=true;
         completion_dialog->show();
       }
@@ -826,16 +826,17 @@ Source::ClangViewAutocomplete(file_path, project_path) {
   goto_method=[this](){    
     if(clang_readable) {
       selection_dialog=std::unique_ptr<SelectionDialog>(new SelectionDialog(*this, get_buffer()->create_mark(get_buffer()->get_insert()->get_iter())));
-      auto rows=std::make_shared<std::unordered_map<std::string, std::string> >();
+      auto rows=std::make_shared<std::unordered_map<std::string, unsigned> >();
       auto methods=clang_tokens->get_cxx_methods();
       if(methods.size()==0)
         return;
       for(auto &method: methods) {
-        (*rows)[method.first]=std::to_string(method.second);
+        (*rows)[method.first]=method.second;
         selection_dialog->add_row(method.first);
       }
-      selection_dialog->on_select=[this, rows](const std::string& selected, bool finished) {
-        auto offset=stoul(rows->at(selected));
+      //TODO see if rows gets destroyed when selection_dialog gets destroyed.
+      selection_dialog->on_select=[this, rows](const std::string& selected, bool hide_window) {
+        auto offset=rows->at(selected);
         get_buffer()->place_cursor(get_buffer()->get_iter_at_offset(offset));
         scroll_to(get_buffer()->get_insert(), 0.0, 1.0, 0.5);
         delayed_tooltips_connection.disconnect();

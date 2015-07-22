@@ -163,7 +163,7 @@ void SelectionDialog::show() {
     filter_model->refilter();
     list_view_text.set_search_entry(search_entry); //TODO:Report the need of this to GTK's git (bug)
   });
-  search_entry.signal_event().connect([this, search_key, filter_model](GdkEvent* event) {
+  search_entry.signal_event().connect([this](GdkEvent* event) {
     if(event->type==GDK_KEY_PRESS) {
       auto key=(GdkEventKey*)event;
       if(key->keyval==GDK_KEY_Down && list_view_text.get_model()->children().size()>0) {
@@ -234,8 +234,6 @@ void CompletionDialog::show() {
     search_entry.set_text(text);
     list_view_text.set_search_entry(search_entry);
   }
-  
-  row_in_entry=false;
 }
 
 void CompletionDialog::select(bool hide_window) {
