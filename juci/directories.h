@@ -14,8 +14,6 @@ namespace Directories {
 
   class Config {
   public:
-    Config(Config &original);
-    Config();
     std::vector<std::string> ignore_list() { return ignore_list_; }
     std::vector<std::string> exception_list() { return exception_list_; }
     void AddIgnore(std::string filter);
@@ -43,10 +41,8 @@ namespace Directories {
   class Controller {
   public:
     Controller();
-    Controller(Directories::Config& cfg);
     View& view() { return view_;}
     Model& model() { return model_;}
-    Directories::Config& config() { return config_;}
     Gtk::ScrolledWindow& widget() {return m_ScrolledWindow;}
     void open_folder(const boost::filesystem::path& dir_path);
     void list_dirs(const boost::filesystem::path& dir_path,
@@ -64,7 +60,6 @@ namespace Directories {
   private:
     View view_;
     Model model_;
-    Directories::Config config_;
 
   protected:
     void on_treeview_row_activated(const Gtk::TreeModel::Path& path,

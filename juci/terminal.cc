@@ -1,10 +1,11 @@
 #include "terminal.h"
 #include <iostream>
 #include "logging.h"
+#include "singletons.h"
 
-Terminal::InProgress::InProgress(Controller& terminal, const std::string& start_msg): terminal(terminal), stop(false) {
+Terminal::InProgress::InProgress(const std::string& start_msg): stop(false) {
   waiting_print.connect([this](){
-    this->terminal.print(line_nr-1, ".");
+    Singleton::terminal()->print(line_nr-1, ".");
   });
   start(start_msg);
 }
@@ -16,7 +17,7 @@ Terminal::InProgress::~InProgress() {
 }
 
 void Terminal::InProgress::start(const std::string& msg) {
-  line_nr=this->terminal.print(msg+"...\n");
+  line_nr=Singleton::terminal()->print(msg+"...\n");
   wait_thread=std::thread([this](){
     size_t c=0;
     while(!stop) {
@@ -31,14 +32,14 @@ void Terminal::InProgress::start(const std::string& msg) {
 void Terminal::InProgress::done(const std::string& msg) {
   if(!stop) {
     stop=true;
-    this->terminal.print(line_nr-1, msg);
+    Singleton::terminal()->print(line_nr-1, msg);
   }
 }
 
 void Terminal::InProgress::cancel(const std::string& msg) {
   if(!stop) {
     stop=true;
-    this->terminal.print(line_nr-1, msg);
+    Singleton::terminal()->print(line_nr-1, msg);
   }
 }
 
@@ -48,9 +49,13 @@ Terminal::View::View(){
   add(scrolled_window);
 }
 
-Terminal::Controller::Controller(Terminal::Config& cfg) :
-  config(cfg) {  
+Terminal::Controller::Controller() {  
   folder_command_ = "";
+  view.text_view.signal_size_allocate().connect([this](Gtk::Allocation& allocation){
+    auto end=view.text_view.get_buffer()->create_mark(view.text_view.get_buffer()->end());
+    view.text_view.scroll_to(end);
+    view.text_view.get_buffer()->delete_mark(end);
+  });
 }
 
 void Terminal::Controller::SetFolderCommand( boost::filesystem::path
@@ -65,7 +70,7 @@ void Terminal::Controller::Compile(){
 
   view.text_view.get_buffer()->set_text("");
   DEBUG("Terminal: Compile: running cmake command");
-  std::vector<std::string> commands = config.compile_commands;
+  std::vector<std::string> commands = Singleton::Config::terminal()->compile_commands;
   for (size_t it = 0; it < commands.size(); ++it) {
     ExecuteCommand(commands.at(it), "r");
     
@@ -79,16 +84,14 @@ void Terminal::Controller::Run(std::string executable) {
   print("juCi++ execute: " + executable + "\n");
   DEBUG("Terminal: Compile: running run command: ");
   DEBUG_VAR(executable);
-  ExecuteCommand("cd "+config.run_command + "; ./"+executable, "r");
+  ExecuteCommand("cd "+Singleton::Config::terminal()->run_command + "; ./"+executable, "r");
   print("\n");
 }
 
 int Terminal::Controller::print(std::string message){
   INFO("Terminal: PrintMessage");
   view.text_view.get_buffer()->insert(view.text_view.get_buffer()->end(), "> "+message);
-  auto mark_end=view.text_view.get_buffer()->create_mark(view.text_view.get_buffer()->end());
-  view.text_view.scroll_to(mark_end);
-  return mark_end->get_iter().get_line();
+  return view.text_view.get_buffer()->end().get_line();
 }
 
 void Terminal::Controller::print(int line_nr, std::string message){
@@ -100,7 +103,7 @@ void Terminal::Controller::print(int line_nr, std::string message){
 }
 
 std::shared_ptr<Terminal::InProgress> Terminal::Controller::print_in_progress(std::string start_msg) {
-  std::shared_ptr<Terminal::InProgress> in_progress=std::shared_ptr<Terminal::InProgress>(new Terminal::InProgress(*this, start_msg));
+  std::shared_ptr<Terminal::InProgress> in_progress=std::shared_ptr<Terminal::InProgress>(new Terminal::InProgress(start_msg));
   return in_progress;
 }
 

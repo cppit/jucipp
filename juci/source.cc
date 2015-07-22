@@ -8,6 +8,9 @@
 #include <regex>
 #include "singletons.h"
 
+#include <iostream> //TODO: remove
+using namespace std; //TODO: remove
+
 namespace sigc {
   SIGC_FUNCTORS_DEDUCE_RESULT_TYPE_WITH_DECLTYPE
 }
@@ -27,23 +30,34 @@ bool Source::Config::legal_extension(std::string e) const {
 //////////////
 Source::View::View(const std::string& file_path, const std::string& project_path):
 file_path(file_path), project_path(project_path) {
-  Gsv::init();
   set_smart_home_end(Gsv::SMART_HOME_END_BEFORE);
-  set_show_line_numbers(Singletons::Config::source()->show_line_numbers);
-  set_highlight_current_line(Singletons::Config::source()->highlight_current_line);
+  set_show_line_numbers(Singleton::Config::source()->show_line_numbers);
+  set_highlight_current_line(Singleton::Config::source()->highlight_current_line);
   sourcefile s(file_path);
   get_source_buffer()->get_undo_manager()->begin_not_undoable_action();
   get_source_buffer()->set_text(s.get_content());
   get_source_buffer()->get_undo_manager()->end_not_undoable_action();
   search_start = search_end = this->get_buffer()->end();
   
-  override_font(Pango::FontDescription(Singletons::Config::source()->font));
+  override_font(Pango::FontDescription(Singleton::Config::source()->font));
   
-  override_background_color(Gdk::RGBA(Singletons::Config::source()->background));
-  override_background_color(Gdk::RGBA(Singletons::Config::source()->background_selected), Gtk::StateFlags::STATE_FLAG_SELECTED);
-  for (auto &item : Singletons::Config::source()->tags) {
+  override_background_color(Gdk::RGBA(Singleton::Config::source()->background));
+  override_background_color(Gdk::RGBA(Singleton::Config::source()->background_selected), Gtk::StateFlags::STATE_FLAG_SELECTED);
+  for (auto &item : Singleton::Config::source()->tags) {
     get_source_buffer()->create_tag(item.first)->property_foreground() = item.second;
   }
+  
+  get_buffer()->place_cursor(get_buffer()->get_iter_at_offset(0));
+  signal_size_allocate().connect([this](Gtk::Allocation& allocation){
+    if(!after_user_input)
+      scroll_to(get_buffer()->get_insert(), 0.0, 1.0, 0.5);
+  });
+  
+  signal_event().connect([this](GdkEvent* event){
+    if(event->type==GDK_KEY_PRESS || event->type==GDK_BUTTON_PRESS || event->type==GDK_SCROLL)
+      after_user_input=true;
+    return false;
+  });
 }
 
 string Source::View::get_line(size_t line_number) {
@@ -64,10 +78,10 @@ string Source::View::get_line_before_insert() {
 
 //Basic indentation
 bool Source::View::on_key_press_event(GdkEventKey* key) {
-  auto config=Singletons::Config::source();
+  auto config=Singleton::Config::source();
   const std::regex spaces_regex(std::string("^(")+config->tab_char+"*).*$");
   //Indent as in next or previous line
-  if(key->keyval==GDK_KEY_Return && key->state==0) {
+  if(key->keyval==GDK_KEY_Return && key->state==0 && !get_buffer()->get_has_selection()) {
     int line_nr=get_source_buffer()->get_insert()->get_iter().get_line();
     string line(get_line_before_insert());
     std::smatch sm;
@@ -124,7 +138,7 @@ bool Source::View::on_key_press_event(GdkEventKey* key) {
     return true;
   }
   //"Smart" backspace key
-  else if(key->keyval==GDK_KEY_BackSpace) {
+  else if(key->keyval==GDK_KEY_BackSpace && !get_buffer()->get_has_selection()) {
     Gtk::TextIter insert_it=get_source_buffer()->get_insert()->get_iter();
     int line_nr=insert_it.get_line();
     if(line_nr>0) {
@@ -142,17 +156,14 @@ bool Source::View::on_key_press_event(GdkEventKey* key) {
   return Gsv::View::on_key_press_event(key);
 }
 
-//////////////////
-//// ClangView ///
-//////////////////
-clang::Index Source::ClangView::clang_index(0, 0);
+/////////////////////////
+//// ClangViewParse ///
+/////////////////////////
+clang::Index Source::ClangViewParse::clang_index(0, 0);
 
-Source::ClangView::ClangView(const std::string& file_path, const std::string& project_path, Terminal::Controller& terminal):
-Source::View(file_path, project_path), terminal(terminal),
-parse_thread_go(true), parse_thread_mapped(false), parse_thread_stop(false) {
-  similar_tokens_tag=get_buffer()->create_tag();
-  similar_tokens_tag->property_weight()=Pango::WEIGHT_BOLD;
-  
+Source::ClangViewParse::ClangViewParse(const std::string& file_path, const std::string& project_path):
+Source::View(file_path, project_path),
+parse_thread_go(true), parse_thread_mapped(false), parse_thread_stop(false) {  
   int start_offset = get_source_buffer()->begin().get_offset();
   int end_offset = get_source_buffer()->end().get_offset();
   auto buffer_map=get_buffer_map();
@@ -185,7 +196,7 @@ parse_thread_go(true), parse_thread_mapped(false), parse_thread_stop(false) {
     parse_thread_go=true;
   });
   
-  parsing_in_progress=this->terminal.print_in_progress("Parsing "+file_path);
+  parsing_in_progress=Singleton::terminal()->print_in_progress("Parsing "+file_path);
   parse_done.connect([this](){
     if(parse_thread_mapped) {
       if(parsing_mutex.try_lock()) {
@@ -228,16 +239,12 @@ parse_thread_go(true), parse_thread_mapped(false), parse_thread_stop(false) {
     start_reparse();
     type_tooltips.hide();
     diagnostic_tooltips.hide();
-    if(last_similar_tokens_tagged!="") {
-      get_buffer()->remove_tag(similar_tokens_tag, get_buffer()->begin(), get_buffer()->end());
-      last_similar_tokens_tagged="";
-    }
   });
   
-  get_buffer()->signal_mark_set().connect(sigc::mem_fun(*this, &Source::ClangView::on_mark_set), false);
+  get_buffer()->signal_mark_set().connect(sigc::mem_fun(*this, &Source::ClangViewParse::on_mark_set), false);
 }
 
-Source::ClangView::~ClangView() {
+Source::ClangViewParse::~ClangViewParse() {
   //TODO: Is it possible to stop the clang-process in progress?
   parsing_in_progress->cancel("canceled");
   parse_thread_stop=true;
@@ -247,7 +254,7 @@ Source::ClangView::~ClangView() {
   parsing_mutex.unlock();
 }
 
-void Source::ClangView::
+void Source::ClangViewParse::
 init_syntax_highlighting(const std::map<std::string, std::string>
                          &buffers,
                          int start_offset,
@@ -260,13 +267,13 @@ init_syntax_highlighting(const std::map<std::string, std::string>
   clang_tokens=clang_tu->get_tokens(0, buffers.find(file_path)->second.size()-1);
 }
 
-std::map<std::string, std::string> Source::ClangView::get_buffer_map() const {
+std::map<std::string, std::string> Source::ClangViewParse::get_buffer_map() const {
   std::map<std::string, std::string> buffer_map;
   buffer_map[file_path]=get_source_buffer()->get_text().raw();
   return buffer_map;
 }
 
-void Source::ClangView::start_reparse() {
+void Source::ClangViewParse::start_reparse() {
   parse_thread_mapped=false;
   clang_readable=false;
   delayed_reparse_connection.disconnect();
@@ -276,14 +283,13 @@ void Source::ClangView::start_reparse() {
   }, 1000);
 }
 
-int Source::ClangView::reparse(const std::map<std::string, std::string> &buffer) {
+int Source::ClangViewParse::reparse(const std::map<std::string, std::string> &buffer) {
   int status = clang_tu->ReparseTranslationUnit(buffer);
   clang_tokens=clang_tu->get_tokens(0, parse_thread_buffer_map.find(file_path)->second.size()-1);
   return status;
 }
 
-std::vector<std::string> Source::ClangView::
-get_compilation_commands() {
+std::vector<std::string> Source::ClangViewParse::get_compilation_commands() {
   clang::CompilationDatabase db(project_path);
   clang::CompileCommands commands(file_path, db);
   std::vector<clang::CompileCommand> cmds = commands.get_commands();
@@ -299,20 +305,19 @@ get_compilation_commands() {
   return arguments;
 }
 
-void Source::ClangView::update_syntax() {
+void Source::ClangViewParse::update_syntax() {
   std::vector<Source::Range> ranges;
   for (auto &token : *clang_tokens) {
-    auto range_data=token.source_range.get_range_data();
-    if(token.kind()==0) // PunctuationToken
-      ranges.emplace_back(range_data.start_offset, range_data.end_offset, (int) token.get_cursor().get_kind());
-    else if(token.kind()==1) // KeywordToken
-      ranges.emplace_back(range_data.start_offset, range_data.end_offset, 702);
-    else if(token.kind()==2) // IdentifierToken
-      ranges.emplace_back(range_data.start_offset, range_data.end_offset, (int) token.get_cursor().get_kind());
-    else if(token.kind()==3) // LiteralToken
-      ranges.emplace_back(range_data.start_offset, range_data.end_offset, 109);
-    else if(token.kind()==4) // CommentToken
-      ranges.emplace_back(range_data.start_offset, range_data.end_offset, 705);
+    if(token.get_kind()==0) // PunctuationToken
+      ranges.emplace_back(token.offsets.first, token.offsets.second, (int) token.get_cursor().get_kind());
+    else if(token.get_kind()==1) // KeywordToken
+      ranges.emplace_back(token.offsets.first, token.offsets.second, 702);
+    else if(token.get_kind()==2) // IdentifierToken
+      ranges.emplace_back(token.offsets.first, token.offsets.second, (int) token.get_cursor().get_kind());
+    else if(token.get_kind()==3) // LiteralToken
+      ranges.emplace_back(token.offsets.first, token.offsets.second, 109);
+    else if(token.get_kind()==4) // CommentToken
+      ranges.emplace_back(token.offsets.first, token.offsets.second, 705);
   }
   if (ranges.empty() || ranges.size() == 0) {
     return;
@@ -322,25 +327,25 @@ void Source::ClangView::update_syntax() {
   for (auto &range : ranges) {
     std::string type = std::to_string(range.kind);
     try {
-      Singletons::Config::source()->types.at(type);
+      Singleton::Config::source()->types.at(type);
     } catch (std::exception) {
       continue;
     }
     
     Gtk::TextIter begin_iter = buffer->get_iter_at_offset(range.start_offset);
     Gtk::TextIter end_iter  = buffer->get_iter_at_offset(range.end_offset);
-    buffer->apply_tag_by_name(Singletons::Config::source()->types.at(type),
+    buffer->apply_tag_by_name(Singleton::Config::source()->types.at(type),
                               begin_iter, end_iter);
   }
 }
 
-void Source::ClangView::update_diagnostics() {
+void Source::ClangViewParse::update_diagnostics() {
   diagnostic_tooltips.clear();
   auto diagnostics=clang_tu->get_diagnostics();
   for(auto &diagnostic: diagnostics) {
-    if(diagnostic.range.path==file_path) {
-      auto start=get_buffer()->get_iter_at_offset(diagnostic.range.start_offset);
-      auto end=get_buffer()->get_iter_at_offset(diagnostic.range.end_offset);
+    if(diagnostic.path==file_path) {
+      auto start=get_buffer()->get_iter_at_offset(diagnostic.offsets.first);
+      auto end=get_buffer()->get_iter_at_offset(diagnostic.offsets.second);
       std::string diagnostic_tag_name;
       if(diagnostic.severity<=CXDiagnostic_Warning)
         diagnostic_tag_name="diagnostic_warning";
@@ -372,30 +377,27 @@ void Source::ClangView::update_diagnostics() {
   }
 }
 
-void Source::ClangView::update_types() {
+void Source::ClangViewParse::update_types() {
   type_tooltips.clear();
   for(auto &token: *clang_tokens) {
     if(token.has_type()) {
-      auto range_data=token.source_range.get_range_data();
-      if(range_data.path==file_path) {
-        auto start=get_buffer()->get_iter_at_offset(range_data.start_offset);
-        auto end=get_buffer()->get_iter_at_offset(range_data.end_offset);
-        auto get_tooltip_buffer=[this, &token]() {
-          auto tooltip_buffer=Gtk::TextBuffer::create(get_buffer()->get_tag_table());
-          tooltip_buffer->insert_at_cursor("Type: "+token.get_type());
-          auto brief_comment=token.get_brief_comments();
-          if(brief_comment!="")
-            tooltip_buffer->insert_at_cursor("\n\n"+brief_comment+".");
-          return tooltip_buffer;
-        };
-        
-        type_tooltips.emplace_back(get_tooltip_buffer, *this, get_buffer()->create_mark(start), get_buffer()->create_mark(end));
-      }
+      auto start=get_buffer()->get_iter_at_offset(token.offsets.first);
+      auto end=get_buffer()->get_iter_at_offset(token.offsets.second);
+      auto get_tooltip_buffer=[this, &token]() {
+        auto tooltip_buffer=Gtk::TextBuffer::create(get_buffer()->get_tag_table());
+        tooltip_buffer->insert_at_cursor("Type: "+token.get_type());
+        auto brief_comment=token.get_brief_comments();
+        if(brief_comment!="")
+          tooltip_buffer->insert_at_cursor("\n\n"+brief_comment+".");
+        return tooltip_buffer;
+      };
+      
+      type_tooltips.emplace_back(get_tooltip_buffer, *this, get_buffer()->create_mark(start), get_buffer()->create_mark(end));
     }
   }
 }
 
-bool Source::ClangView::on_motion_notify_event(GdkEventMotion* event) {
+bool Source::ClangViewParse::on_motion_notify_event(GdkEventMotion* event) {
   delayed_tooltips_connection.disconnect();
   if(clang_readable) {
     Gdk::Rectangle rectangle(event->x, event->y, 1, 1);
@@ -411,7 +413,7 @@ bool Source::ClangView::on_motion_notify_event(GdkEventMotion* event) {
   return Source::View::on_motion_notify_event(event);
 }
 
-void Source::ClangView::on_mark_set(const Gtk::TextBuffer::iterator& iterator, const Glib::RefPtr<Gtk::TextBuffer::Mark>& mark) {
+void Source::ClangViewParse::on_mark_set(const Gtk::TextBuffer::iterator& iterator, const Glib::RefPtr<Gtk::TextBuffer::Mark>& mark) {
   if(get_buffer()->get_has_selection() && mark->get_name()=="selection_bound")
     delayed_tooltips_connection.disconnect();
   
@@ -434,44 +436,17 @@ void Source::ClangView::on_mark_set(const Gtk::TextBuffer::iterator& iterator, c
     }, 500);
     type_tooltips.hide();
     diagnostic_tooltips.hide();
-    
-    bool found=false;
-    if(clang_readable) {
-      for(auto &token: *clang_tokens) {
-        if(token.has_type()) {
-          auto range_data=token.source_range.get_range_data();
-          auto insert_offset=(unsigned)get_buffer()->get_insert()->get_iter().get_offset();
-          if(range_data.path==file_path && insert_offset>=range_data.start_offset && insert_offset<=range_data.end_offset) {
-            found=true;
-            auto referenced_usr_and_token_spelling=token.get_cursor().get_referenced_usr()+token.get_token_spelling();
-            if(last_similar_tokens_tagged!=referenced_usr_and_token_spelling) {
-              get_buffer()->remove_tag(similar_tokens_tag, get_buffer()->begin(), get_buffer()->end());
-              auto offsets=clang_tokens->get_similar_token_offsets(token);
-              for(auto &offset: offsets) {
-                get_buffer()->apply_tag(similar_tokens_tag, get_buffer()->get_iter_at_offset(offset.first), get_buffer()->get_iter_at_offset(offset.second));
-              }
-              last_similar_tokens_tagged=referenced_usr_and_token_spelling;
-              break;
-            }
-          }
-        }
-      }
-    }
-    if(!found && last_similar_tokens_tagged!="") {
-      get_buffer()->remove_tag(similar_tokens_tag, get_buffer()->begin(), get_buffer()->end());
-      last_similar_tokens_tagged="";
-    }
   }
 }
 
-bool Source::ClangView::on_focus_out_event(GdkEventFocus* event) {
+bool Source::ClangViewParse::on_focus_out_event(GdkEventFocus* event) {
     delayed_tooltips_connection.disconnect();
     type_tooltips.hide();
     diagnostic_tooltips.hide();
     return Source::View::on_focus_out_event(event);
 }
 
-bool Source::ClangView::on_scroll_event(GdkEventScroll* event) {
+bool Source::ClangViewParse::on_scroll_event(GdkEventScroll* event) {
   delayed_tooltips_connection.disconnect();
   type_tooltips.hide();
   diagnostic_tooltips.hide();
@@ -480,8 +455,11 @@ bool Source::ClangView::on_scroll_event(GdkEventScroll* event) {
 
 //Clang indentation
 //TODO: replace indentation methods with a better implementation or maybe use libclang
-bool Source::ClangView::on_key_press_event(GdkEventKey* key) {
-  auto config=Singletons::Config::source();
+bool Source::ClangViewParse::on_key_press_event(GdkEventKey* key) {
+  if(get_buffer()->get_has_selection()) {
+    return Source::View::on_key_press_event(key);
+  }
+  auto config=Singleton::Config::source();
   const std::regex bracket_regex(std::string("^(")+config->tab_char+"*).*\\{ *$");
   const std::regex no_bracket_statement_regex(std::string("^(")+config->tab_char+"*)(if|for|else if|catch|while) *\\(.*[^;}] *$");
   const std::regex no_bracket_no_para_statement_regex(std::string("^(")+config->tab_char+"*)(else|try|do) *$");
@@ -568,33 +546,33 @@ bool Source::ClangView::on_key_press_event(GdkEventKey* key) {
 //////////////////////////////
 //// ClangViewAutocomplete ///
 //////////////////////////////
-Source::ClangViewAutocomplete::ClangViewAutocomplete(const std::string& file_path, const std::string& project_path, Terminal::Controller& terminal):
-Source::ClangView(file_path, project_path, terminal), selection_dialog(*this), autocomplete_cancel_starting(false) {
-  selection_dialog.on_hide=[this](){
+Source::ClangViewAutocomplete::ClangViewAutocomplete(const std::string& file_path, const std::string& project_path):
+Source::ClangViewParse(file_path, project_path), completion_dialog(*this), autocomplete_cancel_starting(false) {
+  completion_dialog.on_hide=[this](){
     start_reparse();
   };
   
   get_buffer()->signal_changed().connect([this](){
-    if(selection_dialog.shown)
+    if(completion_dialog.shown)
       delayed_reparse_connection.disconnect();
     start_autocomplete();
   });
   get_buffer()->signal_mark_set().connect([this](const Gtk::TextBuffer::iterator& iterator, const Glib::RefPtr<Gtk::TextBuffer::Mark>& mark){
     if(mark->get_name()=="insert") {
       autocomplete_cancel_starting=true;
-      if(selection_dialog.shown) {
-        selection_dialog.hide();
+      if(completion_dialog.shown) {
+        completion_dialog.hide();
       }
     }
   });
   signal_scroll_event().connect([this](GdkEventScroll* event){
-    if(selection_dialog.shown)
-      selection_dialog.hide();
+    if(completion_dialog.shown)
+      completion_dialog.hide();
     return false;
   }, false);
   signal_key_release_event().connect([this](GdkEventKey* key){
-    if(selection_dialog.shown) {
-      if(selection_dialog.on_key_release(key))
+    if(completion_dialog.shown) {
+      if(completion_dialog.on_key_release(key))
         return true;
     }
     
@@ -604,25 +582,25 @@ Source::ClangView(file_path, project_path, terminal), selection_dialog(*this), a
 
 bool Source::ClangViewAutocomplete::on_key_press_event(GdkEventKey *key) {
   last_keyval=key->keyval;
-  if(selection_dialog.shown) {
-    if(selection_dialog.on_key_press(key))
+  if(completion_dialog.shown) {
+    if(completion_dialog.on_key_press(key))
       return true;
   }
-  return ClangView::on_key_press_event(key);
+  return ClangViewParse::on_key_press_event(key);
 }
 
 bool Source::ClangViewAutocomplete::on_focus_out_event(GdkEventFocus* event) {
-  if(selection_dialog.shown) {
-    selection_dialog.hide();
+  if(completion_dialog.shown) {
+    completion_dialog.hide();
   }
     
-  return Source::ClangView::on_focus_out_event(event);
+  return Source::ClangViewParse::on_focus_out_event(event);
 }
 
 void Source::ClangViewAutocomplete::start_autocomplete() {
-  const std::regex autocomplete_keys("[a-zA-Z0-9_>\\.:]");
-  std::smatch sm;
-  if(!std::regex_match(std::string()+(char)last_keyval, sm, autocomplete_keys)) {
+  if(!((last_keyval>='0' && last_keyval<='9') || 
+       (last_keyval>='a' && last_keyval<='z') || (last_keyval>='A' && last_keyval<='Z') ||
+       last_keyval=='_' || last_keyval=='>' || last_keyval=='.' || last_keyval==':')) {
     autocomplete_cancel_starting=true;
     return;
   }
@@ -630,11 +608,12 @@ void Source::ClangViewAutocomplete::start_autocomplete() {
   if((std::count(line.begin(), line.end(), '\"')%2)!=1 && line.find("//")==std::string::npos) {
     const std::regex in_specified_namespace("^(.*[a-zA-Z0-9_\\)])(->|\\.|::)([a-zA-Z0-9_]*)$");
     const std::regex within_namespace("^(.*)([^a-zA-Z0-9_]+)([a-zA-Z0-9_]{3,})$");
+    std::smatch sm;
     if(std::regex_match(line, sm, in_specified_namespace)) {
       prefix_mutex.lock();
       prefix=sm[3].str();
       prefix_mutex.unlock();
-      if((prefix.size()==0 || prefix[0]<'0' || prefix[0]>'9') && !autocomplete_starting && !selection_dialog.shown) {
+      if((prefix.size()==0 || prefix[0]<'0' || prefix[0]>'9') && !autocomplete_starting && !completion_dialog.shown) {
         autocomplete();
       }
       else if(last_keyval=='.' && autocomplete_starting)
@@ -644,13 +623,13 @@ void Source::ClangViewAutocomplete::start_autocomplete() {
       prefix_mutex.lock();
       prefix=sm[3].str();
       prefix_mutex.unlock();
-      if((prefix.size()==0 || prefix[0]<'0' || prefix[0]>'9') && !autocomplete_starting && !selection_dialog.shown) {
+      if((prefix.size()==0 || prefix[0]<'0' || prefix[0]>'9') && !autocomplete_starting && !completion_dialog.shown) {
         autocomplete();
       }
     }
     else
       autocomplete_cancel_starting=true;
-    if(autocomplete_starting || selection_dialog.shown)
+    if(autocomplete_starting || completion_dialog.shown)
       delayed_reparse_connection.disconnect();
   }
 }
@@ -665,14 +644,15 @@ void Source::ClangViewAutocomplete::autocomplete() {
     autocomplete_done_connection=autocomplete_done.connect([this, ac_data](){
       autocomplete_starting=false;
       if(!autocomplete_cancel_starting) {
-        if(selection_dialog.start_mark)
-          get_buffer()->delete_mark(selection_dialog.start_mark);
+        if(completion_dialog.start_mark)
+          get_buffer()->delete_mark(completion_dialog.start_mark);
         auto start_iter=get_buffer()->get_insert()->get_iter();
         for(size_t c=0;c<prefix.size();c++)
           start_iter--;
-        selection_dialog.start_mark=get_buffer()->create_mark(start_iter);
+        completion_dialog.start_mark=get_buffer()->create_mark(start_iter);
         
         std::map<std::string, std::pair<std::string, std::string> > rows;
+        completion_dialog.init();
         for (auto &data : *ac_data) {
           std::stringstream ss;
           std::string return_value;
@@ -689,13 +669,15 @@ void Source::ClangViewAutocomplete::autocomplete() {
           if (ss_str.length() > 0) { // if length is 0 the result is empty
             auto pair=std::pair<std::string, std::string>(ss_str, data.brief_comments);
             rows[ss.str() + " --> " + return_value] = pair;
+            completion_dialog.append(ss.str() + " --> " + return_value);
           }
         }
         if (rows.empty()) {
           rows["No suggestions found..."] = std::pair<std::string, std::string>();
+          completion_dialog.append("No suggestions found...");
         }
-        selection_dialog.rows=std::move(rows);
-        selection_dialog.show();
+        completion_dialog.rows=std::move(rows);
+        completion_dialog.show();
       }
       else
         start_autocomplete();
@@ -732,7 +714,7 @@ get_autocomplete_suggestions(int line_number, int column, std::map<std::string, 
     prefix_mutex.lock();
     auto prefix_copy=prefix;
     prefix_mutex.unlock();
-    for (int i = 0; i < results.size(); i++) {
+    for (unsigned i = 0; i < results.size(); i++) {
       auto result=results.get(i);
       if(result.available()) {
         auto chunks=result.get_chunks();
@@ -756,23 +738,112 @@ get_autocomplete_suggestions(int line_number, int column, std::map<std::string, 
   return suggestions;
 }
 
-////////////////////
-//// Controller ////
-////////////////////
+////////////////////////////
+//// ClangViewRefactor /////
+////////////////////////////
 
-// Source::Controller::Controller()
-// Constructor for Controller
-Source::Controller::Controller(const std::string& file_path, std::string project_path, Terminal::Controller& terminal) {
+Source::ClangViewRefactor::ClangViewRefactor(const std::string& file_path, const std::string& project_path):
+Source::ClangViewAutocomplete(file_path, project_path), selection_dialog(*this) {
+  similar_tokens_tag=get_buffer()->create_tag();
+  similar_tokens_tag->property_weight()=Pango::WEIGHT_BOLD;
+  
+  get_buffer()->signal_changed().connect([this]() {
+    if(last_similar_tokens_tagged!="") {
+      get_buffer()->remove_tag(similar_tokens_tag, get_buffer()->begin(), get_buffer()->end());
+      last_similar_tokens_tagged="";
+    }
+  });
+  
+  get_buffer()->signal_mark_set().connect([this](const Gtk::TextBuffer::iterator& iterator, const Glib::RefPtr<Gtk::TextBuffer::Mark>& mark){
+    if(mark->get_name()=="insert") {
+      bool found=false;
+      if(clang_readable) {
+        for(auto &token: *clang_tokens) {
+          if(token.has_type()) {
+            auto insert_offset=(unsigned)get_buffer()->get_insert()->get_iter().get_offset();
+            if(insert_offset>=token.offsets.first && insert_offset<=token.offsets.second) {
+              found=true;
+              auto referenced=token.get_cursor().get_referenced();
+              if(referenced) {
+                auto usr_and_spelling=referenced.get_usr()+token.get_spelling();
+                if(last_similar_tokens_tagged!=usr_and_spelling) {
+                  get_buffer()->remove_tag(similar_tokens_tag, get_buffer()->begin(), get_buffer()->end());
+                  auto offsets=clang_tokens->get_similar_token_offsets(token);
+                  for(auto &offset: offsets) {
+                    get_buffer()->apply_tag(similar_tokens_tag, get_buffer()->get_iter_at_offset(offset.first), get_buffer()->get_iter_at_offset(offset.second));
+                  }
+                  last_similar_tokens_tagged=usr_and_spelling;
+                  break;
+                }
+              }
+            }
+          }
+        }
+      }
+      if(!found && last_similar_tokens_tagged!="") {
+        get_buffer()->remove_tag(similar_tokens_tag, get_buffer()->begin(), get_buffer()->end());
+        last_similar_tokens_tagged="";
+      }
+    }
+  });
+  
+  get_declaration_location=[this](){
+    std::pair<std::string, unsigned> location;
+    if(clang_readable) {
+      for(auto &token: *clang_tokens) {
+        if(token.has_type()) {
+          auto insert_offset=(unsigned)get_buffer()->get_insert()->get_iter().get_offset();
+          if(insert_offset>=token.offsets.first && insert_offset<=token.offsets.second) {
+            auto referenced=token.get_cursor().get_referenced();
+            if(referenced) {
+              location.first=referenced.get_source_location().get_path();
+              location.second=referenced.get_source_location().get_offset();
+              break;
+            }
+          }
+        }
+      }
+    }
+    return location;
+  };
+  
+  goto_method=[this](){    
+    if(clang_readable) {
+      if(selection_dialog.start_mark)
+        get_buffer()->delete_mark(selection_dialog.start_mark);
+      selection_dialog.start_mark=get_buffer()->create_mark(get_buffer()->get_insert()->get_iter());
+      std::map<std::string, std::pair<std::string, std::string> > rows;
+      selection_dialog.init();
+      auto methods=clang_tokens->get_cxx_methods();
+      if(methods.size()==0)
+        return;
+      for(auto &method: methods) {
+        rows[method.first]=std::pair<std::string, std::string>(std::to_string(method.second), "");
+        selection_dialog.append(method.first);
+      }
+      selection_dialog.rows=std::move(rows);
+      selection_dialog.on_select=[this](std::string selected) {
+        auto offset=stoul(selected);
+        get_buffer()->place_cursor(get_buffer()->get_iter_at_offset(offset));
+        scroll_to(get_buffer()->get_insert(), 0.0, 1.0, 0.5);
+        delayed_tooltips_connection.disconnect();
+      };
+      selection_dialog.show();
+    }
+  };
+}
+
+////////////////
+//// Source ////
+////////////////
+
+Source::Source(const std::string& file_path, std::string project_path) {
   if(project_path=="") {
     project_path=boost::filesystem::path(file_path).parent_path().string();
   }
-  if (Singletons::Config::source()->legal_extension(file_path.substr(file_path.find_last_of(".") + 1)))
-    view=std::unique_ptr<View>(new ClangViewAutocomplete(file_path, project_path, terminal));
+  if (Singleton::Config::source()->legal_extension(file_path.substr(file_path.find_last_of(".") + 1)))
+    view=std::unique_ptr<View>(new ClangView(file_path, project_path));
   else
     view=std::unique_ptr<View>(new GenericView(file_path, project_path));
   INFO("Source Controller with childs constructed");
-}
-
-Glib::RefPtr<Gsv::Buffer> Source::Controller::buffer() {
-  return view->get_source_buffer();
 }

@@ -101,8 +101,6 @@ add_executable(${project_name}
   #list of every needed file to create the executable
   juci.h
   juci.cc	
-  keybindings.h
-  keybindings.cc
   menu.h
   menu.cc
   source.h

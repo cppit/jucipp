@@ -1,8 +1,10 @@
+#include "singletons.h"
 #include "config.h"
 #include "logging.h"
+#include <fstream>
+#include <string>
 
-MainConfig::MainConfig() :
-  keybindings_cfg() {
+MainConfig::MainConfig() {
   INFO("Reading config file");
   boost::property_tree::json_parser::read_json("config.json", cfg_);
   INFO("Config file read");
@@ -13,7 +15,7 @@ MainConfig::MainConfig() :
 }
 
 void MainConfig::GenerateSource() {
-  auto source_cfg=Singletons::Config::source();
+  auto source_cfg=Singleton::Config::source();
   DEBUG("Fetching source cfg");
   // boost::property_tree::ptree
   auto source_json = cfg_.get_child("source");
@@ -58,39 +60,49 @@ void MainConfig::GenerateSource() {
 }
 
 void MainConfig::GenerateTerminalCommands() {
+  auto terminal_cfg=Singleton::Config::terminal();
   boost::property_tree::ptree source_json = cfg_.get_child("project");
   boost::property_tree::ptree compile_commands_json = source_json.get_child("compile_commands");
   boost::property_tree::ptree run_commands_json = source_json.get_child("run_commands");
   for (auto &i : compile_commands_json) {
-    terminal_cfg.compile_commands.emplace_back(i.second.get_value<std::string>());
+    terminal_cfg->compile_commands.emplace_back(i.second.get_value<std::string>());
   }
   for (auto &i : run_commands_json) {
-    terminal_cfg.run_command=(i.second.get_value<std::string>()); //TODO: run_commands array->one run_command?
+    terminal_cfg->run_command=(i.second.get_value<std::string>()); //TODO: run_commands array->one run_command?
   }
 }
 
 void MainConfig::GenerateKeybindings() {
+  auto menu=Singleton::menu();
   DEBUG("Fetching keybindings");
   std::string line;
   std::ifstream menu_xml("menu.xml");
   if (menu_xml.is_open()) {
     while (getline(menu_xml, line))
-      keybindings_cfg.AppendXml(line);   
+      menu->ui+=line;   
   }
   boost::property_tree::ptree keys_json = cfg_.get_child("keybindings");
-  for (auto &i : keys_json)
-    keybindings_cfg.key_map()[i.first] = i.second.get_value<std::string>();
+  for (auto &i : keys_json) {
+    auto key=i.second.get_value<std::string>();
+#ifdef __APPLE__
+    auto pos=key.find("<control>");
+    if(pos!=std::string::npos)
+      key.replace(pos, 9, "<meta>");
+#endif
+    menu->key_map[i.first] = key;
+  }
   DEBUG("Keybindings fetched");
 }
 
 void MainConfig::GenerateDirectoryFilter() {
+  auto dir_cfg=Singleton::Config::directories();
   DEBUG("Fetching directory filter");
   boost::property_tree::ptree dir_json = cfg_.get_child("directoryfilter");
   boost::property_tree::ptree ignore_json = dir_json.get_child("ignore");
   boost::property_tree::ptree except_json = dir_json.get_child("exceptions");
   for ( auto &i : except_json )
-    dir_cfg.AddException(i.second.get_value<std::string>());
+    dir_cfg->AddException(i.second.get_value<std::string>());
   for ( auto &i : ignore_json )
-    dir_cfg.AddIgnore(i.second.get_value<std::string>());
+    dir_cfg->AddIgnore(i.second.get_value<std::string>());
   DEBUG("Directory filter fetched");
 }

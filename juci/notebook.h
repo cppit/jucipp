@@ -11,8 +11,6 @@
 #include <map>
 #include <sigc++/sigc++.h>
 #include "clangmm.h"
-#include "keybindings.h"
-#include "terminal.h"
 
 namespace Notebook {
   class View : public Gtk::Paned {
@@ -22,20 +20,16 @@ namespace Notebook {
   };
   class Controller {
   public:
-    Controller(Keybindings::Controller& keybindings,
-               Terminal::Controller& terminal,
-               Directories::Config& dir_cfg);
-    ~Controller();
-    Source::View& CurrentTextView();
+    Controller();
+    Source::View* CurrentSourceView();
     int CurrentPage();
-    Gtk::Notebook& Notebook();
     void OnCloseCurrentPage();
     void OnFileNewFile();
     bool OnSaveFile();
     bool OnSaveFile(std::string path);
     void OnDirectoryNavigation(const Gtk::TreeModel::Path& path,
                                Gtk::TreeViewColumn* column);
-    void OnOpenFile(std::string filename);
+    void open_file(std::string filename);
     int Pages();
     void search(bool forward);
     View view;
@@ -43,18 +37,14 @@ namespace Notebook {
     std::string project_path;
     Directories::Controller directories; //Todo: make private after creating open_directory()
     Entry entry;
-    std::vector<std::unique_ptr<Source::Controller> > text_vec_;
+    std::vector<std::unique_ptr<Source> > source_views;
   private:
-    void CreateKeybindings(Keybindings::Controller& keybindings);
+    void CreateKeybindings();
     void AskToSaveDialog();
-    Glib::RefPtr<Gtk::Builder> m_refBuilder;
-    Glib::RefPtr<Gio::SimpleActionGroup> refActionGroup;
-    Terminal::Controller& terminal;
 
-    std::vector<Gtk::ScrolledWindow*> scrolledtext_vec_;
-    std::vector<Gtk::HBox*> editor_vec_;
-    std::list<Gtk::TargetEntry> listTargets_;
-    Glib::RefPtr<Gtk::Clipboard> refClipboard_;
+    std::vector<std::unique_ptr<Gtk::ScrolledWindow> > scrolled_windows;
+    std::vector<std::unique_ptr<Gtk::HBox> > hboxes;
+    Glib::RefPtr<Gtk::Clipboard> clipboard;
   };  // class controller
 }  // namespace Notebook
 #endif  // JUCI_NOTEBOOK_H_

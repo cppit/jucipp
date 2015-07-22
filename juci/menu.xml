@@ -16,8 +16,12 @@
       <separator/>                               
       <menuitem action='EditFind'/>
       <menuitem action='EditUndo'/>
-	<menuitem action='EditRedo'/>
-    </menu>                                         
+      <menuitem action='EditRedo'/>
+    </menu>
+    <menu action='SourceMenu'>                      
+      <menuitem action='SourceGotoDeclaration'/>
+      <menuitem action='SourceGotoMethod'/>
+    </menu>    
     <menu action='ProjectMenu'>                      
       <menuitem action='ProjectCompileAndRun'/>         
       <menuitem action='ProjectCompile'/>      

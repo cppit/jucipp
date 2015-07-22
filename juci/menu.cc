@@ -1,76 +1,37 @@
 #include "menu.h"
+#include <iostream>
 
-Menu::View::View(Gtk::Orientation orientation) :
-  view_(orientation) {
-  Gtk::MenuBar menutest;
-  view_.pack_end(menutest);
-}
-Gtk::Box &Menu::View::view(
-                           Glib::RefPtr<Gtk::UIManager> ui_manager) {
-  view_.pack_start(*ui_manager->get_widget("/MenuBar"), Gtk::PACK_SHRINK);
-  return view_;
+Menu::Menu() : box(Gtk::ORIENTATION_VERTICAL) {
+  action_group = Gtk::ActionGroup::create();
+  ui_manager = Gtk::UIManager::create();
+
+  action_group->add(Gtk::Action::create("FileNew", "New File"));
+  action_group->add(Gtk::Action::create("EditMenu", Gtk::Stock::EDIT));
+  action_group->add(Gtk::Action::create("WindowMenu", "_Window"));
+  action_group->add(Gtk::Action::create("WindowSplitWindow", "Split window"), Gtk::AccelKey(key_map["split_window"]), [this]() {
+  });
+  action_group->add(Gtk::Action::create("ProjectMenu", "P_roject"));
+  action_group->add(Gtk::Action::create("SourceMenu", "_Source"));
+  action_group->add(Gtk::Action::create("PluginMenu", "_Plugins"));
+  action_group->add(Gtk::Action::create("HelpMenu", Gtk::Stock::HELP));
+  action_group->add(Gtk::Action::create("HelpAbout", Gtk::Stock::ABOUT), [this]() {
+  });
 }
 
-Menu::Controller::Controller(Keybindings::Controller& keybindings) :
-  menu_view_(Gtk::ORIENTATION_VERTICAL),
-  keybindings_(keybindings) {
-  keybindings_.action_group_menu()->add(Gtk::Action::create("FileNew",
-                                                            "New File"));
-  keybindings_.action_group_menu()->add(Gtk::Action::create("EditMenu",
-                                                            Gtk::Stock::EDIT));
-  keybindings_.action_group_menu()->add(Gtk::Action::create("WindowMenu",
-                                                            "_Window"));
-  keybindings_.action_group_menu()->add(Gtk::Action::create("WindowSplitWindow",
-                                                            "Split window"),
-                                        Gtk::AccelKey(keybindings_.config_
-						      .key_map()["split_window"]),//"<control><alt>S"),
-                                        [this]() {
-                                          OnWindowSplitWindow();
-                                        });
-  keybindings_.action_group_menu()->add(Gtk::Action::create("ProjectMenu",
-                                                            "P_roject"));
-  keybindings_.action_group_menu()->add(Gtk::Action::create("PluginMenu",
-                                                            "_Plugins"));
-  keybindings_.action_group_menu()->add(Gtk::Action::create("HelpMenu",
-                                                            Gtk::Stock::HELP));
-  keybindings_.action_group_menu()->add(Gtk::Action::create("HelpAbout",
-                                                            Gtk::Stock::ABOUT),
-                                        [this]() {
-                                          OnHelpAbout();
-                                        });
-  keybindings_.action_group_hidden()->add(Gtk::Action::create("Test"),
-                                          Gtk::AccelKey("<control><alt>K"),
-                                          [this]() {
-                                            OnHelpAbout();
-                                          });
-  //keybindings_.BuildMenu(); // moved to window.cc
-  keybindings_.BuildHiddenMenu();
-  }  // Controller
-Gtk::Box &Menu::Controller::view() {
-  return menu_view_.view(keybindings_.ui_manager_menu());
+Gtk::Widget& Menu::get_widget() {
+  return *ui_manager->get_widget("/MenuBar");
 }
-void Menu::Controller::OnPluginAddSnippet() {
-  //TODO(Forgi add you snippet magic code)
-  std::cout << "Add snippet" << std::endl;
-  //juci_api::py::LoadPlugin("snippet");
+
+Gtk::Menu& Menu::get_source_menu() {
+  return *(Gtk::Menu*)ui_manager->get_widget("/MenuBar/SourceMenu");
 }
-void Menu::Controller::OnFileOpenFile() {
-  std::cout << "Open file clicked" << std::endl;
-  //TODO(Oyvang) Legg til funksjon
-}
-void Menu::Controller::OnEditCut() {
-  std::cout << "Clicked cut" << std::endl;
-  //TODO(Oyvang) Legg til funksjon
-}
-void Menu::Controller::OnEditFind() {
-  std::cout << "Clicked find" << std::endl;
-  //TODO(Oyvang) Legg til funksjon
-}
-void Menu::Controller::OnWindowSplitWindow() {
-  std::cout << "Clicked split window" << std::endl;
-  //TODO(Oyvang) Legg til funksjon
-}
-void Menu::Controller::OnHelpAbout() {
-  std::cout << "Clicked about" << std::endl;
-  //TODO(Oyvang) Legg til funksjon
+
+void Menu::build() {
+  try {
+    ui_manager->add_ui_from_string(ui);
+  }
+  catch (const Glib::Error &ex) {
+    std::cerr << "building menu failed" << ex.what();
+  }
+  ui_manager->insert_action_group(action_group);
 }

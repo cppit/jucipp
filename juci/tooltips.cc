@@ -46,7 +46,7 @@ void Tooltip::adjust(bool disregard_drawn) {
 
     tooltip_widget=std::unique_ptr<Gtk::TextView>(new Gtk::TextView(this->get_buffer()));
     tooltip_widget->set_editable(false);
-    tooltip_widget->override_background_color(Gdk::RGBA(Singletons::Config::source()->background_tooltips)); 
+    tooltip_widget->override_background_color(Gdk::RGBA(Singleton::Config::source()->background_tooltips)); 
     window->add(*tooltip_widget);
 
     auto layout=Pango::Layout::create(tooltip_widget->get_pango_context());
