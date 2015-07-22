@@ -30,7 +30,7 @@ protected:
   bool show_search_entry;
   std::unique_ptr<Tooltips> tooltips;
   std::unordered_map<std::string, std::string> tooltip_texts;
-  int last_selected=-1;
+  std::string last_row;
 };
 
 class SelectionDialog : public SelectionDialogBase {

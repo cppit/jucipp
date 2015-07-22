@@ -25,7 +25,6 @@ start_mark(start_mark), show_search_entry(show_search_entry), list_view_text(1, 
   list_view_text.set_rules_hint(true);
   //list_view_text.set_fixed_height_mode(true); //TODO: This is buggy on OS X, remember to post an issue on GTK+ 3
 
-  list_view_text.signal_cursor_changed().connect(sigc::mem_fun(*this, &SelectionDialog::cursor_changed), true);
   list_view_text.signal_realize().connect([this](){
     resize();
   });
@@ -69,13 +68,16 @@ void SelectionDialogBase::hide() {
     on_hide();
 }
 
+//TODO: this is not called when selecting row with mouse, but I guess that is ok. 
 void SelectionDialogBase::cursor_changed() {
-  auto selected=list_view_text.get_selected();
-  if(selected.size()>0) {
-    if(selected[0]!=last_selected || last_selected==-1) {
+  if(list_view_text.get_selected().size()>0) {
+    auto it=list_view_text.get_selection()->get_selected();
+    std::string row;
+    it->get_value(0, row);
+    if(row!=last_row || last_row.size()==0) {
       if(tooltips)
         tooltips->hide();
-      auto it=tooltip_texts.find(list_view_text.get_text(selected[0]));
+      auto it=tooltip_texts.find(row);
       if(it!=tooltip_texts.end()) {
         auto tooltip_text=it->second;
         if(tooltip_text.size()>0) {
@@ -91,13 +93,13 @@ void SelectionDialogBase::cursor_changed() {
         }
       }
     }
+    last_row=row;
   }
-  else if(tooltips)
-    tooltips->hide();
-  if(selected.size()>0)
-    last_selected=selected[0];
-  else
-    last_selected=-1;
+  else {
+    last_row="";
+    if(tooltips)
+      tooltips->hide();
+  }
 }
 
 void SelectionDialogBase::move() {
@@ -201,8 +203,7 @@ void SelectionDialog::show() {
       auto it=list_view_text.get_selection()->get_selected();
       std::string row;
       it->get_value(0, row);
-      std::string selected = row;
-      on_select(selected, true);
+      on_select(row, true);
     }
     window->hide();
   };
@@ -225,6 +226,27 @@ void CompletionDialog::show() {
   
   show_offset=text_view.get_buffer()->get_insert()->get_iter().get_offset();
   
+  if(show_offset==start_mark->get_iter().get_offset()) {
+    std::shared_ptr<std::string> search_key(new std::string());
+    auto filter_model=Gtk::TreeModelFilter::create(list_view_text.get_model());
+    filter_model->set_visible_func([this, search_key](const Gtk::TreeModel::const_iterator& iter){
+      std::string row_lc;
+      iter->get_value(0, row_lc);
+      auto search_key_lc=*search_key;
+      std::transform(row_lc.begin(), row_lc.end(), row_lc.begin(), ::tolower);
+      std::transform(search_key_lc.begin(), search_key_lc.end(), search_key_lc.begin(), ::tolower);
+      if(row_lc.find(search_key_lc)!=std::string::npos)
+        return true;
+      return false;
+    });
+    list_view_text.set_model(filter_model);
+    search_entry.signal_changed().connect([this, search_key, filter_model](){
+      *search_key=search_entry.get_text();
+      filter_model->refilter();
+      list_view_text.set_search_entry(search_entry); //TODO:Report the need of this to GTK's git (bug)
+    });
+  }
+  
   list_view_text.signal_row_activated().connect([this](const Gtk::TreeModel::Path& path, Gtk::TreeViewColumn*) {
     select();
   });
@@ -238,11 +260,15 @@ void CompletionDialog::show() {
 
 void CompletionDialog::select(bool hide_window) {
   row_in_entry=true;
-  auto selected=list_view_text.get_selected();
-  if(selected.size()>0) {
+  
+  if(list_view_text.get_selected().size()>0) {
+    auto it=list_view_text.get_selection()->get_selected();
+    std::string row;
+    it->get_value(0, row);
     if(on_select)
-      on_select(list_view_text.get_text(selected[0]), hide_window);
+      on_select(row, hide_window);
   }
+  
   if(hide_window) {
     hide();
   }
@@ -257,10 +283,8 @@ bool CompletionDialog::on_key_release(GdkEventKey* key) {
   }
   else {
     auto text=text_view.get_buffer()->get_text(start_mark->get_iter(), text_view.get_buffer()->get_insert()->get_iter());
-    if(text.size()>0) {
-      search_entry.set_text(text);
-      list_view_text.set_search_entry(search_entry);
-    }
+    search_entry.set_text(text);
+    list_view_text.set_search_entry(search_entry);
     cursor_changed();
   }
   return false;
@@ -275,9 +299,11 @@ bool CompletionDialog::on_key_press(GdkEventKey* key) {
       text_view.get_buffer()->erase(start_mark->get_iter(), text_view.get_buffer()->get_insert()->get_iter());
       row_in_entry=false;
       if(key->keyval==GDK_KEY_BackSpace) {
+        cursor_changed();
         return true;
       }
     }
+    cursor_changed();
     return false;
   }
   if(key->keyval==GDK_KEY_Shift_L || key->keyval==GDK_KEY_Shift_R || key->keyval==GDK_KEY_Alt_L || key->keyval==GDK_KEY_Alt_R || key->keyval==GDK_KEY_Control_L || key->keyval==GDK_KEY_Control_R || key->keyval==GDK_KEY_Meta_L || key->keyval==GDK_KEY_Meta_R)
