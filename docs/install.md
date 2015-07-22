@@ -2,7 +2,7 @@
 ## Installation guide ##
 ## Linux
 ```sh
-# Libraries (missing libclangmm, see http://github.com/cppit/libclangmm/ for installation)
+# Libraries (missing libclangmm, see [installation guide](http://github.com/cppit/libclangmm/blob/master/docs/install.md) for installation)
 $ sudo apt-get install libboost-python-dev libboost-filesystem-dev libboost-log-dev libboost-test-dev 
 libboost-thread-dev libboost-system-dev libgtkmm-3.0-dev libgtksourceview2.0-dev libgtksourceviewmm-3.0-dev
 libpython-dev libclang-dev

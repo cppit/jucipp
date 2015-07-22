@@ -43,6 +43,6 @@ Please install these dependencies on your system.
 * clang or gcc (compiler)
 
 ## Installation ##
-See installation guide [docs/install.md](http://github.com/cppit/jucipp/blob/master/docs/install.md).
+See [installation guide](http://github.com/cppit/jucipp/blob/master/docs/install.md).
 
 
