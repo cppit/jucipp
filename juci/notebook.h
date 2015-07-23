@@ -31,7 +31,8 @@ namespace Notebook {
                                Gtk::TreeViewColumn* column);
     void open_file(std::string filename);
     int Pages();
-    void search(bool forward);
+    void search(const std::string& text, bool forward);
+    GtkSourceSearchContext* search_context;
     View view;
     std::string OnSaveFileAs();
     std::string project_path;

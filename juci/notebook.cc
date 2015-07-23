@@ -17,8 +17,9 @@ Notebook::Controller::Controller() :
   view.pack1(directories.widget(), true, true);
   CreateKeybindings();
   entry_box.signal_hide().connect([this]() {
-    if(CurrentPage()!=-1)
+    if(CurrentPage()!=-1) {
       CurrentSourceView()->grab_focus();
+    }
   });
   INFO("Notebook Controller Success");
 }  // Constructor
@@ -37,8 +38,35 @@ void Notebook::Controller::CreateKeybindings() {
   menu->action_group->add(Gtk::Action::create("WindowCloseTab", "Close tab"), Gtk::AccelKey(menu->key_map["close_tab"]), [this]() {
     OnCloseCurrentPage();
   });
+  //TODO: Wrap search in a class (together with replace) and make Source::View::search method (now it will probably crash if searching without tabs)
+  //TODO: Do not update search/highlighting if searching for same string
+  //TODO: Add custom style to search matches (gtk_source_search_context_set_match_style) and read this from config.json
+  //TODO: Also update matches while writing in the search field
+  //TODO: Also update cursor position
   menu->action_group->add(Gtk::Action::create("EditFind", "Find"), Gtk::AccelKey(menu->key_map["edit_find"]), [this]() {
-	  //entry_box.show_search("");
+    entry_box.clear();
+    entry_box.entries.emplace_back("", [this](const std::string& content){
+      search(content, true);
+    });
+    auto entry_it=entry_box.entries.begin();
+    entry_box.buttons.emplace_back("Next", [this, entry_it](){
+      search(entry_it->get_text(), true);
+    });
+    entry_box.buttons.emplace_back("Previous", [this, entry_it](){
+      search(entry_it->get_text(), false);
+    });
+    entry_box.buttons.emplace_back("Cancel", [this](){
+      entry_box.hide();
+    });
+    entry_box.signal_hide().connect([this]() {
+      auto buffer=CurrentSourceView()->get_buffer();
+      buffer->remove_tag_by_name("search", buffer->begin(), buffer->end());
+      if(search_context!=NULL) {
+        gtk_source_search_context_set_highlight(search_context, false);
+      }
+    });
+    search_context=NULL; //TODO: delete content if any? Neither delete nor free worked... Do this on hide
+    entry_box.show();
   });
   menu->action_group->add(Gtk::Action::create("EditCopy", "Copy"), Gtk::AccelKey(menu->key_map["edit_copy"]), [this]() {
     if (Pages() != 0) {
@@ -96,45 +124,6 @@ void Notebook::Controller::CreateKeybindings() {
     }
   });
 
-  /*entry_box.button_apply_set_filename.signal_clicked().connect([this]() {
-    std::string filename=entry_box();
-    if(filename!="") {
-      if(project_path!="" && !boost::filesystem::path(filename).is_absolute())
-        filename=project_path+"/"+filename;
-      boost::filesystem::path p(filename);
-      if(boost::filesystem::exists(p)) {
-        //TODO: alert user that file already exists
-      }
-      else {
-        std::ofstream f(p.string().c_str());
-        if(f) {
-          open_file(boost::filesystem::canonical(p).string());
-          if(project_path!="")
-            directories.open_folder(project_path); //TODO: Do refresh instead
-        }
-        else {
-          //TODO: alert user of error creating file
-        }
-        f.close();
-      }
-    }
-    entry_box.hide();
-  });*/
-  /*entry_box.button_close.signal_clicked().
-    connect(
-            [this]() {
-              entry_box.hide();
-            });
-  entry_box.button_next.signal_clicked().
-    connect(
-            [this]() {
-              search(true);
-            });
-  entry_box.button_prev.signal_clicked().
-    connect(
-            [this]() {
-              search(false);
-            });*/
   INFO("Notebook signal handlers sucsess");
 }
 
@@ -220,30 +209,32 @@ void Notebook::Controller::OnFileNewFile() {
   entry_box.show();
 }
 
-void Notebook::Controller::search(bool forward) {
+//TODO: see search TODO earlier
+void Notebook::Controller::search(const std::string& text, bool forward) {
   INFO("Notebook search");
+  if(search_context!=NULL)
+    gtk_source_search_context_set_highlight(search_context, false);
   auto start = CurrentSourceView()->search_start;
   auto end = CurrentSourceView()->search_end;
   // fetch buffer and greate settings
   auto buffer = CurrentSourceView()->get_source_buffer();
   auto settings = gtk_source_search_settings_new();
-  // get search text from entry_box
-  //gtk_source_search_settings_set_search_text(settings, entry_box().c_str());
+  gtk_source_search_settings_set_search_text(settings, text.c_str());
   // make sure the search continues
   gtk_source_search_settings_set_wrap_around(settings, true);
-  auto context = gtk_source_search_context_new(buffer->gobj(), settings);
-  gtk_source_search_context_set_highlight(context, forward);
+  search_context = gtk_source_search_context_new(buffer->gobj(), settings);
+  gtk_source_search_context_set_highlight(search_context, true);
   auto itr = buffer->get_insert()->get_iter();
   buffer->remove_tag_by_name("search", start ? start : itr, end ? end : itr);
   if (forward) {
     DEBUG("Doing forward search");
-    gtk_source_search_context_forward(context,
+    gtk_source_search_context_forward(search_context,
 				      end ? end.gobj() : itr.gobj(),
 				      start.gobj(),
 				      end.gobj());
   } else {
     DEBUG("Doing backward search");
-    gtk_source_search_context_backward(context,
+    gtk_source_search_context_backward(search_context,
 				       start ? start.gobj() : itr.gobj(),
 				       start.gobj(),
 				       end.gobj());
