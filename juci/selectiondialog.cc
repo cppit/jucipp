@@ -373,5 +373,7 @@ bool CompletionDialog::on_key_press(GdkEventKey* key) {
     return true;
   }
   hide();
+  if(key->keyval==GDK_KEY_Escape)
+    return true;
   return false;
 }

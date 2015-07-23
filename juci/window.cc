@@ -2,6 +2,10 @@
 #include "logging.h"
 #include "singletons.h"
 
+namespace sigc {
+  SIGC_FUNCTORS_DEDUCE_RESULT_TYPE_WITH_DECLTYPE
+}
+
 Window::Window() :
   window_box_(Gtk::ORIENTATION_VERTICAL) {
   INFO("Create Window");
@@ -69,12 +73,19 @@ Window::Window() :
 
   window_box_.pack_start(menu->get_widget(), Gtk::PACK_SHRINK);
 
-  window_box_.pack_start(Singleton::notebook()->entry, Gtk::PACK_SHRINK);
+  window_box_.pack_start(Singleton::notebook()->entry_box, Gtk::PACK_SHRINK);
   paned_.set_position(300);
   paned_.pack1(Singleton::notebook()->view, true, false);
   paned_.pack2(Singleton::terminal()->view, true, true);
   window_box_.pack_end(paned_);
   show_all_children();
+  
+  signal_key_press_event().connect([this](GdkEventKey* key) {
+    if(key->keyval==GDK_KEY_Escape)
+      Singleton::notebook()->entry_box.hide();
+    return false;
+  });
+  
   INFO("Window created");
 } // Window constructor
 

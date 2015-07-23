@@ -3,7 +3,7 @@
 
 #include <iostream>
 #include "gtkmm.h"
-#include "entry.h"
+#include "entrybox.h"
 #include "source.h"
 #include "directories.h"
 #include <boost/algorithm/string/case_conv.hpp>
@@ -36,7 +36,7 @@ namespace Notebook {
     std::string OnSaveFileAs();
     std::string project_path;
     Directories::Controller directories; //Todo: make private after creating open_directory()
-    Entry entry;
+    EntryBox entry_box;
     std::vector<std::unique_ptr<Source> > source_views;
   private:
     void CreateKeybindings();

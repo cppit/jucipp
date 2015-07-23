@@ -4,9 +4,6 @@
 #include "singletons.h"
 #include <gtksourceview/gtksource.h> // c-library
 
-#include <iostream> //TODO: remove
-using namespace std; //TODO: remove
-
 Notebook::View::View() {
   pack2(notebook);
   set_position(120);
@@ -19,6 +16,10 @@ Notebook::Controller::Controller() :
   clipboard = Gtk::Clipboard::get();
   view.pack1(directories.widget(), true, true);
   CreateKeybindings();
+  entry_box.signal_hide().connect([this]() {
+    if(CurrentPage()!=-1)
+      CurrentSourceView()->grab_focus();
+  });
   INFO("Notebook Controller Success");
 }  // Constructor
 
@@ -37,7 +38,7 @@ void Notebook::Controller::CreateKeybindings() {
     OnCloseCurrentPage();
   });
   menu->action_group->add(Gtk::Action::create("EditFind", "Find"), Gtk::AccelKey(menu->key_map["edit_find"]), [this]() {
-	  entry.show_search("");
+	  //entry_box.show_search("");
   });
   menu->action_group->add(Gtk::Action::create("EditCopy", "Copy"), Gtk::AccelKey(menu->key_map["edit_copy"]), [this]() {
     if (Pages() != 0) {
@@ -95,8 +96,8 @@ void Notebook::Controller::CreateKeybindings() {
     }
   });
 
-  entry.button_apply_set_filename.signal_clicked().connect([this]() {
-    std::string filename=entry();
+  /*entry_box.button_apply_set_filename.signal_clicked().connect([this]() {
+    std::string filename=entry_box();
     if(filename!="") {
       if(project_path!="" && !boost::filesystem::path(filename).is_absolute())
         filename=project_path+"/"+filename;
@@ -117,23 +118,23 @@ void Notebook::Controller::CreateKeybindings() {
         f.close();
       }
     }
-    entry.hide();
-  });
-  entry.button_close.signal_clicked().
+    entry_box.hide();
+  });*/
+  /*entry_box.button_close.signal_clicked().
     connect(
             [this]() {
-              entry.hide();
+              entry_box.hide();
             });
-  entry.button_next.signal_clicked().
+  entry_box.button_next.signal_clicked().
     connect(
             [this]() {
               search(true);
             });
-  entry.button_prev.signal_clicked().
+  entry_box.button_prev.signal_clicked().
     connect(
             [this]() {
               search(false);
-            });
+            });*/
   INFO("Notebook signal handlers sucsess");
 }
 
@@ -183,7 +184,40 @@ void Notebook::Controller::OnCloseCurrentPage() {
   }
 }
 void Notebook::Controller::OnFileNewFile() {
-  entry.show_set_filename();
+  entry_box.clear();
+  entry_box.entries.emplace_back("untitled", [this](const std::string& content){
+    std::string filename=content;
+    if(filename!="") {
+      if(project_path!="" && !boost::filesystem::path(filename).is_absolute())
+        filename=project_path+"/"+filename;
+      boost::filesystem::path p(filename);
+      if(boost::filesystem::exists(p)) {
+        Singleton::terminal()->print("Error: "+p.string()+" already exists.\n");
+      }
+      else {
+        std::ofstream f(p.string().c_str());
+        if(f) {
+          open_file(boost::filesystem::canonical(p).string());
+          Singleton::terminal()->print("New file "+p.string()+" created.\n");
+          if(project_path!="")
+            directories.open_folder(project_path); //TODO: Do refresh instead
+        }
+        else {
+          Singleton::terminal()->print("Error: could not create new file "+p.string()+".\n");
+        }
+        f.close();
+      }
+    }
+    entry_box.hide();
+  });
+  auto entry_it=entry_box.entries.begin();
+  entry_box.buttons.emplace_back("Create file", [this, entry_it](){
+    entry_it->activate();
+  });
+  entry_box.buttons.emplace_back("Cancel", [this](){
+    entry_box.hide();
+  });
+  entry_box.show();
 }
 
 void Notebook::Controller::search(bool forward) {
@@ -193,8 +227,8 @@ void Notebook::Controller::search(bool forward) {
   // fetch buffer and greate settings
   auto buffer = CurrentSourceView()->get_source_buffer();
   auto settings = gtk_source_search_settings_new();
-  // get search text from entry
-  gtk_source_search_settings_set_search_text(settings, entry().c_str());
+  // get search text from entry_box
+  //gtk_source_search_settings_set_search_text(settings, entry_box().c_str());
   // make sure the search continues
   gtk_source_search_settings_set_wrap_around(settings, true);
   auto context = gtk_source_search_context_new(buffer->gobj(), settings);
