@@ -7,6 +7,7 @@
 #include <algorithm>
 #include <regex>
 #include "singletons.h"
+#include <gtksourceview/gtksource.h>
 
 #include <iostream> //TODO: remove
 using namespace std; //TODO: remove
@@ -37,7 +38,6 @@ file_path(file_path), project_path(project_path) {
   get_source_buffer()->get_undo_manager()->begin_not_undoable_action();
   get_source_buffer()->set_text(s.get_content());
   get_source_buffer()->get_undo_manager()->end_not_undoable_action();
-  search_start = search_end = this->get_buffer()->end();
   
   override_font(Pango::FontDescription(Singleton::Config::source()->font));
   
@@ -58,6 +58,82 @@ file_path(file_path), project_path(project_path) {
       after_user_input=true;
     return false;
   });
+  
+  search_settings = gtk_source_search_settings_new();
+  gtk_source_search_settings_set_wrap_around(search_settings, true);
+  search_context = gtk_source_search_context_new(get_source_buffer()->gobj(), search_settings);
+  //TODO: why does this not work?: Might be best to use the styles from sourceview. These has to be read from file, search-matches got style "search-match"
+  //TODO: in header if trying again: GtkSourceStyle* search_match_style;
+  //search_match_style=(GtkSourceStyle*)g_object_new(GTK_SOURCE_TYPE_STYLE, "background-set", 1, "background", "#00FF00", NULL);
+  //gtk_source_search_context_set_match_style(search_context, search_match_style);
+}
+
+Source::View::~View() {
+  g_clear_object(&search_context);
+  g_clear_object(&search_settings);
+}
+
+void Source::View::search_highlight(const std::string &text) {
+  if(text.size()>0) {
+    gtk_source_search_settings_set_search_text(search_settings, text.c_str());
+    gtk_source_search_context_set_highlight(search_context, true);
+  }
+  else
+    gtk_source_search_context_set_highlight(search_context, false);
+}
+
+void Source::View::search_forward() {
+  Gtk::TextIter insert, selection_bound;
+  get_buffer()->get_selection_bounds(insert, selection_bound);
+  auto& start=selection_bound;
+  Gtk::TextIter match_start, match_end;
+  if(gtk_source_search_context_forward(search_context, start.gobj(), match_start.gobj(), match_end.gobj())) {
+    get_buffer()->select_range(match_start, match_end);
+    scroll_to(get_buffer()->get_insert());
+  }
+}
+
+void Source::View::search_backward() {
+  Gtk::TextIter insert, selection_bound;
+  get_buffer()->get_selection_bounds(insert, selection_bound);
+  auto &start=insert;
+  Gtk::TextIter match_start, match_end;
+  if(gtk_source_search_context_backward(search_context, start.gobj(), match_start.gobj(), match_end.gobj())) {
+    get_buffer()->select_range(match_start, match_end);
+    scroll_to(get_buffer()->get_insert());
+  }
+}
+
+void Source::View::replace_forward(const std::string &replacement) {
+  Gtk::TextIter insert, selection_bound;
+  get_buffer()->get_selection_bounds(insert, selection_bound);
+  auto &start=insert;
+  Gtk::TextIter match_start, match_end;
+  if(gtk_source_search_context_forward(search_context, start.gobj(), match_start.gobj(), match_end.gobj())) {
+    auto offset=match_start.get_offset();
+    gtk_source_search_context_replace(search_context, match_start.gobj(), match_end.gobj(), replacement.c_str(), replacement.size(), NULL);
+    
+    get_buffer()->select_range(get_buffer()->get_iter_at_offset(offset), get_buffer()->get_iter_at_offset(offset+replacement.size()));
+    scroll_to(get_buffer()->get_insert());
+  }
+}
+
+void Source::View::replace_backward(const std::string &replacement) {
+  Gtk::TextIter insert, selection_bound;
+  get_buffer()->get_selection_bounds(insert, selection_bound);
+  auto &start=selection_bound;
+  Gtk::TextIter match_start, match_end;
+  if(gtk_source_search_context_backward(search_context, start.gobj(), match_start.gobj(), match_end.gobj())) {
+  auto offset=match_start.get_offset();
+    gtk_source_search_context_replace(search_context, match_start.gobj(), match_end.gobj(), replacement.c_str(), replacement.size(), NULL);
+
+    get_buffer()->select_range(get_buffer()->get_iter_at_offset(offset), get_buffer()->get_iter_at_offset(offset+replacement.size()));
+    scroll_to(get_buffer()->get_insert());
+  }
+}
+
+void Source::View::replace_all(const std::string &replacement) {
+  gtk_source_search_context_replace_all(search_context, replacement.c_str(), replacement.size(), NULL);
 }
 
 string Source::View::get_line(size_t line_number) {
@@ -163,7 +239,28 @@ clang::Index Source::ClangViewParse::clang_index(0, 0);
 
 Source::ClangViewParse::ClangViewParse(const std::string& file_path, const std::string& project_path):
 Source::View(file_path, project_path),
-parse_thread_go(true), parse_thread_mapped(false), parse_thread_stop(false) {  
+parse_thread_go(true), parse_thread_mapped(false), parse_thread_stop(false) {
+  //Create underline color tags for diagnostic warnings and errors:
+  auto diagnostic_tag=get_buffer()->get_tag_table()->lookup("diagnostic_warning");
+  auto diagnostic_tag_underline=Gtk::TextTag::create("diagnostic_warning_underline");
+  get_buffer()->get_tag_table()->add(diagnostic_tag_underline);
+  diagnostic_tag_underline->property_underline()=Pango::Underline::UNDERLINE_ERROR;
+  auto tag_class=G_OBJECT_GET_CLASS(diagnostic_tag_underline->gobj()); //For older GTK+ 3 versions:
+  auto param_spec=g_object_class_find_property(tag_class, "underline-rgba");
+  if(param_spec!=NULL) {
+    diagnostic_tag_underline->set_property("underline-rgba", diagnostic_tag->property_foreground_rgba().get_value());
+  }
+  diagnostic_tag=get_buffer()->get_tag_table()->lookup("diagnostic_error");
+  diagnostic_tag_underline=Gtk::TextTag::create("diagnostic_error_underline");
+  get_buffer()->get_tag_table()->add(diagnostic_tag_underline);
+  diagnostic_tag_underline->property_underline()=Pango::Underline::UNDERLINE_ERROR;
+  tag_class=G_OBJECT_GET_CLASS(diagnostic_tag_underline->gobj()); //For older GTK+ 3 versions:
+  param_spec=g_object_class_find_property(tag_class, "underline-rgba");
+  if(param_spec!=NULL) {
+    diagnostic_tag_underline->set_property("underline-rgba", diagnostic_tag->property_foreground_rgba().get_value());
+  }
+  //TODO: clear tag_class and param_spec?
+  
   int start_offset = get_source_buffer()->begin().get_offset();
   int end_offset = get_source_buffer()->end().get_offset();
   auto buffer_map=get_buffer_map();
@@ -323,11 +420,13 @@ void Source::ClangViewParse::update_syntax() {
     return;
   }
   auto buffer = get_source_buffer();
-  buffer->remove_all_tags(buffer->begin(), buffer->end());
+  for(auto &tag: last_syntax_tags)
+    buffer->remove_tag_by_name(tag, buffer->begin(), buffer->end());
+  last_syntax_tags.clear();
   for (auto &range : ranges) {
     std::string type = std::to_string(range.kind);
     try {
-      Singleton::Config::source()->types.at(type);
+      last_syntax_tags.emplace(Singleton::Config::source()->types.at(type));
     } catch (std::exception) {
       continue;
     }
@@ -341,6 +440,8 @@ void Source::ClangViewParse::update_syntax() {
 
 void Source::ClangViewParse::update_diagnostics() {
   diagnostic_tooltips.clear();
+  get_buffer()->remove_tag_by_name("diagnostic_warning_underline", get_buffer()->begin(), get_buffer()->end());
+  get_buffer()->remove_tag_by_name("diagnostic_error_underline", get_buffer()->begin(), get_buffer()->end());
   auto diagnostics=clang_tu->get_diagnostics();
   for(auto &diagnostic: diagnostics) {
     if(diagnostic.path==file_path) {
@@ -362,17 +463,8 @@ void Source::ClangViewParse::update_diagnostics() {
         return tooltip_buffer;
       };
       diagnostic_tooltips.emplace_back(get_tooltip_buffer, *this, get_buffer()->create_mark(start), get_buffer()->create_mark(end));
-      
-      auto tag=get_buffer()->create_tag();
-      tag->property_underline()=Pango::Underline::UNDERLINE_ERROR;
-      auto tag_class=G_OBJECT_GET_CLASS(tag->gobj()); //For older GTK+ 3 versions:
-      auto param_spec=g_object_class_find_property(tag_class, "underline-rgba");
-      if(param_spec!=NULL) {
-        auto diagnostic_tag=get_buffer()->get_tag_table()->lookup(diagnostic_tag_name);
-        if(diagnostic_tag!=0)
-          tag->set_property("underline-rgba", diagnostic_tag->property_foreground_rgba().get_value());
-      }
-      get_buffer()->apply_tag(tag, start, end);
+    
+      get_buffer()->apply_tag_by_name(diagnostic_tag_name+"_underline", start, end);
     }
   }
 }

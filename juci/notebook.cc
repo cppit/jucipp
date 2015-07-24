@@ -2,7 +2,12 @@
 #include "notebook.h"
 #include "logging.h"
 #include "singletons.h"
-#include <gtksourceview/gtksource.h> // c-library
+#include <iostream> //TODO: remove
+using namespace std; //TODO: remove
+
+namespace sigc {
+  SIGC_FUNCTORS_DEDUCE_RESULT_TYPE_WITH_DECLTYPE
+}
 
 Notebook::View::View() {
   pack2(notebook);
@@ -20,6 +25,10 @@ Notebook::Controller::Controller() :
     if(CurrentPage()!=-1) {
       CurrentSourceView()->grab_focus();
     }
+  });
+  view.notebook.signal_switch_page().connect([this](Gtk::Widget* page, guint page_num) {
+    if(search_entry_shown && CurrentPage()!=-1)
+      CurrentSourceView()->search_highlight(last_search);
   });
   INFO("Notebook Controller Success");
 }  // Constructor
@@ -45,27 +54,63 @@ void Notebook::Controller::CreateKeybindings() {
   //TODO: Also update cursor position
   menu->action_group->add(Gtk::Action::create("EditFind", "Find"), Gtk::AccelKey(menu->key_map["edit_find"]), [this]() {
     entry_box.clear();
-    entry_box.entries.emplace_back("", [this](const std::string& content){
-      search(content, true);
+    entry_box.entries.emplace_back(last_search, [this](const std::string& content){
+      if(CurrentPage()!=-1)
+        CurrentSourceView()->search_forward();
     });
-    auto entry_it=entry_box.entries.begin();
-    entry_box.buttons.emplace_back("Next", [this, entry_it](){
-      search(entry_it->get_text(), true);
+    auto search_entry_it=entry_box.entries.begin();
+    search_entry_it->set_placeholder_text("Find");
+    if(CurrentPage()!=-1)
+      CurrentSourceView()->search_highlight(search_entry_it->get_text());
+    search_entry_it->signal_key_press_event().connect([this, search_entry_it](GdkEventKey* event){
+      if(event->keyval==GDK_KEY_Return && event->state==GDK_SHIFT_MASK) {
+        if(CurrentPage()!=-1)
+          CurrentSourceView()->search_backward();
+      }
+      return false;
     });
-    entry_box.buttons.emplace_back("Previous", [this, entry_it](){
-      search(entry_it->get_text(), false);
+    search_entry_it->signal_changed().connect([this, search_entry_it](){
+      last_search=search_entry_it->get_text();
+      if(CurrentPage()!=-1)
+        CurrentSourceView()->search_highlight(search_entry_it->get_text());
     });
-    entry_box.buttons.emplace_back("Cancel", [this](){
-      entry_box.hide();
+    
+    entry_box.entries.emplace_back(last_replace, [this](const std::string &content){
+      if(CurrentPage()!=-1)
+        CurrentSourceView()->replace_forward(content);
+    });
+    auto replace_entry_it=entry_box.entries.begin();
+    replace_entry_it++;
+    replace_entry_it->set_placeholder_text("Replace");
+    replace_entry_it->signal_key_press_event().connect([this, replace_entry_it](GdkEventKey* event){
+      if(event->keyval==GDK_KEY_Return && event->state==GDK_SHIFT_MASK) {
+        if(CurrentPage()!=-1)
+          CurrentSourceView()->replace_backward(replace_entry_it->get_text());
+      }
+      return false;
+    });
+    replace_entry_it->signal_changed().connect([this, replace_entry_it](){
+      last_replace=replace_entry_it->get_text();
+    });
+    
+    entry_box.buttons.emplace_back("Find", [this](){
+      if(CurrentPage()!=-1)
+        CurrentSourceView()->search_forward();
+    });
+    entry_box.buttons.emplace_back("Replace", [this, replace_entry_it](){
+      if(CurrentPage()!=-1)
+        CurrentSourceView()->replace_forward(replace_entry_it->get_text());
+    });
+    entry_box.buttons.emplace_back("Replace all", [this, replace_entry_it](){
+      if(CurrentPage()!=-1)
+        CurrentSourceView()->replace_all(replace_entry_it->get_text());
     });
     entry_box.signal_hide().connect([this]() {
-      auto buffer=CurrentSourceView()->get_buffer();
-      buffer->remove_tag_by_name("search", buffer->begin(), buffer->end());
-      if(search_context!=NULL) {
-        gtk_source_search_context_set_highlight(search_context, false);
-      }
+      for(int c=0;c<Pages();c++)
+        source_views.at(c)->view->search_highlight("");
+      search_entry_shown=false;
     });
-    search_context=NULL; //TODO: delete content if any? Neither delete nor free worked... Do this on hide
+    search_entry_shown=true;
     entry_box.show();
   });
   menu->action_group->add(Gtk::Action::create("EditCopy", "Copy"), Gtk::AccelKey(menu->key_map["edit_copy"]), [this]() {
@@ -203,46 +248,7 @@ void Notebook::Controller::OnFileNewFile() {
   entry_box.buttons.emplace_back("Create file", [this, entry_it](){
     entry_it->activate();
   });
-  entry_box.buttons.emplace_back("Cancel", [this](){
-    entry_box.hide();
-  });
   entry_box.show();
-}
-
-//TODO: see search TODO earlier
-void Notebook::Controller::search(const std::string& text, bool forward) {
-  INFO("Notebook search");
-  if(search_context!=NULL)
-    gtk_source_search_context_set_highlight(search_context, false);
-  auto start = CurrentSourceView()->search_start;
-  auto end = CurrentSourceView()->search_end;
-  // fetch buffer and greate settings
-  auto buffer = CurrentSourceView()->get_source_buffer();
-  auto settings = gtk_source_search_settings_new();
-  gtk_source_search_settings_set_search_text(settings, text.c_str());
-  // make sure the search continues
-  gtk_source_search_settings_set_wrap_around(settings, true);
-  search_context = gtk_source_search_context_new(buffer->gobj(), settings);
-  gtk_source_search_context_set_highlight(search_context, true);
-  auto itr = buffer->get_insert()->get_iter();
-  buffer->remove_tag_by_name("search", start ? start : itr, end ? end : itr);
-  if (forward) {
-    DEBUG("Doing forward search");
-    gtk_source_search_context_forward(search_context,
-				      end ? end.gobj() : itr.gobj(),
-				      start.gobj(),
-				      end.gobj());
-  } else {
-    DEBUG("Doing backward search");
-    gtk_source_search_context_backward(search_context,
-				       start ? start.gobj() : itr.gobj(),
-				       start.gobj(),
-				       end.gobj());
-  }
-  buffer->apply_tag_by_name("search", start, end);
-  CurrentSourceView()->scroll_to(end);
-  CurrentSourceView()->search_start = start;
-  CurrentSourceView()->search_end = end;
 }
 
 void Notebook::Controller

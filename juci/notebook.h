@@ -31,13 +31,14 @@ namespace Notebook {
                                Gtk::TreeViewColumn* column);
     void open_file(std::string filename);
     int Pages();
-    void search(const std::string& text, bool forward);
-    GtkSourceSearchContext* search_context;
     View view;
     std::string OnSaveFileAs();
     std::string project_path;
     Directories::Controller directories; //Todo: make private after creating open_directory()
     EntryBox entry_box;
+    std::string last_search;
+    std::string last_replace;
+    bool search_entry_shown=false;
     std::vector<std::unique_ptr<Source> > source_views;
   private:
     void CreateKeybindings();

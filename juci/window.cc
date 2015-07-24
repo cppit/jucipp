@@ -85,6 +85,14 @@ Window::Window() :
       Singleton::notebook()->entry_box.hide();
     return false;
   });
+  Singleton::notebook()->entry_box.signal_show().connect([this](){
+    std::vector<Gtk::Widget*> focus_chain;
+    focus_chain.emplace_back(&Singleton::notebook()->entry_box);
+    window_box_.set_focus_chain(focus_chain);
+  });
+  Singleton::notebook()->entry_box.signal_hide().connect([this](){
+    window_box_.unset_focus_chain();
+  });
   
   INFO("Window created");
 } // Window constructor

@@ -13,6 +13,7 @@
 #include "terminal.h"
 #include "tooltips.h"
 #include "selectiondialog.h"
+#include <set>
 
 class Source {
 public:
@@ -47,17 +48,29 @@ public:
   class View : public Gsv::View {
   public:
     View(const std::string& file_path, const std::string& project_path);
+    ~View();
+    
+    void search_highlight(const std::string &text);
+    void search_forward();
+    void search_backward();
+    void replace_forward(const std::string &replacement);
+    void replace_backward(const std::string &replacement);
+    void replace_all(const std::string &replacement);
+    
     std::string get_line(size_t line_number);
     std::string get_line_before_insert();
+    
     std::string file_path;
     std::string project_path;
-    Gtk::TextIter search_start, search_end;
     
     std::function<std::pair<std::string, unsigned>()> get_declaration_location;
     std::function<void()> goto_method;
     bool after_user_input=false;
   protected:
     bool on_key_press_event(GdkEventKey* key);
+  private:
+    GtkSourceSearchContext *search_context;
+    GtkSourceSearchSettings *search_settings;
   };  // class View
   
   class GenericView : public View {
@@ -89,6 +102,7 @@ public:
                                 int end_offset);
     int reparse(const std::map<std::string, std::string> &buffers);
     void update_syntax();
+    std::set<std::string> last_syntax_tags;
     void update_diagnostics();
     void update_types();
     Tooltips diagnostic_tooltips;

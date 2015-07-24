@@ -2,7 +2,6 @@
     "source": {
         "colors": {
             "text_color": "black",
-            "search": "orange",
             "string": "#CC0000",
             "namespace_ref": "#990099",
             "type": "#0066FF",

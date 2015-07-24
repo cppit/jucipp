@@ -29,11 +29,15 @@ void EntryBox::clear() {
 }
 
 void EntryBox::show() {
+  std::vector<Gtk::Widget*> focus_chain;
   for(auto& entry: entries) {
     pack_start(entry, Gtk::PACK_SHRINK);
+    focus_chain.emplace_back(&entry);
   }
   for(auto& button: buttons)
     pack_start(button, Gtk::PACK_SHRINK);
+    
+  set_focus_chain(focus_chain);
   show_all();
   if(entries.size()>0) {
     entries.begin()->grab_focus();
