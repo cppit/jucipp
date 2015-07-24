@@ -47,11 +47,6 @@ void Notebook::Controller::CreateKeybindings() {
   menu->action_group->add(Gtk::Action::create("WindowCloseTab", "Close tab"), Gtk::AccelKey(menu->key_map["close_tab"]), [this]() {
     OnCloseCurrentPage();
   });
-  //TODO: Wrap search in a class (together with replace) and make Source::View::search method (now it will probably crash if searching without tabs)
-  //TODO: Do not update search/highlighting if searching for same string
-  //TODO: Add custom style to search matches (gtk_source_search_context_set_match_style) and read this from config.json
-  //TODO: Also update matches while writing in the search field
-  //TODO: Also update cursor position
   menu->action_group->add(Gtk::Action::create("EditFind", "Find"), Gtk::AccelKey(menu->key_map["edit_find"]), [this]() {
     entry_box.clear();
     entry_box.entries.emplace_back(last_search, [this](const std::string& content){
@@ -62,7 +57,7 @@ void Notebook::Controller::CreateKeybindings() {
     search_entry_it->set_placeholder_text("Find");
     if(CurrentPage()!=-1)
       CurrentSourceView()->search_highlight(search_entry_it->get_text());
-    search_entry_it->signal_key_press_event().connect([this, search_entry_it](GdkEventKey* event){
+    search_entry_it->signal_key_press_event().connect([this](GdkEventKey* event){
       if(event->keyval==GDK_KEY_Return && event->state==GDK_SHIFT_MASK) {
         if(CurrentPage()!=-1)
           CurrentSourceView()->search_backward();

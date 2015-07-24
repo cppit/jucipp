@@ -64,6 +64,7 @@ file_path(file_path), project_path(project_path) {
   search_context = gtk_source_search_context_new(get_source_buffer()->gobj(), search_settings);
   //TODO: why does this not work?: Might be best to use the styles from sourceview. These has to be read from file, search-matches got style "search-match"
   //TODO: in header if trying again: GtkSourceStyle* search_match_style;
+  //TODO: We can drop this, only work on newer versions of gtksourceview.
   //search_match_style=(GtkSourceStyle*)g_object_new(GTK_SOURCE_TYPE_STYLE, "background-set", 1, "background", "#00FF00", NULL);
   //gtk_source_search_context_set_match_style(search_context, search_match_style);
 }
