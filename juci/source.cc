@@ -62,6 +62,7 @@ file_path(file_path), project_path(project_path) {
   search_settings = gtk_source_search_settings_new();
   gtk_source_search_settings_set_wrap_around(search_settings, true);
   search_context = gtk_source_search_context_new(get_source_buffer()->gobj(), search_settings);
+  gtk_source_search_context_set_highlight(search_context, true);
   //TODO: why does this not work?: Might be best to use the styles from sourceview. These has to be read from file, search-matches got style "search-match"
   //TODO: in header if trying again: GtkSourceStyle* search_match_style;
   //TODO: We can drop this, only work on newer versions of gtksourceview.
@@ -78,11 +79,10 @@ void Source::View::search_highlight(const std::string &text, bool case_sensitive
   gtk_source_search_settings_set_case_sensitive(search_settings, case_sensitive);
   gtk_source_search_settings_set_regex_enabled(search_settings, regex);
   gtk_source_search_settings_set_search_text(search_settings, text.c_str());
-  gtk_source_search_context_set_highlight(search_context, true);
 }
 
 int Source::View::get_search_occurences() {
-  while(gtk_events_pending())
+  while(gtk_events_pending()) //TODO: need to connect to a signal instead (something like search highlight updated)
     gtk_main_iteration();
   return gtk_source_search_context_get_occurrences_count(search_context);
 }

@@ -43,6 +43,7 @@ namespace Notebook {
     bool case_sensitive_search=true;
     bool regex_search=false;
     bool search_entry_shown=false;
+    sigc::connection delayed_search_label_update;
     
     std::vector<std::unique_ptr<Source> > source_views;
   private:
