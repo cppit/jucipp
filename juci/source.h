@@ -50,7 +50,8 @@ public:
     View(const std::string& file_path, const std::string& project_path);
     ~View();
     
-    void search_highlight(const std::string &text);
+    void search_highlight(const std::string &text, bool case_sensitive, bool regex);
+    int get_search_occurences();
     void search_forward();
     void search_backward();
     void replace_forward(const std::string &replacement);

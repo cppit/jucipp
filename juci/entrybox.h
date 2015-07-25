@@ -17,12 +17,27 @@ public:
     Button(const std::string& label, std::function<void()> on_activate=nullptr);
     std::function<void()> on_activate;
   };
+  class ToggleButton : public Gtk::ToggleButton {
+  public:
+    ToggleButton(const std::string& label, std::function<void()> on_activate=nullptr);
+    std::function<void()> on_activate;
+  };
+  class Label : public Gtk::Label {
+  public:
+    Label(std::function<void(int state, const std::string& message)> update=nullptr);
+    std::function<void(int state, const std::string& message)> update;
+  };
+
 public:
   EntryBox();
+  Gtk::Box upper_box;
+  Gtk::Box lower_box;
   void clear();
   void show();
   std::list<Entry> entries;
   std::list<Button> buttons;
+  std::list<ToggleButton> toggle_buttons;
+  std::list<Label> labels;
 };
 
 #endif  // JUCI_ENTRYBOX_H_

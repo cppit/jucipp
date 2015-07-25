@@ -35,10 +35,15 @@ namespace Notebook {
     std::string OnSaveFileAs();
     std::string project_path;
     Directories::Controller directories; //Todo: make private after creating open_directory()
+    
     EntryBox entry_box;
+    void show_search_and_replace();
     std::string last_search;
     std::string last_replace;
+    bool case_sensitive_search=true;
+    bool regex_search=false;
     bool search_entry_shown=false;
+    
     std::vector<std::unique_ptr<Source> > source_views;
   private:
     void CreateKeybindings();

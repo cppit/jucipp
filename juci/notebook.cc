@@ -27,8 +27,10 @@ Notebook::Controller::Controller() :
     }
   });
   view.notebook.signal_switch_page().connect([this](Gtk::Widget* page, guint page_num) {
-    if(search_entry_shown && CurrentPage()!=-1)
-      CurrentSourceView()->search_highlight(last_search);
+    if(search_entry_shown && entry_box.labels.size()>0 && CurrentPage()!=-1) {
+      CurrentSourceView()->search_highlight(last_search, case_sensitive_search, regex_search);
+      entry_box.labels.back().update(0, std::to_string(CurrentSourceView()->get_search_occurences()));
+    }
   });
   INFO("Notebook Controller Success");
 }  // Constructor
@@ -48,65 +50,7 @@ void Notebook::Controller::CreateKeybindings() {
     OnCloseCurrentPage();
   });
   menu->action_group->add(Gtk::Action::create("EditFind", "Find"), Gtk::AccelKey(menu->key_map["edit_find"]), [this]() {
-    entry_box.clear();
-    entry_box.entries.emplace_back(last_search, [this](const std::string& content){
-      if(CurrentPage()!=-1)
-        CurrentSourceView()->search_forward();
-    });
-    auto search_entry_it=entry_box.entries.begin();
-    search_entry_it->set_placeholder_text("Find");
-    if(CurrentPage()!=-1)
-      CurrentSourceView()->search_highlight(search_entry_it->get_text());
-    search_entry_it->signal_key_press_event().connect([this](GdkEventKey* event){
-      if(event->keyval==GDK_KEY_Return && event->state==GDK_SHIFT_MASK) {
-        if(CurrentPage()!=-1)
-          CurrentSourceView()->search_backward();
-      }
-      return false;
-    });
-    search_entry_it->signal_changed().connect([this, search_entry_it](){
-      last_search=search_entry_it->get_text();
-      if(CurrentPage()!=-1)
-        CurrentSourceView()->search_highlight(search_entry_it->get_text());
-    });
-    
-    entry_box.entries.emplace_back(last_replace, [this](const std::string &content){
-      if(CurrentPage()!=-1)
-        CurrentSourceView()->replace_forward(content);
-    });
-    auto replace_entry_it=entry_box.entries.begin();
-    replace_entry_it++;
-    replace_entry_it->set_placeholder_text("Replace");
-    replace_entry_it->signal_key_press_event().connect([this, replace_entry_it](GdkEventKey* event){
-      if(event->keyval==GDK_KEY_Return && event->state==GDK_SHIFT_MASK) {
-        if(CurrentPage()!=-1)
-          CurrentSourceView()->replace_backward(replace_entry_it->get_text());
-      }
-      return false;
-    });
-    replace_entry_it->signal_changed().connect([this, replace_entry_it](){
-      last_replace=replace_entry_it->get_text();
-    });
-    
-    entry_box.buttons.emplace_back("Find", [this](){
-      if(CurrentPage()!=-1)
-        CurrentSourceView()->search_forward();
-    });
-    entry_box.buttons.emplace_back("Replace", [this, replace_entry_it](){
-      if(CurrentPage()!=-1)
-        CurrentSourceView()->replace_forward(replace_entry_it->get_text());
-    });
-    entry_box.buttons.emplace_back("Replace all", [this, replace_entry_it](){
-      if(CurrentPage()!=-1)
-        CurrentSourceView()->replace_all(replace_entry_it->get_text());
-    });
-    entry_box.signal_hide().connect([this]() {
-      for(int c=0;c<Pages();c++)
-        source_views.at(c)->view->search_highlight("");
-      search_entry_shown=false;
-    });
-    search_entry_shown=true;
-    entry_box.show();
+    show_search_and_replace();
   });
   menu->action_group->add(Gtk::Action::create("EditCopy", "Copy"), Gtk::AccelKey(menu->key_map["edit_copy"]), [this]() {
     if (Pages() != 0) {
@@ -167,6 +111,103 @@ void Notebook::Controller::CreateKeybindings() {
   INFO("Notebook signal handlers sucsess");
 }
 
+void Notebook::Controller::show_search_and_replace() {
+  entry_box.clear();
+  entry_box.labels.emplace_back();
+  auto label_it=entry_box.labels.begin();
+  label_it->update=[this, label_it](int state, const std::string& message){
+    if(state==0) {
+      int number=stoi(message);
+      if(number<1)
+        label_it->set_text("");
+      else if(number==1)
+        label_it->set_text("1 result found");
+      else
+        label_it->set_text(std::to_string(number)+" results found");
+    }
+  };
+  entry_box.entries.emplace_back(last_search, [this](const std::string& content){
+    if(CurrentPage()!=-1)
+      CurrentSourceView()->search_forward();
+  });
+  auto search_entry_it=entry_box.entries.begin();
+  search_entry_it->set_placeholder_text("Find");
+  if(CurrentPage()!=-1) {
+    CurrentSourceView()->search_highlight(search_entry_it->get_text(), case_sensitive_search, regex_search);
+    label_it->update(0, std::to_string(CurrentSourceView()->get_search_occurences()));
+  }
+  search_entry_it->signal_key_press_event().connect([this](GdkEventKey* event){
+    if(event->keyval==GDK_KEY_Return && event->state==GDK_SHIFT_MASK) {
+      if(CurrentPage()!=-1)
+        CurrentSourceView()->search_backward();
+    }
+    return false;
+  });
+  search_entry_it->signal_changed().connect([this, search_entry_it, label_it](){
+    last_search=search_entry_it->get_text();
+    if(CurrentPage()!=-1) {
+      CurrentSourceView()->search_highlight(search_entry_it->get_text(), case_sensitive_search, regex_search);
+      label_it->update(0, std::to_string(CurrentSourceView()->get_search_occurences()));
+    }
+  });
+  
+  entry_box.entries.emplace_back(last_replace, [this, label_it](const std::string &content){
+    if(CurrentPage()!=-1)
+      CurrentSourceView()->replace_forward(content);
+  });
+  auto replace_entry_it=entry_box.entries.begin();
+  replace_entry_it++;
+  replace_entry_it->set_placeholder_text("Replace");
+  replace_entry_it->signal_key_press_event().connect([this, replace_entry_it](GdkEventKey* event){
+    if(event->keyval==GDK_KEY_Return && event->state==GDK_SHIFT_MASK) {
+      if(CurrentPage()!=-1)
+        CurrentSourceView()->replace_backward(replace_entry_it->get_text());
+    }
+    return false;
+  });
+  replace_entry_it->signal_changed().connect([this, replace_entry_it](){
+    last_replace=replace_entry_it->get_text();
+  });
+  
+  entry_box.buttons.emplace_back("Find", [this](){
+    if(CurrentPage()!=-1)
+      CurrentSourceView()->search_forward();
+  });
+  entry_box.buttons.emplace_back("Replace", [this, replace_entry_it](){
+    if(CurrentPage()!=-1)
+      CurrentSourceView()->replace_forward(replace_entry_it->get_text());
+  });
+  entry_box.buttons.emplace_back("Replace all", [this, replace_entry_it, label_it](){
+    if(CurrentPage()!=-1) {
+      CurrentSourceView()->replace_all(replace_entry_it->get_text());
+      label_it->update(0, std::to_string(CurrentSourceView()->get_search_occurences()));
+    }
+  });
+  entry_box.toggle_buttons.emplace_back("Match case");
+  entry_box.toggle_buttons.back().set_active(case_sensitive_search);
+  entry_box.toggle_buttons.back().on_activate=[this, search_entry_it, label_it](){
+    case_sensitive_search=!case_sensitive_search;
+    if(CurrentPage()!=-1) {
+      CurrentSourceView()->search_highlight(search_entry_it->get_text(), case_sensitive_search, regex_search);
+      label_it->update(0, std::to_string(CurrentSourceView()->get_search_occurences()));
+    }
+  };
+  entry_box.toggle_buttons.emplace_back("Use regex", [this, search_entry_it, label_it](){
+    regex_search=!regex_search;
+    if(CurrentPage()!=-1) {
+      CurrentSourceView()->search_highlight(search_entry_it->get_text(), case_sensitive_search, regex_search);
+      label_it->update(0, std::to_string(CurrentSourceView()->get_search_occurences()));
+    }
+  });
+  entry_box.signal_hide().connect([this]() {
+    for(int c=0;c<Pages();c++)
+      source_views.at(c)->view->search_highlight("", case_sensitive_search, regex_search);
+    search_entry_shown=false;
+  });
+  search_entry_shown=true;
+  entry_box.show();
+}
+
 void Notebook::Controller::open_file(std::string path) {
   INFO("Notebook open file");
   INFO("Notebook create page");
@@ -196,6 +237,12 @@ void Notebook::Controller::open_file(std::string path) {
     if(CurrentSourceView()->get_buffer()->get_modified())
       title+="*";
     view.notebook.set_tab_label_text(*(view.notebook.get_nth_page(CurrentPage())), title);
+  });
+  auto this_view=CurrentSourceView();
+  CurrentSourceView()->get_buffer()->signal_end_user_action().connect([this, this_view](){
+    if(this_view==CurrentSourceView() && search_entry_shown && entry_box.labels.size()>0) {
+      entry_box.labels.back().update(0, std::to_string(this_view->get_search_occurences()));
+    }
   });
 }
 

@@ -74,13 +74,17 @@ Source::View::~View() {
   g_clear_object(&search_settings);
 }
 
-void Source::View::search_highlight(const std::string &text) {
-  if(text.size()>0) {
-    gtk_source_search_settings_set_search_text(search_settings, text.c_str());
-    gtk_source_search_context_set_highlight(search_context, true);
-  }
-  else
-    gtk_source_search_context_set_highlight(search_context, false);
+void Source::View::search_highlight(const std::string &text, bool case_sensitive, bool regex) {
+  gtk_source_search_settings_set_case_sensitive(search_settings, case_sensitive);
+  gtk_source_search_settings_set_regex_enabled(search_settings, regex);
+  gtk_source_search_settings_set_search_text(search_settings, text.c_str());
+  gtk_source_search_context_set_highlight(search_context, true);
+}
+
+int Source::View::get_search_occurences() {
+  while(gtk_events_pending())
+    gtk_main_iteration();
+  return gtk_source_search_context_get_occurrences_count(search_context);
 }
 
 void Source::View::search_forward() {
