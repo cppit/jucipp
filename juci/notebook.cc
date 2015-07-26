@@ -198,8 +198,10 @@ void Notebook::Controller::show_search_and_replace() {
       CurrentSourceView()->search_highlight(search_entry_it->get_text(), case_sensitive_search, regex_search);
   });
   entry_box.signal_hide().connect([this]() {
-    for(int c=0;c<Pages();c++)
+    for(int c=0;c<Pages();c++) {
+      source_views.at(c)->view->update_search_occurrences=nullptr;
       source_views.at(c)->view->search_highlight("", case_sensitive_search, regex_search);
+    }
     search_entry_shown=false;
   });
   search_entry_shown=true;
