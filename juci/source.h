@@ -76,8 +76,7 @@ public:
   
   class GenericView : public View {
   public:
-    GenericView(const std::string& file_path, const std::string& project_path):
-    View(file_path, project_path) {}
+    GenericView(const std::string& file_path, const std::string& project_path);
   };
   
   class ClangViewParse : public View {

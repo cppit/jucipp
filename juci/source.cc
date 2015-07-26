@@ -39,14 +39,6 @@ file_path(file_path), project_path(project_path) {
   get_source_buffer()->set_text(s.get_content());
   get_source_buffer()->get_undo_manager()->end_not_undoable_action();
   
-  override_font(Pango::FontDescription(Singleton::Config::source()->font));
-  
-  override_background_color(Gdk::RGBA(Singleton::Config::source()->background));
-  override_background_color(Gdk::RGBA(Singleton::Config::source()->background_selected), Gtk::StateFlags::STATE_FLAG_SELECTED);
-  for (auto &item : Singleton::Config::source()->tags) {
-    get_source_buffer()->create_tag(item.first)->property_foreground() = item.second;
-  }
-  
   get_buffer()->place_cursor(get_buffer()->get_iter_at_offset(0));
     
   search_settings = gtk_source_search_settings_new();
@@ -232,14 +224,48 @@ bool Source::View::on_key_press_event(GdkEventKey* key) {
   return Gsv::View::on_key_press_event(key);
 }
 
-/////////////////////////
-//// ClangViewParse ///
-/////////////////////////
+/////////////////////
+//// GenericView ////
+/////////////////////
+Source::GenericView::GenericView(const std::string& file_path, const std::string& project_path) : View(file_path, project_path) {
+  auto language_manager=Gsv::LanguageManager::get_default();
+  bool result_uncertain = false;
+  auto content_type = Gio::content_type_guess(file_path, get_buffer()->get_text(), result_uncertain);
+  if (result_uncertain) {
+    content_type.clear();
+  }
+  auto language=language_manager->guess_language(file_path, content_type);
+  if(!language) {
+    auto path=boost::filesystem::path(file_path);
+    auto filename=path.filename().string();
+    auto extension=path.extension();
+    if(filename=="CMakeLists.txt")
+      language=language_manager->get_language("cmake");
+  }
+  if(language) {
+    get_source_buffer()->set_language(language);
+    Singleton::terminal()->print("Language for file "+file_path+" set to "+language->get_name()+".\n");
+    /*auto completion=get_completion();
+    if(completion)
+      cout << completion->get_providers().size() << endl;*/
+  }
+}
+
+////////////////////////
+//// ClangViewParse ////
+////////////////////////
 clang::Index Source::ClangViewParse::clang_index(0, 0);
 
 Source::ClangViewParse::ClangViewParse(const std::string& file_path, const std::string& project_path):
 Source::View(file_path, project_path),
 parse_thread_go(true), parse_thread_mapped(false), parse_thread_stop(false) {
+  override_font(Pango::FontDescription(Singleton::Config::source()->font));
+  override_background_color(Gdk::RGBA(Singleton::Config::source()->background));
+  override_background_color(Gdk::RGBA(Singleton::Config::source()->background_selected), Gtk::StateFlags::STATE_FLAG_SELECTED);
+  for (auto &item : Singleton::Config::source()->tags) {
+    get_source_buffer()->create_tag(item.first)->property_foreground() = item.second;
+  }
+  
   //Create underline color tags for diagnostic warnings and errors:
   auto diagnostic_tag=get_buffer()->get_tag_table()->lookup("diagnostic_warning");
   auto diagnostic_tag_underline=Gtk::TextTag::create("diagnostic_warning_underline");
