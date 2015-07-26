@@ -14,6 +14,7 @@ EntryBox::Entry::Entry(const std::string& content, std::function<void(const std:
 }
 
 EntryBox::Button::Button(const std::string& label, std::function<void()> on_activate) : Gtk::Button(label), on_activate(on_activate) {
+  set_focus_on_click(false);
   signal_clicked().connect([this](){
     if(this->on_activate)
       this->on_activate();
@@ -21,6 +22,7 @@ EntryBox::Button::Button(const std::string& label, std::function<void()> on_acti
 }
 
 EntryBox::ToggleButton::ToggleButton(const std::string& label, std::function<void()> on_activate) : Gtk::ToggleButton(label), on_activate(on_activate) {
+  set_focus_on_click(false);
   signal_clicked().connect([this](){
     if(this->on_activate)
       this->on_activate();
