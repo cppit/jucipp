@@ -59,6 +59,8 @@ file_path(file_path), project_path(project_path) {
   //search_match_style=(GtkSourceStyle*)g_object_new(GTK_SOURCE_TYPE_STYLE, "background-set", 1, "background", "#00FF00", NULL);
   //gtk_source_search_context_set_match_style(search_context, search_match_style);
   
+  //TODO: either use lambda if possible or create a gtkmm wrapper around search_context (including search_settings):
+  //TODO: (gtkmm's Gtk::Object has connect_property_changed, so subclassing this might be an idea)
   g_signal_connect(search_context, "notify::occurrences-count", G_CALLBACK(search_occurrences_updated), this);
 }
 
