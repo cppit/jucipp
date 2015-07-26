@@ -192,11 +192,13 @@ void Notebook::Controller::show_search_and_replace() {
     if(CurrentPage()!=-1)
       CurrentSourceView()->search_highlight(search_entry_it->get_text(), case_sensitive_search, regex_search);
   };
-  entry_box.toggle_buttons.emplace_back("Use regex", [this, search_entry_it](){
+  entry_box.toggle_buttons.emplace_back("Use regex");
+  entry_box.toggle_buttons.back().set_active(regex_search);
+  entry_box.toggle_buttons.back().on_activate=[this, search_entry_it](){
     regex_search=!regex_search;
     if(CurrentPage()!=-1)
       CurrentSourceView()->search_highlight(search_entry_it->get_text(), case_sensitive_search, regex_search);
-  });
+  };
   entry_box.signal_hide().connect([this]() {
     for(int c=0;c<Pages();c++) {
       source_views.at(c)->view->update_search_occurrences=nullptr;
