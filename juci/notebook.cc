@@ -28,8 +28,10 @@ Notebook::Controller::Controller() :
   });
   view.notebook.signal_switch_page().connect([this](Gtk::Widget* page, guint page_num) {
     if(search_entry_shown && entry_box.labels.size()>0 && CurrentPage()!=-1) {
+      CurrentSourceView()->update_search_occurrences=[this](int number){
+        entry_box.labels.begin()->update(0, std::to_string(number));
+      };
       CurrentSourceView()->search_highlight(last_search, case_sensitive_search, regex_search);
-      entry_box.labels.back().update(0, std::to_string(CurrentSourceView()->get_search_occurences()));
     }
   });
   INFO("Notebook Controller Success");
@@ -117,14 +119,14 @@ void Notebook::Controller::show_search_and_replace() {
   entry_box.clear();
   entry_box.labels.emplace_back();
   auto label_it=entry_box.labels.begin();
-  label_it->update=[this, label_it](int state, const std::string& message){
+  label_it->update=[label_it](int state, const std::string& message){
     if(state==0) {
       int number=stoi(message);
-      if(number<1)
+      if(number==0)
         label_it->set_text("");
       else if(number==1)
         label_it->set_text("1 result found");
-      else
+      else if(number>1)
         label_it->set_text(std::to_string(number)+" results found");
     }
   };
@@ -135,14 +137,10 @@ void Notebook::Controller::show_search_and_replace() {
   auto search_entry_it=entry_box.entries.begin();
   search_entry_it->set_placeholder_text("Find");
   if(CurrentPage()!=-1) {
+    CurrentSourceView()->update_search_occurrences=[label_it](int number){
+      label_it->update(0, std::to_string(number));
+    };
     CurrentSourceView()->search_highlight(search_entry_it->get_text(), case_sensitive_search, regex_search);
-    delayed_search_label_update.disconnect();
-    auto this_view=CurrentSourceView();
-    delayed_search_label_update=Glib::signal_timeout().connect([this, this_view, label_it]() {
-      if(this_view==CurrentSourceView() && search_entry_shown && entry_box.labels.size()>0)
-        label_it->update(0, std::to_string(this_view->get_search_occurences()));
-      return false;
-    }, 500);
   }
   search_entry_it->signal_key_press_event().connect([this](GdkEventKey* event){
     if(event->keyval==GDK_KEY_Return && event->state==GDK_SHIFT_MASK) {
@@ -151,21 +149,13 @@ void Notebook::Controller::show_search_and_replace() {
     }
     return false;
   });
-  search_entry_it->signal_changed().connect([this, search_entry_it, label_it](){
+  search_entry_it->signal_changed().connect([this, search_entry_it](){
     last_search=search_entry_it->get_text();
-    if(CurrentPage()!=-1) {
+    if(CurrentPage()!=-1)
       CurrentSourceView()->search_highlight(search_entry_it->get_text(), case_sensitive_search, regex_search);
-      delayed_search_label_update.disconnect();
-      auto this_view=CurrentSourceView();
-      delayed_search_label_update=Glib::signal_timeout().connect([this, this_view, label_it]() {
-        if(this_view==CurrentSourceView() && search_entry_shown && entry_box.labels.size()>0)
-          label_it->update(0, std::to_string(this_view->get_search_occurences()));
-        return false;
-      }, 500);
-    }
   });
   
-  entry_box.entries.emplace_back(last_replace, [this, label_it](const std::string &content){
+  entry_box.entries.emplace_back(last_replace, [this](const std::string &content){
     if(CurrentPage()!=-1)
       CurrentSourceView()->replace_forward(content);
   });
@@ -191,27 +181,21 @@ void Notebook::Controller::show_search_and_replace() {
     if(CurrentPage()!=-1)
       CurrentSourceView()->replace_forward(replace_entry_it->get_text());
   });
-  entry_box.buttons.emplace_back("Replace all", [this, replace_entry_it, label_it](){
-    if(CurrentPage()!=-1) {
+  entry_box.buttons.emplace_back("Replace all", [this, replace_entry_it](){
+    if(CurrentPage()!=-1)
       CurrentSourceView()->replace_all(replace_entry_it->get_text());
-      label_it->update(0, std::to_string(CurrentSourceView()->get_search_occurences()));
-    }
   });
   entry_box.toggle_buttons.emplace_back("Match case");
   entry_box.toggle_buttons.back().set_active(case_sensitive_search);
-  entry_box.toggle_buttons.back().on_activate=[this, search_entry_it, label_it](){
+  entry_box.toggle_buttons.back().on_activate=[this, search_entry_it](){
     case_sensitive_search=!case_sensitive_search;
-    if(CurrentPage()!=-1) {
+    if(CurrentPage()!=-1)
       CurrentSourceView()->search_highlight(search_entry_it->get_text(), case_sensitive_search, regex_search);
-      label_it->update(0, std::to_string(CurrentSourceView()->get_search_occurences()));
-    }
   };
-  entry_box.toggle_buttons.emplace_back("Use regex", [this, search_entry_it, label_it](){
+  entry_box.toggle_buttons.emplace_back("Use regex", [this, search_entry_it](){
     regex_search=!regex_search;
-    if(CurrentPage()!=-1) {
+    if(CurrentPage()!=-1)
       CurrentSourceView()->search_highlight(search_entry_it->get_text(), case_sensitive_search, regex_search);
-      label_it->update(0, std::to_string(CurrentSourceView()->get_search_occurences()));
-    }
   });
   entry_box.signal_hide().connect([this]() {
     for(int c=0;c<Pages();c++)
@@ -251,12 +235,6 @@ void Notebook::Controller::open_file(std::string path) {
     if(CurrentSourceView()->get_buffer()->get_modified())
       title+="*";
     view.notebook.set_tab_label_text(*(view.notebook.get_nth_page(CurrentPage())), title);
-  });
-  auto this_view=CurrentSourceView();
-  CurrentSourceView()->get_buffer()->signal_end_user_action().connect([this, this_view](){
-    if(this_view==CurrentSourceView() && search_entry_shown && entry_box.labels.size()>0) {
-      entry_box.labels.back().update(0, std::to_string(this_view->get_search_occurences()));
-    }
   });
 }
 

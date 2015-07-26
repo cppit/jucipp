@@ -58,6 +58,14 @@ file_path(file_path), project_path(project_path) {
   //TODO: We can drop this, only work on newer versions of gtksourceview.
   //search_match_style=(GtkSourceStyle*)g_object_new(GTK_SOURCE_TYPE_STYLE, "background-set", 1, "background", "#00FF00", NULL);
   //gtk_source_search_context_set_match_style(search_context, search_match_style);
+  
+  g_signal_connect(search_context, "notify::occurrences-count", G_CALLBACK(search_occurrences_updated), this);
+}
+
+void Source::View::search_occurrences_updated(GtkWidget* widget, GParamSpec* property, gpointer data) {
+  auto view=(Source::View*)data;
+  if(view->update_search_occurrences)
+    view->update_search_occurrences(gtk_source_search_context_get_occurrences_count(view->search_context));
 }
 
 Source::View::~View() {
@@ -69,12 +77,7 @@ void Source::View::search_highlight(const std::string &text, bool case_sensitive
   gtk_source_search_settings_set_case_sensitive(search_settings, case_sensitive);
   gtk_source_search_settings_set_regex_enabled(search_settings, regex);
   gtk_source_search_settings_set_search_text(search_settings, text.c_str());
-}
-
-int Source::View::get_search_occurences() {
-  while(gtk_events_pending()) //TODO: need to connect to a signal instead (something like search highlight updated)
-    gtk_main_iteration();
-  return gtk_source_search_context_get_occurrences_count(search_context);
+  search_occurrences_updated(NULL, NULL, this);
 }
 
 void Source::View::search_forward() {

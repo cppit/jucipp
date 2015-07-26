@@ -51,7 +51,7 @@ public:
     ~View();
     
     void search_highlight(const std::string &text, bool case_sensitive, bool regex);
-    int get_search_occurences();
+    std::function<void(int number)> update_search_occurrences;
     void search_forward();
     void search_backward();
     void replace_forward(const std::string &replacement);
@@ -71,6 +71,7 @@ public:
   private:
     GtkSourceSearchContext *search_context;
     GtkSourceSearchSettings *search_settings;
+    static void search_occurrences_updated(GtkWidget* widget, GParamSpec* property, gpointer data);
   };  // class View
   
   class GenericView : public View {
