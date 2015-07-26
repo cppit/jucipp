@@ -245,15 +245,14 @@ Source::GenericView::GenericView(const std::string& file_path, const std::string
   if(language) {
     get_source_buffer()->set_language(language);
     Singleton::terminal()->print("Language for file "+file_path+" set to "+language->get_name()+".\n");
-    
-    auto completion=get_completion();
-    auto completion_words=Gsv::CompletionWords::create("", Glib::RefPtr<Gdk::Pixbuf>());
-    completion_words->register_provider(get_buffer());
-    completion->add_provider(completion_words);
-    completion->property_show_headers()=false;
-    completion->property_show_icons()=false;
-    completion->property_accelerators()=0;
   }
+  auto completion=get_completion();
+  auto completion_words=Gsv::CompletionWords::create("", Glib::RefPtr<Gdk::Pixbuf>());
+  completion_words->register_provider(get_buffer());
+  completion->add_provider(completion_words);
+  completion->property_show_headers()=false;
+  completion->property_show_icons()=false;
+  completion->property_accelerators()=0;
 }
 
 ////////////////////////
@@ -721,7 +720,7 @@ void Source::ClangViewAutocomplete::start_autocomplete() {
   if(!((last_keyval>='0' && last_keyval<='9') || 
        (last_keyval>='a' && last_keyval<='z') || (last_keyval>='A' && last_keyval<='Z') ||
        last_keyval=='_' || last_keyval=='>' || last_keyval=='.' || last_keyval==':')) {
-    autocomplete_cancel_starting=true;
+    autocomplete_cancel_starting=true; //TODO: set autocomplete_cancel_starting=true if changed to another tab (lost focus I guess)
     return;
   }
   std::string line=" "+get_line_before_insert();
