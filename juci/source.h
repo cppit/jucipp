@@ -66,7 +66,6 @@ public:
     
     std::function<std::pair<std::string, unsigned>()> get_declaration_location;
     std::function<void()> goto_method;
-    bool after_user_input=false;
   protected:
     bool on_key_press_event(GdkEventKey* key);
   private:

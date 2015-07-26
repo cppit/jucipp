@@ -94,6 +94,8 @@ void Notebook::Controller::CreateKeybindings() {
         if(location.first.size()>0) {
           open_file(location.first);
           CurrentSourceView()->get_buffer()->place_cursor(CurrentSourceView()->get_buffer()->get_iter_at_offset(location.second));
+          while(gtk_events_pending())
+            gtk_main_iteration();
           CurrentSourceView()->scroll_to(CurrentSourceView()->get_buffer()->get_insert(), 0.0, 1.0, 0.5);
         }
       }

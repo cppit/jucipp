@@ -48,17 +48,7 @@ file_path(file_path), project_path(project_path) {
   }
   
   get_buffer()->place_cursor(get_buffer()->get_iter_at_offset(0));
-  signal_size_allocate().connect([this](Gtk::Allocation& allocation){
-    if(!after_user_input)
-      scroll_to(get_buffer()->get_insert(), 0.0, 1.0, 0.5);
-  });
-  
-  signal_event().connect([this](GdkEvent* event){
-    if(event->type==GDK_KEY_PRESS || event->type==GDK_BUTTON_PRESS || event->type==GDK_SCROLL)
-      after_user_input=true;
-    return false;
-  });
-  
+    
   search_settings = gtk_source_search_settings_new();
   gtk_source_search_settings_set_wrap_around(search_settings, true);
   search_context = gtk_source_search_context_new(get_source_buffer()->gobj(), search_settings);
@@ -380,6 +370,7 @@ void Source::ClangViewParse::start_reparse() {
   clang_readable=false;
   delayed_reparse_connection.disconnect();
   delayed_reparse_connection=Glib::signal_timeout().connect([this]() {
+    clang_readable=false;
     parse_thread_go=true;
     return false;
   }, 1000);
