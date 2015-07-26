@@ -231,7 +231,7 @@ Source::GenericView::GenericView(const std::string& file_path, const std::string
   auto language_manager=Gsv::LanguageManager::get_default();
   bool result_uncertain = false;
   auto content_type = Gio::content_type_guess(file_path, get_buffer()->get_text(), result_uncertain);
-  if (result_uncertain) {
+  if(result_uncertain) {
     content_type.clear();
   }
   auto language=language_manager->guess_language(file_path, content_type);
@@ -245,9 +245,14 @@ Source::GenericView::GenericView(const std::string& file_path, const std::string
   if(language) {
     get_source_buffer()->set_language(language);
     Singleton::terminal()->print("Language for file "+file_path+" set to "+language->get_name()+".\n");
-    /*auto completion=get_completion();
-    if(completion)
-      cout << completion->get_providers().size() << endl;*/
+    
+    auto completion=get_completion();
+    auto completion_words=Gsv::CompletionWords::create("", Glib::RefPtr<Gdk::Pixbuf>());
+    completion_words->register_provider(get_buffer());
+    completion->add_provider(completion_words);
+    completion->property_show_headers()=false;
+    completion->property_show_icons()=false;
+    completion->property_accelerators()=0;
   }
 }
 
