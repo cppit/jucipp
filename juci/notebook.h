@@ -25,7 +25,6 @@ namespace Notebook {
     int CurrentPage();
     void OnCloseCurrentPage();
     void OnFileNewFile();
-    bool OnSaveFile();
     bool OnSaveFile(std::string path);
     void OnDirectoryNavigation(const Gtk::TreeModel::Path& path,
                                Gtk::TreeViewColumn* column);

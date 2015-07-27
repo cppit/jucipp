@@ -113,10 +113,43 @@ void Notebook::Controller::CreateKeybindings() {
   });
   
   menu->action_group->add(Gtk::Action::create("SourceRename", "Rename function/variable"), Gtk::AccelKey(menu->key_map["source_rename"]), [this]() {
+    entry_box.clear();
     if(CurrentPage()!=-1) {
-      if(CurrentSourceView()->get_token) {
-        auto token=CurrentSourceView()->get_token();
-        CurrentSourceView()->tag_similar_tokens(token);
+      if(CurrentSourceView()->get_token && CurrentSourceView()->get_token_name) {
+        auto token=std::make_shared<std::string>(CurrentSourceView()->get_token());
+        if(token->size()>0 && CurrentSourceView()->get_token_name) {
+          auto token_name=std::make_shared<std::string>(CurrentSourceView()->get_token_name());
+          for(int c=0;c<Pages();c++) {
+            if(source_views.at(c)->view->tag_similar_tokens) {
+              source_views.at(c)->view->tag_similar_tokens(*token);
+            }
+          }
+          entry_box.labels.emplace_back();
+          auto label_it=entry_box.labels.begin();
+          label_it->update=[label_it](int state, const std::string& message){
+            label_it->set_text("Warning: only opened and parsed tabs will have its content renamed, and modified files will be saved.");
+          };
+          label_it->update(0, "");
+          entry_box.entries.emplace_back(*token_name, [this, token_name, token](const std::string& content){
+            if(CurrentPage()!=-1 && content!=*token_name) {
+              for(int c=0;c<Pages();c++) {
+                if(source_views.at(c)->view->rename_similar_tokens) {
+                  auto number=source_views.at(c)->view->rename_similar_tokens(*token, content);
+                  if(number>0) {
+                    Singleton::terminal()->print("Replaced "+std::to_string(number)+" occurrences in file "+source_views.at(c)->view->file_path+"\n");
+                    source_views.at(c)->view->save();
+                  }
+                }
+              }
+              entry_box.hide();
+            }
+          });
+          auto entry_it=entry_box.entries.begin();
+          entry_box.buttons.emplace_back("Rename", [this, entry_it](){
+            entry_it->activate();
+          });
+          entry_box.show();
+        }
       }
     }
   });
@@ -242,12 +275,21 @@ void Notebook::Controller::open_file(std::string path) {
   view.notebook.set_focus_child(*source_views.back()->view);
   CurrentSourceView()->get_buffer()->set_modified(false);
   //Add star on tab label when the page is not saved:
-  CurrentSourceView()->get_buffer()->signal_modified_changed().connect([this]() {
-    boost::filesystem::path file_path(CurrentSourceView()->file_path);
+  auto source_view=CurrentSourceView();
+  CurrentSourceView()->get_buffer()->signal_modified_changed().connect([this, source_view]() {
+    boost::filesystem::path file_path(source_view->file_path);
     std::string title=file_path.filename().string();
-    if(CurrentSourceView()->get_buffer()->get_modified())
+    if(source_view->get_buffer()->get_modified())
       title+="*";
-    view.notebook.set_tab_label_text(*(view.notebook.get_nth_page(CurrentPage())), title);
+    int page=-1;
+    for(int c=0;c<Pages();c++) {
+      if(source_views.at(c)->view.get()==source_view) {
+        page=c;
+        break;
+      }
+    }
+    if(page!=-1)
+      view.notebook.set_tab_label_text(*(view.notebook.get_nth_page(page)), title);
   });
 }
 
@@ -333,10 +375,6 @@ int Notebook::Controller::Pages() {
   return view.notebook.get_n_pages();
 }
 
-bool Notebook::Controller:: OnSaveFile() {
-  std::string path=CurrentSourceView()->file_path;
-  return OnSaveFile(path);
-}
 bool Notebook::Controller:: OnSaveFile(std::string path) {
     INFO("Notebook save file with path");
     if (path != "" && CurrentSourceView()->get_buffer()->get_modified()) {
@@ -346,7 +384,6 @@ bool Notebook::Controller:: OnSaveFile(std::string path) {
       file.close();
       boost::filesystem::path path(CurrentSourceView()->file_path);
       std::string title=path.filename().string();
-      view.notebook.set_tab_label_text(*view.notebook.get_nth_page(CurrentPage()), title);
       CurrentSourceView()->get_buffer()->set_modified(false);
       return true;
     }
@@ -401,7 +438,7 @@ void Notebook::Controller::AskToSaveDialog() {
     case(Gtk::RESPONSE_YES):
     {
       DEBUG("AskToSaveDialog: save file: yes, trying to save file");
-      OnSaveFile();
+      CurrentSourceView()->save();
       DEBUG("AskToSaveDialog: save file: yes, saved sucess");
       break;
     }

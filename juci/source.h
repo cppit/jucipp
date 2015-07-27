@@ -50,6 +50,8 @@ public:
     View(const std::string& file_path, const std::string& project_path);
     ~View();
     
+    bool save();
+    
     void search_highlight(const std::string &text, bool case_sensitive, bool regex);
     std::function<void(int number)> update_search_occurrences;
     void search_forward();
@@ -67,8 +69,9 @@ public:
     std::function<std::pair<std::string, unsigned>()> get_declaration_location;
     std::function<void()> goto_method;
     std::function<std::string()> get_token;
+    std::function<std::string()> get_token_name;
     std::function<void(const std::string &token)> tag_similar_tokens;
-    std::function<void(const std::string &token, const std::string &text)> rename_similar_tokens;
+    std::function<size_t(const std::string &token, const std::string &text)> rename_similar_tokens;
   protected:
     bool on_key_press_event(GdkEventKey* key);
   private:

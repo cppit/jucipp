@@ -179,13 +179,9 @@ void Window::OnOpenFile() {
   }
 }
 
+//TODO: Move to notebook. Maybe also replace bool with void?
 bool Window::SaveFile() {
-  if(Singleton::notebook()->OnSaveFile()) {
-    Singleton::terminal()->print("File saved to: " +
-			   Singleton::notebook()->CurrentSourceView()->file_path+"\n");
-    return true;
-  }
-  return false;
+  return Singleton::notebook()->CurrentSourceView()->save();
 }
 bool Window::SaveFileAs() {
   if(Singleton::notebook()->OnSaveFile(Singleton::notebook()->OnSaveFileAs())){

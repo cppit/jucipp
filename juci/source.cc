@@ -56,6 +56,20 @@ file_path(file_path), project_path(project_path) {
   g_signal_connect(search_context, "notify::occurrences-count", G_CALLBACK(search_occurrences_updated), this);
 }
 
+bool Source::View::save() {
+  INFO("Source save file");
+  if (file_path != "" && get_buffer()->get_modified()) {
+    std::ofstream file;
+    file.open (file_path);
+    file << get_buffer()->get_text();
+    file.close();
+    get_buffer()->set_modified(false);
+    Singleton::terminal()->print("File saved to: " +file_path+"\n");
+    return true;
+  }
+  return false;
+}
+
 void Source::View::search_occurrences_updated(GtkWidget* widget, GParamSpec* property, gpointer data) {
   auto view=(Source::View*)data;
   if(view->update_search_occurrences)
@@ -913,6 +927,20 @@ Source::ClangViewAutocomplete(file_path, project_path) {
     return "";
   };
   
+  get_token_name=[this]() -> std::string {
+    if(clang_readable) {
+      for(auto &token: *clang_tokens) {
+        if(token.get_kind()==clang::Token_Identifier && token.has_type()) {
+          auto insert_offset=(unsigned)get_buffer()->get_insert()->get_iter().get_offset();
+          if(insert_offset>=token.offsets.first && insert_offset<=token.offsets.second) {
+            return token.get_spelling();
+          }
+        }
+      }
+    }
+    return "";
+  };
+  
   tag_similar_tokens=[this](const std::string &usr){
     if(clang_readable) {
       if(usr.size()>0 && last_similar_tokens_tagged!=usr) {
@@ -923,11 +951,30 @@ Source::ClangViewAutocomplete(file_path, project_path) {
         }
         last_similar_tokens_tagged=usr;
       }
-      if(usr.size()==0 && last_similar_tokens_tagged!="") {
-        get_buffer()->remove_tag(similar_tokens_tag, get_buffer()->begin(), get_buffer()->end());
-        last_similar_tokens_tagged="";
+    }
+    if(usr.size()==0 && last_similar_tokens_tagged!="") {
+      get_buffer()->remove_tag(similar_tokens_tag, get_buffer()->begin(), get_buffer()->end());
+      last_similar_tokens_tagged="";
+    }
+  };
+  
+  rename_similar_tokens=[this](const std::string &usr, const std::string &text) {
+    size_t number=0;
+    if(clang_readable) {
+      auto offsets=clang_tokens->get_similar_token_offsets(usr);
+      std::vector<std::pair<Glib::RefPtr<Gtk::TextMark>, Glib::RefPtr<Gtk::TextMark> > > marks;
+      for(auto &offset: offsets) {
+        marks.emplace_back(get_buffer()->create_mark(get_buffer()->get_iter_at_offset(offset.first)), get_buffer()->create_mark(get_buffer()->get_iter_at_offset(offset.second)));
+        number++;
+      }
+      for(auto &mark: marks) {
+        get_buffer()->erase(mark.first->get_iter(), mark.second->get_iter());
+        get_buffer()->insert_with_tag(mark.first->get_iter(), text, similar_tokens_tag);
+        get_buffer()->delete_mark(mark.first);
+        get_buffer()->delete_mark(mark.second);
       }
     }
+    return number;
   };
   
   get_buffer()->signal_mark_set().connect([this](const Gtk::TextBuffer::iterator& iterator, const Glib::RefPtr<Gtk::TextBuffer::Mark>& mark){
