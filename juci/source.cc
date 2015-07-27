@@ -897,36 +897,44 @@ Source::ClangViewAutocomplete(file_path, project_path) {
     }
   });
   
-  get_buffer()->signal_mark_set().connect([this](const Gtk::TextBuffer::iterator& iterator, const Glib::RefPtr<Gtk::TextBuffer::Mark>& mark){
-    if(mark->get_name()=="insert") {
-      bool found=false;
-      if(clang_readable) {
-        for(auto &token: *clang_tokens) {
-          if(token.get_kind()==clang::Token_Identifier && token.has_type()) {
-            auto insert_offset=(unsigned)get_buffer()->get_insert()->get_iter().get_offset();
-            if(insert_offset>=token.offsets.first && insert_offset<=token.offsets.second) {
-              found=true;
-              auto referenced=token.get_cursor().get_referenced();
-              if(referenced) {
-                auto usr_and_spelling=referenced.get_usr()+token.get_spelling();
-                if(last_similar_tokens_tagged!=usr_and_spelling) {
-                  get_buffer()->remove_tag(similar_tokens_tag, get_buffer()->begin(), get_buffer()->end());
-                  auto offsets=clang_tokens->get_similar_token_offsets(token);
-                  for(auto &offset: offsets) {
-                    get_buffer()->apply_tag(similar_tokens_tag, get_buffer()->get_iter_at_offset(offset.first), get_buffer()->get_iter_at_offset(offset.second));
-                  }
-                  last_similar_tokens_tagged=usr_and_spelling;
-                  break;
-                }
-              }
-            }
+  get_token=[this](){
+    std::string usr;
+    if(clang_readable) {
+      for(auto &token: *clang_tokens) {
+        if(token.get_kind()==clang::Token_Identifier && token.has_type()) {
+          auto insert_offset=(unsigned)get_buffer()->get_insert()->get_iter().get_offset();
+          if(insert_offset>=token.offsets.first && insert_offset<=token.offsets.second) {
+            auto referenced=token.get_cursor().get_referenced();
+            if(referenced)
+              usr=referenced.get_usr();
           }
         }
       }
-      if(!found && last_similar_tokens_tagged!="") {
+    }
+    return usr;
+  };
+  
+  tag_similar_tokens=[this](const std::string &usr){
+    if(clang_readable) {
+      if(usr.size()>0 && last_similar_tokens_tagged!=usr) {
+        get_buffer()->remove_tag(similar_tokens_tag, get_buffer()->begin(), get_buffer()->end());
+        auto offsets=clang_tokens->get_similar_token_offsets(usr);
+        for(auto &offset: offsets) {
+          get_buffer()->apply_tag(similar_tokens_tag, get_buffer()->get_iter_at_offset(offset.first), get_buffer()->get_iter_at_offset(offset.second));
+        }
+        last_similar_tokens_tagged=usr;
+      }
+      if(usr.size()==0 && last_similar_tokens_tagged!="") {
         get_buffer()->remove_tag(similar_tokens_tag, get_buffer()->begin(), get_buffer()->end());
         last_similar_tokens_tagged="";
       }
+    }
+  };
+  
+  get_buffer()->signal_mark_set().connect([this](const Gtk::TextBuffer::iterator& iterator, const Glib::RefPtr<Gtk::TextBuffer::Mark>& mark){
+    if(mark->get_name()=="insert") {
+      auto usr=get_token();
+      tag_similar_tokens(usr);
     }
   });
   
