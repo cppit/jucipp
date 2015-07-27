@@ -697,6 +697,7 @@ Source::ClangViewParse(file_path, project_path), autocomplete_cancel_starting(fa
     
     return false;
   }, false);
+
 }
 
 bool Source::ClangViewAutocomplete::on_key_press_event(GdkEventKey *key) {
@@ -709,6 +710,7 @@ bool Source::ClangViewAutocomplete::on_key_press_event(GdkEventKey *key) {
 }
 
 bool Source::ClangViewAutocomplete::on_focus_out_event(GdkEventFocus* event) {
+  autocomplete_cancel_starting=true;
   if(completion_dialog_shown) {
     completion_dialog->hide();
   }
@@ -717,10 +719,12 @@ bool Source::ClangViewAutocomplete::on_focus_out_event(GdkEventFocus* event) {
 }
 
 void Source::ClangViewAutocomplete::start_autocomplete() {
+  if(!has_focus())
+    return;
   if(!((last_keyval>='0' && last_keyval<='9') || 
        (last_keyval>='a' && last_keyval<='z') || (last_keyval>='A' && last_keyval<='Z') ||
        last_keyval=='_' || last_keyval=='>' || last_keyval=='.' || last_keyval==':')) {
-    autocomplete_cancel_starting=true; //TODO: set autocomplete_cancel_starting=true if changed to another tab (lost focus I guess)
+    autocomplete_cancel_starting=true;
     return;
   }
   std::string line=" "+get_line_before_insert();
