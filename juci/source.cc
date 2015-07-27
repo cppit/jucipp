@@ -242,6 +242,16 @@ bool Source::View::on_key_press_event(GdkEventKey* key) {
 //// GenericView ////
 /////////////////////
 Source::GenericView::GenericView(const std::string& file_path, const std::string& project_path) : View(file_path, project_path) {
+  auto style_scheme_manager=Gsv::StyleSchemeManager::get_default();
+  //TODO: add?: style_scheme_manager->prepend_search_path("~/.juci/");
+  auto scheme=style_scheme_manager->get_scheme("classic");
+  if(scheme) {
+    get_source_buffer()->set_style_scheme(scheme);
+    auto style=scheme->get_style("def:comment");
+    if(style)
+      cout << "TODO, in progress: def:comment in scheme " << scheme->get_name() << " has color " << style->property_foreground() << endl;
+  }
+  
   auto language_manager=Gsv::LanguageManager::get_default();
   bool result_uncertain = false;
   auto content_type = Gio::content_type_guess(file_path, get_buffer()->get_text(), result_uncertain);
