@@ -13,6 +13,7 @@
 #include "terminal.h"
 #include "tooltips.h"
 #include "selectiondialog.h"
+#include <set>
 
 class Source {
 public:
@@ -47,23 +48,41 @@ public:
   class View : public Gsv::View {
   public:
     View(const std::string& file_path, const std::string& project_path);
+    ~View();
+    
+    bool save();
+    
+    void search_highlight(const std::string &text, bool case_sensitive, bool regex);
+    std::function<void(int number)> update_search_occurrences;
+    void search_forward();
+    void search_backward();
+    void replace_forward(const std::string &replacement);
+    void replace_backward(const std::string &replacement);
+    void replace_all(const std::string &replacement);
+    
     std::string get_line(size_t line_number);
     std::string get_line_before_insert();
+    
     std::string file_path;
     std::string project_path;
-    Gtk::TextIter search_start, search_end;
     
     std::function<std::pair<std::string, unsigned>()> get_declaration_location;
     std::function<void()> goto_method;
-    bool after_user_input=false;
+    std::function<std::string()> get_token;
+    std::function<std::string()> get_token_name;
+    std::function<void(const std::string &token)> tag_similar_tokens;
+    std::function<size_t(const std::string &token, const std::string &text)> rename_similar_tokens;
   protected:
     bool on_key_press_event(GdkEventKey* key);
+  private:
+    GtkSourceSearchContext *search_context;
+    GtkSourceSearchSettings *search_settings;
+    static void search_occurrences_updated(GtkWidget* widget, GParamSpec* property, gpointer data);
   };  // class View
   
   class GenericView : public View {
   public:
-    GenericView(const std::string& file_path, const std::string& project_path):
-    View(file_path, project_path) {}
+    GenericView(const std::string& file_path, const std::string& project_path);
   };
   
   class ClangViewParse : public View {
@@ -89,6 +108,7 @@ public:
                                 int end_offset);
     int reparse(const std::map<std::string, std::string> &buffers);
     void update_syntax();
+    std::set<std::string> last_syntax_tags;
     void update_diagnostics();
     void update_types();
     Tooltips diagnostic_tooltips;
@@ -120,7 +140,8 @@ public:
   private:
     void start_autocomplete();
     void autocomplete();
-    CompletionDialog completion_dialog;
+    std::unique_ptr<CompletionDialog> completion_dialog;
+    bool completion_dialog_shown=false;
     std::vector<Source::AutoCompleteData> get_autocomplete_suggestions(int line_number, int column, std::map<std::string, std::string>& buffer_map);
     Glib::Dispatcher autocomplete_done;
     sigc::connection autocomplete_done_connection;
@@ -137,7 +158,8 @@ public:
   private:
     Glib::RefPtr<Gtk::TextTag> similar_tokens_tag;
     std::string last_similar_tokens_tagged;
-    SelectionDialog selection_dialog;
+    std::unique_ptr<SelectionDialog> selection_dialog;
+    bool renaming=false;
   };
   
   class ClangView : public ClangViewRefactor {

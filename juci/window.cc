@@ -2,6 +2,10 @@
 #include "logging.h"
 #include "singletons.h"
 
+namespace sigc {
+  SIGC_FUNCTORS_DEDUCE_RESULT_TYPE_WITH_DECLTYPE
+}
+
 Window::Window() :
   window_box_(Gtk::ORIENTATION_VERTICAL) {
   INFO("Create Window");
@@ -69,12 +73,27 @@ Window::Window() :
 
   window_box_.pack_start(menu->get_widget(), Gtk::PACK_SHRINK);
 
-  window_box_.pack_start(Singleton::notebook()->entry, Gtk::PACK_SHRINK);
+  window_box_.pack_start(Singleton::notebook()->entry_box, Gtk::PACK_SHRINK);
   paned_.set_position(300);
   paned_.pack1(Singleton::notebook()->view, true, false);
   paned_.pack2(Singleton::terminal()->view, true, true);
   window_box_.pack_end(paned_);
   show_all_children();
+  
+  signal_key_press_event().connect([this](GdkEventKey* key) {
+    if(key->keyval==GDK_KEY_Escape)
+      Singleton::notebook()->entry_box.hide();
+    return false;
+  });
+  Singleton::notebook()->entry_box.signal_show().connect([this](){
+    std::vector<Gtk::Widget*> focus_chain;
+    focus_chain.emplace_back(&Singleton::notebook()->entry_box);
+    window_box_.set_focus_chain(focus_chain);
+  });
+  Singleton::notebook()->entry_box.signal_hide().connect([this](){
+    window_box_.unset_focus_chain();
+  });
+  
   INFO("Window created");
 } // Window constructor
 
@@ -160,13 +179,9 @@ void Window::OnOpenFile() {
   }
 }
 
+//TODO: Move to notebook. Maybe also replace bool with void?
 bool Window::SaveFile() {
-  if(Singleton::notebook()->OnSaveFile()) {
-    Singleton::terminal()->print("File saved to: " +
-			   Singleton::notebook()->CurrentSourceView()->file_path+"\n");
-    return true;
-  }
-  return false;
+  return Singleton::notebook()->CurrentSourceView()->save();
 }
 bool Window::SaveFileAs() {
   if(Singleton::notebook()->OnSaveFile(Singleton::notebook()->OnSaveFileAs())){

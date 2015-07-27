@@ -2,10 +2,12 @@
 #include "notebook.h"
 #include "logging.h"
 #include "singletons.h"
-#include <gtksourceview/gtksource.h> // c-library
-
 #include <iostream> //TODO: remove
 using namespace std; //TODO: remove
+
+namespace sigc {
+  SIGC_FUNCTORS_DEDUCE_RESULT_TYPE_WITH_DECLTYPE
+}
 
 Notebook::View::View() {
   pack2(notebook);
@@ -19,6 +21,19 @@ Notebook::Controller::Controller() :
   clipboard = Gtk::Clipboard::get();
   view.pack1(directories.widget(), true, true);
   CreateKeybindings();
+  entry_box.signal_hide().connect([this]() {
+    if(CurrentPage()!=-1) {
+      CurrentSourceView()->grab_focus();
+    }
+  });
+  view.notebook.signal_switch_page().connect([this](Gtk::Widget* page, guint page_num) {
+    if(search_entry_shown && entry_box.labels.size()>0 && CurrentPage()!=-1) {
+      CurrentSourceView()->update_search_occurrences=[this](int number){
+        entry_box.labels.begin()->update(0, std::to_string(number));
+      };
+      CurrentSourceView()->search_highlight(last_search, case_sensitive_search, regex_search);
+    }
+  });
   INFO("Notebook Controller Success");
 }  // Constructor
 
@@ -37,7 +52,7 @@ void Notebook::Controller::CreateKeybindings() {
     OnCloseCurrentPage();
   });
   menu->action_group->add(Gtk::Action::create("EditFind", "Find"), Gtk::AccelKey(menu->key_map["edit_find"]), [this]() {
-	  entry.show_search("");
+    show_search_and_replace();
   });
   menu->action_group->add(Gtk::Action::create("EditCopy", "Copy"), Gtk::AccelKey(menu->key_map["edit_copy"]), [this]() {
     if (Pages() != 0) {
@@ -74,67 +89,167 @@ void Notebook::Controller::CreateKeybindings() {
     INFO("Done Redo");
   });
   
-  menu->action_group->add(Gtk::Action::create("SourceGotoDeclaration", "Go to declaration"), Gtk::AccelKey(menu->key_map["goto_declaration"]), [this]() {
+  menu->action_group->add(Gtk::Action::create("SourceGotoDeclaration", "Go to declaration"), Gtk::AccelKey(menu->key_map["source_goto_declaration"]), [this]() {
     if(CurrentPage()!=-1) {
       if(CurrentSourceView()->get_declaration_location) {
         auto location=CurrentSourceView()->get_declaration_location();
         if(location.first.size()>0) {
           open_file(location.first);
           CurrentSourceView()->get_buffer()->place_cursor(CurrentSourceView()->get_buffer()->get_iter_at_offset(location.second));
+          while(gtk_events_pending())
+            gtk_main_iteration();
           CurrentSourceView()->scroll_to(CurrentSourceView()->get_buffer()->get_insert(), 0.0, 1.0, 0.5);
         }
       }
     }
   });
   
-  menu->action_group->add(Gtk::Action::create("SourceGotoMethod", "Go to method"), Gtk::AccelKey(menu->key_map["goto_method"]), [this]() {
+  menu->action_group->add(Gtk::Action::create("SourceGotoMethod", "Go to method"), Gtk::AccelKey(menu->key_map["source_goto_method"]), [this]() {
     if(CurrentPage()!=-1) {
       if(CurrentSourceView()->goto_method) {
         CurrentSourceView()->goto_method();
       }
     }
   });
-
-  entry.button_apply_set_filename.signal_clicked().connect([this]() {
-    std::string filename=entry();
-    if(filename!="") {
-      if(project_path!="" && !boost::filesystem::path(filename).is_absolute())
-        filename=project_path+"/"+filename;
-      boost::filesystem::path p(filename);
-      if(boost::filesystem::exists(p)) {
-        //TODO: alert user that file already exists
-      }
-      else {
-        std::ofstream f(p.string().c_str());
-        if(f) {
-          open_file(boost::filesystem::canonical(p).string());
-          if(project_path!="")
-            directories.open_folder(project_path); //TODO: Do refresh instead
+  
+  menu->action_group->add(Gtk::Action::create("SourceRename", "Rename function/variable"), Gtk::AccelKey(menu->key_map["source_rename"]), [this]() {
+    entry_box.clear();
+    if(CurrentPage()!=-1) {
+      if(CurrentSourceView()->get_token && CurrentSourceView()->get_token_name) {
+        auto token=std::make_shared<std::string>(CurrentSourceView()->get_token());
+        if(token->size()>0 && CurrentSourceView()->get_token_name) {
+          auto token_name=std::make_shared<std::string>(CurrentSourceView()->get_token_name());
+          for(int c=0;c<Pages();c++) {
+            if(source_views.at(c)->view->tag_similar_tokens) {
+              source_views.at(c)->view->tag_similar_tokens(*token);
+            }
+          }
+          entry_box.labels.emplace_back();
+          auto label_it=entry_box.labels.begin();
+          label_it->update=[label_it](int state, const std::string& message){
+            label_it->set_text("Warning: only opened and parsed tabs will have its content renamed, and modified files will be saved.");
+          };
+          label_it->update(0, "");
+          entry_box.entries.emplace_back(*token_name, [this, token_name, token](const std::string& content){
+            if(CurrentPage()!=-1 && content!=*token_name) {
+              for(int c=0;c<Pages();c++) {
+                if(source_views.at(c)->view->rename_similar_tokens) {
+                  auto number=source_views.at(c)->view->rename_similar_tokens(*token, content);
+                  if(number>0) {
+                    Singleton::terminal()->print("Replaced "+std::to_string(number)+" occurrences in file "+source_views.at(c)->view->file_path+"\n");
+                    source_views.at(c)->view->save();
+                  }
+                }
+              }
+              entry_box.hide();
+            }
+          });
+          auto entry_it=entry_box.entries.begin();
+          entry_box.buttons.emplace_back("Rename", [this, entry_it](){
+            entry_it->activate();
+          });
+          entry_box.show();
         }
-        else {
-          //TODO: alert user of error creating file
-        }
-        f.close();
       }
     }
-    entry.hide();
   });
-  entry.button_close.signal_clicked().
-    connect(
-            [this]() {
-              entry.hide();
-            });
-  entry.button_next.signal_clicked().
-    connect(
-            [this]() {
-              search(true);
-            });
-  entry.button_prev.signal_clicked().
-    connect(
-            [this]() {
-              search(false);
-            });
+
   INFO("Notebook signal handlers sucsess");
+}
+
+void Notebook::Controller::show_search_and_replace() {
+  entry_box.clear();
+  entry_box.labels.emplace_back();
+  auto label_it=entry_box.labels.begin();
+  label_it->update=[label_it](int state, const std::string& message){
+    if(state==0) {
+      int number=stoi(message);
+      if(number==0)
+        label_it->set_text("");
+      else if(number==1)
+        label_it->set_text("1 result found");
+      else if(number>1)
+        label_it->set_text(std::to_string(number)+" results found");
+    }
+  };
+  entry_box.entries.emplace_back(last_search, [this](const std::string& content){
+    if(CurrentPage()!=-1)
+      CurrentSourceView()->search_forward();
+  });
+  auto search_entry_it=entry_box.entries.begin();
+  search_entry_it->set_placeholder_text("Find");
+  if(CurrentPage()!=-1) {
+    CurrentSourceView()->update_search_occurrences=[label_it](int number){
+      label_it->update(0, std::to_string(number));
+    };
+    CurrentSourceView()->search_highlight(search_entry_it->get_text(), case_sensitive_search, regex_search);
+  }
+  search_entry_it->signal_key_press_event().connect([this](GdkEventKey* event){
+    if(event->keyval==GDK_KEY_Return && event->state==GDK_SHIFT_MASK) {
+      if(CurrentPage()!=-1)
+        CurrentSourceView()->search_backward();
+    }
+    return false;
+  });
+  search_entry_it->signal_changed().connect([this, search_entry_it](){
+    last_search=search_entry_it->get_text();
+    if(CurrentPage()!=-1)
+      CurrentSourceView()->search_highlight(search_entry_it->get_text(), case_sensitive_search, regex_search);
+  });
+  
+  entry_box.entries.emplace_back(last_replace, [this](const std::string &content){
+    if(CurrentPage()!=-1)
+      CurrentSourceView()->replace_forward(content);
+  });
+  auto replace_entry_it=entry_box.entries.begin();
+  replace_entry_it++;
+  replace_entry_it->set_placeholder_text("Replace");
+  replace_entry_it->signal_key_press_event().connect([this, replace_entry_it](GdkEventKey* event){
+    if(event->keyval==GDK_KEY_Return && event->state==GDK_SHIFT_MASK) {
+      if(CurrentPage()!=-1)
+        CurrentSourceView()->replace_backward(replace_entry_it->get_text());
+    }
+    return false;
+  });
+  replace_entry_it->signal_changed().connect([this, replace_entry_it](){
+    last_replace=replace_entry_it->get_text();
+  });
+  
+  entry_box.buttons.emplace_back("Find", [this](){
+    if(CurrentPage()!=-1)
+      CurrentSourceView()->search_forward();
+  });
+  entry_box.buttons.emplace_back("Replace", [this, replace_entry_it](){
+    if(CurrentPage()!=-1)
+      CurrentSourceView()->replace_forward(replace_entry_it->get_text());
+  });
+  entry_box.buttons.emplace_back("Replace all", [this, replace_entry_it](){
+    if(CurrentPage()!=-1)
+      CurrentSourceView()->replace_all(replace_entry_it->get_text());
+  });
+  entry_box.toggle_buttons.emplace_back("Match case");
+  entry_box.toggle_buttons.back().set_active(case_sensitive_search);
+  entry_box.toggle_buttons.back().on_activate=[this, search_entry_it](){
+    case_sensitive_search=!case_sensitive_search;
+    if(CurrentPage()!=-1)
+      CurrentSourceView()->search_highlight(search_entry_it->get_text(), case_sensitive_search, regex_search);
+  };
+  entry_box.toggle_buttons.emplace_back("Use regex");
+  entry_box.toggle_buttons.back().set_active(regex_search);
+  entry_box.toggle_buttons.back().on_activate=[this, search_entry_it](){
+    regex_search=!regex_search;
+    if(CurrentPage()!=-1)
+      CurrentSourceView()->search_highlight(search_entry_it->get_text(), case_sensitive_search, regex_search);
+  };
+  entry_box.signal_hide().connect([this]() {
+    for(int c=0;c<Pages();c++) {
+      source_views.at(c)->view->update_search_occurrences=nullptr;
+      source_views.at(c)->view->search_highlight("", case_sensitive_search, regex_search);
+    }
+    search_entry_shown=false;
+  });
+  search_entry_shown=true;
+  entry_box.show();
 }
 
 void Notebook::Controller::open_file(std::string path) {
@@ -160,12 +275,21 @@ void Notebook::Controller::open_file(std::string path) {
   view.notebook.set_focus_child(*source_views.back()->view);
   CurrentSourceView()->get_buffer()->set_modified(false);
   //Add star on tab label when the page is not saved:
-  CurrentSourceView()->get_buffer()->signal_modified_changed().connect([this]() {
-    boost::filesystem::path file_path(CurrentSourceView()->file_path);
+  auto source_view=CurrentSourceView();
+  CurrentSourceView()->get_buffer()->signal_modified_changed().connect([this, source_view]() {
+    boost::filesystem::path file_path(source_view->file_path);
     std::string title=file_path.filename().string();
-    if(CurrentSourceView()->get_buffer()->get_modified())
+    if(source_view->get_buffer()->get_modified())
       title+="*";
-    view.notebook.set_tab_label_text(*(view.notebook.get_nth_page(CurrentPage())), title);
+    int page=-1;
+    for(int c=0;c<Pages();c++) {
+      if(source_views.at(c)->view.get()==source_view) {
+        page=c;
+        break;
+      }
+    }
+    if(page!=-1)
+      view.notebook.set_tab_label_text(*(view.notebook.get_nth_page(page)), title);
   });
 }
 
@@ -183,41 +307,37 @@ void Notebook::Controller::OnCloseCurrentPage() {
   }
 }
 void Notebook::Controller::OnFileNewFile() {
-  entry.show_set_filename();
-}
-
-void Notebook::Controller::search(bool forward) {
-  INFO("Notebook search");
-  auto start = CurrentSourceView()->search_start;
-  auto end = CurrentSourceView()->search_end;
-  // fetch buffer and greate settings
-  auto buffer = CurrentSourceView()->get_source_buffer();
-  auto settings = gtk_source_search_settings_new();
-  // get search text from entry
-  gtk_source_search_settings_set_search_text(settings, entry().c_str());
-  // make sure the search continues
-  gtk_source_search_settings_set_wrap_around(settings, true);
-  auto context = gtk_source_search_context_new(buffer->gobj(), settings);
-  gtk_source_search_context_set_highlight(context, forward);
-  auto itr = buffer->get_insert()->get_iter();
-  buffer->remove_tag_by_name("search", start ? start : itr, end ? end : itr);
-  if (forward) {
-    DEBUG("Doing forward search");
-    gtk_source_search_context_forward(context,
-				      end ? end.gobj() : itr.gobj(),
-				      start.gobj(),
-				      end.gobj());
-  } else {
-    DEBUG("Doing backward search");
-    gtk_source_search_context_backward(context,
-				       start ? start.gobj() : itr.gobj(),
-				       start.gobj(),
-				       end.gobj());
-  }
-  buffer->apply_tag_by_name("search", start, end);
-  CurrentSourceView()->scroll_to(end);
-  CurrentSourceView()->search_start = start;
-  CurrentSourceView()->search_end = end;
+  entry_box.clear();
+  entry_box.entries.emplace_back("untitled", [this](const std::string& content){
+    std::string filename=content;
+    if(filename!="") {
+      if(project_path!="" && !boost::filesystem::path(filename).is_absolute())
+        filename=project_path+"/"+filename;
+      boost::filesystem::path p(filename);
+      if(boost::filesystem::exists(p)) {
+        Singleton::terminal()->print("Error: "+p.string()+" already exists.\n");
+      }
+      else {
+        std::ofstream f(p.string().c_str());
+        if(f) {
+          open_file(boost::filesystem::canonical(p).string());
+          Singleton::terminal()->print("New file "+p.string()+" created.\n");
+          if(project_path!="")
+            directories.open_folder(project_path); //TODO: Do refresh instead
+        }
+        else {
+          Singleton::terminal()->print("Error: could not create new file "+p.string()+".\n");
+        }
+        f.close();
+      }
+    }
+    entry_box.hide();
+  });
+  auto entry_it=entry_box.entries.begin();
+  entry_box.buttons.emplace_back("Create file", [this, entry_it](){
+    entry_it->activate();
+  });
+  entry_box.show();
 }
 
 void Notebook::Controller
@@ -255,10 +375,6 @@ int Notebook::Controller::Pages() {
   return view.notebook.get_n_pages();
 }
 
-bool Notebook::Controller:: OnSaveFile() {
-  std::string path=CurrentSourceView()->file_path;
-  return OnSaveFile(path);
-}
 bool Notebook::Controller:: OnSaveFile(std::string path) {
     INFO("Notebook save file with path");
     if (path != "" && CurrentSourceView()->get_buffer()->get_modified()) {
@@ -268,7 +384,6 @@ bool Notebook::Controller:: OnSaveFile(std::string path) {
       file.close();
       boost::filesystem::path path(CurrentSourceView()->file_path);
       std::string title=path.filename().string();
-      view.notebook.set_tab_label_text(*view.notebook.get_nth_page(CurrentPage()), title);
       CurrentSourceView()->get_buffer()->set_modified(false);
       return true;
     }
@@ -323,7 +438,7 @@ void Notebook::Controller::AskToSaveDialog() {
     case(Gtk::RESPONSE_YES):
     {
       DEBUG("AskToSaveDialog: save file: yes, trying to save file");
-      OnSaveFile();
+      CurrentSourceView()->save();
       DEBUG("AskToSaveDialog: save file: yes, saved sucess");
       break;
     }

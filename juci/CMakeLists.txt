@@ -117,8 +117,8 @@ add_executable(${project_name}
   api.cc
   notebook.cc
   notebook.h
-  entry.h
-  entry.cc
+  entrybox.h
+  entrybox.cc
   directories.h
   directories.cc
   terminal.h
