@@ -159,6 +159,7 @@ public:
     Glib::RefPtr<Gtk::TextTag> similar_tokens_tag;
     std::string last_similar_tokens_tagged;
     std::unique_ptr<SelectionDialog> selection_dialog;
+    bool renaming=false;
   };
   
   class ClangView : public ClangViewRefactor {

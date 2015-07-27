@@ -905,7 +905,7 @@ Source::ClangViewAutocomplete(file_path, project_path) {
   similar_tokens_tag->property_weight()=Pango::WEIGHT_BOLD;
   
   get_buffer()->signal_changed().connect([this]() {
-    if(last_similar_tokens_tagged!="") {
+    if(!renaming && last_similar_tokens_tagged!="") {
       get_buffer()->remove_tag(similar_tokens_tag, get_buffer()->begin(), get_buffer()->end());
       last_similar_tokens_tagged="";
     }
@@ -968,11 +968,13 @@ Source::ClangViewAutocomplete(file_path, project_path) {
         number++;
       }
       for(auto &mark: marks) {
+        renaming=true;
         get_buffer()->erase(mark.first->get_iter(), mark.second->get_iter());
         get_buffer()->insert_with_tag(mark.first->get_iter(), text, similar_tokens_tag);
         get_buffer()->delete_mark(mark.first);
         get_buffer()->delete_mark(mark.second);
       }
+      renaming=false;
     }
     return number;
   };
