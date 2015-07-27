@@ -21,6 +21,7 @@
     <menu action='SourceMenu'>                      
       <menuitem action='SourceGotoDeclaration'/>
       <menuitem action='SourceGotoMethod'/>
+      <menuitem action='SourceRename'/>
     </menu>    
     <menu action='ProjectMenu'>                      
       <menuitem action='ProjectCompileAndRun'/>         

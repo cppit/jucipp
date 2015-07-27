@@ -897,8 +897,7 @@ Source::ClangViewAutocomplete(file_path, project_path) {
     }
   });
   
-  get_token=[this](){
-    std::string usr;
+  get_token=[this]() -> std::string {
     if(clang_readable) {
       for(auto &token: *clang_tokens) {
         if(token.get_kind()==clang::Token_Identifier && token.has_type()) {
@@ -906,12 +905,12 @@ Source::ClangViewAutocomplete(file_path, project_path) {
           if(insert_offset>=token.offsets.first && insert_offset<=token.offsets.second) {
             auto referenced=token.get_cursor().get_referenced();
             if(referenced)
-              usr=referenced.get_usr();
+              return referenced.get_usr();
           }
         }
       }
     }
-    return usr;
+    return "";
   };
   
   tag_similar_tokens=[this](const std::string &usr){

@@ -89,7 +89,7 @@ void Notebook::Controller::CreateKeybindings() {
     INFO("Done Redo");
   });
   
-  menu->action_group->add(Gtk::Action::create("SourceGotoDeclaration", "Go to declaration"), Gtk::AccelKey(menu->key_map["goto_declaration"]), [this]() {
+  menu->action_group->add(Gtk::Action::create("SourceGotoDeclaration", "Go to declaration"), Gtk::AccelKey(menu->key_map["source_goto_declaration"]), [this]() {
     if(CurrentPage()!=-1) {
       if(CurrentSourceView()->get_declaration_location) {
         auto location=CurrentSourceView()->get_declaration_location();
@@ -104,10 +104,19 @@ void Notebook::Controller::CreateKeybindings() {
     }
   });
   
-  menu->action_group->add(Gtk::Action::create("SourceGotoMethod", "Go to method"), Gtk::AccelKey(menu->key_map["goto_method"]), [this]() {
+  menu->action_group->add(Gtk::Action::create("SourceGotoMethod", "Go to method"), Gtk::AccelKey(menu->key_map["source_goto_method"]), [this]() {
     if(CurrentPage()!=-1) {
       if(CurrentSourceView()->goto_method) {
         CurrentSourceView()->goto_method();
+      }
+    }
+  });
+  
+  menu->action_group->add(Gtk::Action::create("SourceRename", "Rename function/variable"), Gtk::AccelKey(menu->key_map["source_rename"]), [this]() {
+    if(CurrentPage()!=-1) {
+      if(CurrentSourceView()->get_token) {
+        auto token=CurrentSourceView()->get_token();
+        CurrentSourceView()->tag_similar_tokens(token);
       }
     }
   });

@@ -57,10 +57,11 @@
         "edit_undo": "<control>z",
         "edit_redo": "<control>y",
         "edit_find": "<control>f",
-        "goto_declaration": "<control>d",
-        "goto_method": "<control>m",
-        "compile_and_run": "<control><alt>r",
-        "compile": "<control>r"
+        "source_goto_declaration": "<control>d",
+        "source_goto_method": "<control>m",
+        "source_rename": "<control>r",
+        "compile_and_run": "<control>Return",
+        "compile": "<control><shift>Return"
     },
     "directoryfilter": {
         "ignore": [
