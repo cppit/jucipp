@@ -98,8 +98,9 @@ Window::Window() :
 } // Window constructor
 
 void Window::OnWindowHide() {
-  for(size_t c=0;c<Singleton::notebook()->source_views.size();c++)
-    Singleton::notebook()->OnCloseCurrentPage(); //TODO: This only works on one page at the momemt. Change to Singleton::notebook()->close_page(page_nr);
+  auto size=Singleton::notebook()->source_views.size();
+  for(size_t c=0;c<size;c++)
+    Singleton::notebook()->OnCloseCurrentPage();
   hide();
 }
 void Window::OnFileOpenFolder() {
