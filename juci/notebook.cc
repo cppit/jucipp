@@ -43,7 +43,7 @@ void Notebook::Controller::CreateKeybindings() {
   INFO("Notebook create signal handlers");
   directories.m_TreeView.signal_row_activated().connect(sigc::mem_fun(*this, &Notebook::Controller::OnDirectoryNavigation));
 
-  menu->action_group->add(Gtk::Action::create("FileMenu", Gtk::Stock::FILE));
+  menu->action_group->add(Gtk::Action::create("FileMenu", "File"));
 
   menu->action_group->add(Gtk::Action::create("FileNewFile", "New file"), Gtk::AccelKey(menu->key_map["new_file"]), [this]() {
     OnFileNewFile();
@@ -55,19 +55,34 @@ void Notebook::Controller::CreateKeybindings() {
     show_search_and_replace();
   });
   menu->action_group->add(Gtk::Action::create("EditCopy", "Copy"), Gtk::AccelKey(menu->key_map["edit_copy"]), [this]() {
-    if (Pages() != 0) {
-      CurrentSourceView()->get_buffer()->copy_clipboard(clipboard);
+    auto window=(Gtk::Window*)view.get_toplevel();
+    auto widget=window->get_focus();
+    if(auto entry=dynamic_cast<Gtk::Entry*>(widget))
+      entry->copy_clipboard();
+    else {
+      if (Pages() != 0)
+        CurrentSourceView()->get_buffer()->copy_clipboard(clipboard);
     }
   });
   menu->action_group->add(Gtk::Action::create("EditCut", "Cut"), Gtk::AccelKey(menu->key_map["edit_cut"]), [this]() {
-	  if (Pages() != 0) {
-	    CurrentSourceView()->get_buffer()->cut_clipboard(clipboard);
-	  }
+    auto window=(Gtk::Window*)view.get_toplevel();
+    auto widget=window->get_focus();
+    if(auto entry=dynamic_cast<Gtk::Entry*>(widget))
+      entry->cut_clipboard();
+    else {
+      if (Pages() != 0)
+        CurrentSourceView()->get_buffer()->cut_clipboard(clipboard);
+    }
   });
   menu->action_group->add(Gtk::Action::create("EditPaste", "Paste"), Gtk::AccelKey(menu->key_map["edit_paste"]), [this]() {
-	  if (Pages() != 0) {
-	    CurrentSourceView()->get_buffer()->paste_clipboard(clipboard);
-	  }
+    auto window=(Gtk::Window*)view.get_toplevel();
+    auto widget=window->get_focus();
+    if(auto entry=dynamic_cast<Gtk::Entry*>(widget))
+      entry->paste_clipboard();
+    else {
+      if (Pages() != 0)
+        CurrentSourceView()->get_buffer()->paste_clipboard(clipboard);
+    }
   });
 
   menu->action_group->add(Gtk::Action::create("EditUndo", "Undo"), Gtk::AccelKey(menu->key_map["edit_undo"]), [this]() {
