@@ -93,13 +93,10 @@ Window::Window() :
 } // Window constructor
 
 bool Window::on_key_press_event(GdkEventKey *event) {
-  if(event->keyval==GDK_KEY_Escape) {
+  if(event->keyval==GDK_KEY_Escape)
     Singleton::notebook()->entry_box.hide();
-    return true;
-  }
-  
 #ifdef __APPLE__ //For Apple's Command-left, right, up, down keys
-  if((event->state & GDK_META_MASK)>0) {
+  else if((event->state & GDK_META_MASK)>0) {
     if(event->keyval==GDK_KEY_Left) {
       event->keyval=GDK_KEY_Home;
       event->state=event->state & GDK_SHIFT_MASK;
