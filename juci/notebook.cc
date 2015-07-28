@@ -59,10 +59,8 @@ void Notebook::Controller::CreateKeybindings() {
     auto widget=window->get_focus();
     if(auto entry=dynamic_cast<Gtk::Entry*>(widget))
       entry->copy_clipboard();
-    else {
-      if (Pages() != 0)
-        CurrentSourceView()->get_buffer()->copy_clipboard(clipboard);
-    }
+    else if(auto text_view=dynamic_cast<Gtk::TextView*>(widget))
+        text_view->get_buffer()->copy_clipboard(clipboard);
   });
   menu->action_group->add(Gtk::Action::create("EditCut", "Cut"), Gtk::AccelKey(menu->key_map["edit_cut"]), [this]() {
     auto window=(Gtk::Window*)view.get_toplevel();

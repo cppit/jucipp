@@ -15,8 +15,9 @@ public:
 
   MainConfig main_config;
   PluginApi api;
-
- private:
+protected:
+  bool on_key_press_event(GdkEventKey *event);
+private:
   std::mutex running;
   Gtk::VPaned paned_;
   //signal handlers

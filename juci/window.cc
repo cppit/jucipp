@@ -80,11 +80,6 @@ Window::Window() :
   window_box_.pack_end(paned_);
   show_all_children();
   
-  signal_key_press_event().connect([this](GdkEventKey* key) {
-    if(key->keyval==GDK_KEY_Escape)
-      Singleton::notebook()->entry_box.hide();
-    return false;
-  });
   Singleton::notebook()->entry_box.signal_show().connect([this](){
     std::vector<Gtk::Widget*> focus_chain;
     focus_chain.emplace_back(&Singleton::notebook()->entry_box);
@@ -96,6 +91,50 @@ Window::Window() :
   
   INFO("Window created");
 } // Window constructor
+
+bool Window::on_key_press_event(GdkEventKey *event) {
+  if(event->keyval==GDK_KEY_Escape) {
+    Singleton::notebook()->entry_box.hide();
+    return true;
+  }
+  
+#ifdef __APPLE__ //For Apple's Command-left, right, up, down keys
+  if((event->state & GDK_META_MASK)>0) {
+    if(event->keyval==GDK_KEY_Left) {
+      event->keyval=GDK_KEY_Home;
+      event->state=event->state & GDK_SHIFT_MASK;
+      event->hardware_keycode=115;
+    }
+    else if(event->keyval==GDK_KEY_Right) {
+      event->keyval=GDK_KEY_End;
+      event->state=event->state & GDK_SHIFT_MASK;
+      event->hardware_keycode=119;
+    }
+    else if(event->keyval==GDK_KEY_Up) {
+      if(auto text_view=dynamic_cast<Gtk::TextView*>(get_focus())) {
+        if(event->state & GDK_SHIFT_MASK)
+          text_view->get_buffer()->select_range(text_view->get_buffer()->begin(), text_view->get_buffer()->get_insert()->get_iter());
+        else
+          text_view->get_buffer()->place_cursor(text_view->get_buffer()->begin());
+        text_view->scroll_to(text_view->get_buffer()->get_insert());
+      }
+      return true;
+    }
+    else if(event->keyval==GDK_KEY_Down) {
+      if(auto text_view=dynamic_cast<Gtk::TextView*>(get_focus())) {
+        if(event->state & GDK_SHIFT_MASK)
+          text_view->get_buffer()->select_range(text_view->get_buffer()->end(), text_view->get_buffer()->get_insert()->get_iter());
+        else
+          text_view->get_buffer()->place_cursor(text_view->get_buffer()->end());
+        text_view->scroll_to(text_view->get_buffer()->get_insert());
+      }
+      return true;
+    }
+  }
+#endif
+  
+  return Gtk::Window::on_key_press_event(event);
+}
 
 void Window::OnWindowHide() {
   auto size=Singleton::notebook()->source_views.size();
