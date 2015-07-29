@@ -1,20 +1,15 @@
-# - Try to find LCL
-
-
-# Once done this will define
 #  LCL_FOUND - Libclangmm is available
 #  LCL_INCLUDE_DIRS - The libclangmm include directories
 #  LCL_LIBRARIES - 
-#  LCL_DEFINITIONS - Compiler switches required for using libclangmm
 
 find_package(PkgConfig)
 
 find_path(LCL_INCLUDE_DIR clangmm.h
-  HINTS  "/usr/local/lib/libclangmm/include/"
+  HINTS  "/usr/local/include/libclangmm/"
   )
 
 find_library(LCL_LIBRARY NAMES clangmm
-  HINTS  "/usr/local/lib/libclangmm/"
+  HINTS  "/usr/local/lib/"
   )
 
 set(LCL_LIBRARIES ${LCL_LIBRARY} )
