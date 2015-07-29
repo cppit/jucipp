@@ -1,4 +1,5 @@
 #include "menu.h"
+#include "logging.h"
 #include <iostream>
 
 Menu::Menu() : box(Gtk::ORIENTATION_VERTICAL) {

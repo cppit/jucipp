@@ -3,11 +3,12 @@
 #include "logging.h"
 #include <fstream>
 #include <string>
+#include <exception>
+
 
 MainConfig::MainConfig() {
   INFO("Reading config file");
-  std::string path(getenv("HOME")); // TODO WINDOWS
-  boost::property_tree::json_parser::read_json(path + "/.juci/config/config.json", cfg_);
+  boost::property_tree::json_parser::read_json(Singleton::config_dir() + "config.json", cfg_);
   INFO("Config file read");
   GenerateSource();
   GenerateKeybindings();
@@ -74,13 +75,17 @@ void MainConfig::GenerateTerminalCommands() {
 }
 
 void MainConfig::GenerateKeybindings() {
-  auto menu=Singleton::menu();
-  DEBUG("Fetching keybindings");
+  auto menu = Singleton::menu();
+  boost::filesystem::path path(Singleton::config_dir() + "menu.xml");
+  if (!boost::filesystem::is_regular_file(path)) {
+    std::cerr << "menu.xml not found" << std::endl;
+    throw;
+  }
+  std::ifstream input(path.string());
   std::string line;
-  std::ifstream menu_xml("menu.xml");
-  if (menu_xml.is_open()) {
-    while (getline(menu_xml, line))
-      menu->ui+=line;   
+  if (input.is_open()) {
+    while (getline(input, line))
+      menu->ui += line;
   }
   boost::property_tree::ptree keys_json = cfg_.get_child("keybindings");
   for (auto &i : keys_json) {
