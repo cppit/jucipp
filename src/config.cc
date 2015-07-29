@@ -6,7 +6,8 @@
 
 MainConfig::MainConfig() {
   INFO("Reading config file");
-  boost::property_tree::json_parser::read_json("config.json", cfg_);
+  std::string path(getenv("HOME")); // TODO WINDOWS
+  boost::property_tree::json_parser::read_json(path + "/.juci/config/config.json", cfg_);
   INFO("Config file read");
   GenerateSource();
   GenerateKeybindings();
