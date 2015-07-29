@@ -3,7 +3,7 @@
 
 void init_logging() {
   add_common_attributes();
-  add_file_log(keywords::file_name = "juci.log",
+  add_file_log(keywords::file_name = Singleton::log_dir() + "juci.log",
                keywords::auto_flush = true);
   INFO("Logging initalized");
 }

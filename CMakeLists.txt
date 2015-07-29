@@ -17,3 +17,4 @@ install(
   DIRECTORY "config" "plugins"
   DESTINATION ${juci_config_folder}
   USE_SOURCE_PERMISSIONS)
+install(CODE "FILE(MAKE_DIRECTORY ${juci_config_filder}/log)")
