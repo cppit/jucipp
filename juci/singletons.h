@@ -21,11 +21,9 @@ public:
   };
   
   static Terminal::Controller *terminal();
-  static Notebook::Controller *notebook();
   static Menu *menu();
 private:
   static std::unique_ptr<Terminal::Controller> terminal_;
-  static std::unique_ptr<Notebook::Controller> notebook_;
   static std::unique_ptr<Menu> menu_;
 };
 

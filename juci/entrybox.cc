@@ -40,7 +40,7 @@ EntryBox::EntryBox() : Gtk::Box(Gtk::ORIENTATION_VERTICAL), upper_box(Gtk::ORIEN
 }
 
 void EntryBox::clear() {
-  hide();
+  Gtk::Box::hide();
   entries.clear();
   buttons.clear();
   toggle_buttons.clear();

@@ -36,12 +36,11 @@ void Juci::on_activate() {
   add_window(*window);
   window->show();
   if(directory!="") {
-    //TODO: use the following instead, window->notebook.open_directory(directory);
-    Singleton::notebook()->project_path=directory;
-    Singleton::notebook()->directories.open_folder(directory);
+    window->notebook.project_path=directory;
+    window->directories.open_folder(directory);
   }
   for(auto &f: files)
-    Singleton::notebook()->open_file(f);
+    window->notebook.open_file(f);
 }
 
 int main(int argc, char *argv[]) {

@@ -33,6 +33,7 @@ public:
   Gtk::Box upper_box;
   Gtk::Box lower_box;
   void clear();
+  void hide() {clear();}
   void show();
   std::list<Entry> entries;
   std::list<Button> buttons;

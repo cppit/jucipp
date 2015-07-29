@@ -1,6 +1,7 @@
 #ifndef JUCI_JUCI_H_
 #define JUCI_JUCI_H_
 
+#include "config.h"
 #include "window.h"
 #include "logging.h"
 
@@ -12,6 +13,7 @@ public:
   void on_activate();
 
 private:
+  MainConfig main_config;
   std::unique_ptr<Window> window;
   std::string directory;
   std::vector<std::string> files;

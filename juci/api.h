@@ -12,9 +12,9 @@
 ////////////////////
 class PluginApi {
 public:
-  PluginApi();
+  PluginApi(Notebook* notebook);
   static Menu* menu_;
-  static Notebook::Controller* notebook_;
+  static Notebook* notebook;
   static void InitPlugins();
   static std::string ProjectPath();
   // for Python module:

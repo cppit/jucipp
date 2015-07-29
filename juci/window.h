@@ -2,29 +2,39 @@
 #define JUCI_WINDOW_H_
 
 #include "api.h"
-#include "config.h"
 #include <cstddef>
 
 
 class Window : public Gtk::Window {
 public:
   Window();
-  // std::string  OnSaveFileAs();
-  Gtk::Box window_box_;
-  virtual ~Window() { }
-
-  MainConfig main_config;
-  PluginApi api;
-
- private:
+  Notebook notebook;
+  Directories::Controller directories;
+protected:
+  bool on_key_press_event(GdkEventKey *event);
+  bool on_delete_event (GdkEventAny *event);
+private:
+  Gtk::Box box;
+  Gtk::VPaned vpaned;
+  Gtk::Paned directory_and_notebook_panes;
+  EntryBox entry_box;
+  PluginApi plugin_api;
   std::mutex running;
-  Gtk::VPaned paned_;
-  //signal handlers
-  void OnWindowHide();
-  void OnOpenFile();
-  void OnFileOpenFolder();
-  bool SaveFile();
-  bool SaveFileAs();
+
+  void hide();
+  void new_file_entry();
+  void open_folder_dialog();
+  void open_file_dialog();
+  void save_file_dialog();
+  void on_directory_navigation(const Gtk::TreeModel::Path& path, Gtk::TreeViewColumn* column);
+  
+  void search_and_replace_entry();
+  std::string last_search;
+  std::string last_replace;
+  bool case_sensitive_search=true;
+  bool regex_search=false;
+  bool search_entry_shown=false;
+
 };
 
 #endif  // JUCI_WINDOW_H
