@@ -51,8 +51,7 @@ std::string PluginApi::GetWord() {
 }
 
 void PluginApi::InitPlugins() {
-  std::string path(getenv("HOME"));
-  libjuci::LoadPlugin(path + "/.juci/config/plugins.py");
+  libjuci::LoadPlugin(Singleton::config_dir() + "plugins.py");
 }
 
 void PluginApi::AddMenuElement(std::string plugin_name) {
