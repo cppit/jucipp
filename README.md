@@ -26,20 +26,23 @@ Configuration description will arrive shortly after source code is added.
 ## Dependencies ##
 Please install these dependencies on your system.
 
-* libclang
+* libboost-python-dev 
+* libboost-filesystem-dev 
+* libboost-log-dev 
+* libboost-test-dev 
+* libboost-thread-dev 
+* libboost-system-dev 
+* libgtkmm-3.0-dev 
+* libgtksourceview2.0-dev 
+* libgtksourceviewmm-3.0-dev 
+* libpython-dev 
+* libclang-dev
 * [libclangmm](http://github.com/cppit/libclangmm/)
 * cmake
 * make
 * clang or gcc (compiler)
 
 ## Installation ##
+See [installation guide](http://github.com/cppit/jucipp/blob/master/docs/install.md).
 
-```sh
-$ cmake .
-$ make
-```
 
-## Run
-```sh
-$ ./bin/juci
-```
