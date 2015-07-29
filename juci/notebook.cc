@@ -33,6 +33,17 @@ Notebook::Controller::Controller() :
       };
       CurrentSourceView()->search_highlight(last_search, case_sensitive_search, regex_search);
     }
+    
+    if(CurrentPage()!=-1) {
+      if(auto menu_item=dynamic_cast<Gtk::MenuItem*>(Singleton::menu()->ui_manager->get_widget("/MenuBar/SourceMenu/SourceGotoDeclaration")))
+        menu_item->set_sensitive((bool)CurrentSourceView()->get_declaration_location);
+      
+      if(auto menu_item=dynamic_cast<Gtk::MenuItem*>(Singleton::menu()->ui_manager->get_widget("/MenuBar/SourceMenu/SourceGotoMethod")))
+        menu_item->set_sensitive((bool)CurrentSourceView()->goto_method);
+      
+      if(auto menu_item=dynamic_cast<Gtk::MenuItem*>(Singleton::menu()->ui_manager->get_widget("/MenuBar/SourceMenu/SourceRename")))
+        menu_item->set_sensitive((bool)CurrentSourceView()->rename_similar_tokens);
+    }
   });
   INFO("Notebook Controller Success");
 }  // Constructor
