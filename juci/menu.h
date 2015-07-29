@@ -9,7 +9,6 @@ class Menu {
 public:
   Menu();
   Gtk::Widget& get_widget();
-  Gtk::Menu& get_source_menu();
   void build();
   
   Gtk::Box box;

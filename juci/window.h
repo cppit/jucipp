@@ -22,6 +22,7 @@ private:
   PluginApi plugin_api;
   std::mutex running;
 
+  void add_menu();
   void hide();
   void new_file_entry();
   void open_folder_dialog();
@@ -30,6 +31,7 @@ private:
   void on_directory_navigation(const Gtk::TreeModel::Path& path, Gtk::TreeViewColumn* column);
   
   void search_and_replace_entry();
+  void rename_token_entry();
   std::string last_search;
   std::string last_replace;
   bool case_sensitive_search=true;

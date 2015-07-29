@@ -5,7 +5,7 @@ Menu::Menu() : box(Gtk::ORIENTATION_VERTICAL) {
   action_group = Gtk::ActionGroup::create();
   ui_manager = Gtk::UIManager::create();
 
-  action_group->add(Gtk::Action::create("FileNew", "New File"));
+  action_group->add(Gtk::Action::create("FileMenu", "File"));
   action_group->add(Gtk::Action::create("EditMenu", "Edit"));
   action_group->add(Gtk::Action::create("WindowMenu", "_Window"));
   action_group->add(Gtk::Action::create("WindowSplitWindow", "Split window"), Gtk::AccelKey(key_map["split_window"]), [this]() {
@@ -20,10 +20,6 @@ Menu::Menu() : box(Gtk::ORIENTATION_VERTICAL) {
 
 Gtk::Widget& Menu::get_widget() {
   return *ui_manager->get_widget("/MenuBar");
-}
-
-Gtk::Menu& Menu::get_source_menu() {
-  return *(Gtk::Menu*)ui_manager->get_widget("/MenuBar/SourceMenu");
 }
 
 void Menu::build() {

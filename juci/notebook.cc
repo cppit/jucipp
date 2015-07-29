@@ -10,58 +10,7 @@ namespace sigc {
 }
 
 Notebook::Notebook() : Gtk::Notebook() {
-  INFO("Create notebook");
   Gsv::init();
-
-  auto menu=Singleton::menu();
-  INFO("Notebook create signal handlers");
-  menu->action_group->add(Gtk::Action::create("FileMenu", "File"));
-
-  menu->action_group->add(Gtk::Action::create("WindowCloseTab", "Close tab"), Gtk::AccelKey(menu->key_map["close_tab"]), [this]() {
-    close_current_page();
-  });
-
-  menu->action_group->add(Gtk::Action::create("EditUndo", "Undo"), Gtk::AccelKey(menu->key_map["edit_undo"]), [this]() {
-	  INFO("On undo");
-    Glib::RefPtr<Gsv::UndoManager> undo_manager = get_current_view()->get_source_buffer()->get_undo_manager();
-    if (size() != 0 && undo_manager->can_undo()) {
-      undo_manager->undo();
-    }
-    INFO("Done undo");
-	});
-
-  menu->action_group->add(Gtk::Action::create("EditRedo", "Redo"), Gtk::AccelKey(menu->key_map["edit_redo"]), [this]() {
-    INFO("On Redo");
-    Glib::RefPtr<Gsv::UndoManager> undo_manager =
-    get_current_view()->get_source_buffer()->get_undo_manager();
-    if (size() != 0 && undo_manager->can_redo()) {
-      undo_manager->redo();
-    }
-    INFO("Done Redo");
-  });
-  
-  menu->action_group->add(Gtk::Action::create("SourceGotoDeclaration", "Go to declaration"), Gtk::AccelKey(menu->key_map["source_goto_declaration"]), [this]() {
-    if(get_current_page()!=-1) {
-      if(get_current_view()->get_declaration_location) {
-        auto location=get_current_view()->get_declaration_location();
-        if(location.first.size()>0) {
-          open(location.first);
-          get_current_view()->get_buffer()->place_cursor(get_current_view()->get_buffer()->get_iter_at_offset(location.second));
-          while(gtk_events_pending())
-            gtk_main_iteration();
-          get_current_view()->scroll_to(get_current_view()->get_buffer()->get_insert(), 0.0, 1.0, 0.5);
-        }
-      }
-    }
-  });
-  
-  menu->action_group->add(Gtk::Action::create("SourceGotoMethod", "Go to method"), Gtk::AccelKey(menu->key_map["source_goto_method"]), [this]() {
-    if(get_current_page()!=-1) {
-      if(get_current_view()->goto_method) {
-        get_current_view()->goto_method();
-      }
-    }
-  });
 }
 
 int Notebook::size() {
@@ -149,7 +98,7 @@ bool Notebook::save(int page) {
 }
 
 bool Notebook::save_current() {
-  INFO("Source save file");
+  INFO("Notebook save current file");
   if(get_current_page()==-1)
     return false;
   return save(get_current_page());
@@ -172,7 +121,7 @@ bool Notebook::close_current_page() {
 }
 
 bool Notebook::save_modified_dialog() {
-  INFO("Notebook::save_dialog");
+  INFO("Notebook::save_modified_dialog");
   Gtk::MessageDialog dialog((Gtk::Window&)(*get_toplevel()), "Save file!", false, Gtk::MESSAGE_QUESTION, Gtk::BUTTONS_YES_NO);
   dialog.set_secondary_text("Do you want to save: " + get_current_view()->file_path+" ?");
   int result = dialog.run();
