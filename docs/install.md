@@ -1,27 +1,22 @@
 # juCi++
 ## Installation guide ##
-## Linux
+Before installation, please install libclangmm see [installation guide](http://github.com/cppit/libclangmm/blob/master/docs/install.md) for installation.
+## Debian
+First dependencies:
 ```sh
-# Libraries (missing libclangmm, see [installation guide](http://github.com/cppit/libclangmm/blob/master/docs/install.md) for installation)
 $ sudo apt-get install libboost-python-dev libboost-filesystem-dev libboost-log-dev libboost-test-dev 
 libboost-thread-dev libboost-system-dev libgtkmm-3.0-dev libgtksourceview2.0-dev libgtksourceviewmm-3.0-dev
-libpython-dev libclang-dev
-# Programs
-$sudo apt-get install make cmake gcc
-
+libpython-dev libclang-dev make cmake gcc
 ```
-Compile
+Install the project:
 ```sh
-# When git clone
-$ cd path-to-cloned-from-folder/jucipp/juci
-# When download zipped file, extraxt it to a folder of your choice
-$ cd path-to-folder-extraxted-into/jucipp-master/juci
-# In both cases above you can choose remove the jucipp folder, but remeber to apply changes to cd command as well.
+$ git clone http://github.com/cppit/jucipp.git juci
+$ cd juci
 $ cmake .
 $ make
+$ sudo make install
 ```
-
 ## Run
 ```sh
-$ ./bin/juci
+$ juci
 ```

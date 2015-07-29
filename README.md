@@ -1,31 +1,20 @@
 # juCi++
 ###### a lightweight C++-IDE with support for C++11 and C++14.
 ## About
-juCi++ is a lightweight C++-IDE written in C++. You can write plugins
-in Python and configure the IDE from the config.json file.
+A lot of IDEs struggle with good C++11/14 support. Therefore we
+created juCi++. juCi++ is based of the compiler and will *always*
+support new versions of C++.
 
-
-## Autocompletion
-The IDE supports autocompletion on accessor specifiers such as dot and arrow. The autocompletion has excellent support for C++11/14.
-
-## Syntax Highlighting
-The IDE also supports syntax highligthing even in C++11 and C++14.
-
-## To get C++11 and C++14 support
-If you want support for external libraries and C++11 and C++14 you need to make sure you add a parameter to the cmake command. This will make compile_commands.json wich tells juCi++ all the paramters for the compiler. There is a bug where juCi++ sometimes puts the compile_commands.json file in the incorrect folder. Please make sure this file exists and that the contents of it covers all your files.
-```sh
-$ cmake . -DCMAKE_EXPORT_COMPILE_COMMANDS=ON
-```
-
-## Plugins
-There are expansion oppertunities with usage of python plugins.
-
-## Configuration
-Configuration description will arrive shortly after source code is added.
+## Features
+* Syntax highlighing (even C++11/14)
+* Superfast autocomletion (even external libraries)
+* Accurate refactoring across files
+* Basic editor functionallity
+* Highlighting of similar types
+* write your own plugins in python (limited atm)
 
 ## Dependencies ##
 Please install these dependencies on your system.
-
 * libboost-python-dev 
 * libboost-filesystem-dev 
 * libboost-log-dev 
@@ -43,6 +32,11 @@ Please install these dependencies on your system.
 * clang or gcc (compiler)
 
 ## Installation ##
-See [installation guide](http://github.com/cppit/jucipp/blob/master/docs/install.md).
-
+Quickstart:
+```sh
+$ cmake .
+$ make
+$ sudo make install
+```
+See [installation guide](http://github.com/cppit/jucipp/blob/master/docs/install.md) for more details.
 
