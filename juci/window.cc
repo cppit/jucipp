@@ -32,7 +32,7 @@ Window::Window() : notebook(), plugin_api(&notebook), box(Gtk::ORIENTATION_VERTI
   });
 
   menu->action_group->add(Gtk::Action::create("FileSave", "Save"), Gtk::AccelKey(menu->key_map["save"]), [this]() {
-    notebook.CurrentSourceView()->save();
+    notebook.save_current();
   });
   
   menu->action_group->add(Gtk::Action::create("EditCopy", "Copy"), Gtk::AccelKey(menu->key_map["edit_copy"]), [this]() {
@@ -47,8 +47,8 @@ Window::Window() : notebook(), plugin_api(&notebook), box(Gtk::ORIENTATION_VERTI
     if(auto entry=dynamic_cast<Gtk::Entry*>(widget))
       entry->cut_clipboard();
     else {
-      if (notebook.Pages() != 0)
-        notebook.CurrentSourceView()->get_buffer()->cut_clipboard(Gtk::Clipboard::get());
+      if (notebook.size() != 0)
+        notebook.get_current_view()->get_buffer()->cut_clipboard(Gtk::Clipboard::get());
     }
   });
   menu->action_group->add(Gtk::Action::create("EditPaste", "Paste"), Gtk::AccelKey(menu->key_map["edit_paste"]), [this]() {
@@ -56,8 +56,8 @@ Window::Window() : notebook(), plugin_api(&notebook), box(Gtk::ORIENTATION_VERTI
     if(auto entry=dynamic_cast<Gtk::Entry*>(widget))
       entry->paste_clipboard();
     else {
-      if (notebook.Pages() != 0)
-        notebook.CurrentSourceView()->get_buffer()->paste_clipboard(Gtk::Clipboard::get());
+      if (notebook.size() != 0)
+        notebook.get_current_view()->get_buffer()->paste_clipboard(Gtk::Clipboard::get());
     }
   });
   menu->action_group->add(Gtk::Action::create("EditFind", "Find"), Gtk::AccelKey(menu->key_map["edit_find"]), [this]() {
@@ -66,14 +66,14 @@ Window::Window() : notebook(), plugin_api(&notebook), box(Gtk::ORIENTATION_VERTI
   
   menu->action_group->add(Gtk::Action::create("SourceRename", "Rename function/variable"), Gtk::AccelKey(menu->key_map["source_rename"]), [this]() {
     entry_box.clear();
-    if(notebook.CurrentPage()!=-1) {
-      if(notebook.CurrentSourceView()->get_token && notebook.CurrentSourceView()->get_token_name) {
-        auto token=std::make_shared<std::string>(notebook.CurrentSourceView()->get_token());
-        if(token->size()>0 && notebook.CurrentSourceView()->get_token_name) {
-          auto token_name=std::make_shared<std::string>(notebook.CurrentSourceView()->get_token_name());
-          for(int c=0;c<notebook.Pages();c++) {
-            if(notebook.source_views.at(c)->view->tag_similar_tokens) {
-              notebook.source_views.at(c)->view->tag_similar_tokens(*token);
+    if(notebook.get_current_page()!=-1) {
+      if(notebook.get_current_view()->get_token && notebook.get_current_view()->get_token_name) {
+        auto token=std::make_shared<std::string>(notebook.get_current_view()->get_token());
+        if(token->size()>0 && notebook.get_current_view()->get_token_name) {
+          auto token_name=std::make_shared<std::string>(notebook.get_current_view()->get_token_name());
+          for(int c=0;c<notebook.size();c++) {
+            if(notebook.get_view(c)->tag_similar_tokens) {
+              notebook.get_view(c)->tag_similar_tokens(*token);
             }
           }
           entry_box.labels.emplace_back();
@@ -83,13 +83,13 @@ Window::Window() : notebook(), plugin_api(&notebook), box(Gtk::ORIENTATION_VERTI
           };
           label_it->update(0, "");
           entry_box.entries.emplace_back(*token_name, [this, token_name, token](const std::string& content){
-            if(notebook.CurrentPage()!=-1 && content!=*token_name) {
-              for(int c=0;c<notebook.Pages();c++) {
-                if(notebook.source_views.at(c)->view->rename_similar_tokens) {
-                  auto number=notebook.source_views.at(c)->view->rename_similar_tokens(*token, content);
+            if(notebook.get_current_page()!=-1 && content!=*token_name) {
+              for(int c=0;c<notebook.size();c++) {
+                if(notebook.get_view(c)->rename_similar_tokens) {
+                  auto number=notebook.get_view(c)->rename_similar_tokens(*token, content);
                   if(number>0) {
-                    Singleton::terminal()->print("Replaced "+std::to_string(number)+" occurrences in file "+notebook.source_views.at(c)->view->file_path+"\n");
-                    notebook.source_views.at(c)->view->save();
+                    Singleton::terminal()->print("Replaced "+std::to_string(number)+" occurrences in file "+notebook.get_view(c)->file_path+"\n");
+                    notebook.save(c);
                   }
                 }
               }
@@ -107,12 +107,12 @@ Window::Window() : notebook(), plugin_api(&notebook), box(Gtk::ORIENTATION_VERTI
   });
   
   menu->action_group->add(Gtk::Action::create("ProjectCompileAndRun", "Compile And Run"), Gtk::AccelKey(menu->key_map["compile_and_run"]), [this]() {
-    if(notebook.CurrentPage()==-1)
+    if(notebook.get_current_page()==-1)
       return;
-    notebook.CurrentSourceView()->save();
+    notebook.save_current();
     if (running.try_lock()) {
       std::thread execute([this]() {
-      	std::string path = notebook.CurrentSourceView()->file_path;
+      	std::string path = notebook.get_current_view()->file_path;
       	size_t pos = path.find_last_of("/\\");
       	if(pos != std::string::npos) {
       	  path.erase(path.begin()+pos,path.end());
@@ -128,12 +128,12 @@ Window::Window() : notebook(), plugin_api(&notebook), box(Gtk::ORIENTATION_VERTI
   });
    
   menu->action_group->add(Gtk::Action::create("ProjectCompile", "Compile"), Gtk::AccelKey(menu->key_map["compile"]), [this]() {
-    if(notebook.CurrentPage()==-1)
+    if(notebook.get_current_page()==-1)
       return;
-    notebook.CurrentSourceView()->save();
+    notebook.save_current();
     if (running.try_lock()) {
       std::thread execute([this]() {		  
-        std::string path = notebook.CurrentSourceView()->file_path;
+        std::string path = notebook.get_current_view()->file_path;
         size_t pos = path.find_last_of("/\\");
         if(pos != std::string::npos){
           path.erase(path.begin()+pos,path.end());
@@ -170,27 +170,27 @@ Window::Window() : notebook(), plugin_api(&notebook), box(Gtk::ORIENTATION_VERTI
     box.unset_focus_chain();
   });
   entry_box.signal_hide().connect([this]() {
-    if(notebook.CurrentPage()!=-1) {
-      notebook.CurrentSourceView()->grab_focus();
+    if(notebook.get_current_page()!=-1) {
+      notebook.get_current_view()->grab_focus();
     }
   });
   notebook.signal_switch_page().connect([this](Gtk::Widget* page, guint page_num) {
-    if(search_entry_shown && entry_box.labels.size()>0 && notebook.CurrentPage()!=-1) {
-      notebook.CurrentSourceView()->update_search_occurrences=[this](int number){
+    if(search_entry_shown && entry_box.labels.size()>0 && notebook.get_current_page()!=-1) {
+      notebook.get_current_view()->update_search_occurrences=[this](int number){
         entry_box.labels.begin()->update(0, std::to_string(number));
       };
-      notebook.CurrentSourceView()->search_highlight(last_search, case_sensitive_search, regex_search);
+      notebook.get_current_view()->search_highlight(last_search, case_sensitive_search, regex_search);
     }
     
-    if(notebook.CurrentPage()!=-1) {
+    if(notebook.get_current_page()!=-1) {
       if(auto menu_item=dynamic_cast<Gtk::MenuItem*>(Singleton::menu()->ui_manager->get_widget("/MenuBar/SourceMenu/SourceGotoDeclaration")))
-        menu_item->set_sensitive((bool)notebook.CurrentSourceView()->get_declaration_location);
+        menu_item->set_sensitive((bool)notebook.get_current_view()->get_declaration_location);
       
       if(auto menu_item=dynamic_cast<Gtk::MenuItem*>(Singleton::menu()->ui_manager->get_widget("/MenuBar/SourceMenu/SourceGotoMethod")))
-        menu_item->set_sensitive((bool)notebook.CurrentSourceView()->goto_method);
+        menu_item->set_sensitive((bool)notebook.get_current_view()->goto_method);
       
       if(auto menu_item=dynamic_cast<Gtk::MenuItem*>(Singleton::menu()->ui_manager->get_widget("/MenuBar/SourceMenu/SourceRename")))
-        menu_item->set_sensitive((bool)notebook.CurrentSourceView()->rename_similar_tokens);
+        menu_item->set_sensitive((bool)notebook.get_current_view()->rename_similar_tokens);
     }
   });
   
@@ -244,8 +244,8 @@ bool Window::on_delete_event (GdkEventAny *event) {
 }
 
 void Window::hide() {
-  auto size=notebook.source_views.size();
-  for(size_t c=0;c<size;c++) {
+  auto size=notebook.size();
+  for(int c=0;c<size;c++) {
     if(!notebook.close_current_page())
       return;
   }
@@ -266,7 +266,7 @@ void Window::new_file_entry() {
       else {
         std::ofstream f(p.string().c_str());
         if(f) {
-          notebook.open_file(boost::filesystem::canonical(p).string());
+          notebook.open(boost::filesystem::canonical(p).string());
           Singleton::terminal()->print("New file "+p.string()+" created.\n");
           if(notebook.project_path!="")
             directories.open_folder(notebook.project_path); //TODO: Do refresh instead
@@ -308,7 +308,6 @@ void Window::open_file_dialog() {
   Gtk::FileChooserDialog dialog("Please choose a file", Gtk::FILE_CHOOSER_ACTION_OPEN);
   if(notebook.project_path.size()>0)
     gtk_file_chooser_set_current_folder((GtkFileChooser*)dialog.gobj(), notebook.project_path.c_str());
-  std::cout << notebook.project_path << std::endl;
   dialog.set_transient_for(*this);
   dialog.set_position(Gtk::WindowPosition::WIN_POS_CENTER_ALWAYS);
 
@@ -338,14 +337,16 @@ void Window::open_file_dialog() {
 
   if(result==Gtk::RESPONSE_OK) {
     std::string path = dialog.get_filename();
-    notebook.open_file(path);
+    notebook.open(path);
   }
 }
 
 void Window::save_file_dialog() {
+  if(notebook.get_current_page()==-1)
+    return;
   INFO("Save file dialog");
   Gtk::FileChooserDialog dialog(*this, "Please choose a file", Gtk::FILE_CHOOSER_ACTION_SAVE);
-  gtk_file_chooser_set_filename((GtkFileChooser*)dialog.gobj(), notebook.CurrentSourceView()->file_path.c_str());
+  gtk_file_chooser_set_filename((GtkFileChooser*)dialog.gobj(), notebook.get_current_view()->file_path.c_str());
   dialog.set_position(Gtk::WindowPosition::WIN_POS_CENTER_ALWAYS);
   dialog.add_button("_Cancel", Gtk::RESPONSE_CANCEL);
   dialog.add_button("_Save", Gtk::RESPONSE_OK);
@@ -356,10 +357,10 @@ void Window::save_file_dialog() {
     if(path.size()>0) {
       std::ofstream file(path);
       if(file) {
-        file << notebook.CurrentSourceView()->get_buffer()->get_text();
+        file << notebook.get_current_view()->get_buffer()->get_text();
         file.close();
-        notebook.open_file(path);
-        Singleton::terminal()->print("File saved to: " + notebook.CurrentSourceView()->file_path+"\n");
+        notebook.open(path);
+        Singleton::terminal()->print("File saved to: " + notebook.get_current_view()->file_path+"\n");
         if(notebook.project_path!="")
           directories.open_folder(notebook.project_path); //TODO: Do refresh instead
       }
@@ -385,7 +386,7 @@ void Window::on_directory_navigation(const Gtk::TreeModel::Path& path, Gtk::Tree
       std::stringstream sstm;
       sstm << row[directories.view().m_col_path];
       std::string file = sstm.str();
-      notebook.open_file(file);
+      notebook.open(file);
     }
   }
 }
@@ -406,41 +407,41 @@ void Window::search_and_replace_entry() {
     }
   };
   entry_box.entries.emplace_back(last_search, [this](const std::string& content){
-    if(notebook.CurrentPage()!=-1)
-      notebook.CurrentSourceView()->search_forward();
+    if(notebook.get_current_page()!=-1)
+      notebook.get_current_view()->search_forward();
   });
   auto search_entry_it=entry_box.entries.begin();
   search_entry_it->set_placeholder_text("Find");
-  if(notebook.CurrentPage()!=-1) {
-    notebook.CurrentSourceView()->update_search_occurrences=[label_it](int number){
+  if(notebook.get_current_page()!=-1) {
+    notebook.get_current_view()->update_search_occurrences=[label_it](int number){
       label_it->update(0, std::to_string(number));
     };
-    notebook.CurrentSourceView()->search_highlight(search_entry_it->get_text(), case_sensitive_search, regex_search);
+    notebook.get_current_view()->search_highlight(search_entry_it->get_text(), case_sensitive_search, regex_search);
   }
   search_entry_it->signal_key_press_event().connect([this](GdkEventKey* event){
     if(event->keyval==GDK_KEY_Return && event->state==GDK_SHIFT_MASK) {
-      if(notebook.CurrentPage()!=-1)
-        notebook.CurrentSourceView()->search_backward();
+      if(notebook.get_current_page()!=-1)
+        notebook.get_current_view()->search_backward();
     }
     return false;
   });
   search_entry_it->signal_changed().connect([this, search_entry_it](){
     last_search=search_entry_it->get_text();
-    if(notebook.CurrentPage()!=-1)
-      notebook.CurrentSourceView()->search_highlight(search_entry_it->get_text(), case_sensitive_search, regex_search);
+    if(notebook.get_current_page()!=-1)
+      notebook.get_current_view()->search_highlight(search_entry_it->get_text(), case_sensitive_search, regex_search);
   });
   
   entry_box.entries.emplace_back(last_replace, [this](const std::string &content){
-    if(notebook.CurrentPage()!=-1)
-      notebook.CurrentSourceView()->replace_forward(content);
+    if(notebook.get_current_page()!=-1)
+      notebook.get_current_view()->replace_forward(content);
   });
   auto replace_entry_it=entry_box.entries.begin();
   replace_entry_it++;
   replace_entry_it->set_placeholder_text("Replace");
   replace_entry_it->signal_key_press_event().connect([this, replace_entry_it](GdkEventKey* event){
     if(event->keyval==GDK_KEY_Return && event->state==GDK_SHIFT_MASK) {
-      if(notebook.CurrentPage()!=-1)
-        notebook.CurrentSourceView()->replace_backward(replace_entry_it->get_text());
+      if(notebook.get_current_page()!=-1)
+        notebook.get_current_view()->replace_backward(replace_entry_it->get_text());
     }
     return false;
   });
@@ -449,35 +450,35 @@ void Window::search_and_replace_entry() {
   });
   
   entry_box.buttons.emplace_back("Find", [this](){
-    if(notebook.CurrentPage()!=-1)
-      notebook.CurrentSourceView()->search_forward();
+    if(notebook.get_current_page()!=-1)
+      notebook.get_current_view()->search_forward();
   });
   entry_box.buttons.emplace_back("Replace", [this, replace_entry_it](){
-    if(notebook.CurrentPage()!=-1)
-      notebook.CurrentSourceView()->replace_forward(replace_entry_it->get_text());
+    if(notebook.get_current_page()!=-1)
+      notebook.get_current_view()->replace_forward(replace_entry_it->get_text());
   });
   entry_box.buttons.emplace_back("Replace all", [this, replace_entry_it](){
-    if(notebook.CurrentPage()!=-1)
-      notebook.CurrentSourceView()->replace_all(replace_entry_it->get_text());
+    if(notebook.get_current_page()!=-1)
+      notebook.get_current_view()->replace_all(replace_entry_it->get_text());
   });
   entry_box.toggle_buttons.emplace_back("Match case");
   entry_box.toggle_buttons.back().set_active(case_sensitive_search);
   entry_box.toggle_buttons.back().on_activate=[this, search_entry_it](){
     case_sensitive_search=!case_sensitive_search;
-    if(notebook.CurrentPage()!=-1)
-      notebook.CurrentSourceView()->search_highlight(search_entry_it->get_text(), case_sensitive_search, regex_search);
+    if(notebook.get_current_page()!=-1)
+      notebook.get_current_view()->search_highlight(search_entry_it->get_text(), case_sensitive_search, regex_search);
   };
   entry_box.toggle_buttons.emplace_back("Use regex");
   entry_box.toggle_buttons.back().set_active(regex_search);
   entry_box.toggle_buttons.back().on_activate=[this, search_entry_it](){
     regex_search=!regex_search;
-    if(notebook.CurrentPage()!=-1)
-      notebook.CurrentSourceView()->search_highlight(search_entry_it->get_text(), case_sensitive_search, regex_search);
+    if(notebook.get_current_page()!=-1)
+      notebook.get_current_view()->search_highlight(search_entry_it->get_text(), case_sensitive_search, regex_search);
   };
   entry_box.signal_hide().connect([this]() {
-    for(int c=0;c<notebook.Pages();c++) {
-      notebook.source_views.at(c)->view->update_search_occurrences=nullptr;
-      notebook.source_views.at(c)->view->search_highlight("", case_sensitive_search, regex_search);
+    for(int c=0;c<notebook.size();c++) {
+      notebook.get_view(c)->update_search_occurrences=nullptr;
+      notebook.get_view(c)->search_highlight("", case_sensitive_search, regex_search);
     }
     search_entry_shown=false;
   });

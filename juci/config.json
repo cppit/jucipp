@@ -19,18 +19,6 @@
             "703": "own",
             "705": "comment"
         },
-        "extensions": [
-            "c",
-            "cc",
-            "cpp",
-            "cxx",
-            "c++",
-            "h",
-            "hh",
-            "hpp",
-            "hxx",
-            "h++"
-        ],
         "visual": {
             "background": "white",
             "background_selected": "blue",

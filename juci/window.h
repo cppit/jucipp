@@ -3,7 +3,8 @@
 
 #include "api.h"
 #include <cstddef>
-
+#include "directories.h"
+#include "entrybox.h"
 
 class Window : public Gtk::Window {
 public:

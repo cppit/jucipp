@@ -16,14 +16,22 @@ namespace sigc {
   SIGC_FUNCTORS_DEDUCE_RESULT_TYPE_WITH_DECLTYPE
 }
 
-bool Source::Config::legal_extension(std::string e) const {
-  std::transform(e.begin(), e.end(),e.begin(), ::tolower);
-  if (find(extensions.begin(), extensions.end(), e) != extensions.end()) {
-    DEBUG("Legal extension");
-    return true;
+Glib::RefPtr<Gsv::Language> Source::guess_language(const std::string &file_path) {
+  auto language_manager=Gsv::LanguageManager::get_default();
+  bool result_uncertain = false;
+  auto content_type = Gio::content_type_guess(file_path, NULL, 0, result_uncertain);
+  if(result_uncertain) {
+    content_type.clear();
   }
-  DEBUG("Ilegal extension");
-  return false;
+  auto language=language_manager->guess_language(file_path, content_type);
+  if(!language) {
+    auto path=boost::filesystem::path(file_path);
+    auto filename=path.filename().string();
+    auto extension=path.extension();
+    if(filename=="CMakeLists.txt")
+      language=language_manager->get_language("cmake");
+  }
+  return language;
 }
 
 //////////////
@@ -54,20 +62,6 @@ file_path(file_path), project_path(project_path) {
   //TODO: either use lambda if possible or create a gtkmm wrapper around search_context (including search_settings):
   //TODO: (gtkmm's Gtk::Object has connect_property_changed, so subclassing this might be an idea)
   g_signal_connect(search_context, "notify::occurrences-count", G_CALLBACK(search_occurrences_updated), this);
-}
-
-bool Source::View::save() {
-  INFO("Source save file");
-  if (file_path != "" && get_buffer()->get_modified()) {
-    std::ofstream file;
-    file.open (file_path);
-    file << get_buffer()->get_text();
-    file.close();
-    get_buffer()->set_modified(false);
-    Singleton::terminal()->print("File saved to: " +file_path+"\n");
-    return true;
-  }
-  return false;
 }
 
 void Source::View::search_occurrences_updated(GtkWidget* widget, GParamSpec* property, gpointer data) {
@@ -241,7 +235,7 @@ bool Source::View::on_key_press_event(GdkEventKey* key) {
 /////////////////////
 //// GenericView ////
 /////////////////////
-Source::GenericView::GenericView(const std::string& file_path, const std::string& project_path) : View(file_path, project_path) {
+Source::GenericView::GenericView(const std::string& file_path, const std::string& project_path, Glib::RefPtr<Gsv::Language> language) : View(file_path, project_path) {
   auto style_scheme_manager=Gsv::StyleSchemeManager::get_default();
   //TODO: add?: style_scheme_manager->prepend_search_path("~/.juci/");
   auto scheme=style_scheme_manager->get_scheme("classic");
@@ -252,20 +246,6 @@ Source::GenericView::GenericView(const std::string& file_path, const std::string
       cout << "TODO, in progress: def:comment in scheme " << scheme->get_name() << " has color " << style->property_foreground() << endl;
   }
   
-  auto language_manager=Gsv::LanguageManager::get_default();
-  bool result_uncertain = false;
-  auto content_type = Gio::content_type_guess(file_path, get_buffer()->get_text(), result_uncertain);
-  if(result_uncertain) {
-    content_type.clear();
-  }
-  auto language=language_manager->guess_language(file_path, content_type);
-  if(!language) {
-    auto path=boost::filesystem::path(file_path);
-    auto filename=path.filename().string();
-    auto extension=path.extension();
-    if(filename=="CMakeLists.txt")
-      language=language_manager->get_language("cmake");
-  }
   if(language) {
     get_source_buffer()->set_language(language);
     Singleton::terminal()->print("Language for file "+file_path+" set to "+language->get_name()+".\n");
@@ -1037,19 +1017,4 @@ Source::ClangViewAutocomplete(file_path, project_path) {
       selection_dialog->show();
     }
   };
-}
-
-////////////////
-//// Source ////
-////////////////
-
-Source::Source(const std::string& file_path, std::string project_path) {
-  if(project_path=="") {
-    project_path=boost::filesystem::path(file_path).parent_path().string();
-  }
-  if (Singleton::Config::source()->legal_extension(file_path.substr(file_path.find_last_of(".") + 1)))
-    view=std::unique_ptr<View>(new ClangView(file_path, project_path));
-  else
-    view=std::unique_ptr<View>(new GenericView(file_path, project_path));
-  INFO("Source Controller with childs constructed");
 }

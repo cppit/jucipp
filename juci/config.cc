@@ -21,41 +21,28 @@ void MainConfig::GenerateSource() {
   auto source_json = cfg_.get_child("source");
   auto syntax_json = source_json.get_child("syntax");
   auto colors_json = source_json.get_child("colors");
-  auto extensions_json = source_json.get_child("extensions");
   auto visual_json = source_json.get_child("visual");
   for (auto &i : visual_json) {
-    if (i.first == "background") {
+    if (i.first == "background")
 	     source_cfg->background = i.second.get_value<std::string>();
-    }
-    else if (i.first == "background_selected") {
+    else if (i.first == "background_selected")
        source_cfg->background_selected = i.second.get_value<std::string>();
-    }
-    else if (i.first == "background_tooltips") {
+    else if (i.first == "background_tooltips")
 	     source_cfg->background_tooltips = i.second.get_value<std::string>();
-    }
-    else if (i.first == "show_line_numbers") {
+    else if (i.first == "show_line_numbers")
       source_cfg->show_line_numbers = i.second.get_value<std::string>() == "1" ? true : false;
-    }
-    else if (i.first == "highlight_current_line") {
+    else if (i.first == "highlight_current_line")
       source_cfg->highlight_current_line = i.second.get_value<std::string>() == "1" ? true : false;
-    }
-    else if (i.first == "font") {
+    else if (i.first == "font")
       source_cfg->font = i.second.get_value<std::string>();
-    }
   }
   source_cfg->tab_size = source_json.get<unsigned>("tab_size");
-  for (unsigned c = 0; c < source_cfg->tab_size; c++) {
+  for (unsigned c = 0; c < source_cfg->tab_size; c++)
     source_cfg->tab+=" ";
-  }
-  for (auto &i : colors_json) {
+  for (auto &i : colors_json)
     source_cfg->tags[i.first]=i.second.get_value<std::string>();
-  }
-  for (auto &i : syntax_json) {
+  for (auto &i : syntax_json)
     source_cfg->types[i.first]=i.second.get_value<std::string>();
-  }
-  for (auto &i : extensions_json) {
-    source_cfg->extensions.emplace_back(i.second.get_value<std::string>());
-  }
   DEBUG("Source cfg fetched");
 }
 
@@ -64,12 +51,10 @@ void MainConfig::GenerateTerminalCommands() {
   boost::property_tree::ptree source_json = cfg_.get_child("project");
   boost::property_tree::ptree compile_commands_json = source_json.get_child("compile_commands");
   boost::property_tree::ptree run_commands_json = source_json.get_child("run_commands");
-  for (auto &i : compile_commands_json) {
+  for (auto &i : compile_commands_json)
     terminal_cfg->compile_commands.emplace_back(i.second.get_value<std::string>());
-  }
-  for (auto &i : run_commands_json) {
+  for (auto &i : run_commands_json)
     terminal_cfg->run_command=(i.second.get_value<std::string>()); //TODO: run_commands array->one run_command?
-  }
 }
 
 void MainConfig::GenerateKeybindings() {

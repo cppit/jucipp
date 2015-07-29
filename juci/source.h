@@ -15,16 +15,15 @@
 #include "selectiondialog.h"
 #include <set>
 
-class Source {
-public:
+namespace Source {
+  Glib::RefPtr<Gsv::Language> guess_language(const std::string &file_path);
+  
   class Config {
   public:
-    bool legal_extension(std::string e) const ;
     unsigned tab_size;
     bool show_line_numbers, highlight_current_line;
     std::string tab, background, background_selected, background_tooltips, font;
     char tab_char=' ';
-    std::vector<std::string> extensions;
     std::unordered_map<std::string, std::string> tags, types;
   };  // class Config
 
@@ -49,8 +48,6 @@ public:
   public:
     View(const std::string& file_path, const std::string& project_path);
     ~View();
-    
-    bool save();
     
     void search_highlight(const std::string &text, bool case_sensitive, bool regex);
     std::function<void(int number)> update_search_occurrences;
@@ -82,7 +79,7 @@ public:
   
   class GenericView : public View {
   public:
-    GenericView(const std::string& file_path, const std::string& project_path);
+    GenericView(const std::string& file_path, const std::string& project_path, Glib::RefPtr<Gsv::Language> language);
   };
   
   class ClangViewParse : public View {
@@ -167,9 +164,5 @@ public:
     ClangView(const std::string& file_path, const std::string& project_path):
       ClangViewRefactor(file_path, project_path) {}
   };
-
-  Source(const std::string& file_path, std::string project_path);
-  
-  std::unique_ptr<Source::View> view;
 };  // class Source
 #endif  // JUCI_SOURCE_H_
