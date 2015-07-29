@@ -15,6 +15,7 @@ Window::Window() : notebook(), plugin_api(&notebook), box(Gtk::ORIENTATION_VERTI
   //TODO: see TODO Window::on_directory_navigation
   directories.m_TreeView.signal_row_activated().connect(sigc::mem_fun(*this, &Window::on_directory_navigation));
   auto menu=Singleton::menu();
+  INFO("Adding actions to menu");
   menu->action_group->add(Gtk::Action::create("FileQuit", "Quit juCi++"), Gtk::AccelKey(menu->key_map["quit"]), [this]() {
     hide();
   });
@@ -145,9 +146,10 @@ Window::Window() : notebook(), plugin_api(&notebook), box(Gtk::ORIENTATION_VERTI
       execute.detach();
     }
   });
-
+  INFO("Done adding actions to menu, building menu:")
   add_accel_group(menu->ui_manager->get_accel_group());
   menu->build();
+  INFO("Menu build")
   box.pack_start(menu->get_widget(), Gtk::PACK_SHRINK);
   box.pack_start(entry_box, Gtk::PACK_SHRINK);
   

@@ -4,6 +4,7 @@
 #include <string>
 #include <unordered_map>
 #include <gtkmm.h>
+#include "logging.h"
 
 class Menu {
 public:
