@@ -3,24 +3,40 @@
 #include "logging.h"
 #include <fstream>
 #include <string>
+#include <vector>
 #include <exception>
-
+#include "files.h"
 
 MainConfig::MainConfig() {
-  INFO("Reading config file");
-  boost::property_tree::json_parser::read_json(Singleton::config_dir() + "config.json", cfg_);
-  INFO("Config file read");
+  find_or_create_config_files();
+  boost::property_tree::json_parser::read_json(Singleton::config_dir() + "config.json", cfg);
   GenerateSource();
   GenerateKeybindings();
   GenerateDirectoryFilter();
   GenerateTerminalCommands();
 }
 
+void MainConfig::find_or_create_config_files() {
+  std::vector<std::string> files = {"config.json", "menu.xml", "plugins.py"};
+  boost::filesystem::create_directories(boost::filesystem::path(Singleton::config_dir()));
+  for (auto &file : files) {
+    auto path = boost::filesystem::path(Singleton::config_dir() + file);
+    if (!boost::filesystem::is_regular_file(path)) {
+      std::ofstream output;
+      output.open(path.string());
+      if (file == "config.json") output << configjson;
+      if (file == "plugins.py") output << pluginspy;
+      if (file == "menu.xml") output << menuxml;
+      output.close();
+    }
+  }
+}
+
 void MainConfig::GenerateSource() {
   auto source_cfg=Singleton::Config::source();
   DEBUG("Fetching source cfg");
   // boost::property_tree::ptree
-  auto source_json = cfg_.get_child("source");
+  auto source_json = cfg.get_child("source");
   auto syntax_json = source_json.get_child("syntax");
   auto colors_json = source_json.get_child("colors");
   auto extensions_json = source_json.get_child("extensions");
@@ -63,7 +79,7 @@ void MainConfig::GenerateSource() {
 
 void MainConfig::GenerateTerminalCommands() {
   auto terminal_cfg=Singleton::Config::terminal();
-  boost::property_tree::ptree source_json = cfg_.get_child("project");
+  boost::property_tree::ptree source_json = cfg.get_child("project");
   boost::property_tree::ptree compile_commands_json = source_json.get_child("compile_commands");
   boost::property_tree::ptree run_commands_json = source_json.get_child("run_commands");
   for (auto &i : compile_commands_json) {
@@ -87,7 +103,7 @@ void MainConfig::GenerateKeybindings() {
     while (getline(input, line))
       menu->ui += line;
   }
-  boost::property_tree::ptree keys_json = cfg_.get_child("keybindings");
+  boost::property_tree::ptree keys_json = cfg.get_child("keybindings");
   for (auto &i : keys_json) {
     auto key=i.second.get_value<std::string>();
     menu->key_map[i.first] = key;
@@ -98,7 +114,7 @@ void MainConfig::GenerateKeybindings() {
 void MainConfig::GenerateDirectoryFilter() {
   auto dir_cfg=Singleton::Config::directories();
   DEBUG("Fetching directory filter");
-  boost::property_tree::ptree dir_json = cfg_.get_child("directoryfilter");
+  boost::property_tree::ptree dir_json = cfg.get_child("directoryfilter");
   boost::property_tree::ptree ignore_json = dir_json.get_child("ignore");
   boost::property_tree::ptree except_json = dir_json.get_child("exceptions");
   for ( auto &i : except_json )

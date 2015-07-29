@@ -119,6 +119,5 @@ if(${validation})
     RUNTIME DESTINATION ${bin_install_path}
     LIBRARY DESTINATION ${lib_install_path}
     )
-  
 endif(${validation})
 
