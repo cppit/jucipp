@@ -6,87 +6,192 @@ namespace sigc {
   SIGC_FUNCTORS_DEDUCE_RESULT_TYPE_WITH_DECLTYPE
 }
 
-Window::Window() :
-  window_box_(Gtk::ORIENTATION_VERTICAL) {
+Window::Window() : notebook(), plugin_api(&notebook), box(Gtk::ORIENTATION_VERTICAL) {
   INFO("Create Window");
   set_title("juCi++");
   set_default_size(600, 400);
   set_events(Gdk::POINTER_MOTION_MASK|Gdk::FOCUS_CHANGE_MASK|Gdk::SCROLL_MASK);
-  add(window_box_);
+  add(box);
+  //TODO: see TODO Window::on_directory_navigation
+  directories.m_TreeView.signal_row_activated().connect(sigc::mem_fun(*this, &Window::on_directory_navigation));
   auto menu=Singleton::menu();
   menu->action_group->add(Gtk::Action::create("FileQuit", "Quit juCi++"), Gtk::AccelKey(menu->key_map["quit"]), [this]() {
     hide();
   });
+  menu->action_group->add(Gtk::Action::create("FileNewFile", "New file"), Gtk::AccelKey(menu->key_map["new_file"]), [this]() {
+    new_file_entry();
+  });
   menu->action_group->add(Gtk::Action::create("FileOpenFile", "Open file"), Gtk::AccelKey(menu->key_map["open_file"]), [this]() {
-    OnOpenFile();
+    open_file_dialog();
   });
   menu->action_group->add(Gtk::Action::create("FileOpenFolder", "Open folder"), Gtk::AccelKey(menu->key_map["open_folder"]), [this]() {
-    OnFileOpenFolder();
+    open_folder_dialog();
   });
   menu->action_group->add(Gtk::Action::create("FileSaveAs", "Save as"), Gtk::AccelKey(menu->key_map["save_as"]), [this]() {
-    SaveFileAs();
+    save_file_dialog();
   });
 
   menu->action_group->add(Gtk::Action::create("FileSave", "Save"), Gtk::AccelKey(menu->key_map["save"]), [this]() {
-    SaveFile();
+    notebook.CurrentSourceView()->save();
+  });
+  
+  menu->action_group->add(Gtk::Action::create("EditCopy", "Copy"), Gtk::AccelKey(menu->key_map["edit_copy"]), [this]() {
+    auto widget=get_focus();
+    if(auto entry=dynamic_cast<Gtk::Entry*>(widget))
+      entry->copy_clipboard();
+    else if(auto text_view=dynamic_cast<Gtk::TextView*>(widget))
+        text_view->get_buffer()->copy_clipboard(Gtk::Clipboard::get());
+  });
+  menu->action_group->add(Gtk::Action::create("EditCut", "Cut"), Gtk::AccelKey(menu->key_map["edit_cut"]), [this]() {
+    auto widget=get_focus();
+    if(auto entry=dynamic_cast<Gtk::Entry*>(widget))
+      entry->cut_clipboard();
+    else {
+      if (notebook.Pages() != 0)
+        notebook.CurrentSourceView()->get_buffer()->cut_clipboard(Gtk::Clipboard::get());
+    }
+  });
+  menu->action_group->add(Gtk::Action::create("EditPaste", "Paste"), Gtk::AccelKey(menu->key_map["edit_paste"]), [this]() {
+    auto widget=get_focus();
+    if(auto entry=dynamic_cast<Gtk::Entry*>(widget))
+      entry->paste_clipboard();
+    else {
+      if (notebook.Pages() != 0)
+        notebook.CurrentSourceView()->get_buffer()->paste_clipboard(Gtk::Clipboard::get());
+    }
+  });
+  menu->action_group->add(Gtk::Action::create("EditFind", "Find"), Gtk::AccelKey(menu->key_map["edit_find"]), [this]() {
+    search_and_replace_entry();
+  });
+  
+  menu->action_group->add(Gtk::Action::create("SourceRename", "Rename function/variable"), Gtk::AccelKey(menu->key_map["source_rename"]), [this]() {
+    entry_box.clear();
+    if(notebook.CurrentPage()!=-1) {
+      if(notebook.CurrentSourceView()->get_token && notebook.CurrentSourceView()->get_token_name) {
+        auto token=std::make_shared<std::string>(notebook.CurrentSourceView()->get_token());
+        if(token->size()>0 && notebook.CurrentSourceView()->get_token_name) {
+          auto token_name=std::make_shared<std::string>(notebook.CurrentSourceView()->get_token_name());
+          for(int c=0;c<notebook.Pages();c++) {
+            if(notebook.source_views.at(c)->view->tag_similar_tokens) {
+              notebook.source_views.at(c)->view->tag_similar_tokens(*token);
+            }
+          }
+          entry_box.labels.emplace_back();
+          auto label_it=entry_box.labels.begin();
+          label_it->update=[label_it](int state, const std::string& message){
+            label_it->set_text("Warning: only opened and parsed tabs will have its content renamed, and modified files will be saved.");
+          };
+          label_it->update(0, "");
+          entry_box.entries.emplace_back(*token_name, [this, token_name, token](const std::string& content){
+            if(notebook.CurrentPage()!=-1 && content!=*token_name) {
+              for(int c=0;c<notebook.Pages();c++) {
+                if(notebook.source_views.at(c)->view->rename_similar_tokens) {
+                  auto number=notebook.source_views.at(c)->view->rename_similar_tokens(*token, content);
+                  if(number>0) {
+                    Singleton::terminal()->print("Replaced "+std::to_string(number)+" occurrences in file "+notebook.source_views.at(c)->view->file_path+"\n");
+                    notebook.source_views.at(c)->view->save();
+                  }
+                }
+              }
+              entry_box.hide();
+            }
+          });
+          auto entry_it=entry_box.entries.begin();
+          entry_box.buttons.emplace_back("Rename", [this, entry_it](){
+            entry_it->activate();
+          });
+          entry_box.show();
+        }
+      }
+    }
   });
   
   menu->action_group->add(Gtk::Action::create("ProjectCompileAndRun", "Compile And Run"), Gtk::AccelKey(menu->key_map["compile_and_run"]), [this]() {
-	  SaveFile();
-	  if (running.try_lock()) {
-	    std::thread execute([this]() {
-		std::string path = Singleton::notebook()->CurrentSourceView()->file_path;
-		size_t pos = path.find_last_of("/\\");
-		if(pos != std::string::npos) {
-		  path.erase(path.begin()+pos,path.end());
-		  Singleton::terminal()->SetFolderCommand(path);
-		}
-		Singleton::terminal()->Compile();
-		std::string executable = Singleton::notebook()->directories.
-		  GetCmakeVarValue(path,"add_executable");
-		Singleton::terminal()->Run(executable);
-                running.unlock();
-	      });
-	    execute.detach();
-	  }
-	});
+    if(notebook.CurrentPage()==-1)
+      return;
+    notebook.CurrentSourceView()->save();
+    if (running.try_lock()) {
+      std::thread execute([this]() {
+      	std::string path = notebook.CurrentSourceView()->file_path;
+      	size_t pos = path.find_last_of("/\\");
+      	if(pos != std::string::npos) {
+      	  path.erase(path.begin()+pos,path.end());
+      	  Singleton::terminal()->SetFolderCommand(path);
+      	}
+      	Singleton::terminal()->Compile();
+      	std::string executable = directories.GetCmakeVarValue(path,"add_executable");
+      	Singleton::terminal()->Run(executable);
+        running.unlock();
+      });
+      execute.detach();
+    }
+  });
    
   menu->action_group->add(Gtk::Action::create("ProjectCompile", "Compile"), Gtk::AccelKey(menu->key_map["compile"]), [this]() {
-    SaveFile();
+    if(notebook.CurrentPage()==-1)
+      return;
+    notebook.CurrentSourceView()->save();
     if (running.try_lock()) {
       std::thread execute([this]() {		  
-          std::string path = Singleton::notebook()->CurrentSourceView()->file_path;
-          size_t pos = path.find_last_of("/\\");
-          if(pos != std::string::npos){
-            path.erase(path.begin()+pos,path.end());
-            Singleton::terminal()->SetFolderCommand(path);
-          }
-          Singleton::terminal()->Compile();
-          running.unlock();
-        });
+        std::string path = notebook.CurrentSourceView()->file_path;
+        size_t pos = path.find_last_of("/\\");
+        if(pos != std::string::npos){
+          path.erase(path.begin()+pos,path.end());
+          Singleton::terminal()->SetFolderCommand(path);
+        }
+        Singleton::terminal()->Compile();
+        running.unlock();
+      });
       execute.detach();
     }
   });
 
   add_accel_group(menu->ui_manager->get_accel_group());
   menu->build();
-
-  window_box_.pack_start(menu->get_widget(), Gtk::PACK_SHRINK);
-
-  window_box_.pack_start(Singleton::notebook()->entry_box, Gtk::PACK_SHRINK);
-  paned_.set_position(300);
-  paned_.pack1(Singleton::notebook()->view, true, false);
-  paned_.pack2(Singleton::terminal()->view, true, true);
-  window_box_.pack_end(paned_);
+  box.pack_start(menu->get_widget(), Gtk::PACK_SHRINK);
+  box.pack_start(entry_box, Gtk::PACK_SHRINK);
+  
+  directory_and_notebook_panes.pack1(directories.widget(), true, true); //TODO: should be pack1(directories, ...) Clean up directories.*
+  directory_and_notebook_panes.pack2(notebook);
+  directory_and_notebook_panes.set_position(120);
+  
+  vpaned.set_position(300);
+  vpaned.pack1(directory_and_notebook_panes, true, false);
+  vpaned.pack2(Singleton::terminal()->view, true, true);
+  box.pack_end(vpaned);
   show_all_children();
   
-  Singleton::notebook()->entry_box.signal_show().connect([this](){
+  entry_box.signal_show().connect([this](){
     std::vector<Gtk::Widget*> focus_chain;
-    focus_chain.emplace_back(&Singleton::notebook()->entry_box);
-    window_box_.set_focus_chain(focus_chain);
+    focus_chain.emplace_back(&entry_box);
+    box.set_focus_chain(focus_chain);
   });
-  Singleton::notebook()->entry_box.signal_hide().connect([this](){
-    window_box_.unset_focus_chain();
+  entry_box.signal_hide().connect([this](){
+    box.unset_focus_chain();
+  });
+  entry_box.signal_hide().connect([this]() {
+    if(notebook.CurrentPage()!=-1) {
+      notebook.CurrentSourceView()->grab_focus();
+    }
+  });
+  notebook.signal_switch_page().connect([this](Gtk::Widget* page, guint page_num) {
+    if(search_entry_shown && entry_box.labels.size()>0 && notebook.CurrentPage()!=-1) {
+      notebook.CurrentSourceView()->update_search_occurrences=[this](int number){
+        entry_box.labels.begin()->update(0, std::to_string(number));
+      };
+      notebook.CurrentSourceView()->search_highlight(last_search, case_sensitive_search, regex_search);
+    }
+    
+    if(notebook.CurrentPage()!=-1) {
+      if(auto menu_item=dynamic_cast<Gtk::MenuItem*>(Singleton::menu()->ui_manager->get_widget("/MenuBar/SourceMenu/SourceGotoDeclaration")))
+        menu_item->set_sensitive((bool)notebook.CurrentSourceView()->get_declaration_location);
+      
+      if(auto menu_item=dynamic_cast<Gtk::MenuItem*>(Singleton::menu()->ui_manager->get_widget("/MenuBar/SourceMenu/SourceGotoMethod")))
+        menu_item->set_sensitive((bool)notebook.CurrentSourceView()->goto_method);
+      
+      if(auto menu_item=dynamic_cast<Gtk::MenuItem*>(Singleton::menu()->ui_manager->get_widget("/MenuBar/SourceMenu/SourceRename")))
+        menu_item->set_sensitive((bool)notebook.CurrentSourceView()->rename_similar_tokens);
+    }
   });
   
   INFO("Window created");
@@ -94,7 +199,7 @@ Window::Window() :
 
 bool Window::on_key_press_event(GdkEventKey *event) {
   if(event->keyval==GDK_KEY_Escape)
-    Singleton::notebook()->entry_box.hide();
+    entry_box.hide();
 #ifdef __APPLE__ //For Apple's Command-left, right, up, down keys
   else if((event->state & GDK_META_MASK)>0) {
     if(event->keyval==GDK_KEY_Left) {
@@ -139,17 +244,52 @@ bool Window::on_delete_event (GdkEventAny *event) {
 }
 
 void Window::hide() {
-  auto size=Singleton::notebook()->source_views.size();
+  auto size=notebook.source_views.size();
   for(size_t c=0;c<size;c++) {
-    if(!Singleton::notebook()->close_current_page())
+    if(!notebook.close_current_page())
       return;
   }
   Gtk::Window::hide();
 }
 
-void Window::OnFileOpenFolder() {
-  Gtk::FileChooserDialog dialog("Please choose a folder",
-                                Gtk::FILE_CHOOSER_ACTION_SELECT_FOLDER);
+void Window::new_file_entry() {
+  entry_box.clear();
+  entry_box.entries.emplace_back("untitled", [this](const std::string& content){
+    std::string filename=content;
+    if(filename!="") {
+      if(notebook.project_path!="" && !boost::filesystem::path(filename).is_absolute())
+        filename=notebook.project_path+"/"+filename;
+      boost::filesystem::path p(filename);
+      if(boost::filesystem::exists(p)) {
+        Singleton::terminal()->print("Error: "+p.string()+" already exists.\n");
+      }
+      else {
+        std::ofstream f(p.string().c_str());
+        if(f) {
+          notebook.open_file(boost::filesystem::canonical(p).string());
+          Singleton::terminal()->print("New file "+p.string()+" created.\n");
+          if(notebook.project_path!="")
+            directories.open_folder(notebook.project_path); //TODO: Do refresh instead
+        }
+        else {
+          Singleton::terminal()->print("Error: could not create new file "+p.string()+".\n");
+        }
+        f.close();
+      }
+    }
+    entry_box.hide();
+  });
+  auto entry_it=entry_box.entries.begin();
+  entry_box.buttons.emplace_back("Create file", [this, entry_it](){
+    entry_it->activate();
+  });
+  entry_box.show();
+}
+
+void Window::open_folder_dialog() {
+  Gtk::FileChooserDialog dialog("Please choose a folder", Gtk::FILE_CHOOSER_ACTION_SELECT_FOLDER);
+  if(notebook.project_path.size()>0)
+    gtk_file_chooser_set_current_folder((GtkFileChooser*)dialog.gobj(), notebook.project_path.c_str());
   dialog.set_transient_for(*this);
   //Add response buttons the the dialog:
   dialog.add_button("_Cancel", Gtk::RESPONSE_CANCEL);
@@ -157,31 +297,18 @@ void Window::OnFileOpenFolder() {
 
   int result = dialog.run();
 
-  //Handle the response:
-  switch(result)
-    {
-    case(Gtk::RESPONSE_OK):
-      {
-        std::string project_path=dialog.get_filename();
-        Singleton::notebook()->project_path=project_path;
-        Singleton::notebook()->directories.open_folder(project_path);
-        break;
-      }
-    case(Gtk::RESPONSE_CANCEL):
-      {
-        break;
-      }
-    default:
-      {
-        break;
-      }
-    }
+  if(result==Gtk::RESPONSE_OK) {
+    std::string project_path=dialog.get_filename();
+    notebook.project_path=project_path;
+    directories.open_folder(project_path);
+  }
 }
 
-
-void Window::OnOpenFile() {
-  Gtk::FileChooserDialog dialog("Please choose a file",
-                                Gtk::FILE_CHOOSER_ACTION_OPEN);
+void Window::open_file_dialog() {
+  Gtk::FileChooserDialog dialog("Please choose a file", Gtk::FILE_CHOOSER_ACTION_OPEN);
+  if(notebook.project_path.size()>0)
+    gtk_file_chooser_set_current_folder((GtkFileChooser*)dialog.gobj(), notebook.project_path.c_str());
+  std::cout << notebook.project_path << std::endl;
   dialog.set_transient_for(*this);
   dialog.set_position(Gtk::WindowPosition::WIN_POS_CENTER_ALWAYS);
 
@@ -209,31 +336,151 @@ void Window::OnOpenFile() {
 
   int result = dialog.run();
 
-  switch (result) {
-  case(Gtk::RESPONSE_OK): {
+  if(result==Gtk::RESPONSE_OK) {
     std::string path = dialog.get_filename();
-    Singleton::notebook()->open_file(path);
-    break;
-  }
-  case(Gtk::RESPONSE_CANCEL): {
-    break;
-  }
-  default: {
-    break;
-  }
+    notebook.open_file(path);
   }
 }
 
-//TODO: Move to notebook. Maybe also replace bool with void?
-bool Window::SaveFile() {
-  return Singleton::notebook()->CurrentSourceView()->save();
-}
-bool Window::SaveFileAs() {
-  if(Singleton::notebook()->OnSaveFile(Singleton::notebook()->OnSaveFileAs())){
-    Singleton::terminal()->print("File saved to: " +
-			   Singleton::notebook()->CurrentSourceView()->file_path+"\n");
-    return true;
+void Window::save_file_dialog() {
+  INFO("Save file dialog");
+  Gtk::FileChooserDialog dialog(*this, "Please choose a file", Gtk::FILE_CHOOSER_ACTION_SAVE);
+  gtk_file_chooser_set_filename((GtkFileChooser*)dialog.gobj(), notebook.CurrentSourceView()->file_path.c_str());
+  dialog.set_position(Gtk::WindowPosition::WIN_POS_CENTER_ALWAYS);
+  dialog.add_button("_Cancel", Gtk::RESPONSE_CANCEL);
+  dialog.add_button("_Save", Gtk::RESPONSE_OK);
+
+  int result = dialog.run();
+  if(result==Gtk::RESPONSE_OK) {
+    auto path = dialog.get_filename();
+    if(path.size()>0) {
+      std::ofstream file(path);
+      if(file) {
+        file << notebook.CurrentSourceView()->get_buffer()->get_text();
+        file.close();
+        notebook.open_file(path);
+        Singleton::terminal()->print("File saved to: " + notebook.CurrentSourceView()->file_path+"\n");
+        if(notebook.project_path!="")
+          directories.open_folder(notebook.project_path); //TODO: Do refresh instead
+      }
+      else
+        Singleton::terminal()->print("Error saving file\n");
+    }
   }
-  Singleton::terminal()->print("File not saved");
-  return false;
+}
+
+//TODO: move most of it to Directories
+void Window::on_directory_navigation(const Gtk::TreeModel::Path& path, Gtk::TreeViewColumn* column) {
+  INFO("Directory navigation");
+  Gtk::TreeModel::iterator iter = directories.m_refTreeModel->get_iter(path);
+  if (iter) {
+    Gtk::TreeModel::Row row = *iter;
+    std::string upath = Glib::ustring(row[directories.view().m_col_path]);
+    boost::filesystem::path fs_path(upath);
+    if (boost::filesystem::is_directory(fs_path)) {
+      directories.m_TreeView.row_expanded(path) ?
+        directories.m_TreeView.collapse_row(path) :
+        directories.m_TreeView.expand_row(path, false);
+    } else {
+      std::stringstream sstm;
+      sstm << row[directories.view().m_col_path];
+      std::string file = sstm.str();
+      notebook.open_file(file);
+    }
+  }
+}
+
+void Window::search_and_replace_entry() {
+  entry_box.clear();
+  entry_box.labels.emplace_back();
+  auto label_it=entry_box.labels.begin();
+  label_it->update=[label_it](int state, const std::string& message){
+    if(state==0) {
+      int number=stoi(message);
+      if(number==0)
+        label_it->set_text("");
+      else if(number==1)
+        label_it->set_text("1 result found");
+      else if(number>1)
+        label_it->set_text(std::to_string(number)+" results found");
+    }
+  };
+  entry_box.entries.emplace_back(last_search, [this](const std::string& content){
+    if(notebook.CurrentPage()!=-1)
+      notebook.CurrentSourceView()->search_forward();
+  });
+  auto search_entry_it=entry_box.entries.begin();
+  search_entry_it->set_placeholder_text("Find");
+  if(notebook.CurrentPage()!=-1) {
+    notebook.CurrentSourceView()->update_search_occurrences=[label_it](int number){
+      label_it->update(0, std::to_string(number));
+    };
+    notebook.CurrentSourceView()->search_highlight(search_entry_it->get_text(), case_sensitive_search, regex_search);
+  }
+  search_entry_it->signal_key_press_event().connect([this](GdkEventKey* event){
+    if(event->keyval==GDK_KEY_Return && event->state==GDK_SHIFT_MASK) {
+      if(notebook.CurrentPage()!=-1)
+        notebook.CurrentSourceView()->search_backward();
+    }
+    return false;
+  });
+  search_entry_it->signal_changed().connect([this, search_entry_it](){
+    last_search=search_entry_it->get_text();
+    if(notebook.CurrentPage()!=-1)
+      notebook.CurrentSourceView()->search_highlight(search_entry_it->get_text(), case_sensitive_search, regex_search);
+  });
+  
+  entry_box.entries.emplace_back(last_replace, [this](const std::string &content){
+    if(notebook.CurrentPage()!=-1)
+      notebook.CurrentSourceView()->replace_forward(content);
+  });
+  auto replace_entry_it=entry_box.entries.begin();
+  replace_entry_it++;
+  replace_entry_it->set_placeholder_text("Replace");
+  replace_entry_it->signal_key_press_event().connect([this, replace_entry_it](GdkEventKey* event){
+    if(event->keyval==GDK_KEY_Return && event->state==GDK_SHIFT_MASK) {
+      if(notebook.CurrentPage()!=-1)
+        notebook.CurrentSourceView()->replace_backward(replace_entry_it->get_text());
+    }
+    return false;
+  });
+  replace_entry_it->signal_changed().connect([this, replace_entry_it](){
+    last_replace=replace_entry_it->get_text();
+  });
+  
+  entry_box.buttons.emplace_back("Find", [this](){
+    if(notebook.CurrentPage()!=-1)
+      notebook.CurrentSourceView()->search_forward();
+  });
+  entry_box.buttons.emplace_back("Replace", [this, replace_entry_it](){
+    if(notebook.CurrentPage()!=-1)
+      notebook.CurrentSourceView()->replace_forward(replace_entry_it->get_text());
+  });
+  entry_box.buttons.emplace_back("Replace all", [this, replace_entry_it](){
+    if(notebook.CurrentPage()!=-1)
+      notebook.CurrentSourceView()->replace_all(replace_entry_it->get_text());
+  });
+  entry_box.toggle_buttons.emplace_back("Match case");
+  entry_box.toggle_buttons.back().set_active(case_sensitive_search);
+  entry_box.toggle_buttons.back().on_activate=[this, search_entry_it](){
+    case_sensitive_search=!case_sensitive_search;
+    if(notebook.CurrentPage()!=-1)
+      notebook.CurrentSourceView()->search_highlight(search_entry_it->get_text(), case_sensitive_search, regex_search);
+  };
+  entry_box.toggle_buttons.emplace_back("Use regex");
+  entry_box.toggle_buttons.back().set_active(regex_search);
+  entry_box.toggle_buttons.back().on_activate=[this, search_entry_it](){
+    regex_search=!regex_search;
+    if(notebook.CurrentPage()!=-1)
+      notebook.CurrentSourceView()->search_highlight(search_entry_it->get_text(), case_sensitive_search, regex_search);
+  };
+  entry_box.signal_hide().connect([this]() {
+    for(int c=0;c<notebook.Pages();c++) {
+      notebook.source_views.at(c)->view->update_search_occurrences=nullptr;
+      notebook.source_views.at(c)->view->search_highlight("", case_sensitive_search, regex_search);
+    }
+    search_entry_shown=false;
+  });
+  search_entry_shown=true;
+  entry_box.show();
 }

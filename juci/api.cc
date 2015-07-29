@@ -3,13 +3,13 @@
 #include "singletons.h"
 
 Menu* PluginApi::menu_=nullptr;
-Notebook::Controller* PluginApi::notebook_=nullptr;
+Notebook* PluginApi::notebook=nullptr;
 /////////////////////////////
 //// API ServiceProvider ////
 /////////////////////////////
-PluginApi::PluginApi() {
+PluginApi::PluginApi(Notebook* notebook) {
   DEBUG("Adding pointers for the API");
-  notebook_ = Singleton::notebook();
+  this->notebook = notebook;
   menu_ = Singleton::menu();
   DEBUG("Initiating plugins(from plugins.py)..");
 #ifndef __APPLE__
@@ -211,7 +211,7 @@ void libjuci::IterToWordEnd(Gtk::TextIter &iter) {
 }
 
 Glib::RefPtr<Gtk::TextBuffer> libjuci::BufferFromNotebook() {
-  return Glib::RefPtr<Gtk::TextBuffer>(PluginApi::notebook_
+  return Glib::RefPtr<Gtk::TextBuffer>(PluginApi::notebook
                                        ->CurrentSourceView()->get_buffer());
 }
 
