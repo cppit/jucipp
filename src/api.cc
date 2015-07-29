@@ -18,12 +18,6 @@ PluginApi::PluginApi(Notebook* notebook) {
   DEBUG("Plugins initiated..");
 }
 
-std::string PluginApi::ProjectPath() {
-  int MAXPATHLEN = 50;
-  char temp[MAXPATHLEN];
-  return ( getcwd(temp, MAXPATHLEN) ? std::string( temp ) : std::string("") );
-}
-
 void PluginApi::ReplaceWord(std::string word) {
   Glib::RefPtr<Gtk::TextBuffer> buffer = libjuci::BufferFromNotebook();
   Gtk::TextIter word_start = libjuci::IterFromNotebook();
@@ -57,7 +51,8 @@ std::string PluginApi::GetWord() {
 }
 
 void PluginApi::InitPlugins() {
-  libjuci::LoadPlugin(ProjectPath()+"/plugins.py");
+  std::string path(getenv("HOME"));
+  libjuci::LoadPlugin(path + "/.juci/config/plugins.py");
 }
 
 void PluginApi::AddMenuElement(std::string plugin_name) {
