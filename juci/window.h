@@ -9,19 +9,17 @@
 class Window : public Gtk::Window {
 public:
   Window();
-  // std::string  OnSaveFileAs();
   Gtk::Box window_box_;
-  virtual ~Window() { }
-
   MainConfig main_config;
   PluginApi api;
 protected:
   bool on_key_press_event(GdkEventKey *event);
+  bool on_delete_event (GdkEventAny *event);
 private:
   std::mutex running;
   Gtk::VPaned paned_;
   //signal handlers
-  void OnWindowHide();
+  void hide();
   void OnOpenFile();
   void OnFileOpenFolder();
   bool SaveFile();

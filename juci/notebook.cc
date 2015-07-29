@@ -60,7 +60,7 @@ void Notebook::Controller::CreateKeybindings() {
     OnFileNewFile();
   });
   menu->action_group->add(Gtk::Action::create("WindowCloseTab", "Close tab"), Gtk::AccelKey(menu->key_map["close_tab"]), [this]() {
-    OnCloseCurrentPage();
+    close_current_page();
   });
   menu->action_group->add(Gtk::Action::create("EditFind", "Find"), Gtk::AccelKey(menu->key_map["edit_find"]), [this]() {
     show_search_and_replace();
@@ -317,11 +317,12 @@ void Notebook::Controller::open_file(std::string path) {
   });
 }
 
-void Notebook::Controller::OnCloseCurrentPage() {
+bool Notebook::Controller::close_current_page() {
   INFO("Notebook close page");
   if (Pages() != 0) {
     if(CurrentSourceView()->get_buffer()->get_modified()){
-      AskToSaveDialog();
+      if(!save_dialog())
+        return false;
     }
     int page = CurrentPage();
     view.notebook.remove_page(page);
@@ -329,6 +330,7 @@ void Notebook::Controller::OnCloseCurrentPage() {
     scrolled_windows.erase(scrolled_windows.begin()+page);
     hboxes.erase(hboxes.begin()+page);
   }
+  return true;
 }
 void Notebook::Controller::OnFileNewFile() {
   entry_box.clear();
@@ -444,38 +446,20 @@ std::string Notebook::Controller::OnSaveFileAs(){
   return "";
 }
 
-void Notebook::Controller::AskToSaveDialog() {
-  INFO("AskToSaveDialog");
-  DEBUG("AskToSaveDialog: Finding file path");
-  Gtk::MessageDialog dialog((Gtk::Window&)(*view.get_toplevel()), "Save file!",
-			    false, Gtk::MESSAGE_QUESTION, Gtk::BUTTONS_YES_NO);
-  dialog.set_secondary_text(
-          "Do you want to save: " +
-			    CurrentSourceView()->file_path+" ?");
-  DEBUG("AskToSaveDialog: run dialog");
+bool Notebook::Controller::save_dialog() {
+  INFO("Notebook::Controller::save_dialog");
+  Gtk::MessageDialog dialog((Gtk::Window&)(*view.get_toplevel()), "Save file!", false, Gtk::MESSAGE_QUESTION, Gtk::BUTTONS_YES_NO);
+  dialog.set_secondary_text("Do you want to save: " + CurrentSourceView()->file_path+" ?");
   int result = dialog.run();
-
-  //Handle the response:
-  DEBUG("AskToSaveDialog: switch response");
-  switch(result)
-  {
-    case(Gtk::RESPONSE_YES):
-    {
-      DEBUG("AskToSaveDialog: save file: yes, trying to save file");
-      CurrentSourceView()->save();
-      DEBUG("AskToSaveDialog: save file: yes, saved sucess");
-      break;
-    }
-    case(Gtk::RESPONSE_NO):
-    {
-      DEBUG("AskToSaveDialog: save file: no");
-      break;
-    }
-    default:
-    {
-           DEBUG("AskToSaveDialog: unexpected action: Default switch");
-      break;
-    }
+  if(result==Gtk::RESPONSE_YES) {
+    CurrentSourceView()->save();
+    return true;
+  }
+  else if(result==Gtk::RESPONSE_NO) {
+    return true;
+  }
+  else {
+    return false;
   }
 }
 

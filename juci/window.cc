@@ -15,7 +15,7 @@ Window::Window() :
   add(window_box_);
   auto menu=Singleton::menu();
   menu->action_group->add(Gtk::Action::create("FileQuit", "Quit juCi++"), Gtk::AccelKey(menu->key_map["quit"]), [this]() {
-    OnWindowHide();
+    hide();
   });
   menu->action_group->add(Gtk::Action::create("FileOpenFile", "Open file"), Gtk::AccelKey(menu->key_map["open_file"]), [this]() {
     OnOpenFile();
@@ -24,12 +24,12 @@ Window::Window() :
     OnFileOpenFolder();
   });
   menu->action_group->add(Gtk::Action::create("FileSaveAs", "Save as"), Gtk::AccelKey(menu->key_map["save_as"]), [this]() {
-	  SaveFileAs();
-	});
+    SaveFileAs();
+  });
 
   menu->action_group->add(Gtk::Action::create("FileSave", "Save"), Gtk::AccelKey(menu->key_map["save"]), [this]() {
-	  SaveFile();
-	});
+    SaveFile();
+  });
   
   menu->action_group->add(Gtk::Action::create("ProjectCompileAndRun", "Compile And Run"), Gtk::AccelKey(menu->key_map["compile_and_run"]), [this]() {
 	  SaveFile();
@@ -133,12 +133,20 @@ bool Window::on_key_press_event(GdkEventKey *event) {
   return Gtk::Window::on_key_press_event(event);
 }
 
-void Window::OnWindowHide() {
-  auto size=Singleton::notebook()->source_views.size();
-  for(size_t c=0;c<size;c++)
-    Singleton::notebook()->OnCloseCurrentPage();
+bool Window::on_delete_event (GdkEventAny *event) {
   hide();
+  return true;
 }
+
+void Window::hide() {
+  auto size=Singleton::notebook()->source_views.size();
+  for(size_t c=0;c<size;c++) {
+    if(!Singleton::notebook()->close_current_page())
+      return;
+  }
+  Gtk::Window::hide();
+}
+
 void Window::OnFileOpenFolder() {
   Gtk::FileChooserDialog dialog("Please choose a folder",
                                 Gtk::FILE_CHOOSER_ACTION_SELECT_FOLDER);

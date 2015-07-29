@@ -23,7 +23,7 @@ namespace Notebook {
     Controller();
     Source::View* CurrentSourceView();
     int CurrentPage();
-    void OnCloseCurrentPage();
+    bool close_current_page();
     void OnFileNewFile();
     bool OnSaveFile(std::string path);
     void OnDirectoryNavigation(const Gtk::TreeModel::Path& path,
@@ -47,7 +47,7 @@ namespace Notebook {
     std::vector<std::unique_ptr<Source> > source_views;
   private:
     void CreateKeybindings();
-    void AskToSaveDialog();
+    bool save_dialog();
 
     std::vector<std::unique_ptr<Gtk::ScrolledWindow> > scrolled_windows;
     std::vector<std::unique_ptr<Gtk::HBox> > hboxes;
