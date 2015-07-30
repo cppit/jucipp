@@ -190,7 +190,7 @@ void Window::add_menu() {
       return;
     notebook.save_current();
     if (running.try_lock()) {
-      std::thread execute([this]() {		  
+      std::thread execute([this]() {
         std::string path = notebook.get_current_view()->file_path;
         size_t pos = path.find_last_of("/\\");
         if(pos != std::string::npos){
