@@ -40,7 +40,7 @@ void Juci::on_activate() {
     window->directories.open_folder(directory);
   }
   for(auto &f: files)
-    window->notebook.open_file(f);
+    window->notebook.open(f);
 }
 
 int main(int argc, char *argv[]) {

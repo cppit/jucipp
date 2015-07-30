@@ -1,11 +1,9 @@
 #include "singletons.h"
 #include "config.h"
 #include "logging.h"
-#include <fstream>
-#include <string>
-#include <vector>
 #include <exception>
 #include "files.h"
+#include "sourcefile.h"
 
 MainConfig::MainConfig() {
   find_or_create_config_files();
@@ -22,12 +20,9 @@ void MainConfig::find_or_create_config_files() {
   for (auto &file : files) {
     auto path = boost::filesystem::path(Singleton::config_dir() + file);
     if (!boost::filesystem::is_regular_file(path)) {
-      std::ofstream output;
-      output.open(path.string());
-      if (file == "config.json") output << configjson;
-      if (file == "plugins.py") output << pluginspy;
-      if (file == "menu.xml") output << menuxml;
-      output.close();
+      if (file == "config.json") juci::filesystem::save(path, configjson);
+      if (file == "plugins.py") juci::filesystem::save(path, pluginspy);
+      if (file == "menu.xml") juci::filesystem::save(path, menuxml);
     }
   }
 }
@@ -39,41 +34,28 @@ void MainConfig::GenerateSource() {
   auto source_json = cfg.get_child("source");
   auto syntax_json = source_json.get_child("syntax");
   auto colors_json = source_json.get_child("colors");
-  auto extensions_json = source_json.get_child("extensions");
   auto visual_json = source_json.get_child("visual");
   for (auto &i : visual_json) {
-    if (i.first == "background") {
+    if (i.first == "background")
 	     source_cfg->background = i.second.get_value<std::string>();
-    }
-    else if (i.first == "background_selected") {
+    else if (i.first == "background_selected")
        source_cfg->background_selected = i.second.get_value<std::string>();
-    }
-    else if (i.first == "background_tooltips") {
+    else if (i.first == "background_tooltips")
 	     source_cfg->background_tooltips = i.second.get_value<std::string>();
-    }
-    else if (i.first == "show_line_numbers") {
+    else if (i.first == "show_line_numbers")
       source_cfg->show_line_numbers = i.second.get_value<std::string>() == "1" ? true : false;
-    }
-    else if (i.first == "highlight_current_line") {
+    else if (i.first == "highlight_current_line")
       source_cfg->highlight_current_line = i.second.get_value<std::string>() == "1" ? true : false;
-    }
-    else if (i.first == "font") {
+    else if (i.first == "font")
       source_cfg->font = i.second.get_value<std::string>();
-    }
   }
   source_cfg->tab_size = source_json.get<unsigned>("tab_size");
-  for (unsigned c = 0; c < source_cfg->tab_size; c++) {
+  for (unsigned c = 0; c < source_cfg->tab_size; c++)
     source_cfg->tab+=" ";
-  }
-  for (auto &i : colors_json) {
+  for (auto &i : colors_json)
     source_cfg->tags[i.first]=i.second.get_value<std::string>();
-  }
-  for (auto &i : syntax_json) {
+  for (auto &i : syntax_json)
     source_cfg->types[i.first]=i.second.get_value<std::string>();
-  }
-  for (auto &i : extensions_json) {
-    source_cfg->extensions.emplace_back(i.second.get_value<std::string>());
-  }
   DEBUG("Source cfg fetched");
 }
 
@@ -82,12 +64,10 @@ void MainConfig::GenerateTerminalCommands() {
   boost::property_tree::ptree source_json = cfg.get_child("project");
   boost::property_tree::ptree compile_commands_json = source_json.get_child("compile_commands");
   boost::property_tree::ptree run_commands_json = source_json.get_child("run_commands");
-  for (auto &i : compile_commands_json) {
+  for (auto &i : compile_commands_json)
     terminal_cfg->compile_commands.emplace_back(i.second.get_value<std::string>());
-  }
-  for (auto &i : run_commands_json) {
+  for (auto &i : run_commands_json)
     terminal_cfg->run_command=(i.second.get_value<std::string>()); //TODO: run_commands array->one run_command?
-  }
 }
 
 void MainConfig::GenerateKeybindings() {
@@ -97,12 +77,7 @@ void MainConfig::GenerateKeybindings() {
     std::cerr << "menu.xml not found" << std::endl;
     throw;
   }
-  std::ifstream input(path.string());
-  std::string line;
-  if (input.is_open()) {
-    while (getline(input, line))
-      menu->ui += line;
-  }
+  menu->ui = juci::filesystem::open(path);
   boost::property_tree::ptree keys_json = cfg.get_child("keybindings");
   for (auto &i : keys_json) {
     auto key=i.second.get_value<std::string>();
@@ -118,8 +93,8 @@ void MainConfig::GenerateDirectoryFilter() {
   boost::property_tree::ptree ignore_json = dir_json.get_child("ignore");
   boost::property_tree::ptree except_json = dir_json.get_child("exceptions");
   for ( auto &i : except_json )
-    dir_cfg->AddException(i.second.get_value<std::string>());
+    dir_cfg->exceptions.emplace_back(i.second.get_value<std::string>());
   for ( auto &i : ignore_json )
-    dir_cfg->AddIgnore(i.second.get_value<std::string>());
+    dir_cfg->ignored.emplace_back(i.second.get_value<std::string>());
   DEBUG("Directory filter fetched");
 }

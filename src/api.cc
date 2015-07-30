@@ -205,8 +205,7 @@ void libjuci::IterToWordEnd(Gtk::TextIter &iter) {
 }
 
 Glib::RefPtr<Gtk::TextBuffer> libjuci::BufferFromNotebook() {
-  return Glib::RefPtr<Gtk::TextBuffer>(PluginApi::notebook
-                                       ->CurrentSourceView()->get_buffer());
+  return Glib::RefPtr<Gtk::TextBuffer>(PluginApi::notebook->get_current_view()->get_buffer());
 }
 
 Gtk::TextIter libjuci::IterFromNotebook() {

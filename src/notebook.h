@@ -3,29 +3,27 @@
 
 #include <iostream>
 #include "gtkmm.h"
-#include "entrybox.h"
 #include "source.h"
-#include "directories.h"
 #include <boost/algorithm/string/case_conv.hpp>
 #include <type_traits>
 #include <map>
 #include <sigc++/sigc++.h>
-#include "clangmm.h"
 
 class Notebook : public Gtk::Notebook {
 public:
   Notebook();
-  Source::View* CurrentSourceView();
-  int CurrentPage();
+  Source::View* get_view(int page);
+  int size();
+  Source::View* get_current_view();
   bool close_current_page();
-  void open_file(std::string filename);
-  int Pages();
+  void open(std::string filename);
+  bool save(int page);
+  bool save_current();
   std::string project_path;
       
-  std::vector<std::unique_ptr<Source> > source_views;
 private:
   bool save_modified_dialog();
-
+  std::vector<std::unique_ptr<Source::View> > source_views;
   std::vector<std::unique_ptr<Gtk::ScrolledWindow> > scrolled_windows;
   std::vector<std::unique_ptr<Gtk::HBox> > hboxes;
 };
