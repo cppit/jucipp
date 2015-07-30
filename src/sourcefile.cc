@@ -4,7 +4,7 @@
 std::string juci::filesystem::open(std::string path) {
   std::string res;
   for (auto &line : lines(path)) {
-    res += line;
+    res += line+'\n';
   }
   return res;
 }

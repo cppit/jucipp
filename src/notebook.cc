@@ -2,7 +2,6 @@
 #include "logging.h"
 #include "sourcefile.h"
 #include "singletons.h"
-using namespace std; //TODO: remove
 
 namespace sigc {
   SIGC_FUNCTORS_DEDUCE_RESULT_TYPE_WITH_DECLTYPE
