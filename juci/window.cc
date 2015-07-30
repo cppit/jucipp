@@ -1,6 +1,7 @@
 #include "window.h"
 #include "logging.h"
 #include "singletons.h"
+#include "config.h"
 
 namespace sigc {
   SIGC_FUNCTORS_DEDUCE_RESULT_TYPE_WITH_DECLTYPE
@@ -15,6 +16,7 @@ Window::Window() : notebook(), plugin_api(&notebook), box(Gtk::ORIENTATION_VERTI
   //TODO: see TODO Window::on_directory_navigation
   directories.m_TreeView.signal_row_activated().connect(sigc::mem_fun(*this, &Window::on_directory_navigation));
   
+  MainConfig main_config; //Read the configs here
   add_menu();
   
   box.pack_start(entry_box, Gtk::PACK_SHRINK);
