@@ -2,26 +2,26 @@
 #include "logging.h"
 #include "singletons.h"
 #include "config.h"
+#include "api.h"
 
 namespace sigc {
   SIGC_FUNCTORS_DEDUCE_RESULT_TYPE_WITH_DECLTYPE
 }
 
-Window::Window() : notebook(), plugin_api(&notebook), box(Gtk::ORIENTATION_VERTICAL) {
+Window::Window() : box(Gtk::ORIENTATION_VERTICAL) {
   INFO("Create Window");
   set_title("juCi++");
   set_default_size(600, 400);
   set_events(Gdk::POINTER_MOTION_MASK|Gdk::FOCUS_CHANGE_MASK|Gdk::SCROLL_MASK);
   add(box);
-  //TODO: see TODO Window::on_directory_navigation
-  directories.m_TreeView.signal_row_activated().connect(sigc::mem_fun(*this, &Window::on_directory_navigation));
   
   MainConfig(); //Read the configs here
+  PluginApi(&this->notebook); //Initialise plugins
   add_menu();
   
   box.pack_start(entry_box, Gtk::PACK_SHRINK);
   
-  directory_and_notebook_panes.pack1(directories.widget(), true, true); //TODO: should be pack1(directories, ...) Clean up directories.*
+  directory_and_notebook_panes.pack1(directories, true, true); //TODO: should be pack1(directories, ...) Clean up directories.*
   directory_and_notebook_panes.pack2(notebook);
   directory_and_notebook_panes.set_position(120);
   
@@ -30,6 +30,10 @@ Window::Window() : notebook(), plugin_api(&notebook), box(Gtk::ORIENTATION_VERTI
   vpaned.pack2(Singleton::terminal()->view, true, true);
   box.pack_end(vpaned);
   show_all_children();
+  
+  directories.on_row_activated=[this](const std::string &file) {
+    notebook.open(file);
+  };
   
   entry_box.signal_show().connect([this](){
     std::vector<Gtk::Widget*> focus_chain;
@@ -44,6 +48,7 @@ Window::Window() : notebook(), plugin_api(&notebook), box(Gtk::ORIENTATION_VERTI
       notebook.get_current_view()->grab_focus();
     }
   });
+  
   notebook.signal_switch_page().connect([this](Gtk::Widget* page, guint page_num) {
     if(search_entry_shown && entry_box.labels.size()>0 && notebook.get_current_page()!=-1) {
       notebook.get_current_view()->update_search_occurrences=[this](int number){
@@ -63,7 +68,6 @@ Window::Window() : notebook(), plugin_api(&notebook), box(Gtk::ORIENTATION_VERTI
         menu_item->set_sensitive((bool)notebook.get_current_view()->rename_similar_tokens);
     }
   });
-  
   INFO("Window created");
 } // Window constructor
 
@@ -172,7 +176,7 @@ void Window::add_menu() {
       	  Singleton::terminal()->SetFolderCommand(path);
       	}
       	Singleton::terminal()->Compile();
-      	std::string executable = directories.GetCmakeVarValue(path,"add_executable");
+      	std::string executable = directories.get_cmakelists_variable(path,"add_executable");
       	Singleton::terminal()->Run(executable);
         running.unlock();
       });
@@ -376,27 +380,6 @@ void Window::save_file_dialog() {
       }
       else
         Singleton::terminal()->print("Error saving file\n");
-    }
-  }
-}
-
-//TODO: move most of it to Directories
-void Window::on_directory_navigation(const Gtk::TreeModel::Path& path, Gtk::TreeViewColumn* column) {
-  INFO("Directory navigation");
-  Gtk::TreeModel::iterator iter = directories.m_refTreeModel->get_iter(path);
-  if (iter) {
-    Gtk::TreeModel::Row row = *iter;
-    std::string upath = Glib::ustring(row[directories.view().m_col_path]);
-    boost::filesystem::path fs_path(upath);
-    if (boost::filesystem::is_directory(fs_path)) {
-      directories.m_TreeView.row_expanded(path) ?
-        directories.m_TreeView.collapse_row(path) :
-        directories.m_TreeView.expand_row(path, false);
-    } else {
-      std::stringstream sstm;
-      sstm << row[directories.view().m_col_path];
-      std::string file = sstm.str();
-      notebook.open(file);
     }
   }
 }

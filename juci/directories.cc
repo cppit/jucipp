@@ -1,100 +1,107 @@
 #include "directories.h"
 #include "logging.h"
 #include "singletons.h"
+#include <algorithm>
+#include <fstream>
+#include "boost/algorithm/string.hpp"
 
-Directories::Controller::Controller() {
-  DEBUG("adding treeview to scrolledwindow");
-  m_ScrolledWindow.add(m_TreeView);
-  m_ScrolledWindow.set_policy(Gtk::POLICY_AUTOMATIC, Gtk::POLICY_AUTOMATIC);
+namespace sigc {
+  SIGC_FUNCTORS_DEDUCE_RESULT_TYPE_WITH_DECLTYPE
 }
 
-void Directories::Controller::
-open_folder(const boost::filesystem::path& dir_path) {
+Directories::Directories() {
+  DEBUG("adding treeview to scrolledwindow");
+  add(tree_view);
+  set_policy(Gtk::POLICY_AUTOMATIC, Gtk::POLICY_AUTOMATIC);
+  tree_store = Gtk::TreeStore::create(column_record);
+  tree_view.set_model(tree_store);
+  tree_view.append_column("", column_record.name);
+  tree_store->set_sort_column(0, Gtk::SortType::SORT_ASCENDING);
+  
+  tree_view.signal_row_activated().connect([this](const Gtk::TreeModel::Path& path, Gtk::TreeViewColumn* column){
+    INFO("Directory navigation");
+    auto iter = tree_store->get_iter(path);
+    if (iter) {
+      Gtk::TreeModel::Row row = *iter;
+      std::string upath = Glib::ustring(row[column_record.path]);
+      boost::filesystem::path fs_path(upath);
+      if (boost::filesystem::is_directory(fs_path)) {
+        tree_view.row_expanded(path) ? tree_view.collapse_row(path) : tree_view.expand_row(path, false);
+      } else {
+        std::stringstream sstm;
+        sstm << row[column_record.path];
+        if(on_row_activated)
+          on_row_activated(sstm.str());
+      }
+    }
+  });
+}
+
+void Directories::open_folder(const boost::filesystem::path& dir_path) {
   INFO("Open folder");
-  m_refTreeModel = Gtk::TreeStore::create(view());
-  m_TreeView.set_model(m_refTreeModel);
-  m_TreeView.remove_all_columns();
-  DEBUG("Getting project name from CMakeLists.txt");
-  std::string project_name = GetCmakeVarValue(dir_path, "project");
-  m_TreeView.append_column(project_name, view().m_col_name);
-  int row_id = 0;
-  Gtk::TreeModel::Row row;
-  DEBUG("Listing directories");
-  list_dirs(dir_path, row, row_id);
-  DEBUG("Sorting directories");
-  m_refTreeModel->set_sort_column(0, Gtk::SortType::SORT_ASCENDING);
+  tree_store->clear();
+  tree_view.get_column(0)->set_title(get_cmakelists_variable(dir_path, "project"));
+  add_paths(dir_path, Gtk::TreeModel::Row(), 0);
   DEBUG("Folder opened");
 }
 
-bool Directories::Controller::IsIgnored(std::string path) {
+bool Directories::ignored(std::string path) {
   DEBUG("Checking if file-/directory is filtered");
   std::transform(path.begin(), path.end(), path.begin(), ::tolower);
-  if (Singleton::Config::directories()->IsException(path)) {
-    return false;
+  
+  for(std::string &i : Singleton::Config::directories()->exceptions) {
+    if(i == path)
+      return false;
   }
-  if (Singleton::Config::directories()->IsIgnored(path)) {
-    return true;
+  for(auto &i : Singleton::Config::directories()->ignored) {
+    if(path.find(i, 0) != std::string::npos)
+      return true;
   }
+  
   return false;
 }
-void Directories::Controller::
-list_dirs(const boost::filesystem::path& dir_path,
-          Gtk::TreeModel::Row &parent,
-          unsigned row_id) {
-  
+
+void Directories::add_paths(const boost::filesystem::path& dir_path, const Gtk::TreeModel::Row &parent, unsigned row_id) {
   boost::filesystem::directory_iterator end_itr;
   Gtk::TreeModel::Row child;
   Gtk::TreeModel::Row row;
   DEBUG("");
   // Fill the treeview
-  for ( boost::filesystem::directory_iterator itr( dir_path );
-        itr != end_itr;
-        ++itr ) {   
-    if (!IsIgnored(itr->path().filename().string())) {
+  for(boost::filesystem::directory_iterator itr(dir_path);itr != end_itr;++itr) {   
+    if (!ignored(itr->path().filename().string())) {
       if (boost::filesystem::is_directory(itr->status())) {
-        if (count(itr->path().string()) > count(dir_path.string())) {  // is child
-          child = *(m_refTreeModel->append(parent.children()));
+        if (boost::filesystem::canonical(itr->path()) > boost::filesystem::canonical(dir_path)) {  // is child
+          child = *(tree_store->append(parent.children()));
           std::string col_id("a"+itr->path().filename().string());
-          child[view().m_col_id] = col_id;
-          child[view().m_col_name] =  itr->path().filename().string();
-          child[view().m_col_path] = itr->path().string();
-          list_dirs(itr->path(), child, row_id);
+          child[column_record.id] = col_id;
+          child[column_record.name] =  itr->path().filename().string();
+          child[column_record.path] = itr->path().string();
+          add_paths(itr->path(), child, row_id);
         } else {
-          row = *(m_refTreeModel->append());
+          row = *(tree_store->append());
           std::string col_id("a"+itr->path().filename().string());
-          row[view().m_col_path] = itr->path().string();
-          row[view().m_col_id] = col_id;
-          row[view().m_col_name] =  itr->path().filename().string();
-          list_dirs(itr->path(), parent, row_id);
+          row[column_record.path] = itr->path().string();
+          row[column_record.id] = col_id;
+          row[column_record.name] =  itr->path().filename().string();
+          add_paths(itr->path(), parent, row_id);
         }
       } else {  // is a file
-        child = *(m_refTreeModel->append(parent.children()));
+        child = *(tree_store->append(parent.children()));
         std::string col_id("b"+itr->path().filename().string());
-        child[view().m_col_id] = col_id;
-        child[view().m_col_name] = itr->path().filename().string();
-        child[view().m_col_path] = itr->path().string();
+        child[column_record.id] = col_id;
+        child[column_record.name] = itr->path().filename().string();
+        child[column_record.path] = itr->path().string();
       }
     }
   }
 }
 
-int Directories::Controller::count(const std::string path) {
-  int count = 0;
-  for (size_t i = 0; i < path.size(); i++)
-    if (path[i] == '/')
-      count++;
-  return count;
-}
-
-std::string Directories::Controller::
-GetCmakeVarValue(const boost::filesystem::path& dir_path, std::string command_name) {
+std::string Directories::get_cmakelists_variable(const boost::filesystem::path& dir_path, std::string command_name) {
   INFO("fetches cmake variable value for: "+command_name);
   std::string project_name;
   std::string project_name_var;
   boost::filesystem::directory_iterator end_itr;
-  for (boost::filesystem::directory_iterator itr( dir_path );
-       itr != end_itr;
-       ++itr ) {
+  for (boost::filesystem::directory_iterator itr( dir_path );itr != end_itr;++itr ) {
     if (itr->path().filename().string() == "CMakeLists.txt") {
       std::ifstream ifs(itr->path().string());
       std::string line;
@@ -154,26 +161,4 @@ GetCmakeVarValue(const boost::filesystem::path& dir_path, std::string command_na
   }
   INFO("Couldn't find value in CMakeLists.txt");
   return "no project name";
-}
-
-void Directories::Config::AddIgnore(std::string filter) {
-  ignore_list_.push_back(filter);
-}
-
-void Directories::Config::AddException(std::string filter) {
-  exception_list_.push_back(filter);
-}
-
-bool Directories::Config::IsIgnored(std::string str) {
-  for ( auto &i : ignore_list() )
-    if (str.find(i, 0) != std::string::npos)
-      return true;
-  return false;
-}
-
-bool Directories::Config::IsException(std::string str) {
-  for ( std::string &i : exception_list() )
-    if (i == str)
-      return true;
-  return false;
 }

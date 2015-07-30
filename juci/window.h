@@ -1,16 +1,16 @@
 #ifndef JUCI_WINDOW_H_
 #define JUCI_WINDOW_H_
 
-#include "api.h"
 #include <cstddef>
 #include "directories.h"
 #include "entrybox.h"
+#include "notebook.h"
 
 class Window : public Gtk::Window {
 public:
   Window();
   Notebook notebook;
-  Directories::Controller directories;
+  Directories directories;
 protected:
   bool on_key_press_event(GdkEventKey *event);
   bool on_delete_event (GdkEventAny *event);
@@ -19,7 +19,6 @@ private:
   Gtk::VPaned vpaned;
   Gtk::Paned directory_and_notebook_panes;
   EntryBox entry_box;
-  PluginApi plugin_api;
   std::mutex running;
 
   void add_menu();
@@ -28,7 +27,6 @@ private:
   void open_folder_dialog();
   void open_file_dialog();
   void save_file_dialog();
-  void on_directory_navigation(const Gtk::TreeModel::Path& path, Gtk::TreeViewColumn* column);
   
   void search_and_replace_entry();
   void rename_token_entry();

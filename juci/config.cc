@@ -81,8 +81,8 @@ void MainConfig::GenerateDirectoryFilter() {
   boost::property_tree::ptree ignore_json = dir_json.get_child("ignore");
   boost::property_tree::ptree except_json = dir_json.get_child("exceptions");
   for ( auto &i : except_json )
-    dir_cfg->AddException(i.second.get_value<std::string>());
+    dir_cfg->exceptions.emplace_back(i.second.get_value<std::string>());
   for ( auto &i : ignore_json )
-    dir_cfg->AddIgnore(i.second.get_value<std::string>());
+    dir_cfg->ignored.emplace_back(i.second.get_value<std::string>());
   DEBUG("Directory filter fetched");
 }
