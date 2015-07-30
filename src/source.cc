@@ -1,7 +1,6 @@
 #include "source.h"
 #include "sourcefile.h"
 #include <boost/property_tree/json_parser.hpp>
-#include <fstream>
 #include <boost/timer/timer.hpp>
 #include "logging.h"
 #include <algorithm>
@@ -42,13 +41,10 @@ file_path(file_path), project_path(project_path) {
   set_smart_home_end(Gsv::SMART_HOME_END_BEFORE);
   set_show_line_numbers(Singleton::Config::source()->show_line_numbers);
   set_highlight_current_line(Singleton::Config::source()->highlight_current_line);
-  sourcefile s(file_path);
   get_source_buffer()->get_undo_manager()->begin_not_undoable_action();
-  get_source_buffer()->set_text(s.get_content());
+  get_source_buffer()->set_text(juci::filesystem::open(file_path));
   get_source_buffer()->get_undo_manager()->end_not_undoable_action();
-  
-  get_buffer()->place_cursor(get_buffer()->get_iter_at_offset(0));
-    
+  get_buffer()->place_cursor(get_buffer()->get_iter_at_offset(0)); 
   search_settings = gtk_source_search_settings_new();
   gtk_source_search_settings_set_wrap_around(search_settings, true);
   search_context = gtk_source_search_context_new(get_source_buffer()->gobj(), search_settings);

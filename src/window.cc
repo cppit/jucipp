@@ -1,6 +1,7 @@
 #include "window.h"
 #include "logging.h"
 #include "singletons.h"
+#include "sourcefile.h"
 #include "config.h"
 #include "api.h"
 
@@ -14,27 +15,27 @@ Window::Window() : box(Gtk::ORIENTATION_VERTICAL) {
   set_default_size(600, 400);
   set_events(Gdk::POINTER_MOTION_MASK|Gdk::FOCUS_CHANGE_MASK|Gdk::SCROLL_MASK);
   add(box);
-  
+
   MainConfig(); //Read the configs here
   PluginApi(&this->notebook); //Initialise plugins
   add_menu();
-  
+
   box.pack_start(entry_box, Gtk::PACK_SHRINK);
-  
+
   directory_and_notebook_panes.pack1(directories, true, true);
   directory_and_notebook_panes.pack2(notebook);
   directory_and_notebook_panes.set_position(120);
-  
+
   vpaned.set_position(300);
   vpaned.pack1(directory_and_notebook_panes, true, false);
   vpaned.pack2(*Singleton::terminal(), true, true);
   box.pack_end(vpaned);
   show_all_children();
-  
+
   directories.on_row_activated=[this](const std::string &file) {
     notebook.open(file);
   };
-  
+
   entry_box.signal_show().connect([this](){
     std::vector<Gtk::Widget*> focus_chain;
     focus_chain.emplace_back(&entry_box);
@@ -48,7 +49,7 @@ Window::Window() : box(Gtk::ORIENTATION_VERTICAL) {
       notebook.get_current_view()->grab_focus();
     }
   });
-  
+
   notebook.signal_switch_page().connect([this](Gtk::Widget* page, guint page_num) {
     if(search_entry_shown && entry_box.labels.size()>0 && notebook.get_current_page()!=-1) {
       notebook.get_current_view()->update_search_occurrences=[this](int number){
@@ -56,14 +57,14 @@ Window::Window() : box(Gtk::ORIENTATION_VERTICAL) {
       };
       notebook.get_current_view()->search_highlight(last_search, case_sensitive_search, regex_search);
     }
-    
+
     if(notebook.get_current_page()!=-1) {
       if(auto menu_item=dynamic_cast<Gtk::MenuItem*>(Singleton::menu()->ui_manager->get_widget("/MenuBar/SourceMenu/SourceGotoDeclaration")))
         menu_item->set_sensitive((bool)notebook.get_current_view()->get_declaration_location);
-      
+
       if(auto menu_item=dynamic_cast<Gtk::MenuItem*>(Singleton::menu()->ui_manager->get_widget("/MenuBar/SourceMenu/SourceGotoMethod")))
         menu_item->set_sensitive((bool)notebook.get_current_view()->goto_method);
-      
+
       if(auto menu_item=dynamic_cast<Gtk::MenuItem*>(Singleton::menu()->ui_manager->get_widget("/MenuBar/SourceMenu/SourceRename")))
         menu_item->set_sensitive((bool)notebook.get_current_view()->rename_similar_tokens);
     }
@@ -73,6 +74,7 @@ Window::Window() : box(Gtk::ORIENTATION_VERTICAL) {
 
 void Window::add_menu() {
   auto menu=Singleton::menu();
+  INFO("Adding actions to menu");
   menu->action_group->add(Gtk::Action::create("FileQuit", "Quit juCi++"), Gtk::AccelKey(menu->key_map["quit"]), [this]() {
     hide();
   });
@@ -92,13 +94,13 @@ void Window::add_menu() {
   menu->action_group->add(Gtk::Action::create("FileSave", "Save"), Gtk::AccelKey(menu->key_map["save"]), [this]() {
     notebook.save_current();
   });
-  
+
   menu->action_group->add(Gtk::Action::create("EditCopy", "Copy"), Gtk::AccelKey(menu->key_map["edit_copy"]), [this]() {
     auto widget=get_focus();
     if(auto entry=dynamic_cast<Gtk::Entry*>(widget))
       entry->copy_clipboard();
     else if(auto text_view=dynamic_cast<Gtk::TextView*>(widget))
-        text_view->get_buffer()->copy_clipboard(Gtk::Clipboard::get());
+      text_view->get_buffer()->copy_clipboard(Gtk::Clipboard::get());
   });
   menu->action_group->add(Gtk::Action::create("EditCut", "Cut"), Gtk::AccelKey(menu->key_map["edit_cut"]), [this]() {
     auto widget=get_focus();
@@ -118,7 +120,7 @@ void Window::add_menu() {
     search_and_replace_entry();
   });
   menu->action_group->add(Gtk::Action::create("EditUndo", "Undo"), Gtk::AccelKey(menu->key_map["edit_undo"]), [this]() {
-	  INFO("On undo");
+    INFO("On undo");
     if(notebook.get_current_page()!=-1) {
       auto undo_manager = notebook.get_current_view()->get_source_buffer()->get_undo_manager();
       if (undo_manager->can_undo()) {
@@ -126,7 +128,7 @@ void Window::add_menu() {
       }
     }
     INFO("Done undo");
-	});
+  });
   menu->action_group->add(Gtk::Action::create("EditRedo", "Redo"), Gtk::AccelKey(menu->key_map["edit_redo"]), [this]() {
     INFO("On Redo");
     if(notebook.get_current_page()!=-1) {
@@ -137,7 +139,7 @@ void Window::add_menu() {
     }
     INFO("Done Redo");
   });
-  
+
   menu->action_group->add(Gtk::Action::create("SourceGotoDeclaration", "Go to declaration"), Gtk::AccelKey(menu->key_map["source_goto_declaration"]), [this]() {
     if(notebook.get_current_page()!=-1) {
       if(notebook.get_current_view()->get_declaration_location) {
@@ -162,7 +164,7 @@ void Window::add_menu() {
   menu->action_group->add(Gtk::Action::create("SourceRename", "Rename"), Gtk::AccelKey(menu->key_map["source_rename"]), [this]() {
     rename_token_entry();
   });
-  
+
   menu->action_group->add(Gtk::Action::create("ProjectCompileAndRun", "Compile And Run"), Gtk::AccelKey(menu->key_map["compile_and_run"]), [this]() {
     if(notebook.get_current_page()==-1)
       return;
@@ -205,9 +207,9 @@ void Window::add_menu() {
   menu->action_group->add(Gtk::Action::create("WindowCloseTab", "Close tab"), Gtk::AccelKey(menu->key_map["close_tab"]), [this]() {
     notebook.close_current_page();
   });
-
   add_accel_group(menu->ui_manager->get_accel_group());
   menu->build();
+  INFO("Menu build")
   box.pack_start(menu->get_widget(), Gtk::PACK_SHRINK);
 }
 
@@ -248,7 +250,7 @@ bool Window::on_key_press_event(GdkEventKey *event) {
     }
   }
 #endif
-  
+
   return Gtk::Window::on_key_press_event(event);
 }
 
@@ -278,17 +280,11 @@ void Window::new_file_entry() {
         Singleton::terminal()->print("Error: "+p.string()+" already exists.\n");
       }
       else {
-        std::ofstream f(p.string().c_str());
-        if(f) {
-          notebook.open(boost::filesystem::canonical(p).string());
-          Singleton::terminal()->print("New file "+p.string()+" created.\n");
-          if(notebook.project_path!="")
-            directories.open_folder(notebook.project_path); //TODO: Do refresh instead
-        }
-        else {
-          Singleton::terminal()->print("Error: could not create new file "+p.string()+".\n");
-        }
-        f.close();
+        juci::filesystem::save(p);
+        notebook.open(boost::filesystem::canonical(p).string());
+        Singleton::terminal()->print("New file "+p.string()+" created.\n");
+        if(notebook.project_path!="")
+           directories.open_folder(notebook.project_path); //TODO: Do refresh instead
       }
     }
     entry_box.hide();
@@ -423,7 +419,7 @@ void Window::search_and_replace_entry() {
     if(notebook.get_current_page()!=-1)
       notebook.get_current_view()->search_highlight(search_entry_it->get_text(), case_sensitive_search, regex_search);
   });
-  
+
   entry_box.entries.emplace_back(last_replace, [this](const std::string &content){
     if(notebook.get_current_page()!=-1)
       notebook.get_current_view()->replace_forward(content);
@@ -441,7 +437,7 @@ void Window::search_and_replace_entry() {
   replace_entry_it->signal_changed().connect([this, replace_entry_it](){
     last_replace=replace_entry_it->get_text();
   });
-  
+
   entry_box.buttons.emplace_back("Find", [this](){
     if(notebook.get_current_page()!=-1)
       notebook.get_current_view()->search_forward();
@@ -498,23 +494,23 @@ void Window::rename_token_entry() {
         };
         label_it->update(0, "");
         entry_box.entries.emplace_back(*token_name, [this, token_name, token](const std::string& content){
-          if(notebook.get_current_page()!=-1 && content!=*token_name) {
-            for(int c=0;c<notebook.size();c++) {
-              if(notebook.get_view(c)->rename_similar_tokens) {
-                auto number=notebook.get_view(c)->rename_similar_tokens(*token, content);
-                if(number>0) {
-                  Singleton::terminal()->print("Replaced "+std::to_string(number)+" occurrences in file "+notebook.get_view(c)->file_path+"\n");
-                  notebook.save(c);
+            if(notebook.get_current_page()!=-1 && content!=*token_name) {
+              for(int c=0;c<notebook.size();c++) {
+                if(notebook.get_view(c)->rename_similar_tokens) {
+                  auto number=notebook.get_view(c)->rename_similar_tokens(*token, content);
+                  if(number>0) {
+                    Singleton::terminal()->print("Replaced "+std::to_string(number)+" occurrences in file "+notebook.get_view(c)->file_path+"\n");
+                    notebook.save(c);
+                  }
                 }
               }
+              entry_box.hide();
             }
-            entry_box.hide();
-          }
-        });
+          });
         auto entry_it=entry_box.entries.begin();
         entry_box.buttons.emplace_back("Rename", [this, entry_it](){
-          entry_it->activate();
-        });
+            entry_it->activate();
+          });
         entry_box.show();
       }
     }

@@ -16,7 +16,6 @@ public:
   static Menu* menu_;
   static Notebook* notebook;
   static void InitPlugins();
-  static std::string ProjectPath();
   // for Python module:
   static std::string GetWord();
   // menu management

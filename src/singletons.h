@@ -6,6 +6,7 @@
 #include "terminal.h"
 #include "notebook.h"
 #include "menu.h"
+#include <string>
 
 class Singleton {
 public:
@@ -19,7 +20,8 @@ public:
     static std::unique_ptr<Terminal::Config> terminal_;
     static std::unique_ptr<Directories::Config> directories_;
   };
-  
+  static std::string config_dir() { return std::string(getenv("HOME")) + "/.juci/config/"; }
+  static std::string log_dir() { return std::string(getenv("HOME")) + "/.juci/log/"; }
   static Terminal *terminal();
   static Menu *menu();
 private:

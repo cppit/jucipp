@@ -1,8 +1,8 @@
 #include "directories.h"
+#include "sourcefile.h"
 #include "logging.h"
 #include "singletons.h"
 #include <algorithm>
-#include <fstream>
 #include "boost/algorithm/string.hpp"
 
 namespace sigc {
@@ -103,9 +103,7 @@ std::string Directories::get_cmakelists_variable(const boost::filesystem::path& 
   boost::filesystem::directory_iterator end_itr;
   for (boost::filesystem::directory_iterator itr( dir_path );itr != end_itr;++itr ) {
     if (itr->path().filename().string() == "CMakeLists.txt") {
-      std::ifstream ifs(itr->path().string());
-      std::string line;
-      while (std::getline(ifs, line)) {
+      for (auto &line : juci::filesystem::lines(itr->path())) {
         if (line.find(command_name+"(", 0) != std::string::npos
             || line.find(command_name+" (", 0) != std::string::npos ) {
           size_t variable_start = line.find("{", 0);
@@ -140,8 +138,7 @@ std::string Directories::get_cmakelists_variable(const boost::filesystem::path& 
           }
         }
       }
-      std::ifstream ifs2(itr->path().string());
-      while (std::getline(ifs2, line)) {
+      for (auto &line : juci::filesystem::lines(itr->path())) {
         if (line.find("set(", 0) != std::string::npos
             || line.find("set (", 0) != std::string::npos) {
           if( line.find(project_name_var, 0) != std::string::npos) {

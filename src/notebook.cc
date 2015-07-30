@@ -1,8 +1,7 @@
-#include <fstream>
 #include "notebook.h"
 #include "logging.h"
+#include "sourcefile.h"
 #include "singletons.h"
-#include <iostream> //TODO: remove
 using namespace std; //TODO: remove
 
 namespace sigc {
@@ -86,10 +85,7 @@ bool Notebook::save(int page) {
     return false;
   auto view=get_view(page);
   if (view->file_path != "" && view->get_buffer()->get_modified()) {
-    std::ofstream file;
-    file.open(view->file_path);
-    file << view->get_buffer()->get_text();
-    file.close();
+    juci::filesystem::save(view->file_path, view->get_buffer()->get_text());
     view->get_buffer()->set_modified(false);
     Singleton::terminal()->print("File saved to: " +view->file_path+"\n");
     return true;
