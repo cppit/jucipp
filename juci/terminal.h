@@ -8,23 +8,14 @@
 #include <thread>
 #include <atomic>
 
-namespace Terminal {
+class Terminal : public Gtk::HBox {
+public:
   class Config {
   public:
     std::vector<std::string> compile_commands;
     std::string run_command;
-  };
- 
-  class View : public Gtk::HBox {
-  public:
-    View();
-    Gtk::TextView text_view;
-    Gtk::ScrolledWindow scrolled_window;
-  };  // class view
+  }; 
   
-  class Controller;
-  
-  //Temporary solution for displaying functions in progress, and when they are done.
   class InProgress {
   public:
     InProgress(const std::string& start_msg);
@@ -39,26 +30,24 @@ namespace Terminal {
     std::thread wait_thread;
   };
   
-  class Controller {  
-  public:
-    Controller();
-    void SetFolderCommand(boost::filesystem::path CMake_path);
-    void Run(std::string executable);
-    void Compile();
-    int print(std::string message);
-    void print(int line_nr, std::string message);
-    std::shared_ptr<InProgress> print_in_progress(std::string start_msg);
-    Terminal::View view;
-  private:
-    void ExecuteCommand(std::string command, std::string mode);
-    bool OnButtonRealeaseEvent(GdkEventKey* key);
-    bool ExistInConsole(std::string string);
-    std::string folder_command_;
-    std::string path_;
-    const std::string cmake_sucsess = "Build files have been written to:";
-    const std::string make_built = "Built target";
-    const std::string make_executable = "Linking CXX executable";
-  };  // class controller
-}  // namespace Terminal
+  Terminal();
+  void set_change_folder_command(boost::filesystem::path CMake_path);
+  void run(std::string executable);
+  void compile();
+  int print(std::string message);
+  void print(int line_nr, std::string message);
+  std::shared_ptr<InProgress> print_in_progress(std::string start_msg);
+private:
+  void execute_command(std::string command, std::string mode);
+  
+  Gtk::TextView text_view;
+  Gtk::ScrolledWindow scrolled_window;
+  
+  std::string change_folder_command;
+  std::string path;
+  const std::string cmake_sucsess = "Build files have been written to:";
+  const std::string make_built = "Built target";
+  const std::string make_executable = "Linking CXX executable";
+};
 
 #endif  // JUCI_TERMINAL_H_

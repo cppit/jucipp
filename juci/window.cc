@@ -21,13 +21,13 @@ Window::Window() : box(Gtk::ORIENTATION_VERTICAL) {
   
   box.pack_start(entry_box, Gtk::PACK_SHRINK);
   
-  directory_and_notebook_panes.pack1(directories, true, true); //TODO: should be pack1(directories, ...) Clean up directories.*
+  directory_and_notebook_panes.pack1(directories, true, true);
   directory_and_notebook_panes.pack2(notebook);
   directory_and_notebook_panes.set_position(120);
   
   vpaned.set_position(300);
   vpaned.pack1(directory_and_notebook_panes, true, false);
-  vpaned.pack2(Singleton::terminal()->view, true, true);
+  vpaned.pack2(*Singleton::terminal(), true, true);
   box.pack_end(vpaned);
   show_all_children();
   
@@ -169,15 +169,15 @@ void Window::add_menu() {
     notebook.save_current();
     if (running.try_lock()) {
       std::thread execute([this]() {
-      	std::string path = notebook.get_current_view()->file_path;
-      	size_t pos = path.find_last_of("/\\");
-      	if(pos != std::string::npos) {
-      	  path.erase(path.begin()+pos,path.end());
-      	  Singleton::terminal()->SetFolderCommand(path);
-      	}
-      	Singleton::terminal()->Compile();
-      	std::string executable = directories.get_cmakelists_variable(path,"add_executable");
-      	Singleton::terminal()->Run(executable);
+        std::string path = notebook.get_current_view()->file_path;
+        size_t pos = path.find_last_of("/\\");
+        if(pos != std::string::npos) {
+          path.erase(path.begin()+pos,path.end());
+          Singleton::terminal()->set_change_folder_command(path);
+        }
+        Singleton::terminal()->compile();
+        std::string executable = directories.get_cmakelists_variable(path,"add_executable");
+        Singleton::terminal()->run(executable);
         running.unlock();
       });
       execute.detach();
@@ -193,9 +193,9 @@ void Window::add_menu() {
         size_t pos = path.find_last_of("/\\");
         if(pos != std::string::npos){
           path.erase(path.begin()+pos,path.end());
-          Singleton::terminal()->SetFolderCommand(path);
+          Singleton::terminal()->set_change_folder_command(path);
         }
-        Singleton::terminal()->Compile();
+        Singleton::terminal()->compile();
         running.unlock();
       });
       execute.detach();

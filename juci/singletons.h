@@ -20,10 +20,10 @@ public:
     static std::unique_ptr<Directories::Config> directories_;
   };
   
-  static Terminal::Controller *terminal();
+  static Terminal *terminal();
   static Menu *menu();
 private:
-  static std::unique_ptr<Terminal::Controller> terminal_;
+  static std::unique_ptr<Terminal> terminal_;
   static std::unique_ptr<Menu> menu_;
 };
 
