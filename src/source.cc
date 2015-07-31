@@ -42,9 +42,9 @@ file_path(file_path), project_path(project_path) {
   set_show_line_numbers(Singleton::Config::source()->show_line_numbers);
   set_highlight_current_line(Singleton::Config::source()->highlight_current_line);
   
-  get_source_buffer()->get_undo_manager()->begin_not_undoable_action();
+  get_source_buffer()->begin_not_undoable_action();
   juci::filesystem::read(file_path, get_buffer());
-  get_source_buffer()->get_undo_manager()->end_not_undoable_action();
+  get_source_buffer()->end_not_undoable_action();
   
   get_buffer()->place_cursor(get_buffer()->get_iter_at_offset(0)); 
   search_settings = gtk_source_search_settings_new();
@@ -152,6 +152,7 @@ string Source::View::get_line_before_insert() {
 
 //Basic indentation
 bool Source::View::on_key_press_event(GdkEventKey* key) {
+  get_source_buffer()->begin_user_action();
   auto config=Singleton::Config::source();
   const std::regex spaces_regex(std::string("^(")+config->tab_char+"*).*$");
   //Indent as in next or previous line
@@ -167,12 +168,14 @@ bool Source::View::on_key_press_event(GdkEventKey* key) {
           if(sm2[1].str().size()>sm[1].str().size()) {
             get_source_buffer()->insert_at_cursor("\n"+sm2[1].str());
             scroll_to(get_source_buffer()->get_insert());
+            get_source_buffer()->end_user_action();
             return true;
           }
         }
       }
       get_source_buffer()->insert_at_cursor("\n"+sm[1].str());
       scroll_to(get_source_buffer()->get_insert());
+      get_source_buffer()->end_user_action();
       return true;
     }
   }
@@ -186,6 +189,7 @@ bool Source::View::on_key_press_event(GdkEventKey* key) {
       Gtk::TextIter line_it = get_source_buffer()->get_iter_at_line(line);
       get_source_buffer()->insert(line_it, config->tab);
     }
+    get_source_buffer()->end_user_action();
     return true;
   }
   //Indent left when clicking shift-tab, no matter where in the line the cursor is. Also works on selected text.
@@ -197,8 +201,10 @@ bool Source::View::on_key_press_event(GdkEventKey* key) {
     
     for(int line_nr=line_start;line_nr<=line_end;line_nr++) {
       string line=get_line(line_nr);
-      if(!(line.size()>=config->tab_size && line.substr(0, config->tab_size)==config->tab))
+      if(!(line.size()>=config->tab_size && line.substr(0, config->tab_size)==config->tab)) {
+        get_source_buffer()->end_user_action();
         return true;
+      }
     }
     
     for(int line_nr=line_start;line_nr<=line_end;line_nr++) {
@@ -209,6 +215,7 @@ bool Source::View::on_key_press_event(GdkEventKey* key) {
         line_plus_it++;
       get_source_buffer()->erase(line_it, line_plus_it);
     }
+    get_source_buffer()->end_user_action();
     return true;
   }
   //"Smart" backspace key
@@ -227,7 +234,9 @@ bool Source::View::on_key_press_event(GdkEventKey* key) {
       }
     }
   }
-  return Gsv::View::on_key_press_event(key);
+  bool stop=Gsv::View::on_key_press_event(key);
+  get_source_buffer()->end_user_action();
+  return stop;
 }
 
 /////////////////////
@@ -584,6 +593,7 @@ bool Source::ClangViewParse::on_key_press_event(GdkEventKey* key) {
   if(get_buffer()->get_has_selection()) {
     return Source::View::on_key_press_event(key);
   }
+  get_source_buffer()->begin_user_action();
   auto config=Singleton::Config::source();
   const std::regex bracket_regex(std::string("^(")+config->tab_char+"*).*\\{ *$");
   const std::regex no_bracket_statement_regex(std::string("^(")+config->tab_char+"*)(if|for|else if|catch|while) *\\(.*[^;}] *$");
@@ -603,6 +613,7 @@ bool Source::ClangViewParse::on_key_press_event(GdkEventKey* key) {
           if(sm2[1].str()==sm[1].str()+config->tab) {
             get_source_buffer()->insert_at_cursor("\n"+sm[1].str()+config->tab);
             scroll_to(get_source_buffer()->get_insert());
+            get_source_buffer()->end_user_action();
             return true;
           }
         }
@@ -614,16 +625,19 @@ bool Source::ClangViewParse::on_key_press_event(GdkEventKey* key) {
         insert_it--;
       scroll_to(get_source_buffer()->get_insert());
       get_source_buffer()->place_cursor(insert_it);
+      get_source_buffer()->end_user_action();
       return true;
     }
     else if(std::regex_match(line, sm, no_bracket_statement_regex)) {
       get_source_buffer()->insert_at_cursor("\n"+sm[1].str()+config->tab);
       scroll_to(get_source_buffer()->get_insert());
+      get_source_buffer()->end_user_action();
       return true;
     }
     else if(std::regex_match(line, sm, no_bracket_no_para_statement_regex)) {
       get_source_buffer()->insert_at_cursor("\n"+sm[1].str()+config->tab);
       scroll_to(get_source_buffer()->get_insert());
+      get_source_buffer()->end_user_action();
       return true;
     }
     else if(std::regex_match(line, sm, spaces_regex)) {
@@ -635,11 +649,13 @@ bool Source::ClangViewParse::on_key_press_event(GdkEventKey* key) {
           if(std::regex_match(previous_line, sm2, no_bracket_statement_regex)) {
             get_source_buffer()->insert_at_cursor("\n"+sm2[1].str());
             scroll_to(get_source_buffer()->get_insert());
+            get_source_buffer()->end_user_action();
             return true;
           }
           else if(std::regex_match(previous_line, sm2, no_bracket_no_para_statement_regex)) {
             get_source_buffer()->insert_at_cursor("\n"+sm2[1].str());
             scroll_to(get_source_buffer()->get_insert());
+            get_source_buffer()->end_user_action();
             return true;
           }
         }
@@ -651,8 +667,10 @@ bool Source::ClangViewParse::on_key_press_event(GdkEventKey* key) {
     string line=get_line_before_insert();
     if(line.size()>=config->tab_size) {
       for(auto c: line) {
-        if(c!=config->tab_char)
+        if(c!=config->tab_char) {
+          get_source_buffer()->end_user_action();
           return Source::View::on_key_press_event(key);
+        }
       }
       Gtk::TextIter insert_it = get_source_buffer()->get_insert()->get_iter();
       Gtk::TextIter line_it = get_source_buffer()->get_iter_at_line(insert_it.get_line());
@@ -662,9 +680,11 @@ bool Source::ClangViewParse::on_key_press_event(GdkEventKey* key) {
       
       get_source_buffer()->erase(line_it, line_plus_it);
     }
+    get_source_buffer()->end_user_action();
     return Source::View::on_key_press_event(key);
   }
   
+  get_source_buffer()->end_user_action();
   return Source::View::on_key_press_event(key);
 }
 
@@ -776,6 +796,7 @@ void Source::ClangViewAutocomplete::autocomplete() {
         auto rows=std::make_shared<std::unordered_map<std::string, std::string> >();
         completion_dialog->on_hide=[this](){
           start_reparse();
+          get_source_buffer()->end_user_action();
           completion_dialog_shown=false;
         };
         completion_dialog->on_select=[this, rows](const std::string& selected, bool hide_window) {
@@ -822,6 +843,7 @@ void Source::ClangViewAutocomplete::autocomplete() {
           completion_dialog->add_row("No suggestions found...");
         }
         completion_dialog_shown=true;
+        get_source_buffer()->begin_user_action();
         completion_dialog->show();
       }
       else
@@ -955,6 +977,7 @@ Source::ClangViewAutocomplete(file_path, project_path) {
         marks.emplace_back(get_buffer()->create_mark(get_buffer()->get_iter_at_offset(offset.first)), get_buffer()->create_mark(get_buffer()->get_iter_at_offset(offset.second)));
         number++;
       }
+      get_source_buffer()->begin_user_action();
       for(auto &mark: marks) {
         renaming=true;
         get_buffer()->erase(mark.first->get_iter(), mark.second->get_iter());
@@ -962,6 +985,7 @@ Source::ClangViewAutocomplete(file_path, project_path) {
         get_buffer()->delete_mark(mark.first);
         get_buffer()->delete_mark(mark.second);
       }
+      get_source_buffer()->end_user_action();
       renaming=false;
     }
     return number;
