@@ -2,6 +2,7 @@
 #include "logging.h"
 #include "sourcefile.h"
 #include "singletons.h"
+#include <fstream>
 
 namespace sigc {
   SIGC_FUNCTORS_DEDUCE_RESULT_TYPE_WITH_DECLTYPE
@@ -37,6 +38,13 @@ void Notebook::open(std::string path) {
       return;
     }
   }
+  
+  std::ifstream can_read(path);
+  if(!can_read) {
+    Singleton::terminal()->print("Error: could not open "+path+"\n");
+    return;
+  }
+  can_read.close();
   
   auto tmp_project_path=project_path;
   if(tmp_project_path=="") {
@@ -84,10 +92,11 @@ bool Notebook::save(int page) {
     return false;
   auto view=get_view(page);
   if (view->file_path != "" && view->get_buffer()->get_modified()) {
-    juci::filesystem::save(view->file_path, view->get_buffer()->get_text());
-    view->get_buffer()->set_modified(false);
-    Singleton::terminal()->print("File saved to: " +view->file_path+"\n");
-    return true;
+    if(juci::filesystem::save(view->file_path, view->get_buffer())) {
+      view->get_buffer()->set_modified(false);
+      Singleton::terminal()->print("File saved to: " +view->file_path+"\n");
+      return true;
+    }
   }
   return false;
 }

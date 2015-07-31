@@ -2,8 +2,8 @@
 #include <fstream>
 #include <sstream>
 
-//TODO: make bool juci::filesystem::open(const std::string &path, Glib::RefPtr<Gtk::TextBuffer> buffer)
-//TODO: make bool juci::filesystem::save(const std::string &path, Glib::RefPtr<Gtk::TextBuffer> buffer)
+const size_t buffer_size=131072;
+
 //Only use on small files
 std::string juci::filesystem::open(const std::string &path) {
   std::stringstream ss;
@@ -13,6 +13,19 @@ std::string juci::filesystem::open(const std::string &path) {
     input.close();
   }
   return ss.str();
+}
+
+bool juci::filesystem::open(const std::string &path, Glib::RefPtr<Gtk::TextBuffer> text_buffer) {
+  std::ifstream input(path);
+  if(input) {
+    std::vector<char> buffer(buffer_size);
+    size_t read_length;
+    while((read_length=input.read(&buffer[0], buffer_size).gcount())>0)
+      text_buffer->insert_at_cursor(&buffer[0], &buffer[read_length]);
+    input.close();
+    return true;
+  }
+  return false;
 }
 
 //Only use on small files
@@ -35,4 +48,28 @@ bool juci::filesystem::save(const std::string &path, const std::string &new_cont
     return false;
   output.close();
   return true;
+}
+
+bool juci::filesystem::save(const std::string &path, Glib::RefPtr<Gtk::TextBuffer> buffer) {
+  std::ofstream output(path);
+  if(output) {
+    auto start_iter=buffer->begin();
+    auto end_iter=start_iter;
+    bool end_reached=false;
+    while(!end_reached) {
+      for(size_t c=0;c<buffer_size;c++) {
+        if(end_iter)
+          end_iter++;
+        else {
+          end_reached=true;
+          break;
+        }
+      }
+      output << buffer->get_text(start_iter, end_iter);
+      start_iter=end_iter;
+    }
+    output.close();
+    return true;
+  }
+  return false;
 }
