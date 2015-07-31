@@ -838,13 +838,11 @@ void Source::ClangViewAutocomplete::autocomplete() {
             completion_dialog->add_row(ss.str() + " --> " + return_value, data.brief_comments);
           }
         }
-        if (rows->empty()) {
-          (*rows)["No suggestions found..."] = "";
-          completion_dialog->add_row("No suggestions found...");
+        if (!rows->empty()) {
+          completion_dialog_shown=true;
+          get_source_buffer()->begin_user_action();
+          completion_dialog->show();
         }
-        completion_dialog_shown=true;
-        get_source_buffer()->begin_user_action();
-        completion_dialog->show();
       }
       else
         start_autocomplete();
