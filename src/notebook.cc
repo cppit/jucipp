@@ -98,6 +98,7 @@ bool Notebook::save(int page) {
       return true;
     }
   }
+  Singleton::terminal()->print("Error: could not save file " +view->file_path+"\n");
   return false;
 }
 
