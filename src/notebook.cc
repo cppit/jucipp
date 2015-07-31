@@ -35,6 +35,7 @@ void Notebook::open(std::string path) {
   for(int c=0;c<size();c++) {
     if(path==get_view(c)->file_path) {
       set_current_page(c);
+      get_current_view()->grab_focus();
       return;
     }
   }
@@ -68,6 +69,7 @@ void Notebook::open(std::string path) {
   set_current_page(size()-1);
   set_focus_child(*source_views.back());
   get_current_view()->get_buffer()->set_modified(false);
+  get_current_view()->grab_focus();
   //Add star on tab label when the page is not saved:
   auto source_view=get_current_view();
   get_current_view()->get_buffer()->signal_modified_changed().connect([this, source_view]() {
