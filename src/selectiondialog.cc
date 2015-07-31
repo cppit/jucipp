@@ -244,10 +244,10 @@ void CompletionDialog::show() {
   SelectionDialogBase::show();
   
   show_offset=text_view.get_buffer()->get_insert()->get_iter().get_offset();
-  
+
+  std::shared_ptr<std::string> search_key(new std::string());
+  auto filter_model=Gtk::TreeModelFilter::create(list_view_text.get_model());  
   if(show_offset==start_mark->get_iter().get_offset()) {
-    std::shared_ptr<std::string> search_key(new std::string());
-    auto filter_model=Gtk::TreeModelFilter::create(list_view_text.get_model());
     filter_model->set_visible_func([this, search_key](const Gtk::TreeModel::const_iterator& iter){
       std::string row_lc;
       iter->get_value(0, row_lc);
@@ -258,13 +258,22 @@ void CompletionDialog::show() {
         return true;
       return false;
     });
-    list_view_text.set_model(filter_model);
-    search_entry.signal_changed().connect([this, search_key, filter_model](){
-      *search_key=search_entry.get_text();
-      filter_model->refilter();
-      list_view_text.set_search_entry(search_entry); //TODO:Report the need of this to GTK's git (bug)
+  }
+  else {
+    filter_model->set_visible_func([this, search_key](const Gtk::TreeModel::const_iterator& iter){
+      std::string row;
+      iter->get_value(0, row);
+      if(row.find(*search_key)==0)
+        return true;
+      return false;
     });
   }
+  list_view_text.set_model(filter_model);
+  search_entry.signal_changed().connect([this, search_key, filter_model](){
+    *search_key=search_entry.get_text();
+    filter_model->refilter();
+    list_view_text.set_search_entry(search_entry); //TODO:Report the need of this to GTK's git (bug)
+  });
   
   list_view_text.signal_row_activated().connect([this](const Gtk::TreeModel::Path& path, Gtk::TreeViewColumn*) {
     select();
