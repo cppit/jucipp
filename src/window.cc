@@ -302,6 +302,8 @@ void Window::open_folder_dialog() {
   Gtk::FileChooserDialog dialog("Please choose a folder", Gtk::FILE_CHOOSER_ACTION_SELECT_FOLDER);
   if(notebook.project_path.size()>0)
     gtk_file_chooser_set_current_folder((GtkFileChooser*)dialog.gobj(), notebook.project_path.c_str());
+  else
+    gtk_file_chooser_set_current_folder((GtkFileChooser*)dialog.gobj(), boost::filesystem::current_path().string().c_str());
   dialog.set_transient_for(*this);
   //Add response buttons the the dialog:
   dialog.add_button("_Cancel", Gtk::RESPONSE_CANCEL);
@@ -320,6 +322,8 @@ void Window::open_file_dialog() {
   Gtk::FileChooserDialog dialog("Please choose a file", Gtk::FILE_CHOOSER_ACTION_OPEN);
   if(notebook.project_path.size()>0)
     gtk_file_chooser_set_current_folder((GtkFileChooser*)dialog.gobj(), notebook.project_path.c_str());
+  else
+    gtk_file_chooser_set_current_folder((GtkFileChooser*)dialog.gobj(), boost::filesystem::current_path().string().c_str());
   dialog.set_transient_for(*this);
   dialog.set_position(Gtk::WindowPosition::WIN_POS_CENTER_ALWAYS);
 
