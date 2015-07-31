@@ -92,7 +92,7 @@ bool Notebook::save(int page) {
     return false;
   auto view=get_view(page);
   if (view->file_path != "" && view->get_buffer()->get_modified()) {
-    if(juci::filesystem::save(view->file_path, view->get_buffer())) {
+    if(juci::filesystem::write(view->file_path, view->get_buffer())) {
       view->get_buffer()->set_modified(false);
       Singleton::terminal()->print("File saved to: " +view->file_path+"\n");
       return true;

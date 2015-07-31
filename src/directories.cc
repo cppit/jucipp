@@ -103,7 +103,7 @@ std::string Directories::get_cmakelists_variable(const boost::filesystem::path& 
   boost::filesystem::directory_iterator end_itr;
   for (boost::filesystem::directory_iterator itr( dir_path );itr != end_itr;++itr ) {
     if (itr->path().filename().string() == "CMakeLists.txt") {
-      for (auto &line : juci::filesystem::lines(itr->path())) {
+      for (auto &line : juci::filesystem::read_lines(itr->path())) {
         if (line.find(command_name+"(", 0) != std::string::npos
             || line.find(command_name+" (", 0) != std::string::npos ) {
           size_t variable_start = line.find("{", 0);
@@ -138,7 +138,7 @@ std::string Directories::get_cmakelists_variable(const boost::filesystem::path& 
           }
         }
       }
-      for (auto &line : juci::filesystem::lines(itr->path())) {
+      for (auto &line : juci::filesystem::read_lines(itr->path())) {
         if (line.find("set(", 0) != std::string::npos
             || line.find("set (", 0) != std::string::npos) {
           if( line.find(project_name_var, 0) != std::string::npos) {

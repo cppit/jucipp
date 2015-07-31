@@ -20,9 +20,9 @@ void MainConfig::find_or_create_config_files() {
   for (auto &file : files) {
     auto path = boost::filesystem::path(Singleton::config_dir() + file);
     if (!boost::filesystem::is_regular_file(path)) {
-      if (file == "config.json") juci::filesystem::save(path, configjson);
-      if (file == "plugins.py") juci::filesystem::save(path, pluginspy);
-      if (file == "menu.xml") juci::filesystem::save(path, menuxml);
+      if (file == "config.json") juci::filesystem::write(path, configjson);
+      if (file == "plugins.py") juci::filesystem::write(path, pluginspy);
+      if (file == "menu.xml") juci::filesystem::write(path, menuxml);
     }
   }
 }
@@ -76,7 +76,7 @@ void MainConfig::GenerateKeybindings() {
     std::cerr << "menu.xml not found" << std::endl;
     throw;
   }
-  menu.ui = juci::filesystem::open(path);
+  menu.ui = juci::filesystem::read(path);
   boost::property_tree::ptree keys_json = cfg.get_child("keybindings");
   for (auto &i : keys_json) {
     auto key=i.second.get_value<std::string>();

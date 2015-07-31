@@ -279,7 +279,7 @@ void Window::new_file_entry() {
         Singleton::terminal()->print("Error: "+p.string()+" already exists.\n");
       }
       else {
-        if(juci::filesystem::save(p)) {
+        if(juci::filesystem::write(p)) {
           notebook.open(boost::filesystem::canonical(p).string());
           Singleton::terminal()->print("New file "+p.string()+" created.\n");
           if(notebook.project_path!="")

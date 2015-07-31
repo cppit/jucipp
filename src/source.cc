@@ -43,7 +43,7 @@ file_path(file_path), project_path(project_path) {
   set_highlight_current_line(Singleton::Config::source()->highlight_current_line);
   
   get_source_buffer()->get_undo_manager()->begin_not_undoable_action();
-  juci::filesystem::open(file_path, get_buffer());
+  juci::filesystem::read(file_path, get_buffer());
   get_source_buffer()->get_undo_manager()->end_not_undoable_action();
   
   get_buffer()->place_cursor(get_buffer()->get_iter_at_offset(0)); 
