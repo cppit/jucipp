@@ -279,11 +279,14 @@ void Window::new_file_entry() {
         Singleton::terminal()->print("Error: "+p.string()+" already exists.\n");
       }
       else {
-        juci::filesystem::save(p);
-        notebook.open(boost::filesystem::canonical(p).string());
-        Singleton::terminal()->print("New file "+p.string()+" created.\n");
-        if(notebook.project_path!="")
-           directories.open_folder(notebook.project_path); //TODO: Do refresh instead
+        if(juci::filesystem::save(p)) {
+          notebook.open(boost::filesystem::canonical(p).string());
+          Singleton::terminal()->print("New file "+p.string()+" created.\n");
+          if(notebook.project_path!="")
+             directories.open_folder(notebook.project_path); //TODO: Do refresh instead
+        }
+        else
+          Singleton::terminal()->print("Error: could not create new file "+p.string()+".\n");
       }
     }
     entry_box.hide();
