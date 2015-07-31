@@ -1,6 +1,5 @@
 #include "menu.h"
 #include "logging.h"
-#include <iostream>
 
 Menu::Menu() : box(Gtk::ORIENTATION_VERTICAL) {
   INFO("Creating menu");
@@ -34,3 +33,4 @@ void Menu::build() {
   }
   ui_manager->insert_action_group(action_group);
 }
+

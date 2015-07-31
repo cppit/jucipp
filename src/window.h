@@ -5,6 +5,7 @@
 #include "directories.h"
 #include "entrybox.h"
 #include "notebook.h"
+#include "menu.h"
 
 class Window : public Gtk::Window {
 public:
@@ -20,8 +21,9 @@ private:
   Gtk::Paned directory_and_notebook_panes;
   EntryBox entry_box;
   std::mutex running;
+  Menu menu;
 
-  void add_menu();
+  void create_menu();
   void hide();
   void new_file_entry();
   void open_folder_dialog();

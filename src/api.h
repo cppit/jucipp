@@ -12,8 +12,8 @@
 ////////////////////
 class PluginApi {
 public:
-  PluginApi(Notebook* notebook);
-  static Menu* menu_;
+  PluginApi(Notebook* notebook, Menu* menu);
+  static Menu* menu;
   static Notebook* notebook;
   static void InitPlugins();
   // for Python module:

@@ -5,7 +5,7 @@
 #include "files.h"
 #include "sourcefile.h"
 
-MainConfig::MainConfig() {
+MainConfig::MainConfig(Menu &menu) : menu(menu) {
   find_or_create_config_files();
   boost::property_tree::json_parser::read_json(Singleton::config_dir() + "config.json", cfg);
   GenerateSource();
@@ -71,17 +71,16 @@ void MainConfig::GenerateTerminalCommands() {
 }
 
 void MainConfig::GenerateKeybindings() {
-  auto menu = Singleton::menu();
   boost::filesystem::path path(Singleton::config_dir() + "menu.xml");
   if (!boost::filesystem::is_regular_file(path)) {
     std::cerr << "menu.xml not found" << std::endl;
     throw;
   }
-  menu->ui = juci::filesystem::open(path);
+  menu.ui = juci::filesystem::open(path);
   boost::property_tree::ptree keys_json = cfg.get_child("keybindings");
   for (auto &i : keys_json) {
     auto key=i.second.get_value<std::string>();
-    menu->key_map[i.first] = key;
+    menu.key_map[i.first] = key;
   }
   DEBUG("Keybindings fetched");
 }
