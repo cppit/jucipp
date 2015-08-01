@@ -6,6 +6,7 @@
 #include "terminal.h"
 #include "notebook.h"
 #include "menu.h"
+#include <gtkmm.h>
 #include <string>
 
 class Singleton {
@@ -23,8 +24,10 @@ public:
   static std::string config_dir() { return std::string(getenv("HOME")) + "/.juci/config/"; }
   static std::string log_dir() { return std::string(getenv("HOME")) + "/.juci/log/"; }
   static Terminal *terminal();
+  static Gtk::Label *status();
 private:
   static std::unique_ptr<Terminal> terminal_;
+  static std::unique_ptr<Gtk::Label> status_;
 };
 
 #endif // JUCI_SINGLETONS_H_

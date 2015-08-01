@@ -87,6 +87,11 @@ void Notebook::open(std::string path) {
     if(page!=-1)
       set_tab_label_text(*(get_nth_page(page)), title);
   });
+  
+  get_current_view()->on_update_status=[this](Source::View* view, const std::string &status) {
+    if(get_current_view()==view)
+      Singleton::status()->set_text(status);
+  };
 }
 
 bool Notebook::save(int page) {

@@ -26,10 +26,14 @@ Window::Window() : box(Gtk::ORIENTATION_VERTICAL) {
   directory_and_notebook_panes.pack1(directories, true, true);
   directory_and_notebook_panes.pack2(notebook);
   directory_and_notebook_panes.set_position(120);
-
   vpaned.set_position(300);
   vpaned.pack1(directory_and_notebook_panes, true, false);
-  vpaned.pack2(*Singleton::terminal(), true, true);
+  
+  terminal_vbox.pack_start(*Singleton::terminal());
+  status_hbox.pack_end(*Singleton::status(), Gtk::PACK_SHRINK);
+  terminal_vbox.pack_end(status_hbox, Gtk::PACK_SHRINK);
+  vpaned.pack2(terminal_vbox, true, true);
+  
   box.pack_end(vpaned);
   show_all_children();
 
@@ -70,6 +74,8 @@ Window::Window() : box(Gtk::ORIENTATION_VERTICAL) {
         menu_item->set_sensitive((bool)notebook.get_current_view()->rename_similar_tokens);
     
       directories.select_path(notebook.get_current_view()->file_path);
+      
+      Singleton::status()->set_text(notebook.get_current_view()->status);
     }
   });
   INFO("Window created");

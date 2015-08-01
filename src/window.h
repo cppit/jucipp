@@ -1,7 +1,7 @@
 #ifndef JUCI_WINDOW_H_
 #define JUCI_WINDOW_H_
 
-#include <cstddef>
+#include "gtkmm.h"
 #include "directories.h"
 #include "entrybox.h"
 #include "notebook.h"
@@ -19,6 +19,8 @@ private:
   Gtk::Box box;
   Gtk::VPaned vpaned;
   Gtk::Paned directory_and_notebook_panes;
+  Gtk::VBox terminal_vbox;
+  Gtk::HBox status_hbox;
   EntryBox entry_box;
   std::mutex running;
   Menu menu;

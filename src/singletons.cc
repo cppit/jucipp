@@ -10,3 +10,9 @@ Terminal *Singleton::terminal() {
     terminal_=std::unique_ptr<Terminal>(new Terminal());
   return terminal_.get();
 }
+std::unique_ptr<Gtk::Label> Singleton::status_=std::unique_ptr<Gtk::Label>();
+Gtk::Label *Singleton::status() {
+  if(!status_)
+    status_=std::unique_ptr<Gtk::Label>(new Gtk::Label());
+  return status_.get();
+}

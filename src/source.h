@@ -56,10 +56,7 @@ namespace Source {
     void replace_forward(const std::string &replacement);
     void replace_backward(const std::string &replacement);
     void replace_all(const std::string &replacement);
-    
-    std::string get_line(size_t line_number);
-    std::string get_line_before_insert();
-    
+        
     std::string file_path;
     std::string project_path;
     
@@ -69,7 +66,15 @@ namespace Source {
     std::function<std::string()> get_token_name;
     std::function<void(const std::string &token)> tag_similar_tokens;
     std::function<size_t(const std::string &token, const std::string &text)> rename_similar_tokens;
+    
+    std::function<void(View* view, const std::string &status)> on_update_status;
+    std::string status;
   protected:
+    void set_status(const std::string &status);
+    
+    std::string get_line(size_t line_number);
+    std::string get_line_before_insert();
+
     bool on_key_press_event(GdkEventKey* key);
   private:
     GtkSourceSearchContext *search_context;

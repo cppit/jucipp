@@ -134,6 +134,12 @@ void Source::View::replace_all(const std::string &replacement) {
   gtk_source_search_context_replace_all(search_context, replacement.c_str(), replacement.size(), NULL);
 }
 
+void Source::View::set_status(const std::string &status) {
+  this->status=status;
+  if(on_update_status)
+    on_update_status(this, status);
+}
+
 string Source::View::get_line(size_t line_number) {
   Gtk::TextIter line_it = get_source_buffer()->get_iter_at_line(line_number);
   Gtk::TextIter line_end_it = line_it;
@@ -343,6 +349,7 @@ parse_thread_go(true), parse_thread_mapped(false), parse_thread_stop(false) {
         update_diagnostics();
         update_types();
         clang_readable=true;
+        set_status("");
         parsing_mutex.unlock();
         INFO("Syntax updated");
       }
@@ -353,6 +360,7 @@ parse_thread_go(true), parse_thread_mapped(false), parse_thread_stop(false) {
     }
   });
   
+  set_status("parsing...");
   parse_thread=std::thread([this]() {
     while(true) {
       while(!parse_thread_go && !parse_thread_stop)
@@ -418,6 +426,7 @@ void Source::ClangViewParse::start_reparse() {
   delayed_reparse_connection=Glib::signal_timeout().connect([this]() {
     clang_readable=false;
     parse_thread_go=true;
+    set_status("parsing...");
     return false;
   }, 1000);
 }
@@ -838,14 +847,17 @@ void Source::ClangViewAutocomplete::autocomplete() {
             completion_dialog->add_row(ss.str() + " --> " + return_value, data.brief_comments);
           }
         }
+        set_status("");
         if (!rows->empty()) {
           completion_dialog_shown=true;
           get_source_buffer()->begin_user_action();
           completion_dialog->show();
         }
       }
-      else
+      else {
+        set_status("");
         start_autocomplete();
+      }
     });
     
     std::shared_ptr<std::map<std::string, std::string> > buffer_map=std::make_shared<std::map<std::string, std::string> >();
@@ -859,6 +871,7 @@ void Source::ClangViewAutocomplete::autocomplete() {
       column_nr--;
     }
     buffer+="\n";
+    set_status("autocomplete...");
     std::thread autocomplete_thread([this, ac_data, line_nr, column_nr, buffer_map](){
       parsing_mutex.lock();
       *ac_data=move(get_autocomplete_suggestions(line_nr, column_nr, *buffer_map));
