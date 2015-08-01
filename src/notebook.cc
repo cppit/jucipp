@@ -19,7 +19,7 @@ int Notebook::size() {
 Source::View* Notebook::get_view(int page) {
   if(page>=size())
     return nullptr;
-  return source_views.at(page).get();  
+  return source_views.at(page);
 }
 
 Source::View* Notebook::get_current_view() {
@@ -125,9 +125,17 @@ bool Notebook::close_current_page() {
     }
     int page = get_current_page();
     remove_page(page);
+    if(get_current_page()==-1)
+      Singleton::status()->set_text("");
+    auto source_view=source_views.at(page);
     source_views.erase(source_views.begin()+ page);
     scrolled_windows.erase(scrolled_windows.begin()+page);
     hboxes.erase(hboxes.begin()+page);
+    if(auto source_clang_view=dynamic_cast<Source::ClangView*>(source_view)) {
+      source_clang_view->delete_object();
+    }
+    else
+      delete source_view;
   }
   return true;
 }

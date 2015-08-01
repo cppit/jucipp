@@ -390,16 +390,6 @@ parse_thread_go(true), parse_thread_mapped(false), parse_thread_stop(false) {
   get_buffer()->signal_mark_set().connect(sigc::mem_fun(*this, &Source::ClangViewParse::on_mark_set), false);
 }
 
-Source::ClangViewParse::~ClangViewParse() {
-  //TODO: Is it possible to stop the clang-process in progress?
-  parsing_in_progress->cancel("canceled");
-  parse_thread_stop=true;
-  if(parse_thread.joinable())
-    parse_thread.join();
-  parsing_mutex.lock(); //Be sure not to destroy while still parsing with libclang
-  parsing_mutex.unlock();
-}
-
 void Source::ClangViewParse::
 init_syntax_highlighting(const std::map<std::string, std::string>
                          &buffers,
@@ -872,14 +862,14 @@ void Source::ClangViewAutocomplete::autocomplete() {
     }
     buffer+="\n";
     set_status("autocomplete...");
-    std::thread autocomplete_thread([this, ac_data, line_nr, column_nr, buffer_map](){
+    if(autocomplete_thread.joinable())
+      autocomplete_thread.join();
+    autocomplete_thread=std::thread([this, ac_data, line_nr, column_nr, buffer_map](){
       parsing_mutex.lock();
       *ac_data=move(get_autocomplete_suggestions(line_nr, column_nr, *buffer_map));
       autocomplete_done();
       parsing_mutex.unlock();
     });
-    
-    autocomplete_thread.detach();
   }
 }
 
@@ -1050,4 +1040,25 @@ Source::ClangViewAutocomplete(file_path, project_path) {
       selection_dialog->show();
     }
   };
+}
+
+Source::ClangView::ClangView(const std::string& file_path, const std::string& project_path): ClangViewRefactor(file_path, project_path) {
+  do_delete_object.connect([this](){
+    if(delete_thread.joinable())
+      delete_thread.join();
+    delete this;
+  });
+}
+
+void Source::ClangView::delete_object() {
+  parsing_in_progress->cancel("canceled, freeing resources in the background");
+  parse_thread_stop=true;
+  delete_thread=std::thread([this](){
+    //TODO: Is it possible to stop the clang-process in progress?
+    if(parse_thread.joinable())
+      parse_thread.join();
+    if(autocomplete_thread.joinable())
+      autocomplete_thread.join();
+    do_delete_object();
+  });
 }
