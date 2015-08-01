@@ -28,16 +28,18 @@ public:
 
   Directories();
   void open_folder(const boost::filesystem::path& dir_path);
+  void select_path(const std::string &path);
   std::string get_cmakelists_variable(const boost::filesystem::path& dir_path, std::string command_name);
   
   std::function<void(const std::string &file)> on_row_activated;
   
 private:
   void add_paths(const boost::filesystem::path& dir_path, const Gtk::TreeModel::Row &row, unsigned depth);
+  bool ignored(std::string path);
   Gtk::TreeView tree_view;
   Glib::RefPtr<Gtk::TreeStore> tree_store;
   ColumnRecord column_record;
-  bool ignored(std::string path);
+  boost::filesystem::path last_dir_path;
 };
 
 #endif  // JUCI_DIRECTORIES_H_

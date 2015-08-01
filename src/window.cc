@@ -52,14 +52,14 @@ Window::Window() : box(Gtk::ORIENTATION_VERTICAL) {
   });
 
   notebook.signal_switch_page().connect([this](Gtk::Widget* page, guint page_num) {
-    if(search_entry_shown && entry_box.labels.size()>0 && notebook.get_current_page()!=-1) {
-      notebook.get_current_view()->update_search_occurrences=[this](int number){
-        entry_box.labels.begin()->update(0, std::to_string(number));
-      };
-      notebook.get_current_view()->search_highlight(last_search, case_sensitive_search, regex_search);
-    }
-
     if(notebook.get_current_page()!=-1) {
+      if(search_entry_shown && entry_box.labels.size()>0) {
+        notebook.get_current_view()->update_search_occurrences=[this](int number){
+          entry_box.labels.begin()->update(0, std::to_string(number));
+        };
+        notebook.get_current_view()->search_highlight(last_search, case_sensitive_search, regex_search);
+      }
+
       if(auto menu_item=dynamic_cast<Gtk::MenuItem*>(menu.ui_manager->get_widget("/MenuBar/SourceMenu/SourceGotoDeclaration")))
         menu_item->set_sensitive((bool)notebook.get_current_view()->get_declaration_location);
 
@@ -68,6 +68,8 @@ Window::Window() : box(Gtk::ORIENTATION_VERTICAL) {
 
       if(auto menu_item=dynamic_cast<Gtk::MenuItem*>(menu.ui_manager->get_widget("/MenuBar/SourceMenu/SourceRename")))
         menu_item->set_sensitive((bool)notebook.get_current_view()->rename_similar_tokens);
+    
+      directories.select_path(notebook.get_current_view()->file_path);
     }
   });
   INFO("Window created");
@@ -280,10 +282,10 @@ void Window::new_file_entry() {
       }
       else {
         if(juci::filesystem::write(p)) {
-          notebook.open(boost::filesystem::canonical(p).string());
-          Singleton::terminal()->print("New file "+p.string()+" created.\n");
           if(notebook.project_path!="")
-             directories.open_folder(notebook.project_path); //TODO: Do refresh instead
+             directories.open_folder(notebook.project_path);
+           notebook.open(boost::filesystem::canonical(p).string());
+           Singleton::terminal()->print("New file "+p.string()+" created.\n");
         }
         else
           Singleton::terminal()->print("Error: could not create new file "+p.string()+".\n");
@@ -315,6 +317,8 @@ void Window::open_folder_dialog() {
     std::string project_path=dialog.get_filename();
     notebook.project_path=project_path;
     directories.open_folder(project_path);
+    if(notebook.get_current_page()!=-1)
+      directories.select_path(notebook.get_current_view()->file_path);
   }
 }
 
@@ -375,10 +379,10 @@ void Window::save_file_dialog() {
       if(file) {
         file << notebook.get_current_view()->get_buffer()->get_text();
         file.close();
+        if(notebook.project_path!="")
+          directories.open_folder(notebook.project_path);
         notebook.open(path);
         Singleton::terminal()->print("File saved to: " + notebook.get_current_view()->file_path+"\n");
-        if(notebook.project_path!="")
-          directories.open_folder(notebook.project_path); //TODO: Do refresh instead
       }
       else
         Singleton::terminal()->print("Error saving file\n");

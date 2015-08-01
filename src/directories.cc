@@ -39,10 +39,33 @@ Directories::Directories() {
 
 void Directories::open_folder(const boost::filesystem::path& dir_path) {
   INFO("Open folder");
+  std::vector<Gtk::TreeModel::Path> expanded_paths;
+  if(last_dir_path==dir_path) {
+    tree_view.map_expanded_rows([&expanded_paths](Gtk::TreeView* tree_view, const Gtk::TreeModel::Path& path){
+      expanded_paths.emplace_back(path);
+    });
+  }
+  
   tree_store->clear();
   tree_view.get_column(0)->set_title(get_cmakelists_variable(dir_path, "project"));
   add_paths(dir_path, Gtk::TreeModel::Row(), 0);
+
+  for(auto &path: expanded_paths)
+    tree_view.expand_row(path, false);
+  last_dir_path=dir_path;
   DEBUG("Folder opened");
+}
+
+void Directories::select_path(const std::string &path) {
+  tree_store->foreach_iter([this, &path](const Gtk::TreeModel::iterator& iter){
+    if(iter->get_value(column_record.path)==path) {
+      auto tree_path=Gtk::TreePath(iter);
+      tree_view.expand_to_path(tree_path);
+      tree_view.set_cursor(tree_path);
+      return true;
+    }
+    return false;
+  });
 }
 
 bool Directories::ignored(std::string path) {
