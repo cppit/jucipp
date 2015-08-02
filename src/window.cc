@@ -21,10 +21,10 @@ Window::Window() : box(Gtk::ORIENTATION_VERTICAL) {
   create_menu();
   box.pack_start(menu.get_widget(), Gtk::PACK_SHRINK);
 
-  box.pack_start(entry_box, Gtk::PACK_SHRINK);
-
-  directory_and_notebook_panes.pack1(directories, true, true);
-  directory_and_notebook_panes.pack2(notebook);
+  directory_and_notebook_panes.pack1(directories, Gtk::SHRINK);
+  notebook_vbox.pack_start(notebook);
+  notebook_vbox.pack_end(entry_box, Gtk::PACK_SHRINK);
+  directory_and_notebook_panes.pack2(notebook_vbox, Gtk::SHRINK);
   directory_and_notebook_panes.set_position(120);
   vpaned.set_position(300);
   vpaned.pack1(directory_and_notebook_panes, true, false);
@@ -42,12 +42,16 @@ Window::Window() : box(Gtk::ORIENTATION_VERTICAL) {
   };
 
   entry_box.signal_show().connect([this](){
-    std::vector<Gtk::Widget*> focus_chain;
-    focus_chain.emplace_back(&entry_box);
-    box.set_focus_chain(focus_chain);
+    box.set_focus_chain({&vpaned});
+    vpaned.set_focus_chain({&directory_and_notebook_panes});
+    directory_and_notebook_panes.set_focus_chain({&notebook_vbox});
+    notebook_vbox.set_focus_chain({&entry_box});
   });
   entry_box.signal_hide().connect([this](){
     box.unset_focus_chain();
+    vpaned.unset_focus_chain();
+    directory_and_notebook_panes.unset_focus_chain();
+    notebook_vbox.unset_focus_chain();
   });
   entry_box.signal_hide().connect([this]() {
     if(notebook.get_current_page()!=-1) {
@@ -456,14 +460,6 @@ void Window::search_and_replace_entry() {
     last_replace=replace_entry_it->get_text();
   });
 
-  entry_box.buttons.emplace_back("Find", [this](){
-    if(notebook.get_current_page()!=-1)
-      notebook.get_current_view()->search_forward();
-  });
-  entry_box.buttons.emplace_back("Replace", [this, replace_entry_it](){
-    if(notebook.get_current_page()!=-1)
-      notebook.get_current_view()->replace_forward(replace_entry_it->get_text());
-  });
   entry_box.buttons.emplace_back("Replace all", [this, replace_entry_it](){
     if(notebook.get_current_page()!=-1)
       notebook.get_current_view()->replace_all(replace_entry_it->get_text());
