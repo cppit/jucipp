@@ -501,7 +501,7 @@ void Window::goto_line_entry() {
         auto buffer=notebook.get_current_view()->get_buffer();
         try {
           auto line=stoul(content);
-          if(line>0 && (int)line<=buffer->get_line_count()) {
+          if(line>0 && line<=(unsigned long)buffer->get_line_count()) {
             line--;
             buffer->place_cursor(buffer->get_iter_at_line(line));
             while(gtk_events_pending())
