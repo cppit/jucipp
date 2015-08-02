@@ -497,21 +497,21 @@ void Window::goto_line_entry() {
   entry_box.clear();
   if(notebook.get_current_page()!=-1) {
     entry_box.entries.emplace_back("", [this](const std::string& content){
-      auto buffer=notebook.get_current_view()->get_buffer();
-      try {
-        auto line=stoul(content);
-        if(line>0 && (int)line<=buffer->get_line_count()) {
-          line--;
-          if(notebook.get_current_page()!=-1) {
+      if(notebook.get_current_page()!=-1) {
+        auto buffer=notebook.get_current_view()->get_buffer();
+        try {
+          auto line=stoul(content);
+          if(line>0 && (int)line<=buffer->get_line_count()) {
+            line--;
             buffer->place_cursor(buffer->get_iter_at_line(line));
             while(gtk_events_pending())
               gtk_main_iteration();
             notebook.get_current_view()->scroll_to(buffer->get_insert(), 0.0, 1.0, 0.5);
           }
         }
+        catch(const std::exception &e) {}  
+        entry_box.hide();
       }
-      catch(const std::exception &e) {}  
-      entry_box.hide();
     });
     auto entry_it=entry_box.entries.begin();
     entry_box.buttons.emplace_back("Go to line", [this, entry_it](){
