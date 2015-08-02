@@ -148,6 +148,16 @@ void Window::create_menu() {
     INFO("Done Redo");
   });
 
+  menu.action_group->add(Gtk::Action::create("SourceGotoLine", "Go to line"), Gtk::AccelKey(menu.key_map["source_goto_line"]), [this]() {
+    goto_line_entry();
+  });
+  menu.action_group->add(Gtk::Action::create("SourceCenterCursor", "Center cursor"), Gtk::AccelKey(menu.key_map["source_center_cursor"]), [this]() {
+    if(notebook.get_current_page()!=-1) {
+      while(gtk_events_pending())
+        gtk_main_iteration();
+      notebook.get_current_view()->scroll_to(notebook.get_current_view()->get_buffer()->get_insert(), 0.0, 1.0, 0.5);
+    }
+  });
   menu.action_group->add(Gtk::Action::create("SourceGotoDeclaration", "Go to declaration"), Gtk::AccelKey(menu.key_map["source_goto_declaration"]), [this]() {
     if(notebook.get_current_page()!=-1) {
       if(notebook.get_current_view()->get_declaration_location) {
@@ -483,6 +493,34 @@ void Window::search_and_replace_entry() {
   entry_box.show();
 }
 
+void Window::goto_line_entry() {
+  entry_box.clear();
+  if(notebook.get_current_page()!=-1) {
+    entry_box.entries.emplace_back("", [this](const std::string& content){
+      auto buffer=notebook.get_current_view()->get_buffer();
+      try {
+        auto line=stoul(content);
+        if(line>0 && (int)line<=buffer->get_line_count()) {
+          line--;
+          if(notebook.get_current_page()!=-1) {
+            buffer->place_cursor(buffer->get_iter_at_line(line));
+            while(gtk_events_pending())
+              gtk_main_iteration();
+            notebook.get_current_view()->scroll_to(buffer->get_insert(), 0.0, 1.0, 0.5);
+          }
+        }
+      }
+      catch(const std::exception &e) {}  
+      entry_box.hide();
+    });
+    auto entry_it=entry_box.entries.begin();
+    entry_box.buttons.emplace_back("Go to line", [this, entry_it](){
+      entry_it->activate();
+    });
+    entry_box.show();
+  }
+}
+
 void Window::rename_token_entry() {
   entry_box.clear();
   if(notebook.get_current_page()!=-1) {
@@ -502,23 +540,23 @@ void Window::rename_token_entry() {
         };
         label_it->update(0, "");
         entry_box.entries.emplace_back(*token_name, [this, token_name, token](const std::string& content){
-            if(notebook.get_current_page()!=-1 && content!=*token_name) {
-              for(int c=0;c<notebook.size();c++) {
-                if(notebook.get_view(c)->rename_similar_tokens) {
-                  auto number=notebook.get_view(c)->rename_similar_tokens(*token, content);
-                  if(number>0) {
-                    Singleton::terminal()->print("Replaced "+std::to_string(number)+" occurrences in file "+notebook.get_view(c)->file_path+"\n");
-                    notebook.save(c);
-                  }
+          if(notebook.get_current_page()!=-1 && content!=*token_name) {
+            for(int c=0;c<notebook.size();c++) {
+              if(notebook.get_view(c)->rename_similar_tokens) {
+                auto number=notebook.get_view(c)->rename_similar_tokens(*token, content);
+                if(number>0) {
+                  Singleton::terminal()->print("Replaced "+std::to_string(number)+" occurrences in file "+notebook.get_view(c)->file_path+"\n");
+                  notebook.save(c);
                 }
               }
-              entry_box.hide();
             }
-          });
+            entry_box.hide();
+          }
+        });
         auto entry_it=entry_box.entries.begin();
         entry_box.buttons.emplace_back("Rename", [this, entry_it](){
-            entry_it->activate();
-          });
+          entry_it->activate();
+        });
         entry_box.show();
       }
     }

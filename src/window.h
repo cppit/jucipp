@@ -33,6 +33,7 @@ private:
   void save_file_dialog();
   
   void search_and_replace_entry();
+  void goto_line_entry();
   void rename_token_entry();
   std::string last_search;
   std::string last_replace;
