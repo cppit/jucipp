@@ -1,11 +1,15 @@
 #include "tooltips.h"
 #include "singletons.h"
 
+namespace sigc {
+  SIGC_FUNCTORS_DEDUCE_RESULT_TYPE_WITH_DECLTYPE
+}
+
 Gdk::Rectangle Tooltips::drawn_tooltips_rectangle=Gdk::Rectangle();
 
-Tooltip::Tooltip(std::function<Glib::RefPtr<Gtk::TextBuffer>()> get_buffer, Gtk::TextView& text_view, 
+Tooltip::Tooltip(std::function<Glib::RefPtr<Gtk::TextBuffer>()> create_tooltip_buffer, Gtk::TextView& text_view, 
 Glib::RefPtr<Gtk::TextBuffer::Mark> start_mark, Glib::RefPtr<Gtk::TextBuffer::Mark> end_mark):
-get_buffer(get_buffer), text_view(text_view), 
+create_tooltip_buffer(create_tooltip_buffer), text_view(text_view), 
 start_mark(start_mark), end_mark(end_mark) {}
 
 Tooltip::~Tooltip() {
@@ -38,13 +42,17 @@ void Tooltip::adjust(bool disregard_drawn) {
     window=std::unique_ptr<Gtk::Window>(new Gtk::Window(Gtk::WindowType::WINDOW_POPUP));
     
     window->set_events(Gdk::POINTER_MOTION_MASK);
-    window->signal_motion_notify_event().connect(sigc::mem_fun(*this, &Tooltip::tooltip_on_motion_notify_event), false);
+    window->signal_motion_notify_event().connect([this](GdkEventMotion* event){
+      window->hide();
+      return false;
+    });
     window->property_decorated()=false;
     window->set_accept_focus(false);
     window->set_skip_taskbar_hint(true);
     window->set_default_size(0, 0);
 
-    tooltip_widget=std::unique_ptr<Gtk::TextView>(new Gtk::TextView(this->get_buffer()));
+    tooltip_widget=std::unique_ptr<Gtk::TextView>(new Gtk::TextView(create_tooltip_buffer()));
+    wrap_lines(tooltip_widget->get_buffer());
     tooltip_widget->set_editable(false);
     tooltip_widget->override_background_color(Gdk::RGBA(Singleton::Config::source()->background_tooltips)); 
     window->add(*tooltip_widget);
@@ -76,9 +84,47 @@ void Tooltip::adjust(bool disregard_drawn) {
   window->move(rectangle.get_x(), rectangle.get_y());
 }
 
-bool Tooltip::tooltip_on_motion_notify_event(GdkEventMotion* event) {
-  window->hide();
-  return false;
+void Tooltip::wrap_lines(Glib::RefPtr<Gtk::TextBuffer> text_buffer) {
+  INFO("Tooltip::wrap_lines");
+  auto iter=text_buffer->begin();
+  
+  while(iter) {
+    auto last_space=text_buffer->end();
+    bool end=false;
+    for(unsigned c=0;c<=80;c++) {
+      if(!iter) {
+        end=true;
+        break;
+      }
+      if(*iter==' ')
+        last_space=iter;
+      if(*iter=='\n') {
+        end=true;
+        iter++;
+        break;
+      }
+      iter++;
+    }
+    if(!end) {
+      while(!last_space && iter) { //If no space (word longer than 80)
+        iter++;
+        if(iter && *iter==' ')
+          last_space=iter;
+      }
+      if(iter && last_space) {
+        auto mark=text_buffer->create_mark(last_space);
+        auto iter_mark=text_buffer->create_mark(iter);
+        auto last_space_p=last_space++;
+        text_buffer->erase(last_space, last_space_p);
+        text_buffer->insert(mark->get_iter(), "\n");
+        
+        iter=iter_mark->get_iter();
+
+        text_buffer->delete_mark(mark);
+        text_buffer->delete_mark(iter_mark);
+      }
+    }
+  }
 }
 
 void Tooltips::show(const Gdk::Rectangle& rectangle, bool disregard_drawn) {

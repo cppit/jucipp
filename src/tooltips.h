@@ -6,7 +6,7 @@
 
 class Tooltip {
 public:
-  Tooltip(std::function<Glib::RefPtr<Gtk::TextBuffer>()> get_buffer, Gtk::TextView& text_view, Glib::RefPtr<Gtk::TextBuffer::Mark> start_mark, Glib::RefPtr<Gtk::TextBuffer::Mark> end_mark);
+  Tooltip(std::function<Glib::RefPtr<Gtk::TextBuffer>()> create_tooltip_buffer, Gtk::TextView& text_view, Glib::RefPtr<Gtk::TextBuffer::Mark> start_mark, Glib::RefPtr<Gtk::TextBuffer::Mark> end_mark);
   ~Tooltip();
   
   void update();
@@ -15,9 +15,9 @@ public:
   Gdk::Rectangle activation_rectangle;
   std::unique_ptr<Gtk::Window> window;
 private:
-  bool tooltip_on_motion_notify_event(GdkEventMotion* event);
+  void wrap_lines(Glib::RefPtr<Gtk::TextBuffer> text_buffer);
   
-  std::function<Glib::RefPtr<Gtk::TextBuffer>()> get_buffer;
+  std::function<Glib::RefPtr<Gtk::TextBuffer>()> create_tooltip_buffer;
   std::unique_ptr<Gtk::TextView> tooltip_widget;
   Glib::RefPtr<Gtk::TextBuffer::Mark> start_mark;
   Glib::RefPtr<Gtk::TextBuffer::Mark> end_mark;

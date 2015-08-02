@@ -33,4 +33,3 @@ void Menu::build() {
   }
   ui_manager->insert_action_group(action_group);
 }
-

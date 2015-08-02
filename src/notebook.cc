@@ -131,9 +131,8 @@ bool Notebook::close_current_page() {
     source_views.erase(source_views.begin()+ page);
     scrolled_windows.erase(scrolled_windows.begin()+page);
     hboxes.erase(hboxes.begin()+page);
-    if(auto source_clang_view=dynamic_cast<Source::ClangView*>(source_view)) {
+    if(auto source_clang_view=dynamic_cast<Source::ClangView*>(source_view))
       source_clang_view->delete_object();
-    }
     else
       delete source_view;
   }

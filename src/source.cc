@@ -496,14 +496,14 @@ void Source::ClangViewParse::update_diagnostics() {
       
       auto spelling=diagnostic.spelling;
       auto severity_spelling=diagnostic.severity_spelling;
-      auto get_tooltip_buffer=[this, spelling, severity_spelling, diagnostic_tag_name]() {
+      auto create_tooltip_buffer=[this, spelling, severity_spelling, diagnostic_tag_name]() {
         auto tooltip_buffer=Gtk::TextBuffer::create(get_buffer()->get_tag_table());
         tooltip_buffer->insert_with_tag(tooltip_buffer->get_insert()->get_iter(), severity_spelling, diagnostic_tag_name);
         tooltip_buffer->insert_at_cursor(":\n"+spelling);
         //TODO: Insert newlines to clang_tu->diagnostics[c].spelling (use 80 chars, then newline?)
         return tooltip_buffer;
       };
-      diagnostic_tooltips.emplace_back(get_tooltip_buffer, *this, get_buffer()->create_mark(start), get_buffer()->create_mark(end));
+      diagnostic_tooltips.emplace_back(create_tooltip_buffer, *this, get_buffer()->create_mark(start), get_buffer()->create_mark(end));
     
       get_buffer()->apply_tag_by_name(diagnostic_tag_name+"_underline", start, end);
     }
@@ -516,7 +516,7 @@ void Source::ClangViewParse::update_types() {
     if(token.get_kind()==clang::Token_Identifier && token.has_type()) {
       auto start=get_buffer()->get_iter_at_offset(token.offsets.first);
       auto end=get_buffer()->get_iter_at_offset(token.offsets.second);
-      auto get_tooltip_buffer=[this, &token]() {
+      auto create_tooltip_buffer=[this, &token]() {
         auto tooltip_buffer=Gtk::TextBuffer::create(get_buffer()->get_tag_table());
         tooltip_buffer->insert_at_cursor("Type: "+token.get_type());
         auto brief_comment=token.get_brief_comments();
@@ -525,7 +525,7 @@ void Source::ClangViewParse::update_types() {
         return tooltip_buffer;
       };
       
-      type_tooltips.emplace_back(get_tooltip_buffer, *this, get_buffer()->create_mark(start), get_buffer()->create_mark(end));
+      type_tooltips.emplace_back(create_tooltip_buffer, *this, get_buffer()->create_mark(start), get_buffer()->create_mark(end));
     }
   }
 }
