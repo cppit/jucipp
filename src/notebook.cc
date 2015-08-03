@@ -113,7 +113,7 @@ void Notebook::open(std::string path) {
 }
 
 std::string Notebook::find_project_path(const std::string &path) {
-  auto find_cmake_project=[this](const boost::filesystem::path &path) {
+  const auto find_cmake_project=[this](const boost::filesystem::path &path) {
     auto cmake_path=path;
     cmake_path+="/CMakeLists.txt";
     for(auto &line: juci::filesystem::read_lines(cmake_path)) {
