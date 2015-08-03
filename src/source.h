@@ -91,13 +91,14 @@ namespace Source {
   public:
     ClangViewParse(const std::string& file_path, const std::string& project_path);
   protected:
+    void init_parse();
     void start_reparse();
     bool on_key_press_event(GdkEventKey* key);
     bool on_focus_out_event(GdkEventFocus* event);
     std::unique_ptr<clang::TranslationUnit> clang_tu;
     std::mutex parsing_mutex;
     std::unique_ptr<clang::Tokens> clang_tokens;
-    bool clang_readable=false;
+    bool clang_readable;
     sigc::connection delayed_reparse_connection;
     sigc::connection delayed_tooltips_connection;
     
@@ -169,9 +170,13 @@ namespace Source {
   public:
     ClangView(const std::string& file_path, const std::string& project_path);
     void delete_object();
+    bool restart_parse();
   private:
     Glib::Dispatcher do_delete_object;
+    Glib::Dispatcher do_restart_parse;
     std::thread delete_thread;
+    std::thread restart_parse_thread;
+    bool restart_parse_running=false;
   };
 };  // class Source
 #endif  // JUCI_SOURCE_H_

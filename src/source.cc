@@ -278,8 +278,7 @@ Source::GenericView::GenericView(const std::string& file_path, const std::string
 clang::Index Source::ClangViewParse::clang_index(0, 0);
 
 Source::ClangViewParse::ClangViewParse(const std::string& file_path, const std::string& project_path):
-Source::View(file_path, project_path),
-parse_thread_go(true), parse_thread_mapped(false), parse_thread_stop(false) {
+Source::View(file_path, project_path) {
   override_font(Pango::FontDescription(Singleton::Config::source()->font));
   override_background_color(Gdk::RGBA(Singleton::Config::source()->background));
   override_background_color(Gdk::RGBA(Singleton::Config::source()->background_selected), Gtk::StateFlags::STATE_FLAG_SELECTED);
@@ -307,6 +306,28 @@ parse_thread_go(true), parse_thread_mapped(false), parse_thread_stop(false) {
     diagnostic_tag_underline->set_property("underline-rgba", diagnostic_tag->property_foreground_rgba().get_value());
   }
   //TODO: clear tag_class and param_spec?
+  
+  parsing_in_progress=Singleton::terminal()->print_in_progress("Parsing "+file_path);
+  init_parse();
+  
+  get_buffer()->signal_changed().connect([this]() {
+    start_reparse();
+    type_tooltips.hide();
+    diagnostic_tooltips.hide();
+  });
+  
+  get_buffer()->signal_mark_set().connect(sigc::mem_fun(*this, &Source::ClangViewParse::on_mark_set), false);
+}
+
+void Source::ClangViewParse::init_parse() {
+  type_tooltips.hide();
+  diagnostic_tooltips.hide();
+  get_buffer()->remove_all_tags(get_buffer()->begin(), get_buffer()->end());
+  clang_readable=false;
+  parse_thread_go=true;
+  parse_thread_mapped=false;
+  parse_thread_stop=false;
+  
   
   int start_offset = get_source_buffer()->begin().get_offset();
   int end_offset = get_source_buffer()->end().get_offset();
@@ -340,7 +361,6 @@ parse_thread_go(true), parse_thread_mapped(false), parse_thread_stop(false) {
     parse_thread_go=true;
   });
   
-  parsing_in_progress=Singleton::terminal()->print_in_progress("Parsing "+file_path);
   parse_done.connect([this](){
     if(parse_thread_mapped) {
       if(parsing_mutex.try_lock()) {
@@ -361,6 +381,8 @@ parse_thread_go(true), parse_thread_mapped(false), parse_thread_stop(false) {
   });
   
   set_status("parsing...");
+  if(parse_thread.joinable())
+    parse_thread.join();
   parse_thread=std::thread([this]() {
     while(true) {
       while(!parse_thread_go && !parse_thread_stop)
@@ -380,14 +402,6 @@ parse_thread_go(true), parse_thread_mapped(false), parse_thread_stop(false) {
       }
     }
   });
-  
-  get_buffer()->signal_changed().connect([this]() {
-    start_reparse();
-    type_tooltips.hide();
-    diagnostic_tooltips.hide();
-  });
-  
-  get_buffer()->signal_mark_set().connect(sigc::mem_fun(*this, &Source::ClangViewParse::on_mark_set), false);
 }
 
 void Source::ClangViewParse::
@@ -1048,6 +1062,10 @@ Source::ClangView::ClangView(const std::string& file_path, const std::string& pr
       delete_thread.join();
     delete this;
   });
+  do_restart_parse.connect([this](){
+    init_parse();
+    restart_parse_running=false;
+  });
 }
 
 void Source::ClangView::delete_object() {
@@ -1055,10 +1073,30 @@ void Source::ClangView::delete_object() {
   parse_thread_stop=true;
   delete_thread=std::thread([this](){
     //TODO: Is it possible to stop the clang-process in progress?
+    if(restart_parse_thread.joinable())
+      restart_parse_thread.join();
     if(parse_thread.joinable())
       parse_thread.join();
     if(autocomplete_thread.joinable())
       autocomplete_thread.join();
     do_delete_object();
   });
+}
+
+bool Source::ClangView::restart_parse() {
+  if(!restart_parse_running) {
+    restart_parse_running=true;
+    parse_thread_stop=true;
+    if(restart_parse_thread.joinable())
+      restart_parse_thread.join();
+    restart_parse_thread=std::thread([this](){
+      if(parse_thread.joinable())
+        parse_thread.join();
+      if(autocomplete_thread.joinable())
+        autocomplete_thread.join();
+      do_restart_parse();
+    });
+    return true;
+  }
+  return false;
 }

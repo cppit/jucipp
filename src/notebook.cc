@@ -4,6 +4,9 @@
 #include "singletons.h"
 #include <fstream>
 
+#include <iostream> //TODO: remove
+using namespace std; //TODO: remove
+
 namespace sigc {
   SIGC_FUNCTORS_DEDUCE_RESULT_TYPE_WITH_DECLTYPE
 }
@@ -52,8 +55,12 @@ void Notebook::open(std::string path) {
     tmp_project_path=boost::filesystem::path(path).parent_path().string();
   }
   auto language=Source::guess_language(path);
-  if(language && (language->get_id()=="chdr" || language->get_id()=="c" || language->get_id()=="cpp" || language->get_id()=="objc"))
+  if(language && (language->get_id()=="chdr" || language->get_id()=="c" || language->get_id()=="cpp" || language->get_id()=="objc")) {
+    if(boost::filesystem::exists(tmp_project_path+"/CMakeLists.txt") && !boost::filesystem::exists(tmp_project_path+"/compile_commands.json")) {
+      make_compile_commands();
+    }
     source_views.emplace_back(new Source::ClangView(path, tmp_project_path));
+  }
   else
     source_views.emplace_back(new Source::GenericView(path, tmp_project_path, language));
     
@@ -102,10 +109,38 @@ bool Notebook::save(int page) {
     if(juci::filesystem::write(view->file_path, view->get_buffer())) {
       view->get_buffer()->set_modified(false);
       Singleton::terminal()->print("File saved to: " +view->file_path+"\n");
+      
+      //If CMakeLists.txt have been modified:
+      if(boost::filesystem::path(view->file_path).filename().string()=="CMakeLists.txt") {
+        if(make_compile_commands()) {
+          for(auto source_view: source_views) {
+            if(auto source_clang_view=dynamic_cast<Source::ClangView*>(source_view)) {
+              if(project_path==source_view->project_path) {
+                if(source_clang_view->restart_parse())
+                  Singleton::terminal()->print("Reparsing "+source_clang_view->file_path+"\n");
+                else
+                  Singleton::terminal()->print("Already reparsing "+source_clang_view->file_path+". Please reopen the file manually.\n");
+              }
+            }
+          }
+        }
+      }
+      
+      return true;
+    }
+    Singleton::terminal()->print("Error: could not save file " +view->file_path+"\n");
+  }
+  return false;
+}
+
+bool Notebook::make_compile_commands() {
+  if(project_path.size()>0) {
+    Singleton::terminal()->print("Creating "+boost::filesystem::path(project_path+"/compile_commands.json").string()+"\n");
+    if(Singleton::terminal()->execute(project_path, "cmake . -DCMAKE_EXPORT_COMPILE_COMMANDS=ON 2>&1")) {
+      //TODO: refresh directories
       return true;
     }
   }
-  Singleton::terminal()->print("Error: could not save file " +view->file_path+"\n");
   return false;
 }
 

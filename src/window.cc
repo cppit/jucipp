@@ -5,6 +5,9 @@
 #include "config.h"
 #include "api.h"
 
+#include <iostream> //TODO: remove
+using namespace std; //TODO: remove
+
 namespace sigc {
   SIGC_FUNCTORS_DEDUCE_RESULT_TYPE_WITH_DECLTYPE
 }
@@ -81,6 +84,9 @@ Window::Window() : box(Gtk::ORIENTATION_VERTICAL) {
       
       Singleton::status()->set_text(notebook.get_current_view()->status);
     }
+  });
+  notebook.signal_page_removed().connect([this](Gtk::Widget* page, guint page_num) {
+    entry_box.hide();
   });
   INFO("Window created");
 } // Window constructor

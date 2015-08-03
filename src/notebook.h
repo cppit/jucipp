@@ -22,6 +22,7 @@ public:
   std::string project_path;
       
 private:
+  bool make_compile_commands();
   bool save_modified_dialog();
   std::vector<Source::View*> source_views; //Is NOT freed in destructor, this is intended for quick program exit.
   std::vector<std::unique_ptr<Gtk::ScrolledWindow> > scrolled_windows;
