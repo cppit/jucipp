@@ -23,6 +23,7 @@ public:
   };
   static std::string config_dir() { return std::string(getenv("HOME")) + "/.juci/config/"; }
   static std::string log_dir() { return std::string(getenv("HOME")) + "/.juci/log/"; }
+  static std::string style_dir() { return std::string(getenv("HOME")) + "/.juci/styles/"; }
   static Terminal *terminal();
   static Gtk::Label *status();
 private:

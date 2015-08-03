@@ -48,6 +48,8 @@ void MainConfig::GenerateSource() {
       source_cfg->highlight_current_line = i.second.get_value<std::string>() == "1" ? true : false;
     else if (i.first == "font")
       source_cfg->font = i.second.get_value<std::string>();
+    else if (i.first == "theme")
+      source_cfg->theme = i.second.get_value<std::string>();
   }
   source_cfg->tab_size = source_json.get<unsigned>("tab_size");
   for (unsigned c = 0; c < source_cfg->tab_size; c++)

@@ -60,6 +60,16 @@ file_path(file_path), project_path(project_path) {
   //TODO: either use lambda if possible or create a gtkmm wrapper around search_context (including search_settings):
   //TODO: (gtkmm's Gtk::Object has connect_property_changed, so subclassing this might be an idea)
   g_signal_connect(search_context, "notify::occurrences-count", G_CALLBACK(search_occurrences_updated), this);
+  
+  // style  
+  auto style_scheme_manager=Gsv::StyleSchemeManager::get_default();
+  style_scheme_manager->prepend_search_path(Singleton::style_dir());
+
+  auto scheme = style_scheme_manager->get_scheme(Singleton::Config::source()->theme);
+  if(scheme) {
+scheme->_cpp_destruction_is_in_progress()
+    get_source_buffer()->set_style_scheme(scheme);
+  }
 }
 
 void Source::View::search_occurrences_updated(GtkWidget* widget, GParamSpec* property, gpointer data) {
@@ -249,16 +259,6 @@ bool Source::View::on_key_press_event(GdkEventKey* key) {
 //// GenericView ////
 /////////////////////
 Source::GenericView::GenericView(const std::string& file_path, const std::string& project_path, Glib::RefPtr<Gsv::Language> language) : View(file_path, project_path) {
-  auto style_scheme_manager=Gsv::StyleSchemeManager::get_default();
-  //TODO: add?: style_scheme_manager->prepend_search_path("~/.juci/");
-  auto scheme=style_scheme_manager->get_scheme("classic");
-  if(scheme) {
-    get_source_buffer()->set_style_scheme(scheme);
-    auto style=scheme->get_style("def:comment");
-    if(style)
-      cout << "TODO, in progress: def:comment in scheme " << scheme->get_name() << " has color " << style->property_foreground() << endl;
-  }
-  
   if(language) {
     get_source_buffer()->set_language(language);
     Singleton::terminal()->print("Language for file "+file_path+" set to "+language->get_name()+".\n");
