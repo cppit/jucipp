@@ -63,6 +63,7 @@ bool Terminal::execute(const std::string &path, const std::string &command) {
   else
     boost_path=boost::filesystem::path(path);
   
+  //TODO: Windows...
   auto cd_path_and_command="cd "+boost_path.string()+" 2>&1 && "+command;
 
   FILE* p = NULL;

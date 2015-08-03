@@ -136,6 +136,7 @@ bool Notebook::save(int page) {
 bool Notebook::make_compile_commands() {
   if(project_path.size()>0) {
     Singleton::terminal()->print("Creating "+boost::filesystem::path(project_path+"/compile_commands.json").string()+"\n");
+    //TODO: Windows...
     if(Singleton::terminal()->execute(project_path, "cmake . -DCMAKE_EXPORT_COMPILE_COMMANDS=ON 2>&1")) {
       //TODO: refresh directories
       return true;
