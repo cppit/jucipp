@@ -12,7 +12,7 @@ namespace sigc {
   SIGC_FUNCTORS_DEDUCE_RESULT_TYPE_WITH_DECLTYPE
 }
 
-Window::Window() : box(Gtk::ORIENTATION_VERTICAL) {
+Window::Window() : box(Gtk::ORIENTATION_VERTICAL), notebook(directories) {
   INFO("Create Window");
   set_title("juCi++");
   set_default_size(600, 400);

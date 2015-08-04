@@ -10,8 +10,8 @@
 class Window : public Gtk::Window {
 public:
   Window();
-  Notebook notebook;
   Directories directories;
+  Notebook notebook;
 protected:
   bool on_key_press_event(GdkEventKey *event);
   bool on_delete_event (GdkEventAny *event);

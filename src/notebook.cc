@@ -12,7 +12,7 @@ namespace sigc {
   SIGC_FUNCTORS_DEDUCE_RESULT_TYPE_WITH_DECLTYPE
 }
 
-Notebook::Notebook() : Gtk::Notebook() {
+Notebook::Notebook(Directories &directories) : Gtk::Notebook(), directories(directories) {
   Gsv::init();
 }
 
@@ -174,7 +174,8 @@ bool Notebook::make_compile_commands(const std::string &path) {
   Singleton::terminal()->print("Creating "+boost::filesystem::path(path+"/compile_commands.json").string()+"\n");
   //TODO: Windows...
   if(Singleton::terminal()->execute(path, "cmake . -DCMAKE_EXPORT_COMPILE_COMMANDS=ON 2>&1")) {
-    //TODO: refresh directories
+    if(project_path!="")
+      directories.open_folder(project_path);
     return true;
   }
   return false;
