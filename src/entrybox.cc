@@ -37,6 +37,7 @@ EntryBox::Label::Label(std::function<void(int state, const std::string& message)
 EntryBox::EntryBox() : Gtk::Box(Gtk::ORIENTATION_VERTICAL), upper_box(Gtk::ORIENTATION_HORIZONTAL), lower_box(Gtk::ORIENTATION_HORIZONTAL) {
   pack_start(upper_box, Gtk::PACK_SHRINK);
   pack_start(lower_box, Gtk::PACK_SHRINK);
+  this->set_focus_chain({&lower_box});
 }
 
 void EntryBox::clear() {
@@ -50,16 +51,16 @@ void EntryBox::clear() {
 void EntryBox::show() {
   std::vector<Gtk::Widget*> focus_chain;
   for(auto& entry: entries) {
-    upper_box.pack_start(entry, Gtk::PACK_SHRINK);
+    lower_box.pack_start(entry, Gtk::PACK_SHRINK);
     focus_chain.emplace_back(&entry);
   }
   for(auto& button: buttons)
-    upper_box.pack_start(button, Gtk::PACK_SHRINK);
+    lower_box.pack_start(button, Gtk::PACK_SHRINK);
   for(auto& toggle_button: toggle_buttons)
-    upper_box.pack_start(toggle_button, Gtk::PACK_SHRINK);
+    lower_box.pack_start(toggle_button, Gtk::PACK_SHRINK);
   for(auto& label: labels)
-    lower_box.pack_start(label, Gtk::PACK_SHRINK);
-  upper_box.set_focus_chain(focus_chain);
+    upper_box.pack_start(label, Gtk::PACK_SHRINK);
+  lower_box.set_focus_chain(focus_chain);
   show_all();
   if(entries.size()>0) {
     entries.begin()->grab_focus();

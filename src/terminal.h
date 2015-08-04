@@ -31,23 +31,25 @@ public:
   };
   
   Terminal();
-  void set_change_folder_command(boost::filesystem::path CMake_path);
-  void run(std::string executable);
-  void compile();
+  bool execute(const std::string &path, const std::string &command);
+  void async_execute(const std::string &path, const std::string &command);
+  void set_change_folder_command(boost::filesystem::path CMake_path); //TODO: remove
+  void run(std::string executable); //TODO: remove
+  void compile(); //TODO: remove
   int print(std::string message);
   void print(int line_nr, std::string message);
   std::shared_ptr<InProgress> print_in_progress(std::string start_msg);
 private:
-  void execute_command(std::string command, std::string mode);
+  void execute_command(std::string command, std::string mode); //TODO: remove
   
   Gtk::TextView text_view;
   Gtk::ScrolledWindow scrolled_window;
   
-  std::string change_folder_command;
-  std::string path;
-  const std::string cmake_sucsess = "Build files have been written to:";
-  const std::string make_built = "Built target";
-  const std::string make_executable = "Linking CXX executable";
+  std::string change_folder_command; //TODO: remove
+  std::string path; //TODO: remove
+  const std::string cmake_sucsess = "Build files have been written to:"; //TODO: remove
+  const std::string make_built = "Built target"; //TODO: remove
+  const std::string make_executable = "Linking CXX executable"; //TODO: remove
 };
 
 #endif  // JUCI_TERMINAL_H_

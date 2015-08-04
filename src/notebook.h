@@ -8,10 +8,11 @@
 #include <type_traits>
 #include <map>
 #include <sigc++/sigc++.h>
+#include "directories.h"
 
 class Notebook : public Gtk::Notebook {
 public:
-  Notebook();
+  Notebook(Directories &directories);
   Source::View* get_view(int page);
   int size();
   Source::View* get_current_view();
@@ -22,8 +23,11 @@ public:
   std::string project_path;
       
 private:
+  std::string find_project_path(const std::string &path);
+  bool make_compile_commands(const std::string &path);
   bool save_modified_dialog();
-  std::vector<std::unique_ptr<Source::View> > source_views;
+  Directories &directories;
+  std::vector<Source::View*> source_views; //Is NOT freed in destructor, this is intended for quick program exit.
   std::vector<std::unique_ptr<Gtk::ScrolledWindow> > scrolled_windows;
   std::vector<std::unique_ptr<Gtk::HBox> > hboxes;
 };

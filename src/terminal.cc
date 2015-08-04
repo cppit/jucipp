@@ -56,6 +56,39 @@ Terminal::Terminal() {
   });
 }
 
+bool Terminal::execute(const std::string &path, const std::string &command) {
+  boost::filesystem::path boost_path;
+  if(path=="")
+    boost_path=boost::filesystem::current_path();
+  else
+    boost_path=boost::filesystem::path(path);
+  
+  //TODO: Windows...
+  auto cd_path_and_command="cd "+boost_path.string()+" 2>&1 && "+command;
+
+  FILE* p = NULL;
+  p = popen(cd_path_and_command.c_str(), "r");
+  if (p == NULL) {
+    print("Error: Failed to run command" + command + "\n");
+    return false;
+  }
+  else {
+    char buffer[1028];
+    while (fgets(buffer, 1028, p) != NULL) {
+      print(buffer);
+    }
+    int exit_code=pclose(p);
+    if(exit_code==0)
+      return true;
+    else
+      return false;
+  }
+}
+
+void Terminal::async_execute(const std::string &path, const std::string &command) {
+  
+}
+
 void Terminal::set_change_folder_command(boost::filesystem::path CMake_path) {
   INFO("Terminal: set_change_folder_command");
   path = CMake_path.string();

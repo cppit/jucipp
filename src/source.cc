@@ -278,8 +278,7 @@ Source::GenericView::GenericView(const std::string& file_path, const std::string
 clang::Index Source::ClangViewParse::clang_index(0, 0);
 
 Source::ClangViewParse::ClangViewParse(const std::string& file_path, const std::string& project_path):
-Source::View(file_path, project_path),
-parse_thread_go(true), parse_thread_mapped(false), parse_thread_stop(false) {
+Source::View(file_path, project_path) {
   override_font(Pango::FontDescription(Singleton::Config::source()->font));
   override_background_color(Gdk::RGBA(Singleton::Config::source()->background));
   override_background_color(Gdk::RGBA(Singleton::Config::source()->background_selected), Gtk::StateFlags::STATE_FLAG_SELECTED);
@@ -308,6 +307,56 @@ parse_thread_go(true), parse_thread_mapped(false), parse_thread_stop(false) {
   }
   //TODO: clear tag_class and param_spec?
   
+  parsing_in_progress=Singleton::terminal()->print_in_progress("Parsing "+file_path);
+  //GTK-calls must happen in main thread, so the parse_thread
+  //sends signals to the main thread that it is to call the following functions:
+  parse_start.connect([this]{
+    if(parse_thread_buffer_map_mutex.try_lock()) {
+      parse_thread_buffer_map=get_buffer_map();
+      parse_thread_mapped=true;
+      parse_thread_buffer_map_mutex.unlock();
+    }
+    parse_thread_go=true;
+  });
+  parse_done.connect([this](){
+    if(parse_thread_mapped) {
+      if(parsing_mutex.try_lock()) {
+        INFO("Updating syntax");
+        update_syntax();
+        update_diagnostics();
+        update_types();
+        clang_readable=true;
+        set_status("");
+        parsing_mutex.unlock();
+        INFO("Syntax updated");
+      }
+      parsing_in_progress->done("done");
+    }
+    else {
+      parse_thread_go=true;
+    }
+  });
+  init_parse();
+  
+  get_buffer()->signal_changed().connect([this]() {
+    start_reparse();
+    type_tooltips.hide();
+    diagnostic_tooltips.hide();
+  });
+  
+  get_buffer()->signal_mark_set().connect(sigc::mem_fun(*this, &Source::ClangViewParse::on_mark_set), false);
+}
+
+void Source::ClangViewParse::init_parse() {
+  type_tooltips.hide();
+  diagnostic_tooltips.hide();
+  get_buffer()->remove_all_tags(get_buffer()->begin(), get_buffer()->end());
+  clang_readable=false;
+  parse_thread_go=true;
+  parse_thread_mapped=false;
+  parse_thread_stop=false;
+  
+  
   int start_offset = get_source_buffer()->begin().get_offset();
   int end_offset = get_source_buffer()->end().get_offset();
   auto buffer_map=get_buffer_map();
@@ -328,39 +377,10 @@ parse_thread_go(true), parse_thread_mapped(false), parse_thread_stop(false) {
                            start_offset,
                            end_offset);
   update_syntax();
-  
-  //GTK-calls must happen in main thread, so the parse_thread
-  //sends signals to the main thread that it is to call the following functions:
-  parse_start.connect([this]{
-    if(parse_thread_buffer_map_mutex.try_lock()) {
-      parse_thread_buffer_map=get_buffer_map();
-      parse_thread_mapped=true;
-      parse_thread_buffer_map_mutex.unlock();
-    }
-    parse_thread_go=true;
-  });
-  
-  parsing_in_progress=Singleton::terminal()->print_in_progress("Parsing "+file_path);
-  parse_done.connect([this](){
-    if(parse_thread_mapped) {
-      if(parsing_mutex.try_lock()) {
-        INFO("Updating syntax");
-        update_syntax();
-        update_diagnostics();
-        update_types();
-        clang_readable=true;
-        set_status("");
-        parsing_mutex.unlock();
-        INFO("Syntax updated");
-      }
-      parsing_in_progress->done("done");
-    }
-    else {
-      parse_thread_go=true;
-    }
-  });
-  
+    
   set_status("parsing...");
+  if(parse_thread.joinable())
+    parse_thread.join();
   parse_thread=std::thread([this]() {
     while(true) {
       while(!parse_thread_go && !parse_thread_stop)
@@ -380,24 +400,6 @@ parse_thread_go(true), parse_thread_mapped(false), parse_thread_stop(false) {
       }
     }
   });
-  
-  get_buffer()->signal_changed().connect([this]() {
-    start_reparse();
-    type_tooltips.hide();
-    diagnostic_tooltips.hide();
-  });
-  
-  get_buffer()->signal_mark_set().connect(sigc::mem_fun(*this, &Source::ClangViewParse::on_mark_set), false);
-}
-
-Source::ClangViewParse::~ClangViewParse() {
-  //TODO: Is it possible to stop the clang-process in progress?
-  parsing_in_progress->cancel("canceled");
-  parse_thread_stop=true;
-  if(parse_thread.joinable())
-    parse_thread.join();
-  parsing_mutex.lock(); //Be sure not to destroy while still parsing with libclang
-  parsing_mutex.unlock();
 }
 
 void Source::ClangViewParse::
@@ -506,14 +508,14 @@ void Source::ClangViewParse::update_diagnostics() {
       
       auto spelling=diagnostic.spelling;
       auto severity_spelling=diagnostic.severity_spelling;
-      auto get_tooltip_buffer=[this, spelling, severity_spelling, diagnostic_tag_name]() {
+      auto create_tooltip_buffer=[this, spelling, severity_spelling, diagnostic_tag_name]() {
         auto tooltip_buffer=Gtk::TextBuffer::create(get_buffer()->get_tag_table());
         tooltip_buffer->insert_with_tag(tooltip_buffer->get_insert()->get_iter(), severity_spelling, diagnostic_tag_name);
         tooltip_buffer->insert_at_cursor(":\n"+spelling);
         //TODO: Insert newlines to clang_tu->diagnostics[c].spelling (use 80 chars, then newline?)
         return tooltip_buffer;
       };
-      diagnostic_tooltips.emplace_back(get_tooltip_buffer, *this, get_buffer()->create_mark(start), get_buffer()->create_mark(end));
+      diagnostic_tooltips.emplace_back(create_tooltip_buffer, *this, get_buffer()->create_mark(start), get_buffer()->create_mark(end));
     
       get_buffer()->apply_tag_by_name(diagnostic_tag_name+"_underline", start, end);
     }
@@ -526,7 +528,7 @@ void Source::ClangViewParse::update_types() {
     if(token.get_kind()==clang::Token_Identifier && token.has_type()) {
       auto start=get_buffer()->get_iter_at_offset(token.offsets.first);
       auto end=get_buffer()->get_iter_at_offset(token.offsets.second);
-      auto get_tooltip_buffer=[this, &token]() {
+      auto create_tooltip_buffer=[this, &token]() {
         auto tooltip_buffer=Gtk::TextBuffer::create(get_buffer()->get_tag_table());
         tooltip_buffer->insert_at_cursor("Type: "+token.get_type());
         auto brief_comment=token.get_brief_comments();
@@ -535,14 +537,14 @@ void Source::ClangViewParse::update_types() {
         return tooltip_buffer;
       };
       
-      type_tooltips.emplace_back(get_tooltip_buffer, *this, get_buffer()->create_mark(start), get_buffer()->create_mark(end));
+      type_tooltips.emplace_back(create_tooltip_buffer, *this, get_buffer()->create_mark(start), get_buffer()->create_mark(end));
     }
   }
 }
 
 bool Source::ClangViewParse::on_motion_notify_event(GdkEventMotion* event) {
   delayed_tooltips_connection.disconnect();
-  if(clang_readable) {
+  if(clang_readable && event->state==0) {
     Gdk::Rectangle rectangle(event->x, event->y, 1, 1);
     Tooltips::init();
     type_tooltips.show(rectangle);
@@ -872,14 +874,14 @@ void Source::ClangViewAutocomplete::autocomplete() {
     }
     buffer+="\n";
     set_status("autocomplete...");
-    std::thread autocomplete_thread([this, ac_data, line_nr, column_nr, buffer_map](){
+    if(autocomplete_thread.joinable())
+      autocomplete_thread.join();
+    autocomplete_thread=std::thread([this, ac_data, line_nr, column_nr, buffer_map](){
       parsing_mutex.lock();
       *ac_data=move(get_autocomplete_suggestions(line_nr, column_nr, *buffer_map));
       autocomplete_done();
       parsing_mutex.unlock();
     });
-    
-    autocomplete_thread.detach();
   }
 }
 
@@ -1050,4 +1052,49 @@ Source::ClangViewAutocomplete(file_path, project_path) {
       selection_dialog->show();
     }
   };
+}
+
+Source::ClangView::ClangView(const std::string& file_path, const std::string& project_path): ClangViewRefactor(file_path, project_path) {
+  do_delete_object.connect([this](){
+    if(delete_thread.joinable())
+      delete_thread.join();
+    delete this;
+  });
+  do_restart_parse.connect([this](){
+    init_parse();
+    restart_parse_running=false;
+  });
+}
+
+void Source::ClangView::async_delete() {
+  parsing_in_progress->cancel("canceled, freeing resources in the background");
+  parse_thread_stop=true;
+  delete_thread=std::thread([this](){
+    //TODO: Is it possible to stop the clang-process in progress?
+    if(restart_parse_thread.joinable())
+      restart_parse_thread.join();
+    if(parse_thread.joinable())
+      parse_thread.join();
+    if(autocomplete_thread.joinable())
+      autocomplete_thread.join();
+    do_delete_object();
+  });
+}
+
+bool Source::ClangView::restart_parse() {
+  if(!restart_parse_running) {
+    restart_parse_running=true;
+    parse_thread_stop=true;
+    if(restart_parse_thread.joinable())
+      restart_parse_thread.join();
+    restart_parse_thread=std::thread([this](){
+      if(parse_thread.joinable())
+        parse_thread.join();
+      if(autocomplete_thread.joinable())
+        autocomplete_thread.join();
+      do_restart_parse();
+    });
+    return true;
+  }
+  return false;
 }

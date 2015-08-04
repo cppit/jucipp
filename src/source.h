@@ -90,17 +90,21 @@ namespace Source {
   class ClangViewParse : public View {
   public:
     ClangViewParse(const std::string& file_path, const std::string& project_path);
-    ~ClangViewParse();
   protected:
+    void init_parse();
     void start_reparse();
     bool on_key_press_event(GdkEventKey* key);
     bool on_focus_out_event(GdkEventFocus* event);
     std::unique_ptr<clang::TranslationUnit> clang_tu;
     std::mutex parsing_mutex;
     std::unique_ptr<clang::Tokens> clang_tokens;
-    bool clang_readable=false;
+    bool clang_readable;
     sigc::connection delayed_reparse_connection;
     sigc::connection delayed_tooltips_connection;
+    
+    std::shared_ptr<Terminal::InProgress> parsing_in_progress;
+    std::thread parse_thread;
+    std::atomic<bool> parse_thread_stop;
   private:
     std::map<std::string, std::string> get_buffer_map() const;
     // inits the syntax highligthing on file open
@@ -121,16 +125,13 @@ namespace Source {
     bool on_scroll_event(GdkEventScroll* event);
     static clang::Index clang_index;
     std::vector<std::string> get_compilation_commands();
-        
-    std::shared_ptr<Terminal::InProgress> parsing_in_progress;
+    
     Glib::Dispatcher parse_done;
     Glib::Dispatcher parse_start;
-    std::thread parse_thread;
     std::map<std::string, std::string> parse_thread_buffer_map;
     std::mutex parse_thread_buffer_map_mutex;
     std::atomic<bool> parse_thread_go;
     std::atomic<bool> parse_thread_mapped;
-    std::atomic<bool> parse_thread_stop;
   };
     
   class ClangViewAutocomplete : public ClangViewParse {
@@ -139,6 +140,7 @@ namespace Source {
   protected:
     bool on_key_press_event(GdkEventKey* key);
     bool on_focus_out_event(GdkEventFocus* event);
+    std::thread autocomplete_thread;
   private:
     void start_autocomplete();
     void autocomplete();
@@ -166,8 +168,15 @@ namespace Source {
   
   class ClangView : public ClangViewRefactor {
   public:
-    ClangView(const std::string& file_path, const std::string& project_path):
-      ClangViewRefactor(file_path, project_path) {}
+    ClangView(const std::string& file_path, const std::string& project_path);
+    void async_delete();
+    bool restart_parse();
+  private:
+    Glib::Dispatcher do_delete_object;
+    Glib::Dispatcher do_restart_parse;
+    std::thread delete_thread;
+    std::thread restart_parse_thread;
+    bool restart_parse_running=false;
   };
 };  // class Source
 #endif  // JUCI_SOURCE_H_
