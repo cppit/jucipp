@@ -308,6 +308,34 @@ Source::View(file_path, project_path) {
   //TODO: clear tag_class and param_spec?
   
   parsing_in_progress=Singleton::terminal()->print_in_progress("Parsing "+file_path);
+  //GTK-calls must happen in main thread, so the parse_thread
+  //sends signals to the main thread that it is to call the following functions:
+  parse_start.connect([this]{
+    if(parse_thread_buffer_map_mutex.try_lock()) {
+      parse_thread_buffer_map=get_buffer_map();
+      parse_thread_mapped=true;
+      parse_thread_buffer_map_mutex.unlock();
+    }
+    parse_thread_go=true;
+  });
+  parse_done.connect([this](){
+    if(parse_thread_mapped) {
+      if(parsing_mutex.try_lock()) {
+        INFO("Updating syntax");
+        update_syntax();
+        update_diagnostics();
+        update_types();
+        clang_readable=true;
+        set_status("");
+        parsing_mutex.unlock();
+        INFO("Syntax updated");
+      }
+      parsing_in_progress->done("done");
+    }
+    else {
+      parse_thread_go=true;
+    }
+  });
   init_parse();
   
   get_buffer()->signal_changed().connect([this]() {
@@ -349,37 +377,7 @@ void Source::ClangViewParse::init_parse() {
                            start_offset,
                            end_offset);
   update_syntax();
-  
-  //GTK-calls must happen in main thread, so the parse_thread
-  //sends signals to the main thread that it is to call the following functions:
-  parse_start.connect([this]{
-    if(parse_thread_buffer_map_mutex.try_lock()) {
-      parse_thread_buffer_map=get_buffer_map();
-      parse_thread_mapped=true;
-      parse_thread_buffer_map_mutex.unlock();
-    }
-    parse_thread_go=true;
-  });
-  
-  parse_done.connect([this](){
-    if(parse_thread_mapped) {
-      if(parsing_mutex.try_lock()) {
-        INFO("Updating syntax");
-        update_syntax();
-        update_diagnostics();
-        update_types();
-        clang_readable=true;
-        set_status("");
-        parsing_mutex.unlock();
-        INFO("Syntax updated");
-      }
-      parsing_in_progress->done("done");
-    }
-    else {
-      parse_thread_go=true;
-    }
-  });
-  
+    
   set_status("parsing...");
   if(parse_thread.joinable())
     parse_thread.join();
@@ -546,7 +544,7 @@ void Source::ClangViewParse::update_types() {
 
 bool Source::ClangViewParse::on_motion_notify_event(GdkEventMotion* event) {
   delayed_tooltips_connection.disconnect();
-  if(clang_readable) {
+  if(clang_readable && event->state==0) {
     Gdk::Rectangle rectangle(event->x, event->y, 1, 1);
     Tooltips::init();
     type_tooltips.show(rectangle);
@@ -1068,7 +1066,7 @@ Source::ClangView::ClangView(const std::string& file_path, const std::string& pr
   });
 }
 
-void Source::ClangView::delete_object() {
+void Source::ClangView::async_delete() {
   parsing_in_progress->cancel("canceled, freeing resources in the background");
   parse_thread_stop=true;
   delete_thread=std::thread([this](){
