@@ -121,7 +121,7 @@ bool Notebook::save(int page) {
       
       //If CMakeLists.txt have been modified:
       if(boost::filesystem::path(view->file_path).filename().string()=="CMakeLists.txt") {
-        if(directories.cmake && directories.cmake->project_path!="" && CMake::create_compile_commands(directories.cmake->project_path.string())) {
+        if(directories.cmake && directories.cmake->project_path!="" && boost::filesystem::path(view->file_path)>=directories.cmake->project_path && CMake::create_compile_commands(directories.cmake->project_path.string())) {
           directories.open_folder();
           for(auto source_view: source_views) {
             if(auto source_clang_view=dynamic_cast<Source::ClangView*>(source_view)) {
