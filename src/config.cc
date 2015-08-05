@@ -32,8 +32,8 @@ void MainConfig::GenerateSource() {
   DEBUG("Fetching source cfg");
   // boost::property_tree::ptree
   auto source_json = cfg.get_child("source");
-  auto syntax_json = source_json.get_child("syntax");
-  auto colors_json = source_json.get_child("colors");
+  auto clang_types_json = source_json.get_child("clang_types");
+  auto style_json = source_json.get_child("style");
   auto visual_json = source_json.get_child("visual");
   for (auto &i : visual_json) {
     if (i.first == "background")
@@ -54,9 +54,9 @@ void MainConfig::GenerateSource() {
   source_cfg->tab_size = source_json.get<unsigned>("tab_size");
   for (unsigned c = 0; c < source_cfg->tab_size; c++)
     source_cfg->tab+=" ";
-  for (auto &i : colors_json)
+  for (auto &i : style_json)
     source_cfg->tags[i.first]=i.second.get_value<std::string>();
-  for (auto &i : syntax_json)
+  for (auto &i : clang_types_json)
     source_cfg->types[i.first]=i.second.get_value<std::string>();
   DEBUG("Source cfg fetched");
 }

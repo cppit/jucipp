@@ -8,7 +8,7 @@ void init_logging() {
   INFO("Logging initalized");
 }
 
-int Juci::on_command_line(const Glib::RefPtr<Gio::ApplicationCommandLine> &cmd) {
+int juci::app::on_command_line(const Glib::RefPtr<Gio::ApplicationCommandLine> &cmd) {
   Glib::set_prgname("juci");
   Glib::OptionContext ctx("[PATH ...]");
   Glib::OptionGroup gtk_group(gtk_get_option_group(true));
@@ -31,7 +31,7 @@ int Juci::on_command_line(const Glib::RefPtr<Gio::ApplicationCommandLine> &cmd) 
   return 0;
 }
 
-void Juci::on_activate() {
+void juci::app::on_activate() {
   window = std::unique_ptr<Window>(new Window());
   add_window(*window);
   window->show();
@@ -43,7 +43,11 @@ void Juci::on_activate() {
     window->notebook.open(f);
 }
 
+juci::app::app() : Gtk::Application("no.sout.juci", Gio::APPLICATION_HANDLES_COMMAND_LINE) {
+  
+}
+
 int main(int argc, char *argv[]) {
   init_logging();
-  return Juci().run(argc, argv);
+  return juci::app().run(argc, argv);
 }
