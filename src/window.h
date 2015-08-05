@@ -6,6 +6,7 @@
 #include "entrybox.h"
 #include "notebook.h"
 #include "menu.h"
+#include <atomic>
 
 class Window : public Gtk::Window {
 public:
@@ -23,8 +24,8 @@ private:
   Gtk::VBox terminal_vbox;
   Gtk::HBox status_hbox;
   EntryBox entry_box;
-  std::mutex running;
   Menu menu;
+  std::atomic<bool> compiling;
 
   void create_menu();
   void hide();
@@ -41,7 +42,6 @@ private:
   bool case_sensitive_search=true;
   bool regex_search=false;
   bool search_entry_shown=false;
-
 };
 
 #endif  // JUCI_WINDOW_H

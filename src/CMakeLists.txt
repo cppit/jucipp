@@ -79,7 +79,9 @@ if(${validation})
     tooltips.h
     tooltips.cc
     singletons.h
-    singletons.cc)
+    singletons.cc
+    cmake.h
+    cmake.cc)
 
   add_library(${module} SHARED
     api

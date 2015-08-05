@@ -14,11 +14,9 @@ public:
   class Config {
   public:
     static Source::Config *source() {return source_.get();}
-    static Terminal::Config *terminal() {return terminal_.get();}
     static Directories::Config *directories() {return directories_.get();}
   private:
     static std::unique_ptr<Source::Config> source_;
-    static std::unique_ptr<Terminal::Config> terminal_;
     static std::unique_ptr<Directories::Config> directories_;
   };
   static std::string config_dir() { return std::string(getenv("HOME")) + "/.juci/config/"; }

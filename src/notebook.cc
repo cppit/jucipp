@@ -4,6 +4,7 @@
 #include "singletons.h"
 #include <fstream>
 #include <regex>
+#include "cmake.h"
 
 #include <iostream> //TODO: remove
 using namespace std; //TODO: remove
@@ -54,18 +55,19 @@ void Notebook::open(std::string path) {
   auto language=Source::guess_language(path);
   if(language && (language->get_id()=="chdr" || language->get_id()=="c" || language->get_id()=="cpp" || language->get_id()=="objc")) {
     auto view_project_path=project_path;
+    if(directories.cmake && directories.cmake->project_path!="")
+      view_project_path=directories.cmake->project_path.string();
     if(view_project_path=="") {
-      view_project_path=boost::filesystem::path(path).parent_path().string();
-      auto found_project_path=find_project_path(view_project_path);
-      if(found_project_path!="") {
-        view_project_path=found_project_path;
+      auto parent_path=boost::filesystem::path(path).parent_path();
+      view_project_path=parent_path.string();
+      CMake cmake(parent_path);
+      if(cmake.project_path!="") {
+        view_project_path=cmake.project_path.string();
         Singleton::terminal()->print("Project path for "+path+" set to "+view_project_path+"\n");
       }
       else
         Singleton::terminal()->print("Error: could not find project path for "+path+"\n");
     }
-    if(boost::filesystem::exists(view_project_path+"/CMakeLists.txt") && !boost::filesystem::exists(view_project_path+"/compile_commands.json"))
-      make_compile_commands(view_project_path);
     source_views.emplace_back(new Source::ClangView(path, view_project_path));
   }
   else {
@@ -112,32 +114,6 @@ void Notebook::open(std::string path) {
   };
 }
 
-std::string Notebook::find_project_path(const std::string &path) {
-  const auto find_cmake_project=[this](const boost::filesystem::path &path) {
-    auto cmake_path=path;
-    cmake_path+="/CMakeLists.txt";
-    for(auto &line: juci::filesystem::read_lines(cmake_path)) {
-      const std::regex cmake_project("^ *project *\\(.*$");
-      std::smatch sm;
-      if(std::regex_match(line, sm, cmake_project)) {
-        return true;
-      }
-    }
-    return false;
-  };
-  
-  auto boost_path=boost::filesystem::path(path);
-  if(find_cmake_project(boost_path))
-    return boost_path.string();
-  do {
-    boost_path=boost_path.parent_path();
-    if(find_cmake_project(boost_path))
-      return boost_path.string();
-  } while(boost_path!=boost_path.root_directory());
-
-  return "";
-}
-
 bool Notebook::save(int page) {
   if(page>=size())
     return false;
@@ -149,7 +125,8 @@ bool Notebook::save(int page) {
       
       //If CMakeLists.txt have been modified:
       if(boost::filesystem::path(view->file_path).filename().string()=="CMakeLists.txt") {
-        if(project_path!="" && make_compile_commands(project_path)) {
+        if(project_path!="" && directories.cmake && directories.cmake->project_path!="" && CMake::create_compile_commands(directories.cmake->project_path.string())) {
+          directories.open_folder(project_path);
           for(auto source_view: source_views) {
             if(auto source_clang_view=dynamic_cast<Source::ClangView*>(source_view)) {
               if(project_path==source_view->project_path) {
@@ -166,17 +143,6 @@ bool Notebook::save(int page) {
       return true;
     }
     Singleton::terminal()->print("Error: could not save file " +view->file_path+"\n");
-  }
-  return false;
-}
-
-bool Notebook::make_compile_commands(const std::string &path) {
-  Singleton::terminal()->print("Creating "+boost::filesystem::path(path+"/compile_commands.json").string()+"\n");
-  //TODO: Windows...
-  if(Singleton::terminal()->execute(path, "cmake . -DCMAKE_EXPORT_COMPILE_COMMANDS=ON 2>&1")) {
-    if(project_path!="")
-      directories.open_folder(project_path);
-    return true;
   }
   return false;
 }

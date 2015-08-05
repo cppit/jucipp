@@ -9,13 +9,7 @@
 #include <atomic>
 
 class Terminal : public Gtk::HBox {
-public:
-  class Config {
-  public:
-    std::vector<std::string> compile_commands;
-    std::string run_command;
-  }; 
-  
+public:  
   class InProgress {
   public:
     InProgress(const std::string& start_msg);
@@ -31,25 +25,18 @@ public:
   };
   
   Terminal();
-  bool execute(const std::string &path, const std::string &command);
-  void async_execute(const std::string &path, const std::string &command);
-  void set_change_folder_command(boost::filesystem::path CMake_path); //TODO: remove
-  void run(std::string executable); //TODO: remove
-  void compile(); //TODO: remove
+  bool execute(const std::string &command, const std::string &path="");
+  void async_execute(const std::string &command, const std::string &path="", std::function<void(bool success)> callback=nullptr);
   int print(std::string message);
   void print(int line_nr, std::string message);
   std::shared_ptr<InProgress> print_in_progress(std::string start_msg);
 private:
-  void execute_command(std::string command, std::string mode); //TODO: remove
-  
   Gtk::TextView text_view;
   Gtk::ScrolledWindow scrolled_window;
-  
-  std::string change_folder_command; //TODO: remove
-  std::string path; //TODO: remove
-  const std::string cmake_sucsess = "Build files have been written to:"; //TODO: remove
-  const std::string make_built = "Built target"; //TODO: remove
-  const std::string make_executable = "Linking CXX executable"; //TODO: remove
+
+  Glib::Dispatcher async_execute_print;
+  std::string async_execute_print_string;
+  std::atomic<bool> async_execute_print_finished;
 };
 
 #endif  // JUCI_TERMINAL_H_

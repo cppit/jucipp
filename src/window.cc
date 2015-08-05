@@ -12,7 +12,7 @@ namespace sigc {
   SIGC_FUNCTORS_DEDUCE_RESULT_TYPE_WITH_DECLTYPE
 }
 
-Window::Window() : box(Gtk::ORIENTATION_VERTICAL), notebook(directories) {
+Window::Window() : box(Gtk::ORIENTATION_VERTICAL), notebook(directories), compiling(false) {
   INFO("Create Window");
   set_title("juCi++");
   set_default_size(600, 400);
@@ -194,41 +194,43 @@ void Window::create_menu() {
   });
 
   menu.action_group->add(Gtk::Action::create("ProjectCompileAndRun", "Compile And Run"), Gtk::AccelKey(menu.key_map["compile_and_run"]), [this]() {
-    if(notebook.get_current_page()==-1)
+    if(notebook.get_current_page()==-1 || compiling)
       return;
-    notebook.save_current();
-    if (running.try_lock()) {
-      std::thread execute([this]() {
-        std::string path = notebook.get_current_view()->file_path;
-        size_t pos = path.find_last_of("/\\");
-        if(pos != std::string::npos) {
-          path.erase(path.begin()+pos,path.end());
-          Singleton::terminal()->set_change_folder_command(path);
-        }
-        Singleton::terminal()->compile();
-        std::string executable = directories.get_cmakelists_variable(path,"add_executable");
-        Singleton::terminal()->run(executable);
-        running.unlock();
+    CMake cmake(notebook.get_current_view()->file_path);
+    auto executables = cmake.get_functions_parameters("add_executable");
+    std::string executable;
+    boost::filesystem::path path;
+    if(executables.size()>0 && executables[0].second.size()>0) {
+      executable=executables[0].second[0];
+      path=executables[0].first.parent_path();
+      path+="/"+executables[0].second[0];
+    }
+    if(cmake.project_path!="") {
+      compiling=true;
+      if(path!="")
+        Singleton::terminal()->print("Compiling and executing "+path.string()+"\n");
+      else
+        Singleton::terminal()->print("Could not find an executable, please use add_executable in CMakeLists.txt\n");
+      //TODO: Windows...
+      Singleton::terminal()->async_execute("make 2>&1", cmake.project_path.string(), [this, path](int exit_code){
+        compiling=false;
+        if(path!="")
+          //TODO: Windows...
+          Singleton::terminal()->async_execute(path.string()+" 2>&1", path.parent_path().string());
       });
-      execute.detach();
     }
   });
   menu.action_group->add(Gtk::Action::create("ProjectCompile", "Compile"), Gtk::AccelKey(menu.key_map["compile"]), [this]() {
-    if(notebook.get_current_page()==-1)
+    if(notebook.get_current_page()==-1 || compiling)
       return;
-    notebook.save_current();
-    if (running.try_lock()) {
-      std::thread execute([this]() {
-        std::string path = notebook.get_current_view()->file_path;
-        size_t pos = path.find_last_of("/\\");
-        if(pos != std::string::npos){
-          path.erase(path.begin()+pos,path.end());
-          Singleton::terminal()->set_change_folder_command(path);
-        }
-        Singleton::terminal()->compile();
-        running.unlock();
+    CMake cmake(notebook.get_current_view()->file_path);
+    if(cmake.project_path!="") {
+      compiling=true;
+      Singleton::terminal()->print("Compiling project "+cmake.project_path.string()+"\n");
+      //TODO: Windows...
+      Singleton::terminal()->async_execute("make 2>&1", cmake.project_path.string(), [this](int exit_code){
+        compiling=false;
       });
-      execute.detach();
     }
   });
 

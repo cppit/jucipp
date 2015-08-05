@@ -11,7 +11,6 @@ MainConfig::MainConfig(Menu &menu) : menu(menu) {
   GenerateSource();
   GenerateKeybindings();
   GenerateDirectoryFilter();
-  GenerateTerminalCommands();
 }
 
 void MainConfig::find_or_create_config_files() {
@@ -57,17 +56,6 @@ void MainConfig::GenerateSource() {
   for (auto &i : syntax_json)
     source_cfg->types[i.first]=i.second.get_value<std::string>();
   DEBUG("Source cfg fetched");
-}
-
-void MainConfig::GenerateTerminalCommands() {
-  auto terminal_cfg=Singleton::Config::terminal();
-  boost::property_tree::ptree source_json = cfg.get_child("project");
-  boost::property_tree::ptree compile_commands_json = source_json.get_child("compile_commands");
-  boost::property_tree::ptree run_commands_json = source_json.get_child("run_commands");
-  for (auto &i : compile_commands_json)
-    terminal_cfg->compile_commands.emplace_back(i.second.get_value<std::string>());
-  for (auto &i : run_commands_json)
-    terminal_cfg->run_command=(i.second.get_value<std::string>()); //TODO: run_commands array->one run_command?
 }
 
 void MainConfig::GenerateKeybindings() {
