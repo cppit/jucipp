@@ -145,19 +145,15 @@ void CMake::parse_variable_parameters(std::string &data) {
   while(pos<data.size()) {
     if(!inside_quote && data[pos]=='"' && last_char!='\\') {
       inside_quote=true;
-      data.erase(pos, 1);
+      data.erase(pos, 1); //TODO: instead remove quote-mark if pasted into a quote, for instance: "test${test}test"<-remove quotes from ${test}
       pos--;
     }
     else if(inside_quote && data[pos]=='"' && last_char!='\\') {
       inside_quote=false;
-      data.erase(pos, 1);
+      data.erase(pos, 1); //TODO: instead remove quote-mark if pasted into a quote, for instance: "test${test}test"<-remove quotes from ${test}
       pos--;
     }
-    else if(inside_quote && data[pos]!='\\' && last_char=='\\') {
-      data.erase(pos-1, 1);
-      pos--;
-    }
-    else if(!inside_quote && data[pos]==' ') {
+    else if(!inside_quote && data[pos]==' ' && pos+1<data.size() && data[pos+1]==' ') {
       data.erase(pos, 1);
       pos--;
     }
@@ -166,9 +162,20 @@ void CMake::parse_variable_parameters(std::string &data) {
     pos++;
   }
   for(auto &var: variables) {
-    auto pos=data.find("${"+var.first+'}');
-    if(pos!=std::string::npos)
+    auto pos=data.find("${"+var.first+'}'); //TODO: check if there is a slash in front of $
+    while(pos!=std::string::npos) {
       data.replace(pos, var.first.size()+3, var.second);
+      pos=data.find("${"+var.first+'}');
+    }
+  }
+  
+  //Remove variables we do not know:
+  pos=data.find("${"); //TODO: check if there is a slash in front of $
+  auto pos_end=data.find("}", pos+2);
+  while(pos!=std::string::npos && pos_end!=std::string::npos) {
+    data.erase(pos, pos_end-pos+1);
+    pos=data.find("${");
+    pos_end=data.find("}", pos+2);
   }
 }
 
@@ -198,10 +205,6 @@ std::vector<std::string> CMake::get_function_parameters(std::string &data) {
       data.erase(pos, 1);
       pos--;
     }
-    else if(inside_quote && data[pos]!='\\' && last_char=='\\') {
-      data.erase(pos-1, 1);
-      pos--;
-    }
     else if(!inside_quote && pos+1<data.size() && data[pos]==' ' && data[pos+1]==' ') {
       data.erase(pos, 1);
       pos--;
@@ -218,7 +221,7 @@ std::vector<std::string> CMake::get_function_parameters(std::string &data) {
   parameters.emplace_back(data.substr(parameter_pos));
   for(auto &var: variables) {
     for(auto &parameter: parameters) {
-      auto pos=parameter.find("${"+var.first+'}');
+      auto pos=parameter.find("${"+var.first+'}'); //TODO: check if there is a slash in front of $
       while(pos!=std::string::npos) {
         parameter.replace(pos, var.first.size()+3, var.second);
         pos=parameter.find("${"+var.first+'}');
