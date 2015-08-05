@@ -54,28 +54,24 @@ void Notebook::open(std::string path) {
   
   auto language=Source::guess_language(path);
   if(language && (language->get_id()=="chdr" || language->get_id()=="c" || language->get_id()=="cpp" || language->get_id()=="objc")) {
-    auto view_project_path=project_path;
+    std::string project_path;
     if(directories.cmake && directories.cmake->project_path!="")
-      view_project_path=directories.cmake->project_path.string();
-    if(view_project_path=="") {
+      project_path=directories.cmake->project_path.string();
+    else {
       auto parent_path=boost::filesystem::path(path).parent_path();
-      view_project_path=parent_path.string();
+      project_path=parent_path.string();
       CMake cmake(parent_path);
       if(cmake.project_path!="") {
-        view_project_path=cmake.project_path.string();
-        Singleton::terminal()->print("Project path for "+path+" set to "+view_project_path+"\n");
+        project_path=cmake.project_path.string();
+        Singleton::terminal()->print("Project path for "+path+" set to "+project_path+"\n");
       }
       else
         Singleton::terminal()->print("Error: could not find project path for "+path+"\n");
     }
-    source_views.emplace_back(new Source::ClangView(path, view_project_path));
+    source_views.emplace_back(new Source::ClangView(path, project_path));
   }
-  else {
-    auto view_project_path=project_path;
-    if(view_project_path=="")
-      view_project_path=boost::filesystem::path(path).parent_path().string();
-    source_views.emplace_back(new Source::GenericView(path, view_project_path, language));
-  }
+  else
+    source_views.emplace_back(new Source::GenericView(path, language));
     
   scrolled_windows.emplace_back(new Gtk::ScrolledWindow());
   hboxes.emplace_back(new Gtk::HBox());
@@ -125,11 +121,11 @@ bool Notebook::save(int page) {
       
       //If CMakeLists.txt have been modified:
       if(boost::filesystem::path(view->file_path).filename().string()=="CMakeLists.txt") {
-        if(project_path!="" && directories.cmake && directories.cmake->project_path!="" && CMake::create_compile_commands(directories.cmake->project_path.string())) {
-          directories.open_folder(project_path);
+        if(directories.cmake && directories.cmake->project_path!="" && CMake::create_compile_commands(directories.cmake->project_path.string())) {
+          directories.open_folder();
           for(auto source_view: source_views) {
             if(auto source_clang_view=dynamic_cast<Source::ClangView*>(source_view)) {
-              if(project_path==source_view->project_path) {
+              if(directories.cmake->project_path.string()==source_clang_view->project_path) {
                 if(source_clang_view->restart_parse())
                   Singleton::terminal()->print("Reparsing "+source_clang_view->file_path+"\n");
                 else

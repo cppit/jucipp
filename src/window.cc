@@ -294,18 +294,18 @@ void Window::new_file_entry() {
   entry_box.entries.emplace_back("untitled", [this](const std::string& content){
     std::string filename=content;
     if(filename!="") {
-      if(notebook.project_path!="" && !boost::filesystem::path(filename).is_absolute())
-        filename=notebook.project_path+"/"+filename;
+      if(directories.current_path!="" && !boost::filesystem::path(filename).is_absolute())
+        filename=directories.current_path.string()+"/"+filename;
       boost::filesystem::path p(filename);
       if(boost::filesystem::exists(p)) {
         Singleton::terminal()->print("Error: "+p.string()+" already exists.\n");
       }
       else {
         if(juci::filesystem::write(p)) {
-          if(notebook.project_path!="")
-             directories.open_folder(notebook.project_path);
-           notebook.open(boost::filesystem::canonical(p).string());
-           Singleton::terminal()->print("New file "+p.string()+" created.\n");
+          if(directories.current_path!="")
+            directories.open_folder();
+          notebook.open(boost::filesystem::canonical(p).string());
+          Singleton::terminal()->print("New file "+p.string()+" created.\n");
         }
         else
           Singleton::terminal()->print("Error: could not create new file "+p.string()+".\n");
@@ -322,8 +322,8 @@ void Window::new_file_entry() {
 
 void Window::open_folder_dialog() {
   Gtk::FileChooserDialog dialog("Please choose a folder", Gtk::FILE_CHOOSER_ACTION_SELECT_FOLDER);
-  if(notebook.project_path.size()>0)
-    gtk_file_chooser_set_current_folder((GtkFileChooser*)dialog.gobj(), notebook.project_path.c_str());
+  if(directories.current_path!="")
+    gtk_file_chooser_set_current_folder((GtkFileChooser*)dialog.gobj(), directories.current_path.string().c_str());
   else
     gtk_file_chooser_set_current_folder((GtkFileChooser*)dialog.gobj(), boost::filesystem::current_path().string().c_str());
   dialog.set_transient_for(*this);
@@ -335,7 +335,6 @@ void Window::open_folder_dialog() {
 
   if(result==Gtk::RESPONSE_OK) {
     std::string project_path=dialog.get_filename();
-    notebook.project_path=project_path;
     directories.open_folder(project_path);
     if(notebook.get_current_page()!=-1)
       directories.select_path(notebook.get_current_view()->file_path);
@@ -344,8 +343,8 @@ void Window::open_folder_dialog() {
 
 void Window::open_file_dialog() {
   Gtk::FileChooserDialog dialog("Please choose a file", Gtk::FILE_CHOOSER_ACTION_OPEN);
-  if(notebook.project_path.size()>0)
-    gtk_file_chooser_set_current_folder((GtkFileChooser*)dialog.gobj(), notebook.project_path.c_str());
+  if(directories.current_path!="")
+    gtk_file_chooser_set_current_folder((GtkFileChooser*)dialog.gobj(), directories.current_path.string().c_str());
   else
     gtk_file_chooser_set_current_folder((GtkFileChooser*)dialog.gobj(), boost::filesystem::current_path().string().c_str());
   dialog.set_transient_for(*this);
@@ -399,8 +398,8 @@ void Window::save_file_dialog() {
       if(file) {
         file << notebook.get_current_view()->get_buffer()->get_text();
         file.close();
-        if(notebook.project_path!="")
-          directories.open_folder(notebook.project_path);
+        if(directories.current_path!="")
+          directories.open_folder();
         notebook.open(path);
         Singleton::terminal()->print("File saved to: " + notebook.get_current_view()->file_path+"\n");
       }

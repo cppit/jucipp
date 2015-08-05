@@ -36,8 +36,7 @@ Glib::RefPtr<Gsv::Language> Source::guess_language(const std::string &file_path)
 //////////////
 //// View ////
 //////////////
-Source::View::View(const std::string& file_path, const std::string& project_path):
-file_path(file_path), project_path(project_path) {
+Source::View::View(const std::string& file_path): file_path(file_path) {
   set_smart_home_end(Gsv::SMART_HOME_END_BEFORE);
   set_show_line_numbers(Singleton::Config::source()->show_line_numbers);
   set_highlight_current_line(Singleton::Config::source()->highlight_current_line);
@@ -248,7 +247,7 @@ bool Source::View::on_key_press_event(GdkEventKey* key) {
 /////////////////////
 //// GenericView ////
 /////////////////////
-Source::GenericView::GenericView(const std::string& file_path, const std::string& project_path, Glib::RefPtr<Gsv::Language> language) : View(file_path, project_path) {
+Source::GenericView::GenericView(const std::string& file_path, Glib::RefPtr<Gsv::Language> language) : View(file_path) {
   auto style_scheme_manager=Gsv::StyleSchemeManager::get_default();
   //TODO: add?: style_scheme_manager->prepend_search_path("~/.juci/");
   auto scheme=style_scheme_manager->get_scheme("classic");
@@ -278,7 +277,7 @@ Source::GenericView::GenericView(const std::string& file_path, const std::string
 clang::Index Source::ClangViewParse::clang_index(0, 0);
 
 Source::ClangViewParse::ClangViewParse(const std::string& file_path, const std::string& project_path):
-Source::View(file_path, project_path) {
+Source::View(file_path), project_path(project_path) {
   override_font(Pango::FontDescription(Singleton::Config::source()->font));
   override_background_color(Gdk::RGBA(Singleton::Config::source()->background));
   override_background_color(Gdk::RGBA(Singleton::Config::source()->background_selected), Gtk::StateFlags::STATE_FLAG_SELECTED);

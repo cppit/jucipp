@@ -46,7 +46,7 @@ namespace Source {
 
   class View : public Gsv::View {
   public:
-    View(const std::string& file_path, const std::string& project_path);
+    View(const std::string& file_path);
     ~View();
     
     void search_highlight(const std::string &text, bool case_sensitive, bool regex);
@@ -58,7 +58,6 @@ namespace Source {
     void replace_all(const std::string &replacement);
         
     std::string file_path;
-    std::string project_path;
     
     std::function<std::pair<std::string, unsigned>()> get_declaration_location;
     std::function<void()> goto_method;
@@ -84,12 +83,13 @@ namespace Source {
   
   class GenericView : public View {
   public:
-    GenericView(const std::string& file_path, const std::string& project_path, Glib::RefPtr<Gsv::Language> language);
+    GenericView(const std::string& file_path, Glib::RefPtr<Gsv::Language> language);
   };
   
   class ClangViewParse : public View {
   public:
     ClangViewParse(const std::string& file_path, const std::string& project_path);
+    std::string project_path;
   protected:
     void init_parse();
     void start_reparse();

@@ -20,7 +20,6 @@ public:
   void open(std::string filename);
   bool save(int page);
   bool save_current();
-  std::string project_path; //TODO: remove, and also remove Source::View::project_path (project_path only needed in Source::ClangView)
       
 private:
   bool make_compile_commands(const std::string &path);

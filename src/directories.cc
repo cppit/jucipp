@@ -41,9 +41,16 @@ Directories::Directories() {
 }
 
 void Directories::open_folder(const boost::filesystem::path& dir_path) {
+  auto new_path=dir_path;
   INFO("Open folder");
+  if(new_path=="") {
+    if(current_path=="")
+      return;
+    new_path=current_path;
+  }
+  
   std::vector<Gtk::TreeModel::Path> expanded_paths;
-  if(last_dir_path==dir_path) {
+  if(current_path==new_path) {
     tree_view.map_expanded_rows([&expanded_paths](Gtk::TreeView* tree_view, const Gtk::TreeModel::Path& path){
       expanded_paths.emplace_back(path);
     });
@@ -51,18 +58,19 @@ void Directories::open_folder(const boost::filesystem::path& dir_path) {
   
   tree_store->clear();
   
-  if(last_dir_path!=dir_path)
-    cmake=std::unique_ptr<CMake>(new CMake(dir_path));
+  if(current_path!=new_path)
+    cmake=std::unique_ptr<CMake>(new CMake(new_path));
   auto project=cmake->get_functions_parameters("project");
   if(project.size()>0 && project[0].second.size()>0)
     tree_view.get_column(0)->set_title(project[0].second[0]);
   else
     tree_view.get_column(0)->set_title("");
-  add_paths(dir_path, Gtk::TreeModel::Row(), 0);
+  add_paths(new_path, Gtk::TreeModel::Row(), 0);
 
   for(auto &path: expanded_paths)
     tree_view.expand_row(path, false);
-  last_dir_path=dir_path;
+  
+  current_path=new_path;
   DEBUG("Folder opened");
 }
 
