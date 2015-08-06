@@ -43,9 +43,9 @@ void MainConfig::GenerateSource() {
     else if (i.first == "background_tooltips")
 	     source_cfg->background_tooltips = i.second.get_value<std::string>();
     else if (i.first == "show_line_numbers")
-      source_cfg->show_line_numbers = i.second.get_value<std::string>() == "1" ? true : false;
+      source_cfg->show_line_numbers = i.second.get_value<std::string>() == "1";
     else if (i.first == "highlight_current_line")
-      source_cfg->highlight_current_line = i.second.get_value<std::string>() == "1" ? true : false;
+      source_cfg->highlight_current_line = i.second.get_value<std::string>() == "1";
     else if (i.first == "font")
       source_cfg->font = i.second.get_value<std::string>();
     else if (i.first == "theme")
