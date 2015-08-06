@@ -3,19 +3,18 @@
 
 #include "window.h"
 #include "logging.h"
-namespace juci {
-  class app : public Gtk::Application {
-  public:
-    app();
+class app : public Gtk::Application {
+ public:
+  app();
   
-    int on_command_line(const Glib::RefPtr<Gio::ApplicationCommandLine> &cmd);
-    void on_activate();
+  int on_command_line(const Glib::RefPtr<Gio::ApplicationCommandLine> &cmd);
+  void on_activate();
 
-  private:
-    std::unique_ptr<Window> window;
-    std::string directory;
-    std::vector<std::string> files;
-  };
-}
+ private:
+  std::unique_ptr<Window> window;
+  std::string directory;
+  std::vector<std::string> files;
+};
 
 #endif // JUCI_JUCI_H_
+

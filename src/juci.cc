@@ -8,7 +8,7 @@ void init_logging() {
   INFO("Logging initalized");
 }
 
-int juci::app::on_command_line(const Glib::RefPtr<Gio::ApplicationCommandLine> &cmd) {
+int app::on_command_line(const Glib::RefPtr<Gio::ApplicationCommandLine> &cmd) {
   Glib::set_prgname("juci");
   Glib::OptionContext ctx("[PATH ...]");
   Glib::OptionGroup gtk_group(gtk_get_option_group(true));
@@ -31,7 +31,7 @@ int juci::app::on_command_line(const Glib::RefPtr<Gio::ApplicationCommandLine> &
   return 0;
 }
 
-void juci::app::on_activate() {
+void app::on_activate() {
   window = std::unique_ptr<Window>(new Window());
   add_window(*window);
   window->show();
@@ -43,11 +43,16 @@ void juci::app::on_activate() {
     window->notebook.open(f);
 }
 
-juci::app::app() : Gtk::Application("no.sout.juci", Gio::APPLICATION_HANDLES_COMMAND_LINE) {
-  
+app::app() : Gtk::Application("no.sout.juci", Gio::APPLICATION_HANDLES_COMMAND_LINE) {
+  auto css_provider = Gtk::CssProvider::create();
+  if (css_provider->load_from_path(Singleton::style_dir() + "juci.css")) {
+    auto style_context = Gtk::StyleContext::create();
+    style_context->add_provider(css_provider, GTK_STYLE_PROVIDER_PRIORITY_APPLICATION);
+    style_context->add_provider_for_screen(window->get_screen(), css_provider, GTK_STYLE_PROVIDER_PRIORITY_APPLICATION);
+  }
 }
 
 int main(int argc, char *argv[]) {
   init_logging();
-  return juci::app().run(argc, argv);
+  return app().run(argc, argv);
 }
