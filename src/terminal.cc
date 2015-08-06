@@ -170,7 +170,7 @@ int Terminal::execute(const std::string &command, const std::string &path) {
     if(exit_code==-1)
       exit_code=execute_status;
     async_and_sync_execute_mutex.unlock();
-    return execute_status;
+    return exit_code;
   }
 }
 
