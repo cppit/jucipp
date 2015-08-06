@@ -58,7 +58,7 @@ void Directories::open_folder(const boost::filesystem::path& dir_path) {
   
   tree_store->clear();
   
-  if(current_path!=new_path)
+  if(dir_path!="")
     cmake=std::unique_ptr<CMake>(new CMake(new_path));
   auto project=cmake->get_functions_parameters("project");
   if(project.size()>0 && project[0].second.size()>0)
@@ -69,8 +69,11 @@ void Directories::open_folder(const boost::filesystem::path& dir_path) {
 
   for(auto &path: expanded_paths)
     tree_view.expand_row(path, false);
-  
+    
   current_path=new_path;
+  
+  if(selected_path.size()>0)
+    select_path(selected_path);
   DEBUG("Folder opened");
 }
 
@@ -80,6 +83,7 @@ void Directories::select_path(const std::string &path) {
       auto tree_path=Gtk::TreePath(iter);
       tree_view.expand_to_path(tree_path);
       tree_view.set_cursor(tree_path);
+      selected_path=path;
       return true;
     }
     return false;

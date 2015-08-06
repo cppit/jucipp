@@ -41,6 +41,7 @@ private:
   Gtk::TreeView tree_view;
   Glib::RefPtr<Gtk::TreeStore> tree_store;
   ColumnRecord column_record;
+  std::string selected_path;
 };
 
 #endif  // JUCI_DIRECTORIES_H_

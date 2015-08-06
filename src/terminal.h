@@ -7,6 +7,7 @@
 #include <boost/filesystem.hpp>
 #include <thread>
 #include <atomic>
+#include <unordered_map>
 
 class Terminal : public Gtk::HBox {
 public:  
@@ -27,6 +28,10 @@ public:
   Terminal();
   bool execute(const std::string &command, const std::string &path="");
   void async_execute(const std::string &command, const std::string &path="", std::function<void(bool success)> callback=nullptr);
+  std::unordered_map<pid_t, std::pair<int, int> > async_pid_descriptors;
+  std::unordered_map<pid_t, int> async_pid_status;
+  std::mutex async_pid_mutex;
+  
   int print(std::string message);
   void print(int line_nr, std::string message);
   std::shared_ptr<InProgress> print_in_progress(std::string start_msg);
@@ -36,7 +41,7 @@ private:
 
   Glib::Dispatcher async_execute_print;
   std::string async_execute_print_string;
-  std::atomic<bool> async_execute_print_finished;
+  std::mutex async_execute_print_string_mutex;
 };
 
 #endif  // JUCI_TERMINAL_H_

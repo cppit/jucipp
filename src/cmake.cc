@@ -162,7 +162,7 @@ void CMake::parse_variable_parameters(std::string &data) {
     pos++;
   }
   for(auto &var: variables) {
-    auto pos=data.find("${"+var.first+'}'); //TODO: check if there is a slash in front of $
+    auto pos=data.find("${"+var.first+'}');
     while(pos!=std::string::npos) {
       data.replace(pos, var.first.size()+3, var.second);
       pos=data.find("${"+var.first+'}');
@@ -170,7 +170,7 @@ void CMake::parse_variable_parameters(std::string &data) {
   }
   
   //Remove variables we do not know:
-  pos=data.find("${"); //TODO: check if there is a slash in front of $
+  pos=data.find("${");
   auto pos_end=data.find("}", pos+2);
   while(pos!=std::string::npos && pos_end!=std::string::npos) {
     data.erase(pos, pos_end-pos+1);
@@ -221,7 +221,7 @@ std::vector<std::string> CMake::get_function_parameters(std::string &data) {
   parameters.emplace_back(data.substr(parameter_pos));
   for(auto &var: variables) {
     for(auto &parameter: parameters) {
-      auto pos=parameter.find("${"+var.first+'}'); //TODO: check if there is a slash in front of $
+      auto pos=parameter.find("${"+var.first+'}');
       while(pos!=std::string::npos) {
         parameter.replace(pos, var.first.size()+3, var.second);
         pos=parameter.find("${"+var.first+'}');
