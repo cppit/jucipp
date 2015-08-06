@@ -47,7 +47,7 @@ CMake::CMake(const boost::filesystem::path &path) {
 bool CMake::create_compile_commands(const std::string &path) {
   Singleton::terminal()->print("Creating "+boost::filesystem::path(path+"/compile_commands.json").string()+"\n");
   //TODO: Windows...
-  if(Singleton::terminal()->execute("cmake . -DCMAKE_EXPORT_COMPILE_COMMANDS=ON 2>&1", path))
+  if(Singleton::terminal()->execute("cmake . -DCMAKE_EXPORT_COMPILE_COMMANDS=ON 2>&1", path)==EXIT_SUCCESS)
     return true;
   return false;
 }

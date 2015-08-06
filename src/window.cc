@@ -92,12 +92,6 @@ Window::Window() : box(Gtk::ORIENTATION_VERTICAL), notebook(directories), compil
   compile_success.connect([this](){
     directories.open_folder();
   });  
-  run_success.connect([this](){
-    Singleton::terminal()->print("Execution returned: success\n");
-  });
-  run_error.connect([this](){
-    Singleton::terminal()->print("Execution returned: error\n");
-  });
   
   INFO("Window created");
 } // Window constructor
@@ -222,16 +216,13 @@ void Window::create_menu() {
       if(path!="") {
         Singleton::terminal()->print("Compiling and executing "+path.string()+"\n");
         //TODO: Windows...
-        Singleton::terminal()->async_execute("make 2>&1", cmake.project_path.string(), [this, path](bool success){
+        Singleton::terminal()->async_execute("make 2>&1", cmake.project_path.string(), [this, path](int exit_code){
           compiling=false;
-          if(success) {
+          if(exit_code==EXIT_SUCCESS) {
             compile_success();
             //TODO: Windows...
-            Singleton::terminal()->async_execute(path.string()+" 2>&1", path.parent_path().string(), [this](bool success){
-              if(success)
-                run_success();
-              else
-                run_error();
+            Singleton::terminal()->async_execute(path.string()+" 2>&1", path.parent_path().string(), [this, path](int exit_code){
+              Singleton::terminal()->async_print(path.string()+" returned: "+std::to_string(exit_code)+'\n');
             });
           }
         });
@@ -249,9 +240,9 @@ void Window::create_menu() {
       compiling=true;
       Singleton::terminal()->print("Compiling project "+cmake.project_path.string()+"\n");
       //TODO: Windows...
-      Singleton::terminal()->async_execute("make 2>&1", cmake.project_path.string(), [this](bool success){
+      Singleton::terminal()->async_execute("make 2>&1", cmake.project_path.string(), [this](int exit_code){
         compiling=false;
-        if(success)
+        if(exit_code==EXIT_SUCCESS)
           compile_success();
       });
     }

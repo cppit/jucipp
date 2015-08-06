@@ -115,13 +115,13 @@ Terminal::Terminal() {
     text_view.get_buffer()->delete_mark(end);
   });
   
-  async_execute_print.connect([this](){
-    async_execute_print_string_mutex.lock();
-    if(async_execute_print_string.size()>0) {
-      print(async_execute_print_string);
-      async_execute_print_string="";
+  async_print_dispatcher.connect([this](){
+    async_print_string_mutex.lock();
+    if(async_print_string.size()>0) {
+      print(async_print_string);
+      async_print_string="";
     }
-    async_execute_print_string_mutex.unlock();
+    async_print_string_mutex.unlock();
   });
   
   //Coppied from http://www.linuxprogrammingblog.com/code-examples/sigaction
@@ -132,7 +132,7 @@ Terminal::Terminal() {
   sigaction(SIGCHLD, &act, NULL);
 }
 
-bool Terminal::execute(const std::string &command, const std::string &path) {
+int Terminal::execute(const std::string &command, const std::string &path) {
   boost::filesystem::path boost_path;
   std::string cd_path_and_command;
   if(path!="") {
@@ -148,7 +148,7 @@ bool Terminal::execute(const std::string &command, const std::string &path) {
   p = popen(cd_path_and_command.c_str(), "r");
   if (p == NULL) {
     print("Error: Failed to run command" + command + "\n");
-    return false;
+    return -1;
   }
   else {
     char buffer[1024];
@@ -157,11 +157,11 @@ bool Terminal::execute(const std::string &command, const std::string &path) {
       while(gtk_events_pending())
         gtk_main_iteration();
     }
-    return pclose(p)==0;
+    return pclose(p);
   }
 }
 
-void Terminal::async_execute(const std::string &command, const std::string &path, std::function<void(bool success)> callback) {
+void Terminal::async_execute(const std::string &command, const std::string &path, std::function<void(int exit_code)> callback) {
   std::thread async_execute_thread([this, command, path, callback](){
     boost::filesystem::path boost_path;
     std::string cd_path_and_command;
@@ -179,21 +179,16 @@ void Terminal::async_execute(const std::string &command, const std::string &path
     auto pid=popen2(cd_path_and_command.c_str(), &input_descriptor, &output_descriptor);
     async_pid_descriptors[pid]={input_descriptor, output_descriptor};
     async_pid_mutex.unlock();
-    if (pid<=0) {
-      async_execute_print_string_mutex.lock();
-      async_execute_print_string+="Error: Failed to run command" + command + "\n";
-      async_execute_print_string_mutex.unlock();
-      async_execute_print();
-    }
+    if (pid<=0)
+      async_print("Error: Failed to run command" + command + "\n");
     else {
       char buffer[1024];
       ssize_t n;
       while ((n=read(output_descriptor, buffer, 1024)) > 0) {
-        async_execute_print_string_mutex.lock();
+        std::string message;
         for(int c=0;c<n;c++)
-          async_execute_print_string+=buffer[c];
-        async_execute_print_string_mutex.unlock();
-        async_execute_print();
+          message+=buffer[c];
+        async_print(message);
       }
       async_pid_mutex.lock();
       int exit_code=async_pid_status.at(pid);
@@ -202,19 +197,19 @@ void Terminal::async_execute(const std::string &command, const std::string &path
       close(input_descriptor);
       close(output_descriptor);
       if(callback)
-        callback(exit_code==0);
+        callback(exit_code);
     }
   });
   async_execute_thread.detach();
 }
 
-int Terminal::print(std::string message){
+int Terminal::print(const std::string &message){
   INFO("Terminal: PrintMessage");
   text_view.get_buffer()->insert(text_view.get_buffer()->end(), message);
   return text_view.get_buffer()->end().get_line();
 }
 
-void Terminal::print(int line_nr, std::string message){
+void Terminal::print(int line_nr, const std::string &message){
   INFO("Terminal: PrintMessage at line " << line_nr);
   auto iter=text_view.get_buffer()->get_iter_at_line(line_nr);
   while(!iter.ends_line())
@@ -225,4 +220,15 @@ void Terminal::print(int line_nr, std::string message){
 std::shared_ptr<Terminal::InProgress> Terminal::print_in_progress(std::string start_msg) {
   std::shared_ptr<Terminal::InProgress> in_progress=std::shared_ptr<Terminal::InProgress>(new Terminal::InProgress(start_msg));
   return in_progress;
+}
+
+void Terminal::async_print(const std::string &message) {
+  async_print_string_mutex.lock();
+  bool dispatch=true;
+  if(async_print_string.size()>0)
+    dispatch=false;
+  async_print_string+=message;
+  async_print_string_mutex.unlock();
+  if(dispatch)
+    async_print_dispatcher();
 }

@@ -27,7 +27,6 @@ private:
   Menu menu;
   std::atomic<bool> compiling;
   Glib::Dispatcher compile_success;
-  Glib::Dispatcher run_success, run_error;
 
   void create_menu();
   void hide();
