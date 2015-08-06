@@ -7,7 +7,6 @@
 #include <boost/filesystem.hpp>
 #include <thread>
 #include <atomic>
-#include <unordered_map>
 
 class Terminal : public Gtk::HBox {
 public:  
@@ -28,9 +27,6 @@ public:
   Terminal();
   int execute(const std::string &command, const std::string &path="");
   void async_execute(const std::string &command, const std::string &path="", std::function<void(int exit_code)> callback=nullptr);
-  std::unordered_map<pid_t, std::pair<int, int> > async_pid_descriptors;
-  std::unordered_map<pid_t, int> async_pid_status;
-  std::mutex async_pid_mutex;
   void kill_executing();
   
   int print(const std::string &message);

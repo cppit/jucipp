@@ -212,8 +212,8 @@ void Window::create_menu() {
       path+="/"+executables[0].second[0];
     }
     if(cmake.project_path!="") {
-      compiling=true;
       if(path!="") {
+        compiling=true;
         Singleton::terminal()->print("Compiling and executing "+path.string()+"\n");
         //TODO: Windows...
         Singleton::terminal()->async_execute("make 2>&1", cmake.project_path.string(), [this, path](int exit_code){
