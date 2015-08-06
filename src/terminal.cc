@@ -11,6 +11,8 @@ using namespace std; //TODO: remove
 #define READ 0
 #define WRITE 1
 
+int execute_status=-1;
+
 //TODO: Windows...
 //Coppied partially from http://www.linuxprogrammingblog.com/code-examples/sigaction
 void signal_execl_exit(int sig, siginfo_t *siginfo, void *context) {
@@ -24,6 +26,8 @@ void signal_execl_exit(int sig, siginfo_t *siginfo, void *context) {
     close(Singleton::terminal()->async_pid_descriptors.at(siginfo->si_pid).second);
     Singleton::terminal()->async_pid_descriptors.erase(siginfo->si_pid);
   }
+  else
+    execute_status=status;
   Singleton::terminal()->async_pid_mutex.unlock();
 }
 
@@ -157,7 +161,10 @@ int Terminal::execute(const std::string &command, const std::string &path) {
       while(gtk_events_pending())
         gtk_main_iteration();
     }
-    return pclose(p);
+    int exit_code=pclose(p);
+    if(exit_code!=-1)
+      return exit_code;
+    return execute_status;
   }
 }
 
