@@ -31,6 +31,7 @@ public:
   std::unordered_map<pid_t, std::pair<int, int> > async_pid_descriptors;
   std::unordered_map<pid_t, int> async_pid_status;
   std::mutex async_pid_mutex;
+  void kill_executing();
   
   int print(const std::string &message);
   void print(int line_nr, const std::string &message);

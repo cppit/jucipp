@@ -203,6 +203,13 @@ void Terminal::async_execute(const std::string &command, const std::string &path
   async_execute_thread.detach();
 }
 
+void Terminal::kill_executing() {
+  async_pid_mutex.lock();
+  for(auto &pid: async_pid_descriptors)
+    kill(pid.first, SIGTERM);
+  async_pid_mutex.unlock();
+}
+
 int Terminal::print(const std::string &message){
   INFO("Terminal: PrintMessage");
   text_view.get_buffer()->insert(text_view.get_buffer()->end(), message);

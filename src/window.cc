@@ -258,12 +258,8 @@ void Window::create_menu() {
 
 bool Window::on_key_press_event(GdkEventKey *event) {
   if(event->keyval==GDK_KEY_Escape) {
-    if(entry_box.entries.size()==0) {
-      Singleton::terminal()->async_pid_mutex.lock();
-      for(auto &pid: Singleton::terminal()->async_pid_descriptors)
-        kill(pid.first, SIGTERM);
-      Singleton::terminal()->async_pid_mutex.unlock();
-    }
+    if(entry_box.entries.size()==0)
+      Singleton::terminal()->kill_executing();
     entry_box.hide();
   }
 #ifdef __APPLE__ //For Apple's Command-left, right, up, down keys
@@ -307,6 +303,7 @@ void Window::hide() {
     if(!notebook.close_current_page())
       return;
   }
+  Singleton::terminal()->kill_executing();
   Gtk::Window::hide();
 }
 
