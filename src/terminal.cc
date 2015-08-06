@@ -20,10 +20,10 @@ std::unordered_map<pid_t, int> async_execute_status;
 //TODO: Windows...
 //Coppied partially from http://www.linuxprogrammingblog.com/code-examples/sigaction
 void signal_execl_exit(int sig, siginfo_t *siginfo, void *context) {
+  async_and_sync_execute_mutex.lock();
   int status;
   while (waitpid(siginfo->si_pid, &status, WNOHANG) > 0) {}
   
-  async_and_sync_execute_mutex.lock();
   if(async_execute_descriptors.find(siginfo->si_pid)!=async_execute_descriptors.end()) {
     async_execute_status[siginfo->si_pid]=status;
     close(async_execute_descriptors.at(siginfo->si_pid).first);
