@@ -199,6 +199,8 @@ void Terminal::async_execute(const std::string &command, const std::string &path
       int exit_code=async_pid_status.at(pid);
       async_pid_status.erase(pid);
       async_pid_mutex.unlock();
+      close(input_descriptor);
+      close(output_descriptor);
       if(callback)
         callback(exit_code==0);
     }
