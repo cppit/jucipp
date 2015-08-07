@@ -120,6 +120,7 @@ bool Notebook::save(int page) {
       Singleton::terminal()->print("File saved to: " +view->file_path+"\n");
       
       //If CMakeLists.txt have been modified:
+      //TODO: recreate cmake even without directories open?
       if(boost::filesystem::path(view->file_path).filename().string()=="CMakeLists.txt") {
         if(directories.cmake && directories.cmake->project_path!="" && boost::filesystem::path(view->file_path)>=directories.cmake->project_path && CMake::create_compile_commands(directories.cmake->project_path.string())) {
           directories.open_folder();

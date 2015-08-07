@@ -57,6 +57,7 @@ pid_t popen3(const char *command, int *input_descriptor, int *output_descriptor,
     close(p_stderr[0]);
     dup2(p_stderr[1], 2);
 
+    //setpgid(0, 0); //TODO: get this working so we can execute without calling exec from sh -c (in that way we can call more complex commands)
     execl("/bin/sh", "sh", "-c", command, NULL);
     perror("execl");
     exit(1);
@@ -240,15 +241,19 @@ void Terminal::async_execute(const std::string &command, const std::string &path
 
 void Terminal::kill_executing() {
   async_and_sync_execute_mutex.lock();
+  int status;
   for(auto &pid: async_execute_descriptors) {
-    kill(pid.first, SIGTERM); //signal_execl_exit is not always called after kill! Hence the following lines:
     close(async_execute_descriptors.at(pid.first)[0]);
     close(async_execute_descriptors.at(pid.first)[1]);
     close(async_execute_descriptors.at(pid.first)[2]);
-    int status;
-    while (waitpid(pid.first, &status, WNOHANG) > 0) {}
+    kill(pid.first, SIGTERM); //signal_execl_exit is not always called after kill!
+    while(waitpid(pid.first, &status, WNOHANG) > 0) {}
     async_execute_status[pid.first]=status;
   }
+  /*for(auto &pid: async_execute_descriptors) {
+    kill(-pid.first, SIGTERM);
+    while(waitpid(-pid.first, &status, WNOHANG) > 0) {}
+  }*/
   async_and_sync_execute_mutex.unlock();
 }
 
