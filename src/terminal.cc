@@ -57,7 +57,7 @@ pid_t popen3(const char *command, int *input_descriptor, int *output_descriptor,
     close(p_stderr[0]);
     dup2(p_stderr[1], 2);
 
-    //setpgid(0, 0); //TODO: get this working so we can execute without calling exec from sh -c (in that way we can call more complex commands)
+    setpgid(0, 0);
     execl("/bin/sh", "sh", "-c", command, NULL);
     perror("execl");
     exit(1);
@@ -194,7 +194,7 @@ void Terminal::async_execute(const std::string &command, const std::string &path
       boost_path=boost::filesystem::path(path);
     
       //TODO: Windows...
-      cd_path_and_command="cd "+boost_path.string()+" && exec "+command;
+      cd_path_and_command="cd "+boost_path.string()+" && "+command;
     }
     else
       cd_path_and_command=command;
@@ -204,8 +204,11 @@ void Terminal::async_execute(const std::string &command, const std::string &path
     auto pid=popen3(cd_path_and_command.c_str(), &input_descriptor, &output_descriptor, &error_descriptor);
     async_execute_descriptors[pid]={input_descriptor, output_descriptor, error_descriptor};
     async_and_sync_execute_mutex.unlock();
-    if (pid<=0)
-      async_print("Error: Failed to run command" + command + "\n");
+    if (pid<=0) {
+      async_print("Error: Failed to run command: " + command + "\n");
+      if(callback)
+        callback(-1);
+    }
     else {
       std::thread error_thread([this, error_descriptor](){
         char buffer[1024];
@@ -246,14 +249,10 @@ void Terminal::kill_executing() {
     close(async_execute_descriptors.at(pid.first)[0]);
     close(async_execute_descriptors.at(pid.first)[1]);
     close(async_execute_descriptors.at(pid.first)[2]);
-    kill(pid.first, SIGTERM); //signal_execl_exit is not always called after kill!
-    while(waitpid(pid.first, &status, WNOHANG) > 0) {}
+    kill(-pid.first, SIGINT); //signal_execl_exit is not always called after kill!
+    while(waitpid(-pid.first, &status, WNOHANG) > 0) {}
     async_execute_status[pid.first]=status;
   }
-  /*for(auto &pid: async_execute_descriptors) {
-    kill(-pid.first, SIGTERM);
-    while(waitpid(-pid.first, &status, WNOHANG) > 0) {}
-  }*/
   async_and_sync_execute_mutex.unlock();
 }
 
