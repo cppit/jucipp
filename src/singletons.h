@@ -2,9 +2,11 @@
 #define JUCI_SINGLETONS_H_
 
 #include "source.h"
+#include "window.h"
 #include "directories.h"
 #include "terminal.h"
 #include "notebook.h"
+#include "theme.h"
 #include "menu.h"
 #include <gtkmm.h>
 #include <string>
@@ -16,12 +18,17 @@ public:
     static Source::Config *source() {return source_.get();}
     static Terminal::Config *terminal() {return terminal_.get();}
     static Directories::Config *directories() {return directories_.get();}
+    static Theme::Config *theme() { return theme_.get(); }
+    static Window::Config *window() { return window_.get(); }
   private:
     static std::unique_ptr<Source::Config> source_;
+    static std::unique_ptr<Theme::Config> theme_;
+    static std::unique_ptr<Window::Config> window_;
     static std::unique_ptr<Terminal::Config> terminal_;
     static std::unique_ptr<Directories::Config> directories_;
   };
   static std::string config_dir() { return std::string(getenv("HOME")) + "/.juci/config/"; }
+  static std::string theme_dir() { return std::string(getenv("HOME")) + "/.juci/gtk-themes/"; }
   static std::string log_dir() { return std::string(getenv("HOME")) + "/.juci/log/"; }
   static std::string style_dir() { return std::string(getenv("HOME")) + "/.juci/styles/"; }
   static Terminal *terminal();

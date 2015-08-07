@@ -5,13 +5,23 @@
 #include "files.h"
 #include "sourcefile.h"
 
-MainConfig::MainConfig(Menu &menu) : menu(menu) {
+MainConfig::MainConfig() {
   find_or_create_config_files();
   boost::property_tree::json_parser::read_json(Singleton::config_dir() + "config.json", cfg);
+  Singleton::Config::window()->keybindings = cfg.get_child("keybindings");
   GenerateSource();
-  GenerateKeybindings();
+  GenerateTheme();
   GenerateDirectoryFilter();
   GenerateTerminalCommands();
+}
+
+void MainConfig::GenerateTheme() {
+  auto config = Singleton::Config::theme();
+  auto props = cfg.get_child("theme");
+  for (auto &prop : props) {
+    if (prop.first == "theme") config->theme = prop.second.get_value<std::string>();
+    if (prop.first == "main") config->main = prop.second.get_value<std::string>();
+  }
 }
 
 void MainConfig::find_or_create_config_files() {
@@ -34,23 +44,6 @@ void MainConfig::GenerateSource() {
   auto source_json = cfg.get_child("source");
   auto clang_types_json = source_json.get_child("clang_types");
   auto style_json = source_json.get_child("style");
-  auto visual_json = source_json.get_child("visual");
-  for (auto &i : visual_json) {
-    if (i.first == "background")
-	     source_cfg->background = i.second.get_value<std::string>();
-    else if (i.first == "background_selected")
-       source_cfg->background_selected = i.second.get_value<std::string>();
-    else if (i.first == "background_tooltips")
-	     source_cfg->background_tooltips = i.second.get_value<std::string>();
-    else if (i.first == "show_line_numbers")
-      source_cfg->show_line_numbers = i.second.get_value<std::string>() == "1";
-    else if (i.first == "highlight_current_line")
-      source_cfg->highlight_current_line = i.second.get_value<std::string>() == "1";
-    else if (i.first == "font")
-      source_cfg->font = i.second.get_value<std::string>();
-    else if (i.first == "theme")
-      source_cfg->theme = i.second.get_value<std::string>();
-  }
   source_cfg->tab_size = source_json.get<unsigned>("tab_size");
   for (unsigned c = 0; c < source_cfg->tab_size; c++)
     source_cfg->tab+=" ";
@@ -70,21 +63,6 @@ void MainConfig::GenerateTerminalCommands() {
     terminal_cfg->compile_commands.emplace_back(i.second.get_value<std::string>());
   for (auto &i : run_commands_json)
     terminal_cfg->run_command=(i.second.get_value<std::string>()); //TODO: run_commands array->one run_command?
-}
-
-void MainConfig::GenerateKeybindings() {
-  boost::filesystem::path path(Singleton::config_dir() + "menu.xml");
-  if (!boost::filesystem::is_regular_file(path)) {
-    std::cerr << "menu.xml not found" << std::endl;
-    throw;
-  }
-  menu.ui = juci::filesystem::read(path);
-  boost::property_tree::ptree keys_json = cfg.get_child("keybindings");
-  for (auto &i : keys_json) {
-    auto key=i.second.get_value<std::string>();
-    menu.key_map[i.first] = key;
-  }
-  DEBUG("Keybindings fetched");
 }
 
 void MainConfig::GenerateDirectoryFilter() {

@@ -12,15 +12,24 @@ namespace sigc {
   SIGC_FUNCTORS_DEDUCE_RESULT_TYPE_WITH_DECLTYPE
 }
 
+void Window::generate_keybindings() {
+  boost::filesystem::path path(Singleton::config_dir() + "menu.xml");
+  menu.ui = juci::filesystem::read(path);
+  for (auto &i : Singleton::Config::window()->keybindings) {
+    auto key = i.second.get_value<std::string>();
+    menu.key_map[i.first] = key;
+  }
+}
+
 Window::Window() : box(Gtk::ORIENTATION_VERTICAL) {
   INFO("Create Window");
   set_title("juCi++");
   set_default_size(600, 400);
   set_events(Gdk::POINTER_MOTION_MASK|Gdk::FOCUS_CHANGE_MASK|Gdk::SCROLL_MASK);
   add(box);
-
-  MainConfig(this->menu); //Read the configs here
-  PluginApi(&this->notebook, &this->menu); //Initialise plugins
+  
+  generate_keybindings();
+  PluginApi(&this->notebook, &this->menu);
   create_menu();
   box.pack_start(menu.get_widget(), Gtk::PACK_SHRINK);
 

@@ -1,5 +1,6 @@
 #include "juci.h"
 #include "singletons.h"
+#include "config.h"
 
 void init_logging() {
   add_common_attributes();
@@ -44,12 +45,12 @@ void app::on_activate() {
 }
 
 app::app() : Gtk::Application("no.sout.juci", Gio::APPLICATION_HANDLES_COMMAND_LINE) {
-  auto css_provider = Gtk::CssProvider::create();
-  if (css_provider->load_from_path(Singleton::style_dir() + "juci.css")) {
-    auto style_context = Gtk::StyleContext::create();
-    style_context->add_provider(css_provider, GTK_STYLE_PROVIDER_PRIORITY_APPLICATION);
-    style_context->add_provider_for_screen(window->get_screen(), css_provider, GTK_STYLE_PROVIDER_PRIORITY_APPLICATION);
-  }
+  MainConfig(); // Read the configs here
+  auto css_provider = Gtk::CssProvider::get_default();
+  auto style_context = Gtk::StyleContext::create();
+  auto screen = Gdk::Screen::get_default();
+  style_context->add_provider_for_screen(screen, css_provider, GTK_STYLE_PROVIDER_PRIORITY_APPLICATION);
+  css_provider->load_from_path(Singleton::theme_dir() + Singleton::Config::theme()->current_theme());
 }
 
 int main(int argc, char *argv[]) {
