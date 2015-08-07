@@ -216,12 +216,12 @@ void Window::create_menu() {
         compiling=true;
         Singleton::terminal()->print("Compiling and executing "+path.string()+"\n");
         //TODO: Windows...
-        Singleton::terminal()->async_execute("make 2>&1", cmake.project_path.string(), [this, path](int exit_code){
+        Singleton::terminal()->async_execute("make", cmake.project_path.string(), [this, path](int exit_code){
           compiling=false;
           if(exit_code==EXIT_SUCCESS) {
             compile_success();
             //TODO: Windows...
-            Singleton::terminal()->async_execute(path.string()+" 2>&1", path.parent_path().string(), [this, path](int exit_code){
+            Singleton::terminal()->async_execute(path.string(), path.parent_path().string(), [this, path](int exit_code){
               Singleton::terminal()->async_print(path.string()+" returned: "+std::to_string(exit_code)+'\n');
             });
           }
