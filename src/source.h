@@ -22,7 +22,7 @@ namespace Source {
   public:
     unsigned tab_size;
     bool show_line_numbers, highlight_current_line;
-    std::string tab, background, background_selected, background_tooltips, font, theme;
+    std::string tab;
     char tab_char=' ';
     std::unordered_map<std::string, std::string> tags, types;
   };  // class Config

@@ -61,7 +61,7 @@ file_path(file_path), project_path(project_path) {
   auto style_scheme_manager=Gsv::StyleSchemeManager::get_default();
   style_scheme_manager->prepend_search_path(Singleton::style_dir());
 
-  auto scheme = style_scheme_manager->get_scheme(Singleton::Config::source()->theme);
+  auto scheme = style_scheme_manager->get_scheme(Singleton::Config::theme()->theme);
 
   if(scheme) {
     get_source_buffer()->set_style_scheme(scheme);
