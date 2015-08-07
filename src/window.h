@@ -7,19 +7,22 @@
 #include "notebook.h"
 #include "menu.h"
 #include <boost/property_tree/json_parser.hpp>
+#include <atomic>
 
 class Window : public Gtk::Window {
 public:
   Window();
-  Notebook notebook;
   Directories directories;
+  Notebook notebook;
   class Config {
   public:
     boost::property_tree::ptree keybindings;
   };
+
 protected:
   bool on_key_press_event(GdkEventKey *event);
   bool on_delete_event (GdkEventAny *event);
+
 private:
   Gtk::Box box;
   Gtk::VPaned vpaned;
@@ -28,8 +31,9 @@ private:
   Gtk::VBox terminal_vbox;
   Gtk::HBox status_hbox;
   EntryBox entry_box;
-  std::mutex running;
   Menu menu;
+  std::atomic<bool> compiling;
+  Glib::Dispatcher compile_success;
 
   void create_menu();
   void hide();

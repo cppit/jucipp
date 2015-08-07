@@ -3,6 +3,8 @@
 #include "sourcefile.h"
 #include "singletons.h"
 #include <fstream>
+#include <regex>
+#include "cmake.h"
 
 #include <iostream> //TODO: remove
 using namespace std; //TODO: remove
@@ -11,7 +13,7 @@ namespace sigc {
   SIGC_FUNCTORS_DEDUCE_RESULT_TYPE_WITH_DECLTYPE
 }
 
-Notebook::Notebook() : Gtk::Notebook() {
+Notebook::Notebook(Directories &directories) : Gtk::Notebook(), directories(directories) {
   Gsv::init();
 }
 
@@ -50,19 +52,26 @@ void Notebook::open(std::string path) {
   }
   can_read.close();
   
-  auto tmp_project_path=project_path;
-  if(tmp_project_path=="") {
-    tmp_project_path=boost::filesystem::path(path).parent_path().string();
-  }
   auto language=Source::guess_language(path);
   if(language && (language->get_id()=="chdr" || language->get_id()=="c" || language->get_id()=="cpp" || language->get_id()=="objc")) {
-    if(boost::filesystem::exists(tmp_project_path+"/CMakeLists.txt") && !boost::filesystem::exists(tmp_project_path+"/compile_commands.json")) {
-      make_compile_commands();
+    std::string project_path;
+    if(directories.cmake && directories.cmake->project_path!="")
+      project_path=directories.cmake->project_path.string();
+    else {
+      auto parent_path=boost::filesystem::path(path).parent_path();
+      project_path=parent_path.string();
+      CMake cmake(parent_path);
+      if(cmake.project_path!="") {
+        project_path=cmake.project_path.string();
+        Singleton::terminal()->print("Project path for "+path+" set to "+project_path+"\n");
+      }
+      else
+        Singleton::terminal()->print("Error: could not find project path for "+path+"\n");
     }
-    source_views.emplace_back(new Source::ClangView(path, tmp_project_path));
+    source_views.emplace_back(new Source::ClangView(path, project_path));
   }
   else
-    source_views.emplace_back(new Source::GenericView(path, tmp_project_path, language));
+    source_views.emplace_back(new Source::GenericView(path, language));
     
   scrolled_windows.emplace_back(new Gtk::ScrolledWindow());
   hboxes.emplace_back(new Gtk::HBox());
@@ -111,11 +120,13 @@ bool Notebook::save(int page) {
       Singleton::terminal()->print("File saved to: " +view->file_path+"\n");
       
       //If CMakeLists.txt have been modified:
+      //TODO: recreate cmake even without directories open?
       if(boost::filesystem::path(view->file_path).filename().string()=="CMakeLists.txt") {
-        if(make_compile_commands()) {
+        if(directories.cmake && directories.cmake->project_path!="" && boost::filesystem::path(view->file_path)>=directories.cmake->project_path && CMake::create_compile_commands(directories.cmake->project_path.string())) {
+          directories.open_folder();
           for(auto source_view: source_views) {
             if(auto source_clang_view=dynamic_cast<Source::ClangView*>(source_view)) {
-              if(project_path==source_view->project_path) {
+              if(directories.cmake->project_path.string()==source_clang_view->project_path) {
                 if(source_clang_view->restart_parse())
                   Singleton::terminal()->print("Reparsing "+source_clang_view->file_path+"\n");
                 else
@@ -129,18 +140,6 @@ bool Notebook::save(int page) {
       return true;
     }
     Singleton::terminal()->print("Error: could not save file " +view->file_path+"\n");
-  }
-  return false;
-}
-
-bool Notebook::make_compile_commands() {
-  if(project_path.size()>0) {
-    Singleton::terminal()->print("Creating "+boost::filesystem::path(project_path+"/compile_commands.json").string()+"\n");
-    //TODO: Windows...
-    if(Singleton::terminal()->execute(project_path, "cmake . -DCMAKE_EXPORT_COMPILE_COMMANDS=ON 2>&1")) {
-      //TODO: refresh directories
-      return true;
-    }
   }
   return false;
 }
@@ -168,7 +167,7 @@ bool Notebook::close_current_page() {
     scrolled_windows.erase(scrolled_windows.begin()+page);
     hboxes.erase(hboxes.begin()+page);
     if(auto source_clang_view=dynamic_cast<Source::ClangView*>(source_view))
-      source_clang_view->delete_object();
+      source_clang_view->async_delete();
     else
       delete source_view;
   }

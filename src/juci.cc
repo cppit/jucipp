@@ -37,7 +37,6 @@ void app::on_activate() {
   add_window(*window);
   window->show();
   if(directory!="") {
-    window->notebook.project_path=directory;
     window->directories.open_folder(directory);
   }
   for(auto &f: files)

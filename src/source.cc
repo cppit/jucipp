@@ -36,9 +36,8 @@ Glib::RefPtr<Gsv::Language> Source::guess_language(const std::string &file_path)
 //////////////
 //// View ////
 //////////////
-Source::View::View(const std::string& file_path, const std::string& project_path):
-file_path(file_path), project_path(project_path) {
-  set_smart_home_end(Gsv::SMART_HOME_END_BEFORE); 
+Source::View::View(const std::string& file_path): file_path(file_path) {
+  set_smart_home_end(Gsv::SMART_HOME_END_BEFORE);
   get_source_buffer()->begin_not_undoable_action();
   juci::filesystem::read(file_path, get_buffer());
   get_source_buffer()->end_not_undoable_action();
@@ -254,7 +253,7 @@ bool Source::View::on_key_press_event(GdkEventKey* key) {
 /////////////////////
 //// GenericView ////
 /////////////////////
-Source::GenericView::GenericView(const std::string& file_path, const std::string& project_path, Glib::RefPtr<Gsv::Language> language) : View(file_path, project_path) {
+Source::GenericView::GenericView(const std::string& file_path, Glib::RefPtr<Gsv::Language> language) : View(file_path) {
   if(language) {
     get_source_buffer()->set_language(language);
     Singleton::terminal()->print("Language for file "+file_path+" set to "+language->get_name()+".\n");
@@ -273,8 +272,8 @@ Source::GenericView::GenericView(const std::string& file_path, const std::string
 ////////////////////////
 clang::Index Source::ClangViewParse::clang_index(0, 0);
 
-Source::ClangViewParse::ClangViewParse(const std::string& file_path, const std::string& project_path):
-Source::View(file_path, project_path) {
+Source::ClangViewParse::ClangViewParse(const std::string& file_path, const std::string& project_path) :
+  Source::View(file_path), project_path(project_path) {
   INFO("Tagtable beeing filled");
   for (auto &item : Singleton::Config::source()->tags) {
     auto scheme = get_source_buffer()->get_style_scheme();
@@ -321,6 +320,34 @@ Source::View(file_path, project_path) {
   //TODO: clear tag_class and param_spec?
   
   parsing_in_progress=Singleton::terminal()->print_in_progress("Parsing "+file_path);
+  //GTK-calls must happen in main thread, so the parse_thread
+  //sends signals to the main thread that it is to call the following functions:
+  parse_start.connect([this]{
+    if(parse_thread_buffer_map_mutex.try_lock()) {
+      parse_thread_buffer_map=get_buffer_map();
+      parse_thread_mapped=true;
+      parse_thread_buffer_map_mutex.unlock();
+    }
+    parse_thread_go=true;
+  });
+  parse_done.connect([this](){
+    if(parse_thread_mapped) {
+      if(parsing_mutex.try_lock()) {
+        INFO("Updating syntax");
+        update_syntax();
+        update_diagnostics();
+        update_types();
+        clang_readable=true;
+        set_status("");
+        parsing_mutex.unlock();
+        INFO("Syntax updated");
+      }
+      parsing_in_progress->done("done");
+    }
+    else {
+      parse_thread_go=true;
+    }
+  });
   init_parse();
   
   get_buffer()->signal_changed().connect([this]() {
@@ -362,37 +389,7 @@ void Source::ClangViewParse::init_parse() {
                            start_offset,
                            end_offset);
   update_syntax();
-  
-  //GTK-calls must happen in main thread, so the parse_thread
-  //sends signals to the main thread that it is to call the following functions:
-  parse_start.connect([this]{
-    if(parse_thread_buffer_map_mutex.try_lock()) {
-      parse_thread_buffer_map=get_buffer_map();
-      parse_thread_mapped=true;
-      parse_thread_buffer_map_mutex.unlock();
-    }
-    parse_thread_go=true;
-  });
-  
-  parse_done.connect([this](){
-    if(parse_thread_mapped) {
-      if(parsing_mutex.try_lock()) {
-        INFO("Updating syntax");
-        update_syntax();
-        update_diagnostics();
-        update_types();
-        clang_readable=true;
-        set_status("");
-        parsing_mutex.unlock();
-        INFO("Syntax updated");
-      }
-      parsing_in_progress->done("done");
-    }
-    else {
-      parse_thread_go=true;
-    }
-  });
-  
+    
   set_status("parsing...");
   if(parse_thread.joinable())
     parse_thread.join();
@@ -560,7 +557,7 @@ void Source::ClangViewParse::update_types() {
 
 bool Source::ClangViewParse::on_motion_notify_event(GdkEventMotion* event) {
   delayed_tooltips_connection.disconnect();
-  if(clang_readable) {
+  if(clang_readable && event->state==0) {
     Gdk::Rectangle rectangle(event->x, event->y, 1, 1);
     Tooltips::init();
     type_tooltips.show(rectangle);
@@ -1082,7 +1079,7 @@ Source::ClangView::ClangView(const std::string& file_path, const std::string& pr
   });
 }
 
-void Source::ClangView::delete_object() {
+void Source::ClangView::async_delete() {
   parsing_in_progress->cancel("canceled, freeing resources in the background");
   parse_thread_stop=true;
   delete_thread=std::thread([this](){

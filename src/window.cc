@@ -21,7 +21,7 @@ void Window::generate_keybindings() {
   }
 }
 
-Window::Window() : box(Gtk::ORIENTATION_VERTICAL) {
+Window::Window() : box(Gtk::ORIENTATION_VERTICAL), notebook(directories), compiling(false) {
   INFO("Create Window");
   set_title("juCi++");
   set_default_size(600, 400);
@@ -97,6 +97,11 @@ Window::Window() : box(Gtk::ORIENTATION_VERTICAL) {
   notebook.signal_page_removed().connect([this](Gtk::Widget* page, guint page_num) {
     entry_box.hide();
   });
+
+  compile_success.connect([this](){
+    directories.open_folder();
+  });  
+  
   INFO("Window created");
 } // Window constructor
 
@@ -203,41 +208,52 @@ void Window::create_menu() {
   });
 
   menu.action_group->add(Gtk::Action::create("ProjectCompileAndRun", "Compile And Run"), Gtk::AccelKey(menu.key_map["compile_and_run"]), [this]() {
-    if(notebook.get_current_page()==-1)
+    if(notebook.get_current_page()==-1 || compiling)
       return;
-    notebook.save_current();
-    if (running.try_lock()) {
-      std::thread execute([this]() {
-        std::string path = notebook.get_current_view()->file_path;
-        size_t pos = path.find_last_of("/\\");
-        if(pos != std::string::npos) {
-          path.erase(path.begin()+pos,path.end());
-          Singleton::terminal()->set_change_folder_command(path);
-        }
-        Singleton::terminal()->compile();
-        std::string executable = directories.get_cmakelists_variable(path,"add_executable");
-        Singleton::terminal()->run(executable);
-        running.unlock();
-      });
-      execute.detach();
+    CMake cmake(notebook.get_current_view()->file_path);
+    directories.open_folder();
+    auto executables = cmake.get_functions_parameters("add_executable");
+    std::string executable;
+    boost::filesystem::path path;
+    if(executables.size()>0 && executables[0].second.size()>0) {
+      executable=executables[0].second[0];
+      path=executables[0].first.parent_path();
+      path+="/"+executables[0].second[0];
+    }
+    if(cmake.project_path!="") {
+      if(path!="") {
+        compiling=true;
+        Singleton::terminal()->print("Compiling and executing "+path.string()+"\n");
+        //TODO: Windows...
+        Singleton::terminal()->async_execute("make", cmake.project_path.string(), [this, path](int exit_code){
+          compiling=false;
+          if(exit_code==EXIT_SUCCESS) {
+            compile_success();
+            //TODO: Windows...
+            Singleton::terminal()->async_execute(path.string(), path.parent_path().string(), [this, path](int exit_code){
+              Singleton::terminal()->async_print(path.string()+" returned: "+std::to_string(exit_code)+'\n');
+            });
+          }
+        });
+      }
+      else
+        Singleton::terminal()->print("Could not find an executable, please use add_executable in CMakeLists.txt\n");
     }
   });
   menu.action_group->add(Gtk::Action::create("ProjectCompile", "Compile"), Gtk::AccelKey(menu.key_map["compile"]), [this]() {
-    if(notebook.get_current_page()==-1)
+    if(notebook.get_current_page()==-1 || compiling)
       return;
-    notebook.save_current();
-    if (running.try_lock()) {
-      std::thread execute([this]() {
-        std::string path = notebook.get_current_view()->file_path;
-        size_t pos = path.find_last_of("/\\");
-        if(pos != std::string::npos){
-          path.erase(path.begin()+pos,path.end());
-          Singleton::terminal()->set_change_folder_command(path);
-        }
-        Singleton::terminal()->compile();
-        running.unlock();
+    CMake cmake(notebook.get_current_view()->file_path);
+    directories.open_folder();
+    if(cmake.project_path!="") {
+      compiling=true;
+      Singleton::terminal()->print("Compiling project "+cmake.project_path.string()+"\n");
+      //TODO: Windows...
+      Singleton::terminal()->async_execute("make 2>&1", cmake.project_path.string(), [this](int exit_code){
+        compiling=false;
+        if(exit_code==EXIT_SUCCESS)
+          compile_success();
       });
-      execute.detach();
     }
   });
 
@@ -250,8 +266,11 @@ void Window::create_menu() {
 }
 
 bool Window::on_key_press_event(GdkEventKey *event) {
-  if(event->keyval==GDK_KEY_Escape)
+  if(event->keyval==GDK_KEY_Escape) {
+    if(entry_box.entries.size()==0)
+      Singleton::terminal()->kill_executing();
     entry_box.hide();
+  }
 #ifdef __APPLE__ //For Apple's Command-left, right, up, down keys
   else if((event->state & GDK_META_MASK)>0) {
     if(event->keyval==GDK_KEY_Left) {
@@ -293,6 +312,7 @@ void Window::hide() {
     if(!notebook.close_current_page())
       return;
   }
+  Singleton::terminal()->kill_executing();
   Gtk::Window::hide();
 }
 
@@ -301,18 +321,18 @@ void Window::new_file_entry() {
   entry_box.entries.emplace_back("untitled", [this](const std::string& content){
     std::string filename=content;
     if(filename!="") {
-      if(notebook.project_path!="" && !boost::filesystem::path(filename).is_absolute())
-        filename=notebook.project_path+"/"+filename;
+      if(directories.current_path!="" && !boost::filesystem::path(filename).is_absolute())
+        filename=directories.current_path.string()+"/"+filename;
       boost::filesystem::path p(filename);
       if(boost::filesystem::exists(p)) {
         Singleton::terminal()->print("Error: "+p.string()+" already exists.\n");
       }
       else {
         if(juci::filesystem::write(p)) {
-          if(notebook.project_path!="")
-             directories.open_folder(notebook.project_path);
-           notebook.open(boost::filesystem::canonical(p).string());
-           Singleton::terminal()->print("New file "+p.string()+" created.\n");
+          if(directories.current_path!="")
+            directories.open_folder();
+          notebook.open(boost::filesystem::canonical(p).string());
+          Singleton::terminal()->print("New file "+p.string()+" created.\n");
         }
         else
           Singleton::terminal()->print("Error: could not create new file "+p.string()+".\n");
@@ -329,8 +349,8 @@ void Window::new_file_entry() {
 
 void Window::open_folder_dialog() {
   Gtk::FileChooserDialog dialog("Please choose a folder", Gtk::FILE_CHOOSER_ACTION_SELECT_FOLDER);
-  if(notebook.project_path.size()>0)
-    gtk_file_chooser_set_current_folder((GtkFileChooser*)dialog.gobj(), notebook.project_path.c_str());
+  if(directories.current_path!="")
+    gtk_file_chooser_set_current_folder((GtkFileChooser*)dialog.gobj(), directories.current_path.string().c_str());
   else
     gtk_file_chooser_set_current_folder((GtkFileChooser*)dialog.gobj(), boost::filesystem::current_path().string().c_str());
   dialog.set_transient_for(*this);
@@ -342,17 +362,14 @@ void Window::open_folder_dialog() {
 
   if(result==Gtk::RESPONSE_OK) {
     std::string project_path=dialog.get_filename();
-    notebook.project_path=project_path;
     directories.open_folder(project_path);
-    if(notebook.get_current_page()!=-1)
-      directories.select_path(notebook.get_current_view()->file_path);
   }
 }
 
 void Window::open_file_dialog() {
   Gtk::FileChooserDialog dialog("Please choose a file", Gtk::FILE_CHOOSER_ACTION_OPEN);
-  if(notebook.project_path.size()>0)
-    gtk_file_chooser_set_current_folder((GtkFileChooser*)dialog.gobj(), notebook.project_path.c_str());
+  if(directories.current_path!="")
+    gtk_file_chooser_set_current_folder((GtkFileChooser*)dialog.gobj(), directories.current_path.string().c_str());
   else
     gtk_file_chooser_set_current_folder((GtkFileChooser*)dialog.gobj(), boost::filesystem::current_path().string().c_str());
   dialog.set_transient_for(*this);
@@ -406,8 +423,8 @@ void Window::save_file_dialog() {
       if(file) {
         file << notebook.get_current_view()->get_buffer()->get_text();
         file.close();
-        if(notebook.project_path!="")
-          directories.open_folder(notebook.project_path);
+        if(directories.current_path!="")
+          directories.open_folder();
         notebook.open(path);
         Singleton::terminal()->print("File saved to: " + notebook.get_current_view()->file_path+"\n");
       }

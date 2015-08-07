@@ -12,10 +12,7 @@ public:
   void GenerateSource();
   void GenerateDirectoryFilter();
   void GenerateTheme();
-  void GenerateTerminalCommands();
-  
 private:
   boost::property_tree::ptree cfg;
- 
 };
 #endif

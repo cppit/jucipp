@@ -5,6 +5,7 @@
 #include <vector>
 #include <string>
 #include "boost/filesystem.hpp"
+#include "cmake.h"
 
 class Directories : public Gtk::ScrolledWindow {
 public:
@@ -27,11 +28,12 @@ public:
   };
 
   Directories();
-  void open_folder(const boost::filesystem::path& dir_path);
+  void open_folder(const boost::filesystem::path& dir_path="");
   void select_path(const std::string &path);
-  std::string get_cmakelists_variable(const boost::filesystem::path& dir_path, std::string command_name);
   
   std::function<void(const std::string &file)> on_row_activated;
+  std::unique_ptr<CMake> cmake;
+  boost::filesystem::path current_path;
   
 private:
   void add_paths(const boost::filesystem::path& dir_path, const Gtk::TreeModel::Row &row, unsigned depth);
@@ -39,7 +41,7 @@ private:
   Gtk::TreeView tree_view;
   Glib::RefPtr<Gtk::TreeStore> tree_store;
   ColumnRecord column_record;
-  boost::filesystem::path last_dir_path;
+  std::string selected_path;
 };
 
 #endif  // JUCI_DIRECTORIES_H_
