@@ -7,6 +7,7 @@
 #include <boost/filesystem.hpp>
 #include <thread>
 #include <atomic>
+#include <unordered_set>
 
 class Terminal : public Gtk::HBox {
 public:  
@@ -41,6 +42,9 @@ private:
   std::vector<std::pair<std::string, bool> > async_print_strings;
   std::mutex async_print_strings_mutex;
   Glib::RefPtr<Gtk::TextTag> bold_tag;
+
+  std::mutex async_execute_pids_mutex;
+  std::unordered_set<pid_t> async_execute_pids;
 };
 
 #endif  // JUCI_TERMINAL_H_
