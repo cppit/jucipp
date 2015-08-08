@@ -213,7 +213,6 @@ void Terminal::async_execute(const std::string &command, const std::string &path
             message+=buffer[c];
           async_print(message, true);
         }
-        cout << "stderr_thread done" << endl;
       });
       stderr_thread.detach();
       std::thread stdout_thread([this, stdout](){
@@ -226,7 +225,6 @@ void Terminal::async_execute(const std::string &command, const std::string &path
             message+=buffer[c];
           async_print(message);
         }
-        cout << "stdout_thread done" << endl;
       });
       stdout_thread.detach();
       
