@@ -22,6 +22,7 @@ private:
   Gtk::Paned directory_and_notebook_panes;
   Gtk::VBox notebook_vbox;
   Gtk::VBox terminal_vbox;
+  Gtk::ScrolledWindow terminal_scrolled_window;
   Gtk::HBox status_hbox;
   EntryBox entry_box;
   Menu menu;

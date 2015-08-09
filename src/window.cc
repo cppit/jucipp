@@ -32,7 +32,8 @@ Window::Window() : box(Gtk::ORIENTATION_VERTICAL), notebook(directories), compil
   vpaned.set_position(300);
   vpaned.pack1(directory_and_notebook_panes, true, false);
   
-  terminal_vbox.pack_start(*Singleton::terminal());
+  terminal_scrolled_window.add(*Singleton::terminal());
+  terminal_vbox.pack_start(terminal_scrolled_window);
   status_hbox.pack_end(*Singleton::status(), Gtk::PACK_SHRINK);
   terminal_vbox.pack_end(status_hbox, Gtk::PACK_SHRINK);
   vpaned.pack2(terminal_vbox, true, true);

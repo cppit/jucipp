@@ -102,17 +102,15 @@ void Terminal::InProgress::cancel(const std::string& msg) {
 }
 
 Terminal::Terminal() {
-  text_view.set_editable(false);
-  scrolled_window.add(text_view);
-  add(scrolled_window);
+  set_editable(false);
   
-  text_view.signal_size_allocate().connect([this](Gtk::Allocation& allocation){
-    auto end=text_view.get_buffer()->create_mark(text_view.get_buffer()->end());
-    text_view.scroll_to(end);
-    text_view.get_buffer()->delete_mark(end);
+  signal_size_allocate().connect([this](Gtk::Allocation& allocation){
+    auto end=get_buffer()->create_mark(get_buffer()->end());
+    scroll_to(end);
+    get_buffer()->delete_mark(end);
   });
   
-  bold_tag=text_view.get_buffer()->create_tag();
+  bold_tag=get_buffer()->create_tag();
   bold_tag->property_weight()=PANGO_WEIGHT_BOLD;
   async_print_dispatcher.connect([this](){
     async_print_strings_mutex.lock();
@@ -188,10 +186,11 @@ void Terminal::async_execute(const std::string &command, const boost::filesystem
       cd_path_and_command=command;
       
     int stdin, stdout, stderr;
-    async_execute_pids_mutex.lock();
+    async_executes_mutex.lock();
+    stdin_buffer.clear();
     auto pid=popen3(cd_path_and_command.c_str(), stdin, stdout, stderr);
-    async_execute_pids.emplace_back(pid);
-    async_execute_pids_mutex.unlock();
+    async_executes.emplace_back(pid, stdin);
+    async_executes_mutex.unlock();
     
     if (pid<=0) {
       async_print("Error: Failed to run command: " + command + "\n");
@@ -225,17 +224,18 @@ void Terminal::async_execute(const std::string &command, const boost::filesystem
       
       int exit_code;
       waitpid(pid, &exit_code, 0);
-      async_execute_pids_mutex.lock();
-      for(auto it=async_execute_pids.begin();it!=async_execute_pids.end();it++) {
-        if(*it==pid) {
-          async_execute_pids.erase(it);
+      async_executes_mutex.lock();
+      for(auto it=async_executes.begin();it!=async_executes.end();it++) {
+        if(it->first==pid) {
+          async_executes.erase(it);
           break;
         }
       }
-      async_execute_pids_mutex.unlock();
+      stdin_buffer.clear();
       close(stdin);
       close(stdout);
       close(stderr);
+      async_executes_mutex.unlock();
       
       if(callback)
         callback(exit_code);
@@ -245,43 +245,45 @@ void Terminal::async_execute(const std::string &command, const boost::filesystem
 }
 
 void Terminal::kill_last_async_execute(bool force) {
-  async_execute_pids_mutex.lock();
-  if(force)
-    kill(-async_execute_pids.back(), SIGTERM);
-  else
-    kill(-async_execute_pids.back(), SIGINT);
-  async_execute_pids_mutex.unlock();
+  async_executes_mutex.lock();
+  if(async_executes.size()>0) {
+    if(force)
+      kill(-async_executes.back().first, SIGTERM);
+    else
+      kill(-async_executes.back().first, SIGINT);
+  }
+  async_executes_mutex.unlock();
 }
 
 void Terminal::kill_async_executes(bool force) {
-  async_execute_pids_mutex.lock();
-  for(auto &pid: async_execute_pids) {
+  async_executes_mutex.lock();
+  for(auto &async_execute: async_executes) {
     if(force)
-      kill(-pid, SIGTERM);
+      kill(-async_execute.first, SIGTERM);
     else
-      kill(-pid, SIGINT);
+      kill(-async_execute.first, SIGINT);
   }
-  async_execute_pids_mutex.unlock();
+  async_executes_mutex.unlock();
 }
 
 int Terminal::print(const std::string &message, bool bold){
   INFO("Terminal: PrintMessage");
   if(bold)
-    text_view.get_buffer()->insert_with_tag(text_view.get_buffer()->end(), message, bold_tag);
+    get_buffer()->insert_with_tag(get_buffer()->end(), message, bold_tag);
   else
-    text_view.get_buffer()->insert(text_view.get_buffer()->end(), message);
-  return text_view.get_buffer()->end().get_line();
+    get_buffer()->insert(get_buffer()->end(), message);
+  return get_buffer()->end().get_line();
 }
 
 void Terminal::print(int line_nr, const std::string &message, bool bold){
   INFO("Terminal: PrintMessage at line " << line_nr);
-  auto iter=text_view.get_buffer()->get_iter_at_line(line_nr);
+  auto iter=get_buffer()->get_iter_at_line(line_nr);
   while(!iter.ends_line())
     iter++;
   if(bold)
-    text_view.get_buffer()->insert_with_tag(iter, message, bold_tag);
+    get_buffer()->insert_with_tag(iter, message, bold_tag);
   else
-    text_view.get_buffer()->insert(iter, message);
+    get_buffer()->insert(iter, message);
 }
 
 std::shared_ptr<Terminal::InProgress> Terminal::print_in_progress(std::string start_msg) {
@@ -298,4 +300,36 @@ void Terminal::async_print(const std::string &message, bool bold) {
   async_print_strings_mutex.unlock();
   if(dispatch)
     async_print_dispatcher();
+}
+
+bool Terminal::on_key_press_event(GdkEventKey *event) {
+  async_executes_mutex.lock();
+  if(async_executes.size()>0) {
+    get_buffer()->place_cursor(get_buffer()->end());
+    auto unicode=gdk_keyval_to_unicode(event->keyval);
+    char chr=(char)unicode;
+    if(unicode>=32 && unicode<=126) {
+      stdin_buffer+=chr;
+      get_buffer()->insert_at_cursor(stdin_buffer.substr(stdin_buffer.size()-1));
+      scroll_to(get_buffer()->get_insert());
+    }
+    else if(event->keyval==GDK_KEY_BackSpace) {
+      if(stdin_buffer.size()>0 && get_buffer()->get_char_count()>0) {
+        auto iter=get_buffer()->end();
+        iter--;
+        stdin_buffer.pop_back();
+        get_buffer()->erase(iter, get_buffer()->end());
+        scroll_to(get_buffer()->get_insert());
+      }
+    }
+    else if(event->keyval==GDK_KEY_Return) {
+      stdin_buffer+='\n';
+      write(async_executes.back().second, stdin_buffer.c_str(), stdin_buffer.size());
+      get_buffer()->insert_at_cursor(stdin_buffer.substr(stdin_buffer.size()-1));
+      stdin_buffer.clear();
+      scroll_to(get_buffer()->get_insert());
+    }
+  }
+  async_executes_mutex.unlock();
+  return true;
 }
