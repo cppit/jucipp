@@ -227,7 +227,14 @@ bool Source::View::on_key_press_event(GdkEventKey* key) {
     auto insert_it=get_source_buffer()->get_insert()->get_iter();
     int line_nr=insert_it.get_line();
     auto line_it=get_source_buffer()->get_iter_at_line(line_nr);
-    if(line_it!=insert_it) {
+    bool only_tabs_before_cursor=true;
+    for(auto it=line_it;it!=insert_it;it++) {
+      if(*it!=config->tab_char) {
+        only_tabs_before_cursor=false;
+        break;
+      }
+    }
+    if(only_tabs_before_cursor && line_it!=insert_it) {
       string line=get_line(line_nr);
       smatch sm;
       if(std::regex_match(line, sm, spaces_regex) && sm[1].str().size()>=config->tab_size) {
