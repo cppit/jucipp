@@ -15,18 +15,17 @@ namespace sigc {
   SIGC_FUNCTORS_DEDUCE_RESULT_TYPE_WITH_DECLTYPE
 }
 
-Glib::RefPtr<Gsv::Language> Source::guess_language(const std::string &file_path) {
+Glib::RefPtr<Gsv::Language> Source::guess_language(const boost::filesystem::path &file_path) {
   auto language_manager=Gsv::LanguageManager::get_default();
   bool result_uncertain = false;
-  auto content_type = Gio::content_type_guess(file_path, NULL, 0, result_uncertain);
+  auto content_type = Gio::content_type_guess(file_path.string(), NULL, 0, result_uncertain);
   if(result_uncertain) {
     content_type.clear();
   }
-  auto language=language_manager->guess_language(file_path, content_type);
+  auto language=language_manager->guess_language(file_path.string(), content_type);
   if(!language) {
-    auto path=boost::filesystem::path(file_path);
-    auto filename=path.filename().string();
-    auto extension=path.extension();
+    auto filename=file_path.filename().string();
+    auto extension=file_path.extension();
     if(filename=="CMakeLists.txt")
       language=language_manager->get_language("cmake");
   }
@@ -36,7 +35,7 @@ Glib::RefPtr<Gsv::Language> Source::guess_language(const std::string &file_path)
 //////////////
 //// View ////
 //////////////
-Source::View::View(const std::string& file_path): file_path(file_path) {
+Source::View::View(const boost::filesystem::path &file_path): file_path(file_path) {
   set_smart_home_end(Gsv::SMART_HOME_END_BEFORE);
   set_show_line_numbers(Singleton::Config::source()->show_line_numbers);
   set_highlight_current_line(Singleton::Config::source()->highlight_current_line);
@@ -247,7 +246,7 @@ bool Source::View::on_key_press_event(GdkEventKey* key) {
 /////////////////////
 //// GenericView ////
 /////////////////////
-Source::GenericView::GenericView(const std::string& file_path, Glib::RefPtr<Gsv::Language> language) : View(file_path) {
+Source::GenericView::GenericView(const boost::filesystem::path &file_path, Glib::RefPtr<Gsv::Language> language) : View(file_path) {
   auto style_scheme_manager=Gsv::StyleSchemeManager::get_default();
   //TODO: add?: style_scheme_manager->prepend_search_path("~/.juci/");
   auto scheme=style_scheme_manager->get_scheme("classic");
@@ -260,7 +259,7 @@ Source::GenericView::GenericView(const std::string& file_path, Glib::RefPtr<Gsv:
   
   if(language) {
     get_source_buffer()->set_language(language);
-    Singleton::terminal()->print("Language for file "+file_path+" set to "+language->get_name()+".\n");
+    Singleton::terminal()->print("Language for file "+file_path.string()+" set to "+language->get_name()+".\n");
   }
   auto completion=get_completion();
   auto completion_words=Gsv::CompletionWords::create("", Glib::RefPtr<Gdk::Pixbuf>());
@@ -276,7 +275,7 @@ Source::GenericView::GenericView(const std::string& file_path, Glib::RefPtr<Gsv:
 ////////////////////////
 clang::Index Source::ClangViewParse::clang_index(0, 0);
 
-Source::ClangViewParse::ClangViewParse(const std::string& file_path, const std::string& project_path):
+Source::ClangViewParse::ClangViewParse(const boost::filesystem::path &file_path, const boost::filesystem::path& project_path):
 Source::View(file_path), project_path(project_path) {
   override_font(Pango::FontDescription(Singleton::Config::source()->font));
   override_background_color(Gdk::RGBA(Singleton::Config::source()->background));
@@ -306,7 +305,7 @@ Source::View(file_path), project_path(project_path) {
   }
   //TODO: clear tag_class and param_spec?
   
-  parsing_in_progress=Singleton::terminal()->print_in_progress("Parsing "+file_path);
+  parsing_in_progress=Singleton::terminal()->print_in_progress("Parsing "+file_path.string());
   //GTK-calls must happen in main thread, so the parse_thread
   //sends signals to the main thread that it is to call the following functions:
   parse_start.connect([this]{
@@ -360,7 +359,7 @@ void Source::ClangViewParse::init_parse() {
   int end_offset = get_source_buffer()->end().get_offset();
   auto buffer_map=get_buffer_map();
   //Remove includes for first parse for initial syntax highlighting
-  auto& str=buffer_map[file_path];
+  auto& str=buffer_map[file_path.string()];
   std::size_t pos=0;
   while((pos=str.find("#include", pos))!=std::string::npos) {
     auto start_pos=pos;
@@ -408,15 +407,15 @@ init_syntax_highlighting(const std::map<std::string, std::string>
                          int end_offset) {
   std::vector<string> arguments = get_compilation_commands();
   clang_tu = std::unique_ptr<clang::TranslationUnit>(new clang::TranslationUnit(clang_index,
-                                                                           file_path,
+                                                                           file_path.string(),
                                                                            arguments,
                                                                            buffers));
-  clang_tokens=clang_tu->get_tokens(0, buffers.find(file_path)->second.size()-1);
+  clang_tokens=clang_tu->get_tokens(0, buffers.find(file_path.string())->second.size()-1);
 }
 
 std::map<std::string, std::string> Source::ClangViewParse::get_buffer_map() const {
   std::map<std::string, std::string> buffer_map;
-  buffer_map[file_path]=get_source_buffer()->get_text().raw();
+  buffer_map[file_path.string()]=get_source_buffer()->get_text().raw();
   return buffer_map;
 }
 
@@ -434,13 +433,13 @@ void Source::ClangViewParse::start_reparse() {
 
 int Source::ClangViewParse::reparse(const std::map<std::string, std::string> &buffer) {
   int status = clang_tu->ReparseTranslationUnit(buffer);
-  clang_tokens=clang_tu->get_tokens(0, parse_thread_buffer_map.find(file_path)->second.size()-1);
+  clang_tokens=clang_tu->get_tokens(0, parse_thread_buffer_map.find(file_path.string())->second.size()-1);
   return status;
 }
 
 std::vector<std::string> Source::ClangViewParse::get_compilation_commands() {
-  clang::CompilationDatabase db(project_path);
-  clang::CompileCommands commands(file_path, db);
+  clang::CompilationDatabase db(project_path.string());
+  clang::CompileCommands commands(file_path.string(), db);
   std::vector<clang::CompileCommand> cmds = commands.get_commands();
   std::vector<std::string> arguments;
   for (auto &i : cmds) {
@@ -449,7 +448,7 @@ std::vector<std::string> Source::ClangViewParse::get_compilation_commands() {
       arguments.emplace_back(lol[a]);
     }
   }
-  if(boost::filesystem::path(file_path).extension()==".h") //TODO: temporary fix for .h-files (parse as c++)
+  if(file_path.extension()==".h") //TODO: temporary fix for .h-files (parse as c++)
     arguments.emplace_back("-xc++");
   return arguments;
 }
@@ -496,7 +495,7 @@ void Source::ClangViewParse::update_diagnostics() {
   get_buffer()->remove_tag_by_name("diagnostic_error_underline", get_buffer()->begin(), get_buffer()->end());
   auto diagnostics=clang_tu->get_diagnostics();
   for(auto &diagnostic: diagnostics) {
-    if(diagnostic.path==file_path) {
+    if(diagnostic.path==file_path.string()) {
       auto start=get_buffer()->get_iter_at_offset(diagnostic.offsets.first);
       auto end=get_buffer()->get_iter_at_offset(diagnostic.offsets.second);
       std::string diagnostic_tag_name;
@@ -701,7 +700,7 @@ bool Source::ClangViewParse::on_key_press_event(GdkEventKey* key) {
 //////////////////////////////
 //// ClangViewAutocomplete ///
 //////////////////////////////
-Source::ClangViewAutocomplete::ClangViewAutocomplete(const std::string& file_path, const std::string& project_path):
+Source::ClangViewAutocomplete::ClangViewAutocomplete(const boost::filesystem::path &file_path, const boost::filesystem::path& project_path):
 Source::ClangViewParse(file_path, project_path), autocomplete_cancel_starting(false) {
   get_buffer()->signal_changed().connect([this](){
     if(completion_dialog_shown)
@@ -862,7 +861,7 @@ void Source::ClangViewAutocomplete::autocomplete() {
     });
     
     std::shared_ptr<std::map<std::string, std::string> > buffer_map=std::make_shared<std::map<std::string, std::string> >();
-    auto& buffer=(*buffer_map)[this->file_path];
+    auto& buffer=(*buffer_map)[this->file_path.string()];
     buffer=get_buffer()->get_text(get_buffer()->begin(), get_buffer()->get_insert()->get_iter());
     auto iter = get_source_buffer()->get_insert()->get_iter();
     auto line_nr=iter.get_line()+1;
@@ -921,7 +920,7 @@ get_autocomplete_suggestions(int line_number, int column, std::map<std::string, 
 //// ClangViewRefactor /////
 ////////////////////////////
 
-Source::ClangViewRefactor::ClangViewRefactor(const std::string& file_path, const std::string& project_path):
+Source::ClangViewRefactor::ClangViewRefactor(const boost::filesystem::path &file_path, const boost::filesystem::path& project_path):
 Source::ClangViewAutocomplete(file_path, project_path) {
   similar_tokens_tag=get_buffer()->create_tag();
   similar_tokens_tag->property_weight()=Pango::WEIGHT_BOLD;
@@ -1053,7 +1052,7 @@ Source::ClangViewAutocomplete(file_path, project_path) {
   };
 }
 
-Source::ClangView::ClangView(const std::string& file_path, const std::string& project_path): ClangViewRefactor(file_path, project_path) {
+Source::ClangView::ClangView(const boost::filesystem::path &file_path, const boost::filesystem::path& project_path): ClangViewRefactor(file_path, project_path) {
   do_delete_object.connect([this](){
     if(delete_thread.joinable())
       delete_thread.join();

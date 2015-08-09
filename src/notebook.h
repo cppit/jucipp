@@ -17,12 +17,11 @@ public:
   int size();
   Source::View* get_current_view();
   bool close_current_page();
-  void open(std::string filename);
+  void open(const boost::filesystem::path &file_path);
   bool save(int page);
   bool save_current();
       
 private:
-  bool make_compile_commands(const std::string &path);
   bool save_modified_dialog();
   Directories &directories;
   std::vector<Source::View*> source_views; //Is NOT freed in destructor, this is intended for quick program exit.

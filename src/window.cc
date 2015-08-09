@@ -204,24 +204,22 @@ void Window::create_menu() {
     CMake cmake(notebook.get_current_view()->file_path);
     directories.open_folder();
     auto executables = cmake.get_functions_parameters("add_executable");
-    std::string executable;
     boost::filesystem::path path;
     if(executables.size()>0 && executables[0].second.size()>0) {
-      executable=executables[0].second[0];
       path=executables[0].first.parent_path();
       path+="/"+executables[0].second[0];
     }
     if(cmake.project_path!="") {
       if(path!="") {
         compiling=true;
-        Singleton::terminal()->print("Compiling and executing "+path.string()+"\n");
+        Singleton::terminal()->print("Compiling and running "+path.string()+"\n");
         //TODO: Windows...
-        Singleton::terminal()->async_execute("make", cmake.project_path.string(), [this, path](int exit_code){
+        Singleton::terminal()->async_execute("make", cmake.project_path, [this, path](int exit_code){
           compiling=false;
           if(exit_code==EXIT_SUCCESS) {
             compile_success();
             //TODO: Windows...
-            Singleton::terminal()->async_execute(path.string(), path.parent_path().string(), [this, path](int exit_code){
+            Singleton::terminal()->async_execute(path.string(), "", [this, path](int exit_code){
               Singleton::terminal()->async_print(path.string()+" returned: "+std::to_string(exit_code)+'\n');
             });
           }
@@ -240,12 +238,36 @@ void Window::create_menu() {
       compiling=true;
       Singleton::terminal()->print("Compiling project "+cmake.project_path.string()+"\n");
       //TODO: Windows...
-      Singleton::terminal()->async_execute("make 2>&1", cmake.project_path.string(), [this](int exit_code){
+      Singleton::terminal()->async_execute("make", cmake.project_path, [this](int exit_code){
         compiling=false;
         if(exit_code==EXIT_SUCCESS)
           compile_success();
       });
     }
+  });
+  menu.action_group->add(Gtk::Action::create("ProjectRunCommand", "Run Command"), Gtk::AccelKey(menu.key_map["run_command"]), [this]() {
+    entry_box.clear();
+    entry_box.entries.emplace_back(last_run_command, [this](const std::string& content){
+      if(content!="") {
+        last_run_command=content;
+        Singleton::terminal()->async_print("Running: "+content+'\n');
+        Singleton::terminal()->async_execute(content, directories.current_path, [this, content](int exit_code){
+          Singleton::terminal()->async_print(content+" returned: "+std::to_string(exit_code)+'\n');
+        });
+      }
+      entry_box.hide();
+    });
+    auto entry_it=entry_box.entries.begin();
+    entry_box.buttons.emplace_back("Run command", [this, entry_it](){
+      entry_it->activate();
+    });
+    entry_box.show();
+  });
+  menu.action_group->add(Gtk::Action::create("ProjectKillLastRunning", "Kill Last Process"), Gtk::AccelKey(menu.key_map["kill_last_running"]), [this]() {
+    Singleton::terminal()->kill_last_async_execute();
+  });
+  menu.action_group->add(Gtk::Action::create("ProjectForceKillLastRunning", "Force Kill Last Process"), Gtk::AccelKey(menu.key_map["force_kill_last_running"]), [this]() {
+    Singleton::terminal()->kill_last_async_execute(true);
   });
 
   menu.action_group->add(Gtk::Action::create("WindowCloseTab", "Close tab"), Gtk::AccelKey(menu.key_map["close_tab"]), [this]() {
@@ -258,8 +280,6 @@ void Window::create_menu() {
 
 bool Window::on_key_press_event(GdkEventKey *event) {
   if(event->keyval==GDK_KEY_Escape) {
-    if(entry_box.entries.size()==0)
-      Singleton::terminal()->kill_executing();
     entry_box.hide();
   }
 #ifdef __APPLE__ //For Apple's Command-left, right, up, down keys
@@ -303,7 +323,7 @@ void Window::hide() {
     if(!notebook.close_current_page())
       return;
   }
-  Singleton::terminal()->kill_executing();
+  Singleton::terminal()->kill_async_executes();
   Gtk::Window::hide();
 }
 
@@ -417,7 +437,7 @@ void Window::save_file_dialog() {
         if(directories.current_path!="")
           directories.open_folder();
         notebook.open(path);
-        Singleton::terminal()->print("File saved to: " + notebook.get_current_view()->file_path+"\n");
+        Singleton::terminal()->print("File saved to: " + notebook.get_current_view()->file_path.string()+"\n");
       }
       else
         Singleton::terminal()->print("Error saving file\n");
@@ -564,7 +584,7 @@ void Window::rename_token_entry() {
               if(notebook.get_view(c)->rename_similar_tokens) {
                 auto number=notebook.get_view(c)->rename_similar_tokens(*token, content);
                 if(number>0) {
-                  Singleton::terminal()->print("Replaced "+std::to_string(number)+" occurrences in file "+notebook.get_view(c)->file_path+"\n");
+                  Singleton::terminal()->print("Replaced "+std::to_string(number)+" occurrences in file "+notebook.get_view(c)->file_path.string()+"\n");
                   notebook.save(c);
                 }
               }

@@ -40,6 +40,7 @@ private:
   void rename_token_entry();
   std::string last_search;
   std::string last_replace;
+  std::string last_run_command;
   bool case_sensitive_search=true;
   bool regex_search=false;
   bool search_entry_shown=false;

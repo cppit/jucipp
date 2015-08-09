@@ -40,14 +40,14 @@ CMake::CMake(const boost::filesystem::path &path) {
   }
   if(project_path!="") {
     if(boost::filesystem::exists(project_path.string()+"/CMakeLists.txt") && !boost::filesystem::exists(project_path.string()+"/compile_commands.json"))
-      create_compile_commands(project_path.string());
+      create_compile_commands(project_path);
   }
 }
 
-bool CMake::create_compile_commands(const std::string &path) {
-  Singleton::terminal()->print("Creating "+boost::filesystem::path(path+"/compile_commands.json").string()+"\n");
+bool CMake::create_compile_commands(const boost::filesystem::path &path) {
+  Singleton::terminal()->print("Creating "+path.string()+"/compile_commands.json\n");
   //TODO: Windows...
-  if(Singleton::terminal()->execute("cmake . -DCMAKE_EXPORT_COMPILE_COMMANDS=ON 2>&1", path)==EXIT_SUCCESS)
+  if(Singleton::terminal()->execute("cmake . -DCMAKE_EXPORT_COMPILE_COMMANDS=ON", path)==EXIT_SUCCESS)
     return true;
   return false;
 }

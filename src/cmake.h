@@ -8,7 +8,7 @@ class CMake {
 public:
   CMake(const boost::filesystem::path &path);
   std::vector<std::pair<boost::filesystem::path, std::vector<std::string> > > get_functions_parameters(const std::string &name);
-  static bool create_compile_commands(const std::string &path);
+  static bool create_compile_commands(const boost::filesystem::path &path);
   
   std::vector<boost::filesystem::path> paths;
   std::vector<std::string> files;

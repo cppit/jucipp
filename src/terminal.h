@@ -7,7 +7,7 @@
 #include <boost/filesystem.hpp>
 #include <thread>
 #include <atomic>
-#include <unordered_set>
+#include <list>
 
 class Terminal : public Gtk::HBox {
 public:  
@@ -26,9 +26,10 @@ public:
   };
   
   Terminal();
-  int execute(const std::string &command, const std::string &path="");
-  void async_execute(const std::string &command, const std::string &path="", std::function<void(int exit_code)> callback=nullptr);
-  void kill_executing();
+  int execute(const std::string &command, const boost::filesystem::path &path="");
+  void async_execute(const std::string &command, const boost::filesystem::path &path="", std::function<void(int exit_code)> callback=nullptr);
+  void kill_last_async_execute(bool force=false);
+  void kill_async_executes(bool force=false);
   
   int print(const std::string &message, bool bold=false);
   void print(int line_nr, const std::string &message, bool bold=false);
@@ -44,7 +45,7 @@ private:
   Glib::RefPtr<Gtk::TextTag> bold_tag;
 
   std::mutex async_execute_pids_mutex;
-  std::unordered_set<pid_t> async_execute_pids;
+  std::list<pid_t> async_execute_pids;
 };
 
 #endif  // JUCI_TERMINAL_H_

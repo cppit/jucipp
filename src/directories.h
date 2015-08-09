@@ -29,7 +29,7 @@ public:
 
   Directories();
   void open_folder(const boost::filesystem::path& dir_path="");
-  void select_path(const std::string &path);
+  void select_path(const boost::filesystem::path &path);
   
   std::function<void(const std::string &file)> on_row_activated;
   std::unique_ptr<CMake> cmake;
@@ -41,7 +41,7 @@ private:
   Gtk::TreeView tree_view;
   Glib::RefPtr<Gtk::TreeStore> tree_store;
   ColumnRecord column_record;
-  std::string selected_path;
+  boost::filesystem::path selected_path;
 };
 
 #endif  // JUCI_DIRECTORIES_H_

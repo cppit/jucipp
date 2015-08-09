@@ -125,14 +125,11 @@ Terminal::Terminal() {
   });
 }
 
-int Terminal::execute(const std::string &command, const std::string &path) {
-  boost::filesystem::path boost_path;
+int Terminal::execute(const std::string &command, const boost::filesystem::path &path) {
   std::string cd_path_and_command;
   if(path!="") {
-    boost_path=boost::filesystem::path(path);
-  
     //TODO: Windows...
-    cd_path_and_command="cd "+boost_path.string()+" && "+command;
+    cd_path_and_command="cd "+path.string()+" && "+command;
   }
   else
     cd_path_and_command=command;
@@ -179,15 +176,13 @@ int Terminal::execute(const std::string &command, const std::string &path) {
   }
 }
 
-void Terminal::async_execute(const std::string &command, const std::string &path, std::function<void(int exit_code)> callback) {
+void Terminal::async_execute(const std::string &command, const boost::filesystem::path &path, std::function<void(int exit_code)> callback) {
   std::thread async_execute_thread([this, command, path, callback](){
-    boost::filesystem::path boost_path;
     std::string cd_path_and_command;
     if(path!="") {
-      boost_path=boost::filesystem::path(path);
     
       //TODO: Windows...
-      cd_path_and_command="cd "+boost_path.string()+" && "+command;
+      cd_path_and_command="cd "+path.string()+" && "+command;
     }
     else
       cd_path_and_command=command;
@@ -195,7 +190,7 @@ void Terminal::async_execute(const std::string &command, const std::string &path
     int stdin, stdout, stderr;
     async_execute_pids_mutex.lock();
     auto pid=popen3(cd_path_and_command.c_str(), stdin, stdout, stderr);
-    async_execute_pids.emplace(pid);
+    async_execute_pids.emplace_back(pid);
     async_execute_pids_mutex.unlock();
     
     if (pid<=0) {
@@ -231,7 +226,12 @@ void Terminal::async_execute(const std::string &command, const std::string &path
       int exit_code;
       waitpid(pid, &exit_code, 0);
       async_execute_pids_mutex.lock();
-      async_execute_pids.erase(pid);
+      for(auto it=async_execute_pids.begin();it!=async_execute_pids.end();it++) {
+        if(*it==pid) {
+          async_execute_pids.erase(it);
+          break;
+        }
+      }
       async_execute_pids_mutex.unlock();
       close(stdin);
       close(stdout);
@@ -244,10 +244,22 @@ void Terminal::async_execute(const std::string &command, const std::string &path
   async_execute_thread.detach();
 }
 
-void Terminal::kill_executing() {
+void Terminal::kill_last_async_execute(bool force) {
+  async_execute_pids_mutex.lock();
+  if(force)
+    kill(-async_execute_pids.back(), SIGTERM);
+  else
+    kill(-async_execute_pids.back(), SIGINT);
+  async_execute_pids_mutex.unlock();
+}
+
+void Terminal::kill_async_executes(bool force) {
   async_execute_pids_mutex.lock();
   for(auto &pid: async_execute_pids) {
-    kill(-pid, SIGINT);
+    if(force)
+      kill(-pid, SIGTERM);
+    else
+      kill(-pid, SIGINT);
   }
   async_execute_pids_mutex.unlock();
 }
