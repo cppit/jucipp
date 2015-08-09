@@ -4,79 +4,59 @@
 #include "singletons.h"
 #include <unistd.h>
 #include <sys/wait.h>
-#include <unordered_map>
 
 #include <iostream> //TODO: remove
 using namespace std; //TODO: remove
 
-int execute_status=-1;
-std::mutex async_and_sync_execute_mutex;
-std::unordered_map<pid_t, std::vector<int> > async_execute_descriptors;
-std::unordered_map<pid_t, int> async_execute_status;
-
 //TODO: Windows...
-//Coppied partially from http://www.linuxprogrammingblog.com/code-examples/sigaction
-void signal_execl_exit(int sig, siginfo_t *siginfo, void *context) {
-  async_and_sync_execute_mutex.lock();
-  if(async_execute_descriptors.find(siginfo->si_pid)!=async_execute_descriptors.end()) {
-    close(async_execute_descriptors.at(siginfo->si_pid)[0]);
-    close(async_execute_descriptors.at(siginfo->si_pid)[1]);
-    close(async_execute_descriptors.at(siginfo->si_pid)[2]);
-  }
-  int status;
-  while (waitpid(siginfo->si_pid, &status, WNOHANG) > 0) {}
-  
-  if(async_execute_descriptors.find(siginfo->si_pid)!=async_execute_descriptors.end()) {
-    async_execute_status[siginfo->si_pid]=status;
-    async_execute_descriptors.erase(siginfo->si_pid);
-  }
-  else
-    execute_status=status;
-  async_and_sync_execute_mutex.unlock();
-}
-
-//TODO: Windows...
-//TODO: Someone who knows this stuff see if I have done something stupid.
-//Copied partially from http://stackoverflow.com/questions/12778672/killing-process-that-has-been-created-with-popen2
-pid_t popen3(const char *command, int *input_descriptor, int *output_descriptor, int *error_descriptor) {
+//A working implementation of popen3, with all pipes getting closed properly. 
+//TODO: Eidheim is going to publish this one on his github, along with example uses
+pid_t popen3(const char *command, int &stdin, int &stdout, int &stderr) {
   pid_t pid;
   int p_stdin[2], p_stdout[2], p_stderr[2];
 
-  if (pipe(p_stdin) != 0 || pipe(p_stdout) != 0 || pipe(p_stderr) != 0)
+  if (pipe(p_stdin) != 0 || pipe(p_stdout) != 0 || pipe(p_stderr) != 0) {
+    close(p_stdin[0]);
+    close(p_stdout[0]);
+    close(p_stderr[0]);
+    close(p_stdin[1]);
+    close(p_stdout[1]);
+    close(p_stderr[1]);
     return -1;
-
+  }
+      
   pid = fork();
 
-  if (pid < 0)
+  if (pid < 0) {
+    close(p_stdin[0]);
+    close(p_stdout[0]);
+    close(p_stderr[0]);
+    close(p_stdin[1]);
+    close(p_stdout[1]);
+    close(p_stderr[1]);
     return pid;
+  }
   else if (pid == 0) {
     close(p_stdin[1]);
-    dup2(p_stdin[0], 0);
     close(p_stdout[0]);
-    dup2(p_stdout[1], 1);
     close(p_stderr[0]);
+    dup2(p_stdin[0], 0);
+    dup2(p_stdout[1], 1);
     dup2(p_stderr[1], 2);
 
     setpgid(0, 0);
     execl("/bin/sh", "sh", "-c", command, NULL);
     perror("execl");
-    exit(1);
+    exit(EXIT_FAILURE);
   }
 
-  if (input_descriptor == NULL)
-    close(p_stdin[1]);
-  else
-    *input_descriptor = p_stdin[1];
-
-  if (output_descriptor == NULL)
-    close(p_stdout[0]);
-  else
-    *output_descriptor = p_stdout[0];
-    
-  if (error_descriptor == NULL)
-    close(p_stderr[0]);
-  else
-    *error_descriptor = p_stderr[0];
+  close(p_stdin[0]);
+  close(p_stdout[1]);
+  close(p_stderr[1]);
+  
+  stdin = p_stdin[1];
+  stdout = p_stdout[0];
+  stderr = p_stderr[0];
 
   return pid;
 }
@@ -143,13 +123,6 @@ Terminal::Terminal() {
     }
     async_print_strings_mutex.unlock();
   });
-  
-  //Coppied from http://www.linuxprogrammingblog.com/code-examples/sigaction
-  struct sigaction act;
-	memset (&act, '\0', sizeof(act));
-  act.sa_sigaction = &signal_execl_exit;
-  act.sa_flags = SA_SIGINFO;
-  sigaction(SIGCHLD, &act, NULL);
 }
 
 int Terminal::execute(const std::string &command, const std::string &path) {
@@ -159,29 +132,49 @@ int Terminal::execute(const std::string &command, const std::string &path) {
     boost_path=boost::filesystem::path(path);
   
     //TODO: Windows...
-    cd_path_and_command="cd "+boost_path.string()+" 2>&1 && "+command;
+    cd_path_and_command="cd "+boost_path.string()+" && "+command;
   }
   else
     cd_path_and_command=command;
-
-  FILE* p;
-  p = popen(cd_path_and_command.c_str(), "r");
-  if (p == NULL) {
-    print("Error: Failed to run command" + command + "\n");
+    
+  int stdin, stdout, stderr;
+  auto pid=popen3(cd_path_and_command.c_str(), stdin, stdout, stderr);
+  
+  if (pid<=0) {
+    async_print("Error: Failed to run command: " + command + "\n");
     return -1;
   }
   else {
-    char buffer[1024];
-    while (fgets(buffer, 1024, p) != NULL) {
-      print(buffer);
-      while(gtk_events_pending())
-        gtk_main_iteration();
-    }
-    async_and_sync_execute_mutex.lock();
-    int exit_code=pclose(p);
-    if(exit_code==-1)
-      exit_code=execute_status;
-    async_and_sync_execute_mutex.unlock();
+    std::thread stderr_thread([this, stderr](){
+      char buffer[1024];
+      ssize_t n;
+      while ((n=read(stderr, buffer, 1024)) > 0) {
+        std::string message;
+        for(ssize_t c=0;c<n;c++)
+          message+=buffer[c];
+        async_print(message, true);
+      }
+    });
+    stderr_thread.detach();
+    std::thread stdout_thread([this, stdout](){
+      char buffer[1024];
+      ssize_t n;
+      INFO("read");
+      while ((n=read(stdout, buffer, 1024)) > 0) {
+        std::string message;
+        for(ssize_t c=0;c<n;c++)
+          message+=buffer[c];
+        async_print(message);
+      }
+    });
+    stdout_thread.detach();
+    
+    int exit_code;
+    waitpid(pid, &exit_code, 0);
+    close(stdin);
+    close(stdout);
+    close(stderr);
+    
     return exit_code;
   }
 }
@@ -199,42 +192,51 @@ void Terminal::async_execute(const std::string &command, const std::string &path
     else
       cd_path_and_command=command;
       
-    int input_descriptor, output_descriptor, error_descriptor;
-    async_and_sync_execute_mutex.lock();
-    auto pid=popen3(cd_path_and_command.c_str(), &input_descriptor, &output_descriptor, &error_descriptor);
-    async_execute_descriptors[pid]={input_descriptor, output_descriptor, error_descriptor};
-    async_and_sync_execute_mutex.unlock();
+    int stdin, stdout, stderr;
+    async_execute_pids_mutex.lock();
+    auto pid=popen3(cd_path_and_command.c_str(), stdin, stdout, stderr);
+    async_execute_pids.emplace(pid);
+    async_execute_pids_mutex.unlock();
+    
     if (pid<=0) {
       async_print("Error: Failed to run command: " + command + "\n");
       if(callback)
         callback(-1);
     }
     else {
-      std::thread error_thread([this, error_descriptor](){
+      std::thread stderr_thread([this, stderr](){
         char buffer[1024];
         ssize_t n;
-        while ((n=read(error_descriptor, buffer, 1024)) > 0) {
+        while ((n=read(stderr, buffer, 1024)) > 0) {
           std::string message;
-          for(int c=0;c<n;c++)
+          for(ssize_t c=0;c<n;c++)
             message+=buffer[c];
           async_print(message, true);
         }
       });
-      error_thread.detach();
-      char buffer[1024];
-      ssize_t n;
-      while ((n=read(output_descriptor, buffer, 1024)) > 0) {
-        std::string message;
-        for(int c=0;c<n;c++)
-          message+=buffer[c];
-        async_print(message);
-      }
-      async_and_sync_execute_mutex.lock();
-      int exit_code=async_execute_status.at(pid);
-      async_execute_status.erase(pid);
-      if(async_execute_descriptors.find(pid)!=async_execute_descriptors.end()) //cleanup in case signal_execl_exit is not called
-        async_execute_descriptors.erase(pid);
-      async_and_sync_execute_mutex.unlock();
+      stderr_thread.detach();
+      std::thread stdout_thread([this, stdout](){
+        char buffer[1024];
+        ssize_t n;
+        INFO("read");
+        while ((n=read(stdout, buffer, 1024)) > 0) {
+          std::string message;
+          for(ssize_t c=0;c<n;c++)
+            message+=buffer[c];
+          async_print(message);
+        }
+      });
+      stdout_thread.detach();
+      
+      int exit_code;
+      waitpid(pid, &exit_code, 0);
+      async_execute_pids_mutex.lock();
+      async_execute_pids.erase(pid);
+      async_execute_pids_mutex.unlock();
+      close(stdin);
+      close(stdout);
+      close(stderr);
+      
       if(callback)
         callback(exit_code);
     }
@@ -243,17 +245,11 @@ void Terminal::async_execute(const std::string &command, const std::string &path
 }
 
 void Terminal::kill_executing() {
-  async_and_sync_execute_mutex.lock();
-  int status;
-  for(auto &pid: async_execute_descriptors) {
-    close(async_execute_descriptors.at(pid.first)[0]);
-    close(async_execute_descriptors.at(pid.first)[1]);
-    close(async_execute_descriptors.at(pid.first)[2]);
-    kill(-pid.first, SIGINT); //signal_execl_exit is not always called after kill!
-    while(waitpid(-pid.first, &status, WNOHANG) > 0) {}
-    async_execute_status[pid.first]=status;
+  async_execute_pids_mutex.lock();
+  for(auto &pid: async_execute_pids) {
+    kill(-pid, SIGINT);
   }
-  async_and_sync_execute_mutex.unlock();
+  async_execute_pids_mutex.unlock();
 }
 
 int Terminal::print(const std::string &message, bool bold){
