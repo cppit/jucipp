@@ -224,17 +224,19 @@ bool Source::View::on_key_press_event(GdkEventKey* key) {
   }
   //"Smart" backspace key
   else if(key->keyval==GDK_KEY_BackSpace && !get_buffer()->get_has_selection()) {
-    Gtk::TextIter insert_it=get_source_buffer()->get_insert()->get_iter();
+    auto insert_it=get_source_buffer()->get_insert()->get_iter();
     int line_nr=insert_it.get_line();
-    if(line_nr>0) {
+    auto line_it=get_source_buffer()->get_iter_at_line(line_nr);
+    if(line_it!=insert_it) {
       string line=get_line(line_nr);
-      string previous_line=get_line(line_nr-1);
       smatch sm;
-      if(std::regex_match(previous_line, sm, spaces_regex)) {
-        if(line==sm[1] || line==(std::string(sm[1])+config->tab) || (line+config->tab==sm[1])) {
-          Gtk::TextIter line_it = get_source_buffer()->get_iter_at_line(line_nr);
-          get_source_buffer()->erase(line_it, insert_it);
-        }
+      if(std::regex_match(line, sm, spaces_regex) && sm[1].str().size()>=config->tab_size) {
+        auto insert_minus_tab_it=insert_it;
+        for(unsigned c=0;c<config->tab_size;c++)
+          insert_minus_tab_it--;
+        get_source_buffer()->erase(insert_minus_tab_it, insert_it);
+        get_source_buffer()->end_user_action();
+        return true;
       }
     }
   }
@@ -691,6 +693,25 @@ bool Source::ClangViewParse::on_key_press_event(GdkEventKey* key) {
     }
     get_source_buffer()->end_user_action();
     return Source::View::on_key_press_event(key);
+  }
+  //"Smart" backspace key
+  else if(key->keyval==GDK_KEY_BackSpace && !get_buffer()->get_has_selection()) {
+    Gtk::TextIter insert_it=get_source_buffer()->get_insert()->get_iter();
+    int line_nr=insert_it.get_line();
+    if(line_nr>0) {
+      string line=get_line(line_nr);
+      string previous_line=get_line(line_nr-1);
+      smatch sm;
+      if(std::regex_match(previous_line, sm, spaces_regex)) {
+        if(line==sm[1] || line==(std::string(sm[1])+config->tab) || (line+config->tab==sm[1])) {
+          auto line_it = get_source_buffer()->get_iter_at_line(line_nr);
+          line_it--;
+          get_source_buffer()->erase(line_it, insert_it);
+          get_source_buffer()->end_user_action();
+          return true;
+        }
+      }
+    }
   }
   
   get_source_buffer()->end_user_action();
