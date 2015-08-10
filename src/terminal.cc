@@ -45,6 +45,8 @@ pid_t popen3(const char *command, int &stdin, int &stdout, int &stderr) {
     dup2(p_stderr[1], 2);
 
     setpgid(0, 0);
+    //TODO: See here on how to emulate tty for colors: http://stackoverflow.com/questions/1401002/trick-an-application-into-thinking-its-stdin-is-interactive-not-a-pipe
+    //TODO: One solution is: echo "command;exit"|script -q /dev/null
     execl("/bin/sh", "sh", "-c", command, NULL);
     perror("execl");
     exit(EXIT_FAILURE);
