@@ -205,29 +205,33 @@ void Window::create_menu() {
     CMake cmake(notebook.get_current_view()->file_path);
     directories.open_folder();
     auto executables = cmake.get_functions_parameters("add_executable");
-    boost::filesystem::path path;
+    boost::filesystem::path executable_path;
     if(executables.size()>0 && executables[0].second.size()>0) {
-      path=executables[0].first.parent_path();
-      path+="/"+executables[0].second[0];
+      executable_path=executables[0].first.parent_path();
+      executable_path+="/"+executables[0].second[0];
     }
     if(cmake.project_path!="") {
-      if(path!="") {
+      if(executable_path!="") {
         compiling=true;
-        Singleton::terminal()->print("Compiling and running "+path.string()+"\n");
+        Singleton::terminal()->print("Compiling and running "+executable_path.string()+"\n");
         //TODO: Windows...
-        Singleton::terminal()->async_execute("make", cmake.project_path, [this, path](int exit_code){
+        auto project_path=cmake.project_path;
+        Singleton::terminal()->async_execute("make", cmake.project_path, [this, executable_path, project_path](int exit_code){
           compiling=false;
           if(exit_code==EXIT_SUCCESS) {
             compile_success();
             //TODO: Windows...
-            Singleton::terminal()->async_execute(path.string(), "", [this, path](int exit_code){
-              Singleton::terminal()->async_print(path.string()+" returned: "+std::to_string(exit_code)+'\n');
+            Singleton::terminal()->async_execute(executable_path.string(), project_path, [this, executable_path](int exit_code){
+              Singleton::terminal()->async_print(executable_path.string()+" returned: "+std::to_string(exit_code)+'\n');
             });
           }
         });
       }
-      else
-        Singleton::terminal()->print("Could not find an executable, please use add_executable in CMakeLists.txt\n");
+      else {
+        Singleton::terminal()->print("Could not find add_executable in the following paths:\n");
+        for(auto &path: cmake.paths)
+          Singleton::terminal()->print("  "+path.string()+"\n");
+      }
     }
   });
   menu.action_group->add(Gtk::Action::create("ProjectCompile", "Compile"), Gtk::AccelKey(menu.key_map["compile"]), [this]() {
