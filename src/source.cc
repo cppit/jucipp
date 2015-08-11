@@ -174,6 +174,8 @@ void Source::View::paste() {
           paste_line=false;
         }
       }
+      get_buffer()->place_cursor(get_buffer()->get_insert()->get_iter());
+      scroll_to(get_buffer()->get_insert());
       get_source_buffer()->end_user_action();
     }
     else
