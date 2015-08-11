@@ -104,14 +104,6 @@ void Terminal::InProgress::cancel(const std::string& msg) {
 }
 
 Terminal::Terminal() {
-  set_editable(false);
-  
-  signal_size_allocate().connect([this](Gtk::Allocation& allocation){
-    auto end=get_buffer()->create_mark(get_buffer()->end());
-    scroll_to(end);
-    get_buffer()->delete_mark(end);
-  });
-  
   bold_tag=get_buffer()->create_tag();
   bold_tag->property_weight()=PANGO_WEIGHT_BOLD;
   async_print_dispatcher.connect([this](){
@@ -274,6 +266,15 @@ int Terminal::print(const std::string &message, bool bold){
     get_buffer()->insert_with_tag(get_buffer()->end(), message, bold_tag);
   else
     get_buffer()->insert(get_buffer()->end(), message);
+    
+  auto iter=get_buffer()->get_insert()->get_iter();
+  if(iter.backward_char()) {
+    while(gtk_events_pending())
+      gtk_main_iteration();
+    scroll_to(iter);
+    while(gtk_events_pending())
+      gtk_main_iteration();
+  }
   return get_buffer()->end().get_line();
 }
 
@@ -313,7 +314,11 @@ bool Terminal::on_key_press_event(GdkEventKey *event) {
     if(unicode>=32 && unicode<=126) {
       stdin_buffer+=chr;
       get_buffer()->insert_at_cursor(stdin_buffer.substr(stdin_buffer.size()-1));
+      while(gtk_events_pending())
+        gtk_main_iteration();
       scroll_to(get_buffer()->get_insert());
+      while(gtk_events_pending())
+        gtk_main_iteration();
     }
     else if(event->keyval==GDK_KEY_BackSpace) {
       if(stdin_buffer.size()>0 && get_buffer()->get_char_count()>0) {
@@ -321,15 +326,23 @@ bool Terminal::on_key_press_event(GdkEventKey *event) {
         iter--;
         stdin_buffer.pop_back();
         get_buffer()->erase(iter, get_buffer()->end());
+        while(gtk_events_pending())
+          gtk_main_iteration();
         scroll_to(get_buffer()->get_insert());
+        while(gtk_events_pending())
+          gtk_main_iteration();
       }
     }
     else if(event->keyval==GDK_KEY_Return) {
       stdin_buffer+='\n';
       write(async_executes.back().second, stdin_buffer.c_str(), stdin_buffer.size());
       get_buffer()->insert_at_cursor(stdin_buffer.substr(stdin_buffer.size()-1));
-      stdin_buffer.clear();
+      while(gtk_events_pending())
+        gtk_main_iteration();
       scroll_to(get_buffer()->get_insert());
+      while(gtk_events_pending())
+        gtk_main_iteration();
+      stdin_buffer.clear();
     }
   }
   async_executes_mutex.unlock();
