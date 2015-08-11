@@ -161,14 +161,17 @@ bool Source::View::on_key_press_event(GdkEventKey* key) {
   const std::regex spaces_regex(std::string("^(")+config->tab_char+"*).*$");
   //Indent as in next or previous line
   if(key->keyval==GDK_KEY_Return && key->state==0 && !get_buffer()->get_has_selection()) {
-    int line_nr=get_source_buffer()->get_insert()->get_iter().get_line();
-    string line(get_line_before_insert());
+    auto insert_it=get_buffer()->get_insert()->get_iter();
+    int line_nr=insert_it.get_line();
+    auto line=get_line_before_insert();
     std::smatch sm;
     if(std::regex_match(line, sm, spaces_regex)) {
-      if((line_nr+1)<get_source_buffer()->get_line_count()) {
+      if((line_nr+1)<get_buffer()->get_line_count()) {
         string next_line=get_line(line_nr+1);
+        auto line_end_iter=get_buffer()->get_iter_at_line(line_nr+1);
+        line_end_iter--;
         std::smatch sm2;
-        if(std::regex_match(next_line, sm2, spaces_regex)) {
+        if(insert_it==line_end_iter && std::regex_match(next_line, sm2, spaces_regex)) {
           if(sm2[1].str().size()>sm[1].str().size()) {
             get_source_buffer()->insert_at_cursor("\n"+sm2[1].str());
             scroll_to(get_source_buffer()->get_insert());
@@ -203,9 +206,14 @@ bool Source::View::on_key_press_event(GdkEventKey* key) {
     int line_start=selection_start.get_line();
     int line_end=selection_end.get_line();
     
+    unsigned indent_left_steps=config->tab_size;
     for(int line_nr=line_start;line_nr<=line_end;line_nr++) {
       string line=get_line(line_nr);
-      if(!(line.size()>=config->tab_size && line.substr(0, config->tab_size)==config->tab)) {
+      std::smatch sm;
+      if(std::regex_match(line, sm, spaces_regex) && sm[1].str().size()>0) {
+        indent_left_steps=std::min(indent_left_steps, (unsigned)sm[1].str().size());
+      }
+      else {
         get_source_buffer()->end_user_action();
         return true;
       }
@@ -215,7 +223,7 @@ bool Source::View::on_key_press_event(GdkEventKey* key) {
       Gtk::TextIter line_it = get_source_buffer()->get_iter_at_line(line_nr);
       Gtk::TextIter line_plus_it=line_it;
       
-      for(unsigned c=0;c<config->tab_size;c++)
+      for(unsigned c=0;c<indent_left_steps;c++)
         line_plus_it++;
       get_source_buffer()->erase(line_it, line_plus_it);
     }
@@ -224,20 +232,27 @@ bool Source::View::on_key_press_event(GdkEventKey* key) {
   }
   //"Smart" backspace key
   else if(key->keyval==GDK_KEY_BackSpace && !get_buffer()->get_has_selection()) {
-    auto insert_it=get_source_buffer()->get_insert()->get_iter();
+    auto insert_it=get_buffer()->get_insert()->get_iter();
     int line_nr=insert_it.get_line();
-    auto line_it=get_source_buffer()->get_iter_at_line(line_nr);
-    bool only_tabs_before_cursor=true;
-    for(auto it=line_it;it!=insert_it;it++) {
-      if(*it!=config->tab_char) {
-        only_tabs_before_cursor=false;
-        break;
+    auto line=get_line_before_insert();
+    std::smatch sm;
+    if(std::regex_match(line, sm, spaces_regex) && sm[1].str().size()==line.size()) {
+      if((line_nr-1)>=0) {
+        string previous_line=get_line(line_nr-1);
+        std::smatch sm2;
+        if(std::regex_match(previous_line, sm2, spaces_regex)) {
+          if(sm[1].str().size()==sm2[1].str().size() || sm[1].str().size()==sm2[1].str().size()+config->tab_size) {
+            auto previous_line_end_it=insert_it;
+            for(unsigned c=0;c<sm[1].str().size();c++)
+              previous_line_end_it--;
+            previous_line_end_it--;
+            get_source_buffer()->erase(previous_line_end_it, insert_it);
+            get_source_buffer()->end_user_action();
+            return true;
+          }
+        }
       }
-    }
-    if(only_tabs_before_cursor && line_it!=insert_it) {
-      string line=get_line(line_nr);
-      smatch sm;
-      if(std::regex_match(line, sm, spaces_regex) && sm[1].str().size()>=config->tab_size) {
+      if(line.size()>=config->tab_size) {
         auto insert_minus_tab_it=insert_it;
         for(unsigned c=0;c<config->tab_size;c++)
           insert_minus_tab_it--;
@@ -247,6 +262,7 @@ bool Source::View::on_key_press_event(GdkEventKey* key) {
       }
     }
   }
+
   bool stop=Gsv::View::on_key_press_event(key);
   get_source_buffer()->end_user_action();
   return stop;
@@ -636,7 +652,6 @@ bool Source::ClangViewParse::on_key_press_event(GdkEventKey* key) {
           }
         }
       }
-      //TODO: insert without moving mark backwards.
       get_source_buffer()->insert_at_cursor("\n"+sm[1].str()+config->tab+"\n"+sm[1].str()+"}");
       auto insert_it = get_source_buffer()->get_insert()->get_iter();
       for(size_t c=0;c<config->tab_size+sm[1].str().size();c++)
@@ -700,25 +715,6 @@ bool Source::ClangViewParse::on_key_press_event(GdkEventKey* key) {
     }
     get_source_buffer()->end_user_action();
     return Source::View::on_key_press_event(key);
-  }
-  //"Smart" backspace key
-  else if(key->keyval==GDK_KEY_BackSpace && !get_buffer()->get_has_selection()) {
-    Gtk::TextIter insert_it=get_source_buffer()->get_insert()->get_iter();
-    int line_nr=insert_it.get_line();
-    if(line_nr>0) {
-      string line=get_line(line_nr);
-      string previous_line=get_line(line_nr-1);
-      smatch sm;
-      if(std::regex_match(previous_line, sm, spaces_regex)) {
-        if(line==sm[1] || line==(std::string(sm[1])+config->tab) || (line+config->tab==sm[1])) {
-          auto line_it = get_source_buffer()->get_iter_at_line(line_nr);
-          line_it--;
-          get_source_buffer()->erase(line_it, insert_it);
-          get_source_buffer()->end_user_action();
-          return true;
-        }
-      }
-    }
   }
   
   get_source_buffer()->end_user_action();
