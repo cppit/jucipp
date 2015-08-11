@@ -92,7 +92,7 @@ Window::Window() : box(Gtk::ORIENTATION_VERTICAL), notebook(directories), compil
 
   compile_success.connect([this](){
     directories.open_folder();
-  });  
+  });
   
   INFO("Window created");
 } // Window constructor

@@ -145,7 +145,7 @@ void Source::View::paste() {
       Glib::ustring::size_type end_line=0;
       bool paste_line=false;
       bool first_paste_line=true;
-      size_t tabs=0;
+      size_t first_paste_line_tabs=0;
       get_source_buffer()->begin_user_action();
       for(Glib::ustring::size_type c=0;c<text.size();c++) {
         if(text[c]=='\n') {
@@ -161,14 +161,30 @@ void Source::View::paste() {
             std::string line=text.substr(start_line, end_line-start_line);
             for(auto chr: line) {
               if(chr==Singleton::Config::source()->tab_char)
-                tabs++;
+                first_paste_line_tabs++;
               else
                 break;
             }
-            get_buffer()->insert_at_cursor(text.substr(start_line+tabs, end_line-start_line-tabs));
+            get_buffer()->insert_at_cursor(text.substr(start_line+first_paste_line_tabs, end_line-start_line-first_paste_line_tabs));
           }
-          else
-            get_buffer()->insert_at_cursor("\n"+prefix+text.substr(start_line+tabs, end_line-start_line-tabs));
+          else {
+            std::string line=text.substr(start_line, end_line-start_line);
+            size_t paste_line_tabs=0;
+            for(auto chr: line) {
+              if(chr==Singleton::Config::source()->tab_char)
+                paste_line_tabs++;
+              else
+                break;
+            }
+            if(paste_line_tabs>=first_paste_line_tabs)
+              get_buffer()->insert_at_cursor("\n"+prefix+text.substr(start_line+first_paste_line_tabs, end_line-start_line-first_paste_line_tabs));
+            else {
+              size_t tabs=0;
+              if(prefix.size()>(first_paste_line_tabs-paste_line_tabs))
+                tabs=prefix.size()-(first_paste_line_tabs-paste_line_tabs);
+              get_buffer()->insert_at_cursor("\n"+prefix.substr(0, tabs)+text.substr(start_line+paste_line_tabs, end_line-start_line-paste_line_tabs));
+            }
+          }
           start_line=end_line+1;
           first_paste_line=false;
           paste_line=false;
