@@ -132,6 +132,55 @@ void Source::View::replace_all(const std::string &replacement) {
   gtk_source_search_context_replace_all(search_context, replacement.c_str(), replacement.size(), NULL);
 }
 
+void Source::View::paste() {
+  Gtk::Clipboard::get()->request_text([this](const Glib::ustring& text){
+    const std::regex spaces_regex(std::string("^(")+Singleton::Config::source()->tab_char+"*)(.*)$");
+    auto line=get_line_before_insert();
+    std::smatch sm;
+    std::string prefix;
+    if(std::regex_match(line, sm, spaces_regex) && sm[2].str().size()==0) {
+      prefix=sm[1].str();
+    
+      Glib::ustring::size_type start_line=0;
+      Glib::ustring::size_type end_line=0;
+      bool paste_line=false;
+      bool first_paste_line=true;
+      size_t tabs=0;
+      get_source_buffer()->begin_user_action();
+      for(Glib::ustring::size_type c=0;c<text.size();c++) {
+        if(text[c]=='\n') {
+          end_line=c;
+          paste_line=true;
+        }
+        else if(c==text.size()-1) {
+          end_line=c+1;
+          paste_line=true;
+        }
+        if(paste_line) {
+          if(first_paste_line) {
+            std::string line=text.substr(start_line, end_line-start_line);
+            for(auto chr: line) {
+              if(chr==Singleton::Config::source()->tab_char)
+                tabs++;
+              else
+                break;
+            }
+            get_buffer()->insert_at_cursor(text.substr(start_line+tabs, end_line-start_line-tabs));
+          }
+          else
+            get_buffer()->insert_at_cursor("\n"+prefix+text.substr(start_line+tabs, end_line-start_line-tabs));
+          start_line=end_line+1;
+          first_paste_line=false;
+          paste_line=false;
+        }
+      }
+      get_source_buffer()->end_user_action();
+    }
+    else
+      get_buffer()->paste_clipboard(Gtk::Clipboard::get());
+  });
+}
+
 void Source::View::set_status(const std::string &status) {
   this->status=status;
   if(on_update_status)

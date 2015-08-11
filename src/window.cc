@@ -138,7 +138,7 @@ void Window::create_menu() {
     if(auto entry=dynamic_cast<Gtk::Entry*>(widget))
       entry->paste_clipboard();
     else if(notebook.get_current_page()!=-1)
-      notebook.get_current_view()->get_buffer()->paste_clipboard(Gtk::Clipboard::get());
+      notebook.get_current_view()->paste();
   });
   menu.action_group->add(Gtk::Action::create("EditFind", "Find"), Gtk::AccelKey(menu.key_map["edit_find"]), [this]() {
     search_and_replace_entry();

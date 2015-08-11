@@ -56,6 +56,8 @@ namespace Source {
     void replace_forward(const std::string &replacement);
     void replace_backward(const std::string &replacement);
     void replace_all(const std::string &replacement);
+    
+    void paste();
         
     boost::filesystem::path file_path;
     
