@@ -241,9 +241,9 @@ bool Source::View::on_key_press_event(GdkEventKey* key) {
         string previous_line=get_line(line_nr-1);
         std::smatch sm2;
         if(std::regex_match(previous_line, sm2, spaces_regex)) {
-          if(sm[1].str().size()==sm2[1].str().size() || sm[1].str().size()==sm2[1].str().size()+config->tab_size) {
+          if(line.size()==sm2[1].str().size() || line.size()==sm2[1].str().size()+config->tab_size || line.size()==sm2[1].str().size()-config->tab_size) {
             auto previous_line_end_it=insert_it;
-            for(unsigned c=0;c<sm[1].str().size();c++)
+            for(unsigned c=0;c<line.size();c++)
               previous_line_end_it--;
             previous_line_end_it--;
             get_source_buffer()->erase(previous_line_end_it, insert_it);
@@ -651,15 +651,23 @@ bool Source::ClangViewParse::on_key_press_event(GdkEventKey* key) {
             return true;
           }
         }
+        if(next_line!=sm[1].str()+"}") {
+          get_source_buffer()->insert_at_cursor("\n"+sm[1].str()+config->tab+"\n"+sm[1].str()+"}");
+          auto insert_it = get_source_buffer()->get_insert()->get_iter();
+          for(size_t c=0;c<config->tab_size+sm[1].str().size();c++)
+            insert_it--;
+          scroll_to(get_source_buffer()->get_insert());
+          get_source_buffer()->place_cursor(insert_it);
+          get_source_buffer()->end_user_action();
+          return true;
+        }
+        else {
+          get_source_buffer()->insert_at_cursor("\n"+sm[1].str()+config->tab);
+          scroll_to(get_source_buffer()->get_insert());
+          get_source_buffer()->end_user_action();
+          return true;
+        }
       }
-      get_source_buffer()->insert_at_cursor("\n"+sm[1].str()+config->tab+"\n"+sm[1].str()+"}");
-      auto insert_it = get_source_buffer()->get_insert()->get_iter();
-      for(size_t c=0;c<config->tab_size+sm[1].str().size();c++)
-        insert_it--;
-      scroll_to(get_source_buffer()->get_insert());
-      get_source_buffer()->place_cursor(insert_it);
-      get_source_buffer()->end_user_action();
-      return true;
     }
     else if(std::regex_match(line, sm, no_bracket_statement_regex)) {
       get_source_buffer()->insert_at_cursor("\n"+sm[1].str()+config->tab);
