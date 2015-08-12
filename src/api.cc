@@ -13,7 +13,7 @@ PluginApi::PluginApi(Notebook* notebook, Menu* menu) {
   this->menu = menu;
   DEBUG("Initiating plugins(from plugins.py)..");
 #ifndef __APPLE__
-  InitPlugins(); //TODO: fix this
+  //InitPlugins(); //TODO: fix this
 #endif
   DEBUG("Plugins initiated..");
 }
