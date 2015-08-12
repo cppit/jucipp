@@ -45,6 +45,7 @@ protected:
   bool on_key_press_event(GdkEventKey *event);
 private:
   Glib::Dispatcher async_print_dispatcher;
+  Glib::Dispatcher async_print_on_line_dispatcher;
   std::vector<std::pair<std::string, bool> > async_print_strings;
   std::vector<std::pair<int, std::string> > async_print_on_line_strings;
   std::mutex async_print_strings_mutex;

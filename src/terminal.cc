@@ -117,14 +117,6 @@ Terminal::Terminal() {
   });
   
   async_print_dispatcher.connect([this](){
-    async_print_on_line_strings_mutex.lock();
-    if(async_print_on_line_strings.size()>0) {
-      for(auto &string: async_print_on_line_strings)
-        print(string.first, string.second);
-      async_print_on_line_strings.clear();
-    }
-    async_print_on_line_strings_mutex.unlock();
-    
     async_print_strings_mutex.lock();
     if(async_print_strings.size()>0) {
       for(auto &string_bold: async_print_strings)
@@ -132,6 +124,15 @@ Terminal::Terminal() {
       async_print_strings.clear();
     }
     async_print_strings_mutex.unlock();
+  });
+  async_print_on_line_dispatcher.connect([this](){
+    async_print_on_line_strings_mutex.lock();
+    if(async_print_on_line_strings.size()>0) {
+      for(auto &line_string: async_print_on_line_strings)
+        print(line_string.first, line_string.second);
+      async_print_on_line_strings.clear();
+    }
+    async_print_on_line_strings_mutex.unlock();
   });
 }
 
@@ -327,7 +328,7 @@ void Terminal::async_print(int line_nr, const std::string &message) {
   async_print_on_line_strings.emplace_back(line_nr, message);
   async_print_on_line_strings_mutex.unlock();
   if(dispatch)
-    async_print_dispatcher();
+    async_print_on_line_dispatcher();
 }
 
 bool Terminal::on_key_press_event(GdkEventKey *event) {
