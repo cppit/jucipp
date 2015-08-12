@@ -11,6 +11,11 @@
 
 class Terminal : public Gtk::TextView {
 public:  
+  class Config {
+  public:
+    std::string make_command;
+  };
+  
   class InProgress {
   public:
     InProgress(const std::string& start_msg);

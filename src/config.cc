@@ -5,12 +5,15 @@
 #include "files.h"
 #include "sourcefile.h"
 
+//TODO: add try-catch to json-get and get_child
 MainConfig::MainConfig(Menu &menu) : menu(menu) {
   find_or_create_config_files();
   boost::property_tree::json_parser::read_json(Singleton::config_dir() + "config.json", cfg);
   GenerateSource();
   GenerateKeybindings();
   GenerateDirectoryFilter();
+
+  Singleton::Config::terminal()->make_command=cfg.get<std::string>("project.make_command");
 }
 
 void MainConfig::find_or_create_config_files() {
