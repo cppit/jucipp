@@ -59,7 +59,7 @@ const std::string configjson =
 "        \"force_kill_last_running\": \"<primary><shift>Escape\"\n"
 "    },\n"
 "    \"project\": {\n"
-"        \"make_command\": \"make -j 2\"\n"
+"        \"make_command\": \"make\"\n"
 "    },\n"
 "    \"directoryfilter\": {\n"
 "        \"ignore\": [\n"
