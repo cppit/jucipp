@@ -105,6 +105,10 @@ void Window::create_menu() {
   menu.action_group->add(Gtk::Action::create("FileNewFile", "New file"), Gtk::AccelKey(menu.key_map["new_file"]), [this]() {
     new_file_entry();
   });
+  menu.action_group->add(Gtk::Action::create("FileNewProject", "New Project"));
+  menu.action_group->add(Gtk::Action::create("FileNewProjectCpp", "C++"), [this]() {
+    new_cpp_project_dialog();
+  });
   menu.action_group->add(Gtk::Action::create("FileOpenFile", "Open file"), Gtk::AccelKey(menu.key_map["open_file"]), [this]() {
     open_file_dialog();
   });
@@ -361,6 +365,46 @@ void Window::new_file_entry() {
     entry_it->activate();
   });
   entry_box.show();
+}
+
+void Window::new_cpp_project_dialog() {
+  Gtk::FileChooserDialog dialog("Please create and/or choose a folder", Gtk::FILE_CHOOSER_ACTION_CREATE_FOLDER);
+  if(directories.current_path!="")
+    gtk_file_chooser_set_current_folder((GtkFileChooser*)dialog.gobj(), directories.current_path.string().c_str());
+  else
+    gtk_file_chooser_set_current_folder((GtkFileChooser*)dialog.gobj(), boost::filesystem::current_path().string().c_str());
+  dialog.set_transient_for(*this);
+  
+  dialog.add_button("_Cancel", Gtk::RESPONSE_CANCEL);
+  dialog.add_button("Select", Gtk::RESPONSE_OK);
+
+  int result = dialog.run();
+
+  if(result==Gtk::RESPONSE_OK) {
+    boost::filesystem::path project_path=dialog.get_filename();
+    auto project_name=project_path.filename().string();
+    auto cmakelists_path=project_path;
+    cmakelists_path+="/CMakeLists.txt";
+    auto cpp_main_path=project_path;
+    cpp_main_path+="/main.cpp";
+    if(boost::filesystem::exists(cmakelists_path)) {
+      Singleton::terminal()->print("Error: "+cmakelists_path.string()+" already exists.\n");
+      return;
+    }
+    if(boost::filesystem::exists(cpp_main_path)) {
+      Singleton::terminal()->print("Error: "+cpp_main_path.string()+" already exists.\n");
+      return;
+    }
+    std::string cmakelists="cmake_minimum_required(VERSION 2.8)\n\nproject("+project_name+")\n\nset(CMAKE_CXX_FLAGS \"${CMAKE_CXX_FLAGS} -std=c++1y\")\n\nadd_executable("+project_name+" main.cpp)\n";
+    std::string cpp_main="#include <iostream>\n\nusing namespace std;\n\nint main() {\n  cout << \"Hello World!\" << endl;\n\n  return 0;\n}\n";
+    if(juci::filesystem::write(cmakelists_path, cmakelists) && juci::filesystem::write(cpp_main_path, cpp_main)) {
+      directories.open_folder(project_path);
+      notebook.open(cpp_main_path);
+      Singleton::terminal()->print("C++ project "+project_name+" created.\n");
+    }
+    else
+      Singleton::terminal()->print("Error: Could not create project "+project_path.string()+"\n");
+  }
 }
 
 void Window::open_folder_dialog() {

@@ -32,6 +32,7 @@ private:
   void create_menu();
   void hide();
   void new_file_entry();
+  void new_cpp_project_dialog();
   void open_folder_dialog();
   void open_file_dialog();
   void save_file_dialog();

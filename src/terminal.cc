@@ -269,11 +269,11 @@ int Terminal::print(const std::string &message, bool bold){
     
   auto iter=get_buffer()->get_insert()->get_iter();
   if(iter.backward_char()) {
+    auto mark=get_buffer()->create_mark(iter);
+    scroll_to(mark, 0.0, 1.0, 1.0);
     while(gtk_events_pending())
       gtk_main_iteration();
-    scroll_to(iter);
-    while(gtk_events_pending())
-      gtk_main_iteration();
+    get_buffer()->delete_mark(mark);
   }
   return get_buffer()->end().get_line();
 }
@@ -314,8 +314,6 @@ bool Terminal::on_key_press_event(GdkEventKey *event) {
     if(unicode>=32 && unicode<=126) {
       stdin_buffer+=chr;
       get_buffer()->insert_at_cursor(stdin_buffer.substr(stdin_buffer.size()-1));
-      while(gtk_events_pending())
-        gtk_main_iteration();
       scroll_to(get_buffer()->get_insert());
       while(gtk_events_pending())
         gtk_main_iteration();
@@ -326,8 +324,6 @@ bool Terminal::on_key_press_event(GdkEventKey *event) {
         iter--;
         stdin_buffer.pop_back();
         get_buffer()->erase(iter, get_buffer()->end());
-        while(gtk_events_pending())
-          gtk_main_iteration();
         scroll_to(get_buffer()->get_insert());
         while(gtk_events_pending())
           gtk_main_iteration();
@@ -337,8 +333,6 @@ bool Terminal::on_key_press_event(GdkEventKey *event) {
       stdin_buffer+='\n';
       write(async_executes.back().second, stdin_buffer.c_str(), stdin_buffer.size());
       get_buffer()->insert_at_cursor(stdin_buffer.substr(stdin_buffer.size()-1));
-      while(gtk_events_pending())
-        gtk_main_iteration();
       scroll_to(get_buffer()->get_insert());
       while(gtk_events_pending())
         gtk_main_iteration();
