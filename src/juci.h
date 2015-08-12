@@ -6,7 +6,7 @@
 
 class Juci : public Gtk::Application {
 public:
-  Juci(): Gtk::Application("no.sout.juci", Gio::APPLICATION_HANDLES_COMMAND_LINE) {}
+  Juci(): Gtk::Application("no.sout.juci", Gio::APPLICATION_NON_UNIQUE | Gio::APPLICATION_HANDLES_COMMAND_LINE) {}
   
   int on_command_line(const Glib::RefPtr<Gio::ApplicationCommandLine> &cmd);
   void on_activate();
