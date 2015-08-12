@@ -267,7 +267,7 @@ int Terminal::print(const std::string &message, bool bold){
   else
     get_buffer()->insert(get_buffer()->end(), message);
     
-  auto iter=get_buffer()->get_insert()->get_iter();
+  auto iter=get_buffer()->end();
   if(iter.backward_char()) {
     auto mark=get_buffer()->create_mark(iter);
     scroll_to(mark, 0.0, 1.0, 1.0);
