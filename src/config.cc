@@ -37,20 +37,18 @@ void MainConfig::find_or_create_config_files() {
 }
 
 void MainConfig::GenerateSource() {
-  auto source_cfg=Singleton::Config::source();
-  DEBUG("Fetching source cfg");
-  // boost::property_tree::ptree
+  auto source_cfg = Singleton::Config::source();
   auto source_json = cfg.get_child("source");
   auto clang_types_json = source_json.get_child("clang_types");
   auto style_json = source_json.get_child("style");
-  source_cfg->tab_size = source_json.get<unsigned>("tab_size");
-  for (unsigned c = 0; c < source_cfg->tab_size; c++)
-    source_cfg->tab+=" ";
+  auto gsv_json = source_json.get_child("sourceview");
+  
+  for (auto &i : gsv_json)
+    source_cfg->gsv[i.first] = i.second.get_value<std::string>();
   for (auto &i : style_json)
-    source_cfg->tags[i.first]=i.second.get_value<std::string>();
+    source_cfg->tags[i.first] = i.second.get_value<std::string>();
   for (auto &i : clang_types_json)
-    source_cfg->types[i.first]=i.second.get_value<std::string>();
-  DEBUG("Source cfg fetched");
+    source_cfg->types[i.first] = i.second.get_value<std::string>();
 }
 
 void MainConfig::GenerateDirectoryFilter() {

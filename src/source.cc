@@ -65,6 +65,9 @@ Source::View::View(const std::string& file_path): file_path(file_path) {
   if(scheme) {
     get_source_buffer()->set_style_scheme(scheme);
   }
+  
+  property_highlight_current_line() = Singleton::Config::source()->gsv["highlight_current_line"] == "true";
+  property_show_line_numbers() = Singleton::Config::source()->gsv["show_line_numbers"] == "true";
 }
 
 void Source::View::search_occurrences_updated(GtkWidget* widget, GParamSpec* property, gpointer data) {
