@@ -598,7 +598,7 @@ void Window::goto_line_entry() {
       if(notebook.get_current_page()!=-1) {
         auto buffer=notebook.get_current_view()->get_buffer();
         try {
-          auto line=stoul(content);
+          auto line = boost::lexical_cast<unsigned>(content);
           if(line>0 && line<=(unsigned long)buffer->get_line_count()) {
             line--;
             buffer->place_cursor(buffer->get_iter_at_line(line));
