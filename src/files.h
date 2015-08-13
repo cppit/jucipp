@@ -2,8 +2,8 @@
 const std::string configjson =
 "{\n"
 "    \"visual\": {\n"
-"        \"gtk_theme\": \"Adwaita\", //At least these two exist on all systems: Adwaita, Raleigh\n"
-"        \"gtk_theme_variant\": \"\",  //\"\" for default, \"dark\" for dark theme variant\n"
+"        \"gtk_theme\": \"Adwaita\", //Use \"\" for default theme, At least these two exist on all systems: Adwaita, Raleigh\n"
+"        \"gtk_theme_variant\": \"\",  //Use \"\" for default variant, and \"dark\" for dark theme variant\n"
 "        \"gtk_sourceview_style\": \"classic\" //Choices on default install: classic, cobalt, kate, oblivion, solarized-dark, solarized-light, tango\n"
 "    },\n"
 "    \"source\": {\n"
