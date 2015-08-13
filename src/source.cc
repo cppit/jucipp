@@ -7,6 +7,7 @@
 #include <regex>
 #include "singletons.h"
 #include <gtksourceview/gtksource.h>
+#include <boost/lexical_cast.hpp>
 
 #include <iostream> //TODO: remove
 using namespace std; //TODO: remove
@@ -601,7 +602,7 @@ void Source::ClangViewParse::update_syntax() {
     buffer->remove_tag_by_name(tag, buffer->begin(), buffer->end());
   last_syntax_tags.clear();
   for (auto &range : ranges) {
-    auto type = std::to_string(range.kind);
+    auto type = boost::lexical_cast<std::string>(range.kind);
     try {
       last_syntax_tags.emplace(Singleton::Config::source()->types.at(type));
     } catch (std::exception) {
