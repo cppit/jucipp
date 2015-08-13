@@ -11,7 +11,6 @@ public:
   void PrintMenu();
   void GenerateSource();
   void GenerateDirectoryFilter();
-  void GenerateTheme();
 private:
   boost::property_tree::ptree cfg;
 };

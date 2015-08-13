@@ -20,10 +20,13 @@ namespace Source {
   
   class Config {
   public:
-    unsigned tab_size = 2;
-    char tab_char = ' ';
-    std::string tab = " ";
-    std::unordered_map<std::string, std::string> tags, types, gsv;
+    std::string style;
+    unsigned tab_size;
+    char tab_char;
+    std::string tab;
+    bool highlight_current_line;
+    bool show_line_numbers;
+    std::unordered_map<std::string, std::string> clang_types;
   };
 
   class Range {

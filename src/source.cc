@@ -56,18 +56,19 @@ Source::View::View(const boost::filesystem::path &file_path): file_path(file_pat
   //TODO: (gtkmm's Gtk::Object has connect_property_changed, so subclassing this might be an idea)
   g_signal_connect(search_context, "notify::occurrences-count", G_CALLBACK(search_occurrences_updated), this);
   
-  // style  
+  //TODO: Move this to notebook? Might take up too much memory doing this for every tab.
   auto style_scheme_manager=Gsv::StyleSchemeManager::get_default();
   style_scheme_manager->prepend_search_path(Singleton::style_dir());
 
-  auto scheme = style_scheme_manager->get_scheme(Singleton::Config::theme()->theme);
+  auto scheme = style_scheme_manager->get_scheme(Singleton::Config::source()->style);
 
-  if(scheme) {
+  if(scheme)
     get_source_buffer()->set_style_scheme(scheme);
-  }
+  else
+    Singleton::terminal()->print("Error: Could not find gtksourceview style: "+Singleton::Config::source()->style+'\n');
   
-  property_highlight_current_line() = Singleton::Config::source()->gsv["highlight_current_line"] == "true";
-  property_show_line_numbers() = Singleton::Config::source()->gsv["show_line_numbers"] == "true";
+  property_highlight_current_line() = Singleton::Config::source()->highlight_current_line;
+  property_show_line_numbers() = Singleton::Config::source()->show_line_numbers;
 }
 
 void Source::View::search_occurrences_updated(GtkWidget* widget, GParamSpec* property, gpointer data) {
@@ -388,49 +389,76 @@ clang::Index Source::ClangViewParse::clang_index(0, 0);
 
 Source::ClangViewParse::ClangViewParse(const boost::filesystem::path &file_path, const boost::filesystem::path& project_path):
 Source::View(file_path), project_path(project_path) {
-  for (auto &item : Singleton::Config::source()->tags) {
-    auto scheme = get_source_buffer()->get_style_scheme();
+  auto scheme = get_source_buffer()->get_style_scheme();
+  for (auto &item : Singleton::Config::source()->clang_types) {
     auto style = scheme->get_style(item.second);
-     if (style) {
-       DEBUG("Style " + item.second + " found in style " + scheme->get_name());
-       auto tag = get_source_buffer()->create_tag(item.first);
-       if (style->property_foreground_set())
-	 tag->property_foreground()  = style->property_foreground();
-       if (style->property_background_set())
-	 tag->property_background() = style->property_background();
-       if (style->property_strikethrough_set())
-	 tag->property_strikethrough() = style->property_strikethrough();
+      auto tag = get_source_buffer()->create_tag(item.second);
+      if (style) {
+        DEBUG("Style " + item.second + " found in style " + scheme->get_name());
+        if (style->property_foreground_set())
+          tag->property_foreground()  = style->property_foreground();
+        if (style->property_background_set())
+          tag->property_background() = style->property_background();
+        if (style->property_strikethrough_set())
+          tag->property_strikethrough() = style->property_strikethrough();
        //   //    if (style->property_bold_set()) tag->property_weight() = style->property_bold();
        //   //    if (style->property_italic_set()) tag->property_italic() = style->property_italic();
        //   //    if (style->property_line_background_set()) tag->property_line_background() = style->property_line_background();
        //   // if (style->property_underline_set()) tag->property_underline() = style->property_underline();
-     } else {
+     } else
        DEBUG("Style " + item.second + " not found in " + scheme->get_name());
-       get_source_buffer()->create_tag(item.first)->property_foreground() = item.second;
-     }
   }
   INFO("Tagtable filled");  
   
-  //Create underline color tags for diagnostic warnings and errors:
-  auto diagnostic_tag=get_buffer()->get_tag_table()->lookup("diagnostic_warning");
+  //Create tags for diagnostic warnings and errors:
+  auto style=scheme->get_style("def:warning");
+  auto diagnostic_tag=get_source_buffer()->create_tag("diagnostic_warning");
   auto diagnostic_tag_underline=Gtk::TextTag::create("diagnostic_warning_underline");
-  get_buffer()->get_tag_table()->add(diagnostic_tag_underline);
-  diagnostic_tag_underline->property_underline()=Pango::Underline::UNDERLINE_ERROR;
-  auto tag_class=G_OBJECT_GET_CLASS(diagnostic_tag_underline->gobj()); //For older GTK+ 3 versions:
-  auto param_spec=g_object_class_find_property(tag_class, "underline-rgba");
-  if(param_spec!=NULL) {
-    diagnostic_tag_underline->set_property("underline-rgba", diagnostic_tag->property_foreground_rgba().get_value());
+  if(style && (style->property_foreground_set() || style->property_background_set())) {
+    Glib::ustring warning_property;
+    if(style->property_foreground_set()) {
+      warning_property=style->property_foreground().get_value();
+      diagnostic_tag->property_foreground() = warning_property;
+    }
+    else if(style->property_background_set())
+      warning_property=style->property_background().get_value();
+
+    get_buffer()->get_tag_table()->add(diagnostic_tag_underline);
+    diagnostic_tag_underline->property_underline()=Pango::Underline::UNDERLINE_ERROR;
+    auto tag_class=G_OBJECT_GET_CLASS(diagnostic_tag_underline->gobj()); //For older GTK+ 3 versions:
+    auto param_spec=g_object_class_find_property(tag_class, "underline-rgba");
+    if(param_spec!=NULL) {
+      diagnostic_tag_underline->set_property("underline-rgba", Gdk::RGBA(warning_property));
+    }
   }
-  diagnostic_tag=get_buffer()->get_tag_table()->lookup("diagnostic_error");
+  style=scheme->get_style("def:error");
+  diagnostic_tag=get_source_buffer()->create_tag("diagnostic_error");
   diagnostic_tag_underline=Gtk::TextTag::create("diagnostic_error_underline");
-  get_buffer()->get_tag_table()->add(diagnostic_tag_underline);
-  diagnostic_tag_underline->property_underline()=Pango::Underline::UNDERLINE_ERROR;
-  tag_class=G_OBJECT_GET_CLASS(diagnostic_tag_underline->gobj()); //For older GTK+ 3 versions:
-  param_spec=g_object_class_find_property(tag_class, "underline-rgba");
-  if(param_spec!=NULL) {
-    diagnostic_tag_underline->set_property("underline-rgba", diagnostic_tag->property_foreground_rgba().get_value());
+  if(style && (style->property_foreground_set() || style->property_background_set())) {
+    Glib::ustring error_property;
+    if(style->property_foreground_set()) {
+      error_property=style->property_foreground().get_value();
+      diagnostic_tag->property_foreground() = error_property;
+    }
+    else if(style->property_background_set())
+      error_property=style->property_background().get_value();
+    
+    get_buffer()->get_tag_table()->add(diagnostic_tag_underline);
+    diagnostic_tag_underline->property_underline()=Pango::Underline::UNDERLINE_ERROR;
+    auto tag_class=G_OBJECT_GET_CLASS(diagnostic_tag_underline->gobj()); //For older GTK+ 3 versions:
+    auto param_spec=g_object_class_find_property(tag_class, "underline-rgba");
+    if(param_spec!=NULL) {
+      diagnostic_tag_underline->set_property("underline-rgba", Gdk::RGBA(error_property));
+    }
   }
   //TODO: clear tag_class and param_spec?
+  
+  //Add tooltip background
+  style = scheme->get_style("def:note");
+  auto tag=get_source_buffer()->create_tag("tooltip_background");
+  if(style->property_background_set()) {
+    tag->property_background()=style->property_background();
+  }
   
   parsing_in_progress=Singleton::terminal()->print_in_progress("Parsing "+file_path.string());
   //GTK-calls must happen in main thread, so the parse_thread
@@ -604,16 +632,14 @@ void Source::ClangViewParse::update_syntax() {
   for (auto &range : ranges) {
     auto type = boost::lexical_cast<std::string>(range.kind);
     try {
-      last_syntax_tags.emplace(Singleton::Config::source()->types.at(type));
+      last_syntax_tags.emplace(Singleton::Config::source()->clang_types.at(type));
     } catch (std::exception) {
       continue;
     }
     
     Gtk::TextIter begin_iter = buffer->get_iter_at_offset(range.start_offset);
     Gtk::TextIter end_iter  = buffer->get_iter_at_offset(range.end_offset);
-    buffer->apply_tag_by_name(Singleton::Config::source()->types.at(type),
-                              begin_iter, end_iter);
-    
+    buffer->apply_tag_by_name(Singleton::Config::source()->clang_types.at(type), begin_iter, end_iter);
   }
 }
 

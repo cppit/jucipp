@@ -10,18 +10,15 @@ MainConfig::MainConfig() {
   boost::property_tree::json_parser::read_json(Singleton::config_dir() + "config.json", cfg);
   Singleton::Config::window()->keybindings = cfg.get_child("keybindings");
   GenerateSource();
-  GenerateTheme();
   GenerateDirectoryFilter();
+  
+  Singleton::Config::window()->theme=cfg.get<std::string>("visual.gtk_theme");
+  Singleton::Config::window()->theme_variant=cfg.get<std::string>("visual.gtk_theme_variant");
+  
+  boost::filesystem::create_directories(boost::filesystem::path(Singleton::style_dir()));
+  Singleton::Config::source()->style=cfg.get<std::string>("visual.gtk_sourceview_style");
+  
   Singleton::Config::terminal()->make_command=cfg.get<std::string>("project.make_command");
-}
-
-void MainConfig::GenerateTheme() {
-  auto config = Singleton::Config::theme();
-  auto props = cfg.get_child("theme");
-  for (auto &prop : props) {
-    if (prop.first == "theme") config->theme = prop.second.get_value<std::string>();
-    if (prop.first == "main") config->main = prop.second.get_value<std::string>();
-  }
 }
 
 void MainConfig::find_or_create_config_files() {
@@ -40,16 +37,18 @@ void MainConfig::find_or_create_config_files() {
 void MainConfig::GenerateSource() {
   auto source_cfg = Singleton::Config::source();
   auto source_json = cfg.get_child("source");
-  auto clang_types_json = source_json.get_child("clang_types");
-  auto style_json = source_json.get_child("style");
-  auto gsv_json = source_json.get_child("sourceview");
   
-  for (auto &i : gsv_json)
-    source_cfg->gsv[i.first] = i.second.get_value<std::string>();
-  for (auto &i : style_json)
-    source_cfg->tags[i.first] = i.second.get_value<std::string>();
-  for (auto &i : clang_types_json)
-    source_cfg->types[i.first] = i.second.get_value<std::string>();
+  source_cfg->tab_size = source_json.get<unsigned>("tab_size");
+  source_cfg->tab_char = source_json.get<char>("tab_char");
+  for(unsigned c=0;c<source_cfg->tab_size;c++)
+    source_cfg->tab+=source_cfg->tab_char;
+    
+  source_cfg->highlight_current_line = source_json.get_value<bool>("highlight_current_line");
+  source_cfg->show_line_numbers = source_json.get_value<bool>("show_line_numbers");
+  
+  
+  for (auto &i : source_json.get_child("clang_types"))
+    source_cfg->clang_types[i.first] = i.second.get_value<std::string>();
 }
 
 void MainConfig::GenerateDirectoryFilter() {
