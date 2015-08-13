@@ -7,6 +7,7 @@
 #include <regex>
 #include "singletons.h"
 #include <gtksourceview/gtksource.h>
+#include <boost/lexical_cast.hpp>
 
 #include <iostream> //TODO: remove
 using namespace std; //TODO: remove
@@ -37,13 +38,9 @@ Glib::RefPtr<Gsv::Language> Source::guess_language(const boost::filesystem::path
 //////////////
 Source::View::View(const boost::filesystem::path &file_path): file_path(file_path) {
   set_smart_home_end(Gsv::SMART_HOME_END_BEFORE);
-  set_show_line_numbers(Singleton::Config::source()->show_line_numbers);
-  set_highlight_current_line(Singleton::Config::source()->highlight_current_line);
-  
   get_source_buffer()->begin_not_undoable_action();
   juci::filesystem::read(file_path, get_buffer());
   get_source_buffer()->end_not_undoable_action();
-  
   get_buffer()->place_cursor(get_buffer()->get_iter_at_offset(0)); 
   search_settings = gtk_source_search_settings_new();
   gtk_source_search_settings_set_wrap_around(search_settings, true);
@@ -58,6 +55,19 @@ Source::View::View(const boost::filesystem::path &file_path): file_path(file_pat
   //TODO: either use lambda if possible or create a gtkmm wrapper around search_context (including search_settings):
   //TODO: (gtkmm's Gtk::Object has connect_property_changed, so subclassing this might be an idea)
   g_signal_connect(search_context, "notify::occurrences-count", G_CALLBACK(search_occurrences_updated), this);
+  
+  // style  
+  auto style_scheme_manager=Gsv::StyleSchemeManager::get_default();
+  style_scheme_manager->prepend_search_path(Singleton::style_dir());
+
+  auto scheme = style_scheme_manager->get_scheme(Singleton::Config::theme()->theme);
+
+  if(scheme) {
+    get_source_buffer()->set_style_scheme(scheme);
+  }
+  
+  property_highlight_current_line() = Singleton::Config::source()->gsv["highlight_current_line"] == "true";
+  property_show_line_numbers() = Singleton::Config::source()->gsv["show_line_numbers"] == "true";
 }
 
 void Source::View::search_occurrences_updated(GtkWidget* widget, GParamSpec* property, gpointer data) {
@@ -358,16 +368,6 @@ bool Source::View::on_key_press_event(GdkEventKey* key) {
 //// GenericView ////
 /////////////////////
 Source::GenericView::GenericView(const boost::filesystem::path &file_path, Glib::RefPtr<Gsv::Language> language) : View(file_path) {
-  auto style_scheme_manager=Gsv::StyleSchemeManager::get_default();
-  //TODO: add?: style_scheme_manager->prepend_search_path("~/.juci/");
-  auto scheme=style_scheme_manager->get_scheme("classic");
-  if(scheme) {
-    get_source_buffer()->set_style_scheme(scheme);
-    auto style=scheme->get_style("def:comment");
-    if(style)
-      cout << "TODO, in progress: def:comment in scheme " << scheme->get_name() << " has color " << style->property_foreground() << endl;
-  }
-  
   if(language) {
     get_source_buffer()->set_language(language);
     Singleton::terminal()->print("Language for file "+file_path.string()+" set to "+language->get_name()+".\n");
@@ -388,12 +388,28 @@ clang::Index Source::ClangViewParse::clang_index(0, 0);
 
 Source::ClangViewParse::ClangViewParse(const boost::filesystem::path &file_path, const boost::filesystem::path& project_path):
 Source::View(file_path), project_path(project_path) {
-  override_font(Pango::FontDescription(Singleton::Config::source()->font));
-  override_background_color(Gdk::RGBA(Singleton::Config::source()->background));
-  override_background_color(Gdk::RGBA(Singleton::Config::source()->background_selected), Gtk::StateFlags::STATE_FLAG_SELECTED);
   for (auto &item : Singleton::Config::source()->tags) {
-    get_source_buffer()->create_tag(item.first)->property_foreground() = item.second;
+    auto scheme = get_source_buffer()->get_style_scheme();
+    auto style = scheme->get_style(item.second);
+     if (style) {
+       DEBUG("Style " + item.second + " found in style " + scheme->get_name());
+       auto tag = get_source_buffer()->create_tag(item.first);
+       if (style->property_foreground_set())
+	 tag->property_foreground()  = style->property_foreground();
+       if (style->property_background_set())
+	 tag->property_background() = style->property_background();
+       if (style->property_strikethrough_set())
+	 tag->property_strikethrough() = style->property_strikethrough();
+       //   //    if (style->property_bold_set()) tag->property_weight() = style->property_bold();
+       //   //    if (style->property_italic_set()) tag->property_italic() = style->property_italic();
+       //   //    if (style->property_line_background_set()) tag->property_line_background() = style->property_line_background();
+       //   // if (style->property_underline_set()) tag->property_underline() = style->property_underline();
+     } else {
+       DEBUG("Style " + item.second + " not found in " + scheme->get_name());
+       get_source_buffer()->create_tag(item.first)->property_foreground() = item.second;
+     }
   }
+  INFO("Tagtable filled");  
   
   //Create underline color tags for diagnostic warnings and errors:
   auto diagnostic_tag=get_buffer()->get_tag_table()->lookup("diagnostic_warning");
@@ -586,7 +602,7 @@ void Source::ClangViewParse::update_syntax() {
     buffer->remove_tag_by_name(tag, buffer->begin(), buffer->end());
   last_syntax_tags.clear();
   for (auto &range : ranges) {
-    std::string type = std::to_string(range.kind);
+    auto type = boost::lexical_cast<std::string>(range.kind);
     try {
       last_syntax_tags.emplace(Singleton::Config::source()->types.at(type));
     } catch (std::exception) {
@@ -597,6 +613,7 @@ void Source::ClangViewParse::update_syntax() {
     Gtk::TextIter end_iter  = buffer->get_iter_at_offset(range.end_offset);
     buffer->apply_tag_by_name(Singleton::Config::source()->types.at(type),
                               begin_iter, end_iter);
+    
   }
 }
 

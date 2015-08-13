@@ -6,6 +6,7 @@
 #include "entrybox.h"
 #include "notebook.h"
 #include "menu.h"
+#include <boost/property_tree/json_parser.hpp>
 #include <atomic>
 
 class Window : public Gtk::Window {
@@ -13,9 +14,15 @@ public:
   Window();
   Directories directories;
   Notebook notebook;
+  class Config {
+  public:
+    boost::property_tree::ptree keybindings;
+  };
+
 protected:
   bool on_key_press_event(GdkEventKey *event);
   bool on_delete_event (GdkEventAny *event);
+
 private:
   Gtk::Box box;
   Gtk::VPaned vpaned;
@@ -36,10 +43,10 @@ private:
   void open_folder_dialog();
   void open_file_dialog();
   void save_file_dialog();
-  
   void search_and_replace_entry();
   void goto_line_entry();
   void rename_token_entry();
+  void generate_keybindings();
   std::string last_search;
   std::string last_replace;
   std::string last_run_command;

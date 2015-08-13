@@ -6,15 +6,13 @@
 
 class MainConfig {
 public:
-  MainConfig(Menu &menu);
+  MainConfig();
   void find_or_create_config_files();
   void PrintMenu();
   void GenerateSource();
-  void GenerateKeybindings();
   void GenerateDirectoryFilter();
+  void GenerateTheme();
 private:
   boost::property_tree::ptree cfg;
-  boost::property_tree::ptree key_tree;
-  Menu &menu;
 };
 #endif

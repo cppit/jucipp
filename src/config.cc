@@ -5,15 +5,23 @@
 #include "files.h"
 #include "sourcefile.h"
 
-//TODO: add try-catch to json-get and get_child
-MainConfig::MainConfig(Menu &menu) : menu(menu) {
+MainConfig::MainConfig() {
   find_or_create_config_files();
   boost::property_tree::json_parser::read_json(Singleton::config_dir() + "config.json", cfg);
+  Singleton::Config::window()->keybindings = cfg.get_child("keybindings");
   GenerateSource();
-  GenerateKeybindings();
+  GenerateTheme();
   GenerateDirectoryFilter();
-
   Singleton::Config::terminal()->make_command=cfg.get<std::string>("project.make_command");
+}
+
+void MainConfig::GenerateTheme() {
+  auto config = Singleton::Config::theme();
+  auto props = cfg.get_child("theme");
+  for (auto &prop : props) {
+    if (prop.first == "theme") config->theme = prop.second.get_value<std::string>();
+    if (prop.first == "main") config->main = prop.second.get_value<std::string>();
+  }
 }
 
 void MainConfig::find_or_create_config_files() {
@@ -30,50 +38,18 @@ void MainConfig::find_or_create_config_files() {
 }
 
 void MainConfig::GenerateSource() {
-  auto source_cfg=Singleton::Config::source();
-  DEBUG("Fetching source cfg");
-  // boost::property_tree::ptree
+  auto source_cfg = Singleton::Config::source();
   auto source_json = cfg.get_child("source");
-  auto syntax_json = source_json.get_child("syntax");
-  auto colors_json = source_json.get_child("colors");
-  auto visual_json = source_json.get_child("visual");
-  for (auto &i : visual_json) {
-    if (i.first == "background")
-	     source_cfg->background = i.second.get_value<std::string>();
-    else if (i.first == "background_selected")
-       source_cfg->background_selected = i.second.get_value<std::string>();
-    else if (i.first == "background_tooltips")
-	     source_cfg->background_tooltips = i.second.get_value<std::string>();
-    else if (i.first == "show_line_numbers")
-      source_cfg->show_line_numbers = i.second.get_value<std::string>() == "1" ? true : false;
-    else if (i.first == "highlight_current_line")
-      source_cfg->highlight_current_line = i.second.get_value<std::string>() == "1" ? true : false;
-    else if (i.first == "font")
-      source_cfg->font = i.second.get_value<std::string>();
-  }
-  source_cfg->tab_size = source_json.get<unsigned>("tab_size");
-  for (unsigned c = 0; c < source_cfg->tab_size; c++)
-    source_cfg->tab+=" ";
-  for (auto &i : colors_json)
-    source_cfg->tags[i.first]=i.second.get_value<std::string>();
-  for (auto &i : syntax_json)
-    source_cfg->types[i.first]=i.second.get_value<std::string>();
-  DEBUG("Source cfg fetched");
-}
-
-void MainConfig::GenerateKeybindings() {
-  boost::filesystem::path path(Singleton::config_dir() + "menu.xml");
-  if (!boost::filesystem::is_regular_file(path)) {
-    std::cerr << "menu.xml not found" << std::endl;
-    throw;
-  }
-  menu.ui = juci::filesystem::read(path);
-  boost::property_tree::ptree keys_json = cfg.get_child("keybindings");
-  for (auto &i : keys_json) {
-    auto key=i.second.get_value<std::string>();
-    menu.key_map[i.first] = key;
-  }
-  DEBUG("Keybindings fetched");
+  auto clang_types_json = source_json.get_child("clang_types");
+  auto style_json = source_json.get_child("style");
+  auto gsv_json = source_json.get_child("sourceview");
+  
+  for (auto &i : gsv_json)
+    source_cfg->gsv[i.first] = i.second.get_value<std::string>();
+  for (auto &i : style_json)
+    source_cfg->tags[i.first] = i.second.get_value<std::string>();
+  for (auto &i : clang_types_json)
+    source_cfg->types[i.first] = i.second.get_value<std::string>();
 }
 
 void MainConfig::GenerateDirectoryFilter() {
