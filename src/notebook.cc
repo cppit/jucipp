@@ -34,51 +34,49 @@ Source::View* Notebook::get_current_view() {
   return get_view(get_current_page());
 }
 
-void Notebook::open(std::string path) {
+void Notebook::open(const boost::filesystem::path &file_path) {
   INFO("Notebook open file");
   INFO("Notebook create page");
   for(int c=0;c<size();c++) {
-    if(path==get_view(c)->file_path) {
+    if(file_path==get_view(c)->file_path) {
       set_current_page(c);
       get_current_view()->grab_focus();
       return;
     }
   }
   
-  std::ifstream can_read(path);
+  std::ifstream can_read(file_path.string());
   if(!can_read) {
-    Singleton::terminal()->print("Error: could not open "+path+"\n");
+    Singleton::terminal()->print("Error: could not open "+file_path.string()+"\n");
     return;
   }
   can_read.close();
   
-  auto language=Source::guess_language(path);
+  auto language=Source::guess_language(file_path);
   if(language && (language->get_id()=="chdr" || language->get_id()=="c" || language->get_id()=="cpp" || language->get_id()=="objc")) {
-    std::string project_path;
+    boost::filesystem::path project_path;
     if(directories.cmake && directories.cmake->project_path!="")
-      project_path=directories.cmake->project_path.string();
+      project_path=directories.cmake->project_path;
     else {
-      auto parent_path=boost::filesystem::path(path).parent_path();
-      project_path=parent_path.string();
-      CMake cmake(parent_path);
+      project_path=file_path.parent_path();
+      CMake cmake(project_path);
       if(cmake.project_path!="") {
-        project_path=cmake.project_path.string();
-        Singleton::terminal()->print("Project path for "+path+" set to "+project_path+"\n");
+        project_path=cmake.project_path;
+        Singleton::terminal()->print("Project path for "+file_path.string()+" set to "+project_path.string()+"\n");
       }
       else
-        Singleton::terminal()->print("Error: could not find project path for "+path+"\n");
+        Singleton::terminal()->print("Error: could not find project path for "+file_path.string()+"\n");
     }
-    source_views.emplace_back(new Source::ClangView(path, project_path));
+    source_views.emplace_back(new Source::ClangView(file_path, project_path));
   }
   else
-    source_views.emplace_back(new Source::GenericView(path, language));
+    source_views.emplace_back(new Source::GenericView(file_path, language));
     
   scrolled_windows.emplace_back(new Gtk::ScrolledWindow());
   hboxes.emplace_back(new Gtk::HBox());
   scrolled_windows.back()->add(*source_views.back());
   hboxes.back()->pack_start(*scrolled_windows.back(), true, true);
   
-  boost::filesystem::path file_path(source_views.back()->file_path);
   std::string title=file_path.filename().string();
   append_page(*hboxes.back(), title);
   show_all_children();
@@ -89,8 +87,7 @@ void Notebook::open(std::string path) {
   //Add star on tab label when the page is not saved:
   auto source_view=get_current_view();
   get_current_view()->get_buffer()->signal_modified_changed().connect([this, source_view]() {
-    boost::filesystem::path file_path(source_view->file_path);
-    std::string title=file_path.filename().string();
+    std::string title=source_view->file_path.filename().string();
     if(source_view->get_buffer()->get_modified())
       title+="*";
     int page=-1;
@@ -117,20 +114,20 @@ bool Notebook::save(int page) {
   if (view->file_path != "" && view->get_buffer()->get_modified()) {
     if(juci::filesystem::write(view->file_path, view->get_buffer())) {
       view->get_buffer()->set_modified(false);
-      Singleton::terminal()->print("File saved to: " +view->file_path+"\n");
+      Singleton::terminal()->print("File saved to: " +view->file_path.string()+"\n");
       
       //If CMakeLists.txt have been modified:
       //TODO: recreate cmake even without directories open?
-      if(boost::filesystem::path(view->file_path).filename().string()=="CMakeLists.txt") {
-        if(directories.cmake && directories.cmake->project_path!="" && boost::filesystem::path(view->file_path)>=directories.cmake->project_path && CMake::create_compile_commands(directories.cmake->project_path.string())) {
+      if(view->file_path.filename()=="CMakeLists.txt") {
+        if(directories.cmake && directories.cmake->project_path!="" && view->file_path>=directories.cmake->project_path && CMake::create_compile_commands(directories.cmake->project_path)) {
           directories.open_folder();
           for(auto source_view: source_views) {
             if(auto source_clang_view=dynamic_cast<Source::ClangView*>(source_view)) {
               if(directories.cmake->project_path.string()==source_clang_view->project_path) {
                 if(source_clang_view->restart_parse())
-                  Singleton::terminal()->print("Reparsing "+source_clang_view->file_path+"\n");
+                  Singleton::terminal()->async_print("Reparsing "+source_clang_view->file_path.string()+"\n");
                 else
-                  Singleton::terminal()->print("Already reparsing "+source_clang_view->file_path+". Please reopen the file manually.\n");
+                  Singleton::terminal()->async_print("Already reparsing "+source_clang_view->file_path.string()+". Please reopen the file manually.\n");
               }
             }
           }
@@ -139,7 +136,7 @@ bool Notebook::save(int page) {
       
       return true;
     }
-    Singleton::terminal()->print("Error: could not save file " +view->file_path+"\n");
+    Singleton::terminal()->print("Error: could not save file " +view->file_path.string()+"\n");
   }
   return false;
 }
@@ -177,7 +174,7 @@ bool Notebook::close_current_page() {
 bool Notebook::save_modified_dialog() {
   INFO("Notebook::save_modified_dialog");
   Gtk::MessageDialog dialog((Gtk::Window&)(*get_toplevel()), "Save file!", false, Gtk::MESSAGE_QUESTION, Gtk::BUTTONS_YES_NO);
-  dialog.set_secondary_text("Do you want to save: " + get_current_view()->file_path+" ?");
+  dialog.set_secondary_text("Do you want to save: " + get_current_view()->file_path.string()+" ?");
   int result = dialog.run();
   if(result==Gtk::RESPONSE_YES) {
     save_current();

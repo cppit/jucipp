@@ -7,10 +7,15 @@
 #include <boost/filesystem.hpp>
 #include <thread>
 #include <atomic>
-#include <unordered_set>
+#include <list>
 
-class Terminal : public Gtk::HBox {
+class Terminal : public Gtk::TextView {
 public:  
+  class Config {
+  public:
+    std::string make_command;
+  };
+  
   class InProgress {
   public:
     InProgress(const std::string& start_msg);
@@ -26,25 +31,31 @@ public:
   };
   
   Terminal();
-  int execute(const std::string &command, const std::string &path="");
-  void async_execute(const std::string &command, const std::string &path="", std::function<void(int exit_code)> callback=nullptr);
-  void kill_executing();
+  int execute(const std::string &command, const boost::filesystem::path &path="");
+  void async_execute(const std::string &command, const boost::filesystem::path &path="", std::function<void(int exit_code)> callback=nullptr);
+  void kill_last_async_execute(bool force=false);
+  void kill_async_executes(bool force=false);
   
   int print(const std::string &message, bool bold=false);
-  void print(int line_nr, const std::string &message, bool bold=false);
+  void print(int line_nr, const std::string &message);
   std::shared_ptr<InProgress> print_in_progress(std::string start_msg);
   void async_print(const std::string &message, bool bold=false);
+  void async_print(int line_nr, const std::string &message);
+protected:
+  bool on_key_press_event(GdkEventKey *event);
 private:
-  Gtk::TextView text_view;
-  Gtk::ScrolledWindow scrolled_window;
-
   Glib::Dispatcher async_print_dispatcher;
+  Glib::Dispatcher async_print_on_line_dispatcher;
   std::vector<std::pair<std::string, bool> > async_print_strings;
+  std::vector<std::pair<int, std::string> > async_print_on_line_strings;
   std::mutex async_print_strings_mutex;
+  std::mutex async_print_on_line_strings_mutex;
   Glib::RefPtr<Gtk::TextTag> bold_tag;
 
-  std::mutex async_execute_pids_mutex;
-  std::unordered_set<pid_t> async_execute_pids;
+  std::mutex async_executes_mutex;
+  std::list<std::pair<pid_t, int> > async_executes;
+  
+  std::string stdin_buffer;
 };
 
 #endif  // JUCI_TERMINAL_H_

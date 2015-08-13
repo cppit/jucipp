@@ -72,14 +72,14 @@ void Directories::open_folder(const boost::filesystem::path& dir_path) {
     
   current_path=new_path;
   
-  if(selected_path.size()>0)
+  if(selected_path!="")
     select_path(selected_path);
   DEBUG("Folder opened");
 }
 
-void Directories::select_path(const std::string &path) {
+void Directories::select_path(const boost::filesystem::path &path) {
   tree_store->foreach_iter([this, &path](const Gtk::TreeModel::iterator& iter){
-    if(iter->get_value(column_record.path)==path) {
+    if(iter->get_value(column_record.path)==path.string()) {
       auto tree_path=Gtk::TreePath(iter);
       tree_view.expand_to_path(tree_path);
       tree_view.set_cursor(tree_path);

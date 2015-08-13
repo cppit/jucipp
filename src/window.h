@@ -29,6 +29,7 @@ private:
   Gtk::Paned directory_and_notebook_panes;
   Gtk::VBox notebook_vbox;
   Gtk::VBox terminal_vbox;
+  Gtk::ScrolledWindow terminal_scrolled_window;
   Gtk::HBox status_hbox;
   EntryBox entry_box;
   Menu menu;
@@ -38,6 +39,7 @@ private:
   void create_menu();
   void hide();
   void new_file_entry();
+  void new_cpp_project_dialog();
   void open_folder_dialog();
   void open_file_dialog();
   void save_file_dialog();
@@ -47,6 +49,7 @@ private:
   void generate_keybindings();
   std::string last_search;
   std::string last_replace;
+  std::string last_run_command;
   bool case_sensitive_search=true;
   bool regex_search=false;
   bool search_entry_shown=false;

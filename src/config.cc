@@ -12,6 +12,7 @@ MainConfig::MainConfig() {
   GenerateSource();
   GenerateTheme();
   GenerateDirectoryFilter();
+  Singleton::Config::terminal()->make_command=cfg.get<std::string>("project.make_command");
 }
 
 void MainConfig::GenerateTheme() {

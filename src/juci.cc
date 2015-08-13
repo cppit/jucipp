@@ -1,6 +1,7 @@
 #include "juci.h"
 #include "singletons.h"
 #include "config.h"
+#include <iostream>
 
 void init_logging() {
   add_common_attributes();
@@ -19,13 +20,16 @@ int app::on_command_line(const Glib::RefPtr<Gio::ApplicationCommandLine> &cmd) {
   ctx.parse(argc, argv);
   if(argc>=2) {
     for(int c=1;c<argc;c++) {
-      boost::filesystem::path p=boost::filesystem::canonical(argv[c]);
+      boost::filesystem::path p(argv[c]);
       if(boost::filesystem::exists(p)) {
+        p=boost::filesystem::canonical(p);
         if(boost::filesystem::is_regular_file(p))
           files.emplace_back(p.string());
         else if(directory=="" && boost::filesystem::is_directory(p))
           directory=p.string();
       }
+      else
+        std::cerr << "Path " << p << " does not exist." << std::endl;
     }
   }
   activate();

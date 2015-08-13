@@ -15,18 +15,17 @@ namespace sigc {
   SIGC_FUNCTORS_DEDUCE_RESULT_TYPE_WITH_DECLTYPE
 }
 
-Glib::RefPtr<Gsv::Language> Source::guess_language(const std::string &file_path) {
+Glib::RefPtr<Gsv::Language> Source::guess_language(const boost::filesystem::path &file_path) {
   auto language_manager=Gsv::LanguageManager::get_default();
   bool result_uncertain = false;
-  auto content_type = Gio::content_type_guess(file_path, NULL, 0, result_uncertain);
+  auto content_type = Gio::content_type_guess(file_path.string(), NULL, 0, result_uncertain);
   if(result_uncertain) {
     content_type.clear();
   }
-  auto language=language_manager->guess_language(file_path, content_type);
+  auto language=language_manager->guess_language(file_path.string(), content_type);
   if(!language) {
-    auto path=boost::filesystem::path(file_path);
-    auto filename=path.filename().string();
-    auto extension=path.extension();
+    auto filename=file_path.filename().string();
+    auto extension=file_path.extension();
     if(filename=="CMakeLists.txt")
       language=language_manager->get_language("cmake");
   }
@@ -36,7 +35,7 @@ Glib::RefPtr<Gsv::Language> Source::guess_language(const std::string &file_path)
 //////////////
 //// View ////
 //////////////
-Source::View::View(const std::string& file_path): file_path(file_path) {
+Source::View::View(const boost::filesystem::path &file_path): file_path(file_path) {
   set_smart_home_end(Gsv::SMART_HOME_END_BEFORE);
   get_source_buffer()->begin_not_undoable_action();
   juci::filesystem::read(file_path, get_buffer());
@@ -142,6 +141,92 @@ void Source::View::replace_all(const std::string &replacement) {
   gtk_source_search_context_replace_all(search_context, replacement.c_str(), replacement.size(), NULL);
 }
 
+void Source::View::paste() {
+  Gtk::Clipboard::get()->request_text([this](const Glib::ustring& text){
+    const std::regex spaces_regex(std::string("^(")+Singleton::Config::source()->tab_char+"*)(.*)$");
+    auto line=get_line_before_insert();
+    std::smatch sm;
+    std::string prefix_tabs;
+    if(std::regex_match(line, sm, spaces_regex) && sm[2].str().size()==0) {
+      prefix_tabs=sm[1].str();
+
+      Glib::ustring::size_type start_line=0;
+      Glib::ustring::size_type end_line=0;
+      bool paste_line=false;
+      bool first_paste_line=true;
+      size_t paste_line_tabs=-1;
+      bool first_paste_line_has_tabs=false;
+      for(Glib::ustring::size_type c=0;c<text.size();c++) {;
+        if(text[c]=='\n') {
+          end_line=c;
+          paste_line=true;
+        }
+        else if(c==text.size()-1) {
+          end_line=c+1;
+          paste_line=true;
+        }
+        if(paste_line) {
+          std::string line=text.substr(start_line, end_line-start_line);
+          size_t tabs=0;
+          for(auto chr: line) {
+            if(chr==Singleton::Config::source()->tab_char)
+              tabs++;
+            else
+              break;
+          }
+          if(first_paste_line) {
+            if(tabs!=0) {
+              first_paste_line_has_tabs=true;
+              paste_line_tabs=tabs;
+            }
+            first_paste_line=false;
+          }
+          else
+            paste_line_tabs=std::min(paste_line_tabs, tabs);
+
+          start_line=end_line+1;
+          paste_line=false;
+        }
+      }
+      if(paste_line_tabs==(size_t)-1)
+        paste_line_tabs=0;
+      start_line=0;
+      end_line=0;
+      paste_line=false;
+      first_paste_line=true;
+      get_source_buffer()->begin_user_action();
+      for(Glib::ustring::size_type c=0;c<text.size();c++) {
+        if(text[c]=='\n') {
+          end_line=c;
+          paste_line=true;
+        }
+        else if(c==text.size()-1) {
+          end_line=c+1;
+          paste_line=true;
+        }
+        if(paste_line) {
+          if(first_paste_line) {
+            if(first_paste_line_has_tabs)
+              get_buffer()->insert_at_cursor(text.substr(start_line+paste_line_tabs, end_line-start_line-paste_line_tabs));
+            else
+              get_buffer()->insert_at_cursor(text.substr(start_line, end_line-start_line));
+            first_paste_line=false;
+          }
+          else
+            get_buffer()->insert_at_cursor('\n'+prefix_tabs+text.substr(start_line+paste_line_tabs, end_line-start_line-paste_line_tabs));
+          start_line=end_line+1;
+          paste_line=false;
+        }
+      }
+      get_buffer()->place_cursor(get_buffer()->get_insert()->get_iter());
+      scroll_to(get_buffer()->get_insert());
+      get_source_buffer()->end_user_action();
+    }
+    else
+      get_buffer()->paste_clipboard(Gtk::Clipboard::get());
+  });
+}
+
 void Source::View::set_status(const std::string &status) {
   this->status=status;
   if(on_update_status)
@@ -171,14 +256,17 @@ bool Source::View::on_key_press_event(GdkEventKey* key) {
   const std::regex spaces_regex(std::string("^(")+config->tab_char+"*).*$");
   //Indent as in next or previous line
   if(key->keyval==GDK_KEY_Return && key->state==0 && !get_buffer()->get_has_selection()) {
-    int line_nr=get_source_buffer()->get_insert()->get_iter().get_line();
-    string line(get_line_before_insert());
+    auto insert_it=get_buffer()->get_insert()->get_iter();
+    int line_nr=insert_it.get_line();
+    auto line=get_line_before_insert();
     std::smatch sm;
     if(std::regex_match(line, sm, spaces_regex)) {
-      if((line_nr+1)<get_source_buffer()->get_line_count()) {
+      if((line_nr+1)<get_buffer()->get_line_count()) {
         string next_line=get_line(line_nr+1);
+        auto line_end_iter=get_buffer()->get_iter_at_line(line_nr+1);
+        line_end_iter--;
         std::smatch sm2;
-        if(std::regex_match(next_line, sm2, spaces_regex)) {
+        if(insert_it==line_end_iter && std::regex_match(next_line, sm2, spaces_regex)) {
           if(sm2[1].str().size()>sm[1].str().size()) {
             get_source_buffer()->insert_at_cursor("\n"+sm2[1].str());
             scroll_to(get_source_buffer()->get_insert());
@@ -213,9 +301,14 @@ bool Source::View::on_key_press_event(GdkEventKey* key) {
     int line_start=selection_start.get_line();
     int line_end=selection_end.get_line();
     
+    unsigned indent_left_steps=config->tab_size;
     for(int line_nr=line_start;line_nr<=line_end;line_nr++) {
       string line=get_line(line_nr);
-      if(!(line.size()>=config->tab_size && line.substr(0, config->tab_size)==config->tab)) {
+      std::smatch sm;
+      if(std::regex_match(line, sm, spaces_regex) && sm[1].str().size()>0) {
+        indent_left_steps=std::min(indent_left_steps, (unsigned)sm[1].str().size());
+      }
+      else {
         get_source_buffer()->end_user_action();
         return true;
       }
@@ -225,7 +318,7 @@ bool Source::View::on_key_press_event(GdkEventKey* key) {
       Gtk::TextIter line_it = get_source_buffer()->get_iter_at_line(line_nr);
       Gtk::TextIter line_plus_it=line_it;
       
-      for(unsigned c=0;c<config->tab_size;c++)
+      for(unsigned c=0;c<indent_left_steps;c++)
         line_plus_it++;
       get_source_buffer()->erase(line_it, line_plus_it);
     }
@@ -234,20 +327,37 @@ bool Source::View::on_key_press_event(GdkEventKey* key) {
   }
   //"Smart" backspace key
   else if(key->keyval==GDK_KEY_BackSpace && !get_buffer()->get_has_selection()) {
-    Gtk::TextIter insert_it=get_source_buffer()->get_insert()->get_iter();
+    auto insert_it=get_buffer()->get_insert()->get_iter();
     int line_nr=insert_it.get_line();
-    if(line_nr>0) {
-      string line=get_line(line_nr);
-      string previous_line=get_line(line_nr-1);
-      smatch sm;
-      if(std::regex_match(previous_line, sm, spaces_regex)) {
-        if(line==sm[1] || line==(std::string(sm[1])+config->tab) || (line+config->tab==sm[1])) {
-          Gtk::TextIter line_it = get_source_buffer()->get_iter_at_line(line_nr);
-          get_source_buffer()->erase(line_it, insert_it);
+    auto line=get_line_before_insert();
+    std::smatch sm;
+    if(std::regex_match(line, sm, spaces_regex) && sm[1].str().size()==line.size()) {
+      if((line_nr-1)>=0) {
+        string previous_line=get_line(line_nr-1);
+        std::smatch sm2;
+        if(std::regex_match(previous_line, sm2, spaces_regex)) {
+          if(line.size()==sm2[1].str().size() || line.size()==sm2[1].str().size()+config->tab_size || line.size()==sm2[1].str().size()-config->tab_size) {
+            auto previous_line_end_it=insert_it;
+            for(unsigned c=0;c<line.size();c++)
+              previous_line_end_it--;
+            previous_line_end_it--;
+            get_source_buffer()->erase(previous_line_end_it, insert_it);
+            get_source_buffer()->end_user_action();
+            return true;
+          }
         }
+      }
+      if(line.size()>=config->tab_size) {
+        auto insert_minus_tab_it=insert_it;
+        for(unsigned c=0;c<config->tab_size;c++)
+          insert_minus_tab_it--;
+        get_source_buffer()->erase(insert_minus_tab_it, insert_it);
+        get_source_buffer()->end_user_action();
+        return true;
       }
     }
   }
+
   bool stop=Gsv::View::on_key_press_event(key);
   get_source_buffer()->end_user_action();
   return stop;
@@ -256,10 +366,10 @@ bool Source::View::on_key_press_event(GdkEventKey* key) {
 /////////////////////
 //// GenericView ////
 /////////////////////
-Source::GenericView::GenericView(const std::string& file_path, Glib::RefPtr<Gsv::Language> language) : View(file_path) {
+Source::GenericView::GenericView(const boost::filesystem::path &file_path, Glib::RefPtr<Gsv::Language> language) : View(file_path) {
   if(language) {
     get_source_buffer()->set_language(language);
-    Singleton::terminal()->print("Language for file "+file_path+" set to "+language->get_name()+".\n");
+    Singleton::terminal()->print("Language for file "+file_path.string()+" set to "+language->get_name()+".\n");
   }
   auto completion=get_completion();
   auto completion_words=Gsv::CompletionWords::create("", Glib::RefPtr<Gdk::Pixbuf>());
@@ -275,9 +385,8 @@ Source::GenericView::GenericView(const std::string& file_path, Glib::RefPtr<Gsv:
 ////////////////////////
 clang::Index Source::ClangViewParse::clang_index(0, 0);
 
-Source::ClangViewParse::ClangViewParse(const std::string& file_path, const std::string& project_path) :
-  Source::View(file_path), project_path(project_path) {
-  INFO("Tagtable beeing filled");
+Source::ClangViewParse::ClangViewParse(const boost::filesystem::path &file_path, const boost::filesystem::path& project_path):
+Source::View(file_path), project_path(project_path) {
   for (auto &item : Singleton::Config::source()->tags) {
     auto scheme = get_source_buffer()->get_style_scheme();
     auto style = scheme->get_style(item.second);
@@ -322,7 +431,7 @@ Source::ClangViewParse::ClangViewParse(const std::string& file_path, const std::
   }
   //TODO: clear tag_class and param_spec?
   
-  parsing_in_progress=Singleton::terminal()->print_in_progress("Parsing "+file_path);
+  parsing_in_progress=Singleton::terminal()->print_in_progress("Parsing "+file_path.string());
   //GTK-calls must happen in main thread, so the parse_thread
   //sends signals to the main thread that it is to call the following functions:
   parse_start.connect([this]{
@@ -376,7 +485,7 @@ void Source::ClangViewParse::init_parse() {
   int end_offset = get_source_buffer()->end().get_offset();
   auto buffer_map=get_buffer_map();
   //Remove includes for first parse for initial syntax highlighting
-  auto& str=buffer_map[file_path];
+  auto& str=buffer_map[file_path.string()];
   std::size_t pos=0;
   while((pos=str.find("#include", pos))!=std::string::npos) {
     auto start_pos=pos;
@@ -424,15 +533,15 @@ init_syntax_highlighting(const std::map<std::string, std::string>
                          int end_offset) {
   std::vector<string> arguments = get_compilation_commands();
   clang_tu = std::unique_ptr<clang::TranslationUnit>(new clang::TranslationUnit(clang_index,
-                                                                           file_path,
+                                                                           file_path.string(),
                                                                            arguments,
                                                                            buffers));
-  clang_tokens=clang_tu->get_tokens(0, buffers.find(file_path)->second.size()-1);
+  clang_tokens=clang_tu->get_tokens(0, buffers.find(file_path.string())->second.size()-1);
 }
 
 std::map<std::string, std::string> Source::ClangViewParse::get_buffer_map() const {
   std::map<std::string, std::string> buffer_map;
-  buffer_map[file_path]=get_source_buffer()->get_text().raw();
+  buffer_map[file_path.string()]=get_source_buffer()->get_text().raw();
   return buffer_map;
 }
 
@@ -450,13 +559,13 @@ void Source::ClangViewParse::start_reparse() {
 
 int Source::ClangViewParse::reparse(const std::map<std::string, std::string> &buffer) {
   int status = clang_tu->ReparseTranslationUnit(buffer);
-  clang_tokens=clang_tu->get_tokens(0, parse_thread_buffer_map.find(file_path)->second.size()-1);
+  clang_tokens=clang_tu->get_tokens(0, parse_thread_buffer_map.find(file_path.string())->second.size()-1);
   return status;
 }
 
 std::vector<std::string> Source::ClangViewParse::get_compilation_commands() {
-  clang::CompilationDatabase db(project_path);
-  clang::CompileCommands commands(file_path, db);
+  clang::CompilationDatabase db(project_path.string());
+  clang::CompileCommands commands(file_path.string(), db);
   std::vector<clang::CompileCommand> cmds = commands.get_commands();
   std::vector<std::string> arguments;
   for (auto &i : cmds) {
@@ -465,7 +574,7 @@ std::vector<std::string> Source::ClangViewParse::get_compilation_commands() {
       arguments.emplace_back(lol[a]);
     }
   }
-  if(boost::filesystem::path(file_path).extension()==".h") //TODO: temporary fix for .h-files (parse as c++)
+  if(file_path.extension()==".h") //TODO: temporary fix for .h-files (parse as c++)
     arguments.emplace_back("-xc++");
   return arguments;
 }
@@ -513,7 +622,7 @@ void Source::ClangViewParse::update_diagnostics() {
   get_buffer()->remove_tag_by_name("diagnostic_error_underline", get_buffer()->begin(), get_buffer()->end());
   auto diagnostics=clang_tu->get_diagnostics();
   for(auto &diagnostic: diagnostics) {
-    if(diagnostic.path==file_path) {
+    if(diagnostic.path==file_path.string()) {
       auto start=get_buffer()->get_iter_at_offset(diagnostic.offsets.first);
       auto end=get_buffer()->get_iter_at_offset(diagnostic.offsets.second);
       std::string diagnostic_tag_name;
@@ -644,16 +753,23 @@ bool Source::ClangViewParse::on_key_press_event(GdkEventKey* key) {
             return true;
           }
         }
+        if(next_line!=sm[1].str()+"}") {
+          get_source_buffer()->insert_at_cursor("\n"+sm[1].str()+config->tab+"\n"+sm[1].str()+"}");
+          auto insert_it = get_source_buffer()->get_insert()->get_iter();
+          for(size_t c=0;c<config->tab_size+sm[1].str().size();c++)
+            insert_it--;
+          scroll_to(get_source_buffer()->get_insert());
+          get_source_buffer()->place_cursor(insert_it);
+          get_source_buffer()->end_user_action();
+          return true;
+        }
+        else {
+          get_source_buffer()->insert_at_cursor("\n"+sm[1].str()+config->tab);
+          scroll_to(get_source_buffer()->get_insert());
+          get_source_buffer()->end_user_action();
+          return true;
+        }
       }
-      //TODO: insert without moving mark backwards.
-      get_source_buffer()->insert_at_cursor("\n"+sm[1].str()+config->tab+"\n"+sm[1].str()+"}");
-      auto insert_it = get_source_buffer()->get_insert()->get_iter();
-      for(size_t c=0;c<config->tab_size+sm[1].str().size();c++)
-        insert_it--;
-      scroll_to(get_source_buffer()->get_insert());
-      get_source_buffer()->place_cursor(insert_it);
-      get_source_buffer()->end_user_action();
-      return true;
     }
     else if(std::regex_match(line, sm, no_bracket_statement_regex)) {
       get_source_buffer()->insert_at_cursor("\n"+sm[1].str()+config->tab);
@@ -718,7 +834,7 @@ bool Source::ClangViewParse::on_key_press_event(GdkEventKey* key) {
 //////////////////////////////
 //// ClangViewAutocomplete ///
 //////////////////////////////
-Source::ClangViewAutocomplete::ClangViewAutocomplete(const std::string& file_path, const std::string& project_path):
+Source::ClangViewAutocomplete::ClangViewAutocomplete(const boost::filesystem::path &file_path, const boost::filesystem::path& project_path):
 Source::ClangViewParse(file_path, project_path), autocomplete_cancel_starting(false) {
   get_buffer()->signal_changed().connect([this](){
     if(completion_dialog_shown)
@@ -879,7 +995,7 @@ void Source::ClangViewAutocomplete::autocomplete() {
     });
     
     std::shared_ptr<std::map<std::string, std::string> > buffer_map=std::make_shared<std::map<std::string, std::string> >();
-    auto& buffer=(*buffer_map)[this->file_path];
+    auto& buffer=(*buffer_map)[this->file_path.string()];
     buffer=get_buffer()->get_text(get_buffer()->begin(), get_buffer()->get_insert()->get_iter());
     auto iter = get_source_buffer()->get_insert()->get_iter();
     auto line_nr=iter.get_line()+1;
@@ -938,7 +1054,7 @@ get_autocomplete_suggestions(int line_number, int column, std::map<std::string, 
 //// ClangViewRefactor /////
 ////////////////////////////
 
-Source::ClangViewRefactor::ClangViewRefactor(const std::string& file_path, const std::string& project_path):
+Source::ClangViewRefactor::ClangViewRefactor(const boost::filesystem::path &file_path, const boost::filesystem::path& project_path):
 Source::ClangViewAutocomplete(file_path, project_path) {
   similar_tokens_tag=get_buffer()->create_tag();
   similar_tokens_tag->property_weight()=Pango::WEIGHT_BOLD;
@@ -1070,7 +1186,7 @@ Source::ClangViewAutocomplete(file_path, project_path) {
   };
 }
 
-Source::ClangView::ClangView(const std::string& file_path, const std::string& project_path): ClangViewRefactor(file_path, project_path) {
+Source::ClangView::ClangView(const boost::filesystem::path &file_path, const boost::filesystem::path& project_path): ClangViewRefactor(file_path, project_path) {
   do_delete_object.connect([this](){
     if(delete_thread.joinable())
       delete_thread.join();

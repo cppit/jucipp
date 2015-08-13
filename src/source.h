@@ -16,7 +16,7 @@
 #include <set>
 
 namespace Source {
-  Glib::RefPtr<Gsv::Language> guess_language(const std::string &file_path);
+  Glib::RefPtr<Gsv::Language> guess_language(const boost::filesystem::path &file_path);
   
   class Config {
   public:
@@ -45,7 +45,7 @@ namespace Source {
 
   class View : public Gsv::View {
   public:
-    View(const std::string& file_path);
+    View(const boost::filesystem::path &file_path);
     ~View();
     
     void search_highlight(const std::string &text, bool case_sensitive, bool regex);
@@ -55,8 +55,10 @@ namespace Source {
     void replace_forward(const std::string &replacement);
     void replace_backward(const std::string &replacement);
     void replace_all(const std::string &replacement);
+    
+    void paste();
         
-    std::string file_path;
+    boost::filesystem::path file_path;
     
     std::function<std::pair<std::string, unsigned>()> get_declaration_location;
     std::function<void()> goto_method;
@@ -82,13 +84,13 @@ namespace Source {
   
   class GenericView : public View {
   public:
-    GenericView(const std::string& file_path, Glib::RefPtr<Gsv::Language> language);
+    GenericView(const boost::filesystem::path &file_path, Glib::RefPtr<Gsv::Language> language);
   };
   
   class ClangViewParse : public View {
   public:
-    ClangViewParse(const std::string& file_path, const std::string& project_path);
-    std::string project_path;
+    ClangViewParse(const boost::filesystem::path &file_path, const boost::filesystem::path& project_path);
+    boost::filesystem::path project_path;
   protected:
     void init_parse();
     void start_reparse();
@@ -135,7 +137,7 @@ namespace Source {
     
   class ClangViewAutocomplete : public ClangViewParse {
   public:
-    ClangViewAutocomplete(const std::string& file_path, const std::string& project_path);
+    ClangViewAutocomplete(const boost::filesystem::path &file_path, const boost::filesystem::path& project_path);
   protected:
     bool on_key_press_event(GdkEventKey* key);
     bool on_focus_out_event(GdkEventFocus* event);
@@ -157,7 +159,7 @@ namespace Source {
 
   class ClangViewRefactor : public ClangViewAutocomplete {
   public:
-    ClangViewRefactor(const std::string& file_path, const std::string& project_path);
+    ClangViewRefactor(const boost::filesystem::path &file_path, const boost::filesystem::path& project_path);
   private:
     Glib::RefPtr<Gtk::TextTag> similar_tokens_tag;
     std::string last_similar_tokens_tagged;
@@ -167,7 +169,7 @@ namespace Source {
   
   class ClangView : public ClangViewRefactor {
   public:
-    ClangView(const std::string& file_path, const std::string& project_path);
+    ClangView(const boost::filesystem::path &file_path, const boost::filesystem::path& project_path);
     void async_delete();
     bool restart_parse();
   private:

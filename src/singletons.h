@@ -1,3 +1,4 @@
+
 #ifndef JUCI_SINGLETONS_H_
 #define JUCI_SINGLETONS_H_
 
@@ -19,11 +20,14 @@ public:
     static Directories::Config *directories() {return directories_.get();}
     static Theme::Config *theme() { return theme_.get(); }
     static Window::Config *window() { return window_.get(); }
+    static Terminal::Config *terminal() {return terminal_.get();}
+
   private:
     static std::unique_ptr<Source::Config> source_;
     static std::unique_ptr<Theme::Config> theme_;
     static std::unique_ptr<Window::Config> window_;
     static std::unique_ptr<Directories::Config> directories_;
+    static std::unique_ptr<Terminal::Config> terminal_;
   };
   static std::string config_dir() { return std::string(getenv("HOME")) + "/.juci/config/"; }
   static std::string theme_dir() { return std::string(getenv("HOME")) + "/.juci/gtk-themes/"; }

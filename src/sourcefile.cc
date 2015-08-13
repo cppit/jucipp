@@ -65,7 +65,7 @@ bool juci::filesystem::write(const std::string &path, Glib::RefPtr<Gtk::TextBuff
           break;
         }
       }
-      output << buffer->get_text(start_iter, end_iter);
+      output << buffer->get_text(start_iter, end_iter).c_str();
       start_iter=end_iter;
     }
     output.close();

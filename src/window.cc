@@ -41,7 +41,8 @@ Window::Window() : box(Gtk::ORIENTATION_VERTICAL), notebook(directories), compil
   vpaned.set_position(300);
   vpaned.pack1(directory_and_notebook_panes, true, false);
   
-  terminal_vbox.pack_start(*Singleton::terminal());
+  terminal_scrolled_window.add(*Singleton::terminal());
+  terminal_vbox.pack_start(terminal_scrolled_window);
   status_hbox.pack_end(*Singleton::status(), Gtk::PACK_SHRINK);
   terminal_vbox.pack_end(status_hbox, Gtk::PACK_SHRINK);
   vpaned.pack2(terminal_vbox, true, true);
@@ -100,7 +101,7 @@ Window::Window() : box(Gtk::ORIENTATION_VERTICAL), notebook(directories), compil
 
   compile_success.connect([this](){
     directories.open_folder();
-  });  
+  });
   
   INFO("Window created");
 } // Window constructor
@@ -112,6 +113,10 @@ void Window::create_menu() {
   });
   menu.action_group->add(Gtk::Action::create("FileNewFile", "New file"), Gtk::AccelKey(menu.key_map["new_file"]), [this]() {
     new_file_entry();
+  });
+  menu.action_group->add(Gtk::Action::create("FileNewProject", "New Project"));
+  menu.action_group->add(Gtk::Action::create("FileNewProjectCpp", "C++"), [this]() {
+    new_cpp_project_dialog();
   });
   menu.action_group->add(Gtk::Action::create("FileOpenFile", "Open file"), Gtk::AccelKey(menu.key_map["open_file"]), [this]() {
     open_file_dialog();
@@ -146,7 +151,7 @@ void Window::create_menu() {
     if(auto entry=dynamic_cast<Gtk::Entry*>(widget))
       entry->paste_clipboard();
     else if(notebook.get_current_page()!=-1)
-      notebook.get_current_view()->get_buffer()->paste_clipboard(Gtk::Clipboard::get());
+      notebook.get_current_view()->paste();
   });
   menu.action_group->add(Gtk::Action::create("EditFind", "Find"), Gtk::AccelKey(menu.key_map["edit_find"]), [this]() {
     search_and_replace_entry();
@@ -213,31 +218,33 @@ void Window::create_menu() {
     CMake cmake(notebook.get_current_view()->file_path);
     directories.open_folder();
     auto executables = cmake.get_functions_parameters("add_executable");
-    std::string executable;
-    boost::filesystem::path path;
+    boost::filesystem::path executable_path;
     if(executables.size()>0 && executables[0].second.size()>0) {
-      executable=executables[0].second[0];
-      path=executables[0].first.parent_path();
-      path+="/"+executables[0].second[0];
+      executable_path=executables[0].first.parent_path();
+      executable_path+="/"+executables[0].second[0];
     }
     if(cmake.project_path!="") {
-      if(path!="") {
+      if(executable_path!="") {
         compiling=true;
-        Singleton::terminal()->print("Compiling and executing "+path.string()+"\n");
+        Singleton::terminal()->print("Compiling and running "+executable_path.string()+"\n");
         //TODO: Windows...
-        Singleton::terminal()->async_execute("make", cmake.project_path.string(), [this, path](int exit_code){
+        auto project_path=cmake.project_path;
+        Singleton::terminal()->async_execute(Singleton::Config::terminal()->make_command, cmake.project_path, [this, executable_path, project_path](int exit_code){
           compiling=false;
           if(exit_code==EXIT_SUCCESS) {
             compile_success();
             //TODO: Windows...
-            Singleton::terminal()->async_execute(path.string(), path.parent_path().string(), [this, path](int exit_code){
-              Singleton::terminal()->async_print(path.string()+" returned: "+std::to_string(exit_code)+'\n');
+            Singleton::terminal()->async_execute(executable_path.string(), project_path, [this, executable_path](int exit_code){
+              Singleton::terminal()->async_print(executable_path.string()+" returned: "+std::to_string(exit_code)+'\n');
             });
           }
         });
       }
-      else
-        Singleton::terminal()->print("Could not find an executable, please use add_executable in CMakeLists.txt\n");
+      else {
+        Singleton::terminal()->print("Could not find add_executable in the following paths:\n");
+        for(auto &path: cmake.paths)
+          Singleton::terminal()->print("  "+path.string()+"\n");
+      }
     }
   });
   menu.action_group->add(Gtk::Action::create("ProjectCompile", "Compile"), Gtk::AccelKey(menu.key_map["compile"]), [this]() {
@@ -249,12 +256,36 @@ void Window::create_menu() {
       compiling=true;
       Singleton::terminal()->print("Compiling project "+cmake.project_path.string()+"\n");
       //TODO: Windows...
-      Singleton::terminal()->async_execute("make 2>&1", cmake.project_path.string(), [this](int exit_code){
+      Singleton::terminal()->async_execute(Singleton::Config::terminal()->make_command, cmake.project_path, [this](int exit_code){
         compiling=false;
         if(exit_code==EXIT_SUCCESS)
           compile_success();
       });
     }
+  });
+  menu.action_group->add(Gtk::Action::create("ProjectRunCommand", "Run Command"), Gtk::AccelKey(menu.key_map["run_command"]), [this]() {
+    entry_box.clear();
+    entry_box.entries.emplace_back(last_run_command, [this](const std::string& content){
+      if(content!="") {
+        last_run_command=content;
+        Singleton::terminal()->async_print("Running: "+content+'\n');
+        Singleton::terminal()->async_execute(content, directories.current_path, [this, content](int exit_code){
+          Singleton::terminal()->async_print(content+" returned: "+std::to_string(exit_code)+'\n');
+        });
+      }
+      entry_box.hide();
+    });
+    auto entry_it=entry_box.entries.begin();
+    entry_box.buttons.emplace_back("Run command", [this, entry_it](){
+      entry_it->activate();
+    });
+    entry_box.show();
+  });
+  menu.action_group->add(Gtk::Action::create("ProjectKillLastRunning", "Kill Last Process"), Gtk::AccelKey(menu.key_map["kill_last_running"]), [this]() {
+    Singleton::terminal()->kill_last_async_execute();
+  });
+  menu.action_group->add(Gtk::Action::create("ProjectForceKillLastRunning", "Force Kill Last Process"), Gtk::AccelKey(menu.key_map["force_kill_last_running"]), [this]() {
+    Singleton::terminal()->kill_last_async_execute(true);
   });
 
   menu.action_group->add(Gtk::Action::create("WindowCloseTab", "Close tab"), Gtk::AccelKey(menu.key_map["close_tab"]), [this]() {
@@ -267,8 +298,6 @@ void Window::create_menu() {
 
 bool Window::on_key_press_event(GdkEventKey *event) {
   if(event->keyval==GDK_KEY_Escape) {
-    if(entry_box.entries.size()==0)
-      Singleton::terminal()->kill_executing();
     entry_box.hide();
   }
 #ifdef __APPLE__ //For Apple's Command-left, right, up, down keys
@@ -312,7 +341,7 @@ void Window::hide() {
     if(!notebook.close_current_page())
       return;
   }
-  Singleton::terminal()->kill_executing();
+  Singleton::terminal()->kill_async_executes();
   Gtk::Window::hide();
 }
 
@@ -345,6 +374,46 @@ void Window::new_file_entry() {
     entry_it->activate();
   });
   entry_box.show();
+}
+
+void Window::new_cpp_project_dialog() {
+  Gtk::FileChooserDialog dialog("Please create and/or choose a folder", Gtk::FILE_CHOOSER_ACTION_CREATE_FOLDER);
+  if(directories.current_path!="")
+    gtk_file_chooser_set_current_folder((GtkFileChooser*)dialog.gobj(), directories.current_path.string().c_str());
+  else
+    gtk_file_chooser_set_current_folder((GtkFileChooser*)dialog.gobj(), boost::filesystem::current_path().string().c_str());
+  dialog.set_transient_for(*this);
+  
+  dialog.add_button("_Cancel", Gtk::RESPONSE_CANCEL);
+  dialog.add_button("Select", Gtk::RESPONSE_OK);
+
+  int result = dialog.run();
+
+  if(result==Gtk::RESPONSE_OK) {
+    boost::filesystem::path project_path=dialog.get_filename();
+    auto project_name=project_path.filename().string();
+    auto cmakelists_path=project_path;
+    cmakelists_path+="/CMakeLists.txt";
+    auto cpp_main_path=project_path;
+    cpp_main_path+="/main.cpp";
+    if(boost::filesystem::exists(cmakelists_path)) {
+      Singleton::terminal()->print("Error: "+cmakelists_path.string()+" already exists.\n");
+      return;
+    }
+    if(boost::filesystem::exists(cpp_main_path)) {
+      Singleton::terminal()->print("Error: "+cpp_main_path.string()+" already exists.\n");
+      return;
+    }
+    std::string cmakelists="cmake_minimum_required(VERSION 2.8)\n\nproject("+project_name+")\n\nset(CMAKE_CXX_FLAGS \"${CMAKE_CXX_FLAGS} -std=c++1y\")\n\nadd_executable("+project_name+" main.cpp)\n";
+    std::string cpp_main="#include <iostream>\n\nusing namespace std;\n\nint main() {\n  cout << \"Hello World!\" << endl;\n\n  return 0;\n}\n";
+    if(juci::filesystem::write(cmakelists_path, cmakelists) && juci::filesystem::write(cpp_main_path, cpp_main)) {
+      directories.open_folder(project_path);
+      notebook.open(cpp_main_path);
+      Singleton::terminal()->print("C++ project "+project_name+" created.\n");
+    }
+    else
+      Singleton::terminal()->print("Error: Could not create project "+project_path.string()+"\n");
+  }
 }
 
 void Window::open_folder_dialog() {
@@ -426,7 +495,7 @@ void Window::save_file_dialog() {
         if(directories.current_path!="")
           directories.open_folder();
         notebook.open(path);
-        Singleton::terminal()->print("File saved to: " + notebook.get_current_view()->file_path+"\n");
+        Singleton::terminal()->print("File saved to: " + notebook.get_current_view()->file_path.string()+"\n");
       }
       else
         Singleton::terminal()->print("Error saving file\n");
@@ -573,7 +642,7 @@ void Window::rename_token_entry() {
               if(notebook.get_view(c)->rename_similar_tokens) {
                 auto number=notebook.get_view(c)->rename_similar_tokens(*token, content);
                 if(number>0) {
-                  Singleton::terminal()->print("Replaced "+std::to_string(number)+" occurrences in file "+notebook.get_view(c)->file_path+"\n");
+                  Singleton::terminal()->print("Replaced "+std::to_string(number)+" occurrences in file "+notebook.get_view(c)->file_path.string()+"\n");
                   notebook.save(c);
                 }
               }
