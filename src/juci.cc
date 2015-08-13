@@ -47,7 +47,7 @@ void app::on_activate() {
     window->notebook.open(f);
 }
 
-app::app() : Gtk::Application("no.sout.juci", Gio::APPLICATION_HANDLES_COMMAND_LINE) {
+app::app() : Gtk::Application("no.sout.juci", Gio::APPLICATION_NON_UNIQUE | Gio::APPLICATION_HANDLES_COMMAND_LINE) {
   MainConfig(); // Read the configs here
   auto css_provider = Gtk::CssProvider::get_default();
   auto style_context = Gtk::StyleContext::create();
