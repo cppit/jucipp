@@ -614,9 +614,9 @@ std::vector<std::string> Source::ClangViewParse::get_compilation_commands() {
 void Source::ClangViewParse::update_syntax() {
   std::vector<Source::Range> ranges;
   for (auto &token : *clang_tokens) {
-    if(token.get_kind()==0) // PunctuationToken
-      ranges.emplace_back(token.offsets, (int) token.get_cursor().get_kind());
-    else if(token.get_kind()==1) // KeywordToken
+    //if(token.get_kind()==0) // PunctuationToken
+      //ranges.emplace_back(token.offsets, (int) token.get_cursor().get_kind());
+    if(token.get_kind()==1) // KeywordToken
       ranges.emplace_back(token.offsets, 702);
     else if(token.get_kind()==2) // IdentifierToken
       ranges.emplace_back(token.offsets, (int) token.get_cursor().get_kind());
@@ -637,7 +637,7 @@ void Source::ClangViewParse::update_syntax() {
     try {
       last_syntax_tags.emplace(Singleton::Config::source()->clang_types.at(type));
     } catch (std::exception) {
-      //cout << range.kind << ": " << range.offsets.first.line << ", " << range.offsets.first.index << endl;
+      //cout << range.kind << ": " << range.offsets.first.line << ", " << range.offsets.first.index << endl; //TODO: remove
       continue;
     }
     
