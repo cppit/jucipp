@@ -69,6 +69,8 @@ Source::View::View(const boost::filesystem::path &file_path): file_path(file_pat
   
   property_highlight_current_line() = Singleton::Config::source()->highlight_current_line;
   property_show_line_numbers() = Singleton::Config::source()->show_line_numbers;
+  if(Singleton::Config::source()->font.size()>0)
+    override_font(Pango::FontDescription(Singleton::Config::source()->font));
 }
 
 void Source::View::search_occurrences_updated(GtkWidget* widget, GParamSpec* property, gpointer data) {

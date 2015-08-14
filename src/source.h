@@ -27,6 +27,7 @@ namespace Source {
     bool highlight_current_line;
     bool show_line_numbers;
     std::unordered_map<std::string, std::string> clang_types;
+    std::string font;
   };
 
   class Range {

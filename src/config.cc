@@ -16,6 +16,10 @@ MainConfig::MainConfig() {
   Singleton::Config::window()->theme_variant=cfg.get<std::string>("visual.gtk_theme_variant");
   
   boost::filesystem::create_directories(boost::filesystem::path(Singleton::style_dir()));
+  boost::filesystem::path juci_style_path=Singleton::style_dir();
+  juci_style_path+="juci.xml";
+  if(!boost::filesystem::exists(juci_style_path))
+    juci::filesystem::write(juci_style_path, juci_style);
   Singleton::Config::source()->style=cfg.get<std::string>("visual.gtk_sourceview_style");
   
   Singleton::Config::terminal()->make_command=cfg.get<std::string>("project.make_command");
@@ -46,9 +50,10 @@ void MainConfig::GenerateSource() {
   source_cfg->highlight_current_line = source_json.get_value<bool>("highlight_current_line");
   source_cfg->show_line_numbers = source_json.get_value<bool>("show_line_numbers");
   
-  
   for (auto &i : source_json.get_child("clang_types"))
     source_cfg->clang_types[i.first] = i.second.get_value<std::string>();
+    
+  source_cfg->font=source_json.get<std::string>("font");
 }
 
 void MainConfig::GenerateDirectoryFilter() {
