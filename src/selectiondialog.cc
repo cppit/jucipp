@@ -91,8 +91,7 @@ void SelectionDialogBase::update_tooltips() {
           tooltips=std::unique_ptr<Tooltips>(new Tooltips());
           auto get_tooltip_buffer=[this, tooltip_text]() {
             auto tooltip_buffer=Gtk::TextBuffer::create(text_view.get_buffer()->get_tag_table());
-            //TODO: Insert newlines to tooltip_text (use 80 chars, then newline?)
-            tooltip_buffer->insert_at_cursor(tooltip_text);
+            tooltip_buffer->insert_with_tag(tooltip_buffer->get_insert()->get_iter(), tooltip_text, "def:note");
             return tooltip_buffer;
           };
           tooltips->emplace_back(get_tooltip_buffer, text_view, text_view.get_buffer()->create_mark(start_mark->get_iter()), text_view.get_buffer()->create_mark(text_view.get_buffer()->get_insert()->get_iter()));

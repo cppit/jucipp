@@ -60,12 +60,14 @@ Source::View::View(const boost::filesystem::path &file_path): file_path(file_pat
   auto style_scheme_manager=Gsv::StyleSchemeManager::get_default();
   style_scheme_manager->prepend_search_path(Singleton::style_dir());
 
-  auto scheme = style_scheme_manager->get_scheme(Singleton::Config::source()->style);
+  if(Singleton::Config::source()->style.size()>0) {
+    auto scheme = style_scheme_manager->get_scheme(Singleton::Config::source()->style);
 
-  if(scheme)
-    get_source_buffer()->set_style_scheme(scheme);
-  else
-    Singleton::terminal()->print("Error: Could not find gtksourceview style: "+Singleton::Config::source()->style+'\n');
+    if(scheme)
+      get_source_buffer()->set_style_scheme(scheme);
+    else
+      Singleton::terminal()->print("Error: Could not find gtksourceview style: "+Singleton::Config::source()->style+'\n');
+  }
   
   property_highlight_current_line() = Singleton::Config::source()->highlight_current_line;
   property_show_line_numbers() = Singleton::Config::source()->show_line_numbers;
@@ -414,8 +416,8 @@ Source::View(file_path), project_path(project_path) {
   
   //Create tags for diagnostic warnings and errors:
   auto style=scheme->get_style("def:warning");
-  auto diagnostic_tag=get_source_buffer()->create_tag("diagnostic_warning");
-  auto diagnostic_tag_underline=Gtk::TextTag::create("diagnostic_warning_underline");
+  auto diagnostic_tag=get_source_buffer()->create_tag("def:warning");
+  auto diagnostic_tag_underline=Gtk::TextTag::create("def:warning_underline");
   if(style && (style->property_foreground_set() || style->property_background_set())) {
     Glib::ustring warning_property;
     if(style->property_foreground_set()) {
@@ -434,8 +436,8 @@ Source::View(file_path), project_path(project_path) {
     }
   }
   style=scheme->get_style("def:error");
-  diagnostic_tag=get_source_buffer()->create_tag("diagnostic_error");
-  diagnostic_tag_underline=Gtk::TextTag::create("diagnostic_error_underline");
+  diagnostic_tag=get_source_buffer()->create_tag("def:error");
+  diagnostic_tag_underline=Gtk::TextTag::create("def:error_underline");
   if(style && (style->property_foreground_set() || style->property_background_set())) {
     Glib::ustring error_property;
     if(style->property_foreground_set()) {
@@ -455,11 +457,15 @@ Source::View(file_path), project_path(project_path) {
   }
   //TODO: clear tag_class and param_spec?
   
-  //Add tooltip background
+  //Add tooltip foreground and background
   style = scheme->get_style("def:note");
-  auto tag=get_source_buffer()->create_tag("tooltip_background");
+  auto note_tag=get_source_buffer()->create_tag("def:note_background");
   if(style->property_background_set()) {
-    tag->property_background()=style->property_background();
+    note_tag->property_background()=style->property_background();
+  }
+  note_tag=get_source_buffer()->create_tag("def:note");
+  if(style->property_foreground_set()) {
+    note_tag->property_foreground()=style->property_foreground();
   }
   
   parsing_in_progress=Singleton::terminal()->print_in_progress("Parsing "+file_path.string());
@@ -639,8 +645,8 @@ void Source::ClangViewParse::update_syntax() {
 
 void Source::ClangViewParse::update_diagnostics() {
   diagnostic_tooltips.clear();
-  get_buffer()->remove_tag_by_name("diagnostic_warning_underline", get_buffer()->begin(), get_buffer()->end());
-  get_buffer()->remove_tag_by_name("diagnostic_error_underline", get_buffer()->begin(), get_buffer()->end());
+  get_buffer()->remove_tag_by_name("def:warning_underline", get_buffer()->begin(), get_buffer()->end());
+  get_buffer()->remove_tag_by_name("def:error_underline", get_buffer()->begin(), get_buffer()->end());
   auto diagnostics=clang_tu->get_diagnostics();
   for(auto &diagnostic: diagnostics) {
     if(diagnostic.path==file_path.string()) {
@@ -648,16 +654,16 @@ void Source::ClangViewParse::update_diagnostics() {
       auto end=get_buffer()->get_iter_at_line_index(diagnostic.offsets.second.line-1, diagnostic.offsets.second.index-1);
       std::string diagnostic_tag_name;
       if(diagnostic.severity<=CXDiagnostic_Warning)
-        diagnostic_tag_name="diagnostic_warning";
+        diagnostic_tag_name="def:warning";
       else
-        diagnostic_tag_name="diagnostic_error";
+        diagnostic_tag_name="def:error";
       
       auto spelling=diagnostic.spelling;
       auto severity_spelling=diagnostic.severity_spelling;
       auto create_tooltip_buffer=[this, spelling, severity_spelling, diagnostic_tag_name]() {
         auto tooltip_buffer=Gtk::TextBuffer::create(get_buffer()->get_tag_table());
         tooltip_buffer->insert_with_tag(tooltip_buffer->get_insert()->get_iter(), severity_spelling, diagnostic_tag_name);
-        tooltip_buffer->insert_at_cursor(":\n"+spelling);
+        tooltip_buffer->insert_with_tag(tooltip_buffer->get_insert()->get_iter(), ":\n"+spelling, "def:note");
         //TODO: Insert newlines to clang_tu->diagnostics[c].spelling (use 80 chars, then newline?)
         return tooltip_buffer;
       };
@@ -676,10 +682,10 @@ void Source::ClangViewParse::update_types() {
       auto end=get_buffer()->get_iter_at_line_index(token.offsets.second.line-1, token.offsets.second.index-1);
       auto create_tooltip_buffer=[this, &token]() {
         auto tooltip_buffer=Gtk::TextBuffer::create(get_buffer()->get_tag_table());
-        tooltip_buffer->insert_at_cursor("Type: "+token.get_type());
+        tooltip_buffer->insert_with_tag(tooltip_buffer->get_insert()->get_iter(), "Type: "+token.get_type(), "def:note");
         auto brief_comment=token.get_brief_comments();
         if(brief_comment!="")
-          tooltip_buffer->insert_at_cursor("\n\n"+brief_comment);
+          tooltip_buffer->insert_with_tag(tooltip_buffer->get_insert()->get_iter(), "\n\n"+brief_comment, "def:note");
         return tooltip_buffer;
       };
       

@@ -54,7 +54,7 @@ void Tooltip::adjust(bool disregard_drawn) {
     tooltip_widget=std::unique_ptr<Gtk::TextView>(new Gtk::TextView(create_tooltip_buffer()));
     wrap_lines(tooltip_widget->get_buffer());
     tooltip_widget->set_editable(false);
-    auto tag=text_view.get_buffer()->get_tag_table()->lookup("tooltip_background");
+    auto tag=text_view.get_buffer()->get_tag_table()->lookup("def:note_background");
     tooltip_widget->override_background_color(tag->property_background_rgba());
     window->add(*tooltip_widget);
 

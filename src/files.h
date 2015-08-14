@@ -6,7 +6,7 @@ const std::string configjson =
 "        \"variant\": \"\" //Use \"\" for default variant, and \"dark\" for dark theme variant\n"
 "    },\n"
 "    \"source\": {\n"
-"        \"style\": \"juci\", //Choices on default install: classic, cobalt, kate, oblivion, solarized-dark, solarized-light, tango\n"
+"        \"style\": \"juci\", //Use \"\" for default style. Styles from normal gtksourceview install: classic, cobalt, kate, oblivion, solarized-dark, solarized-light, tango\n"
 "        \"font\": \"Monospace\", //Use \"\" for default font, and for instance \"Monospace 12\" to also set size.\n"
 "        \"clang_types\": {\n"
 "            \"43\": \"def:type\",\n"
@@ -127,6 +127,7 @@ const std::string juci_style =
 "\n"
 "  <!-- Palette -->\n"
 "  <color name=\"white\"      value=\"#FFFFFF\"/>\n"
+"  <color name=\"black\"      value=\"#000000\"/>\n"
 "  <color name=\"red\"      value=\"#FF0000\"/>\n"
 "  <color name=\"blue\"      value=\"#0000FF\"/>\n"
 "  <color name=\"yellow\"      value=\"#FFFF00\"/>\n"
@@ -164,7 +165,7 @@ const std::string juci_style =
 "  <style name=\"def:preprocessor\"            foreground=\"#990099\"/>\n"
 "  <style name=\"def:error\"                   foreground=\"red\"/>\n"
 "  <style name=\"def:warning\"                 foreground=\"orange\"/>\n"
-"  <style name=\"def:note\"                    background=\"yellow\"/>\n"
+"  <style name=\"def:note\"                    foreground=\"black\" background=\"yellow\"/>\n"
 "\n"
 "</style-scheme>\n";
 
