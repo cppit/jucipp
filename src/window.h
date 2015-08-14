@@ -16,7 +16,7 @@ public:
   Notebook notebook;
   class Config {
   public:
-    std::string theme;
+    std::string theme_name;
     std::string theme_variant;
     boost::property_tree::ptree keybindings;
   };

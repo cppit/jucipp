@@ -1,12 +1,12 @@
 #include <string>
 const std::string configjson =
 "{\n"
-"    \"visual\": {\n"
-"        \"gtk_theme\": \"Adwaita\", //Use \"\" for default theme, At least these two exist on all systems: Adwaita, Raleigh\n"
-"        \"gtk_theme_variant\": \"\",  //Use \"\" for default variant, and \"dark\" for dark theme variant\n"
-"        \"gtk_sourceview_style\": \"juci\" //Choices on default install: classic, cobalt, kate, oblivion, solarized-dark, solarized-light, tango\n"
+"    \"gtk_theme\": {\n"
+"        \"name\": \"Adwaita\", //Use \"\" for default theme, At least these two exist on all systems: Adwaita, Raleigh\n"
+"        \"variant\": \"\" //Use \"\" for default variant, and \"dark\" for dark theme variant\n"
 "    },\n"
 "    \"source\": {\n"
+"        \"style\": \"juci\", //Choices on default install: classic, cobalt, kate, oblivion, solarized-dark, solarized-light, tango\n"
 "        \"font\": \"Monospace\", //Use \"\" for default font, and for instance \"Monospace 12\" to also set size.\n"
 "        \"clang_types\": {\n"
 "            \"43\": \"def:type\",\n"

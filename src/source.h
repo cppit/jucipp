@@ -21,13 +21,13 @@ namespace Source {
   class Config {
   public:
     std::string style;
+    std::string font;
     unsigned tab_size;
     char tab_char;
     std::string tab;
     bool highlight_current_line;
     bool show_line_numbers;
     std::unordered_map<std::string, std::string> clang_types;
-    std::string font;
   };
 
   class Range {

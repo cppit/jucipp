@@ -12,16 +12,9 @@ MainConfig::MainConfig() {
   GenerateSource();
   GenerateDirectoryFilter();
   
-  Singleton::Config::window()->theme=cfg.get<std::string>("visual.gtk_theme");
-  Singleton::Config::window()->theme_variant=cfg.get<std::string>("visual.gtk_theme_variant");
-  
-  boost::filesystem::create_directories(boost::filesystem::path(Singleton::style_dir()));
-  boost::filesystem::path juci_style_path=Singleton::style_dir();
-  juci_style_path+="juci.xml";
-  if(!boost::filesystem::exists(juci_style_path))
-    juci::filesystem::write(juci_style_path, juci_style);
-  Singleton::Config::source()->style=cfg.get<std::string>("visual.gtk_sourceview_style");
-  
+  Singleton::Config::window()->theme_name=cfg.get<std::string>("gtk_theme.name");
+  Singleton::Config::window()->theme_variant=cfg.get<std::string>("gtk_theme.variant");
+    
   Singleton::Config::terminal()->make_command=cfg.get<std::string>("project.make_command");
 }
 
@@ -36,6 +29,12 @@ void MainConfig::find_or_create_config_files() {
       if (file == "menu.xml") juci::filesystem::write(path, menuxml);
     }
   }
+  
+  boost::filesystem::create_directories(boost::filesystem::path(Singleton::style_dir()));
+  boost::filesystem::path juci_style_path=Singleton::style_dir();
+  juci_style_path+="juci.xml";
+  if(!boost::filesystem::exists(juci_style_path))
+    juci::filesystem::write(juci_style_path, juci_style);
 }
 
 void MainConfig::GenerateSource() {
@@ -52,7 +51,8 @@ void MainConfig::GenerateSource() {
   
   for (auto &i : source_json.get_child("clang_types"))
     source_cfg->clang_types[i.first] = i.second.get_value<std::string>();
-    
+  
+  Singleton::Config::source()->style=source_json.get<std::string>("style");
   source_cfg->font=source_json.get<std::string>("font");
 }
 
