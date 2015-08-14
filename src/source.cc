@@ -394,8 +394,10 @@ clang::Index Source::ClangViewParse::clang_index(0, 0);
 Source::ClangViewParse::ClangViewParse(const boost::filesystem::path &file_path, const boost::filesystem::path& project_path):
 Source::View(file_path), project_path(project_path) {
   auto scheme = get_source_buffer()->get_style_scheme();
+  auto tag_table=get_buffer()->get_tag_table();
   for (auto &item : Singleton::Config::source()->clang_types) {
-    auto style = scheme->get_style(item.second);
+    if(!tag_table->lookup(item.second)) {
+      auto style = scheme->get_style(item.second);
       auto tag = get_source_buffer()->create_tag(item.second);
       if (style) {
         DEBUG("Style " + item.second + " found in style " + scheme->get_name());
@@ -405,12 +407,13 @@ Source::View(file_path), project_path(project_path) {
           tag->property_background() = style->property_background();
         if (style->property_strikethrough_set())
           tag->property_strikethrough() = style->property_strikethrough();
-       //   //    if (style->property_bold_set()) tag->property_weight() = style->property_bold();
-       //   //    if (style->property_italic_set()) tag->property_italic() = style->property_italic();
-       //   //    if (style->property_line_background_set()) tag->property_line_background() = style->property_line_background();
-       //   // if (style->property_underline_set()) tag->property_underline() = style->property_underline();
-     } else
-       DEBUG("Style " + item.second + " not found in " + scheme->get_name());
+        //   //    if (style->property_bold_set()) tag->property_weight() = style->property_bold();
+        //   //    if (style->property_italic_set()) tag->property_italic() = style->property_italic();
+        //   //    if (style->property_line_background_set()) tag->property_line_background() = style->property_line_background();
+        //   // if (style->property_underline_set()) tag->property_underline() = style->property_underline();
+      } else
+        DEBUG("Style " + item.second + " not found in " + scheme->get_name());
+    }
   }
   INFO("Tagtable filled");  
   
@@ -634,7 +637,7 @@ void Source::ClangViewParse::update_syntax() {
     try {
       last_syntax_tags.emplace(Singleton::Config::source()->clang_types.at(type));
     } catch (std::exception) {
-      cout << range.kind << ": " << range.offsets.first.line << ", " << range.offsets.first.index << endl;
+      //cout << range.kind << ": " << range.offsets.first.line << ", " << range.offsets.first.index << endl;
       continue;
     }
     
