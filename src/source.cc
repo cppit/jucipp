@@ -619,7 +619,7 @@ void Source::ClangViewParse::update_syntax() {
     if(token.get_kind()==1) // KeywordToken
       ranges.emplace_back(token.offsets, 702);
     else if(token.get_kind()==2) // IdentifierToken
-      ranges.emplace_back(token.offsets, (int) token.get_cursor().get_kind());
+      ranges.emplace_back(token.offsets, (int) token.get_cursor().get_kind()); //TODO: Need to get type of referenced token if any
     else if(token.get_kind()==3) // LiteralToken
       ranges.emplace_back(token.offsets, 109);
     else if(token.get_kind()==4) // CommentToken
