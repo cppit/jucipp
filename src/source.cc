@@ -562,7 +562,7 @@ void Source::ClangViewParse::init_syntax_highlighting(const std::map<std::string
 
 std::map<std::string, std::string> Source::ClangViewParse::get_buffer_map() const {
   std::map<std::string, std::string> buffer_map;
-  buffer_map[file_path.string()]=get_source_buffer()->get_text().raw();
+  buffer_map[file_path.string()]=get_source_buffer()->get_text();
   return buffer_map;
 }
 
