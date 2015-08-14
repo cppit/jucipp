@@ -634,6 +634,7 @@ void Source::ClangViewParse::update_syntax() {
     try {
       last_syntax_tags.emplace(Singleton::Config::source()->clang_types.at(type));
     } catch (std::exception) {
+      cout << range.kind << ": " << range.offsets.first.line << ", " << range.offsets.first.index << endl;
       continue;
     }
     
