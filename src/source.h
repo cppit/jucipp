@@ -31,10 +31,9 @@ namespace Source {
 
   class Range {
   public:
-    Range(unsigned start_offset, unsigned end_offset, int kind):
-      start_offset(start_offset), end_offset(end_offset), kind(kind) {}
-    unsigned start_offset;
-    unsigned end_offset;
+    Range(std::pair<clang::Offset, clang::Offset> offsets, int kind):
+      offsets(offsets), kind(kind) {}
+    std::pair<clang::Offset, clang::Offset> offsets;
     int kind;
   };
 
@@ -63,7 +62,7 @@ namespace Source {
         
     boost::filesystem::path file_path;
     
-    std::function<std::pair<std::string, unsigned>()> get_declaration_location;
+    std::function<std::pair<std::string, clang::Offset>()> get_declaration_location;
     std::function<void()> goto_method;
     std::function<std::string()> get_token;
     std::function<std::string()> get_token_name;
@@ -112,10 +111,7 @@ namespace Source {
   private:
     std::map<std::string, std::string> get_buffer_map() const;
     // inits the syntax highligthing on file open
-    void init_syntax_highlighting(const std::map<std::string, std::string>
-                                &buffers,
-                                int start_offset,
-                                int end_offset);
+    void init_syntax_highlighting(const std::map<std::string, std::string> &buffers);
     int reparse(const std::map<std::string, std::string> &buffers);
     void update_syntax();
     std::set<std::string> last_syntax_tags;

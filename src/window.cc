@@ -194,7 +194,7 @@ void Window::create_menu() {
         auto location=notebook.get_current_view()->get_declaration_location();
         if(location.first.size()>0) {
           notebook.open(location.first);
-          notebook.get_current_view()->get_buffer()->place_cursor(notebook.get_current_view()->get_buffer()->get_iter_at_offset(location.second));
+          notebook.get_current_view()->get_buffer()->place_cursor(notebook.get_current_view()->get_buffer()->get_iter_at_line_index(location.second.line-1, location.second.index-1));
           while(gtk_events_pending())
             gtk_main_iteration();
           notebook.get_current_view()->scroll_to(notebook.get_current_view()->get_buffer()->get_insert(), 0.0, 1.0, 0.5);
