@@ -149,7 +149,7 @@ void Source::View::paste() {
     auto line=get_line_before_insert();
     std::smatch sm;
     std::string prefix_tabs;
-    if(std::regex_match(line, sm, spaces_regex) && sm[2].str().size()==0) {
+    if(!get_buffer()->get_has_selection() && std::regex_match(line, sm, spaces_regex) && sm[2].str().size()==0) {
       prefix_tabs=sm[1].str();
 
       Glib::ustring::size_type start_line=0;
