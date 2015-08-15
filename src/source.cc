@@ -420,7 +420,7 @@ Source::View(file_path), project_path(project_path) {
   //Create tags for diagnostic warnings and errors:
   auto style=scheme->get_style("def:warning");
   auto diagnostic_tag=get_source_buffer()->create_tag("def:warning");
-  auto diagnostic_tag_underline=Gtk::TextTag::create("def:warning_underline");
+  auto diagnostic_tag_underline=get_source_buffer()->create_tag("def:warning_underline");
   if(style && (style->property_foreground_set() || style->property_background_set())) {
     Glib::ustring warning_property;
     if(style->property_foreground_set()) {
@@ -430,7 +430,6 @@ Source::View(file_path), project_path(project_path) {
     else if(style->property_background_set())
       warning_property=style->property_background().get_value();
 
-    get_buffer()->get_tag_table()->add(diagnostic_tag_underline);
     diagnostic_tag_underline->property_underline()=Pango::Underline::UNDERLINE_ERROR;
     auto tag_class=G_OBJECT_GET_CLASS(diagnostic_tag_underline->gobj()); //For older GTK+ 3 versions:
     auto param_spec=g_object_class_find_property(tag_class, "underline-rgba");
@@ -440,7 +439,7 @@ Source::View(file_path), project_path(project_path) {
   }
   style=scheme->get_style("def:error");
   diagnostic_tag=get_source_buffer()->create_tag("def:error");
-  diagnostic_tag_underline=Gtk::TextTag::create("def:error_underline");
+  diagnostic_tag_underline=get_source_buffer()->create_tag("def:error_underline");
   if(style && (style->property_foreground_set() || style->property_background_set())) {
     Glib::ustring error_property;
     if(style->property_foreground_set()) {
@@ -450,7 +449,6 @@ Source::View(file_path), project_path(project_path) {
     else if(style->property_background_set())
       error_property=style->property_background().get_value();
     
-    get_buffer()->get_tag_table()->add(diagnostic_tag_underline);
     diagnostic_tag_underline->property_underline()=Pango::Underline::UNDERLINE_ERROR;
     auto tag_class=G_OBJECT_GET_CLASS(diagnostic_tag_underline->gobj()); //For older GTK+ 3 versions:
     auto param_spec=g_object_class_find_property(tag_class, "underline-rgba");
