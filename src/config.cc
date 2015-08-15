@@ -32,9 +32,13 @@ void MainConfig::find_or_create_config_files() {
   
   boost::filesystem::create_directories(boost::filesystem::path(Singleton::style_dir()));
   boost::filesystem::path juci_style_path=Singleton::style_dir();
-  juci_style_path+="juci.xml";
+  juci_style_path+="juci-light.xml";
   if(!boost::filesystem::exists(juci_style_path))
-    juci::filesystem::write(juci_style_path, juci_style);
+    juci::filesystem::write(juci_style_path, juci_light_style);
+  juci_style_path=Singleton::style_dir();
+  juci_style_path+="juci-dark.xml";
+  if(!boost::filesystem::exists(juci_style_path))
+    juci::filesystem::write(juci_style_path, juci_dark_style);
 }
 
 void MainConfig::GenerateSource() {
