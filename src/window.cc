@@ -235,7 +235,16 @@ void Window::create_menu() {
           if(exit_code==EXIT_SUCCESS) {
             compile_success();
             //TODO: Windows...
-            Singleton::terminal()->async_execute(executable_path.string(), project_path, [this, executable_path](int exit_code){
+            auto executable_path_spaces_fixed=executable_path.string();
+            char last_char=0;
+            for(size_t c=0;c<executable_path_spaces_fixed.size();c++) {
+              if(last_char!='\\' && executable_path_spaces_fixed[c]==' ') {
+                executable_path_spaces_fixed.insert(c, "\\");
+                c++;
+              }
+              last_char=executable_path_spaces_fixed[c];
+            }
+            Singleton::terminal()->async_execute(executable_path_spaces_fixed, project_path, [this, executable_path](int exit_code){
               Singleton::terminal()->async_print(executable_path.string()+" returned: "+boost::lexical_cast<std::string>(exit_code)+'\n');
             });
           }
@@ -389,10 +398,13 @@ void Window::new_cpp_project_dialog() {
   dialog.add_button("Select", Gtk::RESPONSE_OK);
 
   int result = dialog.run();
-
   if(result==Gtk::RESPONSE_OK) {
     boost::filesystem::path project_path=dialog.get_filename();
     auto project_name=project_path.filename().string();
+    for(size_t c=0;c<project_name.size();c++) {
+      if(project_name[c]==' ')
+        project_name[c]='_';
+    }
     auto cmakelists_path=project_path;
     cmakelists_path+="/CMakeLists.txt";
     auto cpp_main_path=project_path;
@@ -405,7 +417,7 @@ void Window::new_cpp_project_dialog() {
       Singleton::terminal()->print("Error: "+cpp_main_path.string()+" already exists.\n");
       return;
     }
-    std::string cmakelists="cmake_minimum_required(VERSION 2.8)\n\nproject("+project_name+")\n\nset(CMAKE_CXX_FLAGS \"${CMAKE_CXX_FLAGS} -std=c++1y\")\n\nadd_executable("+project_name+" main.cpp)\n";
+    std::string cmakelists="cmake_minimum_required(VERSION 2.8)\n\nproject("+project_name+")\n\nset(CMAKE_CXX_FLAGS \"${CMAKE_CXX_FLAGS} -std=c++1y -Wall\")\n\nadd_executable("+project_name+" main.cpp)\n";
     std::string cpp_main="#include <iostream>\n\nusing namespace std;\n\nint main() {\n  cout << \"Hello World!\" << endl;\n\n  return 0;\n}\n";
     if(juci::filesystem::write(cmakelists_path, cmakelists) && juci::filesystem::write(cpp_main_path, cpp_main)) {
       directories.open_folder(project_path);
