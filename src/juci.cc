@@ -49,15 +49,23 @@ void app::on_activate() {
       first_directory=false;
     }
     else {
-      std::thread another_juci_app([this, directory](){
-        Singleton::terminal()->async_print("Executing: juci "+directory);
-        Singleton::terminal()->execute("juci "+directory, "");
+      std::string files_in_directory;
+      for(size_t c=0;c<files.size();c++) {
+        if(files[c].substr(0, directory.size())==directory) {
+          files_in_directory+=" "+files[c];
+          files.erase(files.begin()+c);
+          c--;
+        }
+      }
+      std::thread another_juci_app([this, directory, files_in_directory](){
+        Singleton::terminal()->async_print("Executing: juci "+directory+files_in_directory);
+        Singleton::terminal()->execute("juci "+directory+files_in_directory, ""); //TODO: do not open pipes here, doing this after Juci compiles on Windows
       });
       another_juci_app.detach();
     }
   }
-  for(auto &f: files)
-    window->notebook.open(f);
+  for(auto &file: files)
+    window->notebook.open(file);
 }
 
 app::app() : Gtk::Application("no.sout.juci", Gio::APPLICATION_NON_UNIQUE | Gio::APPLICATION_HANDLES_COMMAND_LINE) {
