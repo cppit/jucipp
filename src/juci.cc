@@ -27,8 +27,8 @@ int app::on_command_line(const Glib::RefPtr<Gio::ApplicationCommandLine> &cmd) {
         p=boost::filesystem::canonical(p);
         if(boost::filesystem::is_regular_file(p))
           files.emplace_back(p.string());
-        else if(directory=="" && boost::filesystem::is_directory(p))
-          directory=p.string();
+        else if(boost::filesystem::is_directory(p))
+          directories.emplace_back(p.string());
       }
       else
         std::cerr << "Path " << p << " does not exist." << std::endl;
@@ -42,8 +42,19 @@ void app::on_activate() {
   window = std::unique_ptr<Window>(new Window());
   add_window(*window);
   window->show();
-  if(directory!="") {
-    window->directories.open_folder(directory);
+  bool first_directory=true;
+  for(auto &directory: directories) {
+    if(first_directory) {
+      window->directories.open_folder(directory);
+      first_directory=false;
+    }
+    else {
+      std::thread another_juci_app([this, directory](){
+        Singleton::terminal()->async_print("Executing: juci "+directory);
+        Singleton::terminal()->execute("juci "+directory, "");
+      });
+      another_juci_app.detach();
+    }
   }
   for(auto &f: files)
     window->notebook.open(f);
