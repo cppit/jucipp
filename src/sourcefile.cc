@@ -20,8 +20,15 @@ bool juci::filesystem::read(const std::string &path, Glib::RefPtr<Gtk::TextBuffe
   if(input) {
     std::vector<char> buffer(buffer_size);
     size_t read_length;
-    while((read_length=input.read(&buffer[0], buffer_size).gcount())>0)
-      text_buffer->insert_at_cursor(&buffer[0], &buffer[read_length]);
+    while((read_length=input.read(&buffer[0], buffer_size).gcount())>0) {
+      auto ustr=Glib::ustring(std::string(&buffer[0], read_length));
+      if(ustr.validate())
+        text_buffer->insert_at_cursor(ustr);
+      else {
+        input.close();
+        return false;
+      }
+    }
     input.close();
     return true;
   }
