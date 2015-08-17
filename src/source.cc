@@ -26,9 +26,10 @@ Glib::RefPtr<Gsv::Language> Source::guess_language(const boost::filesystem::path
   auto language=language_manager->guess_language(file_path.string(), content_type);
   if(!language) {
     auto filename=file_path.filename().string();
-    auto extension=file_path.extension();
     if(filename=="CMakeLists.txt")
       language=language_manager->get_language("cmake");
+    else if(filename=="Makefile")
+      language=language_manager->get_language("makefile");
   }
   return language;
 }
