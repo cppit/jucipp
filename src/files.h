@@ -198,7 +198,7 @@ const std::string juci_dark_style =
 "  <color name=\"green\"                       value=\"#779955\"/>\n"
 "  <color name=\"blue\"                        value=\"#8888FF\"/>\n"
 "  <color name=\"dark-blue\"                   value=\"#6666CC\"/>\n"
-"  <color name=\"yellow\"                      value=\"#444433\"/>\n"
+"  <color name=\"yellow\"                      value=\"#555555\"/>\n"
 "  <color name=\"orange\"                      value=\"#FF8800\"/>\n"
 "  <color name=\"purple\"                      value=\"#DD88DD\"/>\n"
 "\n"
