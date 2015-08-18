@@ -11,7 +11,7 @@ class app : public Gtk::Application {
 
  private:
   std::unique_ptr<Window> window;
-  std::string directory;
+  std::vector<std::string> directories;
   std::vector<std::string> files;
 };
 

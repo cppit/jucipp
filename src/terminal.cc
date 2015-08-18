@@ -140,7 +140,7 @@ int Terminal::execute(const std::string &command, const boost::filesystem::path 
   std::string cd_path_and_command;
   if(path!="") {
     //TODO: Windows...
-    cd_path_and_command="cd "+path.string()+" && "+command;
+    cd_path_and_command="cd \""+path.string()+"\" && "+command;
   }
   else
     cd_path_and_command=command;
@@ -193,7 +193,7 @@ void Terminal::async_execute(const std::string &command, const boost::filesystem
     if(path!="") {
     
       //TODO: Windows...
-      cd_path_and_command="cd "+path.string()+" && "+command;
+      cd_path_and_command="cd \""+path.string()+"\" && "+command;
     }
     else
       cd_path_and_command=command;
