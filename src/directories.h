@@ -22,9 +22,9 @@ public:
       add(name);
       add(path);
     }
-    Gtk::TreeModelColumn<Glib::ustring> id;
-    Gtk::TreeModelColumn<Glib::ustring> name;
-    Gtk::TreeModelColumn<Glib::ustring> path;
+    Gtk::TreeModelColumn<std::string> id;
+    Gtk::TreeModelColumn<std::string> name;
+    Gtk::TreeModelColumn<std::string> path;
   };
 
   Directories();
@@ -36,7 +36,7 @@ public:
   boost::filesystem::path current_path;
   
 private:
-  void add_paths(const boost::filesystem::path& dir_path, const Gtk::TreeModel::Row &row, unsigned depth);
+  void add_path(const boost::filesystem::path& dir_path, const Gtk::TreeModel::Row &row);
   bool ignored(std::string path);
   Gtk::TreeView tree_view;
   Glib::RefPtr<Gtk::TreeStore> tree_store;
