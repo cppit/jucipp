@@ -74,14 +74,19 @@ Directories::Directories() {
       std::this_thread::sleep_for(std::chrono::milliseconds(1000));
       update_mutex.lock();
       if(update_paths.size()==0) {
-        for(auto &last_write_time: last_write_times) {
+        for(auto it=last_write_times.begin();it!=last_write_times.end();) {
           try {
-            if(last_write_time.second.second<boost::filesystem::last_write_time(last_write_time.first)) {
-              update_paths.emplace_back(last_write_time.first);
+            if(boost::filesystem::exists(it->first)) { //Added for older boost versions (no exception thrown)
+              if(it->second.second<boost::filesystem::last_write_time(it->first)) {
+                update_paths.emplace_back(it->first);
+              }
+              it++;
             }
+            else
+              it=last_write_times.erase(it);
           }
           catch(const std::exception &e) {
-            last_write_times.erase(last_write_time.first);
+            it=last_write_times.erase(it);
           }
         }
         if(update_paths.size()>0)
@@ -228,25 +233,12 @@ void Directories::add_path(const boost::filesystem::path& dir_path, const Gtk::T
     }
   }
   if(*children) {
-    auto last_it=children->begin();
-    auto it=last_it;
-    while(it!=children->end()) {
+    for(auto it=children->begin();it!=children->end();) {
       if(not_deleted.count(it->get_value(column_record.name))==0) {
-        if(it==children->begin()) {
-          tree_store->erase(it);
-          it=children->begin();
-          last_it=it;
-        }
-        else {
-          tree_store->erase(it);
-          it=last_it;
-          it++;
-        }
+        it=tree_store->erase(it);
       }
-      else {
-        last_it=it;
+      else
         it++;
-      }
     }
   }
   if(!*children) {
