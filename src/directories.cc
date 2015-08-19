@@ -26,80 +26,121 @@ Directories::Directories() {
     auto iter = tree_store->get_iter(path);
     if (iter) {
       auto path_str=iter->get_value(column_record.path);
-      if (boost::filesystem::is_directory(boost::filesystem::path(path_str))) {
-        tree_view.row_expanded(path) ? tree_view.collapse_row(path) : tree_view.expand_row(path, false);
-      } else {
-        if(on_row_activated)
-          on_row_activated(path_str);
+      if(path_str!="") {
+        if (boost::filesystem::is_directory(boost::filesystem::path(path_str))) {
+          tree_view.row_expanded(path) ? tree_view.collapse_row(path) : tree_view.expand_row(path, false);
+        } else {
+          if(on_row_activated)
+            on_row_activated(path_str);
+        }
       }
     }
   });
   
   tree_view.signal_test_expand_row().connect([this](const Gtk::TreeModel::iterator& iter, const Gtk::TreeModel::Path& path){
     if(iter->children().begin()->get_value(column_record.path)=="") {
+      update_mutex.lock();
       add_path(iter->get_value(column_record.path), *iter);
+      update_mutex.unlock();
     }
     return false;
   });
   tree_view.signal_row_collapsed().connect([this](const Gtk::TreeModel::iterator& iter, const Gtk::TreeModel::Path& path){
+    update_mutex.lock();
+    last_write_times.erase(iter->get_value(column_record.path));
+    update_mutex.unlock();
     auto children=iter->children();
     if(children) {
       while(children) {
         tree_store->erase(children.begin());
       }
-      tree_store->append(iter->children());
+      auto child=tree_store->append(iter->children());
+      child->set_value(column_record.name, std::string("(empty)"));
     }
   });
+  
+  update_dispatcher.connect([this](){
+    update_mutex.lock();
+    for(auto &path: update_paths) {
+      if(last_write_times.count(path)>0)
+        add_path(path, last_write_times.at(path).first);
+    }
+    update_paths.clear();
+    update_mutex.unlock();
+  });
+  
+  std::thread update_thread([this](){
+    while(true) {
+      std::this_thread::sleep_for(std::chrono::milliseconds(1000));
+      update_mutex.lock();
+      if(update_paths.size()==0) {
+        for(auto &last_write_time: last_write_times) {
+          try {
+            if(last_write_time.second.second<boost::filesystem::last_write_time(last_write_time.first)) {
+              update_paths.emplace_back(last_write_time.first);
+            }
+          }
+          catch(const std::exception &e) {
+            last_write_times.erase(last_write_time.first);
+          }
+        }
+        if(update_paths.size()>0)
+          update_dispatcher();
+      }
+      update_mutex.unlock();
+    }
+  });
+  update_thread.detach();
 }
 
-void Directories::open_folder(const boost::filesystem::path& dir_path) {
-  if(dir_path!="")
-    tree_store->clear();
+void Directories::open(const boost::filesystem::path& dir_path) {
+  if(dir_path=="")
+    return;
   
-  auto new_path=dir_path;
   INFO("Open folder");
-  if(dir_path=="") {
-    if(current_path=="")
-      return;
-    new_path=current_path;
-  }
   
-  std::vector<Gtk::TreeModel::Path> expanded_paths;
-  if(current_path==new_path) {
-    tree_view.map_expanded_rows([&expanded_paths](Gtk::TreeView* tree_view, const Gtk::TreeModel::Path& path){
-      expanded_paths.emplace_back(path);
-    });
-  }
-  
-  if(dir_path!="")
-    cmake=std::unique_ptr<CMake>(new CMake(new_path));
+  tree_store->clear();
+  update_mutex.lock();
+  last_write_times.clear();
+  update_paths.clear();
+  update_mutex.unlock();
+    
+  cmake=std::unique_ptr<CMake>(new CMake(dir_path));
   auto project=cmake->get_functions_parameters("project");
   if(project.size()>0 && project[0].second.size()>0)
     tree_view.get_column(0)->set_title(project[0].second[0]);
   else
     tree_view.get_column(0)->set_title("");
-  add_path(new_path, Gtk::TreeModel::Row());
-
-  for(auto &path: expanded_paths)
-    tree_view.expand_row(path, false);
+  update_mutex.lock();
+  add_path(dir_path, Gtk::TreeModel::Row());
+  update_mutex.unlock();
     
-  current_path=new_path;
+  current_path=dir_path;
   
   DEBUG("Folder opened");
 }
 
-void Directories::select_path(const boost::filesystem::path &path) {
+void Directories::update() {
+  update_mutex.lock();
+  for(auto &last_write_time: last_write_times) {
+    add_path(last_write_time.first, last_write_time.second.first);
+  }
+  update_mutex.unlock();
+}
+
+void Directories::select(const boost::filesystem::path &path) {
   if(current_path=="")
     return;
     
   if(path.string().substr(0, current_path.string().size())!=current_path.string())
     return;
   
-  if(boost::filesystem::is_directory(path))
-    return;
-    
   std::list<boost::filesystem::path> paths;
-  auto parent_path=path.parent_path();
+  boost::filesystem::path parent_path;
+  if(boost::filesystem::is_directory(path))
+    parent_path=path;
+  else
+    parent_path=path.parent_path();
   paths.emplace_front(parent_path);
   while(parent_path!=current_path) {
     parent_path=parent_path.parent_path();
@@ -109,7 +150,9 @@ void Directories::select_path(const boost::filesystem::path &path) {
   for(auto &a_path: paths) {
     tree_store->foreach_iter([this, &a_path](const Gtk::TreeModel::iterator& iter){
       if(iter->get_value(column_record.path)==a_path.string()) {
+        update_mutex.lock();
         add_path(a_path, *iter);
+        update_mutex.unlock();
         return true;
       }
       return false;
@@ -121,7 +164,6 @@ void Directories::select_path(const boost::filesystem::path &path) {
       auto tree_path=Gtk::TreePath(iter);
       tree_view.expand_to_path(tree_path);
       tree_view.set_cursor(tree_path);
-      selected_path=path;
       return true;
     }
     return false;
@@ -145,13 +187,15 @@ bool Directories::ignored(std::string path) {
 }
 
 void Directories::add_path(const boost::filesystem::path& dir_path, const Gtk::TreeModel::Row &parent) {
-  auto children=tree_store->children();
+  last_write_times[dir_path.string()]={parent, boost::filesystem::last_write_time(dir_path)};
+  std::unique_ptr<Gtk::TreeNodeChildren> children; //Gtk::TreeNodeChildren is missing default constructor...
   if(parent)
-    children=parent.children();
-  if(children) {
-    if(children.begin()->get_value(column_record.path)=="") {
-      tree_store->erase(parent->children().begin());
-    }
+    children=std::unique_ptr<Gtk::TreeNodeChildren>(new Gtk::TreeNodeChildren(parent.children()));
+  else
+    children=std::unique_ptr<Gtk::TreeNodeChildren>(new Gtk::TreeNodeChildren(tree_store->children()));
+  if(*children) {
+    if(children->begin()->get_value(column_record.path)=="")
+      tree_store->erase(children->begin());
   }
   std::unordered_set<std::string> not_deleted;
   boost::filesystem::directory_iterator end_it;
@@ -159,8 +203,8 @@ void Directories::add_path(const boost::filesystem::path& dir_path, const Gtk::T
     auto filename=it->path().filename().string();
     if (!ignored(filename)) {
       bool already_added=false;
-      if(children) {
-        for(auto &child: children) {
+      if(*children) {
+        for(auto &child: *children) {
           if(child.get_value(column_record.name)==filename) {
             not_deleted.emplace(filename);
             already_added=true;
@@ -169,29 +213,44 @@ void Directories::add_path(const boost::filesystem::path& dir_path, const Gtk::T
         }
       }
       if(!already_added) {
-        auto child = tree_store->append(children);
+        auto child = tree_store->append(*children);
         not_deleted.emplace(filename);
         child->set_value(column_record.name, filename);
         child->set_value(column_record.path, it->path().string());
         if (boost::filesystem::is_directory(*it)) {
           child->set_value(column_record.id, "a"+filename);
-          tree_store->append(child->children());
+          auto grandchild=tree_store->append(child->children());
+          grandchild->set_value(column_record.name, std::string("(empty)"));
         }
         else
           child->set_value(column_record.id, "b"+filename);
       }
     }
   }
-  if(children) {
-    auto last_it=children.begin();
-    for(auto it=children.begin();it!=children.end();it++) {
+  if(*children) {
+    auto last_it=children->begin();
+    auto it=last_it;
+    while(it!=children->end()) {
       if(not_deleted.count(it->get_value(column_record.name))==0) {
-        tree_store->erase(it);
-        it=last_it;
+        if(it==children->begin()) {
+          tree_store->erase(it);
+          it=children->begin();
+          last_it=it;
+        }
+        else {
+          tree_store->erase(it);
+          it=last_it;
+          it++;
+        }
       }
-      last_it=it;
+      else {
+        last_it=it;
+        it++;
+      }
     }
   }
-  else
-    tree_store->append(children);
+  if(!*children) {
+    auto child=tree_store->append(*children);
+    child->set_value(column_record.name, std::string("(empty)"));
+  }
 }

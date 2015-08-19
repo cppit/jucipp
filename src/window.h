@@ -36,7 +36,6 @@ private:
   EntryBox entry_box;
   Menu menu;
   std::atomic<bool> compiling;
-  Glib::Dispatcher compile_success;
 
   void create_menu();
   void hide();

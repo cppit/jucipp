@@ -120,7 +120,6 @@ bool Notebook::save(int page) {
       //TODO: recreate cmake even without directories open?
       if(view->file_path.filename()=="CMakeLists.txt") {
         if(directories.cmake && directories.cmake->project_path!="" && view->file_path.string().substr(0, directories.cmake->project_path.string().size())==directories.cmake->project_path.string() && CMake::create_compile_commands(directories.cmake->project_path)) {
-          directories.open_folder();
           for(auto source_view: source_views) {
             if(auto source_clang_view=dynamic_cast<Source::ClangView*>(source_view)) {
               if(directories.cmake->project_path.string()==source_clang_view->project_path) {

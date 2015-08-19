@@ -91,17 +91,13 @@ Window::Window() : box(Gtk::ORIENTATION_VERTICAL), notebook(directories), compil
       if(auto menu_item=dynamic_cast<Gtk::MenuItem*>(menu.ui_manager->get_widget("/MenuBar/SourceMenu/SourceRename")))
         menu_item->set_sensitive((bool)notebook.get_current_view()->rename_similar_tokens);
     
-      directories.select_path(notebook.get_current_view()->file_path);
+      directories.select(notebook.get_current_view()->file_path);
       
       Singleton::status()->set_text(notebook.get_current_view()->status);
     }
   });
   notebook.signal_page_removed().connect([this](Gtk::Widget* page, guint page_num) {
     entry_box.hide();
-  });
-
-  compile_success.connect([this](){
-    directories.open_folder();
   });
   
   INFO("Window created");
@@ -217,7 +213,6 @@ void Window::create_menu() {
     if(notebook.get_current_page()==-1 || compiling)
       return;
     CMake cmake(notebook.get_current_view()->file_path);
-    directories.open_folder();
     auto executables = cmake.get_functions_parameters("add_executable");
     boost::filesystem::path executable_path;
     if(executables.size()>0 && executables[0].second.size()>0) {
@@ -233,7 +228,6 @@ void Window::create_menu() {
         Singleton::terminal()->async_execute(Singleton::Config::terminal()->make_command, cmake.project_path, [this, executable_path, project_path](int exit_code){
           compiling=false;
           if(exit_code==EXIT_SUCCESS) {
-            compile_success();
             //TODO: Windows...
             auto executable_path_spaces_fixed=executable_path.string();
             char last_char=0;
@@ -261,15 +255,12 @@ void Window::create_menu() {
     if(notebook.get_current_page()==-1 || compiling)
       return;
     CMake cmake(notebook.get_current_view()->file_path);
-    directories.open_folder();
     if(cmake.project_path!="") {
       compiling=true;
       Singleton::terminal()->print("Compiling project "+cmake.project_path.string()+"\n");
       //TODO: Windows...
       Singleton::terminal()->async_execute(Singleton::Config::terminal()->make_command, cmake.project_path, [this](int exit_code){
         compiling=false;
-        if(exit_code==EXIT_SUCCESS)
-          compile_success();
       });
     }
   });
@@ -369,7 +360,7 @@ void Window::new_file_entry() {
       else {
         if(juci::filesystem::write(p)) {
           if(directories.current_path!="")
-            directories.open_folder();
+            directories.update();
           notebook.open(boost::filesystem::canonical(p).string());
           Singleton::terminal()->print("New file "+p.string()+" created.\n");
         }
@@ -420,7 +411,7 @@ void Window::new_cpp_project_dialog() {
     std::string cmakelists="cmake_minimum_required(VERSION 2.8)\n\nproject("+project_name+")\n\nset(CMAKE_CXX_FLAGS \"${CMAKE_CXX_FLAGS} -std=c++1y -Wall\")\n\nadd_executable("+project_name+" main.cpp)\n";
     std::string cpp_main="#include <iostream>\n\nusing namespace std;\n\nint main() {\n  cout << \"Hello World!\" << endl;\n\n  return 0;\n}\n";
     if(juci::filesystem::write(cmakelists_path, cmakelists) && juci::filesystem::write(cpp_main_path, cpp_main)) {
-      directories.open_folder(project_path);
+      directories.open(project_path);
       notebook.open(cpp_main_path);
       Singleton::terminal()->print("C++ project "+project_name+" created.\n");
     }
@@ -444,7 +435,7 @@ void Window::open_folder_dialog() {
 
   if(result==Gtk::RESPONSE_OK) {
     std::string project_path=dialog.get_filename();
-    directories.open_folder(project_path);
+    directories.open(project_path);
   }
 }
 
@@ -506,7 +497,7 @@ void Window::save_file_dialog() {
         file << notebook.get_current_view()->get_buffer()->get_text();
         file.close();
         if(directories.current_path!="")
-          directories.open_folder();
+          directories.update();
         notebook.open(path);
         Singleton::terminal()->print("File saved to: " + notebook.get_current_view()->file_path.string()+"\n");
       }

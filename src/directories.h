@@ -6,6 +6,8 @@
 #include <string>
 #include "boost/filesystem.hpp"
 #include "cmake.h"
+#include <thread>
+#include <mutex>
 
 class Directories : public Gtk::ScrolledWindow {
 public:
@@ -28,8 +30,9 @@ public:
   };
 
   Directories();
-  void open_folder(const boost::filesystem::path& dir_path="");
-  void select_path(const boost::filesystem::path &path);
+  void open(const boost::filesystem::path& dir_path="");
+  void update();
+  void select(const boost::filesystem::path &path);
   
   std::function<void(const std::string &file)> on_row_activated;
   std::unique_ptr<CMake> cmake;
@@ -41,7 +44,10 @@ private:
   Gtk::TreeView tree_view;
   Glib::RefPtr<Gtk::TreeStore> tree_store;
   ColumnRecord column_record;
-  boost::filesystem::path selected_path;
+  std::unordered_map<std::string, std::pair<Gtk::TreeModel::Row, std::time_t> > last_write_times;
+  std::mutex update_mutex;
+  Glib::Dispatcher update_dispatcher;
+  std::vector<std::string> update_paths;
 };
 
 #endif  // JUCI_DIRECTORIES_H_
