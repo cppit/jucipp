@@ -12,7 +12,7 @@ namespace sigc {
   SIGC_FUNCTORS_DEDUCE_RESULT_TYPE_WITH_DECLTYPE
 }
 
-Directories::Directories() {
+Directories::Directories() : stop_update_thread(false) {
   DEBUG("adding treeview to scrolledwindow");
   add(tree_view);
   set_policy(Gtk::POLICY_AUTOMATIC, Gtk::POLICY_AUTOMATIC);
@@ -69,8 +69,8 @@ Directories::Directories() {
     update_mutex.unlock();
   });
   
-  std::thread update_thread([this](){
-    while(true) {
+  update_thread=std::thread([this](){
+    while(!stop_update_thread) {
       std::this_thread::sleep_for(std::chrono::milliseconds(1000));
       update_mutex.lock();
       if(update_paths.size()==0) {
@@ -95,7 +95,11 @@ Directories::Directories() {
       update_mutex.unlock();
     }
   });
-  update_thread.detach();
+}
+
+Directories::~Directories() {
+  stop_update_thread=true;
+  update_thread.join();
 }
 
 void Directories::open(const boost::filesystem::path& dir_path) {

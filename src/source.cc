@@ -658,8 +658,24 @@ void Source::ClangViewParse::update_diagnostics() {
   auto diagnostics=clang_tu->get_diagnostics();
   for(auto &diagnostic: diagnostics) {
     if(diagnostic.path==file_path.string()) {
-      auto start=get_buffer()->get_iter_at_line_index(diagnostic.offsets.first.line-1, diagnostic.offsets.first.index-1);
-      auto end=get_buffer()->get_iter_at_line_index(diagnostic.offsets.second.line-1, diagnostic.offsets.second.index-1);
+      auto start_line=get_line(diagnostic.offsets.first.line-1); //index is sometimes off the line
+      auto start_line_index=diagnostic.offsets.first.index-1;
+      if(start_line_index>=start_line.size()) {
+        if(start_line.size()==0)
+          start_line_index=0;
+        else
+          start_line_index=start_line.size()-1;
+      }
+      auto end_line=get_line(diagnostic.offsets.second.line-1); //index is sometimes off the line
+      auto end_line_index=diagnostic.offsets.second.index-1;
+      if(end_line_index>=end_line.size()) {
+        if(end_line.size()==0)
+          end_line_index=0;
+        else
+          end_line_index=end_line.size()-1;
+      }
+      auto start=get_buffer()->get_iter_at_line_index(diagnostic.offsets.first.line-1, start_line_index);
+      auto end=get_buffer()->get_iter_at_line_index(diagnostic.offsets.second.line-1, end_line_index);
       std::string diagnostic_tag_name;
       if(diagnostic.severity<=CXDiagnostic_Warning)
         diagnostic_tag_name="def:warning";
@@ -846,8 +862,9 @@ bool Source::ClangViewParse::on_key_press_event(GdkEventKey* key) {
     if(line.size()>=config->tab_size) {
       for(auto c: line) {
         if(c!=config->tab_char) {
+          get_source_buffer()->insert_at_cursor("}");
           get_source_buffer()->end_user_action();
-          return Source::View::on_key_press_event(key);
+          return true;
         }
       }
       Gtk::TextIter insert_it = get_source_buffer()->get_insert()->get_iter();
@@ -858,8 +875,9 @@ bool Source::ClangViewParse::on_key_press_event(GdkEventKey* key) {
       
       get_source_buffer()->erase(line_it, line_plus_it);
     }
+    get_source_buffer()->insert_at_cursor("}");
     get_source_buffer()->end_user_action();
-    return Source::View::on_key_press_event(key);
+    return true;
   }
   
   get_source_buffer()->end_user_action();

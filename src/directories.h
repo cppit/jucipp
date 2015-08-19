@@ -8,6 +8,7 @@
 #include "cmake.h"
 #include <thread>
 #include <mutex>
+#include <atomic>
 
 class Directories : public Gtk::ScrolledWindow {
 public:
@@ -30,6 +31,7 @@ public:
   };
 
   Directories();
+  ~Directories();
   void open(const boost::filesystem::path& dir_path="");
   void update();
   void select(const boost::filesystem::path &path);
@@ -46,6 +48,8 @@ private:
   ColumnRecord column_record;
   std::unordered_map<std::string, std::pair<Gtk::TreeModel::Row, std::time_t> > last_write_times;
   std::mutex update_mutex;
+  std::thread update_thread;
+  std::atomic<bool> stop_update_thread;
   Glib::Dispatcher update_dispatcher;
   std::vector<std::string> update_paths;
 };
