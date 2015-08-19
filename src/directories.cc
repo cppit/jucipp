@@ -20,6 +20,8 @@ Directories::Directories() : stop_update_thread(false) {
   tree_view.set_model(tree_store);
   tree_view.append_column("", column_record.name);
   tree_store->set_sort_column(column_record.id, Gtk::SortType::SORT_ASCENDING);
+  tree_view.set_enable_search(true); //TODO: why does this not work in OS X?
+  tree_view.set_search_column(column_record.name);
   
   tree_view.signal_row_activated().connect([this](const Gtk::TreeModel::Path& path, Gtk::TreeViewColumn* column){
     INFO("Directory navigation");
