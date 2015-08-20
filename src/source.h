@@ -14,6 +14,7 @@
 #include "tooltips.h"
 #include "selectiondialog.h"
 #include <set>
+#include <regex>
 
 namespace Source {
   Glib::RefPtr<Gsv::Language> guess_language(const boost::filesystem::path &file_path);
@@ -22,9 +23,9 @@ namespace Source {
   public:
     std::string style;
     std::string font;
-    unsigned tab_size;
-    char tab_char;
-    std::string tab;
+    bool auto_tab_char_and_size;
+    char default_tab_char;
+    unsigned default_tab_size;
     bool highlight_current_line;
     bool show_line_numbers;
     std::unordered_map<std::string, std::string> clang_types;
@@ -79,6 +80,12 @@ namespace Source {
     std::string get_line_before_insert();
 
     bool on_key_press_event(GdkEventKey* key);
+    
+    std::pair<char, unsigned> find_tab_char_and_size();
+    unsigned tab_size;
+    char tab_char;
+    std::string tab;
+    std::regex tabs_regex;
   private:
     GtkSourceSearchContext *search_context;
     GtkSourceSearchSettings *search_settings;
@@ -109,6 +116,10 @@ namespace Source {
     std::shared_ptr<Terminal::InProgress> parsing_in_progress;
     std::thread parse_thread;
     std::atomic<bool> parse_thread_stop;
+    
+    std::regex bracket_regex;
+    std::regex no_bracket_statement_regex;
+    std::regex no_bracket_no_para_statement_regex;
   private:
     std::map<std::string, std::string> get_buffer_map() const;
     // inits the syntax highligthing on file open

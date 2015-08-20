@@ -4,7 +4,6 @@
 #include <boost/timer/timer.hpp>
 #include "logging.h"
 #include <algorithm>
-#include <regex>
 #include "singletons.h"
 #include <gtksourceview/gtksource.h>
 #include <boost/lexical_cast.hpp>
@@ -75,6 +74,29 @@ Source::View::View(const boost::filesystem::path &file_path): file_path(file_pat
   property_show_line_numbers() = Singleton::Config::source()->show_line_numbers;
   if(Singleton::Config::source()->font.size()>0)
     override_font(Pango::FontDescription(Singleton::Config::source()->font));
+  
+  tab_char=Singleton::Config::source()->default_tab_char;
+  tab_size=Singleton::Config::source()->default_tab_size;
+  if(Singleton::Config::source()->auto_tab_char_and_size) {
+    auto tab_char_and_size=find_tab_char_and_size();
+    if(tab_char_and_size.first!=0) {
+      if(tab_char!=tab_char_and_size.first || tab_size!=tab_char_and_size.second) {
+        std::string tab_str;
+        if(tab_char_and_size.first==' ')
+          tab_str="<space>";
+        else
+          tab_str="<tab>";
+        Singleton::terminal()->print("Tab char and size for file "+file_path.string()+" set to: "+tab_str+", "+boost::lexical_cast<std::string>(tab_char_and_size.second)+".\n");
+      }
+      
+      tab_char=tab_char_and_size.first;
+      tab_size=tab_char_and_size.second;
+    }
+  }
+  for(unsigned c=0;c<tab_size;c++)
+    tab+=tab_char;
+  
+  tabs_regex=std::regex(std::string("^(")+tab_char+"*)(.*)$");
 }
 
 void Source::View::search_occurrences_updated(GtkWidget* widget, GParamSpec* property, gpointer data) {
@@ -151,11 +173,10 @@ void Source::View::replace_all(const std::string &replacement) {
 
 void Source::View::paste() {
   Gtk::Clipboard::get()->request_text([this](const Glib::ustring& text){
-    const std::regex spaces_regex(std::string("^(")+Singleton::Config::source()->tab_char+"*)(.*)$");
     auto line=get_line_before_insert();
     std::smatch sm;
     std::string prefix_tabs;
-    if(!get_buffer()->get_has_selection() && std::regex_match(line, sm, spaces_regex) && sm[2].str().size()==0) {
+    if(!get_buffer()->get_has_selection() && std::regex_match(line, sm, tabs_regex) && sm[2].str().size()==0) {
       prefix_tabs=sm[1].str();
 
       Glib::ustring::size_type start_line=0;
@@ -177,7 +198,7 @@ void Source::View::paste() {
           std::string line=text.substr(start_line, end_line-start_line);
           size_t tabs=0;
           for(auto chr: line) {
-            if(chr==Singleton::Config::source()->tab_char)
+            if(chr==tab_char)
               tabs++;
             else
               break;
@@ -260,21 +281,19 @@ string Source::View::get_line_before_insert() {
 //Basic indentation
 bool Source::View::on_key_press_event(GdkEventKey* key) {
   get_source_buffer()->begin_user_action();
-  auto config=Singleton::Config::source();
-  const std::regex spaces_regex(std::string("^(")+config->tab_char+"*).*$");
   //Indent as in next or previous line
   if(key->keyval==GDK_KEY_Return && key->state==0 && !get_buffer()->get_has_selection()) {
     auto insert_it=get_buffer()->get_insert()->get_iter();
     int line_nr=insert_it.get_line();
     auto line=get_line_before_insert();
     std::smatch sm;
-    if(std::regex_match(line, sm, spaces_regex)) {
+    if(std::regex_match(line, sm, tabs_regex)) {
       if((line_nr+1)<get_buffer()->get_line_count()) {
         string next_line=get_line(line_nr+1);
         auto line_end_iter=get_buffer()->get_iter_at_line(line_nr+1);
         line_end_iter--;
         std::smatch sm2;
-        if(insert_it==line_end_iter && std::regex_match(next_line, sm2, spaces_regex)) {
+        if(insert_it==line_end_iter && std::regex_match(next_line, sm2, tabs_regex)) {
           if(sm2[1].str().size()>sm[1].str().size()) {
             get_source_buffer()->insert_at_cursor("\n"+sm2[1].str());
             scroll_to(get_source_buffer()->get_insert());
@@ -297,7 +316,7 @@ bool Source::View::on_key_press_event(GdkEventKey* key) {
     int line_end=selection_end.get_line();
     for(int line=line_start;line<=line_end;line++) {
       Gtk::TextIter line_it = get_source_buffer()->get_iter_at_line(line);
-      get_source_buffer()->insert(line_it, config->tab);
+      get_source_buffer()->insert(line_it, tab);
     }
     get_source_buffer()->end_user_action();
     return true;
@@ -309,11 +328,11 @@ bool Source::View::on_key_press_event(GdkEventKey* key) {
     int line_start=selection_start.get_line();
     int line_end=selection_end.get_line();
     
-    unsigned indent_left_steps=config->tab_size;
+    unsigned indent_left_steps=tab_size;
     for(int line_nr=line_start;line_nr<=line_end;line_nr++) {
       string line=get_line(line_nr);
       std::smatch sm;
-      if(std::regex_match(line, sm, spaces_regex) && sm[1].str().size()>0) {
+      if(std::regex_match(line, sm, tabs_regex) && sm[1].str().size()>0) {
         indent_left_steps=std::min(indent_left_steps, (unsigned)sm[1].str().size());
       }
       else {
@@ -339,12 +358,12 @@ bool Source::View::on_key_press_event(GdkEventKey* key) {
     int line_nr=insert_it.get_line();
     auto line=get_line_before_insert();
     std::smatch sm;
-    if(std::regex_match(line, sm, spaces_regex) && sm[1].str().size()==line.size()) {
+    if(std::regex_match(line, sm, tabs_regex) && sm[1].str().size()==line.size()) {
       if((line_nr-1)>=0) {
         string previous_line=get_line(line_nr-1);
         std::smatch sm2;
-        if(std::regex_match(previous_line, sm2, spaces_regex)) {
-          if(line.size()==sm2[1].str().size() || line.size()==sm2[1].str().size()+config->tab_size || line.size()==sm2[1].str().size()-config->tab_size) {
+        if(std::regex_match(previous_line, sm2, tabs_regex)) {
+          if(line.size()==sm2[1].str().size() || line.size()==sm2[1].str().size()+tab_size || line.size()==sm2[1].str().size()-tab_size) {
             auto previous_line_end_it=insert_it;
             for(unsigned c=0;c<line.size();c++)
               previous_line_end_it--;
@@ -355,9 +374,9 @@ bool Source::View::on_key_press_event(GdkEventKey* key) {
           }
         }
       }
-      if(line.size()>=config->tab_size) {
+      if(line.size()>=tab_size) {
         auto insert_minus_tab_it=insert_it;
-        for(unsigned c=0;c<config->tab_size;c++)
+        for(unsigned c=0;c<tab_size;c++)
           insert_minus_tab_it--;
         get_source_buffer()->erase(insert_minus_tab_it, insert_it);
         get_source_buffer()->end_user_action();
@@ -369,6 +388,58 @@ bool Source::View::on_key_press_event(GdkEventKey* key) {
   bool stop=Gsv::View::on_key_press_event(key);
   get_source_buffer()->end_user_action();
   return stop;
+}
+
+std::pair<char, unsigned> Source::View::find_tab_char_and_size() {
+  const std::regex indent_regex("^([ \t]+).*$");
+  auto size=get_buffer()->get_line_count();
+  std::unordered_map<char, size_t> tab_chars;
+  std::unordered_map<unsigned, size_t> tab_sizes;
+  unsigned last_tab_size=0;
+  for(int c=0;c<size;c++) {
+    auto line=get_line(c);
+    std::smatch sm;
+    if(std::regex_match(line, sm, indent_regex)) {
+      auto str=sm[1].str();
+      
+      long tab_diff=abs(static_cast<long>(str.size()-last_tab_size));
+      if(tab_diff>0) {
+        unsigned tab_diff_unsigned=static_cast<unsigned>(tab_diff);
+        auto it_size=tab_sizes.find(tab_diff_unsigned);
+        if(it_size!=tab_sizes.end())
+          it_size->second++;
+        else
+          tab_sizes[tab_diff_unsigned]=1;
+      }
+      
+      last_tab_size=str.size();
+      
+      if(str.size()>0) {
+        auto it_char=tab_chars.find(str[0]);
+        if(it_char!=tab_chars.end())
+          it_char->second++;
+        else
+          tab_chars[str[0]]=1;
+      }
+    }
+  }
+  char found_tab_char=0;
+  size_t occurences=0;
+  for(auto &tab_char: tab_chars) {
+    if(tab_char.second>occurences) {
+      found_tab_char=tab_char.first;
+      occurences=tab_char.second;
+    }
+  }
+  unsigned found_tab_size=0;
+  occurences=0;
+  for(auto &tab_size: tab_sizes) {
+    if(tab_size.second>occurences) {
+      found_tab_size=tab_size.first;
+      occurences=tab_size.second;
+    }
+  }
+  return {found_tab_char, found_tab_size};
 }
 
 /////////////////////
@@ -509,6 +580,10 @@ Source::View(file_path), project_path(project_path) {
   });
   
   get_buffer()->signal_mark_set().connect(sigc::mem_fun(*this, &Source::ClangViewParse::on_mark_set), false);
+  
+  bracket_regex=std::regex(std::string("^(")+tab_char+"*).*\\{ *$");
+  no_bracket_statement_regex=std::regex(std::string("^(")+tab_char+"*)(if|for|else if|catch|while) *\\(.*[^;}] *$");
+  no_bracket_no_para_statement_regex=std::regex(std::string("^(")+tab_char+"*)(else|try|do) *$");
 }
 
 void Source::ClangViewParse::init_parse() {
@@ -658,8 +733,24 @@ void Source::ClangViewParse::update_diagnostics() {
   auto diagnostics=clang_tu->get_diagnostics();
   for(auto &diagnostic: diagnostics) {
     if(diagnostic.path==file_path.string()) {
-      auto start=get_buffer()->get_iter_at_line_index(diagnostic.offsets.first.line-1, diagnostic.offsets.first.index-1);
-      auto end=get_buffer()->get_iter_at_line_index(diagnostic.offsets.second.line-1, diagnostic.offsets.second.index-1);
+      auto start_line=get_line(diagnostic.offsets.first.line-1); //index is sometimes off the line
+      auto start_line_index=diagnostic.offsets.first.index-1;
+      if(start_line_index>=start_line.size()) {
+        if(start_line.size()==0)
+          start_line_index=0;
+        else
+          start_line_index=start_line.size()-1;
+      }
+      auto end_line=get_line(diagnostic.offsets.second.line-1); //index is sometimes off the line
+      auto end_line_index=diagnostic.offsets.second.index-1;
+      if(end_line_index>=end_line.size()) {
+        if(end_line.size()==0)
+          end_line_index=0;
+        else
+          end_line_index=end_line.size()-1;
+      }
+      auto start=get_buffer()->get_iter_at_line_index(diagnostic.offsets.first.line-1, start_line_index);
+      auto end=get_buffer()->get_iter_at_line_index(diagnostic.offsets.second.line-1, end_line_index);
       std::string diagnostic_tag_name;
       if(diagnostic.severity<=CXDiagnostic_Warning)
         diagnostic_tag_name="def:warning";
@@ -765,11 +856,6 @@ bool Source::ClangViewParse::on_key_press_event(GdkEventKey* key) {
     return Source::View::on_key_press_event(key);
   }
   get_source_buffer()->begin_user_action();
-  auto config=Singleton::Config::source();
-  const std::regex bracket_regex(std::string("^(")+config->tab_char+"*).*\\{ *$");
-  const std::regex no_bracket_statement_regex(std::string("^(")+config->tab_char+"*)(if|for|else if|catch|while) *\\(.*[^;}] *$");
-  const std::regex no_bracket_no_para_statement_regex(std::string("^(")+config->tab_char+"*)(else|try|do) *$");
-  const std::regex spaces_regex(std::string("^(")+config->tab_char+"*).*$");
   
   //Indent depending on if/else/etc and brackets
   if(key->keyval==GDK_KEY_Return && key->state==0) {
@@ -780,18 +866,18 @@ bool Source::ClangViewParse::on_key_press_event(GdkEventKey* key) {
       if((line_nr+1)<get_source_buffer()->get_line_count()) {
         string next_line=get_line(line_nr+1);
         std::smatch sm2;
-        if(std::regex_match(next_line, sm2, spaces_regex)) {
-          if(sm2[1].str()==sm[1].str()+config->tab) {
-            get_source_buffer()->insert_at_cursor("\n"+sm[1].str()+config->tab);
+        if(std::regex_match(next_line, sm2, tabs_regex)) {
+          if(sm2[1].str()==sm[1].str()+tab) {
+            get_source_buffer()->insert_at_cursor("\n"+sm[1].str()+tab);
             scroll_to(get_source_buffer()->get_insert());
             get_source_buffer()->end_user_action();
             return true;
           }
         }
         if(next_line!=sm[1].str()+"}") {
-          get_source_buffer()->insert_at_cursor("\n"+sm[1].str()+config->tab+"\n"+sm[1].str()+"}");
+          get_source_buffer()->insert_at_cursor("\n"+sm[1].str()+tab+"\n"+sm[1].str()+"}");
           auto insert_it = get_source_buffer()->get_insert()->get_iter();
-          for(size_t c=0;c<config->tab_size+sm[1].str().size();c++)
+          for(size_t c=0;c<sm[1].str().size()+2;c++)
             insert_it--;
           scroll_to(get_source_buffer()->get_insert());
           get_source_buffer()->place_cursor(insert_it);
@@ -799,7 +885,7 @@ bool Source::ClangViewParse::on_key_press_event(GdkEventKey* key) {
           return true;
         }
         else {
-          get_source_buffer()->insert_at_cursor("\n"+sm[1].str()+config->tab);
+          get_source_buffer()->insert_at_cursor("\n"+sm[1].str()+tab);
           scroll_to(get_source_buffer()->get_insert());
           get_source_buffer()->end_user_action();
           return true;
@@ -807,21 +893,21 @@ bool Source::ClangViewParse::on_key_press_event(GdkEventKey* key) {
       }
     }
     else if(std::regex_match(line, sm, no_bracket_statement_regex)) {
-      get_source_buffer()->insert_at_cursor("\n"+sm[1].str()+config->tab);
+      get_source_buffer()->insert_at_cursor("\n"+sm[1].str()+tab);
       scroll_to(get_source_buffer()->get_insert());
       get_source_buffer()->end_user_action();
       return true;
     }
     else if(std::regex_match(line, sm, no_bracket_no_para_statement_regex)) {
-      get_source_buffer()->insert_at_cursor("\n"+sm[1].str()+config->tab);
+      get_source_buffer()->insert_at_cursor("\n"+sm[1].str()+tab);
       scroll_to(get_source_buffer()->get_insert());
       get_source_buffer()->end_user_action();
       return true;
     }
-    else if(std::regex_match(line, sm, spaces_regex)) {
+    else if(std::regex_match(line, sm, tabs_regex)) {
       std::smatch sm2;
       size_t line_nr=get_source_buffer()->get_insert()->get_iter().get_line();
-      if(line_nr>0 && sm[1].str().size()>=config->tab_size) {
+      if(line_nr>0 && sm[1].str().size()>=tab_size) {
         string previous_line=get_line(line_nr-1);
         if(!std::regex_match(previous_line, sm2, bracket_regex)) {
           if(std::regex_match(previous_line, sm2, no_bracket_statement_regex)) {
@@ -843,23 +929,25 @@ bool Source::ClangViewParse::on_key_press_event(GdkEventKey* key) {
   //Indent left when writing } on a new line
   else if(key->keyval==GDK_KEY_braceright) {
     string line=get_line_before_insert();
-    if(line.size()>=config->tab_size) {
+    if(line.size()>=tab_size) {
       for(auto c: line) {
-        if(c!=config->tab_char) {
+        if(c!=tab_char) {
+          get_source_buffer()->insert_at_cursor("}");
           get_source_buffer()->end_user_action();
-          return Source::View::on_key_press_event(key);
+          return true;
         }
       }
       Gtk::TextIter insert_it = get_source_buffer()->get_insert()->get_iter();
       Gtk::TextIter line_it = get_source_buffer()->get_iter_at_line(insert_it.get_line());
       Gtk::TextIter line_plus_it=line_it;
-      for(unsigned c=0;c<config->tab_size;c++)
+      for(unsigned c=0;c<tab_size;c++)
         line_plus_it++;
       
       get_source_buffer()->erase(line_it, line_plus_it);
     }
+    get_source_buffer()->insert_at_cursor("}");
     get_source_buffer()->end_user_action();
-    return Source::View::on_key_press_event(key);
+    return true;
   }
   
   get_source_buffer()->end_user_action();

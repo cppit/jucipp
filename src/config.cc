@@ -45,10 +45,9 @@ void MainConfig::GenerateSource() {
   auto source_cfg = Singleton::Config::source();
   auto source_json = cfg.get_child("source");
   
-  source_cfg->tab_size = source_json.get<unsigned>("tab_size");
-  source_cfg->tab_char = source_json.get<char>("tab_char");
-  for(unsigned c=0;c<source_cfg->tab_size;c++)
-    source_cfg->tab+=source_cfg->tab_char;
+  source_cfg->default_tab_char = source_json.get<char>("default_tab_char");
+  source_cfg->default_tab_size = source_json.get<unsigned>("default_tab_size");
+  source_cfg->auto_tab_char_and_size = source_json.get<bool>("auto_tab_char_and_size");
     
   source_cfg->highlight_current_line = source_json.get_value<bool>("highlight_current_line");
   source_cfg->show_line_numbers = source_json.get_value<bool>("show_line_numbers");

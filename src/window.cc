@@ -91,17 +91,13 @@ Window::Window() : box(Gtk::ORIENTATION_VERTICAL), notebook(directories), compil
       if(auto menu_item=dynamic_cast<Gtk::MenuItem*>(menu.ui_manager->get_widget("/MenuBar/SourceMenu/SourceRename")))
         menu_item->set_sensitive((bool)notebook.get_current_view()->rename_similar_tokens);
     
-      directories.select_path(notebook.get_current_view()->file_path);
+      directories.select(notebook.get_current_view()->file_path);
       
       Singleton::status()->set_text(notebook.get_current_view()->status);
     }
   });
   notebook.signal_page_removed().connect([this](Gtk::Widget* page, guint page_num) {
     entry_box.hide();
-  });
-
-  compile_success.connect([this](){
-    directories.open_folder();
   });
   
   INFO("Window created");
@@ -112,20 +108,23 @@ void Window::create_menu() {
   menu.action_group->add(Gtk::Action::create("FileQuit", "Quit juCi++"), Gtk::AccelKey(menu.key_map["quit"]), [this]() {
     hide();
   });
-  menu.action_group->add(Gtk::Action::create("FileNewFile", "New file"), Gtk::AccelKey(menu.key_map["new_file"]), [this]() {
-    new_file_entry();
+  menu.action_group->add(Gtk::Action::create("FileNewFile", "New File"), Gtk::AccelKey(menu.key_map["new_file"]), [this]() {
+    new_file_dialog();
+  });
+  menu.action_group->add(Gtk::Action::create("FileNewFolder", "New Folder"), Gtk::AccelKey(menu.key_map["new_folder"]), [this]() {
+    new_folder_dialog();
   });
   menu.action_group->add(Gtk::Action::create("FileNewProject", "New Project"));
   menu.action_group->add(Gtk::Action::create("FileNewProjectCpp", "C++"), [this]() {
     new_cpp_project_dialog();
   });
-  menu.action_group->add(Gtk::Action::create("FileOpenFile", "Open file"), Gtk::AccelKey(menu.key_map["open_file"]), [this]() {
+  menu.action_group->add(Gtk::Action::create("FileOpenFile", "Open File"), Gtk::AccelKey(menu.key_map["open_file"]), [this]() {
     open_file_dialog();
   });
-  menu.action_group->add(Gtk::Action::create("FileOpenFolder", "Open folder"), Gtk::AccelKey(menu.key_map["open_folder"]), [this]() {
+  menu.action_group->add(Gtk::Action::create("FileOpenFolder", "Open Folder"), Gtk::AccelKey(menu.key_map["open_folder"]), [this]() {
     open_folder_dialog();
   });
-  menu.action_group->add(Gtk::Action::create("FileSaveAs", "Save as"), Gtk::AccelKey(menu.key_map["save_as"]), [this]() {
+  menu.action_group->add(Gtk::Action::create("FileSaveAs", "Save As"), Gtk::AccelKey(menu.key_map["save_as"]), [this]() {
     save_file_dialog();
   });
 
@@ -178,17 +177,17 @@ void Window::create_menu() {
     INFO("Done Redo");
   });
 
-  menu.action_group->add(Gtk::Action::create("SourceGotoLine", "Go to line"), Gtk::AccelKey(menu.key_map["source_goto_line"]), [this]() {
+  menu.action_group->add(Gtk::Action::create("SourceGotoLine", "Go to Line"), Gtk::AccelKey(menu.key_map["source_goto_line"]), [this]() {
     goto_line_entry();
   });
-  menu.action_group->add(Gtk::Action::create("SourceCenterCursor", "Center cursor"), Gtk::AccelKey(menu.key_map["source_center_cursor"]), [this]() {
+  menu.action_group->add(Gtk::Action::create("SourceCenterCursor", "Center Cursor"), Gtk::AccelKey(menu.key_map["source_center_cursor"]), [this]() {
     if(notebook.get_current_page()!=-1) {
       while(gtk_events_pending())
         gtk_main_iteration();
       notebook.get_current_view()->scroll_to(notebook.get_current_view()->get_buffer()->get_insert(), 0.0, 1.0, 0.5);
     }
   });
-  menu.action_group->add(Gtk::Action::create("SourceGotoDeclaration", "Go to declaration"), Gtk::AccelKey(menu.key_map["source_goto_declaration"]), [this]() {
+  menu.action_group->add(Gtk::Action::create("SourceGotoDeclaration", "Go to Declaration"), Gtk::AccelKey(menu.key_map["source_goto_declaration"]), [this]() {
     if(notebook.get_current_page()!=-1) {
       if(notebook.get_current_view()->get_declaration_location) {
         auto location=notebook.get_current_view()->get_declaration_location();
@@ -202,7 +201,7 @@ void Window::create_menu() {
       }
     }
   });
-  menu.action_group->add(Gtk::Action::create("SourceGotoMethod", "Go to method"), Gtk::AccelKey(menu.key_map["source_goto_method"]), [this]() {
+  menu.action_group->add(Gtk::Action::create("SourceGotoMethod", "Go to Method"), Gtk::AccelKey(menu.key_map["source_goto_method"]), [this]() {
     if(notebook.get_current_page()!=-1) {
       if(notebook.get_current_view()->goto_method) {
         notebook.get_current_view()->goto_method();
@@ -213,11 +212,10 @@ void Window::create_menu() {
     rename_token_entry();
   });
 
-  menu.action_group->add(Gtk::Action::create("ProjectCompileAndRun", "Compile And Run"), Gtk::AccelKey(menu.key_map["compile_and_run"]), [this]() {
+  menu.action_group->add(Gtk::Action::create("ProjectCompileAndRun", "Compile and Run"), Gtk::AccelKey(menu.key_map["compile_and_run"]), [this]() {
     if(notebook.get_current_page()==-1 || compiling)
       return;
     CMake cmake(notebook.get_current_view()->file_path);
-    directories.open_folder();
     auto executables = cmake.get_functions_parameters("add_executable");
     boost::filesystem::path executable_path;
     if(executables.size()>0 && executables[0].second.size()>0) {
@@ -233,7 +231,6 @@ void Window::create_menu() {
         Singleton::terminal()->async_execute(Singleton::Config::terminal()->make_command, cmake.project_path, [this, executable_path, project_path](int exit_code){
           compiling=false;
           if(exit_code==EXIT_SUCCESS) {
-            compile_success();
             //TODO: Windows...
             auto executable_path_spaces_fixed=executable_path.string();
             char last_char=0;
@@ -261,15 +258,12 @@ void Window::create_menu() {
     if(notebook.get_current_page()==-1 || compiling)
       return;
     CMake cmake(notebook.get_current_view()->file_path);
-    directories.open_folder();
     if(cmake.project_path!="") {
       compiling=true;
       Singleton::terminal()->print("Compiling project "+cmake.project_path.string()+"\n");
       //TODO: Windows...
       Singleton::terminal()->async_execute(Singleton::Config::terminal()->make_command, cmake.project_path, [this](int exit_code){
         compiling=false;
-        if(exit_code==EXIT_SUCCESS)
-          compile_success();
       });
     }
   });
@@ -298,7 +292,7 @@ void Window::create_menu() {
     Singleton::terminal()->kill_last_async_execute(true);
   });
 
-  menu.action_group->add(Gtk::Action::create("WindowCloseTab", "Close tab"), Gtk::AccelKey(menu.key_map["close_tab"]), [this]() {
+  menu.action_group->add(Gtk::Action::create("WindowCloseTab", "Close Tab"), Gtk::AccelKey(menu.key_map["close_tab"]), [this]() {
     notebook.close_current_page();
   });
   add_accel_group(menu.ui_manager->get_accel_group());
@@ -355,35 +349,62 @@ void Window::hide() {
   Gtk::Window::hide();
 }
 
-void Window::new_file_entry() {
-  entry_box.clear();
-  entry_box.entries.emplace_back("untitled", [this](const std::string& content){
-    std::string filename=content;
-    if(filename!="") {
-      if(directories.current_path!="" && !boost::filesystem::path(filename).is_absolute())
-        filename=directories.current_path.string()+"/"+filename;
-      boost::filesystem::path p(filename);
-      if(boost::filesystem::exists(p)) {
-        Singleton::terminal()->print("Error: "+p.string()+" already exists.\n");
+void Window::new_file_dialog() {
+  Gtk::FileChooserDialog dialog("Please create a new file", Gtk::FILE_CHOOSER_ACTION_SAVE);
+  if(directories.current_path!="")
+    gtk_file_chooser_set_current_folder((GtkFileChooser*)dialog.gobj(), directories.current_path.string().c_str());
+  else
+    gtk_file_chooser_set_current_folder((GtkFileChooser*)dialog.gobj(), boost::filesystem::current_path().string().c_str());
+  dialog.set_transient_for(*this);
+  dialog.set_position(Gtk::WindowPosition::WIN_POS_CENTER_ALWAYS);
+  dialog.add_button("Cancel", Gtk::RESPONSE_CANCEL);
+  dialog.add_button("Save", Gtk::RESPONSE_OK);
+
+  int result = dialog.run();
+  if(result==Gtk::RESPONSE_OK) {
+    boost::filesystem::path path = dialog.get_filename();
+    if(path!="") {
+      if(boost::filesystem::exists(path)) {
+        Singleton::terminal()->print("Error: "+path.string()+" already exists.\n");
       }
       else {
-        if(juci::filesystem::write(p)) {
+        if(juci::filesystem::write(path)) {
           if(directories.current_path!="")
-            directories.open_folder();
-          notebook.open(boost::filesystem::canonical(p).string());
-          Singleton::terminal()->print("New file "+p.string()+" created.\n");
+            directories.update();
+          notebook.open(path.string());
+          Singleton::terminal()->print("New file "+path.string()+" created.\n");
         }
         else
-          Singleton::terminal()->print("Error: could not create new file "+p.string()+".\n");
+          Singleton::terminal()->print("Error: could not create new file "+path.string()+".\n");
       }
     }
-    entry_box.hide();
-  });
-  auto entry_it=entry_box.entries.begin();
-  entry_box.buttons.emplace_back("Create file", [this, entry_it](){
-    entry_it->activate();
-  });
-  entry_box.show();
+  }
+}
+
+void Window::new_folder_dialog() {
+  auto time_now=std::chrono::system_clock::to_time_t(std::chrono::system_clock::now());
+  Gtk::FileChooserDialog dialog("Please create a new folder", Gtk::FILE_CHOOSER_ACTION_CREATE_FOLDER);
+  if(directories.current_path!="")
+    gtk_file_chooser_set_current_folder((GtkFileChooser*)dialog.gobj(), directories.current_path.string().c_str());
+  else
+    gtk_file_chooser_set_current_folder((GtkFileChooser*)dialog.gobj(), boost::filesystem::current_path().string().c_str());
+  dialog.set_transient_for(*this);
+  dialog.set_position(Gtk::WindowPosition::WIN_POS_CENTER_ALWAYS);
+  dialog.add_button("Cancel", Gtk::RESPONSE_CANCEL);
+  dialog.add_button("Create", Gtk::RESPONSE_OK);
+
+  int result = dialog.run();
+  if(result==Gtk::RESPONSE_OK) {
+    boost::filesystem::path path=dialog.get_filename();
+    if(boost::filesystem::last_write_time(path)>=time_now) {
+      if(directories.current_path!="")
+        directories.update();
+      Singleton::terminal()->print("New folder "+path.string()+" created.\n");
+    }
+    else
+      Singleton::terminal()->print("Error: "+path.string()+" already exists.\n");
+    directories.select(path);
+  }
 }
 
 void Window::new_cpp_project_dialog() {
@@ -393,9 +414,9 @@ void Window::new_cpp_project_dialog() {
   else
     gtk_file_chooser_set_current_folder((GtkFileChooser*)dialog.gobj(), boost::filesystem::current_path().string().c_str());
   dialog.set_transient_for(*this);
-  
-  dialog.add_button("_Cancel", Gtk::RESPONSE_CANCEL);
-  dialog.add_button("Select", Gtk::RESPONSE_OK);
+  dialog.set_position(Gtk::WindowPosition::WIN_POS_CENTER_ALWAYS);
+  dialog.add_button("Cancel", Gtk::RESPONSE_CANCEL);
+  dialog.add_button("Create", Gtk::RESPONSE_OK);
 
   int result = dialog.run();
   if(result==Gtk::RESPONSE_OK) {
@@ -420,7 +441,7 @@ void Window::new_cpp_project_dialog() {
     std::string cmakelists="cmake_minimum_required(VERSION 2.8)\n\nproject("+project_name+")\n\nset(CMAKE_CXX_FLAGS \"${CMAKE_CXX_FLAGS} -std=c++1y -Wall\")\n\nadd_executable("+project_name+" main.cpp)\n";
     std::string cpp_main="#include <iostream>\n\nusing namespace std;\n\nint main() {\n  cout << \"Hello World!\" << endl;\n\n  return 0;\n}\n";
     if(juci::filesystem::write(cmakelists_path, cmakelists) && juci::filesystem::write(cpp_main_path, cpp_main)) {
-      directories.open_folder(project_path);
+      directories.open(project_path);
       notebook.open(cpp_main_path);
       Singleton::terminal()->print("C++ project "+project_name+" created.\n");
     }
@@ -436,15 +457,15 @@ void Window::open_folder_dialog() {
   else
     gtk_file_chooser_set_current_folder((GtkFileChooser*)dialog.gobj(), boost::filesystem::current_path().string().c_str());
   dialog.set_transient_for(*this);
-  //Add response buttons the the dialog:
-  dialog.add_button("_Cancel", Gtk::RESPONSE_CANCEL);
-  dialog.add_button("Select", Gtk::RESPONSE_OK);
+  dialog.set_position(Gtk::WindowPosition::WIN_POS_CENTER_ALWAYS);
+  dialog.add_button("Cancel", Gtk::RESPONSE_CANCEL);
+  dialog.add_button("Open", Gtk::RESPONSE_OK);
 
   int result = dialog.run();
 
   if(result==Gtk::RESPONSE_OK) {
     std::string project_path=dialog.get_filename();
-    directories.open_folder(project_path);
+    directories.open(project_path);
   }
 }
 
@@ -456,28 +477,8 @@ void Window::open_file_dialog() {
     gtk_file_chooser_set_current_folder((GtkFileChooser*)dialog.gobj(), boost::filesystem::current_path().string().c_str());
   dialog.set_transient_for(*this);
   dialog.set_position(Gtk::WindowPosition::WIN_POS_CENTER_ALWAYS);
-
-  //Add response buttons the the dialog:
-  dialog.add_button("_Cancel", Gtk::RESPONSE_CANCEL);
-  dialog.add_button("_Open", Gtk::RESPONSE_OK);
-
-  //Add filters, so that only certain file types can be selected:
-  Glib::RefPtr<Gtk::FileFilter> filter_text = Gtk::FileFilter::create();
-  filter_text->set_name("Text files");
-  filter_text->add_mime_type("text/plain");
-  dialog.add_filter(filter_text);
-
-  Glib::RefPtr<Gtk::FileFilter> filter_cpp = Gtk::FileFilter::create();
-  filter_cpp->set_name("C/C++ files");
-  filter_cpp->add_mime_type("text/x-c");
-  filter_cpp->add_mime_type("text/x-c++");
-  filter_cpp->add_mime_type("text/x-c-header");
-  dialog.add_filter(filter_cpp);
-
-  Glib::RefPtr<Gtk::FileFilter> filter_any = Gtk::FileFilter::create();
-  filter_any->set_name("Any files");
-  filter_any->add_pattern("*");
-  dialog.add_filter(filter_any);
+  dialog.add_button("Cancel", Gtk::RESPONSE_CANCEL);
+  dialog.add_button("Open", Gtk::RESPONSE_OK);
 
   int result = dialog.run();
 
@@ -494,8 +495,8 @@ void Window::save_file_dialog() {
   Gtk::FileChooserDialog dialog(*this, "Please choose a file", Gtk::FILE_CHOOSER_ACTION_SAVE);
   gtk_file_chooser_set_filename((GtkFileChooser*)dialog.gobj(), notebook.get_current_view()->file_path.c_str());
   dialog.set_position(Gtk::WindowPosition::WIN_POS_CENTER_ALWAYS);
-  dialog.add_button("_Cancel", Gtk::RESPONSE_CANCEL);
-  dialog.add_button("_Save", Gtk::RESPONSE_OK);
+  dialog.add_button("Cancel", Gtk::RESPONSE_CANCEL);
+  dialog.add_button("Save", Gtk::RESPONSE_OK);
 
   int result = dialog.run();
   if(result==Gtk::RESPONSE_OK) {
@@ -506,7 +507,7 @@ void Window::save_file_dialog() {
         file << notebook.get_current_view()->get_buffer()->get_text();
         file.close();
         if(directories.current_path!="")
-          directories.open_folder();
+          directories.update();
         notebook.open(path);
         Singleton::terminal()->print("File saved to: " + notebook.get_current_view()->file_path.string()+"\n");
       }
