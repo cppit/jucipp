@@ -7,7 +7,12 @@ const std::string configjson =
 "    },\n"
 "    \"source\": {\n"
 "        \"style\": \"juci-light\", //Use \"\" for default style, and for instance juci-dark together with dark gtk_theme variant. Styles from normal gtksourceview install: classic, cobalt, kate, oblivion, solarized-dark, solarized-light, tango\n"
-"        \"font\": \"Monospace\", //Use \"\" for default font, and for instance \"Monospace 12\" to also set size.\n"
+#ifdef __APPLE__
+"        \"font\": \"Menlo 11\", "
+#else
+"        \"font\": \"Monospace\", "
+#endif
+"//Use \"\" for default font, and for instance \"Monospace 12\" to also set size.\n"
 "        \"clang_types\": {\n"
 "            \"8\": \"def:function\",\n"
 "            \"21\": \"def:function\",\n"
