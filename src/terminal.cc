@@ -11,7 +11,7 @@ using namespace std; //TODO: remove
 //TODO: Windows...
 //A working implementation of popen3, with all pipes getting closed properly. 
 //TODO: Eidheim is going to publish this one on his github, along with example uses
-pid_t popen3(const char *command, int &stdin, int &stdout, int &stderr) {
+pid_t popen3(const char *command, int &stdin_fd, int &stdout_fd, int &stderr_fd) {
   pid_t pid;
   int p_stdin[2], p_stdout[2], p_stderr[2];
 
@@ -56,9 +56,9 @@ pid_t popen3(const char *command, int &stdin, int &stdout, int &stderr) {
   close(p_stdout[1]);
   close(p_stderr[1]);
   
-  stdin = p_stdin[1];
-  stdout = p_stdout[0];
-  stderr = p_stderr[0];
+  stdin_fd = p_stdin[1];
+  stdout_fd = p_stdout[0];
+  stderr_fd = p_stderr[0];
 
   return pid;
 }
@@ -145,18 +145,18 @@ int Terminal::execute(const std::string &command, const boost::filesystem::path 
   else
     cd_path_and_command=command;
     
-  int stdin, stdout, stderr;
-  auto pid=popen3(cd_path_and_command.c_str(), stdin, stdout, stderr);
+  int stdin_fd, stdout_fd, stderr_fd;
+  auto pid=popen3(cd_path_and_command.c_str(), stdin_fd, stdout_fd, stderr_fd);
   
   if (pid<=0) {
     async_print("Error: Failed to run command: " + command + "\n");
     return -1;
   }
   else {
-    std::thread stderr_thread([this, stderr](){
+    std::thread stderr_thread([this, stderr_fd](){
       char buffer[1024];
       ssize_t n;
-      while ((n=read(stderr, buffer, 1024)) > 0) {
+      while ((n=read(stderr_fd, buffer, 1024)) > 0) {
         std::string message;
         for(ssize_t c=0;c<n;c++)
           message+=buffer[c];
@@ -164,11 +164,11 @@ int Terminal::execute(const std::string &command, const boost::filesystem::path 
       }
     });
     stderr_thread.detach();
-    std::thread stdout_thread([this, stdout](){
+    std::thread stdout_thread([this, stdout_fd](){
       char buffer[1024];
       ssize_t n;
       INFO("read");
-      while ((n=read(stdout, buffer, 1024)) > 0) {
+      while ((n=read(stdout_fd, buffer, 1024)) > 0) {
         std::string message;
         for(ssize_t c=0;c<n;c++)
           message+=buffer[c];
@@ -179,9 +179,9 @@ int Terminal::execute(const std::string &command, const boost::filesystem::path 
     
     int exit_code;
     waitpid(pid, &exit_code, 0);
-    close(stdin);
-    close(stdout);
-    close(stderr);
+    close(stdin_fd);
+    close(stdout_fd);
+    close(stderr_fd);
     
     return exit_code;
   }
@@ -198,11 +198,11 @@ void Terminal::async_execute(const std::string &command, const boost::filesystem
     else
       cd_path_and_command=command;
       
-    int stdin, stdout, stderr;
+    int stdin_fd, stdout_fd, stderr_fd;
     async_executes_mutex.lock();
     stdin_buffer.clear();
-    auto pid=popen3(cd_path_and_command.c_str(), stdin, stdout, stderr);
-    async_executes.emplace_back(pid, stdin);
+    auto pid=popen3(cd_path_and_command.c_str(), stdin_fd, stdout_fd, stderr_fd);
+    async_executes.emplace_back(pid, stdin_fd);
     async_executes_mutex.unlock();
     
     if (pid<=0) {
@@ -211,27 +211,27 @@ void Terminal::async_execute(const std::string &command, const boost::filesystem
         callback(-1);
     }
     else {
-      std::thread stderr_thread([this, stderr](){
+      std::thread stderr_thread([this, stderr_fd](){
         char buffer[1024];
         ssize_t n;
-        while ((n=read(stderr, buffer, 1024)) > 0) {
+        while ((n=read(stderr_fd, buffer, 1024)) > 0) {
           std::string message;
           for(ssize_t c=0;c<n;c++)
             message+=buffer[c];
           async_print(message, true);
-        }
+	}
       });
       stderr_thread.detach();
-      std::thread stdout_thread([this, stdout](){
+      std::thread stdout_thread([this, stdout_fd](){
         char buffer[1024];
         ssize_t n;
         INFO("read");
-        while ((n=read(stdout, buffer, 1024)) > 0) {
+        while ((n=read(stdout_fd, buffer, 1024)) > 0) {
           std::string message;
           for(ssize_t c=0;c<n;c++)
             message+=buffer[c];
           async_print(message);
-        }
+	}
       });
       stdout_thread.detach();
       
@@ -245,9 +245,9 @@ void Terminal::async_execute(const std::string &command, const boost::filesystem
         }
       }
       stdin_buffer.clear();
-      close(stdin);
-      close(stdout);
-      close(stderr);
+      close(stdin_fd);
+      close(stdout_fd);
+      close(stderr_fd);
       async_executes_mutex.unlock();
       
       if(callback)
