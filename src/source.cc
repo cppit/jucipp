@@ -874,10 +874,22 @@ bool Source::ClangViewParse::on_key_press_event(GdkEventKey* key) {
             return true;
           }
         }
-        if(next_line!=sm[1].str()+"}") {
+        auto next_char=*get_buffer()->get_insert()->get_iter();
+        auto next_line_with_end_bracket=sm[1].str()+"}";
+        if(next_char!='}' && next_line.substr(0, next_line_with_end_bracket.size())!=next_line_with_end_bracket) {
           get_source_buffer()->insert_at_cursor("\n"+sm[1].str()+tab+"\n"+sm[1].str()+"}");
           auto insert_it = get_source_buffer()->get_insert()->get_iter();
           for(size_t c=0;c<sm[1].str().size()+2;c++)
+            insert_it--;
+          scroll_to(get_source_buffer()->get_insert());
+          get_source_buffer()->place_cursor(insert_it);
+          get_source_buffer()->end_user_action();
+          return true;
+        }
+        else if(next_char=='}') {
+          get_source_buffer()->insert_at_cursor("\n"+sm[1].str()+tab+"\n"+sm[1].str());
+          auto insert_it = get_source_buffer()->get_insert()->get_iter();
+          for(size_t c=0;c<sm[1].str().size()+1;c++)
             insert_it--;
           scroll_to(get_source_buffer()->get_insert());
           get_source_buffer()->place_cursor(insert_it);
