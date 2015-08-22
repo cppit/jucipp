@@ -132,6 +132,8 @@ namespace Source {
     Tooltips diagnostic_tooltips;
     Tooltips type_tooltips;
     bool on_motion_notify_event(GdkEventMotion* event);
+    gdouble on_motion_last_x;
+    gdouble on_motion_last_y;
     void on_mark_set(const Gtk::TextBuffer::iterator& iterator, const Glib::RefPtr<Gtk::TextBuffer::Mark>& mark);
     
     bool on_scroll_event(GdkEventScroll* event);

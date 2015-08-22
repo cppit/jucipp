@@ -794,18 +794,21 @@ void Source::ClangViewParse::update_types() {
 }
 
 bool Source::ClangViewParse::on_motion_notify_event(GdkEventMotion* event) {
-  delayed_tooltips_connection.disconnect();
-  if(clang_readable && event->state==0) {
-    Gdk::Rectangle rectangle(event->x, event->y, 1, 1);
-    Tooltips::init();
-    type_tooltips.show(rectangle);
-    diagnostic_tooltips.show(rectangle);
+  if(on_motion_last_x!=event->x || on_motion_last_y!=event->y) {
+    delayed_tooltips_connection.disconnect();
+    if(clang_readable && event->state==0) {
+      Gdk::Rectangle rectangle(event->x, event->y, 1, 1);
+      Tooltips::init();
+      type_tooltips.show(rectangle);
+      diagnostic_tooltips.show(rectangle);
+    }
+    else {
+      type_tooltips.hide();
+      diagnostic_tooltips.hide();
+    }
   }
-  else {
-    type_tooltips.hide();
-    diagnostic_tooltips.hide();
-  }
-    
+  on_motion_last_x=event->x;
+  on_motion_last_y=event->y;
   return Source::View::on_motion_notify_event(event);
 }
 
