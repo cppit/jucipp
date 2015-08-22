@@ -45,6 +45,7 @@ make install
 Note that we are currently working on a Windows-version without the need of an X-server.
 
 ## Run
+#### Linux/OS X
 ```sh
 juci
 ```
