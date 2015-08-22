@@ -13,6 +13,7 @@ class Terminal : public Gtk::TextView {
 public:  
   class Config {
   public:
+    std::string cmake_command;
     std::string make_command;
   };
   

@@ -9,7 +9,7 @@ if(APPLE)
 endif()
 
 if(CYGWIN)
-   set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -mwindows") #TODO: make juci work with -mwin32 to run without X-server
+   set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -mwindows")
 endif()
 
 INCLUDE(FindPkgConfig)
