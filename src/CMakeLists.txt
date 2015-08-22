@@ -7,6 +7,11 @@ if(APPLE)
   set(CMAKE_MACOSX_RPATH 1)
   set(ENV{PKG_CONFIG_PATH} "$ENV{PKG_CONFIG_PATH}:/usr/local/lib/pkgconfig:/opt/X11/lib/pkgconfig")
 endif()
+
+if(CYGWIN)
+   set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -mwindows") #TODO: make juci work with -mwin32 to run without X-server
+endif()
+
 INCLUDE(FindPkgConfig)
 
 set(validation true)
@@ -21,7 +26,7 @@ function(install_help APPLE UNIX WINDOWS)
     endif(APPLE)
   endif(UNIX)
   if(WINDOWS)
-    message("choco install ${WINDOWS}")
+    #message("choco install ${WINDOWS}") #Removed this for the time being
   endif(WINDOWS)
 endfunction(install_help)
 
@@ -38,10 +43,11 @@ validate(${LCL_FOUND} "clangmm" "clangmm" "clangmm")
 find_package(LibClang)
 validate(${LIBCLANG_FOUND} "clang" "libclang-dev" "llvm")
 
-find_package(PythonLibs 2.7)
-validate(${PYTHONLIBS_FOUND} "python" "libpython-dev" "python") 
+#find_package(PythonLibs 2.7)
+#validate(${PYTHONLIBS_FOUND} "python" "libpython-dev" "python") 
 
-find_package(Boost 1.55 COMPONENTS python thread log system filesystem REQUIRED)
+#find_package(Boost 1.55 COMPONENTS python thread log system filesystem REQUIRED)
+find_package(Boost 1.55 COMPONENTS thread log system filesystem REQUIRED)
 validate(${Boost_FOUND} "boost" "libboost-all-dev" "boost")
 
 pkg_check_modules(GTKMM gtkmm-3.0) # The name GTKMM is set here for the variables abouve
@@ -66,8 +72,8 @@ if(${validation})
     sourcefile.cc
     window.cc
     window.h
-    api.h
-    api.cc
+#    api.h
+#    api.cc
     notebook.cc
     notebook.h
     entrybox.h
@@ -83,13 +89,13 @@ if(${validation})
     cmake.h
     cmake.cc)
 
-  add_library(${module} SHARED
-    api
-    api_ext)
+#  add_library(${module} SHARED
+#    api
+#    api_ext)
 
   include_directories(
     ${Boost_INCLUDE_DIRS}
-    ${PYTHON_INCLUDE_DIRS}
+#    ${PYTHON_INCLUDE_DIRS}
     ${GTKMM_INCLUDE_DIRS}
     ${GTKSVMM_INCLUDE_DIRS}
     ${LCL_INCLUDE_DIRS}
@@ -99,15 +105,16 @@ if(${validation})
     ${GTKMM_LIBRARY_DIRS}
     ${GTKSVMM_LIBRARY_DIRS}
     ${Boost_LIBRARY_DIRS}
-    ${PYTHON_INCLUDE_DIRS}
+#    ${PYTHON_INCLUDE_DIRS}
     ${LCL_LIBRARY_DIRS}
     ${LIBCLANG_LIBRARY_DIRS})
 
-  set_target_properties(${module}
-    PROPERTIES PREFIX ""
-    LIBRARY_OUTPUT_DIRECTORY "${CMAKE_SOURCE_DIR}/lib/")
+#  set_target_properties(${module}
+#    PROPERTIES PREFIX ""
+#    LIBRARY_OUTPUT_DIRECTORY "${CMAKE_SOURCE_DIR}/lib/")
 
-  target_link_libraries(${module} ${PYTHON_LIBRARIES} ${Boost_LIBRARIES})
+#  target_link_libraries(${module} ${PYTHON_LIBRARIES} ${Boost_LIBRARIES})
+#  target_link_libraries(${module} ${Boost_LIBRARIES})
 
   target_link_libraries(${project_name}
     ${LIBCLANG_LIBRARIES}
@@ -115,11 +122,13 @@ if(${validation})
     ${GTKMM_LIBRARIES}
     ${GTKSVMM_LIBRARIES}
     ${Boost_LIBRARIES}
-    ${PYTHON_LIBRARIES})
+#    ${PYTHON_LIBRARIES}
+    )
 
-  install(TARGETS ${project_name} ${module}
+#  install(TARGETS ${project_name} ${module}
+  install(TARGETS ${project_name}
     RUNTIME DESTINATION ${bin_install_path}
-    LIBRARY DESTINATION ${lib_install_path}
+#    LIBRARY DESTINATION ${lib_install_path}
     )
 endif(${validation})
 

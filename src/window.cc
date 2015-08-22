@@ -3,7 +3,7 @@
 #include "singletons.h"
 #include "sourcefile.h"
 #include "config.h"
-#include "api.h"
+//#include "api.h"
 #include <boost/lexical_cast.hpp>
 
 #include <iostream> //TODO: remove
@@ -30,7 +30,7 @@ Window::Window() : box(Gtk::ORIENTATION_VERTICAL), notebook(directories), compil
   add(box);
   
   generate_keybindings();
-  PluginApi(&this->notebook, &this->menu);
+  //PluginApi(&this->notebook, &this->menu);
   create_menu();
   box.pack_start(menu.get_widget(), Gtk::PACK_SHRINK);
 
