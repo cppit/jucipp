@@ -49,7 +49,7 @@ Note that we are currently working on a Windows-version without the need of an X
 juci
 ```
 
-###Windows
+## Windows
 ```sh
 startxwin /usr/local/bin/juci
 ```
