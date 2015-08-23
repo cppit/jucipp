@@ -80,6 +80,7 @@ namespace Source {
     std::string get_line_before_insert();
 
     bool on_key_press_event(GdkEventKey* key);
+    bool on_button_press_event(GdkEventButton *event);
     
     std::pair<char, unsigned> find_tab_char_and_size();
     unsigned tab_size;
