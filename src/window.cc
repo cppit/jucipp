@@ -493,7 +493,7 @@ void Window::save_file_dialog() {
     return;
   INFO("Save file dialog");
   Gtk::FileChooserDialog dialog(*this, "Please choose a file", Gtk::FILE_CHOOSER_ACTION_SAVE);
-  gtk_file_chooser_set_filename((GtkFileChooser*)dialog.gobj(), notebook.get_current_view()->file_path.c_str());
+  gtk_file_chooser_set_filename((GtkFileChooser*)dialog.gobj(), notebook.get_current_view()->file_path.string().c_str());
   dialog.set_position(Gtk::WindowPosition::WIN_POS_CENTER_ALWAYS);
   dialog.add_button("Cancel", Gtk::RESPONSE_CANCEL);
   dialog.add_button("Save", Gtk::RESPONSE_OK);
