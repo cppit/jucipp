@@ -4,19 +4,21 @@
 
 find_package(PkgConfig)
 
-find_path(LCL_INCLUDE_DIR clangmm.h
-  HINTS /usr/local/include/libclangmm
-)
-
-
-if(CYGWIN)
-  set(CMAKE_FIND_LIBRARY_PREFIXES ${CMAKE_FIND_LIBRARY_PREFIXES} "cyg")
-  set(CMAKE_FIND_LIBRARY_SUFFIXES ${CMAKE_FIND_LIBRARY_SUFFIXES} ".dll")
+if(MSYS)
+  string(TOLOWER "/$ENV{MSYSTEM}" MSYS_PATH)
+  set(MSYS_INCLUDE_PATH "${MSYS_PATH}/include/libclangmm")
+  set(MSYS_BIN_PATH "${MSYS_PATH}/bin")
 endif()
 
-find_library(LCL_LIBRARY NAMES clangmm
-  PATHS /usr/local/lib /usr/local/bin
+find_path(LCL_INCLUDE_DIR clangmm.h
+  PATHS /usr/local/include/libclangmm ${MSYS_INCLUDE_PATH}
 )
+
+find_library(LCL_LIBRARY NAMES clangmm
+  PATHS /usr/local/lib ${MSYS_BIN_PATH}
+)
+
+message("${LCL_INCLUDE_DIR}")
 
 set(LCL_LIBRARIES ${LCL_LIBRARY} )
 set(LCL_INCLUDE_DIRS ${LCL_INCLUDE_DIR} )

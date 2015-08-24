@@ -8,10 +8,6 @@ if(APPLE)
   set(ENV{PKG_CONFIG_PATH} "$ENV{PKG_CONFIG_PATH}:/usr/local/lib/pkgconfig:/opt/X11/lib/pkgconfig")
 endif()
 
-if(CYGWIN)
-   set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -mwindows")
-endif()
-
 INCLUDE(FindPkgConfig)
 
 set(validation true)
@@ -42,6 +38,10 @@ validate(${LCL_FOUND} "clangmm" "clangmm" "clangmm")
 
 find_package(LibClang)
 validate(${LIBCLANG_FOUND} "clang" "libclang-dev" "llvm")
+
+if(MSYS)
+  set(LIBCLANG_LIBRARIES "${MSYS_PATH}/bin/clang.dll")
+endif()
 
 #find_package(PythonLibs 2.7)
 #validate(${PYTHONLIBS_FOUND} "python" "libpython-dev" "python") 
