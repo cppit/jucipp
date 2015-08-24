@@ -56,9 +56,7 @@ validate(${GTKMM_FOUND} "gtkmm" "libgtkmm-dev" "gtkmm")
 pkg_check_modules(GTKSVMM gtksourceviewmm-3.0)
 validate(${GTKSVMM_FOUND} "gtksvmm" "libgtksvmm-dev" "gtkmmsv")
 
-if(${validation})
-  add_executable(${project_name}
-    juci.h
+set(source_files juci.h
     juci.cc	
     menu.h
     menu.cc
@@ -81,13 +79,21 @@ if(${validation})
     directories.h
     directories.cc
     terminal.h
-    terminal.cc
     tooltips.h
     tooltips.cc
     singletons.h
     singletons.cc
     cmake.h
     cmake.cc)
+
+if(MSYS)
+  list(APPEND source_files terminal_win.cc)
+else()
+  list(APPEND source_files terminal.cc)
+endif()
+
+if(${validation})
+  add_executable(${project_name} ${source_files})
 
 #  add_library(${module} SHARED
 #    api
