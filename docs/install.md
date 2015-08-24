@@ -27,6 +27,13 @@ make
 make install
 ```
 
+##Windows with MSYS2 (https://msys2.github.io/)
+Will be available when the following TODOs are resolved:
+* Newlines are saved properly
+* Windows implementation of fork/pipe/read/write
+* libclang(mm) finds header-files
+
+<!--
 ## Windows with Cygwin (https://www.cygwin.com/)
 **Make sure the PATH environment variable does not include paths to non-Cygwin cmake, make and g++.**
 
@@ -44,6 +51,7 @@ make install
 ```
 
 Note that we are currently working on a Windows-version without the need of an X-server.
+-->
 
 ## Run
 #### Linux/OS X
@@ -51,7 +59,9 @@ Note that we are currently working on a Windows-version without the need of an X
 juci
 ```
 
+<!--
 #### Windows
 ```sh
 startxwin /usr/local/bin/juci
 ```
+-->
