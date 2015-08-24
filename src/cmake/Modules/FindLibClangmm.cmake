@@ -18,8 +18,6 @@ find_library(LCL_LIBRARY NAMES clangmm
   PATHS /usr/local/lib ${MSYS_BIN_PATH}
 )
 
-message("${LCL_INCLUDE_DIR}")
-
 set(LCL_LIBRARIES ${LCL_LIBRARY} )
 set(LCL_INCLUDE_DIRS ${LCL_INCLUDE_DIR} )
 
