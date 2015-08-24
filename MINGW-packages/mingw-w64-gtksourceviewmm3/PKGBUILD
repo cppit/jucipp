@@ -7,7 +7,7 @@ arch=('any')
 url="https://developer.gnome.org/gtksourceviewmm/"
 license=("LGPL")
 makedepends=("patch" "${MINGW_PACKAGE_PREFIX}-gcc" "${MINGW_PACKAGE_PREFIX}-pkg-config")
-depends=("${MINGW_PACKAGE_PREFIX}-gtksourceview3=3.12.0")
+depends=("${MINGW_PACKAGE_PREFIX}-gtksourceview3=${pkgver}")
 options=('staticlibs' 'strip')
 source=("https://download.gnome.org/sources/gtksourceviewmm/${pkgver%.*}/gtksourceviewmm-${pkgver}.tar.xz")
 sha256sums=("73939031bcc60e6ad31a315ec84b132deba15e5732de16e75fe424a619267ace")
