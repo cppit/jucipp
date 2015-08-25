@@ -28,10 +28,41 @@ make install
 ```
 
 ##Windows with MSYS2 (https://msys2.github.io/)
-Will be available when the following TODOs are resolved:
+Please wait until the following TODOs are resolved:
 * Newlines are saved properly
-* Windows implementation of fork/pipe/read/write
+* Windows implementation of creating processes
 * libclang(mm) finds header-files
+* fix make install, and install to mingw[32/64]/bin
+
+Install dependencies(replace [arch] with i686 or x86_64 depending on your MSYS2 install):
+```sh
+pacman -S patch autoconf automake-wrapper mingw-w64-[arch]-gtkmm3 mingw-w64-[arch]-boost
+```
+
+Get juCi++ source:
+```sh
+git clone https://github.com/cppit/jucipp.git
+cd jucipp
+```
+
+Compiling and installing gtksourceview3 and gtksourceviewmm3:
+```sh
+cd MINGW-packages/mingw-w64-gtksourceview3/
+makepkg-mingw -sLf
+pacman -U mingw-w64-[arch]-gtksourceview3-3.12.0-2-any.pkg.tar.xz
+cd ../mingw-w64-gtksourceviewmm3/
+makepkg-mingw -sLf
+pacman -U mingw-w64-[arch]-gtksourceviewmm3-3.12.0-1-any.pkg.tar.xz
+cd ../../
+```
+
+Compile and install juCi++ source:
+```sh
+cmake -G"MSYS Makefiles" .
+make
+make install
+```
+**You might have to install juci manually**
 
 <!--
 ## Windows with Cygwin (https://www.cygwin.com/)
