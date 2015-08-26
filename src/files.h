@@ -10,7 +10,11 @@ const std::string configjson =
 #ifdef __APPLE__
 "        \"font\": \"Menlo 11\", "
 #else
+#ifdef _WIN32
+"        \"font\": \"Consolas\", "
+#else
 "        \"font\": \"Monospace\", "
+#endif
 #endif
 "//Use \"\" for default font, and for instance \"Monospace 12\" to also set size.\n"
 "        \"clang_types\": {\n"
