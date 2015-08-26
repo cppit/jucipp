@@ -62,7 +62,11 @@ const std::string configjson =
 "        \"force_kill_last_running\": \"<primary><shift>Escape\"\n"
 "    },\n"
 "    \"project\": {\n"
+#ifdef _WIN32
+"        \"cmake_command\": \"cmake -G\\\"MSYS Makefiles\\\"\",\n"
+#else
 "        \"cmake_command\": \"cmake\",\n"
+#endif
 "        \"make_command\": \"make\"\n"
 "    },\n"
 "    \"directoryfilter\": {\n"

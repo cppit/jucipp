@@ -3,9 +3,120 @@
 #include "logging.h"
 #include "singletons.h"
 #include <unistd.h>
+#include <windows.h>
 
 #include <iostream> //TODO: remove
 using namespace std; //TODO: remove
+
+#define BUFSIZE 1024
+
+HANDLE popen3(const std::string &command, const boost::filesystem::path &path, HANDLE &stdin_h, HANDLE &stdout_h, HANDLE &stderr_h) {
+  HANDLE g_hChildStd_IN_Rd = NULL;
+  HANDLE g_hChildStd_IN_Wr = NULL;
+  HANDLE g_hChildStd_OUT_Rd = NULL;
+  HANDLE g_hChildStd_OUT_Wr = NULL;
+  HANDLE g_hChildStd_ERR_Rd = NULL;
+  HANDLE g_hChildStd_ERR_Wr = NULL;
+
+  SECURITY_ATTRIBUTES saAttr;
+
+  saAttr.nLength = sizeof(SECURITY_ATTRIBUTES); 
+  saAttr.bInheritHandle = TRUE; 
+  saAttr.lpSecurityDescriptor = NULL; 
+
+  if (!CreatePipe(&g_hChildStd_IN_Rd, &g_hChildStd_IN_Wr, &saAttr, 0)) 
+    return NULL;
+  if(!SetHandleInformation(g_hChildStd_IN_Wr, HANDLE_FLAG_INHERIT, 0)) {
+    CloseHandle(g_hChildStd_IN_Rd);
+    CloseHandle(g_hChildStd_IN_Wr);
+    return NULL;
+  }
+  if (!CreatePipe(&g_hChildStd_OUT_Rd, &g_hChildStd_OUT_Wr, &saAttr, 0)) {
+    CloseHandle(g_hChildStd_IN_Rd);
+    CloseHandle(g_hChildStd_IN_Wr);
+    return NULL;
+  }
+  if(!SetHandleInformation(g_hChildStd_OUT_Rd, HANDLE_FLAG_INHERIT, 0)) {
+    CloseHandle(g_hChildStd_IN_Rd);
+    CloseHandle(g_hChildStd_IN_Wr);
+    CloseHandle(g_hChildStd_OUT_Rd);
+    CloseHandle(g_hChildStd_OUT_Wr);
+    return NULL;
+  }
+  if (!CreatePipe(&g_hChildStd_ERR_Rd, &g_hChildStd_ERR_Wr, &saAttr, 0)) {
+    CloseHandle(g_hChildStd_IN_Rd);
+    CloseHandle(g_hChildStd_IN_Wr);
+    CloseHandle(g_hChildStd_OUT_Rd);
+    CloseHandle(g_hChildStd_OUT_Wr);
+    return NULL;
+  }
+  if(!SetHandleInformation(g_hChildStd_ERR_Rd, HANDLE_FLAG_INHERIT, 0)) {
+    CloseHandle(g_hChildStd_IN_Rd);
+    CloseHandle(g_hChildStd_IN_Wr);
+    CloseHandle(g_hChildStd_OUT_Rd);
+    CloseHandle(g_hChildStd_OUT_Wr);
+    CloseHandle(g_hChildStd_ERR_Rd);
+    CloseHandle(g_hChildStd_ERR_Wr);
+    return NULL;
+  }
+
+  PROCESS_INFORMATION process_info; 
+  STARTUPINFO siStartInfo;
+
+  ZeroMemory(&process_info, sizeof(PROCESS_INFORMATION));
+
+  ZeroMemory(&siStartInfo, sizeof(STARTUPINFO));
+  siStartInfo.cb = sizeof(STARTUPINFO); 
+  siStartInfo.hStdError = g_hChildStd_ERR_Wr;
+  siStartInfo.hStdOutput = g_hChildStd_OUT_Wr;
+  siStartInfo.hStdInput = g_hChildStd_IN_Rd;
+  siStartInfo.dwFlags |= STARTF_USESTDHANDLES;
+
+  char* path_ptr;
+  if(path=="")
+    path_ptr=NULL;
+  else {
+    auto path_str=path.string();
+    path_ptr=new char[path_str.size()+1];
+    std::strcpy(path_ptr, path_str.c_str());
+  }
+  char* command_cstr=new char[command.size()+1];
+  std::strcpy(command_cstr, command.c_str());
+  BOOL bSuccess = CreateProcess(NULL, 
+				command_cstr,  // command line
+				NULL,          // process security attributes
+				NULL,          // primary thread security attributes
+				TRUE,          // handles are inherited
+				0,             // creation flags
+				NULL,          // use parent's environment
+				path_ptr,      // use parent's current directory
+				&siStartInfo,  // STARTUPINFO pointer
+				&process_info);  // receives PROCESS_INFORMATION
+   
+  if(!bSuccess) {
+    CloseHandle(process_info.hProcess);
+    CloseHandle(process_info.hThread);
+    CloseHandle(g_hChildStd_IN_Rd);
+    CloseHandle(g_hChildStd_OUT_Wr);
+    CloseHandle(g_hChildStd_ERR_Wr);
+    return NULL;
+  }
+  else {
+    // Close handles to the child process and its primary thread.
+    // Some applications might keep these handles to monitor the status
+    // of the child process, for example. 
+    
+    CloseHandle(process_info.hThread);
+    CloseHandle(g_hChildStd_IN_Rd);
+    CloseHandle(g_hChildStd_OUT_Wr);
+    CloseHandle(g_hChildStd_ERR_Wr);
+  }
+
+  stdin_h=g_hChildStd_IN_Wr;
+  stdout_h=g_hChildStd_OUT_Rd;
+  stderr_h=g_hChildStd_ERR_Rd;
+  return process_info.hProcess;
+}
 
 Terminal::InProgress::InProgress(const std::string& start_msg): stop(false) {
   waiting_print.connect([this](){
@@ -80,149 +191,144 @@ Terminal::Terminal() {
   });
 }
 
+//Based on the example at https://msdn.microsoft.com/en-us/library/windows/desktop/ms682499(v=vs.85).aspx
 int Terminal::execute(const std::string &command, const boost::filesystem::path &path) {
-  /*std::string cd_path_and_command;
-  if(path!="") {
-    //TODO: Windows...
-    cd_path_and_command="cd \""+path.string()+"\" && "+command;
-  }
-  else
-    cd_path_and_command=command;
-    
-  int stdin_fd, stdout_fd, stderr_fd;
-  auto pid=popen3(cd_path_and_command.c_str(), stdin_fd, stdout_fd, stderr_fd);
-  
-  if (pid<=0) {
+  HANDLE stdin_h, stdout_h, stderr_h;
+
+  auto process=popen3(command, path, stdin_h, stdout_h, stderr_h);
+  if(process==NULL) {
     async_print("Error: Failed to run command: " + command + "\n");
     return -1;
   }
-  else {
-    std::thread stderr_thread([this, stderr_fd](){
-      char buffer[1024];
-      ssize_t n;
-      while ((n=read(stderr_fd, buffer, 1024)) > 0) {
-        std::string message;
-        for(ssize_t c=0;c<n;c++)
-          message+=buffer[c];
-        async_print(message, true);
-      }
-    });
-    stderr_thread.detach();
-    std::thread stdout_thread([this, stdout_fd](){
-      char buffer[1024];
-      ssize_t n;
-      INFO("read");
-      while ((n=read(stdout_fd, buffer, 1024)) > 0) {
-        std::string message;
-        for(ssize_t c=0;c<n;c++)
-          message+=buffer[c];
-        async_print(message);
-      }
-    });
-    stdout_thread.detach();
-    
-    int exit_code;
-    waitpid(pid, &exit_code, 0);
-    close(stdin_fd);
-    close(stdout_fd);
-    close(stderr_fd);
-    
-    return exit_code;
-  }*/
-  return -1;
+  std::thread stderr_thread([this, stderr_h](){
+    DWORD n;
+    CHAR buffer[BUFSIZE];
+    for (;;) {
+      BOOL bSuccess = ReadFile(stderr_h, buffer, BUFSIZE, &n, NULL);
+      if(!bSuccess || n == 0)
+	break;
+
+      std::string message;
+      for(DWORD c=0;c<n;c++)
+	message+=buffer[c];
+      async_print(message, true);
+    }
+  });
+  stderr_thread.detach();
+
+  std::thread stdout_thread([this, stdout_h](){
+    DWORD n;
+    CHAR buffer[BUFSIZE];
+    for (;;) {
+      BOOL bSuccess = ReadFile(stdout_h, buffer, BUFSIZE, &n, NULL);
+      if(!bSuccess || n == 0)
+	break;
+
+      std::string message;
+      for(DWORD c=0;c<n;c++)
+	message+=buffer[c];
+      async_print(message);
+    }
+  });
+  stdout_thread.detach();
+
+  unsigned long exit_code;
+  WaitForSingleObject(process, INFINITE);
+  GetExitCodeProcess(process, &exit_code);
+  
+  CloseHandle(process);
+  CloseHandle(stdin_h);
+  CloseHandle(stdout_h);
+  CloseHandle(stderr_h);
+  return exit_code;
 }
 
 void Terminal::async_execute(const std::string &command, const boost::filesystem::path &path, std::function<void(int exit_code)> callback) {
-  /*std::thread async_execute_thread([this, command, path, callback](){
-    std::string cd_path_and_command;
-    if(path!="") {
-    
-      //TODO: Windows...
-      cd_path_and_command="cd \""+path.string()+"\" && "+command;
-    }
-    else
-      cd_path_and_command=command;
-      
-    int stdin_fd, stdout_fd, stderr_fd;
+  std::thread async_execute_thread([this, command, path, callback](){
+    HANDLE stdin_h, stdout_h, stderr_h;
+
     async_executes_mutex.lock();
     stdin_buffer.clear();
-    auto pid=popen3(cd_path_and_command.c_str(), stdin_fd, stdout_fd, stderr_fd);
-    async_executes.emplace_back(pid, stdin_fd);
-    async_executes_mutex.unlock();
-    
-    if (pid<=0) {
+    auto process=popen3(command, path, stdin_h, stdout_h, stderr_h);
+    if(process==NULL) {
+      async_executes_mutex.unlock();
       async_print("Error: Failed to run command: " + command + "\n");
       if(callback)
-        callback(-1);
+	callback(-1);
+      return;
     }
-    else {
-      std::thread stderr_thread([this, stderr_fd](){
-        char buffer[1024];
-        ssize_t n;
-        while ((n=read(stderr_fd, buffer, 1024)) > 0) {
-          std::string message;
-          for(ssize_t c=0;c<n;c++)
-            message+=buffer[c];
-          async_print(message, true);
-	}
-      });
-      stderr_thread.detach();
-      std::thread stdout_thread([this, stdout_fd](){
-        char buffer[1024];
-        ssize_t n;
-        INFO("read");
-        while ((n=read(stdout_fd, buffer, 1024)) > 0) {
-          std::string message;
-          for(ssize_t c=0;c<n;c++)
-            message+=buffer[c];
-          async_print(message);
-	}
-      });
-      stdout_thread.detach();
-      
-      int exit_code;
-      waitpid(pid, &exit_code, 0);
-      async_executes_mutex.lock();
-      for(auto it=async_executes.begin();it!=async_executes.end();it++) {
-        if(it->first==pid) {
-          async_executes.erase(it);
-          break;
-        }
+    async_executes.emplace_back(process, stdin_h);
+    async_executes_mutex.unlock();
+    
+    std::thread stderr_thread([this, stderr_h](){
+      DWORD n;
+      CHAR buffer[BUFSIZE];
+      for (;;) {
+	BOOL bSuccess = ReadFile(stderr_h, buffer, BUFSIZE, &n, NULL);
+	if(!bSuccess || n == 0)
+	  break;
+
+	std::string message;
+	for(DWORD c=0;c<n;c++)
+	  message+=buffer[c];
+	async_print(message, true);
       }
-      stdin_buffer.clear();
-      close(stdin_fd);
-      close(stdout_fd);
-      close(stderr_fd);
-      async_executes_mutex.unlock();
-      
-      if(callback)
-        callback(exit_code);
+    });
+    stderr_thread.detach();
+
+    std::thread stdout_thread([this, stdout_h](){
+      DWORD n;
+      CHAR buffer[BUFSIZE];
+      for (;;) {
+	BOOL bSuccess = ReadFile(stdout_h, buffer, BUFSIZE, &n, NULL);
+	if(!bSuccess || n == 0)
+	  break;
+	
+	std::string message;
+	for(DWORD c=0;c<n;c++)
+	  message+=buffer[c];
+	async_print(message);
+      }
+    });
+    stdout_thread.detach();
+
+    unsigned long exit_code;
+    WaitForSingleObject(process, INFINITE);
+    GetExitCodeProcess(process, &exit_code);
+  
+    async_executes_mutex.lock();
+    for(auto it=async_executes.begin();it!=async_executes.end();it++) {
+      if(it->first==process) {
+	async_executes.erase(it);
+	break;
+      }
     }
+    stdin_buffer.clear();
+    CloseHandle(process);
+    CloseHandle(stdin_h);
+    CloseHandle(stdout_h);
+    CloseHandle(stderr_h);
+    async_executes_mutex.unlock();
+      
+    if(callback)
+      callback(exit_code);
   });
-  async_execute_thread.detach();*/
-  if(callback)
-    callback(-1);
+  async_execute_thread.detach();
 }
 
 void Terminal::kill_last_async_execute(bool force) {
   async_executes_mutex.lock();
-  /*if(async_executes.size()>0) {
-    if(force)
-      kill(-async_executes.back().first, SIGTERM);
-    else
-      kill(-async_executes.back().first, SIGINT);
-  }*/
+  if(async_executes.size()>0) {
+    TerminateProcess(async_executes.back().first, 2);
+  }
   async_executes_mutex.unlock();
 }
 
 void Terminal::kill_async_executes(bool force) {
   async_executes_mutex.lock();
-  /*for(auto &async_execute: async_executes) {
-    if(force)
-      kill(-async_execute.first, SIGTERM);
-    else
-      kill(-async_execute.first, SIGINT);
-  }*/
+  for(auto &async_execute: async_executes) {
+    TerminateProcess(async_execute.first, 2);
+  }
   async_executes_mutex.unlock();
 }
 
@@ -300,7 +406,9 @@ bool Terminal::on_key_press_event(GdkEventKey *event) {
     }
     else if(event->keyval==GDK_KEY_Return) {
       stdin_buffer+='\n';
-      write(async_executes.back().second, stdin_buffer.c_str(), stdin_buffer.size());
+      DWORD written;
+      WriteFile(async_executes.back().second, stdin_buffer.c_str(), stdin_buffer.size(), &written, NULL);
+      //TODO: is this line needed?
       get_buffer()->insert_at_cursor(stdin_buffer.substr(stdin_buffer.size()-1));
       scroll_to(get_buffer()->get_insert());
       stdin_buffer.clear();
