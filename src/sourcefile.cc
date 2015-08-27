@@ -7,7 +7,7 @@ const size_t buffer_size=131072;
 //Only use on small files
 std::string juci::filesystem::read(const std::string &path) {
   std::stringstream ss;
-  std::ifstream input(path);
+  std::ifstream input(path, std::ofstream::binary);
   if(input) {
     ss << input.rdbuf();
     input.close();
@@ -16,7 +16,7 @@ std::string juci::filesystem::read(const std::string &path) {
 }
 
 bool juci::filesystem::read(const std::string &path, Glib::RefPtr<Gtk::TextBuffer> text_buffer) {
-  std::ifstream input(path);
+  std::ifstream input(path, std::ofstream::binary);
   if(input) {
     std::vector<char> buffer(buffer_size);
     size_t read_length;
@@ -38,7 +38,7 @@ bool juci::filesystem::read(const std::string &path, Glib::RefPtr<Gtk::TextBuffe
 //Only use on small files
 std::vector<std::string> juci::filesystem::read_lines(const std::string &path) {
   std::vector<std::string> res;
-  std::ifstream input(path);
+  std::ifstream input(path, std::ofstream::binary);
   if (input) {
     do { res.emplace_back(); } while(getline(input, res.back()));
   }
@@ -48,7 +48,7 @@ std::vector<std::string> juci::filesystem::read_lines(const std::string &path) {
 
 //Only use on small files
 bool juci::filesystem::write(const std::string &path, const std::string &new_content) {
-  std::ofstream output(path);
+  std::ofstream output(path, std::ofstream::binary);
   if(output)
     output << new_content;
   else
