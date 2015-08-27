@@ -184,7 +184,7 @@ namespace Source {
   
   class ClangView : public ClangViewRefactor {
   public:
-    ClangView(const boost::filesystem::path &file_path, const boost::filesystem::path& project_path);
+    ClangView(const boost::filesystem::path &file_path, const boost::filesystem::path& project_path, Glib::RefPtr<Gsv::Language> language);
     void async_delete();
     bool restart_parse();
   private:

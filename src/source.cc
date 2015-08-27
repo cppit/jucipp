@@ -97,6 +97,19 @@ Source::View::View(const boost::filesystem::path &file_path): file_path(file_pat
     tab+=tab_char;
   
   tabs_regex=std::regex(std::string("^(")+tab_char+"*)(.*)$");
+  
+  get_buffer()->signal_changed().connect([this](){
+    auto iter=get_buffer()->get_insert()->get_iter();
+    if(iter.backward_char()) {
+      auto context_iter=iter;
+      if(context_iter.backward_char()) {
+        if(get_source_buffer()->iter_has_context_class(context_iter, "comment")) {
+          //TODO: get word, and spellcheck
+          //cout << "comment: " << (char)*iter << endl;
+        }
+      }
+    }
+  });
 }
 
 void Source::View::search_occurrences_updated(GtkWidget* widget, GParamSpec* property, gpointer data) {
@@ -1394,7 +1407,12 @@ Source::ClangViewAutocomplete(file_path, project_path) {
   };
 }
 
-Source::ClangView::ClangView(const boost::filesystem::path &file_path, const boost::filesystem::path& project_path): ClangViewRefactor(file_path, project_path) {
+Source::ClangView::ClangView(const boost::filesystem::path &file_path, const boost::filesystem::path& project_path, Glib::RefPtr<Gsv::Language> language): ClangViewRefactor(file_path, project_path) {
+  if(language) {
+    get_source_buffer()->set_highlight_syntax(false);
+    get_source_buffer()->set_language(language);
+  }
+  
   do_delete_object.connect([this](){
     if(delete_thread.joinable())
       delete_thread.join();
