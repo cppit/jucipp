@@ -102,9 +102,9 @@ namespace Source {
   public:
     ClangViewParse(const boost::filesystem::path &file_path, const boost::filesystem::path& project_path);
     boost::filesystem::path project_path;
+    void start_reparse();
   protected:
     void init_parse();
-    void start_reparse();
     bool on_key_press_event(GdkEventKey* key);
     bool on_focus_out_event(GdkEventFocus* event);
     std::unique_ptr<clang::TranslationUnit> clang_tu;

@@ -93,6 +93,9 @@ Window::Window() : box(Gtk::ORIENTATION_VERTICAL), notebook(directories), compil
     
       directories.select(notebook.get_current_view()->file_path);
       
+      if(auto source_view=dynamic_cast<Source::ClangView*>(notebook.get_current_view()))
+        source_view->start_reparse();
+      
       Singleton::status()->set_text(notebook.get_current_view()->status);
     }
   });
