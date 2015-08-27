@@ -1194,7 +1194,7 @@ void Source::ClangViewAutocomplete::autocomplete() {
     
     std::shared_ptr<std::map<std::string, std::string> > buffer_map=std::make_shared<std::map<std::string, std::string> >();
     auto& buffer=(*buffer_map)[this->file_path.string()];
-    buffer=get_buffer()->get_text(get_buffer()->begin(), get_buffer()->get_insert()->get_iter());
+    buffer=get_buffer()->get_text();
     auto iter = get_source_buffer()->get_insert()->get_iter();
     auto line_nr=iter.get_line()+1;
     auto column_nr=iter.get_line_offset()+1;
