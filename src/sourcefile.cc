@@ -58,7 +58,7 @@ bool juci::filesystem::write(const std::string &path, const std::string &new_con
 }
 
 bool juci::filesystem::write(const std::string &path, Glib::RefPtr<Gtk::TextBuffer> buffer) {
-  std::ofstream output(path);
+  std::ofstream output(path, std::ofstream::binary);
   if(output) {
     auto start_iter=buffer->begin();
     auto end_iter=start_iter;
