@@ -1207,15 +1207,23 @@ void Source::ClangViewAutocomplete::autocomplete() {
     
     std::shared_ptr<std::map<std::string, std::string> > buffer_map=std::make_shared<std::map<std::string, std::string> >();
     auto& buffer=(*buffer_map)[this->file_path.string()];
-    buffer=get_buffer()->get_text();
-    auto iter = get_source_buffer()->get_insert()->get_iter();
+    auto iter=get_buffer()->get_insert()->get_iter();
+    buffer=get_buffer()->get_text(get_buffer()->begin(), iter);
     auto line_nr=iter.get_line()+1;
     auto column_nr=iter.get_line_offset()+1;
-    while((buffer.back()>='a' && buffer.back()<='z') || (buffer.back()>='A' && buffer.back()<='Z') || (buffer.back()>='0' && buffer.back()<='9') || buffer.back()=='_') {
-      buffer.pop_back();
-      column_nr--;
+    unsigned c=1;
+    if(c<=buffer.size()) {
+      char *chr=&buffer[buffer.size()-c];
+      while((*chr>='a' && *chr<='z') || (*chr>='A' && *chr<='Z') || (*chr>='0' && *chr<='9') || *chr=='_') {
+        *chr=' ';
+        column_nr--;
+        c++;
+        if(c>buffer.size())
+          break;
+        chr--;
+      }
     }
-    buffer+="\n";
+    buffer+=get_buffer()->get_text(iter, get_buffer()->end());
     set_status("autocomplete...");
     if(autocomplete_thread.joinable())
       autocomplete_thread.join();
