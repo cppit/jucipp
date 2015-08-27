@@ -1340,8 +1340,12 @@ Source::ClangViewAutocomplete(file_path, project_path) {
   
   get_buffer()->signal_mark_set().connect([this](const Gtk::TextBuffer::iterator& iterator, const Glib::RefPtr<Gtk::TextBuffer::Mark>& mark){
     if(mark->get_name()=="insert") {
-      auto usr=get_token();
-      tag_similar_tokens(usr);
+      delayed_tag_similar_tokens_connection.disconnect();
+      delayed_tag_similar_tokens_connection=Glib::signal_timeout().connect([this]() {
+        auto usr=get_token();
+        tag_similar_tokens(usr);
+        return false;
+      }, 100);
     }
   });
   

@@ -177,6 +177,7 @@ namespace Source {
   private:
     Glib::RefPtr<Gtk::TextTag> similar_tokens_tag;
     std::string last_similar_tokens_tagged;
+    sigc::connection delayed_tag_similar_tokens_connection;
     std::unique_ptr<SelectionDialog> selection_dialog;
     bool renaming=false;
   };
