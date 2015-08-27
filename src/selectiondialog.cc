@@ -64,6 +64,7 @@ void SelectionDialogBase::add_row(const std::string& row, const std::string& too
 }
 
 void SelectionDialogBase::show() {
+  shown=true;
   move();
   window->show_all();
 }
@@ -72,8 +73,9 @@ void SelectionDialogBase::hide() {
   window->hide();
   if(tooltips)
     tooltips->hide();
-  if(on_hide)
+  if(on_hide && shown)
     on_hide();
+  shown=false;
 }
 
 void SelectionDialogBase::update_tooltips() {
