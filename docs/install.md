@@ -4,7 +4,7 @@ Before installation, please install libclangmm, see [installation guide](http://
 
 ## Debian/Ubuntu
 ```sh
-sudo apt-get install pkg-config libboost-system-dev libboost-thread-dev libboost-filesystem-dev libboost-log-dev libgtkmm-3.0-dev libgtksourceviewmm-3.0-dev libaspell-dev
+sudo apt-get install pkg-config libboost-system-dev libboost-thread-dev libboost-filesystem-dev libboost-log-dev libgtkmm-3.0-dev libgtksourceviewmm-3.0-dev aspell-en libaspell-dev
 ```
 ```sh
 git clone http://github.com/cppit/jucipp.git
