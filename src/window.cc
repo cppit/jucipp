@@ -165,6 +165,7 @@ void Window::create_menu() {
       auto undo_manager = notebook.get_current_view()->get_source_buffer()->get_undo_manager();
       if (undo_manager->can_undo()) {
         undo_manager->undo();
+        notebook.get_current_view()->scroll_to(notebook.get_current_view()->get_buffer()->get_insert());
       }
     }
     INFO("Done undo");
@@ -175,6 +176,7 @@ void Window::create_menu() {
       auto undo_manager = notebook.get_current_view()->get_source_buffer()->get_undo_manager();
       if(undo_manager->can_redo()) {
         undo_manager->redo();
+        notebook.get_current_view()->scroll_to(notebook.get_current_view()->get_buffer()->get_insert());
       }
     }
     INFO("Done Redo");
