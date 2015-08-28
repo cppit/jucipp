@@ -56,6 +56,8 @@ validate(${GTKMM_FOUND} "gtkmm" "libgtkmm-dev" "gtkmm")
 pkg_check_modules(GTKSVMM gtksourceviewmm-3.0)
 validate(${GTKSVMM_FOUND} "gtksvmm" "libgtksvmm-dev" "gtkmmsv")
 
+find_package(ASPELL REQUIRED)
+
 set(source_files juci.h
     juci.cc	
     menu.h
@@ -105,7 +107,8 @@ if(${validation})
     ${GTKMM_INCLUDE_DIRS}
     ${GTKSVMM_INCLUDE_DIRS}
     ${LCL_INCLUDE_DIRS}
-    ${LIBCLANG_INCLUDE_DIRS})
+    ${LIBCLANG_INCLUDE_DIRS}
+    ${ASPELL_INCLUDE_DIR})
 
   link_directories(
     ${GTKMM_LIBRARY_DIRS}
@@ -128,6 +131,7 @@ if(${validation})
     ${GTKMM_LIBRARIES}
     ${GTKSVMM_LIBRARIES}
     ${Boost_LIBRARIES}
+    ${ASPELL_LIBRARIES}
 #    ${PYTHON_LIBRARIES}
     )
 

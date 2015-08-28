@@ -7,13 +7,15 @@
 #include "singletons.h"
 #include <gtksourceview/gtksource.h>
 #include <boost/lexical_cast.hpp>
+#include <iostream>
 
-#include <iostream> //TODO: remove
 using namespace std; //TODO: remove
 
 namespace sigc {
   SIGC_FUNCTORS_DEDUCE_RESULT_TYPE_WITH_DECLTYPE
 }
+
+AspellConfig* spellcheck_config=NULL;
 
 Glib::RefPtr<Gsv::Language> Source::guess_language(const boost::filesystem::path &file_path) {
   auto language_manager=Gsv::LanguageManager::get_default();
@@ -98,18 +100,43 @@ Source::View::View(const boost::filesystem::path &file_path): file_path(file_pat
   
   tabs_regex=std::regex(std::string("^(")+tab_char+"*)(.*)$");
   
-  get_buffer()->signal_changed().connect([this](){
-    auto iter=get_buffer()->get_insert()->get_iter();
-    if(iter.backward_char()) {
-      auto context_iter=iter;
-      if(context_iter.backward_char()) {
-        if(get_source_buffer()->iter_has_context_class(context_iter, "comment")) {
-          //TODO: get word, and spellcheck
-          //cout << "comment: " << (char)*iter << endl;
+  if(spellcheck_config==NULL) {
+    spellcheck_config=new_aspell_config();
+    aspell_config_replace(spellcheck_config, "lang", Singleton::Config::source()->spellcheck_language.c_str());
+  }
+
+  spellcheck_possible_err=new_aspell_speller(spellcheck_config);
+  spellcheck_checker=NULL;
+  if (aspell_error_number(spellcheck_possible_err) != 0)
+    std::cerr << "Spell check error: " << aspell_error_message(spellcheck_possible_err) << std::endl;
+  else {
+    spellcheck_checker = to_aspell_speller(spellcheck_possible_err);
+
+    auto tag=get_buffer()->create_tag("spellcheck_error");
+    tag->property_underline()=Pango::Underline::UNDERLINE_ERROR;
+    
+    get_buffer()->signal_changed().connect([this](){
+      auto iter=get_buffer()->get_insert()->get_iter();
+      if(iter.backward_char()) {
+        auto context_iter=iter;
+        if(context_iter.backward_char()) {
+          if(get_source_buffer()->iter_has_context_class(context_iter, "comment") || get_source_buffer()->iter_has_context_class(context_iter, "string")) {
+            if(*iter==32) { //Might have used space to split two words
+              auto first=iter;
+              auto second=iter;
+              if(first.backward_char() && second.forward_char()) {
+                get_buffer()->remove_tag_by_name("spellcheck_error", first, second);
+                spellcheck(first);
+                spellcheck(second);
+              }
+            }
+            else
+              spellcheck(iter);
+          }
         }
       }
-    }
-  });
+    });
+  }
 }
 
 void Source::View::search_occurrences_updated(GtkWidget* widget, GParamSpec* property, gpointer data) {
@@ -121,6 +148,8 @@ void Source::View::search_occurrences_updated(GtkWidget* widget, GParamSpec* pro
 Source::View::~View() {
   g_clear_object(&search_context);
   g_clear_object(&search_settings);
+  
+  delete_aspell_speller(spellcheck_checker);
 }
 
 void Source::View::search_highlight(const std::string &text, bool case_sensitive, bool regex) {
@@ -476,6 +505,31 @@ std::pair<char, unsigned> Source::View::find_tab_char_and_size() {
   }
   return {found_tab_char, found_tab_size};
 }
+
+void Source::View::spellcheck(Gtk::TextIter iter) {
+  auto start=iter;
+  auto end=iter;
+  
+  while((*iter>=48 && *iter<=57) || (*iter>=65 && *iter<=90) || (*iter>=97 && *iter<=122) || *iter==95 || *iter>=128) {
+    start=iter;
+    if(!iter.backward_char())
+      break;
+  }
+  while((*end>=48 && *end<=57) || (*end>=65 && *end<=90) || (*end>=97 && *end<=122) || *end==95 || *end>=128) {
+    if(!end.forward_char())
+      break;
+  }
+  auto word=get_buffer()->get_text(start, end);
+  std::vector<Glib::ustring> words;
+  if(word.size()>0) {
+    auto correct = aspell_speller_check(spellcheck_checker, word.data(), word.bytes());
+    if(correct==0)
+      get_buffer()->apply_tag_by_name("spellcheck_error", start, end);
+    else
+      get_buffer()->remove_tag_by_name("spellcheck_error", start, end);
+  }
+}
+
 
 /////////////////////
 //// GenericView ////

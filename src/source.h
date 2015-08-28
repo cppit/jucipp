@@ -15,6 +15,7 @@
 #include "selectiondialog.h"
 #include <set>
 #include <regex>
+#include <aspell.h>
 
 namespace Source {
   Glib::RefPtr<Gsv::Language> guess_language(const boost::filesystem::path &file_path);
@@ -23,6 +24,7 @@ namespace Source {
   public:
     std::string style;
     std::string font;
+    std::string spellcheck_language;
     bool auto_tab_char_and_size;
     char default_tab_char;
     unsigned default_tab_size;
@@ -91,6 +93,10 @@ namespace Source {
     GtkSourceSearchContext *search_context;
     GtkSourceSearchSettings *search_settings;
     static void search_occurrences_updated(GtkWidget* widget, GParamSpec* property, gpointer data);
+    
+    AspellCanHaveError *spellcheck_possible_err;
+    AspellSpeller *spellcheck_checker;
+    void spellcheck(Gtk::TextIter iter);
   };  // class View
   
   class GenericView : public View {

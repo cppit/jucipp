@@ -4,7 +4,7 @@ Before installation, please install libclangmm, see [installation guide](http://
 
 ## Debian/Ubuntu
 ```sh
-sudo apt-get install pkg-config libboost-system-dev libboost-thread-dev libboost-filesystem-dev libboost-log-dev libgtkmm-3.0-dev libgtksourceviewmm-3.0-dev
+sudo apt-get install pkg-config libboost-system-dev libboost-thread-dev libboost-filesystem-dev libboost-log-dev libgtkmm-3.0-dev libgtksourceviewmm-3.0-dev libaspell-dev
 ```
 ```sh
 git clone http://github.com/cppit/jucipp.git
@@ -16,7 +16,7 @@ sudo make install
 
 ## OS X with Homebrew (http://brew.sh/)
 ```sh
-brew install pkg-config boost gtkmm3 gtksourceviewmm3
+brew install pkg-config boost gtkmm3 gtksourceviewmm3 aspell
 ```
 
 ```sh
@@ -36,7 +36,7 @@ Please wait until the following TODOs are resolved:
 
 Install dependencies(replace [arch] with i686 or x86_64 depending on your MSYS2 install):
 ```sh
-pacman -S patch autoconf automake-wrapper mingw-w64-[arch]-gtkmm3 mingw-w64-[arch]-boost
+pacman -S patch autoconf automake-wrapper mingw-w64-[arch]-gtkmm3 mingw-w64-[arch]-boost mingw-w64-[arch]-aspell
 ```
 
 Get juCi++ source:

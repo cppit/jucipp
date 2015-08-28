@@ -46,6 +46,8 @@ void MainConfig::GenerateSource() {
   auto source_cfg = Singleton::Config::source();
   auto source_json = cfg.get_child("source");
   
+  source_cfg->spellcheck_language = source_json.get<std::string>("spellcheck_language");
+  
   source_cfg->default_tab_char = source_json.get<char>("default_tab_char");
   source_cfg->default_tab_size = source_json.get<unsigned>("default_tab_size");
   source_cfg->auto_tab_char_and_size = source_json.get<bool>("auto_tab_char_and_size");
