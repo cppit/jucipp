@@ -7,13 +7,14 @@ towards libclang with speed in mind.
 
 ## Features
 * Fast and responsive
-* Syntax highlighing (even C++11/14, and 118 other file types)
+* Syntax highlighing (even C++11/14, and more than 100 other file types)
 * C++ warnings and errors on the fly
 * Fast C++ autocomletion (even external libraries)
 * Tooltips showing type information and doxygen documentation
 * Accurate refactoring across files
-* Basic editor functionallity
 * Highlighting of similar types
+* Spell checking of comments and strings
+* Basic editor functionallity
 * Write your own plugins in python (disabled at the moment)
 
 ## Dependencies ##
@@ -24,7 +25,8 @@ towards libclang with speed in mind.
 * libboost-system-dev 
 * libgtkmm-3.0-dev 
 * libgtksourceview2.0-dev 
-* libgtksourceviewmm-3.0-dev 
+* libgtksourceviewmm-3.0-dev
+* libaspell-dev
 * libclang-dev
 * [libclangmm](http://github.com/cppit/libclangmm/)
 
