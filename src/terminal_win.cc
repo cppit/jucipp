@@ -10,7 +10,7 @@ using namespace std; //TODO: remove
 
 #define BUFSIZE 1024
 
-HANDLE popen3(const std::string &command, const boost::filesystem::path &path, HANDLE &stdin_h, HANDLE &stdout_h, HANDLE &stderr_h) {
+HANDLE popen3(const std::string &command, const std::string &path, HANDLE *stdin_h, HANDLE *stdout_h, HANDLE *stderr_h) {
   HANDLE g_hChildStd_IN_Rd = NULL;
   HANDLE g_hChildStd_IN_Wr = NULL;
   HANDLE g_hChildStd_OUT_Rd = NULL;
@@ -76,9 +76,8 @@ HANDLE popen3(const std::string &command, const boost::filesystem::path &path, H
   if(path=="")
     path_ptr=NULL;
   else {
-    auto path_str=path.string();
-    path_ptr=new char[path_str.size()+1];
-    std::strcpy(path_ptr, path_str.c_str());
+    path_ptr=new char[path.size()+1];
+    std::strcpy(path_ptr, path.c_str());
   }
   char* command_cstr=new char[command.size()+1];
   std::strcpy(command_cstr, command.c_str());
@@ -112,9 +111,9 @@ HANDLE popen3(const std::string &command, const boost::filesystem::path &path, H
     CloseHandle(g_hChildStd_ERR_Wr);
   }
 
-  stdin_h=g_hChildStd_IN_Wr;
-  stdout_h=g_hChildStd_OUT_Rd;
-  stderr_h=g_hChildStd_ERR_Rd;
+  *stdin_h=g_hChildStd_IN_Wr;
+  *stdout_h=g_hChildStd_OUT_Rd;
+  *stderr_h=g_hChildStd_ERR_Rd;
   return process_info.hProcess;
 }
 
@@ -195,7 +194,7 @@ Terminal::Terminal() {
 int Terminal::execute(const std::string &command, const boost::filesystem::path &path) {
   HANDLE stdin_h, stdout_h, stderr_h;
 
-  auto process=popen3(command, path, stdin_h, stdout_h, stderr_h);
+  auto process=popen3(command, path.string(), &stdin_h, &stdout_h, &stderr_h);
   if(process==NULL) {
     async_print("Error: Failed to run command: " + command + "\n");
     return -1;
@@ -249,7 +248,7 @@ void Terminal::async_execute(const std::string &command, const boost::filesystem
 
     async_executes_mutex.lock();
     stdin_buffer.clear();
-    auto process=popen3(command, path, stdin_h, stdout_h, stderr_h);
+    auto process=popen3(command, path.string(), &stdin_h, &stdout_h, &stderr_h);
     if(process==NULL) {
       async_executes_mutex.unlock();
       async_print("Error: Failed to run command: " + command + "\n");

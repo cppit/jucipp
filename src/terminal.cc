@@ -8,57 +8,74 @@
 #include <iostream> //TODO: remove
 using namespace std; //TODO: remove
 
-//TODO: Windows...
 //A working implementation of popen3, with all pipes getting closed properly. 
 //TODO: Eidheim is going to publish this one on his github, along with example uses
-pid_t popen3(const char *command, int &stdin_fd, int &stdout_fd, int &stderr_fd) {
+pid_t popen3(const std::string &command, const std::string &path, int *stdin_fd, int *stdout_fd, int *stderr_fd) {
   pid_t pid;
-  int p_stdin[2], p_stdout[2], p_stderr[2];
+  int stdin_p[2], stdout_p[2], stderr_p[2];
 
-  if (pipe(p_stdin) != 0 || pipe(p_stdout) != 0 || pipe(p_stderr) != 0) {
-    close(p_stdin[0]);
-    close(p_stdout[0]);
-    close(p_stderr[0]);
-    close(p_stdin[1]);
-    close(p_stdout[1]);
-    close(p_stderr[1]);
+  if(stdin_fd!=nullptr && pipe(stdin_p)!=0) {
+    close(stdin_p[0]);
+    close(stdin_p[1]);
     return -1;
   }
-      
+  if(stdout_fd!=nullptr && pipe(stdout_p)!=0) {
+    if(stdin_fd!=nullptr) close(stdin_p[0]);
+    if(stdin_fd!=nullptr) close(stdin_p[1]);
+    close(stdout_p[0]);
+    close(stdout_p[1]);
+    return -1;
+  }
+  if(stderr_fd!=nullptr && pipe(stderr_p)!=0) {
+    if(stdin_fd!=nullptr) close(stdin_p[0]);
+    if(stdin_fd!=nullptr) close(stdin_p[1]);
+    if(stdout_fd!=nullptr) close(stdout_p[0]);
+    if(stdout_fd!=nullptr) close(stdout_p[1]);
+    close(stderr_p[0]);
+    close(stderr_p[1]);
+    return -1;
+  }
+  
   pid = fork();
 
   if (pid < 0) {
-    close(p_stdin[0]);
-    close(p_stdout[0]);
-    close(p_stderr[0]);
-    close(p_stdin[1]);
-    close(p_stdout[1]);
-    close(p_stderr[1]);
+    if(stdin_fd!=nullptr) close(stdin_p[0]);
+    if(stdin_fd!=nullptr) close(stdin_p[1]);
+    if(stdout_fd!=nullptr) close(stdout_p[0]);
+    if(stdout_fd!=nullptr) close(stdout_p[1]);
+    if(stderr_fd!=nullptr) close(stderr_p[0]);
+    if(stderr_fd!=nullptr) close(stderr_p[1]);
     return pid;
   }
   else if (pid == 0) {
-    close(p_stdin[1]);
-    close(p_stdout[0]);
-    close(p_stderr[0]);
-    dup2(p_stdin[0], 0);
-    dup2(p_stdout[1], 1);
-    dup2(p_stderr[1], 2);
+    if(stdin_fd!=nullptr) close(stdin_p[1]);
+    if(stdout_fd!=nullptr) close(stdout_p[0]);
+    if(stderr_fd!=nullptr) close(stderr_p[0]);
+    if(stdin_fd!=nullptr) dup2(stdin_p[0], 0);
+    if(stdout_fd!=nullptr) dup2(stdout_p[1], 1);
+    if(stderr_fd!=nullptr) dup2(stderr_p[1], 2);
 
     setpgid(0, 0);
     //TODO: See here on how to emulate tty for colors: http://stackoverflow.com/questions/1401002/trick-an-application-into-thinking-its-stdin-is-interactive-not-a-pipe
     //TODO: One solution is: echo "command;exit"|script -q /dev/null
-    execl("/bin/sh", "sh", "-c", command, NULL);
+    std::string cd_path_and_command;
+    if(path!="") {
+      cd_path_and_command="cd \""+path+"\" && "+command;
+    }
+    else
+      cd_path_and_command=command;
+    execl("/bin/sh", "sh", "-c", cd_path_and_command.c_str(), NULL);
     perror("execl");
     exit(EXIT_FAILURE);
   }
 
-  close(p_stdin[0]);
-  close(p_stdout[1]);
-  close(p_stderr[1]);
+  if(stdin_fd!=nullptr) close(stdin_p[0]);
+  if(stdout_fd!=nullptr) close(stdout_p[1]);
+  if(stderr_fd!=nullptr) close(stderr_p[1]);
   
-  stdin_fd = p_stdin[1];
-  stdout_fd = p_stdout[0];
-  stderr_fd = p_stderr[0];
+  if(stdin_fd!=nullptr) *stdin_fd = stdin_p[1];
+  if(stdout_fd!=nullptr) *stdout_fd = stdout_p[0];
+  if(stderr_fd!=nullptr) *stderr_fd = stderr_p[0];
 
   return pid;
 }
@@ -137,16 +154,8 @@ Terminal::Terminal() {
 }
 
 int Terminal::execute(const std::string &command, const boost::filesystem::path &path) {
-  std::string cd_path_and_command;
-  if(path!="") {
-    //TODO: Windows...
-    cd_path_and_command="cd \""+path.string()+"\" && "+command;
-  }
-  else
-    cd_path_and_command=command;
-    
   int stdin_fd, stdout_fd, stderr_fd;
-  auto pid=popen3(cd_path_and_command.c_str(), stdin_fd, stdout_fd, stderr_fd);
+  auto pid=popen3(command, path.string(), &stdin_fd, &stdout_fd, &stderr_fd);
   
   if (pid<=0) {
     async_print("Error: Failed to run command: " + command + "\n");
@@ -189,19 +198,10 @@ int Terminal::execute(const std::string &command, const boost::filesystem::path 
 
 void Terminal::async_execute(const std::string &command, const boost::filesystem::path &path, std::function<void(int exit_code)> callback) {
   std::thread async_execute_thread([this, command, path, callback](){
-    std::string cd_path_and_command;
-    if(path!="") {
-    
-      //TODO: Windows...
-      cd_path_and_command="cd \""+path.string()+"\" && "+command;
-    }
-    else
-      cd_path_and_command=command;
-      
     int stdin_fd, stdout_fd, stderr_fd;
     async_executes_mutex.lock();
     stdin_buffer.clear();
-    auto pid=popen3(cd_path_and_command.c_str(), stdin_fd, stdout_fd, stderr_fd);
+    auto pid=popen3(command, path.string(), &stdin_fd, &stdout_fd, &stderr_fd);
     async_executes.emplace_back(pid, stdin_fd);
     async_executes_mutex.unlock();
     

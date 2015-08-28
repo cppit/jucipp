@@ -229,12 +229,10 @@ void Window::create_menu() {
       if(executable_path!="") {
         compiling=true;
         Singleton::terminal()->print("Compiling and running "+executable_path.string()+"\n");
-        //TODO: Windows...
         auto project_path=cmake.project_path;
         Singleton::terminal()->async_execute(Singleton::Config::terminal()->make_command, cmake.project_path, [this, executable_path, project_path](int exit_code){
           compiling=false;
           if(exit_code==EXIT_SUCCESS) {
-            //TODO: Windows...
             auto executable_path_spaces_fixed=executable_path.string();
             char last_char=0;
             for(size_t c=0;c<executable_path_spaces_fixed.size();c++) {
@@ -264,7 +262,6 @@ void Window::create_menu() {
     if(cmake.project_path!="") {
       compiling=true;
       Singleton::terminal()->print("Compiling project "+cmake.project_path.string()+"\n");
-      //TODO: Windows...
       Singleton::terminal()->async_execute(Singleton::Config::terminal()->make_command, cmake.project_path, [this](int exit_code){
         compiling=false;
       });
