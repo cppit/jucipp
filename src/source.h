@@ -76,11 +76,20 @@ namespace Source {
     std::function<void(View* view, const std::string &status)> on_update_status;
     std::string status;
   protected:
+    bool source_readable;
+    Tooltips diagnostic_tooltips;
+    Tooltips type_tooltips;
+    Tooltips spellcheck_tooltips;
+    gdouble on_motion_last_x;
+    gdouble on_motion_last_y;
+    sigc::connection delayed_tooltips_connection;
+    void set_tooltip_events();
+    
     void set_status(const std::string &status);
     
     std::string get_line(size_t line_number);
     std::string get_line_before_insert();
-
+    
     bool on_key_press_event(GdkEventKey* key);
     bool on_button_press_event(GdkEventButton *event);
     
@@ -112,13 +121,10 @@ namespace Source {
   protected:
     void init_parse();
     bool on_key_press_event(GdkEventKey* key);
-    bool on_focus_out_event(GdkEventFocus* event);
     std::unique_ptr<clang::TranslationUnit> clang_tu;
     std::mutex parsing_mutex;
     std::unique_ptr<clang::Tokens> clang_tokens;
-    bool clang_readable;
     sigc::connection delayed_reparse_connection;
-    sigc::connection delayed_tooltips_connection;
     
     std::shared_ptr<Terminal::InProgress> parsing_in_progress;
     std::thread parse_thread;
@@ -136,14 +142,7 @@ namespace Source {
     std::set<std::string> last_syntax_tags;
     void update_diagnostics();
     void update_types();
-    Tooltips diagnostic_tooltips;
-    Tooltips type_tooltips;
-    bool on_motion_notify_event(GdkEventMotion* event);
-    gdouble on_motion_last_x;
-    gdouble on_motion_last_y;
-    void on_mark_set(const Gtk::TextBuffer::iterator& iterator, const Glib::RefPtr<Gtk::TextBuffer::Mark>& mark);
     
-    bool on_scroll_event(GdkEventScroll* event);
     static clang::Index clang_index;
     std::vector<std::string> get_compilation_commands();
     
@@ -160,7 +159,6 @@ namespace Source {
     ClangViewAutocomplete(const boost::filesystem::path &file_path, const boost::filesystem::path& project_path);
   protected:
     bool on_key_press_event(GdkEventKey* key);
-    bool on_focus_out_event(GdkEventFocus* event);
     std::thread autocomplete_thread;
   private:
     void start_autocomplete();
