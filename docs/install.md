@@ -58,7 +58,7 @@ cd ../../
 
 Compile and install juCi++ source:
 ```sh
-cmake -G"MSYS Makefiles" .
+cmake -G"MSYS Makefiles" -DCMAKE_INSTALL_PREFIX=/mingw[32 or 64] .
 make
 make install
 ```

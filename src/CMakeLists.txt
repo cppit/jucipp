@@ -39,8 +39,9 @@ validate(${LCL_FOUND} "clangmm" "clangmm" "clangmm")
 find_package(LibClang)
 validate(${LIBCLANG_FOUND} "clang" "libclang-dev" "llvm")
 
+#TODO: till clang is fixed on MSYS2 ((lib)clang.dll.a is missing):
 if(MSYS)
-  set(LIBCLANG_LIBRARIES "${MSYS_PATH}/bin/clang.dll")
+  set(LIBCLANG_LIBRARIES "${CMAKE_INSTALL_PREFIX}/bin/clang.dll")
 endif()
 
 #find_package(PythonLibs 2.7)
@@ -137,7 +138,7 @@ if(${validation})
 
 #  install(TARGETS ${project_name} ${module}
   install(TARGETS ${project_name}
-    RUNTIME DESTINATION ${bin_install_path}
+    RUNTIME DESTINATION bin
 #    LIBRARY DESTINATION ${lib_install_path}
     )
 endif(${validation})
