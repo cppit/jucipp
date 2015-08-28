@@ -36,7 +36,7 @@ Please wait until the following TODOs are resolved:
 
 Install dependencies(replace [arch] with i686 or x86_64 depending on your MSYS2 install):
 ```sh
-pacman -S patch autoconf automake-wrapper mingw-w64-[arch]-gtkmm3 mingw-w64-[arch]-boost mingw-w64-[arch]-aspell
+pacman -S patch autoconf automake-wrapper mingw-w64-[arch]-gtkmm3 mingw-w64-[arch]-boost mingw-w64-[arch]-aspell mingw-w64-[arch]-aspell-en
 ```
 
 Get juCi++ source:
