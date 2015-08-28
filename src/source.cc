@@ -664,9 +664,12 @@ void Source::View::spellcheck(Gtk::TextIter iter) {
       auto words=std::make_shared<std::string>();
       const char *word;
       while ((word = aspell_string_enumeration_next(elements))!= NULL) {
-        if(words->size()==0)
-          *words="Suggestions:";
-        (*words)+=std::string("\n")+word;
+        if(words->size()==0) {
+          *words="Suggestions:\n";
+          (*words)+=word;
+        }
+        else
+          (*words)+=std::string(", ")+word;
       }
       delete_aspell_string_enumeration(elements);
       
