@@ -156,7 +156,8 @@ Source::View::View(const boost::filesystem::path &file_path): file_path(file_pat
   
   if(spellcheck_config==NULL) {
     spellcheck_config=new_aspell_config();
-    aspell_config_replace(spellcheck_config, "lang", Singleton::Config::source()->spellcheck_language.c_str());
+    if(Singleton::Config::source()->spellcheck_language.size()>0)
+      aspell_config_replace(spellcheck_config, "lang", Singleton::Config::source()->spellcheck_language.c_str());
   }
 
   spellcheck_possible_err=new_aspell_speller(spellcheck_config);

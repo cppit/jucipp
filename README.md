@@ -11,7 +11,7 @@ towards libclang with speed in mind.
 * C++ warnings and errors on the fly
 * Fast C++ autocomletion (even external libraries)
 * Tooltips showing type information and doxygen documentation
-* Accurate refactoring across files
+* Refactoring across files
 * Highlighting of similar types
 * Spell checking depending on file context
 * Basic editor functionallity
