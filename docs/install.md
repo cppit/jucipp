@@ -62,7 +62,6 @@ cmake -G"MSYS Makefiles" -DCMAKE_INSTALL_PREFIX=/mingw[32 or 64] .
 make
 make install
 ```
-**You might have to install juci manually**
 
 <!--
 ## Windows with Cygwin (https://www.cygwin.com/)
