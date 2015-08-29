@@ -5,12 +5,10 @@
 find_package(PkgConfig)
 
 find_path(LCL_INCLUDE_DIR clangmm.h
-  HINTS  "/usr/local/include/libclangmm/"
-  )
+ PATH_SUFFIXES libclangmm
+)
 
-find_library(LCL_LIBRARY NAMES clangmm
-  HINTS  "/usr/local/lib/"
-  )
+find_library(LCL_LIBRARY NAMES clangmm)
 
 set(LCL_LIBRARIES ${LCL_LIBRARY} )
 set(LCL_INCLUDE_DIRS ${LCL_INCLUDE_DIR} )

@@ -14,13 +14,13 @@ public:
   
   Gdk::Rectangle activation_rectangle;
   std::unique_ptr<Gtk::Window> window;
+  Glib::RefPtr<Gtk::TextBuffer::Mark> start_mark;
+  Glib::RefPtr<Gtk::TextBuffer::Mark> end_mark;
 private:
   void wrap_lines(Glib::RefPtr<Gtk::TextBuffer> text_buffer);
   
   std::function<Glib::RefPtr<Gtk::TextBuffer>()> create_tooltip_buffer;
   std::unique_ptr<Gtk::TextView> tooltip_widget;
-  Glib::RefPtr<Gtk::TextBuffer::Mark> start_mark;
-  Glib::RefPtr<Gtk::TextBuffer::Mark> end_mark;
   Gtk::TextView& text_view;
   int tooltip_width, tooltip_height;
 };

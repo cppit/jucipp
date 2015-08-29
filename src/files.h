@@ -7,7 +7,17 @@ const std::string configjson =
 "    },\n"
 "    \"source\": {\n"
 "        \"style\": \"juci-light\", //Use \"\" for default style, and for instance juci-dark together with dark gtk_theme variant. Styles from normal gtksourceview install: classic, cobalt, kate, oblivion, solarized-dark, solarized-light, tango\n"
-"        \"font\": \"Monospace\", //Use \"\" for default font, and for instance \"Monospace 12\" to also set size.\n"
+#ifdef __APPLE__
+"        \"font\": \"Menlo 11\", "
+#else
+#ifdef _WIN32
+"        \"font\": \"Consolas\", "
+#else
+"        \"font\": \"Monospace\", "
+#endif
+#endif
+"//Use \"\" for default font, and for instance \"Monospace 12\" to also set size.\n"
+"        \"spellcheck_language\": \"en_US\", //Use \"\" to set language from your locale settings\n"
 "        \"clang_types\": {\n"
 "            \"8\": \"def:function\",\n"
 "            \"21\": \"def:function\",\n"
@@ -23,14 +33,17 @@ const std::string configjson =
 "            \"702\": \"def:statement\",\n"
 "            \"705\": \"def:comment\"\n"
 "        },\n"
-"        \"tab_size\": 2,\n"
-"        \"tab_char\": \" \", //Use \"\\t\" for regular tab\n"
+"        \"auto_tab_char_and_size\": true, //Use false to always use default tab char and size\n"
+"        \"default_tab_char\": \" \", //Use \"\\t\" for regular tab\n"
+"        \"default_tab_size\": 2,\n"
+"        \"wrap_lines\": false,\n"
 "        \"highlight_current_line\": true,\n"
 "        \"show_line_numbers\": true\n"
 "    },\n"
 "    \"keybindings\": {\n"
 "        \"new_file\": \"<primary>n\",\n"
-"        \"open_folder\": \"<primary><alt>o\",\n"
+"        \"new_folder\": \"<primary><shift>n\",\n"
+"        \"open_folder\": \"<primary><shift>o\",\n"
 "        \"open_file\": \"<primary>o\",\n"
 "        \"save\": \"<primary>s\",\n"
 "        \"save_as\": \"<primary><shift>s\",\n"
@@ -55,18 +68,17 @@ const std::string configjson =
 "        \"force_kill_last_running\": \"<primary><shift>Escape\"\n"
 "    },\n"
 "    \"project\": {\n"
+#ifdef _WIN32
+"        \"cmake_command\": \"cmake -G\\\"MSYS Makefiles\\\"\",\n"
+#else
+"        \"cmake_command\": \"cmake\",\n"
+#endif
 "        \"make_command\": \"make\"\n"
 "    },\n"
 "    \"directoryfilter\": {\n"
 "        \"ignore\": [\n"
-"            \"cmake\",\n"
-"            \"#\",\n"
-"            \"~\",\n"
-"            \".idea\",\n"
-"            \".so\"\n"
 "        ],\n"
 "        \"exceptions\": [\n"
-"            \"cmakelists.txt\"\n"
 "        ]\n"
 "    }\n"
 "}\n";
@@ -76,6 +88,7 @@ const std::string menuxml =
 "  <menubar name=\"MenuBar\">\n"
 "    <menu action=\"FileMenu\">\n"
 "      <menuitem action=\"FileNewFile\"/>\n"
+"      <menuitem action=\"FileNewFolder\"/>\n"
 "      <menu action=\"FileNewProject\">\n"
 "        <menuitem action=\"FileNewProjectCpp\"/>\n"
 "      </menu>\n"

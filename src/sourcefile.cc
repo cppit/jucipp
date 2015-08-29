@@ -7,7 +7,7 @@ const size_t buffer_size=131072;
 //Only use on small files
 std::string juci::filesystem::read(const std::string &path) {
   std::stringstream ss;
-  std::ifstream input(path);
+  std::ifstream input(path, std::ofstream::binary);
   if(input) {
     ss << input.rdbuf();
     input.close();
@@ -16,17 +16,22 @@ std::string juci::filesystem::read(const std::string &path) {
 }
 
 bool juci::filesystem::read(const std::string &path, Glib::RefPtr<Gtk::TextBuffer> text_buffer) {
-  std::ifstream input(path);
+  std::ifstream input(path, std::ofstream::binary);
   if(input) {
     std::vector<char> buffer(buffer_size);
     size_t read_length;
+    std::string buffer_str;
     while((read_length=input.read(&buffer[0], buffer_size).gcount())>0) {
-      auto ustr=Glib::ustring(std::string(&buffer[0], read_length));
-      if(ustr.validate())
-        text_buffer->insert_at_cursor(ustr);
-      else {
-        input.close();
-        return false;
+      buffer_str+=std::string(&buffer[0], read_length);
+      if(buffer_str.back()>=0) {
+        auto ustr=Glib::ustring(buffer_str);
+        buffer_str="";
+        if(ustr.validate())
+          text_buffer->insert_at_cursor(ustr);
+        else {
+          input.close();
+          return false;
+        }
       }
     }
     input.close();
@@ -38,7 +43,7 @@ bool juci::filesystem::read(const std::string &path, Glib::RefPtr<Gtk::TextBuffe
 //Only use on small files
 std::vector<std::string> juci::filesystem::read_lines(const std::string &path) {
   std::vector<std::string> res;
-  std::ifstream input(path);
+  std::ifstream input(path, std::ofstream::binary);
   if (input) {
     do { res.emplace_back(); } while(getline(input, res.back()));
   }
@@ -48,7 +53,7 @@ std::vector<std::string> juci::filesystem::read_lines(const std::string &path) {
 
 //Only use on small files
 bool juci::filesystem::write(const std::string &path, const std::string &new_content) {
-  std::ofstream output(path);
+  std::ofstream output(path, std::ofstream::binary);
   if(output)
     output << new_content;
   else
@@ -58,7 +63,7 @@ bool juci::filesystem::write(const std::string &path, const std::string &new_con
 }
 
 bool juci::filesystem::write(const std::string &path, Glib::RefPtr<Gtk::TextBuffer> buffer) {
-  std::ofstream output(path);
+  std::ofstream output(path, std::ofstream::binary);
   if(output) {
     auto start_iter=buffer->begin();
     auto end_iter=start_iter;

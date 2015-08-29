@@ -45,7 +45,7 @@ void app::on_activate() {
   bool first_directory=true;
   for(auto &directory: directories) {
     if(first_directory) {
-      window->directories.open_folder(directory);
+      window->directories.open(directory);
       first_directory=false;
     }
     else {

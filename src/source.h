@@ -14,6 +14,8 @@
 #include "tooltips.h"
 #include "selectiondialog.h"
 #include <set>
+#include <regex>
+#include <aspell.h>
 
 namespace Source {
   Glib::RefPtr<Gsv::Language> guess_language(const boost::filesystem::path &file_path);
@@ -22,9 +24,11 @@ namespace Source {
   public:
     std::string style;
     std::string font;
-    unsigned tab_size;
-    char tab_char;
-    std::string tab;
+    std::string spellcheck_language;
+    bool auto_tab_char_and_size;
+    char default_tab_char;
+    unsigned default_tab_size;
+    bool wrap_lines;
     bool highlight_current_line;
     bool show_line_numbers;
     std::unordered_map<std::string, std::string> clang_types;
@@ -73,16 +77,39 @@ namespace Source {
     std::function<void(View* view, const std::string &status)> on_update_status;
     std::string status;
   protected:
+    bool source_readable;
+    Tooltips diagnostic_tooltips;
+    Tooltips type_tooltips;
+    Tooltips spellcheck_tooltips;
+    gdouble on_motion_last_x;
+    gdouble on_motion_last_y;
+    sigc::connection delayed_tooltips_connection;
+    void set_tooltip_events();
+    
     void set_status(const std::string &status);
     
     std::string get_line(size_t line_number);
     std::string get_line_before_insert();
-
+    
     bool on_key_press_event(GdkEventKey* key);
+    bool on_button_press_event(GdkEventButton *event);
+    
+    std::pair<char, unsigned> find_tab_char_and_size();
+    unsigned tab_size;
+    char tab_char;
+    std::string tab;
+    std::regex tabs_regex;
+    
+    bool spellcheck_all=false;
   private:
     GtkSourceSearchContext *search_context;
     GtkSourceSearchSettings *search_settings;
     static void search_occurrences_updated(GtkWidget* widget, GParamSpec* property, gpointer data);
+    
+    static AspellConfig* spellcheck_config;
+    AspellCanHaveError *spellcheck_possible_err;
+    AspellSpeller *spellcheck_checker;
+    void spellcheck(Gtk::TextIter iter);
   };  // class View
   
   class GenericView : public View {
@@ -94,21 +121,22 @@ namespace Source {
   public:
     ClangViewParse(const boost::filesystem::path &file_path, const boost::filesystem::path& project_path);
     boost::filesystem::path project_path;
+    void start_reparse();
   protected:
     void init_parse();
-    void start_reparse();
     bool on_key_press_event(GdkEventKey* key);
-    bool on_focus_out_event(GdkEventFocus* event);
     std::unique_ptr<clang::TranslationUnit> clang_tu;
     std::mutex parsing_mutex;
     std::unique_ptr<clang::Tokens> clang_tokens;
-    bool clang_readable;
     sigc::connection delayed_reparse_connection;
-    sigc::connection delayed_tooltips_connection;
     
     std::shared_ptr<Terminal::InProgress> parsing_in_progress;
     std::thread parse_thread;
     std::atomic<bool> parse_thread_stop;
+    
+    std::regex bracket_regex;
+    std::regex no_bracket_statement_regex;
+    std::regex no_bracket_no_para_statement_regex;
   private:
     std::map<std::string, std::string> get_buffer_map() const;
     // inits the syntax highligthing on file open
@@ -118,12 +146,7 @@ namespace Source {
     std::set<std::string> last_syntax_tags;
     void update_diagnostics();
     void update_types();
-    Tooltips diagnostic_tooltips;
-    Tooltips type_tooltips;
-    bool on_motion_notify_event(GdkEventMotion* event);
-    void on_mark_set(const Gtk::TextBuffer::iterator& iterator, const Glib::RefPtr<Gtk::TextBuffer::Mark>& mark);
     
-    bool on_scroll_event(GdkEventScroll* event);
     static clang::Index clang_index;
     std::vector<std::string> get_compilation_commands();
     
@@ -140,7 +163,6 @@ namespace Source {
     ClangViewAutocomplete(const boost::filesystem::path &file_path, const boost::filesystem::path& project_path);
   protected:
     bool on_key_press_event(GdkEventKey* key);
-    bool on_focus_out_event(GdkEventFocus* event);
     std::thread autocomplete_thread;
   private:
     void start_autocomplete();
@@ -163,13 +185,14 @@ namespace Source {
   private:
     Glib::RefPtr<Gtk::TextTag> similar_tokens_tag;
     std::string last_similar_tokens_tagged;
+    sigc::connection delayed_tag_similar_tokens_connection;
     std::unique_ptr<SelectionDialog> selection_dialog;
     bool renaming=false;
   };
   
   class ClangView : public ClangViewRefactor {
   public:
-    ClangView(const boost::filesystem::path &file_path, const boost::filesystem::path& project_path);
+    ClangView(const boost::filesystem::path &file_path, const boost::filesystem::path& project_path, Glib::RefPtr<Gsv::Language> language);
     void async_delete();
     bool restart_parse();
   private:
