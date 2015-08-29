@@ -28,12 +28,6 @@ make install
 ```
 
 ##Windows with MSYS2 (https://msys2.github.io/)
-Please wait until the following TODOs are resolved:
-* Newlines are saved properly
-* Windows implementation of creating processes
-* libclang(mm) finds header-files
-* fix make install, and install to mingw[32/64]/bin
-
 Install dependencies(replace [arch] with i686 or x86_64 depending on your MSYS2 install):
 ```sh
 pacman -S patch autoconf automake-wrapper mingw-w64-[arch]-gtkmm3 mingw-w64-[arch]-boost mingw-w64-[arch]-aspell mingw-w64-[arch]-aspell-en

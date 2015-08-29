@@ -4,19 +4,9 @@
 
 find_package(PkgConfig)
 
-if(MSYS)
-  string(TOLOWER "/$ENV{MSYSTEM}" MSYS_PATH)
-  set(MSYS_INCLUDE_PATH "${MSYS_PATH}/include/libclangmm")
-  set(MSYS_BIN_PATH "${MSYS_PATH}/bin")
-endif()
+find_path(LCL_INCLUDE_DIR clangmm.h)
 
-find_path(LCL_INCLUDE_DIR clangmm.h
-  PATHS /usr/local/include/libclangmm ${MSYS_INCLUDE_PATH}
-)
-
-find_library(LCL_LIBRARY NAMES clangmm
-  PATHS /usr/local/lib ${MSYS_BIN_PATH}
-)
+find_library(LCL_LIBRARY NAMES clangmm)
 
 set(LCL_LIBRARIES ${LCL_LIBRARY} )
 set(LCL_INCLUDE_DIRS ${LCL_INCLUDE_DIR} )
