@@ -4,7 +4,9 @@
 
 find_package(PkgConfig)
 
-find_path(LCL_INCLUDE_DIR clangmm.h)
+find_path(LCL_INCLUDE_DIR clangmm.h
+ PATH_SUFFIXES libclangmm
+)
 
 find_library(LCL_LIBRARY NAMES clangmm)
 
