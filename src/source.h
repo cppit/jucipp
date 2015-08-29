@@ -98,11 +98,14 @@ namespace Source {
     char tab_char;
     std::string tab;
     std::regex tabs_regex;
+    
+    bool spellcheck_all=false;
   private:
     GtkSourceSearchContext *search_context;
     GtkSourceSearchSettings *search_settings;
     static void search_occurrences_updated(GtkWidget* widget, GParamSpec* property, gpointer data);
     
+    static AspellConfig* spellcheck_config;
     AspellCanHaveError *spellcheck_possible_err;
     AspellSpeller *spellcheck_checker;
     void spellcheck(Gtk::TextIter iter);

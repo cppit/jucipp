@@ -15,8 +15,6 @@ namespace sigc {
   SIGC_FUNCTORS_DEDUCE_RESULT_TYPE_WITH_DECLTYPE
 }
 
-AspellConfig* spellcheck_config=NULL;
-
 Glib::RefPtr<Gsv::Language> Source::guess_language(const boost::filesystem::path &file_path) {
   auto language_manager=Gsv::LanguageManager::get_default();
   bool result_uncertain = false;
@@ -38,6 +36,8 @@ Glib::RefPtr<Gsv::Language> Source::guess_language(const boost::filesystem::path
 //////////////
 //// View ////
 //////////////
+AspellConfig* Source::View::spellcheck_config=NULL;
+
 Source::View::View(const boost::filesystem::path &file_path): file_path(file_path) {
   set_smart_home_end(Gsv::SMART_HOME_END_BEFORE);
   get_source_buffer()->begin_not_undoable_action();
@@ -174,8 +174,8 @@ Source::View::View(const boost::filesystem::path &file_path): file_path(file_pat
       if(iter.backward_char()) {
         auto context_iter=iter;
         if(context_iter.backward_char()) {
-          if(get_source_buffer()->iter_has_context_class(context_iter, "comment") || get_source_buffer()->iter_has_context_class(context_iter, "string")) {
-            if(*iter==32) { //Might have used space to split two words
+          if((spellcheck_all && !get_source_buffer()->iter_has_context_class(context_iter, "no-spell-check")) || get_source_buffer()->iter_has_context_class(context_iter, "comment") || get_source_buffer()->iter_has_context_class(context_iter, "string")) {
+            if(*iter==32 || *iter==45) { //Might have used space or - to split two words
               auto first=iter;
               auto second=iter;
               if(first.backward_char() && second.forward_char()) {
@@ -638,12 +638,12 @@ void Source::View::spellcheck(Gtk::TextIter iter) {
   auto start=iter;
   auto end=iter;
   
-  while((*iter>=48 && *iter<=57) || (*iter>=65 && *iter<=90) || (*iter>=97 && *iter<=122) || *iter>=128) {
+  while((*iter>=48 && *iter<=57) || (*iter>=65 && *iter<=90) || (*iter>=97 && *iter<=122) || *iter==39 || *iter>=128) {
     start=iter;
     if(!iter.backward_char())
       break;
   }
-  while((*end>=48 && *end<=57) || (*end>=65 && *end<=90) || (*end>=97 && *end<=122) || *end>=128) {
+  while((*end>=48 && *end<=57) || (*end>=65 && *end<=90) || (*end>=97 && *end<=122) || *iter==39 || *end>=128) {
     if(!end.forward_char())
       break;
   }
@@ -696,6 +696,7 @@ Source::GenericView::GenericView(const boost::filesystem::path &file_path, Glib:
     get_source_buffer()->set_language(language);
     Singleton::terminal()->print("Language for file "+file_path.string()+" set to "+language->get_name()+".\n");
   }
+  spellcheck_all=true;
   auto completion=get_completion();
   auto completion_words=Gsv::CompletionWords::create("", Glib::RefPtr<Gdk::Pixbuf>());
   completion_words->register_provider(get_buffer());
