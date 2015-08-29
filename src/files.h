@@ -36,6 +36,7 @@ const std::string configjson =
 "        \"auto_tab_char_and_size\": true, //Use false to always use default tab char and size\n"
 "        \"default_tab_char\": \" \", //Use \"\\t\" for regular tab\n"
 "        \"default_tab_size\": 2,\n"
+"        \"wrap_lines\": false,\n"
 "        \"highlight_current_line\": true,\n"
 "        \"show_line_numbers\": true\n"
 "    },\n"

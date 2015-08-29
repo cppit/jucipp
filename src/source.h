@@ -28,6 +28,7 @@ namespace Source {
     bool auto_tab_char_and_size;
     char default_tab_char;
     unsigned default_tab_size;
+    bool wrap_lines;
     bool highlight_current_line;
     bool show_line_numbers;
     std::unordered_map<std::string, std::string> clang_types;

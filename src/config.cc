@@ -51,6 +51,8 @@ void MainConfig::GenerateSource() {
   source_cfg->default_tab_char = source_json.get<char>("default_tab_char");
   source_cfg->default_tab_size = source_json.get<unsigned>("default_tab_size");
   source_cfg->auto_tab_char_and_size = source_json.get<bool>("auto_tab_char_and_size");
+  
+  source_cfg->wrap_lines = source_json.get_value<bool>("wrap_lines");
     
   source_cfg->highlight_current_line = source_json.get_value<bool>("highlight_current_line");
   source_cfg->show_line_numbers = source_json.get_value<bool>("show_line_numbers");

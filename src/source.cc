@@ -72,6 +72,8 @@ Source::View::View(const boost::filesystem::path &file_path): file_path(file_pat
       Singleton::terminal()->print("Error: Could not find gtksourceview style: "+Singleton::Config::source()->style+'\n');
   }
   
+  if(Singleton::Config::source()->wrap_lines)
+    set_wrap_mode(Gtk::WrapMode::WRAP_CHAR);
   property_highlight_current_line() = Singleton::Config::source()->highlight_current_line;
   property_show_line_numbers() = Singleton::Config::source()->show_line_numbers;
   if(Singleton::Config::source()->font.size()>0)
