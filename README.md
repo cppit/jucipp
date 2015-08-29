@@ -13,7 +13,7 @@ towards libclang with speed in mind.
 * Tooltips showing type information and doxygen documentation
 * Accurate refactoring across files
 * Highlighting of similar types
-* Spell checking of comments and strings
+* Spell checking depending on file context
 * Basic editor functionallity
 * Write your own plugins in python (disabled at the moment)
 
