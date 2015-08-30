@@ -148,7 +148,7 @@ void SelectionDialogBase::resize() {
   }
 }
 
-SelectionDialog::SelectionDialog(Gtk::TextView& text_view, Glib::RefPtr<Gtk::TextBuffer::Mark> start_mark) : SelectionDialogBase(text_view, start_mark, true) {}
+SelectionDialog::SelectionDialog(Gtk::TextView& text_view, Glib::RefPtr<Gtk::TextBuffer::Mark> start_mark, bool show_search_entry) : SelectionDialogBase(text_view, start_mark, show_search_entry) {}
 
 void SelectionDialog::show() {
   SelectionDialogBase::show();
@@ -237,6 +237,46 @@ void SelectionDialog::show() {
     list_view_text.set_cursor(list_view_text.get_model()->get_path(list_view_text.get_model()->children().begin()));
     update_tooltips();
   }
+}
+
+bool SelectionDialog::on_key_press(GdkEventKey* key) {
+  if(key->keyval==GDK_KEY_Down && list_view_text.get_model()->children().size()>0) {
+    auto it=list_view_text.get_selection()->get_selected();
+    if(it) {
+      it++;
+      if(it) {
+        list_view_text.set_cursor(list_view_text.get_model()->get_path(it));
+      }
+    }
+    else
+      list_view_text.set_cursor(list_view_text.get_model()->get_path(list_view_text.get_model()->children().begin()));
+    return true;
+  }
+  if(key->keyval==GDK_KEY_Up && list_view_text.get_model()->children().size()>0) {
+    auto it=list_view_text.get_selection()->get_selected();
+    if(it) {
+      it--;
+      if(it) {
+        list_view_text.set_cursor(list_view_text.get_model()->get_path(it));
+      }
+    }
+    else {
+      auto last_it=list_view_text.get_model()->children().end();
+      last_it--;
+      list_view_text.set_cursor(list_view_text.get_model()->get_path(last_it));
+    }
+    return true;
+  }
+  if(key->keyval==GDK_KEY_Return || key->keyval==GDK_KEY_ISO_Left_Tab || key->keyval==GDK_KEY_Tab) {
+    auto it=list_view_text.get_selection()->get_selected();
+    auto column=list_view_text.get_column(0);
+    list_view_text.row_activated(list_view_text.get_model()->get_path(it), *column);
+    return true;
+  }
+  hide();
+  if(key->keyval==GDK_KEY_Escape)
+    return true;
+  return false;
 }
 
 CompletionDialog::CompletionDialog(Gtk::TextView& text_view, Glib::RefPtr<Gtk::TextBuffer::Mark> start_mark) : SelectionDialogBase(text_view, start_mark, false) {}

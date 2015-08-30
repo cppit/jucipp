@@ -80,7 +80,6 @@ namespace Source {
     bool source_readable;
     Tooltips diagnostic_tooltips;
     Tooltips type_tooltips;
-    Tooltips spellcheck_tooltips;
     gdouble on_motion_last_x;
     gdouble on_motion_last_y;
     sigc::connection delayed_tooltips_connection;
@@ -109,8 +108,13 @@ namespace Source {
     static AspellConfig* spellcheck_config;
     AspellCanHaveError *spellcheck_possible_err;
     AspellSpeller *spellcheck_checker;
-    void spellcheck(Gtk::TextIter iter);
-  };  // class View
+    std::pair<Gtk::TextIter, Gtk::TextIter> spellcheck_get_word(Gtk::TextIter iter);
+    void spellcheck_word(const Gtk::TextIter& start, const Gtk::TextIter& end);
+    std::vector<std::string> spellcheck_get_suggestions(const Gtk::TextIter& start, const Gtk::TextIter& end);
+    std::unique_ptr<SelectionDialog> spellcheck_suggestions_dialog;
+    bool spellcheck_suggestions_dialog_shown=false;
+    sigc::connection delayed_spellcheck_suggestions_connection;
+  };
   
   class GenericView : public View {
   public:

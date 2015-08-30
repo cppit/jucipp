@@ -173,6 +173,8 @@ Source::View::View(const boost::filesystem::path &file_path): file_path(file_pat
     tag->property_underline()=Pango::Underline::UNDERLINE_ERROR;
     
     get_buffer()->signal_changed().connect([this](){
+      delayed_spellcheck_suggestions_connection.disconnect();
+      
       auto iter=get_buffer()->get_insert()->get_iter();
       if(iter.backward_char()) {
         auto context_iter=iter;
@@ -183,14 +185,58 @@ Source::View::View(const boost::filesystem::path &file_path): file_path(file_pat
               auto second=iter;
               if(first.backward_char() && second.forward_char()) {
                 get_buffer()->remove_tag_by_name("spellcheck_error", first, second);
-                spellcheck(first);
-                spellcheck(second);
+                auto word=spellcheck_get_word(first);
+                spellcheck_word(word.first, word.second);
+                word=spellcheck_get_word(second);
+                spellcheck_word(word.first, word.second);
               }
             }
-            else
-              spellcheck(iter);
+            else {
+              auto word=spellcheck_get_word(iter);
+              spellcheck_word(word.first, word.second);
+            }
           }
         }
+      }
+    });
+    
+    get_buffer()->signal_mark_set().connect([this](const Gtk::TextBuffer::iterator& iter, const Glib::RefPtr<Gtk::TextBuffer::Mark>& mark) {
+      if(mark->get_name()=="insert") {
+        if(spellcheck_suggestions_dialog_shown)
+          spellcheck_suggestions_dialog->hide();
+        delayed_spellcheck_suggestions_connection.disconnect();
+        delayed_spellcheck_suggestions_connection=Glib::signal_timeout().connect([this]() {
+          auto tags=get_buffer()->get_insert()->get_iter().get_tags();
+          bool need_suggestions=false;
+          for(auto &tag: tags) {
+            if(tag->property_name()=="spellcheck_error") {
+              need_suggestions=true;
+              break;
+            }
+          }
+          if(need_suggestions) {
+            spellcheck_suggestions_dialog=std::unique_ptr<SelectionDialog>(new SelectionDialog(*this, get_buffer()->create_mark(get_buffer()->get_insert()->get_iter()), false));
+            spellcheck_suggestions_dialog->on_hide=[this](){
+              spellcheck_suggestions_dialog_shown=false;
+            };
+            auto word=spellcheck_get_word(get_buffer()->get_insert()->get_iter());
+            auto suggestions=spellcheck_get_suggestions(word.first, word.second);
+            if(suggestions.size()==0)
+              return false;
+            for(auto &suggestion: suggestions)
+              spellcheck_suggestions_dialog->add_row(suggestion);
+            spellcheck_suggestions_dialog->on_select=[this, word](const std::string& selected, bool hide_window) {
+              get_source_buffer()->begin_user_action();
+              get_buffer()->erase(word.first, word.second);
+              get_buffer()->insert(get_buffer()->get_insert()->get_iter(), selected);
+              get_source_buffer()->end_user_action();
+              delayed_tooltips_connection.disconnect();
+            };
+            spellcheck_suggestions_dialog->show();
+            spellcheck_suggestions_dialog_shown=true;
+          }
+          return false;
+        }, 500);
       }
     });
   }
@@ -212,13 +258,11 @@ void Source::View::set_tooltip_events() {
             type_tooltips.show(rectangle);
             diagnostic_tooltips.show(rectangle);
           }
-          spellcheck_tooltips.show(rectangle);
           return false;
         }, 100);
       }
       type_tooltips.hide();
       diagnostic_tooltips.hide();
-      spellcheck_tooltips.hide();
     }
     on_motion_last_x=event->x;
     on_motion_last_y=event->y;
@@ -244,12 +288,10 @@ void Source::View::set_tooltip_events() {
           type_tooltips.show(rectangle);
           diagnostic_tooltips.show(rectangle);
         }
-        spellcheck_tooltips.show(rectangle);
         return false;
       }, 500);
       type_tooltips.hide();
       diagnostic_tooltips.hide();
-      spellcheck_tooltips.hide();
     }
   });
   
@@ -257,7 +299,6 @@ void Source::View::set_tooltip_events() {
     delayed_tooltips_connection.disconnect();
     type_tooltips.hide();
     diagnostic_tooltips.hide();
-    spellcheck_tooltips.hide();
     return false;
   });
   
@@ -265,7 +306,6 @@ void Source::View::set_tooltip_events() {
     delayed_tooltips_connection.disconnect();
     type_tooltips.hide();
     diagnostic_tooltips.hide();
-    spellcheck_tooltips.hide();
     return false;
   });
 }
@@ -453,6 +493,11 @@ string Source::View::get_line_before_insert() {
 
 //Basic indentation
 bool Source::View::on_key_press_event(GdkEventKey* key) {
+  if(spellcheck_suggestions_dialog_shown) {
+    if(spellcheck_suggestions_dialog->on_key_press(key))
+      return true;
+  }
+  
   get_source_buffer()->begin_user_action();
   //Indent as in next or previous line
   if(key->keyval==GDK_KEY_Return && key->state==0 && !get_buffer()->get_has_selection()) {
@@ -637,7 +682,7 @@ std::pair<char, unsigned> Source::View::find_tab_char_and_size() {
   return {found_tab_char, found_tab_size};
 }
 
-void Source::View::spellcheck(Gtk::TextIter iter) {
+std::pair<Gtk::TextIter, Gtk::TextIter> Source::View::spellcheck_get_word(Gtk::TextIter iter) {
   auto start=iter;
   auto end=iter;
   
@@ -650,44 +695,35 @@ void Source::View::spellcheck(Gtk::TextIter iter) {
     if(!end.forward_char())
       break;
   }
-  for(auto it=spellcheck_tooltips.begin();it!=spellcheck_tooltips.end();it++) {
-    if(it->start_mark->get_iter()==start || it->start_mark->get_iter()==it->end_mark->get_iter())
-      it=spellcheck_tooltips.erase(it);
-  }
+  
+  return {start, end};
+}
+
+void Source::View::spellcheck_word(const Gtk::TextIter& start, const Gtk::TextIter& end) {
   auto word=get_buffer()->get_text(start, end);
-  std::vector<Glib::ustring> words;
   if(word.size()>0) {
     auto correct = aspell_speller_check(spellcheck_checker, word.data(), word.bytes());
-    if(correct==0) {
+    if(correct==0)
       get_buffer()->apply_tag_by_name("spellcheck_error", start, end);
-      
-      const AspellWordList *suggestions = aspell_speller_suggest(spellcheck_checker, word.data(), word.bytes());
-      AspellStringEnumeration *elements = aspell_word_list_elements(suggestions);
-      
-      auto words=std::make_shared<std::string>();
-      const char *word;
-      while ((word = aspell_string_enumeration_next(elements))!= NULL) {
-        if(words->size()==0) {
-          *words="Suggestions:\n";
-          (*words)+=word;
-        }
-        else
-          (*words)+=std::string(", ")+word;
-      }
-      delete_aspell_string_enumeration(elements);
-      
-      if(words->size()>0) {
-        auto create_tooltip_buffer=[this, words]() {
-          auto tooltip_buffer=Gtk::TextBuffer::create(get_buffer()->get_tag_table());
-          tooltip_buffer->insert_with_tag(tooltip_buffer->get_insert()->get_iter(), *words, "def:note");
-          return tooltip_buffer;
-        };
-        spellcheck_tooltips.emplace_back(create_tooltip_buffer, *this, get_buffer()->create_mark(start), get_buffer()->create_mark(end));
-      }
-    }
     else
       get_buffer()->remove_tag_by_name("spellcheck_error", start, end);
   }
+}
+
+std::vector<std::string> Source::View::spellcheck_get_suggestions(const Gtk::TextIter& start, const Gtk::TextIter& end) {
+  auto word_with_error=get_buffer()->get_text(start, end);
+  
+  const AspellWordList *suggestions = aspell_speller_suggest(spellcheck_checker, word_with_error.data(), word_with_error.bytes());
+  AspellStringEnumeration *elements = aspell_word_list_elements(suggestions);
+  
+  std::vector<std::string> words;
+  const char *word;
+  while ((word = aspell_string_enumeration_next(elements))!= NULL) {
+    words.emplace_back(word);
+  }
+  delete_aspell_string_enumeration(elements);
+  
+  return words;
 }
 
 
@@ -775,7 +811,6 @@ Source::View(file_path), project_path(project_path) {
     start_reparse();
     type_tooltips.hide();
     diagnostic_tooltips.hide();
-    spellcheck_tooltips.hide();
   });
   
   bracket_regex=std::regex(std::string("^(")+tab_char+"*).*\\{ *$");
@@ -786,7 +821,6 @@ Source::View(file_path), project_path(project_path) {
 void Source::ClangViewParse::init_parse() {
   type_tooltips.hide();
   diagnostic_tooltips.hide();
-  spellcheck_tooltips.hide();
   get_buffer()->remove_all_tags(get_buffer()->begin(), get_buffer()->end());
   source_readable=false;
   parse_thread_go=true;
