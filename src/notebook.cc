@@ -113,6 +113,15 @@ bool Notebook::save(int page) {
   auto view=get_view(page);
   if (view->file_path != "" && view->get_buffer()->get_modified()) {
     if(juci::filesystem::write(view->file_path, view->get_buffer())) {
+      if(auto clang_view=dynamic_cast<Source::ClangView*>(view)) {
+        for(auto a_view: source_views) {
+          if(auto a_clang_view=dynamic_cast<Source::ClangView*>(a_view)) {
+            if(clang_view!=a_clang_view)
+              a_clang_view->start_reparse_needed=true;
+          }
+        }
+      }
+      
       view->get_buffer()->set_modified(false);
       Singleton::terminal()->print("File saved to: " +view->file_path.string()+"\n");
       

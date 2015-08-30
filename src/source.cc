@@ -320,7 +320,8 @@ Source::View::~View() {
   g_clear_object(&search_context);
   g_clear_object(&search_settings);
   
-  delete_aspell_speller(spellcheck_checker);
+  if(spellcheck_checker!=NULL)
+    delete_aspell_speller(spellcheck_checker);
 }
 
 void Source::View::search_highlight(const std::string &text, bool case_sensitive, bool regex) {
@@ -962,10 +963,12 @@ void Source::ClangViewParse::update_syntax() {
       auto kind=(int)token.get_cursor().get_kind();
       if(kind==101 || kind==102)
         kind=(int)token.get_cursor().get_referenced().get_kind();
-      ranges.emplace_back(token.offsets, kind); //TODO: Need to get type of referenced token if any
+      if(kind!=500)
+        ranges.emplace_back(token.offsets, kind);
     }
-    else if(token.get_kind()==3) // LiteralToken
+    else if(token.get_kind()==3) { // LiteralToken
       ranges.emplace_back(token.offsets, 109);
+    }
     else if(token.get_kind()==4) // CommentToken
       ranges.emplace_back(token.offsets, 705);
   }
@@ -1330,6 +1333,8 @@ void Source::ClangViewAutocomplete::autocomplete() {
           get_source_buffer()->begin_user_action();
           completion_dialog->show();
         }
+        else
+          start_reparse();
       }
       else {
         set_status("");
@@ -1542,7 +1547,7 @@ Source::ClangViewAutocomplete(file_path, project_path) {
 
 Source::ClangView::ClangView(const boost::filesystem::path &file_path, const boost::filesystem::path& project_path, Glib::RefPtr<Gsv::Language> language): ClangViewRefactor(file_path, project_path) {
   if(language) {
-    get_source_buffer()->set_highlight_syntax(false);
+    get_source_buffer()->set_highlight_syntax(true);
     get_source_buffer()->set_language(language);
   }
   
