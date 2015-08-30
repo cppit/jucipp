@@ -1330,6 +1330,8 @@ void Source::ClangViewAutocomplete::autocomplete() {
           get_source_buffer()->begin_user_action();
           completion_dialog->show();
         }
+        else
+          start_reparse();
       }
       else {
         set_status("");
