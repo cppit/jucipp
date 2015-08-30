@@ -282,6 +282,7 @@ void Window::create_menu() {
       entry_box.hide();
     });
     auto entry_it=entry_box.entries.begin();
+    entry_it->set_placeholder_text("Command");
     entry_box.buttons.emplace_back("Run command", [this, entry_it](){
       entry_it->activate();
     });
