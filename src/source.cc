@@ -963,22 +963,11 @@ void Source::ClangViewParse::update_syntax() {
       auto kind=(int)token.get_cursor().get_kind();
       if(kind==101 || kind==102)
         kind=(int)token.get_cursor().get_referenced().get_kind();
-      else if(kind==500) {
-        auto iter=get_buffer()->get_iter_at_line_index(token.offsets.first.line-1, token.offsets.first.index-1);
-        if(iter.backward_char() && *iter=='<')
-          token.offsets.first.index--;
-        iter=get_buffer()->get_iter_at_line_index(token.offsets.second.line-1, token.offsets.second.index-1);
-        if(*iter=='>' || *iter=='.' || *iter=='/')
-          token.offsets.second.index++;
-      }
-      ranges.emplace_back(token.offsets, kind);
+      if(kind!=500)
+        ranges.emplace_back(token.offsets, kind);
     }
     else if(token.get_kind()==3) { // LiteralToken
-      int kind=109;
-      if(*get_buffer()->get_iter_at_line(token.offsets.first.line-1)=='#') {
-        kind=500;
-      }
-      ranges.emplace_back(token.offsets, kind);
+      ranges.emplace_back(token.offsets, 109);
     }
     else if(token.get_kind()==4) // CommentToken
       ranges.emplace_back(token.offsets, 705);

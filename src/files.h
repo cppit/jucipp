@@ -29,7 +29,6 @@ const std::string configjson =
 "            \"45\": \"def:type\",\n"
 "            \"46\": \"def:identifier\",\n"
 "            \"109\": \"def:string\",\n"
-"            \"500\": \"def:preprocessor\",\n"
 "            \"702\": \"def:statement\",\n"
 "            \"705\": \"def:comment\"\n"
 "        },\n"
