@@ -7,8 +7,8 @@
 #include "singletons.h"
 #include <gtksourceview/gtksource.h>
 #include <boost/lexical_cast.hpp>
+#include <iostream>
 
-#include <iostream> //TODO: remove
 using namespace std; //TODO: remove
 
 namespace sigc {
@@ -36,6 +36,8 @@ Glib::RefPtr<Gsv::Language> Source::guess_language(const boost::filesystem::path
 //////////////
 //// View ////
 //////////////
+AspellConfig* Source::View::spellcheck_config=NULL;
+
 Source::View::View(const boost::filesystem::path &file_path): file_path(file_path) {
   set_smart_home_end(Gsv::SMART_HOME_END_BEFORE);
   get_source_buffer()->begin_not_undoable_action();
@@ -70,10 +72,66 @@ Source::View::View(const boost::filesystem::path &file_path): file_path(file_pat
       Singleton::terminal()->print("Error: Could not find gtksourceview style: "+Singleton::Config::source()->style+'\n');
   }
   
+  if(Singleton::Config::source()->wrap_lines)
+    set_wrap_mode(Gtk::WrapMode::WRAP_CHAR);
   property_highlight_current_line() = Singleton::Config::source()->highlight_current_line;
   property_show_line_numbers() = Singleton::Config::source()->show_line_numbers;
   if(Singleton::Config::source()->font.size()>0)
     override_font(Pango::FontDescription(Singleton::Config::source()->font));
+  
+  //Create tags for diagnostic warnings and errors:
+  auto scheme = get_source_buffer()->get_style_scheme();
+  auto tag_table=get_buffer()->get_tag_table();
+  auto style=scheme->get_style("def:warning");
+  auto diagnostic_tag=get_source_buffer()->create_tag("def:warning");
+  auto diagnostic_tag_underline=get_source_buffer()->create_tag("def:warning_underline");
+  if(style && (style->property_foreground_set() || style->property_background_set())) {
+    Glib::ustring warning_property;
+    if(style->property_foreground_set()) {
+      warning_property=style->property_foreground().get_value();
+      diagnostic_tag->property_foreground() = warning_property;
+    }
+    else if(style->property_background_set())
+      warning_property=style->property_background().get_value();
+
+    diagnostic_tag_underline->property_underline()=Pango::Underline::UNDERLINE_ERROR;
+    auto tag_class=G_OBJECT_GET_CLASS(diagnostic_tag_underline->gobj()); //For older GTK+ 3 versions:
+    auto param_spec=g_object_class_find_property(tag_class, "underline-rgba");
+    if(param_spec!=NULL) {
+      diagnostic_tag_underline->set_property("underline-rgba", Gdk::RGBA(warning_property));
+    }
+  }
+  style=scheme->get_style("def:error");
+  diagnostic_tag=get_source_buffer()->create_tag("def:error");
+  diagnostic_tag_underline=get_source_buffer()->create_tag("def:error_underline");
+  if(style && (style->property_foreground_set() || style->property_background_set())) {
+    Glib::ustring error_property;
+    if(style->property_foreground_set()) {
+      error_property=style->property_foreground().get_value();
+      diagnostic_tag->property_foreground() = error_property;
+    }
+    else if(style->property_background_set())
+      error_property=style->property_background().get_value();
+    
+    diagnostic_tag_underline->property_underline()=Pango::Underline::UNDERLINE_ERROR;
+    auto tag_class=G_OBJECT_GET_CLASS(diagnostic_tag_underline->gobj()); //For older GTK+ 3 versions:
+    auto param_spec=g_object_class_find_property(tag_class, "underline-rgba");
+    if(param_spec!=NULL) {
+      diagnostic_tag_underline->set_property("underline-rgba", Gdk::RGBA(error_property));
+    }
+  }
+  //TODO: clear tag_class and param_spec?
+  
+  //Add tooltip foreground and background
+  style = scheme->get_style("def:note");
+  auto note_tag=get_source_buffer()->create_tag("def:note_background");
+  if(style->property_background_set()) {
+    note_tag->property_background()=style->property_background();
+  }
+  note_tag=get_source_buffer()->create_tag("def:note");
+  if(style->property_foreground_set()) {
+    note_tag->property_foreground()=style->property_foreground();
+  }
   
   tab_char=Singleton::Config::source()->default_tab_char;
   tab_size=Singleton::Config::source()->default_tab_size;
@@ -97,6 +155,159 @@ Source::View::View(const boost::filesystem::path &file_path): file_path(file_pat
     tab+=tab_char;
   
   tabs_regex=std::regex(std::string("^(")+tab_char+"*)(.*)$");
+  
+  if(spellcheck_config==NULL) {
+    spellcheck_config=new_aspell_config();
+    if(Singleton::Config::source()->spellcheck_language.size()>0)
+      aspell_config_replace(spellcheck_config, "lang", Singleton::Config::source()->spellcheck_language.c_str());
+  }
+
+  spellcheck_possible_err=new_aspell_speller(spellcheck_config);
+  spellcheck_checker=NULL;
+  if (aspell_error_number(spellcheck_possible_err) != 0)
+    std::cerr << "Spell check error: " << aspell_error_message(spellcheck_possible_err) << std::endl;
+  else {
+    spellcheck_checker = to_aspell_speller(spellcheck_possible_err);
+
+    auto tag=get_buffer()->create_tag("spellcheck_error");
+    tag->property_underline()=Pango::Underline::UNDERLINE_ERROR;
+    
+    get_buffer()->signal_changed().connect([this](){
+      delayed_spellcheck_suggestions_connection.disconnect();
+      
+      auto iter=get_buffer()->get_insert()->get_iter();
+      if(iter.backward_char()) {
+        auto context_iter=iter;
+        if(context_iter.backward_char()) {
+          if((spellcheck_all && !get_source_buffer()->iter_has_context_class(context_iter, "no-spell-check")) || get_source_buffer()->iter_has_context_class(context_iter, "comment") || get_source_buffer()->iter_has_context_class(context_iter, "string")) {
+            if(*iter==32 || *iter==45) { //Might have used space or - to split two words
+              auto first=iter;
+              auto second=iter;
+              if(first.backward_char() && second.forward_char()) {
+                get_buffer()->remove_tag_by_name("spellcheck_error", first, second);
+                auto word=spellcheck_get_word(first);
+                spellcheck_word(word.first, word.second);
+                word=spellcheck_get_word(second);
+                spellcheck_word(word.first, word.second);
+              }
+            }
+            else {
+              auto word=spellcheck_get_word(iter);
+              spellcheck_word(word.first, word.second);
+            }
+          }
+        }
+      }
+    });
+    
+    get_buffer()->signal_mark_set().connect([this](const Gtk::TextBuffer::iterator& iter, const Glib::RefPtr<Gtk::TextBuffer::Mark>& mark) {
+      if(mark->get_name()=="insert") {
+        if(spellcheck_suggestions_dialog_shown)
+          spellcheck_suggestions_dialog->hide();
+        delayed_spellcheck_suggestions_connection.disconnect();
+        delayed_spellcheck_suggestions_connection=Glib::signal_timeout().connect([this]() {
+          auto tags=get_buffer()->get_insert()->get_iter().get_tags();
+          bool need_suggestions=false;
+          for(auto &tag: tags) {
+            if(tag->property_name()=="spellcheck_error") {
+              need_suggestions=true;
+              break;
+            }
+          }
+          if(need_suggestions) {
+            spellcheck_suggestions_dialog=std::unique_ptr<SelectionDialog>(new SelectionDialog(*this, get_buffer()->create_mark(get_buffer()->get_insert()->get_iter()), false));
+            spellcheck_suggestions_dialog->on_hide=[this](){
+              spellcheck_suggestions_dialog_shown=false;
+            };
+            auto word=spellcheck_get_word(get_buffer()->get_insert()->get_iter());
+            auto suggestions=spellcheck_get_suggestions(word.first, word.second);
+            if(suggestions.size()==0)
+              return false;
+            for(auto &suggestion: suggestions)
+              spellcheck_suggestions_dialog->add_row(suggestion);
+            spellcheck_suggestions_dialog->on_select=[this, word](const std::string& selected, bool hide_window) {
+              get_source_buffer()->begin_user_action();
+              get_buffer()->erase(word.first, word.second);
+              get_buffer()->insert(get_buffer()->get_insert()->get_iter(), selected);
+              get_source_buffer()->end_user_action();
+              delayed_tooltips_connection.disconnect();
+            };
+            spellcheck_suggestions_dialog->show();
+            spellcheck_suggestions_dialog_shown=true;
+          }
+          return false;
+        }, 500);
+      }
+    });
+  }
+  
+  set_tooltip_events();
+}
+
+void Source::View::set_tooltip_events() {
+  signal_motion_notify_event().connect([this](GdkEventMotion* event) {
+    if(on_motion_last_x!=event->x || on_motion_last_y!=event->y) {
+      delayed_tooltips_connection.disconnect();
+      if(event->state==0) {
+        gdouble x=event->x;
+        gdouble y=event->y;
+        delayed_tooltips_connection=Glib::signal_timeout().connect([this, x, y]() {
+          Tooltips::init();
+          Gdk::Rectangle rectangle(x, y, 1, 1);
+          if(source_readable) {
+            type_tooltips.show(rectangle);
+            diagnostic_tooltips.show(rectangle);
+          }
+          return false;
+        }, 100);
+      }
+      type_tooltips.hide();
+      diagnostic_tooltips.hide();
+    }
+    on_motion_last_x=event->x;
+    on_motion_last_y=event->y;
+    return false;
+  });
+  
+  get_buffer()->signal_mark_set().connect([this](const Gtk::TextBuffer::iterator& iterator, const Glib::RefPtr<Gtk::TextBuffer::Mark>& mark) {
+    if(get_buffer()->get_has_selection() && mark->get_name()=="selection_bound")
+      delayed_tooltips_connection.disconnect();
+    
+    if(mark->get_name()=="insert") {
+      delayed_tooltips_connection.disconnect();
+      delayed_tooltips_connection=Glib::signal_timeout().connect([this]() {
+        Tooltips::init();
+        Gdk::Rectangle rectangle;
+        get_iter_location(get_buffer()->get_insert()->get_iter(), rectangle);
+        int location_window_x, location_window_y;
+        buffer_to_window_coords(Gtk::TextWindowType::TEXT_WINDOW_TEXT, rectangle.get_x(), rectangle.get_y(), location_window_x, location_window_y);
+        rectangle.set_x(location_window_x-2);
+        rectangle.set_y(location_window_y);
+        rectangle.set_width(4);
+        if(source_readable) {
+          type_tooltips.show(rectangle);
+          diagnostic_tooltips.show(rectangle);
+        }
+        return false;
+      }, 500);
+      type_tooltips.hide();
+      diagnostic_tooltips.hide();
+    }
+  });
+  
+  signal_scroll_event().connect([this](GdkEventScroll* event) {
+    delayed_tooltips_connection.disconnect();
+    type_tooltips.hide();
+    diagnostic_tooltips.hide();
+    return false;
+  });
+  
+  signal_focus_out_event().connect([this](GdkEventFocus* event) {
+    delayed_tooltips_connection.disconnect();
+    type_tooltips.hide();
+    diagnostic_tooltips.hide();
+    return false;
+  });
 }
 
 void Source::View::search_occurrences_updated(GtkWidget* widget, GParamSpec* property, gpointer data) {
@@ -108,6 +319,8 @@ void Source::View::search_occurrences_updated(GtkWidget* widget, GParamSpec* pro
 Source::View::~View() {
   g_clear_object(&search_context);
   g_clear_object(&search_settings);
+  
+  delete_aspell_speller(spellcheck_checker);
 }
 
 void Source::View::search_highlight(const std::string &text, bool case_sensitive, bool regex) {
@@ -280,6 +493,11 @@ string Source::View::get_line_before_insert() {
 
 //Basic indentation
 bool Source::View::on_key_press_event(GdkEventKey* key) {
+  if(spellcheck_suggestions_dialog_shown) {
+    if(spellcheck_suggestions_dialog->on_key_press(key))
+      return true;
+  }
+  
   get_source_buffer()->begin_user_action();
   //Indent as in next or previous line
   if(key->keyval==GDK_KEY_Return && key->state==0 && !get_buffer()->get_has_selection()) {
@@ -390,6 +608,28 @@ bool Source::View::on_key_press_event(GdkEventKey* key) {
   return stop;
 }
 
+bool Source::View::on_button_press_event(GdkEventButton *event) {
+  if(event->type==GDK_2BUTTON_PRESS) {
+    Gtk::TextIter start, end;
+    if(get_buffer()->get_selection_bounds(start, end)) {
+      auto iter=start;
+      while((*iter>=48 && *iter<=57) || (*iter>=65 && *iter<=90) || (*iter>=97 && *iter<=122) || *iter==95) {
+        start=iter;
+        if(!iter.backward_char())
+          break;
+      }
+      while((*end>=48 && *end<=57) || (*end>=65 && *end<=90) || (*end>=97 && *end<=122) || *end==95) {
+        if(!end.forward_char())
+          break;
+      }
+      get_buffer()->select_range(start, end);
+      return true;
+    }
+  }
+  
+  return Gsv::View::on_button_press_event(event);
+}
+
 std::pair<char, unsigned> Source::View::find_tab_char_and_size() {
   const std::regex indent_regex("^([ \t]+).*$");
   auto size=get_buffer()->get_line_count();
@@ -442,6 +682,51 @@ std::pair<char, unsigned> Source::View::find_tab_char_and_size() {
   return {found_tab_char, found_tab_size};
 }
 
+std::pair<Gtk::TextIter, Gtk::TextIter> Source::View::spellcheck_get_word(Gtk::TextIter iter) {
+  auto start=iter;
+  auto end=iter;
+  
+  while((*iter>=48 && *iter<=57) || (*iter>=65 && *iter<=90) || (*iter>=97 && *iter<=122) || *iter==39 || *iter>=128) {
+    start=iter;
+    if(!iter.backward_char())
+      break;
+  }
+  while((*end>=48 && *end<=57) || (*end>=65 && *end<=90) || (*end>=97 && *end<=122) || *iter==39 || *end>=128) {
+    if(!end.forward_char())
+      break;
+  }
+  
+  return {start, end};
+}
+
+void Source::View::spellcheck_word(const Gtk::TextIter& start, const Gtk::TextIter& end) {
+  auto word=get_buffer()->get_text(start, end);
+  if(word.size()>0) {
+    auto correct = aspell_speller_check(spellcheck_checker, word.data(), word.bytes());
+    if(correct==0)
+      get_buffer()->apply_tag_by_name("spellcheck_error", start, end);
+    else
+      get_buffer()->remove_tag_by_name("spellcheck_error", start, end);
+  }
+}
+
+std::vector<std::string> Source::View::spellcheck_get_suggestions(const Gtk::TextIter& start, const Gtk::TextIter& end) {
+  auto word_with_error=get_buffer()->get_text(start, end);
+  
+  const AspellWordList *suggestions = aspell_speller_suggest(spellcheck_checker, word_with_error.data(), word_with_error.bytes());
+  AspellStringEnumeration *elements = aspell_word_list_elements(suggestions);
+  
+  std::vector<std::string> words;
+  const char *word;
+  while ((word = aspell_string_enumeration_next(elements))!= NULL) {
+    words.emplace_back(word);
+  }
+  delete_aspell_string_enumeration(elements);
+  
+  return words;
+}
+
+
 /////////////////////
 //// GenericView ////
 /////////////////////
@@ -450,6 +735,7 @@ Source::GenericView::GenericView(const boost::filesystem::path &file_path, Glib:
     get_source_buffer()->set_language(language);
     Singleton::terminal()->print("Language for file "+file_path.string()+" set to "+language->get_name()+".\n");
   }
+  spellcheck_all=true;
   auto completion=get_completion();
   auto completion_words=Gsv::CompletionWords::create("", Glib::RefPtr<Gdk::Pixbuf>());
   completion_words->register_provider(get_buffer());
@@ -488,59 +774,7 @@ Source::View(file_path), project_path(project_path) {
         DEBUG("Style " + item.second + " not found in " + scheme->get_name());
     }
   }
-  INFO("Tagtable filled");  
-  
-  //Create tags for diagnostic warnings and errors:
-  auto style=scheme->get_style("def:warning");
-  auto diagnostic_tag=get_source_buffer()->create_tag("def:warning");
-  auto diagnostic_tag_underline=get_source_buffer()->create_tag("def:warning_underline");
-  if(style && (style->property_foreground_set() || style->property_background_set())) {
-    Glib::ustring warning_property;
-    if(style->property_foreground_set()) {
-      warning_property=style->property_foreground().get_value();
-      diagnostic_tag->property_foreground() = warning_property;
-    }
-    else if(style->property_background_set())
-      warning_property=style->property_background().get_value();
-
-    diagnostic_tag_underline->property_underline()=Pango::Underline::UNDERLINE_ERROR;
-    auto tag_class=G_OBJECT_GET_CLASS(diagnostic_tag_underline->gobj()); //For older GTK+ 3 versions:
-    auto param_spec=g_object_class_find_property(tag_class, "underline-rgba");
-    if(param_spec!=NULL) {
-      diagnostic_tag_underline->set_property("underline-rgba", Gdk::RGBA(warning_property));
-    }
-  }
-  style=scheme->get_style("def:error");
-  diagnostic_tag=get_source_buffer()->create_tag("def:error");
-  diagnostic_tag_underline=get_source_buffer()->create_tag("def:error_underline");
-  if(style && (style->property_foreground_set() || style->property_background_set())) {
-    Glib::ustring error_property;
-    if(style->property_foreground_set()) {
-      error_property=style->property_foreground().get_value();
-      diagnostic_tag->property_foreground() = error_property;
-    }
-    else if(style->property_background_set())
-      error_property=style->property_background().get_value();
-    
-    diagnostic_tag_underline->property_underline()=Pango::Underline::UNDERLINE_ERROR;
-    auto tag_class=G_OBJECT_GET_CLASS(diagnostic_tag_underline->gobj()); //For older GTK+ 3 versions:
-    auto param_spec=g_object_class_find_property(tag_class, "underline-rgba");
-    if(param_spec!=NULL) {
-      diagnostic_tag_underline->set_property("underline-rgba", Gdk::RGBA(error_property));
-    }
-  }
-  //TODO: clear tag_class and param_spec?
-  
-  //Add tooltip foreground and background
-  style = scheme->get_style("def:note");
-  auto note_tag=get_source_buffer()->create_tag("def:note_background");
-  if(style->property_background_set()) {
-    note_tag->property_background()=style->property_background();
-  }
-  note_tag=get_source_buffer()->create_tag("def:note");
-  if(style->property_foreground_set()) {
-    note_tag->property_foreground()=style->property_foreground();
-  }
+  INFO("Tagtable filled");
   
   parsing_in_progress=Singleton::terminal()->print_in_progress("Parsing "+file_path.string());
   //GTK-calls must happen in main thread, so the parse_thread
@@ -560,7 +794,7 @@ Source::View(file_path), project_path(project_path) {
         update_syntax();
         update_diagnostics();
         update_types();
-        clang_readable=true;
+        source_readable=true;
         set_status("");
         parsing_mutex.unlock();
         INFO("Syntax updated");
@@ -579,8 +813,6 @@ Source::View(file_path), project_path(project_path) {
     diagnostic_tooltips.hide();
   });
   
-  get_buffer()->signal_mark_set().connect(sigc::mem_fun(*this, &Source::ClangViewParse::on_mark_set), false);
-  
   bracket_regex=std::regex(std::string("^(")+tab_char+"*).*\\{ *$");
   no_bracket_statement_regex=std::regex(std::string("^(")+tab_char+"*)(if|for|else if|catch|while) *\\(.*[^;}] *$");
   no_bracket_no_para_statement_regex=std::regex(std::string("^(")+tab_char+"*)(else|try|do) *$");
@@ -590,7 +822,7 @@ void Source::ClangViewParse::init_parse() {
   type_tooltips.hide();
   diagnostic_tooltips.hide();
   get_buffer()->remove_all_tags(get_buffer()->begin(), get_buffer()->end());
-  clang_readable=false;
+  source_readable=false;
   parse_thread_go=true;
   parse_thread_mapped=false;
   parse_thread_stop=false;
@@ -654,10 +886,10 @@ std::map<std::string, std::string> Source::ClangViewParse::get_buffer_map() cons
 
 void Source::ClangViewParse::start_reparse() {
   parse_thread_mapped=false;
-  clang_readable=false;
+  source_readable=false;
   delayed_reparse_connection.disconnect();
   delayed_reparse_connection=Glib::signal_timeout().connect([this]() {
-    clang_readable=false;
+    source_readable=false;
     parse_thread_go=true;
     set_status("parsing...");
     return false;
@@ -683,6 +915,39 @@ std::vector<std::string> Source::ClangViewParse::get_compilation_commands() {
   }
   if(file_path.extension()==".h") //TODO: temporary fix for .h-files (parse as c++)
     arguments.emplace_back("-xc++");
+#ifdef _WIN32 //Temporary fix to MSYS2's libclang
+  arguments.emplace_back("-IC:/msys32/mingw32/lib/gcc/i686-w64-mingw32/5.2.0/include");
+  arguments.emplace_back("-IC:/msys32/mingw32//include");
+  arguments.emplace_back("-IC:/msys32/mingw32/lib/gcc/i686-w64-mingw32/5.2.0/include-fixed");
+  arguments.emplace_back("-IC:/msys32/mingw32/i686-w64-mingw32/include");
+  arguments.emplace_back("-IC:/msys32/mingw32/include/c++/5.2.0");
+  arguments.emplace_back("-IC:/msys32/mingw32/include/c++/5.2.0/i686-w64-mingw32");
+  arguments.emplace_back("-IC:/msys32/mingw32/include/c++/5.2.0/backward");
+  
+  arguments.emplace_back("-IC:/msys32/mingw64/lib/gcc/i686-w64-mingw32/5.2.0/include");
+  arguments.emplace_back("-IC:/msys32/mingw64//include");
+  arguments.emplace_back("-IC:/msys32/mingw64/lib/gcc/i686-w64-mingw32/5.2.0/include-fixed");
+  arguments.emplace_back("-IC:/msys32/mingw64/i686-w64-mingw32/include");
+  arguments.emplace_back("-IC:/msys32/mingw64/include/c++/5.2.0");
+  arguments.emplace_back("-IC:/msys32/mingw64/include/c++/5.2.0/i686-w64-mingw32");
+  arguments.emplace_back("-IC:/msys32/mingw64/include/c++/5.2.0/backward");
+  
+  arguments.emplace_back("-IC:/msys64/mingw32/lib/gcc/i686-w64-mingw32/5.2.0/include");
+  arguments.emplace_back("-IC:/msys64/mingw32//include");
+  arguments.emplace_back("-IC:/msys64/mingw32/lib/gcc/i686-w64-mingw32/5.2.0/include-fixed");
+  arguments.emplace_back("-IC:/msys64/mingw32/i686-w64-mingw32/include");
+  arguments.emplace_back("-IC:/msys64/mingw32/include/c++/5.2.0");
+  arguments.emplace_back("-IC:/msys64/mingw32/include/c++/5.2.0/i686-w64-mingw32");
+  arguments.emplace_back("-IC:/msys64/mingw32/include/c++/5.2.0/backward");
+  
+  arguments.emplace_back("-IC:/msys64/mingw64/lib/gcc/i686-w64-mingw32/5.2.0/include");
+  arguments.emplace_back("-IC:/msys64/mingw64//include");
+  arguments.emplace_back("-IC:/msys64/mingw64/lib/gcc/i686-w64-mingw32/5.2.0/include-fixed");
+  arguments.emplace_back("-IC:/msys64/mingw64/i686-w64-mingw32/include");
+  arguments.emplace_back("-IC:/msys64/mingw64/include/c++/5.2.0");
+  arguments.emplace_back("-IC:/msys64/mingw64/include/c++/5.2.0/i686-w64-mingw32");
+  arguments.emplace_back("-IC:/msys64/mingw64/include/c++/5.2.0/backward");
+#endif
   return arguments;
 }
 
@@ -793,62 +1058,6 @@ void Source::ClangViewParse::update_types() {
   }
 }
 
-bool Source::ClangViewParse::on_motion_notify_event(GdkEventMotion* event) {
-  delayed_tooltips_connection.disconnect();
-  if(clang_readable && event->state==0) {
-    Gdk::Rectangle rectangle(event->x, event->y, 1, 1);
-    Tooltips::init();
-    type_tooltips.show(rectangle);
-    diagnostic_tooltips.show(rectangle);
-  }
-  else {
-    type_tooltips.hide();
-    diagnostic_tooltips.hide();
-  }
-    
-  return Source::View::on_motion_notify_event(event);
-}
-
-void Source::ClangViewParse::on_mark_set(const Gtk::TextBuffer::iterator& iterator, const Glib::RefPtr<Gtk::TextBuffer::Mark>& mark) {
-  if(get_buffer()->get_has_selection() && mark->get_name()=="selection_bound")
-    delayed_tooltips_connection.disconnect();
-  
-  if(mark->get_name()=="insert") {
-    delayed_tooltips_connection.disconnect();
-    delayed_tooltips_connection=Glib::signal_timeout().connect([this]() {
-      if(clang_readable) {
-        Gdk::Rectangle rectangle;
-        get_iter_location(get_buffer()->get_insert()->get_iter(), rectangle);
-        int location_window_x, location_window_y;
-        buffer_to_window_coords(Gtk::TextWindowType::TEXT_WINDOW_TEXT, rectangle.get_x(), rectangle.get_y(), location_window_x, location_window_y);
-        rectangle.set_x(location_window_x-2);
-        rectangle.set_y(location_window_y);
-        rectangle.set_width(4);
-        Tooltips::init();
-        type_tooltips.show(rectangle);
-        diagnostic_tooltips.show(rectangle);
-      }
-      return false;
-    }, 500);
-    type_tooltips.hide();
-    diagnostic_tooltips.hide();
-  }
-}
-
-bool Source::ClangViewParse::on_focus_out_event(GdkEventFocus* event) {
-    delayed_tooltips_connection.disconnect();
-    type_tooltips.hide();
-    diagnostic_tooltips.hide();
-    return Source::View::on_focus_out_event(event);
-}
-
-bool Source::ClangViewParse::on_scroll_event(GdkEventScroll* event) {
-  delayed_tooltips_connection.disconnect();
-  type_tooltips.hide();
-  diagnostic_tooltips.hide();
-  return Source::View::on_scroll_event(event);
-}
-
 //Clang indentation
 //TODO: replace indentation methods with a better implementation or maybe use libclang
 bool Source::ClangViewParse::on_key_press_event(GdkEventKey* key) {
@@ -874,10 +1083,22 @@ bool Source::ClangViewParse::on_key_press_event(GdkEventKey* key) {
             return true;
           }
         }
-        if(next_line!=sm[1].str()+"}") {
+        auto next_char=*get_buffer()->get_insert()->get_iter();
+        auto next_line_with_end_bracket=sm[1].str()+"}";
+        if(next_char!='}' && next_line.substr(0, next_line_with_end_bracket.size())!=next_line_with_end_bracket) {
           get_source_buffer()->insert_at_cursor("\n"+sm[1].str()+tab+"\n"+sm[1].str()+"}");
           auto insert_it = get_source_buffer()->get_insert()->get_iter();
           for(size_t c=0;c<sm[1].str().size()+2;c++)
+            insert_it--;
+          scroll_to(get_source_buffer()->get_insert());
+          get_source_buffer()->place_cursor(insert_it);
+          get_source_buffer()->end_user_action();
+          return true;
+        }
+        else if(next_char=='}') {
+          get_source_buffer()->insert_at_cursor("\n"+sm[1].str()+tab+"\n"+sm[1].str());
+          auto insert_it = get_source_buffer()->get_insert()->get_iter();
+          for(size_t c=0;c<sm[1].str().size()+1;c++)
             insert_it--;
           scroll_to(get_source_buffer()->get_insert());
           get_source_buffer()->place_cursor(insert_it);
@@ -986,6 +1207,14 @@ Source::ClangViewParse(file_path, project_path), autocomplete_cancel_starting(fa
     return false;
   }, false);
 
+  signal_focus_out_event().connect([this](GdkEventFocus* event) {
+    autocomplete_cancel_starting=true;
+    if(completion_dialog_shown) {
+      completion_dialog->hide();
+    }
+      
+    return false;
+  });
 }
 
 bool Source::ClangViewAutocomplete::on_key_press_event(GdkEventKey *key) {
@@ -995,15 +1224,6 @@ bool Source::ClangViewAutocomplete::on_key_press_event(GdkEventKey *key) {
       return true;
   }
   return ClangViewParse::on_key_press_event(key);
-}
-
-bool Source::ClangViewAutocomplete::on_focus_out_event(GdkEventFocus* event) {
-  autocomplete_cancel_starting=true;
-  if(completion_dialog_shown) {
-    completion_dialog->hide();
-  }
-    
-  return Source::ClangViewParse::on_focus_out_event(event);
 }
 
 void Source::ClangViewAutocomplete::start_autocomplete() {
@@ -1118,16 +1338,17 @@ void Source::ClangViewAutocomplete::autocomplete() {
     });
     
     std::shared_ptr<std::map<std::string, std::string> > buffer_map=std::make_shared<std::map<std::string, std::string> >();
-    auto& buffer=(*buffer_map)[this->file_path.string()];
-    buffer=get_buffer()->get_text(get_buffer()->begin(), get_buffer()->get_insert()->get_iter());
-    auto iter = get_source_buffer()->get_insert()->get_iter();
+    auto ustr=get_buffer()->get_text();
+    auto iter=get_buffer()->get_insert()->get_iter();
     auto line_nr=iter.get_line()+1;
     auto column_nr=iter.get_line_offset()+1;
-    while((buffer.back()>='a' && buffer.back()<='z') || (buffer.back()>='A' && buffer.back()<='Z') || (buffer.back()>='0' && buffer.back()<='9') || buffer.back()=='_') {
-      buffer.pop_back();
+    auto pos=iter.get_offset()-1;
+    while(pos>=0 && ((ustr[pos]>='a' && ustr[pos]<='z') || (ustr[pos]>='A' && ustr[pos]<='Z') || (ustr[pos]>='0' && ustr[pos]<='9') || ustr[pos]=='_')) {
+      ustr.replace(pos, 1, " ");
       column_nr--;
+      pos--;
     }
-    buffer+="\n";
+    (*buffer_map)[this->file_path.string()]=std::move(ustr); //TODO: does this work?
     set_status("autocomplete...");
     if(autocomplete_thread.joinable())
       autocomplete_thread.join();
@@ -1190,7 +1411,7 @@ Source::ClangViewAutocomplete(file_path, project_path) {
   });
   
   get_token=[this]() -> std::string {
-    if(clang_readable) {
+    if(source_readable) {
       auto iter=get_buffer()->get_insert()->get_iter();
       auto line=(unsigned)iter.get_line();
       auto index=(unsigned)iter.get_line_index();
@@ -1208,7 +1429,7 @@ Source::ClangViewAutocomplete(file_path, project_path) {
   };
   
   get_token_name=[this]() -> std::string {
-    if(clang_readable) {
+    if(source_readable) {
       auto iter=get_buffer()->get_insert()->get_iter();
       auto line=(unsigned)iter.get_line();
       auto index=(unsigned)iter.get_line_index();
@@ -1224,7 +1445,7 @@ Source::ClangViewAutocomplete(file_path, project_path) {
   };
   
   tag_similar_tokens=[this](const std::string &usr){
-    if(clang_readable) {
+    if(source_readable) {
       if(usr.size()>0 && last_similar_tokens_tagged!=usr) {
         get_buffer()->remove_tag(similar_tokens_tag, get_buffer()->begin(), get_buffer()->end());
         auto offsets=clang_tokens->get_similar_token_offsets(usr);
@@ -1242,7 +1463,7 @@ Source::ClangViewAutocomplete(file_path, project_path) {
   
   rename_similar_tokens=[this](const std::string &usr, const std::string &text) {
     size_t number=0;
-    if(clang_readable) {
+    if(source_readable) {
       auto offsets=clang_tokens->get_similar_token_offsets(usr);
       std::vector<std::pair<Glib::RefPtr<Gtk::TextMark>, Glib::RefPtr<Gtk::TextMark> > > marks;
       for(auto &offset: offsets) {
@@ -1265,14 +1486,18 @@ Source::ClangViewAutocomplete(file_path, project_path) {
   
   get_buffer()->signal_mark_set().connect([this](const Gtk::TextBuffer::iterator& iterator, const Glib::RefPtr<Gtk::TextBuffer::Mark>& mark){
     if(mark->get_name()=="insert") {
-      auto usr=get_token();
-      tag_similar_tokens(usr);
+      delayed_tag_similar_tokens_connection.disconnect();
+      delayed_tag_similar_tokens_connection=Glib::signal_timeout().connect([this]() {
+        auto usr=get_token();
+        tag_similar_tokens(usr);
+        return false;
+      }, 100);
     }
   });
   
   get_declaration_location=[this](){
     std::pair<std::string, clang::Offset> location;
-    if(clang_readable) {
+    if(source_readable) {
       auto iter=get_buffer()->get_insert()->get_iter();
       auto line=(unsigned)iter.get_line();
       auto index=(unsigned)iter.get_line_index();
@@ -1293,7 +1518,7 @@ Source::ClangViewAutocomplete(file_path, project_path) {
   };
   
   goto_method=[this](){    
-    if(clang_readable) {
+    if(source_readable) {
       selection_dialog=std::unique_ptr<SelectionDialog>(new SelectionDialog(*this, get_buffer()->create_mark(get_buffer()->get_insert()->get_iter())));
       auto rows=std::make_shared<std::unordered_map<std::string, clang::Offset> >();
       auto methods=clang_tokens->get_cxx_methods();
@@ -1315,7 +1540,12 @@ Source::ClangViewAutocomplete(file_path, project_path) {
   };
 }
 
-Source::ClangView::ClangView(const boost::filesystem::path &file_path, const boost::filesystem::path& project_path): ClangViewRefactor(file_path, project_path) {
+Source::ClangView::ClangView(const boost::filesystem::path &file_path, const boost::filesystem::path& project_path, Glib::RefPtr<Gsv::Language> language): ClangViewRefactor(file_path, project_path) {
+  if(language) {
+    get_source_buffer()->set_highlight_syntax(false);
+    get_source_buffer()->set_language(language);
+  }
+  
   do_delete_object.connect([this](){
     if(delete_thread.joinable())
       delete_thread.join();

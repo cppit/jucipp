@@ -4,12 +4,43 @@ namespace sigc {
   SIGC_FUNCTORS_DEDUCE_RESULT_TYPE_WITH_DECLTYPE
 }
 
+std::unordered_map<std::string, std::vector<std::string> > EntryBox::entry_histories;
+
 EntryBox::Entry::Entry(const std::string& content, std::function<void(const std::string& content)> on_activate, unsigned length) : Gtk::Entry(), on_activate(on_activate) {
   set_max_length(length);
   set_text(content);
+  selected_history=0;
   signal_activate().connect([this](){
-    if(this->on_activate)
-      this->on_activate(get_text());
+    if(this->on_activate) {
+      auto &history=EntryBox::entry_histories[get_placeholder_text()];
+      auto text=get_text();
+      if(history.size()==0 || (history.size()>0 && *history.begin()!=text))
+        history.emplace(history.begin(), text);
+      selected_history=0;
+      this->on_activate(text);
+    }
+  });
+  signal_key_press_event().connect([this](GdkEventKey* key){
+    if(key->keyval==GDK_KEY_Up) {
+      auto &history=entry_histories[get_placeholder_text()];
+      if(history.size()>0) {
+        selected_history++;
+        if(selected_history>=history.size())
+          selected_history=history.size()-1;
+        set_text(history[selected_history]);
+        set_position(-1);
+      }
+    }
+    if(key->keyval==GDK_KEY_Down) {
+      auto &history=entry_histories[get_placeholder_text()];
+      if(history.size()>0) {
+        if(selected_history!=0)
+          selected_history--;
+        set_text(history[selected_history]);
+        set_position(-1);
+      }
+    }
+    return false;
   });
 }
 

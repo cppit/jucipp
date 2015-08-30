@@ -1,21 +1,23 @@
 # juCi++
 ###### a lightweight C++-IDE with support for C++11 and C++14.
 ## About
-A lot of IDEs struggle with good C++11/14 support. Therefore we
-created juCi++. juCi++ is based of the compiler and will *always*
-support new versions of C++.
+Current IDEs struggle with C++ support due to the complexity of
+the programming language. juCI++, however, is designed especially 
+towards libclang with speed in mind. 
 
 ## Features
-* Syntax highlighing (even C++11/14)
-* Superfast autocomletion (even external libraries)
-* Accurate refactoring across files
-* Basic editor functionallity
+* Fast and responsive
+* Syntax highlighing (even C++11/14, and more than 100 other file types)
+* C++ warnings and errors on the fly
+* Fast C++ autocomletion (even external libraries)
+* Tooltips showing type information and doxygen documentation
+* Refactoring across files
 * Highlighting of similar types
-* write your own plugins in python (limited atm)
+* Spell checking depending on file context
+* Basic editor functionallity
+* Write your own plugins in python (disabled at the moment)
 
 ## Dependencies ##
-Please install these dependencies on your system.
-* libboost-python-dev 
 * libboost-filesystem-dev 
 * libboost-log-dev 
 * libboost-test-dev 
@@ -23,20 +25,10 @@ Please install these dependencies on your system.
 * libboost-system-dev 
 * libgtkmm-3.0-dev 
 * libgtksourceview2.0-dev 
-* libgtksourceviewmm-3.0-dev 
-* libpython-dev 
+* libgtksourceviewmm-3.0-dev
+* libaspell-dev
 * libclang-dev
 * [libclangmm](http://github.com/cppit/libclangmm/)
-* cmake
-* make
-* clang or gcc (compiler)
 
 ## Installation ##
-Quickstart:
-```sh
-$ cmake .
-$ make
-$ sudo make install
-```
-See [installation guide](http://github.com/cppit/jucipp/blob/master/docs/install.md) for more details.
-
+See [installation guide](http://github.com/cppit/jucipp/blob/master/docs/install.md).

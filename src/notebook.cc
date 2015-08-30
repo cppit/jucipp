@@ -67,7 +67,7 @@ void Notebook::open(const boost::filesystem::path &file_path) {
       else
         Singleton::terminal()->print("Error: could not find project path for "+file_path.string()+"\n");
     }
-    source_views.emplace_back(new Source::ClangView(file_path, project_path));
+    source_views.emplace_back(new Source::ClangView(file_path, project_path, language));
   }
   else
     source_views.emplace_back(new Source::GenericView(file_path, language));

@@ -4,6 +4,9 @@
 #include <list>
 #include <functional>
 #include "gtkmm.h"
+#include <unordered_map>
+#include <string>
+#include <vector>
 
 class EntryBox : public Gtk::Box {
 public:
@@ -11,6 +14,8 @@ public:
   public:
     Entry(const std::string& content="", std::function<void(const std::string& content)> on_activate=nullptr, unsigned length=50);
     std::function<void(const std::string& content)> on_activate;
+  private:
+    size_t selected_history;
   };
   class Button : public Gtk::Button {
   public:
@@ -39,6 +44,9 @@ public:
   std::list<Button> buttons;
   std::list<ToggleButton> toggle_buttons;
   std::list<Label> labels;
+  
+private:
+  static std::unordered_map<std::string, std::vector<std::string> > entry_histories;
 };
 
 #endif  // JUCI_ENTRYBOX_H_

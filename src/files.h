@@ -10,9 +10,14 @@ const std::string configjson =
 #ifdef __APPLE__
 "        \"font\": \"Menlo 11\", "
 #else
+#ifdef _WIN32
+"        \"font\": \"Consolas\", "
+#else
 "        \"font\": \"Monospace\", "
 #endif
+#endif
 "//Use \"\" for default font, and for instance \"Monospace 12\" to also set size.\n"
+"        \"spellcheck_language\": \"en_US\", //Use \"\" to set language from your locale settings\n"
 "        \"clang_types\": {\n"
 "            \"8\": \"def:function\",\n"
 "            \"21\": \"def:function\",\n"
@@ -31,6 +36,7 @@ const std::string configjson =
 "        \"auto_tab_char_and_size\": true, //Use false to always use default tab char and size\n"
 "        \"default_tab_char\": \" \", //Use \"\\t\" for regular tab\n"
 "        \"default_tab_size\": 2,\n"
+"        \"wrap_lines\": false,\n"
 "        \"highlight_current_line\": true,\n"
 "        \"show_line_numbers\": true\n"
 "    },\n"
@@ -62,18 +68,17 @@ const std::string configjson =
 "        \"force_kill_last_running\": \"<primary><shift>Escape\"\n"
 "    },\n"
 "    \"project\": {\n"
+#ifdef _WIN32
+"        \"cmake_command\": \"cmake -G\\\"MSYS Makefiles\\\"\",\n"
+#else
+"        \"cmake_command\": \"cmake\",\n"
+#endif
 "        \"make_command\": \"make\"\n"
 "    },\n"
 "    \"directoryfilter\": {\n"
 "        \"ignore\": [\n"
-"            \"cmake\",\n"
-"            \"#\",\n"
-"            \"~\",\n"
-"            \".idea\",\n"
-"            \".so\"\n"
 "        ],\n"
 "        \"exceptions\": [\n"
-"            \"cmakelists.txt\"\n"
 "        ]\n"
 "    }\n"
 "}\n";

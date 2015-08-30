@@ -13,6 +13,7 @@ class Terminal : public Gtk::TextView {
 public:  
   class Config {
   public:
+    std::string cmake_command;
     std::string make_command;
   };
   
@@ -53,8 +54,11 @@ private:
   Glib::RefPtr<Gtk::TextTag> bold_tag;
 
   std::mutex async_executes_mutex;
+#ifdef _WIN32
+  std::list<std::pair<void*, void*> > async_executes;
+#else  
   std::list<std::pair<pid_t, int> > async_executes;
-  
+#endif
   std::string stdin_buffer;
 };
 

@@ -31,11 +31,14 @@ protected:
   std::unique_ptr<Tooltips> tooltips;
   std::unordered_map<std::string, std::string> tooltip_texts;
   std::string last_row;
+private:
+  bool shown=false;
 };
 
 class SelectionDialog : public SelectionDialogBase {
 public:
-  SelectionDialog(Gtk::TextView& text_view, Glib::RefPtr<Gtk::TextBuffer::Mark> start_mark);
+  SelectionDialog(Gtk::TextView& text_view, Glib::RefPtr<Gtk::TextBuffer::Mark> start_mark, bool show_search_entry=true);
+  bool on_key_press(GdkEventKey* key);
   void show();
 };
 

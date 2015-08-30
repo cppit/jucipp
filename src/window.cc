@@ -3,7 +3,7 @@
 #include "singletons.h"
 #include "sourcefile.h"
 #include "config.h"
-#include "api.h"
+//#include "api.h"
 #include <boost/lexical_cast.hpp>
 
 #include <iostream> //TODO: remove
@@ -30,7 +30,7 @@ Window::Window() : box(Gtk::ORIENTATION_VERTICAL), notebook(directories), compil
   add(box);
   
   generate_keybindings();
-  PluginApi(&this->notebook, &this->menu);
+  //PluginApi(&this->notebook, &this->menu);
   create_menu();
   box.pack_start(menu.get_widget(), Gtk::PACK_SHRINK);
 
@@ -92,6 +92,9 @@ Window::Window() : box(Gtk::ORIENTATION_VERTICAL), notebook(directories), compil
         menu_item->set_sensitive((bool)notebook.get_current_view()->rename_similar_tokens);
     
       directories.select(notebook.get_current_view()->file_path);
+      
+      if(auto source_view=dynamic_cast<Source::ClangView*>(notebook.get_current_view()))
+        source_view->start_reparse();
       
       Singleton::status()->set_text(notebook.get_current_view()->status);
     }
@@ -162,6 +165,7 @@ void Window::create_menu() {
       auto undo_manager = notebook.get_current_view()->get_source_buffer()->get_undo_manager();
       if (undo_manager->can_undo()) {
         undo_manager->undo();
+        notebook.get_current_view()->scroll_to(notebook.get_current_view()->get_buffer()->get_insert());
       }
     }
     INFO("Done undo");
@@ -172,6 +176,7 @@ void Window::create_menu() {
       auto undo_manager = notebook.get_current_view()->get_source_buffer()->get_undo_manager();
       if(undo_manager->can_redo()) {
         undo_manager->redo();
+        notebook.get_current_view()->scroll_to(notebook.get_current_view()->get_buffer()->get_insert());
       }
     }
     INFO("Done Redo");
@@ -226,12 +231,10 @@ void Window::create_menu() {
       if(executable_path!="") {
         compiling=true;
         Singleton::terminal()->print("Compiling and running "+executable_path.string()+"\n");
-        //TODO: Windows...
         auto project_path=cmake.project_path;
         Singleton::terminal()->async_execute(Singleton::Config::terminal()->make_command, cmake.project_path, [this, executable_path, project_path](int exit_code){
           compiling=false;
           if(exit_code==EXIT_SUCCESS) {
-            //TODO: Windows...
             auto executable_path_spaces_fixed=executable_path.string();
             char last_char=0;
             for(size_t c=0;c<executable_path_spaces_fixed.size();c++) {
@@ -261,7 +264,6 @@ void Window::create_menu() {
     if(cmake.project_path!="") {
       compiling=true;
       Singleton::terminal()->print("Compiling project "+cmake.project_path.string()+"\n");
-      //TODO: Windows...
       Singleton::terminal()->async_execute(Singleton::Config::terminal()->make_command, cmake.project_path, [this](int exit_code){
         compiling=false;
       });
@@ -280,6 +282,7 @@ void Window::create_menu() {
       entry_box.hide();
     });
     auto entry_it=entry_box.entries.begin();
+    entry_it->set_placeholder_text("Command");
     entry_box.buttons.emplace_back("Run command", [this, entry_it](){
       entry_it->activate();
     });
@@ -493,7 +496,7 @@ void Window::save_file_dialog() {
     return;
   INFO("Save file dialog");
   Gtk::FileChooserDialog dialog(*this, "Please choose a file", Gtk::FILE_CHOOSER_ACTION_SAVE);
-  gtk_file_chooser_set_filename((GtkFileChooser*)dialog.gobj(), notebook.get_current_view()->file_path.c_str());
+  gtk_file_chooser_set_filename((GtkFileChooser*)dialog.gobj(), notebook.get_current_view()->file_path.string().c_str());
   dialog.set_position(Gtk::WindowPosition::WIN_POS_CENTER_ALWAYS);
   dialog.add_button("Cancel", Gtk::RESPONSE_CANCEL);
   dialog.add_button("Save", Gtk::RESPONSE_OK);
