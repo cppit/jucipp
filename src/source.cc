@@ -320,7 +320,8 @@ Source::View::~View() {
   g_clear_object(&search_context);
   g_clear_object(&search_settings);
   
-  delete_aspell_speller(spellcheck_checker);
+  if(spellcheck_checker!=NULL)
+    delete_aspell_speller(spellcheck_checker);
 }
 
 void Source::View::search_highlight(const std::string &text, bool case_sensitive, bool regex) {
