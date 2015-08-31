@@ -15,8 +15,6 @@ Menu::Menu() : box(Gtk::ORIENTATION_VERTICAL) {
   action_group->add(Gtk::Action::create("SourceMenu", "_Source"));
   action_group->add(Gtk::Action::create("PluginMenu", "_Plugins"));
   action_group->add(Gtk::Action::create("HelpMenu", "Help"));
-  action_group->add(Gtk::Action::create("HelpAbout", "About"), [this]() {
-  });
   INFO("Menu created");
 }
 

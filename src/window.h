@@ -18,6 +18,7 @@ public:
   public:
     std::string theme_name;
     std::string theme_variant;
+    std::string version;
     boost::property_tree::ptree keybindings;
   };
 
@@ -33,6 +34,7 @@ private:
   Gtk::VBox terminal_vbox;
   Gtk::ScrolledWindow terminal_scrolled_window;
   Gtk::HBox status_hbox;
+  Gtk::AboutDialog about;
   EntryBox entry_box;
   Menu menu;
   std::atomic<bool> compiling;

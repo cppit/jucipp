@@ -14,7 +14,7 @@ MainConfig::MainConfig() {
   
   Singleton::Config::window()->theme_name=cfg.get<std::string>("gtk_theme.name");
   Singleton::Config::window()->theme_variant=cfg.get<std::string>("gtk_theme.variant");
-  
+  Singleton::Config::window()->version = cfg.get<std::string>("version");
   Singleton::Config::terminal()->make_command=cfg.get<std::string>("project.make_command");
   Singleton::Config::terminal()->cmake_command=cfg.get<std::string>("project.cmake_command");
 }

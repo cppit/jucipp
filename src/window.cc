@@ -107,6 +107,21 @@ Window::Window() : box(Gtk::ORIENTATION_VERTICAL), notebook(directories), compil
     entry_box.hide();
   });
   
+  about.signal_response().connect([this](int d){
+    about.hide();
+  });
+  
+  about.set_version(Singleton::Config::window()->version);
+  about.set_authors({"Ted Johan Kristoffersen",
+                     "Jørgen Lien Sellæg",
+                     "Geir Morten Larsen",
+                     "with special thanks to",
+                     "Ole Christian Eidheim"});
+  about.set_name("About juCi++");
+  about.set_program_name("juCi++");
+  about.set_comments("This is an open source IDE with high-end features to make your programming experience juicy");
+  about.set_license_type(Gtk::License::LICENSE_MIT_X11);
+  about.set_transient_for(*this);
   INFO("Window created");
 } // Window constructor
 
@@ -298,11 +313,14 @@ void Window::create_menu() {
   menu.action_group->add(Gtk::Action::create("ProjectForceKillLastRunning", "Force Kill Last Process"), Gtk::AccelKey(menu.key_map["force_kill_last_running"]), [this]() {
     Singleton::terminal()->kill_last_async_execute(true);
   });
-
   menu.action_group->add(Gtk::Action::create("WindowCloseTab", "Close Tab"), Gtk::AccelKey(menu.key_map["close_tab"]), [this]() {
     notebook.close_current_page();
   });
-  add_accel_group(menu.ui_manager->get_accel_group());
+  menu.action_group->add(Gtk::Action::create("HelpAbout", "About"), [this] () {
+    about.show();
+    about.present();
+  });
+  add_accel_group(menu.ui_manager->get_accel_group()); 
   menu.build();
   INFO("Menu build")
 }
