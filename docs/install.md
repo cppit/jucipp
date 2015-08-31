@@ -16,7 +16,7 @@ sudo make install
 
 ## OS X with Homebrew (http://brew.sh/)
 ```sh
-brew install pkg-config boost gtkmm3 gtksourceviewmm3 aspell git
+brew install pkg-config boost gtkmm3 homebrew/x11/gtksourceviewmm3 aspell git
 ```
 
 ```sh
