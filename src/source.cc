@@ -248,7 +248,7 @@ void Source::View::set_tooltip_events() {
   signal_motion_notify_event().connect([this](GdkEventMotion* event) {
     if(on_motion_last_x!=event->x || on_motion_last_y!=event->y) {
       delayed_tooltips_connection.disconnect();
-      if(event->state==0) {
+      if((event->state&GDK_BUTTON1_MASK)==0) {
         gdouble x=event->x;
         gdouble y=event->y;
         delayed_tooltips_connection=Glib::signal_timeout().connect([this, x, y]() {
@@ -501,7 +501,7 @@ bool Source::View::on_key_press_event(GdkEventKey* key) {
   
   get_source_buffer()->begin_user_action();
   //Indent as in next or previous line
-  if(key->keyval==GDK_KEY_Return && key->state==0 && !get_buffer()->get_has_selection()) {
+  if(key->keyval==GDK_KEY_Return && !get_buffer()->get_has_selection()) {
     auto insert_it=get_buffer()->get_insert()->get_iter();
     int line_nr=insert_it.get_line();
     auto line=get_line_before_insert();
@@ -528,7 +528,7 @@ bool Source::View::on_key_press_event(GdkEventKey* key) {
     }
   }
   //Indent right when clicking tab, no matter where in the line the cursor is. Also works on selected text.
-  else if(key->keyval==GDK_KEY_Tab && key->state==0) {
+  else if(key->keyval==GDK_KEY_Tab) {
     Gtk::TextIter selection_start, selection_end;
     get_source_buffer()->get_selection_bounds(selection_start, selection_end);
     int line_start=selection_start.get_line();
@@ -541,7 +541,7 @@ bool Source::View::on_key_press_event(GdkEventKey* key) {
     return true;
   }
   //Indent left when clicking shift-tab, no matter where in the line the cursor is. Also works on selected text.
-  else if((key->keyval==GDK_KEY_ISO_Left_Tab || key->keyval==GDK_KEY_Tab) && key->state==GDK_SHIFT_MASK) {
+  else if((key->keyval==GDK_KEY_ISO_Left_Tab || key->keyval==GDK_KEY_Tab) && (key->state&GDK_SHIFT_MASK)>0) {
     Gtk::TextIter selection_start, selection_end;
     get_source_buffer()->get_selection_bounds(selection_start, selection_end);
     int line_start=selection_start.get_line();
@@ -1070,7 +1070,7 @@ bool Source::ClangViewParse::on_key_press_event(GdkEventKey* key) {
   get_source_buffer()->begin_user_action();
   
   //Indent depending on if/else/etc and brackets
-  if(key->keyval==GDK_KEY_Return && key->state==0) {
+  if(key->keyval==GDK_KEY_Return) {
     string line(get_line_before_insert());
     std::smatch sm;
     if(std::regex_match(line, sm, bracket_regex)) {

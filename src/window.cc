@@ -570,7 +570,7 @@ void Window::search_and_replace_entry() {
     notebook.get_current_view()->search_highlight(search_entry_it->get_text(), case_sensitive_search, regex_search);
   }
   search_entry_it->signal_key_press_event().connect([this](GdkEventKey* event){
-    if(event->keyval==GDK_KEY_Return && event->state==GDK_SHIFT_MASK) {
+    if(event->keyval==GDK_KEY_Return && (event->state&GDK_SHIFT_MASK)>0) {
       if(notebook.get_current_page()!=-1)
         notebook.get_current_view()->search_backward();
     }
@@ -590,7 +590,7 @@ void Window::search_and_replace_entry() {
   replace_entry_it++;
   replace_entry_it->set_placeholder_text("Replace");
   replace_entry_it->signal_key_press_event().connect([this, replace_entry_it](GdkEventKey* event){
-    if(event->keyval==GDK_KEY_Return && event->state==GDK_SHIFT_MASK) {
+    if(event->keyval==GDK_KEY_Return && (event->state&GDK_SHIFT_MASK)>0) {
       if(notebook.get_current_page()!=-1)
         notebook.get_current_view()->replace_backward(replace_entry_it->get_text());
     }
