@@ -150,7 +150,7 @@ void SelectionDialogBase::resize() {
     int window_height=std::min(row_height*(int)list_view_text.get_model()->children().size(), row_height*10);
     if(show_search_entry)
       window_height+=search_entry.get_height();
-    window->resize(row_width, window_height);
+    window->resize(row_width+1, window_height);
   }
 }
 
