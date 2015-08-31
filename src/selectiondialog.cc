@@ -2,7 +2,13 @@
 #include <algorithm>
 
 namespace sigc {
-  SIGC_FUNCTORS_DEDUCE_RESULT_TYPE_WITH_DECLTYPE
+  template <typename Functor>
+  struct functor_trait<Functor, false> {
+    typedef decltype (::sigc::mem_fun(std::declval<Functor&>(),
+                                      &Functor::operator())) _intermediate;
+    typedef typename _intermediate::result_type result_type;
+    typedef Functor functor_type;
+  };
 }
 
 SelectionDialogBase::SelectionDialogBase(Gtk::TextView& text_view, Glib::RefPtr<Gtk::TextBuffer::Mark> start_mark, bool show_search_entry): text_view(text_view), 
