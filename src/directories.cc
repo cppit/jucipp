@@ -9,7 +9,13 @@
 using namespace std; //TODO: remove
 
 namespace sigc {
-  SIGC_FUNCTORS_DEDUCE_RESULT_TYPE_WITH_DECLTYPE
+  template <typename Functor>
+  struct functor_trait<Functor, false> {
+    typedef decltype (::sigc::mem_fun(std::declval<Functor&>(),
+                                      &Functor::operator())) _intermediate;
+    typedef typename _intermediate::result_type result_type;
+    typedef Functor functor_type;
+  };
 }
 
 Directories::Directories() : stop_update_thread(false) {

@@ -2,7 +2,13 @@
 #include <algorithm>
 
 namespace sigc {
-  SIGC_FUNCTORS_DEDUCE_RESULT_TYPE_WITH_DECLTYPE
+  template <typename Functor>
+  struct functor_trait<Functor, false> {
+    typedef decltype (::sigc::mem_fun(std::declval<Functor&>(),
+                                      &Functor::operator())) _intermediate;
+    typedef typename _intermediate::result_type result_type;
+    typedef Functor functor_type;
+  };
 }
 
 SelectionDialogBase::SelectionDialogBase(Gtk::TextView& text_view, Glib::RefPtr<Gtk::TextBuffer::Mark> start_mark, bool show_search_entry): text_view(text_view), 
@@ -144,7 +150,7 @@ void SelectionDialogBase::resize() {
     int window_height=std::min(row_height*(int)list_view_text.get_model()->children().size(), row_height*10);
     if(show_search_entry)
       window_height+=search_entry.get_height();
-    window->resize(row_width, window_height);
+    window->resize(row_width+1, window_height);
   }
 }
 
