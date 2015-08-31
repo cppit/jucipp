@@ -13,17 +13,21 @@ cmake .
 make
 sudo make install
 ```
-<!--
+
 ## Ubuntu 14/Linux Mint 17
-```
+```sh
 sudo add-apt-repository ppa:ubuntu-toolchain-r/test
 sudo apt-get update
 sudo apt-get install g++-4.9
-sudo apt-get dist-upgrade
-sudo apt-get autoremove
 sudo apt-get install pkg-config libboost-system1.55-dev libboost-thread1.55-dev libboost-filesystem1.55-dev libboost-log1.55-dev libgtkmm-3.0-dev libgtksourceviewmm-3.0-dev aspell-en libaspell-dev git
 ```
--->
+```sh
+git clone http://github.com/cppit/jucipp.git
+cd jucipp
+cmake .
+make
+sudo make install
+```
 
 ## OS X with Homebrew (http://brew.sh/)
 ```sh
