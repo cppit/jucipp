@@ -2,7 +2,7 @@
 ## Installation guide ##
 Before installation, please install libclangmm, see [installation guide](http://github.com/cppit/libclangmm/blob/master/docs/install.md).
 
-## Debian/Ubuntu
+## Debian/Ubuntu 15
 ```sh
 sudo apt-get install pkg-config libboost-system-dev libboost-thread-dev libboost-filesystem-dev libboost-log-dev libgtkmm-3.0-dev libgtksourceviewmm-3.0-dev aspell-en libaspell-dev git
 ```
