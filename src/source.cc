@@ -485,8 +485,7 @@ void Source::View::set_status(const std::string &status) {
 string Source::View::get_line(size_t line_number) {
   Gtk::TextIter line_it = get_source_buffer()->get_iter_at_line(line_number);
   Gtk::TextIter line_end_it = line_it;
-  while(!line_end_it.ends_line())
-    line_end_it++;
+  while(!line_end_it.ends_line() && line_end_it.forward_char()) {}
   std::string line(get_source_buffer()->get_text(line_it, line_end_it));
   return line;
 }
@@ -516,14 +515,15 @@ bool Source::View::on_key_press_event(GdkEventKey* key) {
       if((line_nr+1)<get_buffer()->get_line_count()) {
         string next_line=get_line(line_nr+1);
         auto line_end_iter=get_buffer()->get_iter_at_line(line_nr+1);
-        line_end_iter--;
-        std::smatch sm2;
-        if(insert_it==line_end_iter && std::regex_match(next_line, sm2, tabs_regex)) {
-          if(sm2[1].str().size()>sm[1].str().size()) {
-            get_source_buffer()->insert_at_cursor("\n"+sm2[1].str());
-            scroll_to(get_source_buffer()->get_insert());
-            get_source_buffer()->end_user_action();
-            return true;
+        if(line_end_iter.backward_char()) {
+          std::smatch sm2;
+          if(insert_it==line_end_iter && std::regex_match(next_line, sm2, tabs_regex)) {
+            if(sm2[1].str().size()>sm[1].str().size()) {
+              get_source_buffer()->insert_at_cursor("\n"+sm2[1].str());
+              scroll_to(get_source_buffer()->get_insert());
+              get_source_buffer()->end_user_action();
+              return true;
+            }
           }
         }
       }
@@ -570,9 +570,8 @@ bool Source::View::on_key_press_event(GdkEventKey* key) {
       Gtk::TextIter line_it = get_source_buffer()->get_iter_at_line(line_nr);
       Gtk::TextIter line_plus_it=line_it;
       
-      for(unsigned c=0;c<indent_left_steps;c++)
-        line_plus_it++;
-      get_source_buffer()->erase(line_it, line_plus_it);
+      if(indent_left_steps==0 || line_plus_it.forward_chars(indent_left_steps))
+        get_source_buffer()->erase(line_it, line_plus_it);
     }
     get_source_buffer()->end_user_action();
     return true;
@@ -590,10 +589,8 @@ bool Source::View::on_key_press_event(GdkEventKey* key) {
         if(std::regex_match(previous_line, sm2, tabs_regex)) {
           if(line.size()==sm2[1].str().size() || line.size()==sm2[1].str().size()+tab_size || line.size()==sm2[1].str().size()-tab_size) {
             auto previous_line_end_it=insert_it;
-            for(unsigned c=0;c<line.size();c++)
-              previous_line_end_it--;
-            previous_line_end_it--;
-            get_source_buffer()->erase(previous_line_end_it, insert_it);
+            if(previous_line_end_it.backward_chars(line.size()+1))
+              get_source_buffer()->erase(previous_line_end_it, insert_it);
             get_source_buffer()->end_user_action();
             return true;
           }
@@ -601,9 +598,8 @@ bool Source::View::on_key_press_event(GdkEventKey* key) {
       }
       if(line.size()>=tab_size) {
         auto insert_minus_tab_it=insert_it;
-        for(unsigned c=0;c<tab_size;c++)
-          insert_minus_tab_it--;
-        get_source_buffer()->erase(insert_minus_tab_it, insert_it);
+        if(tab_size==0 || insert_minus_tab_it.backward_chars(tab_size))
+          get_source_buffer()->erase(insert_minus_tab_it, insert_it);
         get_source_buffer()->end_user_action();
         return true;
       }
@@ -1097,20 +1093,20 @@ bool Source::ClangViewParse::on_key_press_event(GdkEventKey* key) {
         if(next_char!='}' && next_line.substr(0, next_line_with_end_bracket.size())!=next_line_with_end_bracket) {
           get_source_buffer()->insert_at_cursor("\n"+sm[1].str()+tab+"\n"+sm[1].str()+"}");
           auto insert_it = get_source_buffer()->get_insert()->get_iter();
-          for(size_t c=0;c<sm[1].str().size()+2;c++)
-            insert_it--;
-          scroll_to(get_source_buffer()->get_insert());
-          get_source_buffer()->place_cursor(insert_it);
+          if(insert_it.backward_chars(sm[1].str().size()+2)) {
+            scroll_to(get_source_buffer()->get_insert());
+            get_source_buffer()->place_cursor(insert_it);
+          }
           get_source_buffer()->end_user_action();
           return true;
         }
         else if(next_char=='}') {
           get_source_buffer()->insert_at_cursor("\n"+sm[1].str()+tab+"\n"+sm[1].str());
           auto insert_it = get_source_buffer()->get_insert()->get_iter();
-          for(size_t c=0;c<sm[1].str().size()+1;c++)
-            insert_it--;
-          scroll_to(get_source_buffer()->get_insert());
-          get_source_buffer()->place_cursor(insert_it);
+          if(insert_it.backward_chars(sm[1].str().size()+1)) {
+            scroll_to(get_source_buffer()->get_insert());
+            get_source_buffer()->place_cursor(insert_it);
+          }
           get_source_buffer()->end_user_action();
           return true;
         }
@@ -1170,10 +1166,8 @@ bool Source::ClangViewParse::on_key_press_event(GdkEventKey* key) {
       Gtk::TextIter insert_it = get_source_buffer()->get_insert()->get_iter();
       Gtk::TextIter line_it = get_source_buffer()->get_iter_at_line(insert_it.get_line());
       Gtk::TextIter line_plus_it=line_it;
-      for(unsigned c=0;c<tab_size;c++)
-        line_plus_it++;
-      
-      get_source_buffer()->erase(line_it, line_plus_it);
+      if(tab_size==0 || line_plus_it.forward_chars(tab_size))
+        get_source_buffer()->erase(line_it, line_plus_it);
     }
     get_source_buffer()->insert_at_cursor("}");
     get_source_buffer()->end_user_action();
@@ -1285,8 +1279,8 @@ void Source::ClangViewAutocomplete::autocomplete() {
       autocomplete_starting=false;
       if(!autocomplete_cancel_starting) {
         auto start_iter=get_buffer()->get_insert()->get_iter();
-        for(size_t c=0;c<prefix.size();c++)
-          start_iter--;
+        if(prefix.size()>0 && !start_iter.backward_chars(prefix.size()))
+          return;
         completion_dialog=std::unique_ptr<CompletionDialog>(new CompletionDialog(*this, get_buffer()->create_mark(start_iter)));
         auto rows=std::make_shared<std::unordered_map<std::string, std::string> >();
         completion_dialog->on_hide=[this](){

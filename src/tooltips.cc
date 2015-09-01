@@ -1,6 +1,9 @@
 #include "tooltips.h"
 #include "singletons.h"
 
+#include <iostream>
+using namespace std;
+
 namespace sigc {
   template <typename Functor>
   struct functor_trait<Functor, false> {
@@ -28,12 +31,10 @@ void Tooltip::update() {
   auto end_iter=end_mark->get_iter();
   text_view.get_iter_location(iter, activation_rectangle);
   if(iter.get_offset()<end_iter.get_offset()) {
-    iter++;
-    while(iter!=end_iter) {
+    while(iter!=end_iter && iter.forward_char()) {
       Gdk::Rectangle rectangle;
       text_view.get_iter_location(iter, rectangle);
       activation_rectangle.join(rectangle);
-      iter++;
     }
   }
   int location_window_x, location_window_y;
@@ -107,28 +108,28 @@ void Tooltip::wrap_lines(Glib::RefPtr<Gtk::TextBuffer> text_buffer) {
         last_space=iter;
       if(*iter=='\n') {
         end=true;
-        iter++;
+        iter.forward_char();
         break;
       }
-      iter++;
+      iter.forward_char();
     }
     if(!end) {
       while(!last_space && iter) { //If no space (word longer than 80)
-        iter++;
+        iter.forward_char();
         if(iter && *iter==' ')
           last_space=iter;
       }
       if(iter && last_space) {
         auto mark=text_buffer->create_mark(last_space);
-        auto iter_mark=text_buffer->create_mark(iter);
-        auto last_space_p=last_space++;
-        text_buffer->erase(last_space, last_space_p);
+        auto last_space_p=last_space;
+        last_space.forward_char();
+        text_buffer->erase(last_space_p, last_space);
         text_buffer->insert(mark->get_iter(), "\n");
         
-        iter=iter_mark->get_iter();
+        iter=mark->get_iter();
+        iter.forward_char();
 
         text_buffer->delete_mark(mark);
-        text_buffer->delete_mark(iter_mark);
       }
     }
   }

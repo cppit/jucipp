@@ -214,7 +214,8 @@ void Window::create_menu() {
     if(notebook.get_current_page()!=-1) {
       while(gtk_events_pending())
         gtk_main_iteration();
-      notebook.get_current_view()->scroll_to(notebook.get_current_view()->get_buffer()->get_insert(), 0.0, 1.0, 0.5);
+      if(notebook.get_current_page()!=-1)
+        notebook.get_current_view()->scroll_to(notebook.get_current_view()->get_buffer()->get_insert(), 0.0, 1.0, 0.5);
     }
   });
   menu.action_group->add(Gtk::Action::create("SourceGotoDeclaration", "Go to Declaration"), Gtk::AccelKey(menu.key_map["source_goto_declaration"]), [this]() {
@@ -226,7 +227,8 @@ void Window::create_menu() {
           notebook.get_current_view()->get_buffer()->place_cursor(notebook.get_current_view()->get_buffer()->get_iter_at_line_index(location.second.line-1, location.second.index-1));
           while(gtk_events_pending())
             gtk_main_iteration();
-          notebook.get_current_view()->scroll_to(notebook.get_current_view()->get_buffer()->get_insert(), 0.0, 1.0, 0.5);
+          if(notebook.get_current_page()!=-1)
+            notebook.get_current_view()->scroll_to(notebook.get_current_view()->get_buffer()->get_insert(), 0.0, 1.0, 0.5);
         }
       }
     }

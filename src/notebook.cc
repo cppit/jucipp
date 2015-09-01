@@ -28,15 +28,11 @@ int Notebook::size() {
 }
 
 Source::View* Notebook::get_view(int page) {
-  if(page>=size())
-    return nullptr;
   return source_views.at(page);
 }
 
 Source::View* Notebook::get_current_view() {
   INFO("Getting sourceview");
-  if(get_current_page()==-1)
-    return nullptr;
   return get_view(get_current_page());
 }
 
@@ -163,25 +159,29 @@ bool Notebook::save_current() {
 }
 
 bool Notebook::close_current_page() {
+  DEBUG("start");
   INFO("Notebook close page");
-  if (size() != 0) {
+  if (get_current_page()!=-1) {
     if(get_current_view()->get_buffer()->get_modified()){
-      if(!save_modified_dialog())
+      if(!save_modified_dialog()) {
+        DEBUG("end false");
         return false;
+      }
     }
     int page = get_current_page();
     remove_page(page);
     if(get_current_page()==-1)
       Singleton::status()->set_text("");
     auto source_view=source_views.at(page);
-    source_views.erase(source_views.begin()+ page);
-    scrolled_windows.erase(scrolled_windows.begin()+page);
-    hboxes.erase(hboxes.begin()+page);
     if(auto source_clang_view=dynamic_cast<Source::ClangView*>(source_view))
       source_clang_view->async_delete();
     else
       delete source_view;
+    source_views.erase(source_views.begin()+ page);
+    scrolled_windows.erase(scrolled_windows.begin()+page);
+    hboxes.erase(hboxes.begin()+page);
   }
+  DEBUG("end true");
   return true;
 }
 

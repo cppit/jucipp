@@ -70,9 +70,7 @@ bool juci::filesystem::write(const std::string &path, Glib::RefPtr<Gtk::TextBuff
     bool end_reached=false;
     while(!end_reached) {
       for(size_t c=0;c<buffer_size;c++) {
-        if(end_iter)
-          end_iter++;
-        else {
+        if(!end_iter.forward_char()) {
           end_reached=true;
           break;
         }

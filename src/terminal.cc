@@ -280,7 +280,7 @@ void Terminal::kill_async_executes(bool force) {
 }
 
 int Terminal::print(const std::string &message, bool bold){
-  INFO("Terminal: PrintMessage");
+  DEBUG("start");
   if(bold)
     get_buffer()->insert_with_tag(get_buffer()->end(), message, bold_tag);
   else
@@ -293,15 +293,16 @@ int Terminal::print(const std::string &message, bool bold){
     get_buffer()->delete_mark(mark);
   }
   
+  DEBUG("end");
   return get_buffer()->end().get_line();
 }
 
 void Terminal::print(int line_nr, const std::string &message){
-  INFO("Terminal: PrintMessage at line " << line_nr);
+  DEBUG("start");
   auto iter=get_buffer()->get_iter_at_line(line_nr);
-  while(!iter.ends_line())
-    iter++;
+  while(!iter.ends_line() && iter.forward_char()) {}
   get_buffer()->insert(iter, message);
+  DEBUG("end");
 }
 
 std::shared_ptr<Terminal::InProgress> Terminal::print_in_progress(std::string start_msg) {

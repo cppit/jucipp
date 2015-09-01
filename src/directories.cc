@@ -68,6 +68,7 @@ Directories::Directories() : stop_update_thread(false) {
   });
   
   update_dispatcher.connect([this](){
+    DEBUG("start");
     update_mutex.lock();
     for(auto &path: update_paths) {
       if(last_write_times.count(path)>0)
@@ -75,11 +76,13 @@ Directories::Directories() : stop_update_thread(false) {
     }
     update_paths.clear();
     update_mutex.unlock();
+    DEBUG("end");
   });
   
   update_thread=std::thread([this](){
     while(!stop_update_thread) {
       std::this_thread::sleep_for(std::chrono::milliseconds(1000));
+      DEBUG("start");
       update_mutex.lock();
       if(update_paths.size()==0) {
         for(auto it=last_write_times.begin();it!=last_write_times.end();) {
@@ -101,6 +104,7 @@ Directories::Directories() : stop_update_thread(false) {
           update_dispatcher();
       }
       update_mutex.unlock();
+      DEBUG("end");
     }
   });
 }
@@ -138,14 +142,17 @@ void Directories::open(const boost::filesystem::path& dir_path) {
 }
 
 void Directories::update() {
+  DEBUG("start");
   update_mutex.lock();
   for(auto &last_write_time: last_write_times) {
     add_path(last_write_time.first, last_write_time.second.first);
   }
   update_mutex.unlock();
+  DEBUG("end");
 }
 
 void Directories::select(const boost::filesystem::path &path) {
+  DEBUG("start");
   if(current_path=="")
     return;
     
@@ -185,6 +192,7 @@ void Directories::select(const boost::filesystem::path &path) {
     }
     return false;
   });
+  DEBUG("end");
 }
 
 bool Directories::ignored(std::string path) {
@@ -204,6 +212,7 @@ bool Directories::ignored(std::string path) {
 }
 
 void Directories::add_path(const boost::filesystem::path& dir_path, const Gtk::TreeModel::Row &parent) {
+  DEBUG("start");
   last_write_times[dir_path.string()]={parent, boost::filesystem::last_write_time(dir_path)};
   std::unique_ptr<Gtk::TreeNodeChildren> children; //Gtk::TreeNodeChildren is missing default constructor...
   if(parent)
@@ -257,4 +266,5 @@ void Directories::add_path(const boost::filesystem::path& dir_path, const Gtk::T
     auto child=tree_store->append(*children);
     child->set_value(column_record.name, std::string("(empty)"));
   }
+  DEBUG("end");
 }
