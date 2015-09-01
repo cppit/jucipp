@@ -172,8 +172,6 @@ bool Notebook::close_current_page() {
     }
     int page = get_current_page();
     remove_page(page);
-    if(get_current_page()==-1)
-      Singleton::status()->set_text("");
     auto source_view=source_views.at(page);
     if(auto source_clang_view=dynamic_cast<Source::ClangView*>(source_view))
       source_clang_view->async_delete();

@@ -327,6 +327,8 @@ void Window::create_menu() {
     notebook.close_current_page();
     if(notebook.get_current_page()!=-1)
       Singleton::status()->set_text(notebook.get_current_view()->status);
+    else
+      Singleton::status()->set_text("");
   });
   menu.action_group->add(Gtk::Action::create("HelpAbout", "About"), [this] () {
     about.show();
