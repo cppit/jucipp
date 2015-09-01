@@ -104,8 +104,10 @@ void Notebook::open(const boost::filesystem::path &file_path) {
   });
   
   get_current_view()->on_update_status=[this](Source::View* view, const std::string &status) {
-    if(get_current_view()==view)
+    if(get_current_page()!=-1 && get_current_view()==view)
       Singleton::status()->set_text(status);
+    else
+      Singleton::status()->set_text("");
   };
 }
 

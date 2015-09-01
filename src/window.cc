@@ -80,6 +80,7 @@ Window::Window() : box(Gtk::ORIENTATION_VERTICAL), notebook(directories), compil
   });
 
   notebook.signal_switch_page().connect([this](Gtk::Widget* page, guint page_num) {
+    DEBUG("start");
     if(notebook.get_current_page()!=-1) {
       if(search_entry_shown && entry_box.labels.size()>0) {
         notebook.get_current_view()->update_search_occurrences=[this](int number){
@@ -108,6 +109,7 @@ Window::Window() : box(Gtk::ORIENTATION_VERTICAL), notebook(directories), compil
       
       Singleton::status()->set_text(notebook.get_current_view()->status);
     }
+    DEBUG("end");
   });
   notebook.signal_page_removed().connect([this](Gtk::Widget* page, guint page_num) {
     entry_box.hide();
