@@ -650,7 +650,8 @@ void Window::goto_line_entry() {
             buffer->place_cursor(buffer->get_iter_at_line(line));
             while(gtk_events_pending())
               gtk_main_iteration();
-            notebook.get_current_view()->scroll_to(buffer->get_insert(), 0.0, 1.0, 0.5);
+            if(notebook.get_current_page()!=-1)
+              notebook.get_current_view()->scroll_to(buffer->get_insert(), 0.0, 1.0, 0.5);
           }
         }
         catch(const std::exception &e) {}  
