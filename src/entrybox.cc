@@ -1,5 +1,6 @@
 #include "entrybox.h"
 
+#ifndef _WIN32
 namespace sigc {
   template <typename Functor>
   struct functor_trait<Functor, false> {
@@ -9,6 +10,7 @@ namespace sigc {
     typedef Functor functor_type;
   };
 }
+#endif
 
 std::unordered_map<std::string, std::vector<std::string> > EntryBox::entry_histories;
 

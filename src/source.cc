@@ -11,6 +11,7 @@
 
 using namespace std; //TODO: remove
 
+#ifndef _WIN32
 namespace sigc {
   template <typename Functor>
   struct functor_trait<Functor, false> {
@@ -20,6 +21,7 @@ namespace sigc {
     typedef Functor functor_type;
   };
 }
+#endif
 
 Glib::RefPtr<Gsv::Language> Source::guess_language(const boost::filesystem::path &file_path) {
   auto language_manager=Gsv::LanguageManager::get_default();

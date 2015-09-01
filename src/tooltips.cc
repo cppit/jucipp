@@ -1,6 +1,7 @@
 #include "tooltips.h"
 #include "singletons.h"
 
+#ifndef _WIN32
 namespace sigc {
   template <typename Functor>
   struct functor_trait<Functor, false> {
@@ -10,6 +11,7 @@ namespace sigc {
     typedef Functor functor_type;
   };
 }
+#endif
 
 Gdk::Rectangle Tooltips::drawn_tooltips_rectangle=Gdk::Rectangle();
 

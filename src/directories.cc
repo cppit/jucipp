@@ -8,6 +8,7 @@
 #include <iostream> //TODO: remove
 using namespace std; //TODO: remove
 
+#ifndef _WIN32
 namespace sigc {
   template <typename Functor>
   struct functor_trait<Functor, false> {
@@ -17,6 +18,7 @@ namespace sigc {
     typedef Functor functor_type;
   };
 }
+#endif
 
 Directories::Directories() : stop_update_thread(false) {
   DEBUG("adding treeview to scrolledwindow");

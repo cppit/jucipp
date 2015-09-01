@@ -9,6 +9,7 @@
 #include <iostream> //TODO: remove
 using namespace std; //TODO: remove
 
+#ifndef _WIN32
 namespace sigc {
   template <typename Functor>
   struct functor_trait<Functor, false> {
@@ -18,6 +19,7 @@ namespace sigc {
     typedef Functor functor_type;
   };
 }
+#endif
 
 void Window::generate_keybindings() {
   boost::filesystem::path path(Singleton::config_dir() + "menu.xml");
