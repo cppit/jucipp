@@ -325,6 +325,8 @@ void Window::create_menu() {
   });
   menu.action_group->add(Gtk::Action::create("WindowCloseTab", "Close Tab"), Gtk::AccelKey(menu.key_map["close_tab"]), [this]() {
     notebook.close_current_page();
+    if(notebook.get_current_page()!=-1)
+      Singleton::status()->set_text(notebook.get_current_view()->status);
   });
   menu.action_group->add(Gtk::Action::create("HelpAbout", "About"), [this] () {
     about.show();
