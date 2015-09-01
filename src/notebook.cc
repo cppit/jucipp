@@ -9,8 +9,8 @@
 #include <iostream> //TODO: remove
 using namespace std; //TODO: remove
 
-#ifndef _WIN32
 namespace sigc {
+#ifndef SIGC_FUNCTORS_DEDUCE_RESULT_TYPE_WITH_DECLTYPE
   template <typename Functor>
   struct functor_trait<Functor, false> {
     typedef decltype (::sigc::mem_fun(std::declval<Functor&>(),
@@ -18,8 +18,10 @@ namespace sigc {
     typedef typename _intermediate::result_type result_type;
     typedef Functor functor_type;
   };
-}
+#else
+  SIGC_FUNCTORS_DEDUCE_RESULT_TYPE_WITH_DECLTYPE
 #endif
+}
 
 Notebook::Notebook(Directories &directories) : Gtk::Notebook(), directories(directories) {
   Gsv::init();
