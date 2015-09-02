@@ -12,6 +12,7 @@
 using namespace std; //TODO: remove
 
 namespace sigc {
+#ifndef SIGC_FUNCTORS_DEDUCE_RESULT_TYPE_WITH_DECLTYPE
   template <typename Functor>
   struct functor_trait<Functor, false> {
     typedef decltype (::sigc::mem_fun(std::declval<Functor&>(),
@@ -19,6 +20,9 @@ namespace sigc {
     typedef typename _intermediate::result_type result_type;
     typedef Functor functor_type;
   };
+#else
+  SIGC_FUNCTORS_DEDUCE_RESULT_TYPE_WITH_DECLTYPE
+#endif
 }
 
 Glib::RefPtr<Gsv::Language> Source::guess_language(const boost::filesystem::path &file_path) {
