@@ -1021,11 +1021,11 @@ void Source::ClangViewParse::update_diagnostics() {
       }
       auto end_line=get_line(diagnostic.offsets.second.line-1); //index is sometimes off the line
       auto end_line_index=diagnostic.offsets.second.index-1;
-      if(end_line_index>=end_line.size()) {
+      if(end_line_index>end_line.size()) {
         if(end_line.size()==0)
           end_line_index=0;
         else
-          end_line_index=end_line.size()-1;
+          end_line_index=end_line.size();
       }
       auto start=get_buffer()->get_iter_at_line_index(diagnostic.offsets.first.line-1, start_line_index);
       auto end=get_buffer()->get_iter_at_line_index(diagnostic.offsets.second.line-1, end_line_index);
