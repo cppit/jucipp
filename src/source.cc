@@ -186,10 +186,11 @@ Source::View::View(const boost::filesystem::path &file_path): file_path(file_pat
       delayed_spellcheck_suggestions_connection.disconnect();
       
       auto iter=get_buffer()->get_insert()->get_iter();
-      if(iter.backward_char()) {
+      if(last_keyval_is_backspace || iter.backward_char()) {
         auto context_iter=iter;
         if(context_iter.backward_char()) {
           if((spellcheck_all && !get_source_buffer()->iter_has_context_class(context_iter, "no-spell-check")) || get_source_buffer()->iter_has_context_class(context_iter, "comment") || get_source_buffer()->iter_has_context_class(context_iter, "string")) {
+            cout << (char)*iter << endl;
             if(*iter==32 || *iter==45) { //Might have used space or - to split two words
               auto first=iter;
               auto second=iter;
@@ -510,6 +511,10 @@ bool Source::View::on_key_press_event(GdkEventKey* key) {
     if(spellcheck_suggestions_dialog->on_key_press(key))
       return true;
   }
+  if(key->keyval==GDK_KEY_BackSpace)
+    last_keyval_is_backspace=true;
+  else
+    last_keyval_is_backspace=false;
   
   get_source_buffer()->begin_user_action();
   //Indent as in next or previous line
@@ -1013,11 +1018,11 @@ void Source::ClangViewParse::update_diagnostics() {
     if(diagnostic.path==file_path.string()) {
       auto start_line=get_line(diagnostic.offsets.first.line-1); //index is sometimes off the line
       auto start_line_index=diagnostic.offsets.first.index-1;
-      if(start_line_index>=start_line.size()) {
+      if(start_line_index>start_line.size()) {
         if(start_line.size()==0)
           start_line_index=0;
         else
-          start_line_index=start_line.size()-1;
+          start_line_index=start_line.size();
       }
       auto end_line=get_line(diagnostic.offsets.second.line-1); //index is sometimes off the line
       auto end_line_index=diagnostic.offsets.second.index-1;

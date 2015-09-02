@@ -114,6 +114,7 @@ namespace Source {
     std::unique_ptr<SelectionDialog> spellcheck_suggestions_dialog;
     bool spellcheck_suggestions_dialog_shown=false;
     sigc::connection delayed_spellcheck_suggestions_connection;
+    bool last_keyval_is_backspace=false;
   };
   
   class GenericView : public View {

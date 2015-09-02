@@ -35,7 +35,7 @@ void Tooltip::update() {
   auto end_iter=end_mark->get_iter();
   text_view.get_iter_location(iter, activation_rectangle);
   if(iter.get_offset()<end_iter.get_offset()) {
-    while(iter!=end_iter && iter.forward_char()) {
+    while(iter.forward_char() && iter!=end_iter) {
       Gdk::Rectangle rectangle;
       text_view.get_iter_location(iter, rectangle);
       activation_rectangle.join(rectangle);
