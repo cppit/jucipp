@@ -124,6 +124,7 @@ namespace Source {
   class ClangViewParse : public View {
   public:
     ClangViewParse(const boost::filesystem::path &file_path, const boost::filesystem::path& project_path);
+    ~ClangViewParse();
     boost::filesystem::path project_path;
     void start_reparse();
     bool start_reparse_needed=false;
@@ -187,6 +188,7 @@ namespace Source {
   class ClangViewRefactor : public ClangViewAutocomplete {
   public:
     ClangViewRefactor(const boost::filesystem::path &file_path, const boost::filesystem::path& project_path);
+    ~ClangViewRefactor();
   private:
     Glib::RefPtr<Gtk::TextTag> similar_tokens_tag;
     std::string last_similar_tokens_tagged;

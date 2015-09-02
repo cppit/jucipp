@@ -29,7 +29,7 @@ void Window::generate_keybindings() {
 }
 
 Window::Window() : box(Gtk::ORIENTATION_VERTICAL), notebook(directories), compiling(false) {
-  INFO("Create Window");
+  DEBUG("start");
   set_title("juCi++");
   set_default_size(600, 400);
   set_events(Gdk::POINTER_MOTION_MASK|Gdk::FOCUS_CHANGE_MASK|Gdk::SCROLL_MASK);
@@ -80,7 +80,6 @@ Window::Window() : box(Gtk::ORIENTATION_VERTICAL), notebook(directories), compil
   });
 
   notebook.signal_switch_page().connect([this](Gtk::Widget* page, guint page_num) {
-    DEBUG("start");
     if(notebook.get_current_page()!=-1) {
       if(search_entry_shown && entry_box.labels.size()>0) {
         notebook.get_current_view()->update_search_occurrences=[this](int number){
@@ -109,7 +108,6 @@ Window::Window() : box(Gtk::ORIENTATION_VERTICAL), notebook(directories), compil
       
       Singleton::status()->set_text(notebook.get_current_view()->status);
     }
-    DEBUG("end");
   });
   notebook.signal_page_removed().connect([this](Gtk::Widget* page, guint page_num) {
     entry_box.hide();
@@ -130,11 +128,10 @@ Window::Window() : box(Gtk::ORIENTATION_VERTICAL), notebook(directories), compil
   about.set_comments("This is an open source IDE with high-end features to make your programming experience juicy");
   about.set_license_type(Gtk::License::LICENSE_MIT_X11);
   about.set_transient_for(*this);
-  INFO("Window created");
+  DEBUG("end");
 } // Window constructor
 
 void Window::create_menu() {
-  INFO("Adding actions to menu");
   menu.action_group->add(Gtk::Action::create("FileQuit", "Quit juCi++"), Gtk::AccelKey(menu.key_map["quit"]), [this]() {
     hide();
   });
@@ -187,7 +184,6 @@ void Window::create_menu() {
     search_and_replace_entry();
   });
   menu.action_group->add(Gtk::Action::create("EditUndo", "Undo"), Gtk::AccelKey(menu.key_map["edit_undo"]), [this]() {
-    INFO("On undo");
     if(notebook.get_current_page()!=-1) {
       auto undo_manager = notebook.get_current_view()->get_source_buffer()->get_undo_manager();
       if (undo_manager->can_undo()) {
@@ -195,10 +191,8 @@ void Window::create_menu() {
         notebook.get_current_view()->scroll_to(notebook.get_current_view()->get_buffer()->get_insert());
       }
     }
-    INFO("Done undo");
   });
   menu.action_group->add(Gtk::Action::create("EditRedo", "Redo"), Gtk::AccelKey(menu.key_map["edit_redo"]), [this]() {
-    INFO("On Redo");
     if(notebook.get_current_page()!=-1) {
       auto undo_manager = notebook.get_current_view()->get_source_buffer()->get_undo_manager();
       if(undo_manager->can_redo()) {
@@ -206,7 +200,6 @@ void Window::create_menu() {
         notebook.get_current_view()->scroll_to(notebook.get_current_view()->get_buffer()->get_insert());
       }
     }
-    INFO("Done Redo");
   });
 
   menu.action_group->add(Gtk::Action::create("SourceGotoLine", "Go to Line"), Gtk::AccelKey(menu.key_map["source_goto_line"]), [this]() {
@@ -336,7 +329,6 @@ void Window::create_menu() {
   });
   add_accel_group(menu.ui_manager->get_accel_group()); 
   menu.build();
-  INFO("Menu build")
 }
 
 bool Window::on_key_press_event(GdkEventKey *event) {
@@ -530,7 +522,6 @@ void Window::open_file_dialog() {
 void Window::save_file_dialog() {
   if(notebook.get_current_page()==-1)
     return;
-  INFO("Save file dialog");
   Gtk::FileChooserDialog dialog(*this, "Please choose a file", Gtk::FILE_CHOOSER_ACTION_SAVE);
   gtk_file_chooser_set_filename((GtkFileChooser*)dialog.gobj(), notebook.get_current_view()->file_path.string().c_str());
   dialog.set_position(Gtk::WindowPosition::WIN_POS_CENTER_ALWAYS);

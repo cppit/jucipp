@@ -19,7 +19,7 @@ namespace sigc {
 }
 
 Directories::Directories() : stop_update_thread(false) {
-  DEBUG("adding treeview to scrolledwindow");
+  DEBUG("start");
   add(tree_view);
   set_policy(Gtk::POLICY_AUTOMATIC, Gtk::POLICY_AUTOMATIC);
   tree_store = Gtk::TreeStore::create(column_record);
@@ -30,7 +30,6 @@ Directories::Directories() : stop_update_thread(false) {
   tree_view.set_search_column(column_record.name);
   
   tree_view.signal_row_activated().connect([this](const Gtk::TreeModel::Path& path, Gtk::TreeViewColumn* column){
-    INFO("Directory navigation");
     auto iter = tree_store->get_iter(path);
     if (iter) {
       auto path_str=iter->get_value(column_record.path);
@@ -68,7 +67,6 @@ Directories::Directories() : stop_update_thread(false) {
   });
   
   update_dispatcher.connect([this](){
-    DEBUG("start");
     update_mutex.lock();
     for(auto &path: update_paths) {
       if(last_write_times.count(path)>0)
@@ -76,13 +74,11 @@ Directories::Directories() : stop_update_thread(false) {
     }
     update_paths.clear();
     update_mutex.unlock();
-    DEBUG("end");
   });
   
   update_thread=std::thread([this](){
     while(!stop_update_thread) {
       std::this_thread::sleep_for(std::chrono::milliseconds(1000));
-      DEBUG("start");
       update_mutex.lock();
       if(update_paths.size()==0) {
         for(auto it=last_write_times.begin();it!=last_write_times.end();) {
@@ -104,7 +100,6 @@ Directories::Directories() : stop_update_thread(false) {
           update_dispatcher();
       }
       update_mutex.unlock();
-      DEBUG("end");
     }
   });
 }
@@ -115,10 +110,9 @@ Directories::~Directories() {
 }
 
 void Directories::open(const boost::filesystem::path& dir_path) {
+  DEBUG("start");
   if(dir_path=="")
     return;
-  
-  INFO("Open folder");
   
   tree_store->clear();
   update_mutex.lock();
@@ -138,7 +132,7 @@ void Directories::open(const boost::filesystem::path& dir_path) {
     
   current_path=dir_path;
   
-  DEBUG("Folder opened");
+  DEBUG("end");
 }
 
 void Directories::update() {
@@ -196,7 +190,6 @@ void Directories::select(const boost::filesystem::path &path) {
 }
 
 bool Directories::ignored(std::string path) {
-  DEBUG("Checking if file-/directory is filtered");
   std::transform(path.begin(), path.end(), path.begin(), ::tolower);
   
   for(std::string &i : Singleton::Config::directories()->exceptions) {
@@ -212,7 +205,6 @@ bool Directories::ignored(std::string path) {
 }
 
 void Directories::add_path(const boost::filesystem::path& dir_path, const Gtk::TreeModel::Row &parent) {
-  DEBUG("start");
   last_write_times[dir_path.string()]={parent, boost::filesystem::last_write_time(dir_path)};
   std::unique_ptr<Gtk::TreeNodeChildren> children; //Gtk::TreeNodeChildren is missing default constructor...
   if(parent)
@@ -266,5 +258,4 @@ void Directories::add_path(const boost::filesystem::path& dir_path, const Gtk::T
     auto child=tree_store->append(*children);
     child->set_value(column_record.name, std::string("(empty)"));
   }
-  DEBUG("end");
 }

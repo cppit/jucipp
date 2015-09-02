@@ -326,6 +326,9 @@ Source::View::~View() {
   g_clear_object(&search_context);
   g_clear_object(&search_settings);
   
+  delayed_tooltips_connection.disconnect();
+  delayed_spellcheck_suggestions_connection.disconnect();
+  
   if(spellcheck_checker!=NULL)
     delete_aspell_speller(spellcheck_checker);
 }
@@ -755,6 +758,7 @@ clang::Index Source::ClangViewParse::clang_index(0, 0);
 
 Source::ClangViewParse::ClangViewParse(const boost::filesystem::path &file_path, const boost::filesystem::path& project_path):
 Source::View(file_path), project_path(project_path) {
+  DEBUG("start");
   auto scheme = get_source_buffer()->get_style_scheme();
   auto tag_table=get_buffer()->get_tag_table();
   for (auto &item : Singleton::Config::source()->clang_types) {
@@ -762,7 +766,6 @@ Source::View(file_path), project_path(project_path) {
       auto style = scheme->get_style(item.second);
       auto tag = get_source_buffer()->create_tag(item.second);
       if (style) {
-        DEBUG("Style " + item.second + " found in style " + scheme->get_name());
         if (style->property_foreground_set())
           tag->property_foreground()  = style->property_foreground();
         if (style->property_background_set())
@@ -774,10 +777,9 @@ Source::View(file_path), project_path(project_path) {
         //   //    if (style->property_line_background_set()) tag->property_line_background() = style->property_line_background();
         //   // if (style->property_underline_set()) tag->property_underline() = style->property_underline();
       } else
-        DEBUG("Style " + item.second + " not found in " + scheme->get_name());
+        INFO("Style " + item.second + " not found in " + scheme->get_name());
     }
   }
-  INFO("Tagtable filled");
   
   parsing_in_progress=Singleton::terminal()->print_in_progress("Parsing "+file_path.string());
   //GTK-calls must happen in main thread, so the parse_thread
@@ -793,14 +795,12 @@ Source::View(file_path), project_path(project_path) {
   parse_done.connect([this](){
     if(parse_thread_mapped) {
       if(parsing_mutex.try_lock()) {
-        INFO("Updating syntax");
         update_syntax();
         update_diagnostics();
         update_types();
         source_readable=true;
         set_status("");
         parsing_mutex.unlock();
-        INFO("Syntax updated");
       }
       parsing_in_progress->done("done");
     }
@@ -819,12 +819,16 @@ Source::View(file_path), project_path(project_path) {
   bracket_regex=std::regex(std::string("^(")+tab_char+"*).*\\{ *$");
   no_bracket_statement_regex=std::regex(std::string("^(")+tab_char+"*)(if|for|else if|catch|while) *\\(.*[^;}] *$");
   no_bracket_no_para_statement_regex=std::regex(std::string("^(")+tab_char+"*)(else|try|do) *$");
+  DEBUG("end");
+}
+
+Source::ClangViewParse::~ClangViewParse() {
+  delayed_reparse_connection.disconnect();
 }
 
 void Source::ClangViewParse::init_parse() {
   type_tooltips.hide();
   diagnostic_tooltips.hide();
-  get_buffer()->remove_all_tags(get_buffer()->begin(), get_buffer()->end());
   source_readable=false;
   parse_thread_go=true;
   parse_thread_mapped=false;
@@ -1272,7 +1276,6 @@ void Source::ClangViewAutocomplete::autocomplete() {
   if(!autocomplete_starting) {
     autocomplete_starting=true;
     autocomplete_cancel_starting=false;
-    INFO("Source::ClangViewAutocomplete::autocomplete getting autocompletions");
     std::shared_ptr<std::vector<Source::AutoCompleteData> > ac_data=std::make_shared<std::vector<Source::AutoCompleteData> >();
     autocomplete_done_connection.disconnect();
     autocomplete_done_connection=autocomplete_done.connect([this, ac_data](){
@@ -1368,7 +1371,6 @@ void Source::ClangViewAutocomplete::autocomplete() {
 
 std::vector<Source::AutoCompleteData> Source::ClangViewAutocomplete::
 get_autocomplete_suggestions(int line_number, int column, std::map<std::string, std::string>& buffer_map) {
-  INFO("Getting auto complete suggestions");
   std::vector<Source::AutoCompleteData> suggestions;
   auto results=clang_tu->get_code_completions(buffer_map, line_number, column);
   if(!autocomplete_cancel_starting) {
@@ -1394,8 +1396,6 @@ get_autocomplete_suggestions(int line_number, int column, std::map<std::string, 
       }
     }
   }
-  DEBUG("Number of suggestions");
-  DEBUG_VAR(suggestions.size());
   return suggestions;
 }
 
@@ -1543,6 +1543,10 @@ Source::ClangViewAutocomplete(file_path, project_path) {
       selection_dialog->show();
     }
   };
+}
+
+Source::ClangViewRefactor::~ClangViewRefactor() {
+  delayed_tag_similar_tokens_connection.disconnect();
 }
 
 Source::ClangView::ClangView(const boost::filesystem::path &file_path, const boost::filesystem::path& project_path, Glib::RefPtr<Gsv::Language> language): ClangViewRefactor(file_path, project_path) {

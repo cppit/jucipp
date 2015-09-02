@@ -117,7 +117,6 @@ void SelectionDialogBase::update_tooltips() {
 }
 
 void SelectionDialogBase::move() {
-  INFO("SelectionDialog set position");
   Gdk::Rectangle rectangle;
   text_view.get_iter_location(start_mark->get_iter(), rectangle);
   int buffer_x=rectangle.get_x();
@@ -130,8 +129,6 @@ void SelectionDialogBase::move() {
 }
 
 void SelectionDialogBase::resize() {
-  INFO("SelectionDialog set size");
-  
   if(list_view_text.get_realized()) {
     int row_width=0, row_height;
     Gdk::Rectangle rect;

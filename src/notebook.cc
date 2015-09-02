@@ -32,13 +32,11 @@ Source::View* Notebook::get_view(int page) {
 }
 
 Source::View* Notebook::get_current_view() {
-  INFO("Getting sourceview");
   return get_view(get_current_page());
 }
 
 void Notebook::open(const boost::filesystem::path &file_path) {
-  INFO("Notebook open file");
-  INFO("Notebook create page");
+  DEBUG("start");
   for(int c=0;c<size();c++) {
     if(file_path==get_view(c)->file_path) {
       set_current_page(c);
@@ -106,14 +104,16 @@ void Notebook::open(const boost::filesystem::path &file_path) {
   get_current_view()->on_update_status=[this](Source::View* view, const std::string &status) {
     if(get_current_page()!=-1 && get_current_view()==view)
       Singleton::status()->set_text(status);
-    else
-      Singleton::status()->set_text("");
   };
+  DEBUG("end");
 }
 
 bool Notebook::save(int page) {
-  if(page>=size())
+  DEBUG("start");
+  if(page>=size()) {
+    DEBUG("end false");
     return false;
+  }
   auto view=get_view(page);
   if (view->file_path != "" && view->get_buffer()->get_modified()) {
     if(juci::filesystem::write(view->file_path, view->get_buffer())) {
@@ -145,16 +145,16 @@ bool Notebook::save(int page) {
           }
         }
       }
-      
+      DEBUG("end true");
       return true;
     }
     Singleton::terminal()->print("Error: could not save file " +view->file_path.string()+"\n");
   }
+  DEBUG("end false");
   return false;
 }
 
 bool Notebook::save_current() {
-  INFO("Notebook save current file");
   if(get_current_page()==-1)
     return false;
   return save(get_current_page());
@@ -162,7 +162,6 @@ bool Notebook::save_current() {
 
 bool Notebook::close_current_page() {
   DEBUG("start");
-  INFO("Notebook close page");
   if (get_current_page()!=-1) {
     if(get_current_view()->get_buffer()->get_modified()){
       if(!save_modified_dialog()) {
@@ -186,7 +185,6 @@ bool Notebook::close_current_page() {
 }
 
 bool Notebook::save_modified_dialog() {
-  INFO("Notebook::save_modified_dialog");
   Gtk::MessageDialog dialog((Gtk::Window&)(*get_toplevel()), "Save file!", false, Gtk::MESSAGE_QUESTION, Gtk::BUTTONS_YES_NO);
   dialog.set_secondary_text("Do you want to save: " + get_current_view()->file_path.string()+" ?");
   int result = dialog.run();

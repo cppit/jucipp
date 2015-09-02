@@ -93,7 +93,6 @@ void Tooltip::adjust(bool disregard_drawn) {
 }
 
 void Tooltip::wrap_lines(Glib::RefPtr<Gtk::TextBuffer> text_buffer) {
-  INFO("Tooltip::wrap_lines");
   auto iter=text_buffer->begin();
   
   while(iter) {
