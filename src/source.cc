@@ -1245,7 +1245,6 @@ bool Source::ClangViewAutocomplete::on_key_press_event(GdkEventKey *key) {
 void Source::ClangViewAutocomplete::start_autocomplete() {
   if(!has_focus())
     return;
-  cout << (int)last_keyval << endl;
   if(!((last_keyval>='0' && last_keyval<='9') || 
        (last_keyval>='a' && last_keyval<='z') || (last_keyval>='A' && last_keyval<='Z') ||
        last_keyval=='_' || last_keyval==127 || last_keyval=='.' || last_keyval==':')) {

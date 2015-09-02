@@ -190,6 +190,7 @@ bool Notebook::close_current_page() {
 
 bool Notebook::save_modified_dialog() {
   Gtk::MessageDialog dialog((Gtk::Window&)(*get_toplevel()), "Save file!", false, Gtk::MESSAGE_QUESTION, Gtk::BUTTONS_YES_NO);
+  dialog.set_default_response(Gtk::RESPONSE_YES);
   dialog.set_secondary_text("Do you want to save: " + get_current_view()->file_path.string()+" ?");
   int result = dialog.run();
   if(result==Gtk::RESPONSE_YES) {
