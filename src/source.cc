@@ -190,7 +190,6 @@ Source::View::View(const boost::filesystem::path &file_path): file_path(file_pat
         auto context_iter=iter;
         if(context_iter.backward_char()) {
           if((spellcheck_all && !get_source_buffer()->iter_has_context_class(context_iter, "no-spell-check")) || get_source_buffer()->iter_has_context_class(context_iter, "comment") || get_source_buffer()->iter_has_context_class(context_iter, "string")) {
-            cout << (char)*iter << endl;
             if(*iter==32 || *iter==45) { //Might have used space or - to split two words
               auto first=iter;
               auto second=iter;
@@ -553,7 +552,8 @@ bool Source::View::on_key_press_event(GdkEventKey* key) {
     int line_end=selection_end.get_line();
     for(int line=line_start;line<=line_end;line++) {
       Gtk::TextIter line_it = get_source_buffer()->get_iter_at_line(line);
-      get_source_buffer()->insert(line_it, tab);
+      if(!get_buffer()->get_has_selection() || line_it!=selection_end)
+        get_source_buffer()->insert(line_it, tab);
     }
     get_source_buffer()->end_user_action();
     return true;
@@ -567,23 +567,27 @@ bool Source::View::on_key_press_event(GdkEventKey* key) {
     
     unsigned indent_left_steps=tab_size;
     for(int line_nr=line_start;line_nr<=line_end;line_nr++) {
-      string line=get_line(line_nr);
-      std::smatch sm;
-      if(std::regex_match(line, sm, tabs_regex) && sm[1].str().size()>0) {
-        indent_left_steps=std::min(indent_left_steps, (unsigned)sm[1].str().size());
-      }
-      else {
-        get_source_buffer()->end_user_action();
-        return true;
+      auto line_it = get_source_buffer()->get_iter_at_line(line_nr);
+      if(!get_buffer()->get_has_selection() || line_it!=selection_end) {
+        string line=get_line(line_nr);
+        std::smatch sm;
+        if(std::regex_match(line, sm, tabs_regex) && sm[1].str().size()>0) {
+          indent_left_steps=std::min(indent_left_steps, (unsigned)sm[1].str().size());
+        }
+        else {
+          get_source_buffer()->end_user_action();
+          return true;
+        }
       }
     }
     
     for(int line_nr=line_start;line_nr<=line_end;line_nr++) {
       Gtk::TextIter line_it = get_source_buffer()->get_iter_at_line(line_nr);
       Gtk::TextIter line_plus_it=line_it;
-      
-      if(indent_left_steps==0 || line_plus_it.forward_chars(indent_left_steps))
-        get_source_buffer()->erase(line_it, line_plus_it);
+      if(!get_buffer()->get_has_selection() || line_it!=selection_end) {
+        if(indent_left_steps==0 || line_plus_it.forward_chars(indent_left_steps))
+          get_source_buffer()->erase(line_it, line_plus_it);
+      }
     }
     get_source_buffer()->end_user_action();
     return true;
@@ -1046,7 +1050,6 @@ void Source::ClangViewParse::update_diagnostics() {
         auto tooltip_buffer=Gtk::TextBuffer::create(get_buffer()->get_tag_table());
         tooltip_buffer->insert_with_tag(tooltip_buffer->get_insert()->get_iter(), severity_spelling, diagnostic_tag_name);
         tooltip_buffer->insert_with_tag(tooltip_buffer->get_insert()->get_iter(), ":\n"+spelling, "def:note");
-        //TODO: Insert newlines to clang_tu->diagnostics[c].spelling (use 80 chars, then newline?)
         return tooltip_buffer;
       };
       diagnostic_tooltips.emplace_back(create_tooltip_buffer, *this, get_buffer()->create_mark(start), get_buffer()->create_mark(end));
