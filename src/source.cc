@@ -1229,7 +1229,12 @@ Source::ClangViewParse(file_path, project_path), autocomplete_cancel_starting(fa
 }
 
 bool Source::ClangViewAutocomplete::on_key_press_event(GdkEventKey *key) {
-  last_keyval=key->keyval;
+  if(key->keyval>=32 && key->keyval<=126) {
+    if(key->keyval=='>' && last_keyval=='-')
+      last_keyval=127;
+    else
+      last_keyval=key->keyval;
+  }
   if(completion_dialog_shown) {
     if(completion_dialog->on_key_press(key))
       return true;
@@ -1240,9 +1245,10 @@ bool Source::ClangViewAutocomplete::on_key_press_event(GdkEventKey *key) {
 void Source::ClangViewAutocomplete::start_autocomplete() {
   if(!has_focus())
     return;
+  cout << (int)last_keyval << endl;
   if(!((last_keyval>='0' && last_keyval<='9') || 
        (last_keyval>='a' && last_keyval<='z') || (last_keyval>='A' && last_keyval<='Z') ||
-       last_keyval=='_' || last_keyval=='>' || last_keyval=='.' || last_keyval==':')) {
+       last_keyval=='_' || last_keyval==127 || last_keyval=='.' || last_keyval==':')) {
     autocomplete_cancel_starting=true;
     return;
   }

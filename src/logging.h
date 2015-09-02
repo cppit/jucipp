@@ -10,8 +10,6 @@
 #include <boost/log/sources/severity_logger.hpp>
 #include <boost/log/sources/record_ostream.hpp>
 
-using namespace boost::log;
-
 #define TRACE_VAR(x) BOOST_LOG_TRIVIAL(trace)      << "** Trace: "   << __FILE__ << "@" << __func__ << "(" << __LINE__ << "): " << #x << "=<" << x << ">";
 #define DEBUG_VAR(x) BOOST_LOG_TRIVIAL(debug)      << "** Debug: "   << __FILE__ << "@" << __func__ << "(" << __LINE__ << "): " << #x << "=<" << x << ">";
 #define INFO_VAR(x) BOOST_LOG_TRIVIAL(info)        << "** Info: "    << __FILE__ << "@" << __func__ << "(" << __LINE__ << "): " << #x << "=<" << x << ">";

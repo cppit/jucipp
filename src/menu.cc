@@ -1,8 +1,7 @@
 #include "menu.h"
-#include "logging.h"
+#include <iostream>
 
 Menu::Menu() : box(Gtk::ORIENTATION_VERTICAL) {
-  INFO("Creating menu");
   action_group = Gtk::ActionGroup::create();
   ui_manager = Gtk::UIManager::create();
 
@@ -15,7 +14,6 @@ Menu::Menu() : box(Gtk::ORIENTATION_VERTICAL) {
   action_group->add(Gtk::Action::create("SourceMenu", "_Source"));
   action_group->add(Gtk::Action::create("PluginMenu", "_Plugins"));
   action_group->add(Gtk::Action::create("HelpMenu", "Help"));
-  INFO("Menu created");
 }
 
 Gtk::Widget& Menu::get_widget() {
