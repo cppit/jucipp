@@ -51,8 +51,8 @@ AspellConfig* Source::View::spellcheck_config=NULL;
 Source::View::View(const boost::filesystem::path &file_path): file_path(file_path) {
   set_smart_home_end(Gsv::SMART_HOME_END_BEFORE);
   get_source_buffer()->begin_not_undoable_action();
-  if(!juci::filesystem::read(file_path, get_buffer()))
-    Singleton::terminal()->print("Error: "+file_path.string()+" is not a valid UTF-8 file.\n");
+  if(juci::filesystem::read(file_path, get_buffer())==-1)
+    Singleton::terminal()->print("Warning: "+file_path.string()+" is not a valid UTF-8 file. Saving might corrupt the file.\n", true);
   get_source_buffer()->end_not_undoable_action();
   get_buffer()->place_cursor(get_buffer()->get_iter_at_offset(0)); 
   search_settings = gtk_source_search_settings_new();

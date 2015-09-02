@@ -10,8 +10,8 @@ namespace juci {
   public:
     static std::string read(const std::string &path);
     static std::string read(const boost::filesystem::path &path) { return read(path.string()); }
-    static bool read(const std::string &path, Glib::RefPtr<Gtk::TextBuffer> text_buffer);
-    static bool read(const boost::filesystem::path &path, Glib::RefPtr<Gtk::TextBuffer> text_buffer) { return read(path.string(), text_buffer); }
+    static int read(const std::string &path, Glib::RefPtr<Gtk::TextBuffer> text_buffer);
+    static int read(const boost::filesystem::path &path, Glib::RefPtr<Gtk::TextBuffer> text_buffer) { return read(path.string(), text_buffer); }
 
     static std::vector<std::string> read_lines(const std::string &path);
     static std::vector<std::string> read_lines(const boost::filesystem::path &path) { return read_lines(path.string()); };

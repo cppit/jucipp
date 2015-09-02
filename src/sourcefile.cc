@@ -15,7 +15,7 @@ std::string juci::filesystem::read(const std::string &path) {
   return ss.str();
 }
 
-bool juci::filesystem::read(const std::string &path, Glib::RefPtr<Gtk::TextBuffer> text_buffer) {
+int juci::filesystem::read(const std::string &path, Glib::RefPtr<Gtk::TextBuffer> text_buffer) {
   std::ifstream input(path, std::ofstream::binary);
   
   if(input) {
@@ -24,11 +24,14 @@ bool juci::filesystem::read(const std::string &path, Glib::RefPtr<Gtk::TextBuffe
     ss << input.rdbuf();
     Glib::ustring ustr=std::move(ss.str());
     
+    bool valid=true;
     Glib::ustring::iterator iter;
     while(!ustr.validate(iter)) {
       auto next_char_iter=iter;
       next_char_iter++;
       ustr.replace(iter, next_char_iter, "?");
+      if(valid)
+        valid=false;
     }
     
     text_buffer->insert_at_cursor(ustr);
@@ -54,9 +57,12 @@ bool juci::filesystem::read(const std::string &path, Glib::RefPtr<Gtk::TextBuffe
       text_buffer->insert_at_cursor(ustr); //What if insert happens in the middle of an UTF-8 char???
     }*/
     input.close();
-    return true;
+    if(valid)
+      return 1;
+    else
+      return -1;
   }
-  return false;
+  return 0;
 }
 
 //Only use on small files
