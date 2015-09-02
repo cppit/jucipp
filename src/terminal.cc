@@ -283,14 +283,22 @@ void Terminal::kill_async_executes(bool force) {
 }
 
 int Terminal::print(const std::string &message, bool bold){
+  Glib::ustring umessage=message;
+  Glib::ustring::iterator iter;
+  while(!umessage.validate(iter)) {
+    auto next_char_iter=iter;
+    next_char_iter++;
+    umessage.replace(iter, next_char_iter, "?");
+  }
+  
   if(bold)
-    get_buffer()->insert_with_tag(get_buffer()->end(), message, bold_tag);
+    get_buffer()->insert_with_tag(get_buffer()->end(), umessage, bold_tag);
   else
-    get_buffer()->insert(get_buffer()->end(), message);
+    get_buffer()->insert(get_buffer()->end(), umessage);
     
-  auto iter=get_buffer()->end();
-  if(iter.backward_char()) {
-    auto mark=get_buffer()->create_mark(iter);
+  auto end_iter=get_buffer()->end();
+  if(end_iter.backward_char()) {
+    auto mark=get_buffer()->create_mark(end_iter);
     scroll_to(mark, 0.0, 1.0, 1.0);
     get_buffer()->delete_mark(mark);
   }
@@ -299,9 +307,17 @@ int Terminal::print(const std::string &message, bool bold){
 }
 
 void Terminal::print(int line_nr, const std::string &message){
-  auto iter=get_buffer()->get_iter_at_line(line_nr);
-  while(!iter.ends_line() && iter.forward_char()) {}
-  get_buffer()->insert(iter, message);
+  Glib::ustring umessage=message;
+  Glib::ustring::iterator iter;
+  while(!umessage.validate(iter)) {
+    auto next_char_iter=iter;
+    next_char_iter++;
+    umessage.replace(iter, next_char_iter, "?");
+  }
+  
+  auto end_line_iter=get_buffer()->get_iter_at_line(line_nr);
+  while(!end_line_iter.ends_line() && end_line_iter.forward_char()) {}
+  get_buffer()->insert(end_line_iter, umessage);
 }
 
 std::shared_ptr<Terminal::InProgress> Terminal::print_in_progress(std::string start_msg) {
