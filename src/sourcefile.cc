@@ -25,16 +25,20 @@ int juci::filesystem::read(const std::string &path, Glib::RefPtr<Gtk::TextBuffer
     Glib::ustring ustr=std::move(ss.str());
     
     bool valid=true;
-    Glib::ustring::iterator iter;
+    //This was way too slow...
+    /*Glib::ustring::iterator iter;
     while(!ustr.validate(iter)) {
       auto next_char_iter=iter;
       next_char_iter++;
       ustr.replace(iter, next_char_iter, "?");
       if(valid)
         valid=false;
-    }
+    }*/
     
-    text_buffer->insert_at_cursor(ustr);
+    if(ustr.validate())
+      text_buffer->insert_at_cursor(ustr);
+    else
+      valid=false;
     
     //TODO: maybe correct this, emphasis on maybe:
     /*std::vector<char> buffer(buffer_size);
