@@ -1022,11 +1022,11 @@ void Source::ClangViewParse::update_diagnostics() {
     if(diagnostic.path==file_path.string()) {
       auto start_line=get_line(diagnostic.offsets.first.line-1); //index is sometimes off the line
       auto start_line_index=diagnostic.offsets.first.index-1;
-      if(start_line_index>start_line.size()) {
+      if(start_line_index>=start_line.size()) {
         if(start_line.size()==0)
           start_line_index=0;
         else
-          start_line_index=start_line.size();
+          start_line_index=start_line.size()-1;
       }
       auto end_line=get_line(diagnostic.offsets.second.line-1); //index is sometimes off the line
       auto end_line_index=diagnostic.offsets.second.index-1;
@@ -1055,6 +1055,12 @@ void Source::ClangViewParse::update_diagnostics() {
       diagnostic_tooltips.emplace_back(create_tooltip_buffer, *this, get_buffer()->create_mark(start), get_buffer()->create_mark(end));
     
       get_buffer()->apply_tag_by_name(diagnostic_tag_name+"_underline", start, end);
+      auto iter=get_buffer()->get_insert()->get_iter();
+      if(iter.ends_line()) {
+        auto next_iter=iter;
+        if(next_iter.forward_char())
+          get_buffer()->remove_tag_by_name(diagnostic_tag_name+"_underline", iter, next_iter);
+      }
     }
   }
 }
