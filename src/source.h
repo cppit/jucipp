@@ -108,6 +108,7 @@ namespace Source {
     static AspellConfig* spellcheck_config;
     AspellCanHaveError *spellcheck_possible_err;
     AspellSpeller *spellcheck_checker;
+    bool is_word_iter(const Gtk::TextIter& iter);
     std::pair<Gtk::TextIter, Gtk::TextIter> spellcheck_get_word(Gtk::TextIter iter);
     void spellcheck_word(const Gtk::TextIter& start, const Gtk::TextIter& end);
     std::vector<std::string> spellcheck_get_suggestions(const Gtk::TextIter& start, const Gtk::TextIter& end);
