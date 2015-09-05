@@ -195,7 +195,7 @@ Source::View::View(const boost::filesystem::path &file_path): file_path(file_pat
         if(backward_success) {
           if((spellcheck_all && !get_source_buffer()->iter_has_context_class(context_iter, "no-spell-check")) || get_source_buffer()->iter_has_context_class(context_iter, "comment") || get_source_buffer()->iter_has_context_class(context_iter, "string")) {
             if(last_keyval_is_backspace && !is_word_iter(iter) && iter.forward_char()) {} //backspace fix
-            if(*iter==32 || *iter==45) { //Might have used space or - to split two words
+            if(!is_word_iter(iter)) { //Might have used space or - to split two words
               auto first=iter;
               auto second=iter;
               if(first.backward_char() && second.forward_char()) {
@@ -1641,6 +1641,7 @@ void Source::ClangView::async_delete() {
 
 bool Source::ClangView::restart_parse() {
   if(!restart_parse_running) {
+    start_reparse_needed=false;
     restart_parse_running=true;
     parse_thread_stop=true;
     if(restart_parse_thread.joinable())
