@@ -525,12 +525,53 @@ string Source::View::get_line_before_insert() {
   return line;
 }
 
+bool Source::View::find_start_of_sentence(Gtk::TextIter iter, Gtk::TextIter &found_iter) {
+  int count=0;
+  while(iter.backward_char()) {
+    if(*iter=='{' && count==0)
+      continue;
+    if(*iter==')' || *iter==']' || *iter=='}')
+      count++;
+    else if(*iter=='(' || *iter=='[' || *iter =='{')
+      count--;
+    if(iter.ends_line() && count==0) {
+      found_iter=iter;
+      found_iter.forward_char();
+      return true;
+    }
+  }
+  return false;
+}
+
+bool Source::View::find_right_bracket_forward(Gtk::TextIter iter, Gtk::TextIter &found_iter) {
+  int count=0;
+  bool last_iter_ended_line=iter.ends_line();
+  while(iter.forward_char()) {
+    if(*iter=='}') {
+      if(count==0) {
+        found_iter=iter;
+        return true;
+      }
+      count--;
+    }
+    else if(*iter=='{')
+      count++;
+    if(last_iter_ended_line) {
+      if(*iter!=tab_char && !iter.ends_line())
+        return false;
+    }
+    last_iter_ended_line=iter.ends_line();
+  }
+  return false;
+}
+
 //Basic indentation
 bool Source::View::on_key_press_event(GdkEventKey* key) {
   if(spellcheck_suggestions_dialog_shown) {
     if(spellcheck_suggestions_dialog->on_key_press(key))
       return true;
   }
+
   if(key->keyval==GDK_KEY_BackSpace)
     last_keyval_is_backspace=true;
   else
@@ -622,33 +663,16 @@ bool Source::View::on_key_press_event(GdkEventKey* key) {
     get_source_buffer()->end_user_action();
     return true;
   }
-  //"Smart" backspace key
+  //"Smart" backspace key TODO: remove commented out lines if this works
   else if(key->keyval==GDK_KEY_BackSpace && !get_buffer()->get_has_selection()) {
     auto insert_it=get_buffer()->get_insert()->get_iter();
-    int line_nr=insert_it.get_line();
+    //int line_nr=insert_it.get_line();
     auto line=get_line_before_insert();
     std::smatch sm;
     if(std::regex_match(line, sm, tabs_regex) && sm[1].str().size()==line.size()) {
-      if((line_nr-1)>=0) {
-        string previous_line=get_line(line_nr-1);
-        std::smatch sm2;
-        if(std::regex_match(previous_line, sm2, tabs_regex)) {
-          if(line.size()==sm2[1].str().size() || line.size()==sm2[1].str().size()+tab_size || line.size()==sm2[1].str().size()-tab_size) {
-            auto previous_line_end_it=insert_it;
-            if(previous_line_end_it.backward_chars(line.size()+1))
-              get_source_buffer()->erase(previous_line_end_it, insert_it);
-            get_source_buffer()->end_user_action();
-            return true;
-          }
-        }
-      }
-      if(line.size()>=tab_size) {
-        auto insert_minus_tab_it=insert_it;
-        if(tab_size==0 || insert_minus_tab_it.backward_chars(tab_size))
-          get_source_buffer()->erase(insert_minus_tab_it, insert_it);
-        get_source_buffer()->end_user_action();
-        return true;
-      }
+      auto line_start_iter=insert_it;
+      if(line_start_iter.backward_chars(line.size()))
+        get_buffer()->erase(insert_it, line_start_iter);
     }
   }
 
@@ -1128,37 +1152,44 @@ bool Source::ClangViewParse::on_key_press_event(GdkEventKey* key) {
   
   //Indent depending on if/else/etc and brackets
   if(key->keyval==GDK_KEY_Return) {
-    string line(get_line_before_insert());
-    std::smatch sm;
-    if(std::regex_match(line, sm, bracket_regex)) {
-      int line_nr=get_source_buffer()->get_insert()->get_iter().get_line();
-      if((line_nr+1)<get_source_buffer()->get_line_count()) {
-        string next_line=get_line(line_nr+1);
-        std::smatch sm2;
-        if(std::regex_match(next_line, sm2, tabs_regex)) {
-          if(sm2[1].str()==sm[1].str()+tab) {
-            get_source_buffer()->insert_at_cursor("\n"+sm[1].str()+tab);
-            scroll_to(get_source_buffer()->get_insert());
-            get_source_buffer()->end_user_action();
-            return true;
+    auto iter=get_buffer()->get_insert()->get_iter();
+    Gtk::TextIter found_iter;
+    if(find_start_of_sentence(iter, found_iter)) {
+      auto start_line=get_line(found_iter.get_line());
+      std::smatch sm;
+      std::string tabs;
+      if(std::regex_match(start_line, sm, tabs_regex)) {
+        tabs=sm[1].str();
+      }
+      
+      if(iter.backward_char() && *iter=='{') {
+        auto found_iter=iter;
+        bool found_right_bracket=find_right_bracket_forward(iter, found_iter);
+        
+        bool has_bracket=false;
+        if(found_right_bracket) {
+          auto line_it = get_source_buffer()->get_iter_at_line(found_iter.get_line());
+          std::string line(get_source_buffer()->get_text(line_it, found_iter));
+          if(std::regex_match(line, sm, tabs_regex)) {
+            if(tabs.size()==sm[1].str().size())
+              has_bracket=true;
           }
         }
-        auto next_char=*get_buffer()->get_insert()->get_iter();
-        auto next_line_with_end_bracket=sm[1].str()+"}";
-        if(next_char!='}' && next_line.substr(0, next_line_with_end_bracket.size())!=next_line_with_end_bracket) {
-          get_source_buffer()->insert_at_cursor("\n"+sm[1].str()+tab+"\n"+sm[1].str()+"}");
+        if(*get_buffer()->get_insert()->get_iter()=='}') {
+          get_source_buffer()->insert_at_cursor("\n"+tabs+tab+"\n"+tabs);
           auto insert_it = get_source_buffer()->get_insert()->get_iter();
-          if(insert_it.backward_chars(sm[1].str().size()+2)) {
+          if(insert_it.backward_chars(tabs.size()+1)) {
             scroll_to(get_source_buffer()->get_insert());
             get_source_buffer()->place_cursor(insert_it);
           }
           get_source_buffer()->end_user_action();
           return true;
         }
-        else if(next_char=='}') {
-          get_source_buffer()->insert_at_cursor("\n"+sm[1].str()+tab+"\n"+sm[1].str());
+        else if(!has_bracket) {
+          //Insert new lines with bracket end
+          get_source_buffer()->insert_at_cursor("\n"+tabs+tab+"\n"+tabs+"}");
           auto insert_it = get_source_buffer()->get_insert()->get_iter();
-          if(insert_it.backward_chars(sm[1].str().size()+1)) {
+          if(insert_it.backward_chars(tabs.size()+2)) {
             scroll_to(get_source_buffer()->get_insert());
             get_source_buffer()->place_cursor(insert_it);
           }
@@ -1166,42 +1197,44 @@ bool Source::ClangViewParse::on_key_press_event(GdkEventKey* key) {
           return true;
         }
         else {
-          get_source_buffer()->insert_at_cursor("\n"+sm[1].str()+tab);
-          scroll_to(get_source_buffer()->get_insert());
+          get_source_buffer()->insert_at_cursor("\n"+tabs+tab);
+          scroll_to(get_buffer()->get_insert());
           get_source_buffer()->end_user_action();
           return true;
         }
       }
-    }
-    else if(std::regex_match(line, sm, no_bracket_statement_regex)) {
-      get_source_buffer()->insert_at_cursor("\n"+sm[1].str()+tab);
-      scroll_to(get_source_buffer()->get_insert());
-      get_source_buffer()->end_user_action();
-      return true;
-    }
-    else if(std::regex_match(line, sm, no_bracket_no_para_statement_regex)) {
-      get_source_buffer()->insert_at_cursor("\n"+sm[1].str()+tab);
-      scroll_to(get_source_buffer()->get_insert());
-      get_source_buffer()->end_user_action();
-      return true;
-    }
-    else if(std::regex_match(line, sm, tabs_regex)) {
-      std::smatch sm2;
-      size_t line_nr=get_source_buffer()->get_insert()->get_iter().get_line();
-      if(line_nr>0 && sm[1].str().size()>=tab_size) {
-        string previous_line=get_line(line_nr-1);
-        if(!std::regex_match(previous_line, sm2, bracket_regex)) {
-          if(std::regex_match(previous_line, sm2, no_bracket_statement_regex)) {
-            get_source_buffer()->insert_at_cursor("\n"+sm2[1].str());
-            scroll_to(get_source_buffer()->get_insert());
-            get_source_buffer()->end_user_action();
-            return true;
-          }
-          else if(std::regex_match(previous_line, sm2, no_bracket_no_para_statement_regex)) {
-            get_source_buffer()->insert_at_cursor("\n"+sm2[1].str());
-            scroll_to(get_source_buffer()->get_insert());
-            get_source_buffer()->end_user_action();
-            return true;
+      auto line=get_line_before_insert();
+      if(std::regex_match(line, sm, no_bracket_statement_regex)) {
+        get_source_buffer()->insert_at_cursor("\n"+tabs+tab);
+        scroll_to(get_source_buffer()->get_insert());
+        get_source_buffer()->end_user_action();
+        return true;
+      }
+      else if(std::regex_match(line, sm, no_bracket_no_para_statement_regex)) {
+        get_source_buffer()->insert_at_cursor("\n"+tabs+tab);
+        scroll_to(get_source_buffer()->get_insert());
+        get_source_buffer()->end_user_action();
+        return true;
+      }
+      //Indenting after for instance if(...)\n...;\n
+      else if(std::regex_match(line, sm, tabs_regex)) {
+        std::smatch sm2;
+        size_t line_nr=get_source_buffer()->get_insert()->get_iter().get_line();
+        if(line_nr>0 && tabs.size()>=tab_size) {
+          string previous_line=get_line(line_nr-1);
+          if(!std::regex_match(previous_line, sm2, bracket_regex)) {
+            if(std::regex_match(previous_line, sm2, no_bracket_statement_regex)) {
+              get_source_buffer()->insert_at_cursor("\n"+sm2[1].str());
+              scroll_to(get_source_buffer()->get_insert());
+              get_source_buffer()->end_user_action();
+              return true;
+            }
+            else if(std::regex_match(previous_line, sm2, no_bracket_no_para_statement_regex)) {
+              get_source_buffer()->insert_at_cursor("\n"+sm2[1].str());
+              scroll_to(get_source_buffer()->get_insert());
+              get_source_buffer()->end_user_action();
+              return true;
+            }
           }
         }
       }
