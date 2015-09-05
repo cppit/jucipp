@@ -1287,17 +1287,13 @@ Source::ClangViewParse(file_path, project_path), autocomplete_cancel_starting(fa
   get_buffer()->signal_mark_set().connect([this](const Gtk::TextBuffer::iterator& iterator, const Glib::RefPtr<Gtk::TextBuffer::Mark>& mark){
     if(mark->get_name()=="insert") {
       autocomplete_cancel_starting=true;
-      if(completion_dialog_shown) {
+      if(completion_dialog_shown)
         completion_dialog->hide();
-        start_reparse();
-      }
     }
   });
   signal_scroll_event().connect([this](GdkEventScroll* event){
-    if(completion_dialog_shown) {
+    if(completion_dialog_shown)
       completion_dialog->hide();
-      start_reparse();
-    }
     return false;
   }, false);
   signal_key_release_event().connect([this](GdkEventKey* key){
@@ -1311,10 +1307,8 @@ Source::ClangViewParse(file_path, project_path), autocomplete_cancel_starting(fa
 
   signal_focus_out_event().connect([this](GdkEventFocus* event) {
     autocomplete_cancel_starting=true;
-    if(completion_dialog_shown) {
+    if(completion_dialog_shown)
       completion_dialog->hide();
-      start_reparse();
-    }
       
     return false;
   });
@@ -1439,6 +1433,7 @@ void Source::ClangViewAutocomplete::autocomplete() {
       }
       else {
         set_status("");
+        start_reparse();
         start_autocomplete();
       }
     });
