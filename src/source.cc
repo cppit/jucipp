@@ -703,7 +703,7 @@ bool Source::View::on_button_press_event(GdkEventButton *event) {
 }
 
 std::pair<char, unsigned> Source::View::find_tab_char_and_size() {
-  const std::regex indent_regex("^([ \t]+).*$");
+  const std::regex indent_regex("^([ \t]+)(.*)$");
   auto size=get_buffer()->get_line_count();
   std::unordered_map<char, size_t> tab_chars;
   std::unordered_map<unsigned, size_t> tab_sizes;
@@ -711,28 +711,36 @@ std::pair<char, unsigned> Source::View::find_tab_char_and_size() {
   for(int c=0;c<size;c++) {
     auto line=get_line(c);
     std::smatch sm;
+    std::string str;
     if(std::regex_match(line, sm, indent_regex)) {
-      auto str=sm[1].str();
-      
-      long tab_diff=abs(static_cast<long>(str.size()-last_tab_size));
-      if(tab_diff>0) {
-        unsigned tab_diff_unsigned=static_cast<unsigned>(tab_diff);
-        auto it_size=tab_sizes.find(tab_diff_unsigned);
-        if(it_size!=tab_sizes.end())
-          it_size->second++;
-        else
-          tab_sizes[tab_diff_unsigned]=1;
-      }
-      
-      last_tab_size=str.size();
-      
-      if(str.size()>0) {
-        auto it_char=tab_chars.find(str[0]);
-        if(it_char!=tab_chars.end())
-          it_char->second++;
-        else
-          tab_chars[str[0]]=1;
-      }
+      if(sm[2].str().size()==0)
+        continue;
+      str=sm[1].str();
+    }
+    else {
+      str="";
+      if(line.size()==0)
+        continue;
+    }
+    
+    long tab_diff=abs(static_cast<long>(str.size()-last_tab_size));
+    if(tab_diff>0) {
+      unsigned tab_diff_unsigned=static_cast<unsigned>(tab_diff);
+      auto it_size=tab_sizes.find(tab_diff_unsigned);
+      if(it_size!=tab_sizes.end())
+        it_size->second++;
+      else
+        tab_sizes[tab_diff_unsigned]=1;
+    }
+    
+    last_tab_size=str.size();
+    
+    if(str.size()>0) {
+      auto it_char=tab_chars.find(str[0]);
+      if(it_char!=tab_chars.end())
+        it_char->second++;
+      else
+        tab_chars[str[0]]=1;
     }
   }
   char found_tab_char=0;
