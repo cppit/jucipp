@@ -660,20 +660,19 @@ bool Source::View::on_key_press_event(GdkEventKey* key) {
 bool Source::View::on_button_press_event(GdkEventButton *event) {
   if(event->type==GDK_2BUTTON_PRESS) {
     Gtk::TextIter start, end;
-    if(get_buffer()->get_selection_bounds(start, end)) {
-      auto iter=start;
-      while((*iter>=48 && *iter<=57) || (*iter>=65 && *iter<=90) || (*iter>=97 && *iter<=122) || *iter==95) {
-        start=iter;
-        if(!iter.backward_char())
-          break;
-      }
-      while((*end>=48 && *end<=57) || (*end>=65 && *end<=90) || (*end>=97 && *end<=122) || *end==95) {
-        if(!end.forward_char())
-          break;
-      }
-      get_buffer()->select_range(start, end);
-      return true;
+    get_buffer()->get_selection_bounds(start, end);
+    auto iter=start;
+    while((*iter>=48 && *iter<=57) || (*iter>=65 && *iter<=90) || (*iter>=97 && *iter<=122) || *iter==95) {
+      start=iter;
+      if(!iter.backward_char())
+        break;
     }
+    while((*end>=48 && *end<=57) || (*end>=65 && *end<=90) || (*end>=97 && *end<=122) || *end==95) {
+      if(!end.forward_char())
+        break;
+    }
+    get_buffer()->select_range(start, end);
+    return true;
   }
   
   return Gsv::View::on_button_press_event(event);
