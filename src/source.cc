@@ -427,13 +427,16 @@ void Source::View::paste() {
           paste_line=true;
         }
         if(paste_line) {
+          bool empty_line=true;
           std::string line=text.substr(start_line, end_line-start_line);
           size_t tabs=0;
           for(auto chr: line) {
             if(chr==tab_char)
               tabs++;
-            else
+            else {
+              empty_line=false;
               break;
+            }
           }
           if(first_paste_line) {
             if(tabs!=0) {
@@ -442,7 +445,7 @@ void Source::View::paste() {
             }
             first_paste_line=false;
           }
-          else
+          else if(!empty_line)
             paste_line_tabs=std::min(paste_line_tabs, tabs);
 
           start_line=end_line+1;
@@ -466,15 +469,28 @@ void Source::View::paste() {
           paste_line=true;
         }
         if(paste_line) {
+          std::string line=text.substr(start_line, end_line-start_line);
+          size_t line_tabs=0;
+          for(auto chr: line) {
+            if(chr==tab_char)
+              line_tabs++;
+            else
+              break;
+          }
+          auto tabs=paste_line_tabs;
+          if(!(first_paste_line && !first_paste_line_has_tabs) && line_tabs<paste_line_tabs) {
+            tabs=line_tabs;
+          }
+          
           if(first_paste_line) {
             if(first_paste_line_has_tabs)
-              get_buffer()->insert_at_cursor(text.substr(start_line+paste_line_tabs, end_line-start_line-paste_line_tabs));
+              get_buffer()->insert_at_cursor(text.substr(start_line+tabs, end_line-start_line-tabs));
             else
               get_buffer()->insert_at_cursor(text.substr(start_line, end_line-start_line));
             first_paste_line=false;
           }
           else
-            get_buffer()->insert_at_cursor('\n'+prefix_tabs+text.substr(start_line+paste_line_tabs, end_line-start_line-paste_line_tabs));
+            get_buffer()->insert_at_cursor('\n'+prefix_tabs+text.substr(start_line+tabs, end_line-start_line-tabs));
           start_line=end_line+1;
           paste_line=false;
         }
@@ -571,13 +587,21 @@ bool Source::View::on_key_press_event(GdkEventKey* key) {
     int line_end=selection_end.get_line();
     
     unsigned indent_left_steps=tab_size;
+    std::vector<bool> ignore_line;
     for(int line_nr=line_start;line_nr<=line_end;line_nr++) {
       auto line_it = get_source_buffer()->get_iter_at_line(line_nr);
       if(!get_buffer()->get_has_selection() || line_it!=selection_end) {
         string line=get_line(line_nr);
         std::smatch sm;
-        if(std::regex_match(line, sm, tabs_regex) && sm[1].str().size()>0) {
-          indent_left_steps=std::min(indent_left_steps, (unsigned)sm[1].str().size());
+        if(std::regex_match(line, sm, tabs_regex) && (sm[1].str().size()>0 || sm[2].str().size()==0)) {
+          if(sm[2].str().size()>0) {
+            indent_left_steps=std::min(indent_left_steps, (unsigned)sm[1].str().size());
+            ignore_line.push_back(false);
+          }
+          else if((unsigned)sm[1].str().size()<indent_left_steps)
+            ignore_line.push_back(true);
+          else
+            ignore_line.push_back(false);
         }
         else {
           get_source_buffer()->end_user_action();
@@ -591,7 +615,8 @@ bool Source::View::on_key_press_event(GdkEventKey* key) {
       Gtk::TextIter line_plus_it=line_it;
       if(!get_buffer()->get_has_selection() || line_it!=selection_end) {
         if(indent_left_steps==0 || line_plus_it.forward_chars(indent_left_steps))
-          get_source_buffer()->erase(line_it, line_plus_it);
+          if(!ignore_line.at(line_nr-line_start))
+            get_source_buffer()->erase(line_it, line_plus_it);
       }
     }
     get_source_buffer()->end_user_action();
