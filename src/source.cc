@@ -1249,12 +1249,15 @@ Source::ClangViewParse(file_path, project_path), autocomplete_cancel_starting(fa
       autocomplete_cancel_starting=true;
       if(completion_dialog_shown) {
         completion_dialog->hide();
+        start_reparse();
       }
     }
   });
   signal_scroll_event().connect([this](GdkEventScroll* event){
-    if(completion_dialog_shown)
+    if(completion_dialog_shown) {
       completion_dialog->hide();
+      start_reparse();
+    }
     return false;
   }, false);
   signal_key_release_event().connect([this](GdkEventKey* key){
@@ -1270,6 +1273,7 @@ Source::ClangViewParse(file_path, project_path), autocomplete_cancel_starting(fa
     autocomplete_cancel_starting=true;
     if(completion_dialog_shown) {
       completion_dialog->hide();
+      start_reparse();
     }
       
     return false;
@@ -1277,12 +1281,7 @@ Source::ClangViewParse(file_path, project_path), autocomplete_cancel_starting(fa
 }
 
 bool Source::ClangViewAutocomplete::on_key_press_event(GdkEventKey *key) {
-  if(key->keyval>=32 && key->keyval<=126) {
-    if(key->keyval=='>' && last_keyval=='-')
-      last_keyval=127;
-    else
-      last_keyval=key->keyval;
-  }
+  last_keyval=key->keyval;
   if(completion_dialog_shown) {
     if(completion_dialog->on_key_press(key))
       return true;
@@ -1293,15 +1292,17 @@ bool Source::ClangViewAutocomplete::on_key_press_event(GdkEventKey *key) {
 void Source::ClangViewAutocomplete::start_autocomplete() {
   if(!has_focus())
     return;
+  auto iter=get_buffer()->get_insert()->get_iter();
   if(!((last_keyval>='0' && last_keyval<='9') || 
        (last_keyval>='a' && last_keyval<='z') || (last_keyval>='A' && last_keyval<='Z') ||
-       last_keyval=='_' || last_keyval==127 || last_keyval=='.' || last_keyval==':')) {
+       last_keyval=='_' || last_keyval=='.' || last_keyval==':' || 
+       (last_keyval=='>' && iter.backward_char() && iter.backward_char() && *iter=='-'))) {
     autocomplete_cancel_starting=true;
     return;
   }
   std::string line=" "+get_line_before_insert();
   if((std::count(line.begin(), line.end(), '\"')%2)!=1 && line.find("//")==std::string::npos) {
-    const std::regex in_specified_namespace("^(.*[a-zA-Z0-9_\\)])(->|\\.|::)([a-zA-Z0-9_]*)$");
+    const std::regex in_specified_namespace("^(.*[a-zA-Z0-9_\\)\\]\\>])(->|\\.|::)([a-zA-Z0-9_]*)$");
     const std::regex within_namespace("^(.*)([^a-zA-Z0-9_]+)([a-zA-Z0-9_]{3,})$");
     std::smatch sm;
     if(std::regex_match(line, sm, in_specified_namespace)) {
@@ -1344,9 +1345,9 @@ void Source::ClangViewAutocomplete::autocomplete() {
         completion_dialog=std::unique_ptr<CompletionDialog>(new CompletionDialog(*this, get_buffer()->create_mark(start_iter)));
         auto rows=std::make_shared<std::unordered_map<std::string, std::string> >();
         completion_dialog->on_hide=[this](){
-          start_reparse();
           get_source_buffer()->end_user_action();
           completion_dialog_shown=false;
+          start_reparse();
         };
         completion_dialog->on_select=[this, rows](const std::string& selected, bool hide_window) {
           auto row = rows->at(selected);
