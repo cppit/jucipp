@@ -572,6 +572,8 @@ bool Source::View::find_start_of_closed_expression(Gtk::TextIter iter, Gtk::Text
       }
     }
     if(iter.starts_line() && count1<=0 && count2<=0) {
+      auto insert_iter=get_buffer()->get_insert()->get_iter();
+      while(iter!=insert_iter && *iter==tab_char && iter.forward_char()) {}
       found_iter=iter;
       return true;
     }
@@ -1248,7 +1250,7 @@ bool Source::ClangViewParse::on_key_press_event(GdkEventKey* key) {
     auto iter=get_buffer()->get_insert()->get_iter();
     Gtk::TextIter start_of_sentence_iter;
     if(find_start_of_closed_expression(iter, start_of_sentence_iter)) {
-      auto start_line=get_line(start_of_sentence_iter);
+      auto start_line=get_line_before(start_of_sentence_iter);
       std::smatch sm;
       std::string tabs;
       if(std::regex_match(start_line, sm, tabs_regex)) {
