@@ -138,7 +138,7 @@ namespace Source {
     ~ClangViewParse();
     boost::filesystem::path project_path;
     void start_reparse();
-    bool start_reparse_needed=false;
+    bool reparse_needed=false;
   protected:
     void init_parse();
     bool on_key_press_event(GdkEventKey* key);

@@ -104,9 +104,9 @@ Window::Window() : box(Gtk::ORIENTATION_VERTICAL), notebook(directories), compil
       directories.select(notebook.get_current_view()->file_path);
       
       if(auto source_view=dynamic_cast<Source::ClangView*>(notebook.get_current_view())) {
-        if(source_view->start_reparse_needed) {
+        if(source_view->reparse_needed) {
           source_view->start_reparse();
-          source_view->start_reparse_needed=false;
+          source_view->reparse_needed=false;
         }
       }
       
@@ -688,10 +688,11 @@ void Window::rename_token_entry() {
         entry_box.entries.emplace_back(*token_name, [this, token_name, token](const std::string& content){
           if(notebook.get_current_page()!=-1 && content!=*token_name) {
             for(int c=0;c<notebook.size();c++) {
-              if(notebook.get_view(c)->rename_similar_tokens) {
-                auto number=notebook.get_view(c)->rename_similar_tokens(*token, content);
+              auto view=notebook.get_view(c);
+              if(view->rename_similar_tokens) {
+                auto number=view->rename_similar_tokens(*token, content);
                 if(number>0) {
-                  Singleton::terminal()->print("Replaced "+boost::lexical_cast<std::string>(number)+" occurrences in file "+notebook.get_view(c)->file_path.string()+"\n");
+                  Singleton::terminal()->print("Replaced "+boost::lexical_cast<std::string>(number)+" occurrences in file "+view->file_path.string()+"\n");
                   notebook.save(c);
                 }
               }

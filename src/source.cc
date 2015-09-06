@@ -1774,7 +1774,7 @@ void Source::ClangView::async_delete() {
 
 bool Source::ClangView::restart_parse() {
   if(!restart_parse_running) {
-    start_reparse_needed=false;
+    reparse_needed=false;
     restart_parse_running=true;
     parse_thread_stop=true;
     if(restart_parse_thread.joinable())

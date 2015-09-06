@@ -112,7 +112,7 @@ void Notebook::open(const boost::filesystem::path &file_path) {
   DEBUG("end");
 }
 
-bool Notebook::save(int page) {
+bool Notebook::save(int page, bool reparse_needed) {
   DEBUG("start");
   if(page>=size()) {
     DEBUG("end false");
@@ -121,11 +121,13 @@ bool Notebook::save(int page) {
   auto view=get_view(page);
   if (view->file_path != "" && view->get_buffer()->get_modified()) {
     if(juci::filesystem::write(view->file_path, view->get_buffer())) {
-      if(auto clang_view=dynamic_cast<Source::ClangView*>(view)) {
-        for(auto a_view: source_views) {
-          if(auto a_clang_view=dynamic_cast<Source::ClangView*>(a_view)) {
-            if(clang_view!=a_clang_view)
-              a_clang_view->start_reparse_needed=true;
+      if(reparse_needed) {
+        if(auto clang_view=dynamic_cast<Source::ClangView*>(view)) {
+          for(auto a_view: source_views) {
+            if(auto a_clang_view=dynamic_cast<Source::ClangView*>(a_view)) {
+              if(clang_view!=a_clang_view)
+                a_clang_view->reparse_needed=true;
+            }
           }
         }
       }
@@ -161,7 +163,7 @@ bool Notebook::save(int page) {
 bool Notebook::save_current() {
   if(get_current_page()==-1)
     return false;
-  return save(get_current_page());
+  return save(get_current_page(), true);
 }
 
 bool Notebook::close_current_page() {
