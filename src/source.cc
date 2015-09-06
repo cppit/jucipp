@@ -198,7 +198,7 @@ Source::View::View(const boost::filesystem::path &file_path): file_path(file_pat
             if(!is_word_iter(iter)) { //Might have used space or - to split two words
               auto first=iter;
               auto second=iter;
-              if(first.backward_char() && second.forward_char()) {
+              if(first.backward_char() && second.forward_char() && !second.starts_line()) {
                 get_buffer()->remove_tag_by_name("spellcheck_error", first, second);
                 auto word=spellcheck_get_word(first);
                 spellcheck_word(word.first, word.second);
