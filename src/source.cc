@@ -544,20 +544,19 @@ std::string Source::View::get_line_before() {
   return get_line_before(get_buffer()->get_insert());
 }
 
-bool Source::View::find_start_of_sentence(Gtk::TextIter iter, Gtk::TextIter &found_iter) {
-  while(iter.backward_char()) {
+bool Source::View::find_start_of_closed_expression(Gtk::TextIter iter, Gtk::TextIter &found_iter) {
+  do {
     if(*iter!='{' && *iter!=' ' && *iter!='\t')
       break;
     if(iter.starts_line()) {
       found_iter=iter;
       return true;
     }
-  }
+  } while(iter.backward_char());
   
   int count1=0;
   int count2=0;
   int count3=0;
-  int count4=0;
   
   bool ignore=false;
   
@@ -576,18 +575,14 @@ bool Source::View::find_start_of_sentence(Gtk::TextIter iter, Gtk::TextIter &fou
           count1++;
         else if(*iter==']')
           count2++;
-        else if(*iter=='>')
-          count3++;
         else if(*iter=='}')
-          count4++;
+          count3++;
         else if(*iter=='(')
           count1--;
         else if(*iter=='[')
           count2--;
-        else if(*iter=='<')
-          count3--;
         else if(*iter=='{')
-          count4--;
+          count3--;
       }
     }
     if(iter.starts_line() && count1<=0 && count2<=0 && count3<=0) {
@@ -598,10 +593,9 @@ bool Source::View::find_start_of_sentence(Gtk::TextIter iter, Gtk::TextIter &fou
   return false;
 }
 
-bool Source::View::find_open_symbol(Gtk::TextIter iter, const Gtk::TextIter &until_iter, Gtk::TextIter &found_iter) {
+bool Source::View::find_open_expression_symbol(Gtk::TextIter iter, const Gtk::TextIter &until_iter, Gtk::TextIter &found_iter) {
   int count1=0;
   int count2=0;
-  int count3=0;
 
   bool ignore=false;
   
@@ -620,16 +614,12 @@ bool Source::View::find_open_symbol(Gtk::TextIter iter, const Gtk::TextIter &unt
           count1++;
         else if(*iter==']')
           count2++;
-        else if(*iter=='>')
-          count3++;
         else if(*iter=='(')
           count1--;
         else if(*iter=='[')
           count2--;
-        else if(*iter=='<')
-          count3--;
       }
-      if(count1<0 || count2<0 || count3<0) {
+      if(count1<0 || count2<0) {
         found_iter=iter;
         return true;
       }
@@ -667,7 +657,8 @@ bool Source::View::find_right_bracket_forward(Gtk::TextIter iter, Gtk::TextIter 
       }
     }
 
-    if(iter.starts_line() && *iter!=tab_char && !iter.ends_line() && *iter!='#')
+    //To avoid parsing of the whole file in case of erroneous brackets 
+    if(iter.starts_line() && *iter!=tab_char && !iter.ends_line() && *iter!='#' && *iter!='p') //added p for public, private and protected keywords. 
       return false;
   }
   return false;
@@ -1258,9 +1249,13 @@ void Source::ClangViewParse::update_types() {
   }
 }
 
-//Clang indentation
-//TODO: replace indentation methods with a better implementation or maybe use libclang
+//Clang indentation.
 bool Source::ClangViewParse::on_key_press_event(GdkEventKey* key) {
+  if(spellcheck_suggestions_dialog_shown) {
+    if(spellcheck_suggestions_dialog->on_key_press(key))
+      return true;
+  }
+  
   if(get_buffer()->get_has_selection()) {
     return Source::View::on_key_press_event(key);
   }
@@ -1270,7 +1265,7 @@ bool Source::ClangViewParse::on_key_press_event(GdkEventKey* key) {
   if(key->keyval==GDK_KEY_Return) {
     auto iter=get_buffer()->get_insert()->get_iter();
     Gtk::TextIter start_of_sentence_iter;
-    if(find_start_of_sentence(iter, start_of_sentence_iter)) {
+    if(find_start_of_closed_expression(iter, start_of_sentence_iter)) {
       auto start_line=get_line(start_of_sentence_iter);
       std::smatch sm;
       std::string tabs;
@@ -1321,7 +1316,7 @@ bool Source::ClangViewParse::on_key_press_event(GdkEventKey* key) {
       auto line=get_line_before();
       iter=get_buffer()->get_insert()->get_iter();
       auto found_iter=iter;
-      if(find_open_symbol(iter, start_of_sentence_iter, found_iter)) {
+      if(find_open_expression_symbol(iter, start_of_sentence_iter, found_iter)) {
         auto offset=found_iter.get_line_offset();
         tabs.clear();
         for(int c=0;c<offset+1;c++)

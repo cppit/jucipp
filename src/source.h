@@ -95,8 +95,8 @@ namespace Source {
     std::string get_line_before(Glib::RefPtr<Gtk::TextBuffer::Mark> mark);
     std::string get_line_before();
     
-    bool find_start_of_sentence(Gtk::TextIter iter, Gtk::TextIter &found_iter);
-    bool find_open_symbol(Gtk::TextIter iter, const Gtk::TextIter &until_iter, Gtk::TextIter &found_iter);
+    bool find_start_of_closed_expression(Gtk::TextIter iter, Gtk::TextIter &found_iter);
+    bool find_open_expression_symbol(Gtk::TextIter iter, const Gtk::TextIter &until_iter, Gtk::TextIter &found_iter);
     bool find_right_bracket_forward(Gtk::TextIter iter, Gtk::TextIter &found_iter);
     
     bool on_key_press_event(GdkEventKey* key);
@@ -109,6 +109,8 @@ namespace Source {
     std::regex tabs_regex;
     
     bool spellcheck_all=false;
+    std::unique_ptr<SelectionDialog> spellcheck_suggestions_dialog;
+    bool spellcheck_suggestions_dialog_shown=false;
   private:
     GtkSourceSearchContext *search_context;
     GtkSourceSearchSettings *search_settings;
@@ -121,8 +123,6 @@ namespace Source {
     std::pair<Gtk::TextIter, Gtk::TextIter> spellcheck_get_word(Gtk::TextIter iter);
     void spellcheck_word(const Gtk::TextIter& start, const Gtk::TextIter& end);
     std::vector<std::string> spellcheck_get_suggestions(const Gtk::TextIter& start, const Gtk::TextIter& end);
-    std::unique_ptr<SelectionDialog> spellcheck_suggestions_dialog;
-    bool spellcheck_suggestions_dialog_shown=false;
     sigc::connection delayed_spellcheck_suggestions_connection;
     bool last_keyval_is_backspace=false;
   };
