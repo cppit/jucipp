@@ -405,7 +405,7 @@ void Source::View::replace_all(const std::string &replacement) {
 
 void Source::View::paste() {
   Gtk::Clipboard::get()->request_text([this](const Glib::ustring& text){
-    auto line=get_line_before_insert();
+    auto line=get_line_before();
     std::smatch sm;
     std::string prefix_tabs;
     if(!get_buffer()->get_has_selection() && std::regex_match(line, sm, tabs_regex) && sm[2].str().size()==0) {
@@ -510,57 +510,165 @@ void Source::View::set_status(const std::string &status) {
     on_update_status(this, status);
 }
 
-string Source::View::get_line(size_t line_number) {
-  Gtk::TextIter line_it = get_source_buffer()->get_iter_at_line(line_number);
-  Gtk::TextIter line_end_it = line_it;
+std::string Source::View::get_line(const Gtk::TextIter &iter) {
+  auto line_start_it = get_buffer()->get_iter_at_line(iter.get_line());
+  auto line_end_it = iter;
   while(!line_end_it.ends_line() && line_end_it.forward_char()) {}
-  std::string line(get_source_buffer()->get_text(line_it, line_end_it));
+  std::string line(get_source_buffer()->get_text(line_start_it, line_end_it));
   return line;
 }
 
-string Source::View::get_line_before_insert() {
-  Gtk::TextIter insert_it = get_source_buffer()->get_insert()->get_iter();
-  Gtk::TextIter line_it = get_source_buffer()->get_iter_at_line(insert_it.get_line());
-  std::string line(get_source_buffer()->get_text(line_it, insert_it));
+std::string Source::View::get_line(Glib::RefPtr<Gtk::TextBuffer::Mark> mark) {
+  return get_line(mark->get_iter());
+}
+
+std::string Source::View::get_line(int line_nr) {
+  return get_line(get_buffer()->get_iter_at_line(line_nr));
+}
+
+std::string Source::View::get_line() {
+  return get_line(get_buffer()->get_insert());
+}
+
+std::string Source::View::get_line_before(const Gtk::TextIter &iter) {
+  auto line_it = get_source_buffer()->get_iter_at_line(iter.get_line());
+  std::string line(get_source_buffer()->get_text(line_it, iter));
   return line;
+}
+
+std::string Source::View::get_line_before(Glib::RefPtr<Gtk::TextBuffer::Mark> mark) {
+  return get_line_before(mark->get_iter());
+}
+
+std::string Source::View::get_line_before() {
+  return get_line_before(get_buffer()->get_insert());
 }
 
 bool Source::View::find_start_of_sentence(Gtk::TextIter iter, Gtk::TextIter &found_iter) {
-  int count=0;
   while(iter.backward_char()) {
-    if(*iter=='{' && count==0)
-      continue;
-    if(*iter==')' || *iter==']' || *iter=='}')
-      count++;
-    else if(*iter=='(' || *iter=='[' || *iter =='{')
-      count--;
-    if(iter.ends_line() && count==0) {
+    if(*iter!='{' && *iter!=' ' && *iter!='\t')
+      break;
+    if(iter.starts_line()) {
       found_iter=iter;
-      found_iter.forward_char();
       return true;
     }
   }
+  
+  int count1=0;
+  int count2=0;
+  int count3=0;
+  int count4=0;
+  
+  bool ignore=false;
+  
+  do {
+    if(!get_source_buffer()->iter_has_context_class(iter, "comment") && !get_source_buffer()->iter_has_context_class(iter, "string")) {
+      if(*iter=='\'') {
+        auto before_iter=iter;
+        before_iter.backward_char();
+        auto before_before_iter=before_iter;
+        before_before_iter.backward_char();
+        if(*before_iter!='\\' || *before_before_iter=='\\')
+          ignore=!ignore;
+      }
+      else if(!ignore) {
+        if(*iter==')')
+          count1++;
+        else if(*iter==']')
+          count2++;
+        else if(*iter=='>')
+          count3++;
+        else if(*iter=='}')
+          count4++;
+        else if(*iter=='(')
+          count1--;
+        else if(*iter=='[')
+          count2--;
+        else if(*iter=='<')
+          count3--;
+        else if(*iter=='{')
+          count4--;
+      }
+    }
+    if(iter.starts_line() && count1<=0 && count2<=0 && count3<=0) {
+      found_iter=iter;
+      return true;
+    }
+  } while(iter.backward_char());
   return false;
 }
 
-bool Source::View::find_right_bracket_forward(Gtk::TextIter iter, Gtk::TextIter &found_iter) {
-  int count=0;
-  bool last_iter_ended_line=iter.ends_line();
-  while(iter.forward_char()) {
-    if(*iter=='}') {
-      if(count==0) {
+bool Source::View::find_open_symbol(Gtk::TextIter iter, const Gtk::TextIter &until_iter, Gtk::TextIter &found_iter) {
+  int count1=0;
+  int count2=0;
+  int count3=0;
+
+  bool ignore=false;
+  
+  while(iter!=until_iter && iter.backward_char()) {
+    if(!get_source_buffer()->iter_has_context_class(iter, "comment") && !get_source_buffer()->iter_has_context_class(iter, "string")) {
+      if(*iter=='\'') {
+        auto before_iter=iter;
+        before_iter.backward_char();
+        auto before_before_iter=before_iter;
+        before_before_iter.backward_char();
+        if(*before_iter!='\\' || *before_before_iter=='\\')
+          ignore=!ignore;
+      }
+      else if(!ignore) {
+        if(*iter==')')
+          count1++;
+        else if(*iter==']')
+          count2++;
+        else if(*iter=='>')
+          count3++;
+        else if(*iter=='(')
+          count1--;
+        else if(*iter=='[')
+          count2--;
+        else if(*iter=='<')
+          count3--;
+      }
+      if(count1<0 || count2<0 || count3<0) {
         found_iter=iter;
         return true;
       }
-      count--;
     }
-    else if(*iter=='{')
-      count++;
-    if(last_iter_ended_line) {
-      if(*iter!=tab_char && !iter.ends_line())
-        return false;
+  }
+  
+  return false;
+}  
+
+bool Source::View::find_right_bracket_forward(Gtk::TextIter iter, Gtk::TextIter &found_iter) {
+  int count=0;
+  
+  bool ignore=false;
+  
+  while(iter.forward_char()) {
+    if(!get_source_buffer()->iter_has_context_class(iter, "comment") && !get_source_buffer()->iter_has_context_class(iter, "string")) {
+      if(*iter=='\'') {
+        auto before_iter=iter;
+        before_iter.backward_char();
+        auto before_before_iter=before_iter;
+        before_before_iter.backward_char();
+        if(*before_iter!='\\' || *before_before_iter=='\\')
+          ignore=!ignore;
+      }
+      else if(!ignore) {
+        if(*iter=='}') {
+          if(count==0) {
+            found_iter=iter;
+            return true;
+          }
+          count--;
+        }
+        else if(*iter=='{')
+          count++;
+      }
     }
-    last_iter_ended_line=iter.ends_line();
+
+    if(iter.starts_line() && *iter!=tab_char && !iter.ends_line() && *iter!='#')
+      return false;
   }
   return false;
 }
@@ -582,7 +690,7 @@ bool Source::View::on_key_press_event(GdkEventKey* key) {
   if(key->keyval==GDK_KEY_Return && !get_buffer()->get_has_selection()) {
     auto insert_it=get_buffer()->get_insert()->get_iter();
     int line_nr=insert_it.get_line();
-    auto line=get_line_before_insert();
+    auto line=get_line_before();
     std::smatch sm;
     if(std::regex_match(line, sm, tabs_regex)) {
       if((line_nr+1)<get_buffer()->get_line_count()) {
@@ -667,7 +775,7 @@ bool Source::View::on_key_press_event(GdkEventKey* key) {
   else if(key->keyval==GDK_KEY_BackSpace && !get_buffer()->get_has_selection()) {
     auto insert_it=get_buffer()->get_insert()->get_iter();
     //int line_nr=insert_it.get_line();
-    auto line=get_line_before_insert();
+    auto line=get_line_before();
     std::smatch sm;
     if(std::regex_match(line, sm, tabs_regex) && sm[1].str().size()==line.size()) {
       auto line_start_iter=insert_it;
@@ -1161,9 +1269,9 @@ bool Source::ClangViewParse::on_key_press_event(GdkEventKey* key) {
   //Indent depending on if/else/etc and brackets
   if(key->keyval==GDK_KEY_Return) {
     auto iter=get_buffer()->get_insert()->get_iter();
-    Gtk::TextIter found_iter;
-    if(find_start_of_sentence(iter, found_iter)) {
-      auto start_line=get_line(found_iter.get_line());
+    Gtk::TextIter start_of_sentence_iter;
+    if(find_start_of_sentence(iter, start_of_sentence_iter)) {
+      auto start_line=get_line(start_of_sentence_iter);
       std::smatch sm;
       std::string tabs;
       if(std::regex_match(start_line, sm, tabs_regex)) {
@@ -1176,8 +1284,7 @@ bool Source::ClangViewParse::on_key_press_event(GdkEventKey* key) {
         
         bool has_bracket=false;
         if(found_right_bracket) {
-          auto line_it = get_source_buffer()->get_iter_at_line(found_iter.get_line());
-          std::string line(get_source_buffer()->get_text(line_it, found_iter));
+          auto line=get_line_before(found_iter);
           if(std::regex_match(line, sm, tabs_regex)) {
             if(tabs.size()==sm[1].str().size())
               has_bracket=true;
@@ -1211,8 +1318,16 @@ bool Source::ClangViewParse::on_key_press_event(GdkEventKey* key) {
           return true;
         }
       }
-      auto line=get_line_before_insert();
-      if(std::regex_match(line, sm, no_bracket_statement_regex)) {
+      auto line=get_line_before();
+      iter=get_buffer()->get_insert()->get_iter();
+      auto found_iter=iter;
+      if(find_open_symbol(iter, start_of_sentence_iter, found_iter)) {
+        auto offset=found_iter.get_line_offset();
+        tabs.clear();
+        for(int c=0;c<offset+1;c++)
+          tabs+=' ';
+      }
+      else if(std::regex_match(line, sm, no_bracket_statement_regex)) {
         get_source_buffer()->insert_at_cursor("\n"+tabs+tab);
         scroll_to(get_source_buffer()->get_insert());
         get_source_buffer()->end_user_action();
@@ -1225,7 +1340,7 @@ bool Source::ClangViewParse::on_key_press_event(GdkEventKey* key) {
         return true;
       }
       //Indenting after for instance if(...)\n...;\n
-      else if(std::regex_match(line, sm, tabs_regex)) {
+      else if(iter.backward_char() && *iter==';') {
         std::smatch sm2;
         size_t line_nr=get_source_buffer()->get_insert()->get_iter().get_line();
         if(line_nr>0 && tabs.size()>=tab_size) {
@@ -1246,11 +1361,15 @@ bool Source::ClangViewParse::on_key_press_event(GdkEventKey* key) {
           }
         }
       }
+      get_source_buffer()->insert_at_cursor("\n"+tabs);
+      scroll_to(get_source_buffer()->get_insert());
+      get_source_buffer()->end_user_action();
+      return true;
     }
   }
   //Indent left when writing } on a new line
   else if(key->keyval==GDK_KEY_braceright) {
-    string line=get_line_before_insert();
+    string line=get_line_before();
     if(line.size()>=tab_size) {
       for(auto c: line) {
         if(c!=tab_char) {
@@ -1334,7 +1453,7 @@ void Source::ClangViewAutocomplete::start_autocomplete() {
     autocomplete_cancel_starting=true;
     return;
   }
-  std::string line=" "+get_line_before_insert();
+  std::string line=" "+get_line_before();
   if((std::count(line.begin(), line.end(), '\"')%2)!=1 && line.find("//")==std::string::npos) {
     const std::regex in_specified_namespace("^(.*[a-zA-Z0-9_\\)\\]\\>])(->|\\.|::)([a-zA-Z0-9_]*)$");
     const std::regex within_namespace("^(.*)([^a-zA-Z0-9_]+)([a-zA-Z0-9_]{3,})$");

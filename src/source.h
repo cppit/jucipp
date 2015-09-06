@@ -87,10 +87,16 @@ namespace Source {
     
     void set_status(const std::string &status);
     
-    std::string get_line(size_t line_number);
-    std::string get_line_before_insert();
+    std::string get_line(const Gtk::TextIter &iter);
+    std::string get_line(Glib::RefPtr<Gtk::TextBuffer::Mark> mark);
+    std::string get_line(int line_nr);
+    std::string get_line();
+    std::string get_line_before(const Gtk::TextIter &iter);
+    std::string get_line_before(Glib::RefPtr<Gtk::TextBuffer::Mark> mark);
+    std::string get_line_before();
     
     bool find_start_of_sentence(Gtk::TextIter iter, Gtk::TextIter &found_iter);
+    bool find_open_symbol(Gtk::TextIter iter, const Gtk::TextIter &until_iter, Gtk::TextIter &found_iter);
     bool find_right_bracket_forward(Gtk::TextIter iter, Gtk::TextIter &found_iter);
     
     bool on_key_press_event(GdkEventKey* key);
