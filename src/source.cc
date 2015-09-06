@@ -545,18 +545,8 @@ std::string Source::View::get_line_before() {
 }
 
 bool Source::View::find_start_of_closed_expression(Gtk::TextIter iter, Gtk::TextIter &found_iter) {
-  do {
-    if(*iter!='{' && *iter!=' ' && *iter!='\t')
-      break;
-    if(iter.starts_line()) {
-      found_iter=iter;
-      return true;
-    }
-  } while(iter.backward_char());
-  
   int count1=0;
   int count2=0;
-  int count3=0;
   
   bool ignore=false;
   
@@ -575,17 +565,13 @@ bool Source::View::find_start_of_closed_expression(Gtk::TextIter iter, Gtk::Text
           count1++;
         else if(*iter==']')
           count2++;
-        else if(*iter=='}')
-          count3++;
         else if(*iter=='(')
           count1--;
         else if(*iter=='[')
           count2--;
-        else if(*iter=='{')
-          count3--;
       }
     }
-    if(iter.starts_line() && count1<=0 && count2<=0 && count3<=0) {
+    if(iter.starts_line() && count1<=0 && count2<=0) {
       found_iter=iter;
       return true;
     }
