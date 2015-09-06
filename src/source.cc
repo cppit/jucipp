@@ -656,10 +656,6 @@ bool Source::View::find_right_bracket_forward(Gtk::TextIter iter, Gtk::TextIter 
           count++;
       }
     }
-
-    //To avoid parsing of the whole file in case of erroneous brackets 
-    if(iter.starts_line() && *iter!=tab_char && !iter.ends_line() && *iter!='#' && *iter!='p') //added p for public, private and protected keywords. 
-      return false;
   }
   return false;
 }
