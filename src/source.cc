@@ -405,24 +405,16 @@ void Source::View::replace_all(const std::string &replacement) {
 
 void Source::View::paste() {
   auto text=Gtk::Clipboard::get()->wait_for_text();
-  //remove carriage returns (which makes clang return wrong line index)
-  for(auto it=text.begin();it!=text.end();) {
+  //replace stand-alone carriage returns (which makes clang return wrong line index) with newlines
+  for(auto it=text.begin();it!=text.end();it++) {
     if(*it=='\r') {
       auto it2=it;
       it2++;
-      if(it2!=text.end()) {
-        if(*it2=='\n')
-          it=text.erase(it);
-        else {
+      if(it2!=text.end() && *it2!='\n')
           text.replace(it, it2, "\n");
-          it++;
-        }
-      }
       else
-        it=text.erase(it);
+        text.replace(it, it2, "\n");
     }
-    else
-      it++;
   }
 
   auto line=get_line_before();
