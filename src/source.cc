@@ -410,9 +410,7 @@ void Source::View::paste() {
     if(*it=='\r') {
       auto it2=it;
       it2++;
-      if(it2!=text.end() && *it2!='\n')
-          text.replace(it, it2, "\n");
-      else
+      if(it2==text.end() || *it2!='\n')
         text.replace(it, it2, "\n");
     }
   }
