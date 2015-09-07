@@ -404,104 +404,125 @@ void Source::View::replace_all(const std::string &replacement) {
 }
 
 void Source::View::paste() {
-  Gtk::Clipboard::get()->request_text([this](const Glib::ustring& text){
-    auto line=get_line_before();
-    std::smatch sm;
-    std::string prefix_tabs;
-    if(!get_buffer()->get_has_selection() && std::regex_match(line, sm, tabs_regex) && sm[2].str().size()==0) {
-      prefix_tabs=sm[1].str();
-
-      Glib::ustring::size_type start_line=0;
-      Glib::ustring::size_type end_line=0;
-      bool paste_line=false;
-      bool first_paste_line=true;
-      size_t paste_line_tabs=-1;
-      bool first_paste_line_has_tabs=false;
-      for(Glib::ustring::size_type c=0;c<text.size();c++) {;
-        if(text[c]=='\n') {
-          end_line=c;
-          paste_line=true;
-        }
-        else if(c==text.size()-1) {
-          end_line=c+1;
-          paste_line=true;
-        }
-        if(paste_line) {
-          bool empty_line=true;
-          std::string line=text.substr(start_line, end_line-start_line);
-          size_t tabs=0;
-          for(auto chr: line) {
-            if(chr==tab_char)
-              tabs++;
-            else {
-              empty_line=false;
-              break;
-            }
-          }
-          if(first_paste_line) {
-            if(tabs!=0) {
-              first_paste_line_has_tabs=true;
-              paste_line_tabs=tabs;
-            }
-            first_paste_line=false;
-          }
-          else if(!empty_line)
-            paste_line_tabs=std::min(paste_line_tabs, tabs);
-
-          start_line=end_line+1;
-          paste_line=false;
+  auto text=Gtk::Clipboard::get()->wait_for_text();
+  //remove carriage returns (which makes clang return wrong line index)
+  for(auto it=text.begin();it!=text.end();) {
+    if(*it=='\r') {
+      auto it2=it;
+      it2++;
+      if(it2!=text.end()) {
+        if(*it2=='\n')
+          it=text.erase(it);
+        else {
+          text.replace(it, it2, "\n");
+          it++;
         }
       }
-      if(paste_line_tabs==(size_t)-1)
-        paste_line_tabs=0;
-      start_line=0;
-      end_line=0;
-      paste_line=false;
-      first_paste_line=true;
-      get_source_buffer()->begin_user_action();
-      for(Glib::ustring::size_type c=0;c<text.size();c++) {
-        if(text[c]=='\n') {
-          end_line=c;
-          paste_line=true;
-        }
-        else if(c==text.size()-1) {
-          end_line=c+1;
-          paste_line=true;
-        }
-        if(paste_line) {
-          std::string line=text.substr(start_line, end_line-start_line);
-          size_t line_tabs=0;
-          for(auto chr: line) {
-            if(chr==tab_char)
-              line_tabs++;
-            else
-              break;
-          }
-          auto tabs=paste_line_tabs;
-          if(!(first_paste_line && !first_paste_line_has_tabs) && line_tabs<paste_line_tabs) {
-            tabs=line_tabs;
-          }
-          
-          if(first_paste_line) {
-            if(first_paste_line_has_tabs)
-              get_buffer()->insert_at_cursor(text.substr(start_line+tabs, end_line-start_line-tabs));
-            else
-              get_buffer()->insert_at_cursor(text.substr(start_line, end_line-start_line));
-            first_paste_line=false;
-          }
-          else
-            get_buffer()->insert_at_cursor('\n'+prefix_tabs+text.substr(start_line+tabs, end_line-start_line-tabs));
-          start_line=end_line+1;
-          paste_line=false;
-        }
-      }
-      get_buffer()->place_cursor(get_buffer()->get_insert()->get_iter());
-      scroll_to(get_buffer()->get_insert());
-      get_source_buffer()->end_user_action();
+      else
+        it=text.erase(it);
     }
     else
-      get_buffer()->paste_clipboard(Gtk::Clipboard::get());
-  });
+      it++;
+  }
+
+  auto line=get_line_before();
+  std::smatch sm;
+  std::string prefix_tabs;
+  if(!get_buffer()->get_has_selection() && std::regex_match(line, sm, tabs_regex) && sm[2].str().size()==0) {
+    prefix_tabs=sm[1].str();
+
+    Glib::ustring::size_type start_line=0;
+    Glib::ustring::size_type end_line=0;
+    bool paste_line=false;
+    bool first_paste_line=true;
+    size_t paste_line_tabs=-1;
+    bool first_paste_line_has_tabs=false;
+    for(Glib::ustring::size_type c=0;c<text.size();c++) {;
+      if(text[c]=='\n') {
+        end_line=c;
+        paste_line=true;
+      }
+      else if(c==text.size()-1) {
+        end_line=c+1;
+        paste_line=true;
+      }
+      if(paste_line) {
+        bool empty_line=true;
+        std::string line=text.substr(start_line, end_line-start_line);
+        size_t tabs=0;
+        for(auto chr: line) {
+          if(chr==tab_char)
+            tabs++;
+          else {
+            empty_line=false;
+            break;
+          }
+        }
+        if(first_paste_line) {
+          if(tabs!=0) {
+            first_paste_line_has_tabs=true;
+            paste_line_tabs=tabs;
+          }
+          first_paste_line=false;
+        }
+        else if(!empty_line)
+          paste_line_tabs=std::min(paste_line_tabs, tabs);
+
+        start_line=end_line+1;
+        paste_line=false;
+      }
+    }
+    if(paste_line_tabs==(size_t)-1)
+      paste_line_tabs=0;
+    start_line=0;
+    end_line=0;
+    paste_line=false;
+    first_paste_line=true;
+    get_source_buffer()->begin_user_action();
+    for(Glib::ustring::size_type c=0;c<text.size();c++) {
+      if(text[c]=='\n') {
+        end_line=c;
+        paste_line=true;
+      }
+      else if(c==text.size()-1) {
+        end_line=c+1;
+        paste_line=true;
+      }
+      if(paste_line) {
+        std::string line=text.substr(start_line, end_line-start_line);
+        size_t line_tabs=0;
+        for(auto chr: line) {
+          if(chr==tab_char)
+            line_tabs++;
+          else
+            break;
+        }
+        auto tabs=paste_line_tabs;
+        if(!(first_paste_line && !first_paste_line_has_tabs) && line_tabs<paste_line_tabs) {
+          tabs=line_tabs;
+        }
+        
+        if(first_paste_line) {
+          if(first_paste_line_has_tabs)
+            get_buffer()->insert_at_cursor(text.substr(start_line+tabs, end_line-start_line-tabs));
+          else
+            get_buffer()->insert_at_cursor(text.substr(start_line, end_line-start_line));
+          first_paste_line=false;
+        }
+        else
+          get_buffer()->insert_at_cursor('\n'+prefix_tabs+text.substr(start_line+tabs, end_line-start_line-tabs));
+        start_line=end_line+1;
+        paste_line=false;
+      }
+    }
+    get_buffer()->place_cursor(get_buffer()->get_insert()->get_iter());
+    scroll_to(get_buffer()->get_insert());
+    get_source_buffer()->end_user_action();
+  }
+  else {
+    Gtk::Clipboard::get()->set_text(text);
+    get_buffer()->paste_clipboard(Gtk::Clipboard::get());
+  }
 }
 
 void Source::View::set_status(const std::string &status) {
