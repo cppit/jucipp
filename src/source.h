@@ -150,6 +150,7 @@ namespace Source {
     std::shared_ptr<Terminal::InProgress> parsing_in_progress;
     std::thread parse_thread;
     std::atomic<bool> parse_thread_stop;
+    std::atomic<bool> parse_error;
     
     std::regex bracket_regex;
     std::regex no_bracket_statement_regex;
@@ -179,6 +180,8 @@ namespace Source {
   class ClangViewAutocomplete : public ClangViewParse {
   public:
     ClangViewAutocomplete(const boost::filesystem::path &file_path, const boost::filesystem::path& project_path);
+    void async_delete();
+    bool restart_parse();
   protected:
     bool on_key_press_event(GdkEventKey* key);
     std::thread autocomplete_thread;
@@ -190,11 +193,18 @@ namespace Source {
     std::vector<Source::AutoCompleteData> get_autocomplete_suggestions(int line_number, int column, std::map<std::string, std::string>& buffer_map);
     Glib::Dispatcher autocomplete_done;
     sigc::connection autocomplete_done_connection;
+    Glib::Dispatcher autocomplete_fail;
     bool autocomplete_starting=false;
     std::atomic<bool> autocomplete_cancel_starting;
     guint last_keyval=0;
     std::string prefix;
     std::mutex prefix_mutex;
+    
+    Glib::Dispatcher do_delete_object;
+    Glib::Dispatcher do_restart_parse;
+    std::thread delete_thread;
+    std::thread restart_parse_thread;
+    bool restart_parse_running=false;
   };
 
   class ClangViewRefactor : public ClangViewAutocomplete {
@@ -212,14 +222,6 @@ namespace Source {
   class ClangView : public ClangViewRefactor {
   public:
     ClangView(const boost::filesystem::path &file_path, const boost::filesystem::path& project_path, Glib::RefPtr<Gsv::Language> language);
-    void async_delete();
-    bool restart_parse();
-  private:
-    Glib::Dispatcher do_delete_object;
-    Glib::Dispatcher do_restart_parse;
-    std::thread delete_thread;
-    std::thread restart_parse_thread;
-    bool restart_parse_running=false;
   };
 };  // class Source
 #endif  // JUCI_SOURCE_H_
