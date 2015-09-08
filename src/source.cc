@@ -980,6 +980,10 @@ Source::View(file_path), project_path(project_path) {
       parse_thread_go=true;
     }
   });
+  parse_fail.connect([this](){
+    Singleton::terminal()->print("Error: failed to reparse "+this->file_path.string()+".\n");
+    set_status("");
+  });
   init_parse();
   
   get_buffer()->signal_changed().connect([this]() {
@@ -1006,7 +1010,6 @@ void Source::ClangViewParse::init_parse() {
   parse_thread_mapped=false;
   parse_thread_stop=false;
   
-  
   auto buffer_map=get_buffer_map();
   //Remove includes for first parse for initial syntax highlighting
   auto& str=buffer_map[file_path.string()];
@@ -1023,7 +1026,7 @@ void Source::ClangViewParse::init_parse() {
   }
   init_syntax_highlighting(buffer_map);
   update_syntax();
-    
+  
   set_status("parsing...");
   if(parse_thread.joinable())
     parse_thread.join();
@@ -1038,10 +1041,16 @@ void Source::ClangViewParse::init_parse() {
         parse_start();
       }
       else if (parse_thread_mapped && parsing_mutex.try_lock() && parse_thread_buffer_map_mutex.try_lock()) {
-        reparse(parse_thread_buffer_map);
+        int status=reparse(parse_thread_buffer_map);
         parse_thread_go=false;
+        if(status!=0)
+          parse_thread_stop=true;
         parsing_mutex.unlock();
         parse_thread_buffer_map_mutex.unlock();
+        if(status!=0) {
+          parse_fail();
+          return;
+        }
         parse_done();
       }
     }
@@ -1067,16 +1076,21 @@ void Source::ClangViewParse::start_reparse() {
   parse_thread_mapped=false;
   source_readable=false;
   delayed_reparse_connection.disconnect();
-  delayed_reparse_connection=Glib::signal_timeout().connect([this]() {
-    source_readable=false;
-    parse_thread_go=true;
-    set_status("parsing...");
-    return false;
-  }, 1000);
+  if(!parse_thread_stop) {
+    delayed_reparse_connection=Glib::signal_timeout().connect([this]() {
+      source_readable=false;
+      parse_thread_go=true;
+      set_status("parsing...");
+      return false;
+    }, 1000);
+  }
 }
 
 int Source::ClangViewParse::reparse(const std::map<std::string, std::string> &buffer) {
   int status = clang_tu->ReparseTranslationUnit(buffer);
+  if(status!=0) {
+    return status;
+  }
   clang_tokens=clang_tu->get_tokens(0, parse_thread_buffer_map.find(file_path.string())->second.size()-1);
   return status;
 }
@@ -1564,7 +1578,8 @@ void Source::ClangViewAutocomplete::autocomplete() {
       autocomplete_thread.join();
     autocomplete_thread=std::thread([this, ac_data, line_nr, column_nr, buffer_map](){
       parsing_mutex.lock();
-      *ac_data=move(get_autocomplete_suggestions(line_nr, column_nr, *buffer_map));
+      if(!parse_thread_stop)
+        *ac_data=move(get_autocomplete_suggestions(line_nr, column_nr, *buffer_map));
       autocomplete_done();
       parsing_mutex.unlock();
     });
@@ -1784,7 +1799,7 @@ void Source::ClangView::async_delete() {
 }
 
 bool Source::ClangView::restart_parse() {
-  if(!restart_parse_running) {
+  if(!restart_parse_running && !parse_thread_stop) {
     reparse_needed=false;
     restart_parse_running=true;
     parse_thread_stop=true;

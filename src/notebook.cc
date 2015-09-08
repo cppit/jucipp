@@ -145,7 +145,7 @@ bool Notebook::save(int page, bool reparse_needed) {
                 if(source_clang_view->restart_parse())
                   Singleton::terminal()->async_print("Reparsing "+source_clang_view->file_path.string()+"\n");
                 else
-                  Singleton::terminal()->async_print("Already reparsing "+source_clang_view->file_path.string()+". Please reopen the file manually.\n");
+                  Singleton::terminal()->async_print("Error: failed to reparse "+source_clang_view->file_path.string()+". Please reopen the file manually.\n");
               }
             }
           }

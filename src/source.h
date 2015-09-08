@@ -169,6 +169,7 @@ namespace Source {
     
     Glib::Dispatcher parse_done;
     Glib::Dispatcher parse_start;
+    Glib::Dispatcher parse_fail;
     std::map<std::string, std::string> parse_thread_buffer_map;
     std::mutex parse_thread_buffer_map_mutex;
     std::atomic<bool> parse_thread_go;
