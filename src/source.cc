@@ -584,7 +584,7 @@ bool Source::View::find_start_of_closed_expression(Gtk::TextIter iter, Gtk::Text
     }
     if(iter.starts_line() && count1<=0 && count2<=0) {
       auto insert_iter=get_buffer()->get_insert()->get_iter();
-      while(iter!=insert_iter && *iter==tab_char && iter.forward_char()) {}
+      while(iter!=insert_iter && *iter==static_cast<unsigned char>(tab_char) && iter.forward_char()) {}
       found_iter=iter;
       return true;
     }
@@ -983,6 +983,7 @@ Source::View(file_path), project_path(project_path) {
   parse_fail.connect([this](){
     Singleton::terminal()->print("Error: failed to reparse "+this->file_path.string()+".\n");
     set_status("");
+    parsing_in_progress->cancel("failed");
   });
   init_parse();
   
