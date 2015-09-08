@@ -15,29 +15,58 @@ std::string juci::filesystem::read(const std::string &path) {
   return ss.str();
 }
 
-bool juci::filesystem::read(const std::string &path, Glib::RefPtr<Gtk::TextBuffer> text_buffer) {
+int juci::filesystem::read(const std::string &path, Glib::RefPtr<Gtk::TextBuffer> text_buffer) {
   std::ifstream input(path, std::ofstream::binary);
+  
   if(input) {
-    std::vector<char> buffer(buffer_size);
+    //need to read the whole file to make this work...
+    std::stringstream ss;
+    ss << input.rdbuf();
+    Glib::ustring ustr=std::move(ss.str());
+    
+    bool valid=true;
+    //This was way too slow...
+    /*Glib::ustring::iterator iter;
+    while(!ustr.validate(iter)) {
+      auto next_char_iter=iter;
+      next_char_iter++;
+      ustr.replace(iter, next_char_iter, "?");
+      if(valid)
+        valid=false;
+    }*/
+    
+    if(ustr.validate())
+      text_buffer->insert_at_cursor(ustr);
+    else
+      valid=false;
+    
+    //TODO: maybe correct this, emphasis on maybe:
+    /*std::vector<char> buffer(buffer_size);
     size_t read_length;
-    std::string buffer_str;
     while((read_length=input.read(&buffer[0], buffer_size).gcount())>0) {
-      buffer_str+=std::string(&buffer[0], read_length);
-      if(buffer_str.back()>=0) {
-        auto ustr=Glib::ustring(buffer_str);
-        buffer_str="";
-        if(ustr.validate())
-          text_buffer->insert_at_cursor(ustr);
-        else {
-          input.close();
-          return false;
-        }
+      //auto ustr=Glib::ustring(std::string(&buffer[0], read_length)); //this works...
+
+      //this does not work:
+      Glib::ustring ustr;
+      ustr.resize(read_length);
+      ustr.replace(0, read_length, &buffer[0]);
+      
+      Glib::ustring::iterator iter;
+      while(!ustr.validate(iter)) {
+        auto next_char_iter=iter;
+        next_char_iter++;
+        ustr.replace(iter, next_char_iter, "?");
       }
-    }
+      
+      text_buffer->insert_at_cursor(ustr); //What if insert happens in the middle of an UTF-8 char???
+    }*/
     input.close();
-    return true;
+    if(valid)
+      return 1;
+    else
+      return -1;
   }
-  return false;
+  return 0;
 }
 
 //Only use on small files
@@ -70,9 +99,7 @@ bool juci::filesystem::write(const std::string &path, Glib::RefPtr<Gtk::TextBuff
     bool end_reached=false;
     while(!end_reached) {
       for(size_t c=0;c<buffer_size;c++) {
-        if(end_iter)
-          end_iter++;
-        else {
+        if(!end_iter.forward_char()) {
           end_reached=true;
           break;
         }

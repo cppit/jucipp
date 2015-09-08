@@ -3,7 +3,9 @@ set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -O3 -std=c++11 -pthread -Wall -Wno-reord
 set(CMAKE_MODULE_PATH ${CMAKE_MODULE_PATH} "${CMAKE_CURRENT_LIST_DIR}/cmake/Modules/")
 
 if(APPLE)
-  set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -L/usr/local/opt/gettext/lib -I/usr/local/opt/gettext/include -undefined dynamic_lookup") #T
+  set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -undefined dynamic_lookup")
+  link_directories(/usr/local/lib /usr/local/opt/gettext/lib)
+  include_directories(/usr/local/opt/gettext/include)
   set(CMAKE_MACOSX_RPATH 1)
   set(ENV{PKG_CONFIG_PATH} "$ENV{PKG_CONFIG_PATH}:/usr/local/lib/pkgconfig:/opt/X11/lib/pkgconfig")
 endif()

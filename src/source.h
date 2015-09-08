@@ -87,8 +87,17 @@ namespace Source {
     
     void set_status(const std::string &status);
     
-    std::string get_line(size_t line_number);
-    std::string get_line_before_insert();
+    std::string get_line(const Gtk::TextIter &iter);
+    std::string get_line(Glib::RefPtr<Gtk::TextBuffer::Mark> mark);
+    std::string get_line(int line_nr);
+    std::string get_line();
+    std::string get_line_before(const Gtk::TextIter &iter);
+    std::string get_line_before(Glib::RefPtr<Gtk::TextBuffer::Mark> mark);
+    std::string get_line_before();
+    
+    bool find_start_of_closed_expression(Gtk::TextIter iter, Gtk::TextIter &found_iter);
+    bool find_open_expression_symbol(Gtk::TextIter iter, const Gtk::TextIter &until_iter, Gtk::TextIter &found_iter);
+    bool find_right_bracket_forward(Gtk::TextIter iter, Gtk::TextIter &found_iter);
     
     bool on_key_press_event(GdkEventKey* key);
     bool on_button_press_event(GdkEventButton *event);
@@ -100,20 +109,22 @@ namespace Source {
     std::regex tabs_regex;
     
     bool spellcheck_all=false;
+    std::unique_ptr<SelectionDialog> spellcheck_suggestions_dialog;
+    bool spellcheck_suggestions_dialog_shown=false;
   private:
     GtkSourceSearchContext *search_context;
     GtkSourceSearchSettings *search_settings;
     static void search_occurrences_updated(GtkWidget* widget, GParamSpec* property, gpointer data);
-    
+        
     static AspellConfig* spellcheck_config;
     AspellCanHaveError *spellcheck_possible_err;
     AspellSpeller *spellcheck_checker;
+    bool is_word_iter(const Gtk::TextIter& iter);
     std::pair<Gtk::TextIter, Gtk::TextIter> spellcheck_get_word(Gtk::TextIter iter);
     void spellcheck_word(const Gtk::TextIter& start, const Gtk::TextIter& end);
     std::vector<std::string> spellcheck_get_suggestions(const Gtk::TextIter& start, const Gtk::TextIter& end);
-    std::unique_ptr<SelectionDialog> spellcheck_suggestions_dialog;
-    bool spellcheck_suggestions_dialog_shown=false;
     sigc::connection delayed_spellcheck_suggestions_connection;
+    bool last_keyval_is_backspace=false;
   };
   
   class GenericView : public View {
@@ -124,9 +135,10 @@ namespace Source {
   class ClangViewParse : public View {
   public:
     ClangViewParse(const boost::filesystem::path &file_path, const boost::filesystem::path& project_path);
+    ~ClangViewParse();
     boost::filesystem::path project_path;
     void start_reparse();
-    bool start_reparse_needed=false;
+    bool reparse_needed=false;
   protected:
     void init_parse();
     bool on_key_press_event(GdkEventKey* key);
@@ -157,6 +169,7 @@ namespace Source {
     
     Glib::Dispatcher parse_done;
     Glib::Dispatcher parse_start;
+    Glib::Dispatcher parse_fail;
     std::map<std::string, std::string> parse_thread_buffer_map;
     std::mutex parse_thread_buffer_map_mutex;
     std::atomic<bool> parse_thread_go;
@@ -187,6 +200,7 @@ namespace Source {
   class ClangViewRefactor : public ClangViewAutocomplete {
   public:
     ClangViewRefactor(const boost::filesystem::path &file_path, const boost::filesystem::path& project_path);
+    ~ClangViewRefactor();
   private:
     Glib::RefPtr<Gtk::TextTag> similar_tokens_tag;
     std::string last_similar_tokens_tagged;

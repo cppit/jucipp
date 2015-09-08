@@ -23,7 +23,7 @@ namespace sigc {
 }
 
 Directories::Directories() : stop_update_thread(false) {
-  DEBUG("adding treeview to scrolledwindow");
+  DEBUG("start");
   add(tree_view);
   set_policy(Gtk::POLICY_AUTOMATIC, Gtk::POLICY_AUTOMATIC);
   tree_store = Gtk::TreeStore::create(column_record);
@@ -34,7 +34,6 @@ Directories::Directories() : stop_update_thread(false) {
   tree_view.set_search_column(column_record.name);
   
   tree_view.signal_row_activated().connect([this](const Gtk::TreeModel::Path& path, Gtk::TreeViewColumn* column){
-    INFO("Directory navigation");
     auto iter = tree_store->get_iter(path);
     if (iter) {
       auto path_str=iter->get_value(column_record.path);
@@ -115,10 +114,9 @@ Directories::~Directories() {
 }
 
 void Directories::open(const boost::filesystem::path& dir_path) {
+  DEBUG("start");
   if(dir_path=="")
     return;
-  
-  INFO("Open folder");
   
   tree_store->clear();
   update_mutex.lock();
@@ -138,18 +136,21 @@ void Directories::open(const boost::filesystem::path& dir_path) {
     
   current_path=dir_path;
   
-  DEBUG("Folder opened");
+  DEBUG("end");
 }
 
 void Directories::update() {
+  DEBUG("start");
   update_mutex.lock();
   for(auto &last_write_time: last_write_times) {
     add_path(last_write_time.first, last_write_time.second.first);
   }
   update_mutex.unlock();
+  DEBUG("end");
 }
 
 void Directories::select(const boost::filesystem::path &path) {
+  DEBUG("start");
   if(current_path=="")
     return;
     
@@ -189,10 +190,10 @@ void Directories::select(const boost::filesystem::path &path) {
     }
     return false;
   });
+  DEBUG("end");
 }
 
 bool Directories::ignored(std::string path) {
-  DEBUG("Checking if file-/directory is filtered");
   std::transform(path.begin(), path.end(), path.begin(), ::tolower);
   
   for(std::string &i : Singleton::Config::directories()->exceptions) {

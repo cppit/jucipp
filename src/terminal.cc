@@ -154,6 +154,7 @@ Terminal::Terminal() {
 }
 
 int Terminal::execute(const std::string &command, const boost::filesystem::path &path) {
+  DEBUG("start");
   int stdin_fd, stdout_fd, stderr_fd;
   auto pid=popen3(command, path.string(), &stdin_fd, &stdout_fd, &stderr_fd);
   
@@ -176,7 +177,6 @@ int Terminal::execute(const std::string &command, const boost::filesystem::path 
     std::thread stdout_thread([this, stdout_fd](){
       char buffer[1024];
       ssize_t n;
-      INFO("read");
       while ((n=read(stdout_fd, buffer, 1024)) > 0) {
         std::string message;
         for(ssize_t c=0;c<n;c++)
@@ -192,12 +192,14 @@ int Terminal::execute(const std::string &command, const boost::filesystem::path 
     close(stdout_fd);
     close(stderr_fd);
     
+    DEBUG("end");
     return exit_code;
   }
 }
 
 void Terminal::async_execute(const std::string &command, const boost::filesystem::path &path, std::function<void(int exit_code)> callback) {
   std::thread async_execute_thread([this, command, path, callback](){
+    DEBUG("start");
     int stdin_fd, stdout_fd, stderr_fd;
     async_executes_mutex.lock();
     stdin_buffer.clear();
@@ -225,7 +227,6 @@ void Terminal::async_execute(const std::string &command, const boost::filesystem
       std::thread stdout_thread([this, stdout_fd](){
         char buffer[1024];
         ssize_t n;
-        INFO("read");
         while ((n=read(stdout_fd, buffer, 1024)) > 0) {
           std::string message;
           for(ssize_t c=0;c<n;c++)
@@ -252,6 +253,8 @@ void Terminal::async_execute(const std::string &command, const boost::filesystem
       
       if(callback)
         callback(exit_code);
+
+      DEBUG("end");
     }
   });
   async_execute_thread.detach();
@@ -280,15 +283,22 @@ void Terminal::kill_async_executes(bool force) {
 }
 
 int Terminal::print(const std::string &message, bool bold){
-  INFO("Terminal: PrintMessage");
+  Glib::ustring umessage=message;
+  Glib::ustring::iterator iter;
+  while(!umessage.validate(iter)) {
+    auto next_char_iter=iter;
+    next_char_iter++;
+    umessage.replace(iter, next_char_iter, "?");
+  }
+  
   if(bold)
-    get_buffer()->insert_with_tag(get_buffer()->end(), message, bold_tag);
+    get_buffer()->insert_with_tag(get_buffer()->end(), umessage, bold_tag);
   else
-    get_buffer()->insert(get_buffer()->end(), message);
+    get_buffer()->insert(get_buffer()->end(), umessage);
     
-  auto iter=get_buffer()->end();
-  if(iter.backward_char()) {
-    auto mark=get_buffer()->create_mark(iter);
+  auto end_iter=get_buffer()->end();
+  if(end_iter.backward_char()) {
+    auto mark=get_buffer()->create_mark(end_iter);
     scroll_to(mark, 0.0, 1.0, 1.0);
     get_buffer()->delete_mark(mark);
   }
@@ -297,11 +307,17 @@ int Terminal::print(const std::string &message, bool bold){
 }
 
 void Terminal::print(int line_nr, const std::string &message){
-  INFO("Terminal: PrintMessage at line " << line_nr);
-  auto iter=get_buffer()->get_iter_at_line(line_nr);
-  while(!iter.ends_line())
-    iter++;
-  get_buffer()->insert(iter, message);
+  Glib::ustring umessage=message;
+  Glib::ustring::iterator iter;
+  while(!umessage.validate(iter)) {
+    auto next_char_iter=iter;
+    next_char_iter++;
+    umessage.replace(iter, next_char_iter, "?");
+  }
+  
+  auto end_line_iter=get_buffer()->get_iter_at_line(line_nr);
+  while(!end_line_iter.ends_line() && end_line_iter.forward_char()) {}
+  get_buffer()->insert(end_line_iter, umessage);
 }
 
 std::shared_ptr<Terminal::InProgress> Terminal::print_in_progress(std::string start_msg) {

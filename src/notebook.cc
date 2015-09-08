@@ -32,21 +32,15 @@ int Notebook::size() {
 }
 
 Source::View* Notebook::get_view(int page) {
-  if(page>=size())
-    return nullptr;
   return source_views.at(page);
 }
 
 Source::View* Notebook::get_current_view() {
-  INFO("Getting sourceview");
-  if(get_current_page()==-1)
-    return nullptr;
   return get_view(get_current_page());
 }
 
 void Notebook::open(const boost::filesystem::path &file_path) {
-  INFO("Notebook open file");
-  INFO("Notebook create page");
+  DEBUG("start");
   for(int c=0;c<size();c++) {
     if(file_path==get_view(c)->file_path) {
       set_current_page(c);
@@ -112,22 +106,28 @@ void Notebook::open(const boost::filesystem::path &file_path) {
   });
   
   get_current_view()->on_update_status=[this](Source::View* view, const std::string &status) {
-    if(get_current_view()==view)
+    if(get_current_page()!=-1 && get_current_view()==view)
       Singleton::status()->set_text(status);
   };
+  DEBUG("end");
 }
 
-bool Notebook::save(int page) {
-  if(page>=size())
+bool Notebook::save(int page, bool reparse_needed) {
+  DEBUG("start");
+  if(page>=size()) {
+    DEBUG("end false");
     return false;
+  }
   auto view=get_view(page);
   if (view->file_path != "" && view->get_buffer()->get_modified()) {
     if(juci::filesystem::write(view->file_path, view->get_buffer())) {
-      if(auto clang_view=dynamic_cast<Source::ClangView*>(view)) {
-        for(auto a_view: source_views) {
-          if(auto a_clang_view=dynamic_cast<Source::ClangView*>(a_view)) {
-            if(clang_view!=a_clang_view)
-              a_clang_view->start_reparse_needed=true;
+      if(reparse_needed) {
+        if(auto clang_view=dynamic_cast<Source::ClangView*>(view)) {
+          for(auto a_view: source_views) {
+            if(auto a_clang_view=dynamic_cast<Source::ClangView*>(a_view)) {
+              if(clang_view!=a_clang_view)
+                a_clang_view->reparse_needed=true;
+            }
           }
         }
       }
@@ -145,53 +145,54 @@ bool Notebook::save(int page) {
                 if(source_clang_view->restart_parse())
                   Singleton::terminal()->async_print("Reparsing "+source_clang_view->file_path.string()+"\n");
                 else
-                  Singleton::terminal()->async_print("Already reparsing "+source_clang_view->file_path.string()+". Please reopen the file manually.\n");
+                  Singleton::terminal()->async_print("Error: failed to reparse "+source_clang_view->file_path.string()+". Please reopen the file manually.\n");
               }
             }
           }
         }
       }
-      
+      DEBUG("end true");
       return true;
     }
     Singleton::terminal()->print("Error: could not save file " +view->file_path.string()+"\n");
   }
+  DEBUG("end false");
   return false;
 }
 
 bool Notebook::save_current() {
-  INFO("Notebook save current file");
   if(get_current_page()==-1)
     return false;
-  return save(get_current_page());
+  return save(get_current_page(), true);
 }
 
 bool Notebook::close_current_page() {
-  INFO("Notebook close page");
-  if (size() != 0) {
+  DEBUG("start");
+  if (get_current_page()!=-1) {
     if(get_current_view()->get_buffer()->get_modified()){
-      if(!save_modified_dialog())
+      if(!save_modified_dialog()) {
+        DEBUG("end false");
         return false;
+      }
     }
     int page = get_current_page();
     remove_page(page);
-    if(get_current_page()==-1)
-      Singleton::status()->set_text("");
     auto source_view=source_views.at(page);
-    source_views.erase(source_views.begin()+ page);
-    scrolled_windows.erase(scrolled_windows.begin()+page);
-    hboxes.erase(hboxes.begin()+page);
     if(auto source_clang_view=dynamic_cast<Source::ClangView*>(source_view))
       source_clang_view->async_delete();
     else
       delete source_view;
+    source_views.erase(source_views.begin()+ page);
+    scrolled_windows.erase(scrolled_windows.begin()+page);
+    hboxes.erase(hboxes.begin()+page);
   }
+  DEBUG("end true");
   return true;
 }
 
 bool Notebook::save_modified_dialog() {
-  INFO("Notebook::save_modified_dialog");
   Gtk::MessageDialog dialog((Gtk::Window&)(*get_toplevel()), "Save file!", false, Gtk::MESSAGE_QUESTION, Gtk::BUTTONS_YES_NO);
+  dialog.set_default_response(Gtk::RESPONSE_YES);
   dialog.set_secondary_text("Do you want to save: " + get_current_view()->file_path.string()+" ?");
   int result = dialog.run();
   if(result==Gtk::RESPONSE_YES) {

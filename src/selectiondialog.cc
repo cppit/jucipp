@@ -121,7 +121,6 @@ void SelectionDialogBase::update_tooltips() {
 }
 
 void SelectionDialogBase::move() {
-  INFO("SelectionDialog set position");
   Gdk::Rectangle rectangle;
   text_view.get_iter_location(start_mark->get_iter(), rectangle);
   int buffer_x=rectangle.get_x();
@@ -134,8 +133,6 @@ void SelectionDialogBase::move() {
 }
 
 void SelectionDialogBase::resize() {
-  INFO("SelectionDialog set size");
-  
   if(list_view_text.get_realized()) {
     int row_width=0, row_height;
     Gdk::Rectangle rect;
@@ -214,7 +211,8 @@ void SelectionDialog::show() {
         else {
           auto last_it=list_view_text.get_model()->children().end();
           last_it--;
-          list_view_text.set_cursor(list_view_text.get_model()->get_path(last_it));
+          if(last_it)
+            list_view_text.set_cursor(list_view_text.get_model()->get_path(last_it));
         }
         return true;
       }
@@ -273,7 +271,8 @@ bool SelectionDialog::on_key_press(GdkEventKey* key) {
     else {
       auto last_it=list_view_text.get_model()->children().end();
       last_it--;
-      list_view_text.set_cursor(list_view_text.get_model()->get_path(last_it));
+      if(last_it)
+        list_view_text.set_cursor(list_view_text.get_model()->get_path(last_it));
     }
     return true;
   }
@@ -422,7 +421,8 @@ bool CompletionDialog::on_key_press(GdkEventKey* key) {
     else {
       auto last_it=list_view_text.get_model()->children().end();
       last_it--;
-      list_view_text.set_cursor(list_view_text.get_model()->get_path(last_it));
+      if(last_it)
+        list_view_text.set_cursor(list_view_text.get_model()->get_path(last_it));
     }
     select(false);
     update_tooltips();
