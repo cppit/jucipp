@@ -157,9 +157,6 @@ namespace Source {
     std::regex no_bracket_no_para_statement_regex;
   private:
     std::map<std::string, std::string> get_buffer_map() const;
-    // inits the syntax highligthing on file open
-    void init_syntax_highlighting(const std::map<std::string, std::string> &buffers);
-    int reparse(const std::map<std::string, std::string> &buffers);
     void update_syntax();
     std::set<std::string> last_syntax_tags;
     void update_diagnostics();

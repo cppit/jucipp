@@ -1025,7 +1025,8 @@ void Source::ClangViewParse::init_parse() {
     }
     pos++;
   }
-  init_syntax_highlighting(buffer_map);
+  clang_tu = std::unique_ptr<clang::TranslationUnit>(new clang::TranslationUnit(clang_index, file_path.string(), get_compilation_commands(), buffer_map));
+  clang_tokens=clang_tu->get_tokens(0, buffer_map.find(file_path.string())->second.size()-1);
   update_syntax();
   
   set_status("parsing...");
@@ -1042,11 +1043,15 @@ void Source::ClangViewParse::init_parse() {
         parse_start();
       }
       else if (parse_thread_mapped && parsing_mutex.try_lock() && parse_thread_buffer_map_mutex.try_lock()) {
-        reparse(parse_thread_buffer_map);
+        int status=clang_tu->ReparseTranslationUnit(parse_thread_buffer_map);
+        if(status==0)
+          clang_tokens=clang_tu->get_tokens(0, parse_thread_buffer_map.find(file_path.string())->second.size()-1);
+        else
+          parse_error=true;
         parse_thread_go=false;
         parsing_mutex.unlock();
         parse_thread_buffer_map_mutex.unlock();
-        if(parse_error) {
+        if(status!=0) {
           parse_fail();
           parse_thread_stop=true;
         }
@@ -1055,15 +1060,6 @@ void Source::ClangViewParse::init_parse() {
       }
     }
   });
-}
-
-void Source::ClangViewParse::init_syntax_highlighting(const std::map<std::string, std::string> &buffers) {
-  std::vector<string> arguments = get_compilation_commands();
-  clang_tu = std::unique_ptr<clang::TranslationUnit>(new clang::TranslationUnit(clang_index,
-                                                                           file_path.string(),
-                                                                           arguments,
-                                                                           buffers));
-  clang_tokens=clang_tu->get_tokens(0, buffers.find(file_path.string())->second.size()-1);
 }
 
 std::map<std::string, std::string> Source::ClangViewParse::get_buffer_map() const {
@@ -1082,16 +1078,6 @@ void Source::ClangViewParse::start_reparse() {
     set_status("parsing...");
     return false;
   }, 1000);
-}
-
-int Source::ClangViewParse::reparse(const std::map<std::string, std::string> &buffer) {
-  int status = clang_tu->ReparseTranslationUnit(buffer);
-  if(status!=0) {
-    parse_error=true;
-    return status;
-  }
-  clang_tokens=clang_tu->get_tokens(0, parse_thread_buffer_map.find(file_path.string())->second.size()-1);
-  return status;
 }
 
 std::vector<std::string> Source::ClangViewParse::get_compilation_commands() {
