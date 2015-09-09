@@ -1255,7 +1255,7 @@ void Source::ClangViewParse::update_diagnostics() {
   }
   if(errors>0) {
     if(warnings>0)
-      diagnostic_info+=",  ";
+      diagnostic_info+=", ";
     diagnostic_info+=std::to_string(errors)+" error";
     if(errors>1)
       diagnostic_info+='s';

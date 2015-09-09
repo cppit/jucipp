@@ -86,13 +86,13 @@ void Notebook::open(const boost::filesystem::path &file_path) {
   
   source_views.back()->on_update_status=[this](Source::View* view, const std::string &status) {
     if(get_current_page()!=-1 && get_current_view()==view)
-      Singleton::status()->set_text(status+"  ");
+      Singleton::status()->set_text(status+" ");
   };
   source_views.back()->on_update_info=[this](Source::View* view, const std::string &info) {
     if(get_current_page()!=-1 && get_current_view()==view) {
       auto iter=get_current_view()->get_buffer()->get_insert()->get_iter();
       auto positions=std::to_string(iter.get_line()+1)+":"+std::to_string(iter.get_line_offset()+1);
-      Singleton::info()->set_text("  "+positions+" "+info);
+      Singleton::info()->set_text(" "+positions+" "+info);
     }
   };
     
