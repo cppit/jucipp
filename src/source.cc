@@ -537,8 +537,10 @@ void Source::View::set_status(const std::string &status) {
 
 void Source::View::set_info(const std::string &info) {
   this->info=info;
+  auto iter=get_buffer()->get_insert()->get_iter();
+  auto positions=std::to_string(iter.get_line()+1)+":"+std::to_string(iter.get_line_offset()+1);
   if(on_update_info)
-    on_update_info(this, this->info);
+    on_update_info(this, positions+" "+info);
 }
 
 std::string Source::View::get_line(const Gtk::TextIter &iter) {
