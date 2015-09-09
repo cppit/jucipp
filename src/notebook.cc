@@ -83,6 +83,7 @@ void Notebook::open(const boost::filesystem::path &file_path) {
   
   std::string title=file_path.filename().string();
   append_page(*hboxes.back(), title);
+  set_tab_reorderable(*hboxes.back(), true);
   show_all_children();
   set_current_page(size()-1);
   set_focus_child(*source_views.back());
