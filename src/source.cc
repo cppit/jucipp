@@ -1003,6 +1003,7 @@ Source::View(file_path, language), project_path(project_path), parse_error(false
   parse_fail.connect([this](){
     Singleton::terminal()->print("Error: failed to reparse "+this->file_path.string()+".\n");
     set_status("");
+    set_info("");
     parsing_in_progress->cancel("failed");
   });
   init_parse();
