@@ -48,13 +48,22 @@ Glib::RefPtr<Gsv::Language> Source::guess_language(const boost::filesystem::path
 //////////////
 AspellConfig* Source::View::spellcheck_config=NULL;
 
-Source::View::View(const boost::filesystem::path &file_path): file_path(file_path) {
+Source::View::View(const boost::filesystem::path &file_path, Glib::RefPtr<Gsv::Language> language): file_path(file_path) {
   set_smart_home_end(Gsv::SMART_HOME_END_BEFORE);
+  
   get_source_buffer()->begin_not_undoable_action();
-  if(juci::filesystem::read(file_path, get_buffer())==-1)
-    Singleton::terminal()->print("Error: "+file_path.string()+" is not a valid UTF-8 file.");
+  if(language) {
+    if(juci::filesystem::read_non_utf8(file_path, get_buffer())==-1)
+      Singleton::terminal()->print("Warning: "+file_path.string()+" is not a valid UTF-8 file. Saving might corrupt the file.\n");
+  }
+  else {
+    if(juci::filesystem::read(file_path, get_buffer())==-1)
+      Singleton::terminal()->print("Error: "+file_path.string()+" is not a valid UTF-8 file.\n");
+  }
   get_source_buffer()->end_not_undoable_action();
+  
   get_buffer()->place_cursor(get_buffer()->get_iter_at_offset(0)); 
+  
   search_settings = gtk_source_search_settings_new();
   gtk_source_search_settings_set_wrap_around(search_settings, true);
   search_context = gtk_source_search_context_new(get_source_buffer()->gobj(), search_settings);
@@ -908,7 +917,7 @@ std::vector<std::string> Source::View::spellcheck_get_suggestions(const Gtk::Tex
 /////////////////////
 //// GenericView ////
 /////////////////////
-Source::GenericView::GenericView(const boost::filesystem::path &file_path, Glib::RefPtr<Gsv::Language> language) : View(file_path) {
+Source::GenericView::GenericView(const boost::filesystem::path &file_path, Glib::RefPtr<Gsv::Language> language) : View(file_path, language) {
   if(language) {
     get_source_buffer()->set_language(language);
     Singleton::terminal()->print("Language for file "+file_path.string()+" set to "+language->get_name()+".\n");
@@ -928,8 +937,8 @@ Source::GenericView::GenericView(const boost::filesystem::path &file_path, Glib:
 ////////////////////////
 clang::Index Source::ClangViewParse::clang_index(0, 0);
 
-Source::ClangViewParse::ClangViewParse(const boost::filesystem::path &file_path, const boost::filesystem::path& project_path):
-Source::View(file_path), project_path(project_path), parse_error(false) {
+Source::ClangViewParse::ClangViewParse(const boost::filesystem::path &file_path, const boost::filesystem::path& project_path, Glib::RefPtr<Gsv::Language> language):
+Source::View(file_path, language), project_path(project_path), parse_error(false) {
   DEBUG("start");
   auto scheme = get_source_buffer()->get_style_scheme();
   auto tag_table=get_buffer()->get_tag_table();
@@ -1385,8 +1394,8 @@ bool Source::ClangViewParse::on_key_press_event(GdkEventKey* key) {
 //////////////////////////////
 //// ClangViewAutocomplete ///
 //////////////////////////////
-Source::ClangViewAutocomplete::ClangViewAutocomplete(const boost::filesystem::path &file_path, const boost::filesystem::path& project_path):
-Source::ClangViewParse(file_path, project_path), autocomplete_cancel_starting(false) {
+Source::ClangViewAutocomplete::ClangViewAutocomplete(const boost::filesystem::path &file_path, const boost::filesystem::path& project_path, Glib::RefPtr<Gsv::Language> language):
+Source::ClangViewParse(file_path, project_path, language), autocomplete_cancel_starting(false) {
   get_buffer()->signal_changed().connect([this](){
     if(completion_dialog_shown)
       delayed_reparse_connection.disconnect();
@@ -1668,8 +1677,8 @@ bool Source::ClangViewAutocomplete::restart_parse() {
 //// ClangViewRefactor /////
 ////////////////////////////
 
-Source::ClangViewRefactor::ClangViewRefactor(const boost::filesystem::path &file_path, const boost::filesystem::path& project_path):
-Source::ClangViewAutocomplete(file_path, project_path) {
+Source::ClangViewRefactor::ClangViewRefactor(const boost::filesystem::path &file_path, const boost::filesystem::path& project_path, Glib::RefPtr<Gsv::Language> language):
+Source::ClangViewAutocomplete(file_path, project_path, language) {
   similar_tokens_tag=get_buffer()->create_tag();
   similar_tokens_tag->property_weight()=Pango::WEIGHT_BOLD;
   
@@ -1814,7 +1823,7 @@ Source::ClangViewRefactor::~ClangViewRefactor() {
   delayed_tag_similar_tokens_connection.disconnect();
 }
 
-Source::ClangView::ClangView(const boost::filesystem::path &file_path, const boost::filesystem::path& project_path, Glib::RefPtr<Gsv::Language> language): ClangViewRefactor(file_path, project_path) {
+Source::ClangView::ClangView(const boost::filesystem::path &file_path, const boost::filesystem::path& project_path, Glib::RefPtr<Gsv::Language> language): ClangViewRefactor(file_path, project_path, language) {
   if(language) {
     get_source_buffer()->set_highlight_syntax(true);
     get_source_buffer()->set_language(language);

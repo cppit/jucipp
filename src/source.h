@@ -52,7 +52,7 @@ namespace Source {
 
   class View : public Gsv::View {
   public:
-    View(const boost::filesystem::path &file_path);
+    View(const boost::filesystem::path &file_path, Glib::RefPtr<Gsv::Language> language);
     ~View();
     
     void search_highlight(const std::string &text, bool case_sensitive, bool regex);
@@ -134,7 +134,7 @@ namespace Source {
   
   class ClangViewParse : public View {
   public:
-    ClangViewParse(const boost::filesystem::path &file_path, const boost::filesystem::path& project_path);
+    ClangViewParse(const boost::filesystem::path &file_path, const boost::filesystem::path& project_path, Glib::RefPtr<Gsv::Language> language);
     ~ClangViewParse();
     boost::filesystem::path project_path;
     void start_reparse();
@@ -176,7 +176,7 @@ namespace Source {
     
   class ClangViewAutocomplete : public ClangViewParse {
   public:
-    ClangViewAutocomplete(const boost::filesystem::path &file_path, const boost::filesystem::path& project_path);
+    ClangViewAutocomplete(const boost::filesystem::path &file_path, const boost::filesystem::path& project_path, Glib::RefPtr<Gsv::Language> language);
     void async_delete();
     bool restart_parse();
   protected:
@@ -206,7 +206,7 @@ namespace Source {
 
   class ClangViewRefactor : public ClangViewAutocomplete {
   public:
-    ClangViewRefactor(const boost::filesystem::path &file_path, const boost::filesystem::path& project_path);
+    ClangViewRefactor(const boost::filesystem::path &file_path, const boost::filesystem::path& project_path, Glib::RefPtr<Gsv::Language> language);
     ~ClangViewRefactor();
   private:
     Glib::RefPtr<Gtk::TextTag> similar_tokens_tag;
