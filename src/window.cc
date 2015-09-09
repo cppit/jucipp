@@ -36,7 +36,6 @@ Window::Window() : box(Gtk::ORIENTATION_VERTICAL), notebook(directories), compil
   DEBUG("start");
   set_title("juCi++");
   set_default_size(600, 400);
-  set_has_resize_grip(false);
   set_events(Gdk::POINTER_MOTION_MASK|Gdk::FOCUS_CHANGE_MASK|Gdk::SCROLL_MASK);
   add(box);
   
