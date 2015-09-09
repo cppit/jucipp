@@ -32,7 +32,15 @@ int Notebook::size() {
 }
 
 Source::View* Notebook::get_view(int page) {
-  return source_views.at(page);
+  return source_views.at(get_index(page));
+}
+
+size_t Notebook::get_index(int page) {
+  for(size_t c=0;c<hboxes.size();c++) {
+    if(page_num(*hboxes.at(c))==page)
+      return c;
+  }
+  return -1;
 }
 
 Source::View* Notebook::get_current_view() {
@@ -177,15 +185,16 @@ bool Notebook::close_current_page() {
       }
     }
     int page = get_current_page();
+    int index=get_index(page);
     remove_page(page);
-    auto source_view=source_views.at(page);
+    auto source_view=source_views.at(index);
     if(auto source_clang_view=dynamic_cast<Source::ClangView*>(source_view))
       source_clang_view->async_delete();
     else
       delete source_view;
-    source_views.erase(source_views.begin()+ page);
-    scrolled_windows.erase(scrolled_windows.begin()+page);
-    hboxes.erase(hboxes.begin()+page);
+    source_views.erase(source_views.begin()+index);
+    scrolled_windows.erase(scrolled_windows.begin()+index);
+    hboxes.erase(hboxes.begin()+index);
   }
   DEBUG("end true");
   return true;
