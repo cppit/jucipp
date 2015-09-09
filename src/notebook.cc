@@ -83,6 +83,18 @@ void Notebook::open(const boost::filesystem::path &file_path) {
   }
   else
     source_views.emplace_back(new Source::GenericView(file_path, language));
+  
+  source_views.back()->on_update_status=[this](Source::View* view, const std::string &status) {
+    if(get_current_page()!=-1 && get_current_view()==view)
+      Singleton::status()->set_text(status+"  ");
+  };
+  source_views.back()->on_update_info=[this](Source::View* view, const std::string &info) {
+    if(get_current_page()!=-1 && get_current_view()==view) {
+      auto iter=get_current_view()->get_buffer()->get_insert()->get_iter();
+      auto positions=std::to_string(iter.get_line()+1)+":"+std::to_string(iter.get_line_offset()+1);
+      Singleton::info()->set_text("  "+positions+" "+info);
+    }
+  };
     
   scrolled_windows.emplace_back(new Gtk::ScrolledWindow());
   hboxes.emplace_back(new Gtk::HBox());
@@ -90,6 +102,7 @@ void Notebook::open(const boost::filesystem::path &file_path) {
   hboxes.back()->pack_start(*scrolled_windows.back(), true, true);
   
   std::string title=file_path.filename().string();
+    
   append_page(*hboxes.back(), title);
   set_tab_reorderable(*hboxes.back(), true);
   show_all_children();
@@ -114,10 +127,6 @@ void Notebook::open(const boost::filesystem::path &file_path) {
       set_tab_label_text(*(get_nth_page(page)), title);
   });
   
-  get_current_view()->on_update_status=[this](Source::View* view, const std::string &status) {
-    if(get_current_page()!=-1 && get_current_view()==view)
-      Singleton::status()->set_text(status);
-  };
   DEBUG("end");
 }
 

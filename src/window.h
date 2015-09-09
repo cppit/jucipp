@@ -33,7 +33,7 @@ private:
   Gtk::VBox notebook_vbox;
   Gtk::VBox terminal_vbox;
   Gtk::ScrolledWindow terminal_scrolled_window;
-  Gtk::HBox status_hbox;
+  Gtk::HBox info_and_status_hbox;
   Gtk::AboutDialog about;
   EntryBox entry_box;
   Menu menu;

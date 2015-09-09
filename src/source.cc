@@ -265,6 +265,10 @@ Source::View::View(const boost::filesystem::path &file_path, Glib::RefPtr<Gsv::L
     });
   }
   
+  get_buffer()->signal_changed().connect([this](){
+    set_info(info);
+  });
+  
   set_tooltip_events();
 }
 
@@ -316,6 +320,7 @@ void Source::View::set_tooltip_events() {
       }, 500);
       type_tooltips.hide();
       diagnostic_tooltips.hide();
+      set_info(info);
     }
   });
   
@@ -528,6 +533,12 @@ void Source::View::set_status(const std::string &status) {
   this->status=status;
   if(on_update_status)
     on_update_status(this, status);
+}
+
+void Source::View::set_info(const std::string &info) {
+  this->info=info;
+  if(on_update_info)
+    on_update_info(this, this->info);
 }
 
 std::string Source::View::get_line(const Gtk::TextIter &iter) {
@@ -1185,6 +1196,8 @@ void Source::ClangViewParse::update_diagnostics() {
   get_buffer()->remove_tag_by_name("def:warning_underline", get_buffer()->begin(), get_buffer()->end());
   get_buffer()->remove_tag_by_name("def:error_underline", get_buffer()->begin(), get_buffer()->end());
   auto diagnostics=clang_tu->get_diagnostics();
+  size_t warnings=0;
+  size_t errors=0;
   for(auto &diagnostic: diagnostics) {
     if(diagnostic.path==file_path.string()) {
       auto start_line=get_line(diagnostic.offsets.first.line-1); //index is sometimes off the line
@@ -1206,10 +1219,14 @@ void Source::ClangViewParse::update_diagnostics() {
       auto start=get_buffer()->get_iter_at_line_index(diagnostic.offsets.first.line-1, start_line_index);
       auto end=get_buffer()->get_iter_at_line_index(diagnostic.offsets.second.line-1, end_line_index);
       std::string diagnostic_tag_name;
-      if(diagnostic.severity<=CXDiagnostic_Warning)
+      if(diagnostic.severity<=CXDiagnostic_Warning) {
         diagnostic_tag_name="def:warning";
-      else
+        warnings++;
+      }
+      else {
         diagnostic_tag_name="def:error";
+        errors++;
+      }
       
       auto spelling=diagnostic.spelling;
       auto severity_spelling=diagnostic.severity_spelling;
@@ -1230,6 +1247,20 @@ void Source::ClangViewParse::update_diagnostics() {
       }
     }
   }
+  std::string diagnostic_info;
+  if(warnings>0) {
+    diagnostic_info+=std::to_string(warnings)+" warning";
+    if(warnings>1)
+      diagnostic_info+='s';
+  }
+  if(errors>0) {
+    if(warnings>0)
+      diagnostic_info+=",  ";
+    diagnostic_info+=std::to_string(errors)+" error";
+    if(errors>1)
+      diagnostic_info+='s';
+  }
+  set_info("  "+diagnostic_info);
 }
 
 void Source::ClangViewParse::update_types() {
