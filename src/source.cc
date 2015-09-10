@@ -879,7 +879,7 @@ std::pair<char, unsigned> Source::View::find_tab_char_and_size() {
 }
 
 bool Source::View::is_word_iter(const Gtk::TextIter& iter) {
-  return ((*iter>=48 && *iter<=57) || (*iter>=65 && *iter<=90) || (*iter>=97 && *iter<=122) || *iter==39 || *iter>=128);
+  return ((*iter>=65 && *iter<=90) || (*iter>=97 && *iter<=122) || *iter==39 || *iter>=128);
 }
 
 std::pair<Gtk::TextIter, Gtk::TextIter> Source::View::spellcheck_get_word(Gtk::TextIter iter) {
