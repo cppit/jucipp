@@ -32,7 +32,15 @@ int Notebook::size() {
 }
 
 Source::View* Notebook::get_view(int page) {
-  return source_views.at(page);
+  return source_views.at(get_index(page));
+}
+
+size_t Notebook::get_index(int page) {
+  for(size_t c=0;c<hboxes.size();c++) {
+    if(page_num(*hboxes.at(c))==page)
+      return c;
+  }
+  return -1;
 }
 
 Source::View* Notebook::get_current_view() {
@@ -75,6 +83,15 @@ void Notebook::open(const boost::filesystem::path &file_path) {
   }
   else
     source_views.emplace_back(new Source::GenericView(file_path, language));
+  
+  source_views.back()->on_update_status=[this](Source::View* view, const std::string &status) {
+    if(get_current_page()!=-1 && get_current_view()==view)
+      Singleton::status()->set_text(status+" ");
+  };
+  source_views.back()->on_update_info=[this](Source::View* view, const std::string &info) {
+    if(get_current_page()!=-1 && get_current_view()==view)
+      Singleton::info()->set_text(" "+info);
+  };
     
   scrolled_windows.emplace_back(new Gtk::ScrolledWindow());
   hboxes.emplace_back(new Gtk::HBox());
@@ -82,7 +99,9 @@ void Notebook::open(const boost::filesystem::path &file_path) {
   hboxes.back()->pack_start(*scrolled_windows.back(), true, true);
   
   std::string title=file_path.filename().string();
+    
   append_page(*hboxes.back(), title);
+  set_tab_reorderable(*hboxes.back(), true);
   show_all_children();
   set_current_page(size()-1);
   set_focus_child(*source_views.back());
@@ -105,10 +124,6 @@ void Notebook::open(const boost::filesystem::path &file_path) {
       set_tab_label_text(*(get_nth_page(page)), title);
   });
   
-  get_current_view()->on_update_status=[this](Source::View* view, const std::string &status) {
-    if(get_current_page()!=-1 && get_current_view()==view)
-      Singleton::status()->set_text(status);
-  };
   DEBUG("end");
 }
 
@@ -176,15 +191,16 @@ bool Notebook::close_current_page() {
       }
     }
     int page = get_current_page();
+    int index=get_index(page);
     remove_page(page);
-    auto source_view=source_views.at(page);
+    auto source_view=source_views.at(index);
     if(auto source_clang_view=dynamic_cast<Source::ClangView*>(source_view))
       source_clang_view->async_delete();
     else
       delete source_view;
-    source_views.erase(source_views.begin()+ page);
-    scrolled_windows.erase(scrolled_windows.begin()+page);
-    hboxes.erase(hboxes.begin()+page);
+    source_views.erase(source_views.begin()+index);
+    scrolled_windows.erase(scrolled_windows.begin()+index);
+    hboxes.erase(hboxes.begin()+index);
   }
   DEBUG("end true");
   return true;

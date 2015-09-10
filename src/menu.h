@@ -13,7 +13,7 @@ public:
   
   Gtk::Box box;
   std::unordered_map<std::string, std::string> key_map;
-  std::string ui;
+  std::string ui_xml;
   Glib::RefPtr<Gtk::UIManager> ui_manager;
   Glib::RefPtr<Gtk::ActionGroup> action_group;
 };

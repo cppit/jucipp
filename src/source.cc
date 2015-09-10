@@ -48,13 +48,22 @@ Glib::RefPtr<Gsv::Language> Source::guess_language(const boost::filesystem::path
 //////////////
 AspellConfig* Source::View::spellcheck_config=NULL;
 
-Source::View::View(const boost::filesystem::path &file_path): file_path(file_path) {
+Source::View::View(const boost::filesystem::path &file_path, Glib::RefPtr<Gsv::Language> language): file_path(file_path) {
   set_smart_home_end(Gsv::SMART_HOME_END_BEFORE);
+  
   get_source_buffer()->begin_not_undoable_action();
-  if(juci::filesystem::read(file_path, get_buffer())==-1)
-    Singleton::terminal()->print("Error: "+file_path.string()+" is not a valid UTF-8 file.");
+  if(language) {
+    if(juci::filesystem::read_non_utf8(file_path, get_buffer())==-1)
+      Singleton::terminal()->print("Warning: "+file_path.string()+" is not a valid UTF-8 file. Saving might corrupt the file.\n");
+  }
+  else {
+    if(juci::filesystem::read(file_path, get_buffer())==-1)
+      Singleton::terminal()->print("Error: "+file_path.string()+" is not a valid UTF-8 file.\n");
+  }
   get_source_buffer()->end_not_undoable_action();
+  
   get_buffer()->place_cursor(get_buffer()->get_iter_at_offset(0)); 
+  
   search_settings = gtk_source_search_settings_new();
   gtk_source_search_settings_set_wrap_around(search_settings, true);
   search_context = gtk_source_search_context_new(get_source_buffer()->gobj(), search_settings);
@@ -193,8 +202,8 @@ Source::View::View(const boost::filesystem::path &file_path): file_path(file_pat
         if(ends_line || *iter=='/' || *iter=='*') //iter_has_context_class is sadly bugged
           backward_success=context_iter.backward_char();
         if(backward_success) {
+          if(last_keyval_is_backspace && !is_word_iter(iter) && iter.forward_char()) {} //backspace fix
           if((spellcheck_all && !get_source_buffer()->iter_has_context_class(context_iter, "no-spell-check")) || get_source_buffer()->iter_has_context_class(context_iter, "comment") || get_source_buffer()->iter_has_context_class(context_iter, "string")) {
-            if(last_keyval_is_backspace && !is_word_iter(iter) && iter.forward_char()) {} //backspace fix
             if(!is_word_iter(iter)) { //Might have used space or - to split two words
               auto first=iter;
               auto second=iter;
@@ -209,6 +218,20 @@ Source::View::View(const boost::filesystem::path &file_path): file_path(file_pat
             else {
               auto word=spellcheck_get_word(iter);
               spellcheck_word(word.first, word.second);
+            }
+          }
+          else {
+            auto tags=iter.get_tags();
+            bool has_spellcheck_error=false;
+            for(auto &tag: tags) {
+              if(tag->property_name()=="spellcheck_error") {
+                has_spellcheck_error=true;
+                break;
+              }
+            }
+            if(has_spellcheck_error) {
+              auto word=spellcheck_get_word(iter);
+              get_buffer()->remove_tag_by_name("spellcheck_error", word.first, word.second);
             }
           }
         }
@@ -230,6 +253,12 @@ Source::View::View(const boost::filesystem::path &file_path): file_path(file_pat
             }
           }
           if(need_suggestions) {
+            auto iter=get_buffer()->get_insert()->get_iter();
+            if(!((spellcheck_all && !get_source_buffer()->iter_has_context_class(iter, "no-spell-check")) || get_source_buffer()->iter_has_context_class(iter, "comment") || get_source_buffer()->iter_has_context_class(iter, "string"))) {
+              auto word=spellcheck_get_word(iter);
+              get_buffer()->remove_tag_by_name("spellcheck_error", word.first, word.second);
+              return false;
+            }
             spellcheck_suggestions_dialog=std::unique_ptr<SelectionDialog>(new SelectionDialog(*this, get_buffer()->create_mark(get_buffer()->get_insert()->get_iter()), false));
             spellcheck_suggestions_dialog->on_hide=[this](){
               spellcheck_suggestions_dialog_shown=false;
@@ -255,6 +284,10 @@ Source::View::View(const boost::filesystem::path &file_path): file_path(file_pat
       }
     });
   }
+  
+  get_buffer()->signal_changed().connect([this](){
+    set_info(info);
+  });
   
   set_tooltip_events();
 }
@@ -307,6 +340,7 @@ void Source::View::set_tooltip_events() {
       }, 500);
       type_tooltips.hide();
       diagnostic_tooltips.hide();
+      set_info(info);
     }
   });
   
@@ -519,6 +553,14 @@ void Source::View::set_status(const std::string &status) {
   this->status=status;
   if(on_update_status)
     on_update_status(this, status);
+}
+
+void Source::View::set_info(const std::string &info) {
+  this->info=info;
+  auto iter=get_buffer()->get_insert()->get_iter();
+  auto positions=std::to_string(iter.get_line()+1)+":"+std::to_string(iter.get_line_offset()+1);
+  if(on_update_info)
+    on_update_info(this, positions+" "+info);
 }
 
 std::string Source::View::get_line(const Gtk::TextIter &iter) {
@@ -857,7 +899,7 @@ std::pair<char, unsigned> Source::View::find_tab_char_and_size() {
 }
 
 bool Source::View::is_word_iter(const Gtk::TextIter& iter) {
-  return ((*iter>=48 && *iter<=57) || (*iter>=65 && *iter<=90) || (*iter>=97 && *iter<=122) || *iter==39 || *iter>=128);
+  return ((*iter>=65 && *iter<=90) || (*iter>=97 && *iter<=122) || *iter==39 || *iter>=128);
 }
 
 std::pair<Gtk::TextIter, Gtk::TextIter> Source::View::spellcheck_get_word(Gtk::TextIter iter) {
@@ -908,7 +950,7 @@ std::vector<std::string> Source::View::spellcheck_get_suggestions(const Gtk::Tex
 /////////////////////
 //// GenericView ////
 /////////////////////
-Source::GenericView::GenericView(const boost::filesystem::path &file_path, Glib::RefPtr<Gsv::Language> language) : View(file_path) {
+Source::GenericView::GenericView(const boost::filesystem::path &file_path, Glib::RefPtr<Gsv::Language> language) : View(file_path, language) {
   if(language) {
     get_source_buffer()->set_language(language);
     Singleton::terminal()->print("Language for file "+file_path.string()+" set to "+language->get_name()+".\n");
@@ -928,8 +970,8 @@ Source::GenericView::GenericView(const boost::filesystem::path &file_path, Glib:
 ////////////////////////
 clang::Index Source::ClangViewParse::clang_index(0, 0);
 
-Source::ClangViewParse::ClangViewParse(const boost::filesystem::path &file_path, const boost::filesystem::path& project_path):
-Source::View(file_path), project_path(project_path) {
+Source::ClangViewParse::ClangViewParse(const boost::filesystem::path &file_path, const boost::filesystem::path& project_path, Glib::RefPtr<Gsv::Language> language):
+Source::View(file_path, language), project_path(project_path), parse_error(false) {
   DEBUG("start");
   auto scheme = get_source_buffer()->get_style_scheme();
   auto tag_table=get_buffer()->get_tag_table();
@@ -983,6 +1025,7 @@ Source::View(file_path), project_path(project_path) {
   parse_fail.connect([this](){
     Singleton::terminal()->print("Error: failed to reparse "+this->file_path.string()+".\n");
     set_status("");
+    set_info("");
     parsing_in_progress->cancel("failed");
   });
   init_parse();
@@ -1025,7 +1068,8 @@ void Source::ClangViewParse::init_parse() {
     }
     pos++;
   }
-  init_syntax_highlighting(buffer_map);
+  clang_tu = std::unique_ptr<clang::TranslationUnit>(new clang::TranslationUnit(clang_index, file_path.string(), get_compilation_commands(), buffer_map));
+  clang_tokens=clang_tu->get_tokens(0, buffer_map.find(file_path.string())->second.size()-1);
   update_syntax();
   
   set_status("parsing...");
@@ -1042,29 +1086,23 @@ void Source::ClangViewParse::init_parse() {
         parse_start();
       }
       else if (parse_thread_mapped && parsing_mutex.try_lock() && parse_thread_buffer_map_mutex.try_lock()) {
-        int status=reparse(parse_thread_buffer_map);
+        int status=clang_tu->ReparseTranslationUnit(parse_thread_buffer_map);
+        if(status==0)
+          clang_tokens=clang_tu->get_tokens(0, parse_thread_buffer_map.find(file_path.string())->second.size()-1);
+        else
+          parse_error=true;
         parse_thread_go=false;
-        if(status!=0)
-          parse_thread_stop=true;
         parsing_mutex.unlock();
         parse_thread_buffer_map_mutex.unlock();
         if(status!=0) {
           parse_fail();
-          return;
+          parse_thread_stop=true;
         }
-        parse_done();
+        else
+          parse_done();
       }
     }
   });
-}
-
-void Source::ClangViewParse::init_syntax_highlighting(const std::map<std::string, std::string> &buffers) {
-  std::vector<string> arguments = get_compilation_commands();
-  clang_tu = std::unique_ptr<clang::TranslationUnit>(new clang::TranslationUnit(clang_index,
-                                                                           file_path.string(),
-                                                                           arguments,
-                                                                           buffers));
-  clang_tokens=clang_tu->get_tokens(0, buffers.find(file_path.string())->second.size()-1);
 }
 
 std::map<std::string, std::string> Source::ClangViewParse::get_buffer_map() const {
@@ -1077,23 +1115,12 @@ void Source::ClangViewParse::start_reparse() {
   parse_thread_mapped=false;
   source_readable=false;
   delayed_reparse_connection.disconnect();
-  if(!parse_thread_stop) {
-    delayed_reparse_connection=Glib::signal_timeout().connect([this]() {
-      source_readable=false;
-      parse_thread_go=true;
-      set_status("parsing...");
-      return false;
-    }, 1000);
-  }
-}
-
-int Source::ClangViewParse::reparse(const std::map<std::string, std::string> &buffer) {
-  int status = clang_tu->ReparseTranslationUnit(buffer);
-  if(status!=0) {
-    return status;
-  }
-  clang_tokens=clang_tu->get_tokens(0, parse_thread_buffer_map.find(file_path.string())->second.size()-1);
-  return status;
+  delayed_reparse_connection=Glib::signal_timeout().connect([this]() {
+    source_readable=false;
+    parse_thread_go=true;
+    set_status("parsing...");
+    return false;
+  }, 1000);
 }
 
 std::vector<std::string> Source::ClangViewParse::get_compilation_commands() {
@@ -1192,6 +1219,8 @@ void Source::ClangViewParse::update_diagnostics() {
   get_buffer()->remove_tag_by_name("def:warning_underline", get_buffer()->begin(), get_buffer()->end());
   get_buffer()->remove_tag_by_name("def:error_underline", get_buffer()->begin(), get_buffer()->end());
   auto diagnostics=clang_tu->get_diagnostics();
+  size_t warnings=0;
+  size_t errors=0;
   for(auto &diagnostic: diagnostics) {
     if(diagnostic.path==file_path.string()) {
       auto start_line=get_line(diagnostic.offsets.first.line-1); //index is sometimes off the line
@@ -1213,10 +1242,14 @@ void Source::ClangViewParse::update_diagnostics() {
       auto start=get_buffer()->get_iter_at_line_index(diagnostic.offsets.first.line-1, start_line_index);
       auto end=get_buffer()->get_iter_at_line_index(diagnostic.offsets.second.line-1, end_line_index);
       std::string diagnostic_tag_name;
-      if(diagnostic.severity<=CXDiagnostic_Warning)
+      if(diagnostic.severity<=CXDiagnostic_Warning) {
         diagnostic_tag_name="def:warning";
-      else
+        warnings++;
+      }
+      else {
         diagnostic_tag_name="def:error";
+        errors++;
+      }
       
       auto spelling=diagnostic.spelling;
       auto severity_spelling=diagnostic.severity_spelling;
@@ -1237,6 +1270,20 @@ void Source::ClangViewParse::update_diagnostics() {
       }
     }
   }
+  std::string diagnostic_info;
+  if(warnings>0) {
+    diagnostic_info+=std::to_string(warnings)+" warning";
+    if(warnings>1)
+      diagnostic_info+='s';
+  }
+  if(errors>0) {
+    if(warnings>0)
+      diagnostic_info+=", ";
+    diagnostic_info+=std::to_string(errors)+" error";
+    if(errors>1)
+      diagnostic_info+='s';
+  }
+  set_info("  "+diagnostic_info);
 }
 
 void Source::ClangViewParse::update_types() {
@@ -1401,8 +1448,8 @@ bool Source::ClangViewParse::on_key_press_event(GdkEventKey* key) {
 //////////////////////////////
 //// ClangViewAutocomplete ///
 //////////////////////////////
-Source::ClangViewAutocomplete::ClangViewAutocomplete(const boost::filesystem::path &file_path, const boost::filesystem::path& project_path):
-Source::ClangViewParse(file_path, project_path), autocomplete_cancel_starting(false) {
+Source::ClangViewAutocomplete::ClangViewAutocomplete(const boost::filesystem::path &file_path, const boost::filesystem::path& project_path, Glib::RefPtr<Gsv::Language> language):
+Source::ClangViewParse(file_path, project_path, language), autocomplete_cancel_starting(false) {
   get_buffer()->signal_changed().connect([this](){
     if(completion_dialog_shown)
       delayed_reparse_connection.disconnect();
@@ -1435,6 +1482,23 @@ Source::ClangViewParse(file_path, project_path), autocomplete_cancel_starting(fa
       completion_dialog->hide();
       
     return false;
+  });
+  
+  autocomplete_fail.connect([this]() {
+    Singleton::terminal()->print("Error: autocomplete failed, reparsing "+this->file_path.string()+"\n");
+    restart_parse();
+    autocomplete_starting=false;
+    autocomplete_cancel_starting=false;
+  });
+  
+  do_delete_object.connect([this](){
+    if(delete_thread.joinable())
+      delete_thread.join();
+    delete this;
+  });
+  do_restart_parse.connect([this](){
+    init_parse();
+    restart_parse_running=false;
   });
 }
 
@@ -1489,6 +1553,10 @@ void Source::ClangViewAutocomplete::start_autocomplete() {
 }
 
 void Source::ClangViewAutocomplete::autocomplete() {
+  if(parse_thread_stop) {
+    return;
+  }
+    
   if(!autocomplete_starting) {
     autocomplete_starting=true;
     autocomplete_cancel_starting=false;
@@ -1505,6 +1573,7 @@ void Source::ClangViewAutocomplete::autocomplete() {
         completion_dialog->on_hide=[this](){
           get_source_buffer()->end_user_action();
           completion_dialog_shown=false;
+          source_readable=false;
           start_reparse();
         };
         completion_dialog->on_select=[this, rows](const std::string& selected, bool hide_window) {
@@ -1581,16 +1650,23 @@ void Source::ClangViewAutocomplete::autocomplete() {
       parsing_mutex.lock();
       if(!parse_thread_stop)
         *ac_data=move(get_autocomplete_suggestions(line_nr, column_nr, *buffer_map));
-      autocomplete_done();
+      if(!parse_thread_stop)
+        autocomplete_done();
+      else
+        autocomplete_fail();
       parsing_mutex.unlock();
     });
   }
 }
 
-std::vector<Source::AutoCompleteData> Source::ClangViewAutocomplete::
-get_autocomplete_suggestions(int line_number, int column, std::map<std::string, std::string>& buffer_map) {
+std::vector<Source::AutoCompleteData> Source::ClangViewAutocomplete::get_autocomplete_suggestions(int line_number, int column, std::map<std::string, std::string>& buffer_map) {
   std::vector<Source::AutoCompleteData> suggestions;
   auto results=clang_tu->get_code_completions(buffer_map, line_number, column);
+  if(results.cx_results==NULL) {
+    parse_thread_stop=true;
+    return suggestions;
+  }
+    
   if(!autocomplete_cancel_starting) {
     prefix_mutex.lock();
     auto prefix_copy=prefix;
@@ -1617,12 +1693,46 @@ get_autocomplete_suggestions(int line_number, int column, std::map<std::string, 
   return suggestions;
 }
 
+void Source::ClangViewAutocomplete::async_delete() {
+  parsing_in_progress->cancel("canceled, freeing resources in the background");
+  parse_thread_stop=true;
+  delete_thread=std::thread([this](){
+    //TODO: Is it possible to stop the clang-process in progress?
+    if(restart_parse_thread.joinable())
+      restart_parse_thread.join();
+    if(parse_thread.joinable())
+      parse_thread.join();
+    if(autocomplete_thread.joinable())
+      autocomplete_thread.join();
+    do_delete_object();
+  });
+}
+
+bool Source::ClangViewAutocomplete::restart_parse() {
+  if(!restart_parse_running && !parse_error) {
+    reparse_needed=false;
+    restart_parse_running=true;
+    parse_thread_stop=true;
+    if(restart_parse_thread.joinable())
+      restart_parse_thread.join();
+    restart_parse_thread=std::thread([this](){
+      if(parse_thread.joinable())
+        parse_thread.join();
+      if(autocomplete_thread.joinable())
+        autocomplete_thread.join();
+      do_restart_parse();
+    });
+    return true;
+  }
+  return false;
+}
+
 ////////////////////////////
 //// ClangViewRefactor /////
 ////////////////////////////
 
-Source::ClangViewRefactor::ClangViewRefactor(const boost::filesystem::path &file_path, const boost::filesystem::path& project_path):
-Source::ClangViewAutocomplete(file_path, project_path) {
+Source::ClangViewRefactor::ClangViewRefactor(const boost::filesystem::path &file_path, const boost::filesystem::path& project_path, Glib::RefPtr<Gsv::Language> language):
+Source::ClangViewAutocomplete(file_path, project_path, language) {
   similar_tokens_tag=get_buffer()->create_tag();
   similar_tokens_tag->property_weight()=Pango::WEIGHT_BOLD;
   
@@ -1767,53 +1877,9 @@ Source::ClangViewRefactor::~ClangViewRefactor() {
   delayed_tag_similar_tokens_connection.disconnect();
 }
 
-Source::ClangView::ClangView(const boost::filesystem::path &file_path, const boost::filesystem::path& project_path, Glib::RefPtr<Gsv::Language> language): ClangViewRefactor(file_path, project_path) {
+Source::ClangView::ClangView(const boost::filesystem::path &file_path, const boost::filesystem::path& project_path, Glib::RefPtr<Gsv::Language> language): ClangViewRefactor(file_path, project_path, language) {
   if(language) {
     get_source_buffer()->set_highlight_syntax(true);
     get_source_buffer()->set_language(language);
   }
-  
-  do_delete_object.connect([this](){
-    if(delete_thread.joinable())
-      delete_thread.join();
-    delete this;
-  });
-  do_restart_parse.connect([this](){
-    init_parse();
-    restart_parse_running=false;
-  });
-}
-
-void Source::ClangView::async_delete() {
-  parsing_in_progress->cancel("canceled, freeing resources in the background");
-  parse_thread_stop=true;
-  delete_thread=std::thread([this](){
-    //TODO: Is it possible to stop the clang-process in progress?
-    if(restart_parse_thread.joinable())
-      restart_parse_thread.join();
-    if(parse_thread.joinable())
-      parse_thread.join();
-    if(autocomplete_thread.joinable())
-      autocomplete_thread.join();
-    do_delete_object();
-  });
-}
-
-bool Source::ClangView::restart_parse() {
-  if(!restart_parse_running && !parse_thread_stop) {
-    reparse_needed=false;
-    restart_parse_running=true;
-    parse_thread_stop=true;
-    if(restart_parse_thread.joinable())
-      restart_parse_thread.join();
-    restart_parse_thread=std::thread([this](){
-      if(parse_thread.joinable())
-        parse_thread.join();
-      if(autocomplete_thread.joinable())
-        autocomplete_thread.join();
-      do_restart_parse();
-    });
-    return true;
-  }
-  return false;
 }

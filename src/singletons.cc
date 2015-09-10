@@ -17,3 +17,9 @@ Gtk::Label *Singleton::status() {
     status_=std::unique_ptr<Gtk::Label>(new Gtk::Label());
   return status_.get();
 }
+std::unique_ptr<Gtk::Label> Singleton::info_=std::unique_ptr<Gtk::Label>();
+Gtk::Label *Singleton::info() {
+  if(!info_)
+    info_=std::unique_ptr<Gtk::Label>(new Gtk::Label());
+  return info_.get();
+}

@@ -25,15 +25,6 @@ int juci::filesystem::read(const std::string &path, Glib::RefPtr<Gtk::TextBuffer
     Glib::ustring ustr=std::move(ss.str());
     
     bool valid=true;
-    //This was way too slow...
-    /*Glib::ustring::iterator iter;
-    while(!ustr.validate(iter)) {
-      auto next_char_iter=iter;
-      next_char_iter++;
-      ustr.replace(iter, next_char_iter, "?");
-      if(valid)
-        valid=false;
-    }*/
     
     if(ustr.validate())
       text_buffer->insert_at_cursor(ustr);
@@ -60,6 +51,35 @@ int juci::filesystem::read(const std::string &path, Glib::RefPtr<Gtk::TextBuffer
       
       text_buffer->insert_at_cursor(ustr); //What if insert happens in the middle of an UTF-8 char???
     }*/
+    input.close();
+    if(valid)
+      return 1;
+    else
+      return -1;
+  }
+  return 0;
+}
+
+int juci::filesystem::read_non_utf8(const std::string &path, Glib::RefPtr<Gtk::TextBuffer> text_buffer) {
+  std::ifstream input(path, std::ofstream::binary);
+  
+  if(input) {
+    //need to read the whole file to make this work...
+    std::stringstream ss;
+    ss << input.rdbuf();
+    Glib::ustring ustr=std::move(ss.str());
+    
+    bool valid=true;
+    Glib::ustring::iterator iter;
+    while(!ustr.validate(iter)) {
+      auto next_char_iter=iter;
+      next_char_iter++;
+      ustr.replace(iter, next_char_iter, "?");
+      valid=false;
+    }
+    
+    text_buffer->insert_at_cursor(ustr);
+    
     input.close();
     if(valid)
       return 1;

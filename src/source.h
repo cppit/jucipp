@@ -52,7 +52,7 @@ namespace Source {
 
   class View : public Gsv::View {
   public:
-    View(const boost::filesystem::path &file_path);
+    View(const boost::filesystem::path &file_path, Glib::RefPtr<Gsv::Language> language);
     ~View();
     
     void search_highlight(const std::string &text, bool case_sensitive, bool regex);
@@ -75,7 +75,11 @@ namespace Source {
     std::function<size_t(const std::string &token, const std::string &text)> rename_similar_tokens;
     
     std::function<void(View* view, const std::string &status)> on_update_status;
+    std::function<void(View* view, const std::string &info)> on_update_info;
+    void set_status(const std::string &status);
+    void set_info(const std::string &info);
     std::string status;
+    std::string info;
   protected:
     bool source_readable;
     Tooltips diagnostic_tooltips;
@@ -84,9 +88,7 @@ namespace Source {
     gdouble on_motion_last_y;
     sigc::connection delayed_tooltips_connection;
     void set_tooltip_events();
-    
-    void set_status(const std::string &status);
-    
+        
     std::string get_line(const Gtk::TextIter &iter);
     std::string get_line(Glib::RefPtr<Gtk::TextBuffer::Mark> mark);
     std::string get_line(int line_nr);
@@ -134,7 +136,7 @@ namespace Source {
   
   class ClangViewParse : public View {
   public:
-    ClangViewParse(const boost::filesystem::path &file_path, const boost::filesystem::path& project_path);
+    ClangViewParse(const boost::filesystem::path &file_path, const boost::filesystem::path& project_path, Glib::RefPtr<Gsv::Language> language);
     ~ClangViewParse();
     boost::filesystem::path project_path;
     void start_reparse();
@@ -150,15 +152,13 @@ namespace Source {
     std::shared_ptr<Terminal::InProgress> parsing_in_progress;
     std::thread parse_thread;
     std::atomic<bool> parse_thread_stop;
+    std::atomic<bool> parse_error;
     
     std::regex bracket_regex;
     std::regex no_bracket_statement_regex;
     std::regex no_bracket_no_para_statement_regex;
   private:
     std::map<std::string, std::string> get_buffer_map() const;
-    // inits the syntax highligthing on file open
-    void init_syntax_highlighting(const std::map<std::string, std::string> &buffers);
-    int reparse(const std::map<std::string, std::string> &buffers);
     void update_syntax();
     std::set<std::string> last_syntax_tags;
     void update_diagnostics();
@@ -178,7 +178,9 @@ namespace Source {
     
   class ClangViewAutocomplete : public ClangViewParse {
   public:
-    ClangViewAutocomplete(const boost::filesystem::path &file_path, const boost::filesystem::path& project_path);
+    ClangViewAutocomplete(const boost::filesystem::path &file_path, const boost::filesystem::path& project_path, Glib::RefPtr<Gsv::Language> language);
+    void async_delete();
+    bool restart_parse();
   protected:
     bool on_key_press_event(GdkEventKey* key);
     std::thread autocomplete_thread;
@@ -190,16 +192,23 @@ namespace Source {
     std::vector<Source::AutoCompleteData> get_autocomplete_suggestions(int line_number, int column, std::map<std::string, std::string>& buffer_map);
     Glib::Dispatcher autocomplete_done;
     sigc::connection autocomplete_done_connection;
+    Glib::Dispatcher autocomplete_fail;
     bool autocomplete_starting=false;
     std::atomic<bool> autocomplete_cancel_starting;
     guint last_keyval=0;
     std::string prefix;
     std::mutex prefix_mutex;
+    
+    Glib::Dispatcher do_delete_object;
+    Glib::Dispatcher do_restart_parse;
+    std::thread delete_thread;
+    std::thread restart_parse_thread;
+    bool restart_parse_running=false;
   };
 
   class ClangViewRefactor : public ClangViewAutocomplete {
   public:
-    ClangViewRefactor(const boost::filesystem::path &file_path, const boost::filesystem::path& project_path);
+    ClangViewRefactor(const boost::filesystem::path &file_path, const boost::filesystem::path& project_path, Glib::RefPtr<Gsv::Language> language);
     ~ClangViewRefactor();
   private:
     Glib::RefPtr<Gtk::TextTag> similar_tokens_tag;
@@ -212,14 +221,6 @@ namespace Source {
   class ClangView : public ClangViewRefactor {
   public:
     ClangView(const boost::filesystem::path &file_path, const boost::filesystem::path& project_path, Glib::RefPtr<Gsv::Language> language);
-    void async_delete();
-    bool restart_parse();
-  private:
-    Glib::Dispatcher do_delete_object;
-    Glib::Dispatcher do_restart_parse;
-    std::thread delete_thread;
-    std::thread restart_parse_thread;
-    bool restart_parse_running=false;
   };
 };  // class Source
 #endif  // JUCI_SOURCE_H_

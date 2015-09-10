@@ -31,9 +31,11 @@ public:
   static std::string style_dir() { return std::string(getenv("HOME")) + "/.juci/styles/"; }
   static Terminal *terminal();
   static Gtk::Label *status();
+  static Gtk::Label *info();
 private:
   static std::unique_ptr<Terminal> terminal_;
   static std::unique_ptr<Gtk::Label> status_;
+  static std::unique_ptr<Gtk::Label> info_;
 };
 
 #endif // JUCI_SINGLETONS_H_

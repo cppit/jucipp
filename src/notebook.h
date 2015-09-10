@@ -14,6 +14,7 @@ class Notebook : public Gtk::Notebook {
 public:
   Notebook(Directories &directories);
   Source::View* get_view(int page);
+  size_t get_index(int page);
   int size();
   Source::View* get_current_view();
   bool close_current_page();

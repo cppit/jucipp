@@ -24,8 +24,6 @@ namespace sigc {
 }
 
 void Window::generate_keybindings() {
-  boost::filesystem::path path(Singleton::config_dir() + "menu.xml");
-  menu.ui = juci::filesystem::read(path);
   for (auto &i : Singleton::Config::window()->keybindings) {
     auto key = i.second.get_value<std::string>();
     menu.key_map[i.first] = key;
@@ -54,8 +52,9 @@ Window::Window() : box(Gtk::ORIENTATION_VERTICAL), notebook(directories), compil
   
   terminal_scrolled_window.add(*Singleton::terminal());
   terminal_vbox.pack_start(terminal_scrolled_window);
-  status_hbox.pack_end(*Singleton::status(), Gtk::PACK_SHRINK);
-  terminal_vbox.pack_end(status_hbox, Gtk::PACK_SHRINK);
+  info_and_status_hbox.pack_start(*Singleton::info(), Gtk::PACK_SHRINK);
+  info_and_status_hbox.pack_end(*Singleton::status(), Gtk::PACK_SHRINK);
+  terminal_vbox.pack_end(info_and_status_hbox, Gtk::PACK_SHRINK);
   vpaned.pack2(terminal_vbox, true, true);
   
   box.pack_end(vpaned);
@@ -110,7 +109,8 @@ Window::Window() : box(Gtk::ORIENTATION_VERTICAL), notebook(directories), compil
         }
       }
       
-      Singleton::status()->set_text(notebook.get_current_view()->status);
+      notebook.get_current_view()->set_status(notebook.get_current_view()->status);
+      notebook.get_current_view()->set_info(notebook.get_current_view()->info);
     }
   });
   notebook.signal_page_removed().connect([this](Gtk::Widget* page, guint page_num) {
@@ -322,10 +322,14 @@ void Window::create_menu() {
   });
   menu.action_group->add(Gtk::Action::create("WindowCloseTab", "Close Tab"), Gtk::AccelKey(menu.key_map["close_tab"]), [this]() {
     notebook.close_current_page();
-    if(notebook.get_current_page()!=-1)
-      Singleton::status()->set_text(notebook.get_current_view()->status);
-    else
+    if(notebook.get_current_page()!=-1) {
+      notebook.get_current_view()->set_status(notebook.get_current_view()->status);
+      notebook.get_current_view()->set_info(notebook.get_current_view()->info);
+    }
+    else {
       Singleton::status()->set_text("");
+      Singleton::info()->set_text("");
+    }
   });
   menu.action_group->add(Gtk::Action::create("HelpAbout", "About"), [this] () {
     about.show();
