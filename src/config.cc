@@ -20,14 +20,13 @@ MainConfig::MainConfig() {
 }
 
 void MainConfig::find_or_create_config_files() {
-  std::vector<std::string> files = {"config.json", "menu.xml", "plugins.py"};
+  std::vector<std::string> files = {"config.json", "plugins.py"};
   boost::filesystem::create_directories(boost::filesystem::path(Singleton::config_dir()));
   for (auto &file : files) {
     auto path = boost::filesystem::path(Singleton::config_dir() + file);
     if (!boost::filesystem::is_regular_file(path)) {
       if (file == "config.json") juci::filesystem::write(path, configjson);
       if (file == "plugins.py") juci::filesystem::write(path, pluginspy);
-      if (file == "menu.xml") juci::filesystem::write(path, menuxml);
     }
   }
   

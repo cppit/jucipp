@@ -24,8 +24,6 @@ namespace sigc {
 }
 
 void Window::generate_keybindings() {
-  boost::filesystem::path path(Singleton::config_dir() + "menu.xml");
-  menu.ui = juci::filesystem::read(path);
   for (auto &i : Singleton::Config::window()->keybindings) {
     auto key = i.second.get_value<std::string>();
     menu.key_map[i.first] = key;
