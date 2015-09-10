@@ -202,8 +202,8 @@ Source::View::View(const boost::filesystem::path &file_path, Glib::RefPtr<Gsv::L
         if(ends_line || *iter=='/' || *iter=='*') //iter_has_context_class is sadly bugged
           backward_success=context_iter.backward_char();
         if(backward_success) {
+          if(last_keyval_is_backspace && !is_word_iter(iter) && iter.forward_char()) {} //backspace fix
           if((spellcheck_all && !get_source_buffer()->iter_has_context_class(context_iter, "no-spell-check")) || get_source_buffer()->iter_has_context_class(context_iter, "comment") || get_source_buffer()->iter_has_context_class(context_iter, "string")) {
-            if(last_keyval_is_backspace && !is_word_iter(iter) && iter.forward_char()) {} //backspace fix
             if(!is_word_iter(iter)) { //Might have used space or - to split two words
               auto first=iter;
               auto second=iter;
@@ -218,6 +218,20 @@ Source::View::View(const boost::filesystem::path &file_path, Glib::RefPtr<Gsv::L
             else {
               auto word=spellcheck_get_word(iter);
               spellcheck_word(word.first, word.second);
+            }
+          }
+          else {
+            auto tags=iter.get_tags();
+            bool has_spellcheck_error=false;
+            for(auto &tag: tags) {
+              if(tag->property_name()=="spellcheck_error") {
+                has_spellcheck_error=true;
+                break;
+              }
+            }
+            if(has_spellcheck_error) {
+              auto word=spellcheck_get_word(iter);
+              get_buffer()->remove_tag_by_name("spellcheck_error", word.first, word.second);
             }
           }
         }
@@ -239,6 +253,12 @@ Source::View::View(const boost::filesystem::path &file_path, Glib::RefPtr<Gsv::L
             }
           }
           if(need_suggestions) {
+            auto iter=get_buffer()->get_insert()->get_iter();
+            if(!((spellcheck_all && !get_source_buffer()->iter_has_context_class(iter, "no-spell-check")) || get_source_buffer()->iter_has_context_class(iter, "comment") || get_source_buffer()->iter_has_context_class(iter, "string"))) {
+              auto word=spellcheck_get_word(iter);
+              get_buffer()->remove_tag_by_name("spellcheck_error", word.first, word.second);
+              return false;
+            }
             spellcheck_suggestions_dialog=std::unique_ptr<SelectionDialog>(new SelectionDialog(*this, get_buffer()->create_mark(get_buffer()->get_insert()->get_iter()), false));
             spellcheck_suggestions_dialog->on_hide=[this](){
               spellcheck_suggestions_dialog_shown=false;
