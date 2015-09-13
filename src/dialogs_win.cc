@@ -1,33 +1,26 @@
 #include "dialogs.h"
-#include <windows.h>
-#include <shlobj.h>
+#include <shobjidl.h>
+#include <memory>
+#include <exception>
+#include <singletons.h>
+
+#ifndef check(__fun__)
+#define MESSAGE "An error occurred when trying open windows dialog"
+#define check(__fun__) auto __hr__ = __fun__; if(FAILED(__hr__)) Singleton::terminal()->print(MESSAGE)
+#endif
+
 
 std::string Dialog::select_folder() {
-  char selected_folder[MAX_PATH];
-  char init_path[MAX_PATH];
-  auto title = "Please select a folder";
-  selected_folder[0] = 0;
-  init_path[0] = 0;
+  IFileOpenDialog *dialog = nullptr;
+  check(CoCreateInstance(CLSID_FileOpenDialog, nullptr, CLSCTX_INPROC_SERVER, IID_PPV_ARGS(&dialog)));
+  DWORD options;
+  check(dialog->GetOptions(&options));
   
-  BROWSEINFOA browse;
-  browse.hwndOwner = 0;
-  browse.pidlRoot = NULL;
-  browse.lpszTitle = title;
-  browse.pszDisplayName = init_path;
-  browse.ulFlags = 0;
-  browse.lpfn = NULL;
-  auto result = SHBrowseForFolder(&browse);
-  
-  if(result)
-     SHGetPathFromIDListA(result, selected_folder);
-   
-   std::string dir(selected_folder);
-   return dir;
 }
 /* 
 std::string Dialog::new_file() {
   return open_dialog("Please create a new file",
-            {std::make_pair("Cancel", Gtk::RESPONSE_CANCEL), std::make_pair("Save", Gtk::RESPONSE_OK)},
+            {std::make_pair("Cancel", Gtk::RESPONSECANCEL), std::make_pair("Save", Gtk::RESPONSE_OK)},
             Gtk::FILE_CHOOSER_ACTION_SAVE);
 }
 
