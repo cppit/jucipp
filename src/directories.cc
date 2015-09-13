@@ -29,6 +29,9 @@ Directories::Directories() : stop_update_thread(false) {
   tree_store = Gtk::TreeStore::create(column_record);
   tree_view.set_model(tree_store);
   tree_view.append_column("", column_record.name);
+  auto renderer=dynamic_cast<Gtk::CellRendererText*>(tree_view.get_column(0)->get_first_cell());
+  tree_view.get_column(0)->add_attribute(renderer->property_foreground_rgba(), column_record.color);
+  
   tree_store->set_sort_column(column_record.id, Gtk::SortType::SORT_ASCENDING);
   tree_view.set_enable_search(true); //TODO: why does this not work in OS X?
   tree_view.set_search_column(column_record.name);
@@ -67,6 +70,9 @@ Directories::Directories() : stop_update_thread(false) {
       }
       auto child=tree_store->append(iter->children());
       child->set_value(column_record.name, std::string("(empty)"));
+      Gdk::RGBA rgba;
+      rgba.set_rgba(0.5, 0.5, 0.5);
+      child->set_value(column_record.color, rgba);
     }
   });
   
@@ -243,9 +249,20 @@ void Directories::add_path(const boost::filesystem::path& dir_path, const Gtk::T
           child->set_value(column_record.id, "a"+filename);
           auto grandchild=tree_store->append(child->children());
           grandchild->set_value(column_record.name, std::string("(empty)"));
+          Gdk::RGBA rgba;
+          rgba.set_rgba(0.5, 0.5, 0.5);
+          grandchild->set_value(column_record.color, rgba);
         }
-        else
+        else {
           child->set_value(column_record.id, "b"+filename);
+          
+          auto language=Source::guess_language(it->path().filename());
+          if(!language) {
+            Gdk::RGBA rgba;
+            rgba.set_rgba(0.5, 0.5, 0.5);
+            child->set_value(column_record.color, rgba);
+          }
+        }
       }
     }
   }
@@ -261,5 +278,8 @@ void Directories::add_path(const boost::filesystem::path& dir_path, const Gtk::T
   if(!*children) {
     auto child=tree_store->append(*children);
     child->set_value(column_record.name, std::string("(empty)"));
+    Gdk::RGBA rgba;
+    rgba.set_rgba(0.5, 0.5, 0.5);
+    child->set_value(column_record.color, rgba);
   }
 }

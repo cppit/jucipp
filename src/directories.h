@@ -24,10 +24,12 @@ public:
       add(id);
       add(name);
       add(path);
+      add(color);
     }
     Gtk::TreeModelColumn<std::string> id;
     Gtk::TreeModelColumn<std::string> name;
     Gtk::TreeModelColumn<std::string> path;
+    Gtk::TreeModelColumn<Gdk::RGBA> color;
   };
 
   Directories();
@@ -46,6 +48,7 @@ private:
   Gtk::TreeView tree_view;
   Glib::RefPtr<Gtk::TreeStore> tree_store;
   ColumnRecord column_record;
+  
   std::unordered_map<std::string, std::pair<Gtk::TreeModel::Row, std::time_t> > last_write_times;
   std::mutex update_mutex;
   std::thread update_thread;

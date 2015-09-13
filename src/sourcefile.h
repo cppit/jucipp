@@ -13,6 +13,9 @@ namespace juci {
     static int read(const std::string &path, Glib::RefPtr<Gtk::TextBuffer> text_buffer);
     static int read(const boost::filesystem::path &path, Glib::RefPtr<Gtk::TextBuffer> text_buffer) { return read(path.string(), text_buffer); }
 
+    static int read_non_utf8(const std::string &path, Glib::RefPtr<Gtk::TextBuffer> text_buffer);
+    static int read_non_utf8(const boost::filesystem::path &path, Glib::RefPtr<Gtk::TextBuffer> text_buffer) { return read_non_utf8(path.string(), text_buffer); }
+
     static std::vector<std::string> read_lines(const std::string &path);
     static std::vector<std::string> read_lines(const boost::filesystem::path &path) { return read_lines(path.string()); };
 

@@ -1,8 +1,8 @@
 #include "tooltips.h"
 #include "singletons.h"
 
-#include <iostream>
-using namespace std;
+#include <iostream> //TODO: remove
+using namespace std; //TODO: remove
 
 namespace sigc {
 #ifndef SIGC_FUNCTORS_DEDUCE_RESULT_TYPE_WITH_DECLTYPE
