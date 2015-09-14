@@ -44,18 +44,20 @@ Window::Window() : box(Gtk::ORIENTATION_VERTICAL), notebook(directories), compil
 
   directory_and_notebook_panes.pack1(directories, Gtk::SHRINK);
   notebook_vbox.pack_start(notebook);
-  notebook_vbox.pack_end(entry_box, Gtk::PACK_SHRINK);
+
+  entry_and_info_status_vbox.pack_start(entry_box, Gtk::PACK_SHRINK);
+  info_and_status_hbox.pack_start(*Singleton::info(), Gtk::PACK_SHRINK);
+  info_and_status_hbox.pack_end(*Singleton::status(), Gtk::PACK_SHRINK);
+  entry_and_info_status_vbox.pack_end(info_and_status_hbox, Gtk::PACK_SHRINK);
+  notebook_vbox.pack_end(entry_and_info_status_vbox, Gtk::PACK_SHRINK);
   directory_and_notebook_panes.pack2(notebook_vbox, Gtk::SHRINK);
+  
   directory_and_notebook_panes.set_position(120);
   vpaned.set_position(300);
   vpaned.pack1(directory_and_notebook_panes, true, false);
   
   terminal_scrolled_window.add(*Singleton::terminal());
-  terminal_vbox.pack_start(terminal_scrolled_window);
-  info_and_status_hbox.pack_start(*Singleton::info(), Gtk::PACK_SHRINK);
-  info_and_status_hbox.pack_end(*Singleton::status(), Gtk::PACK_SHRINK);
-  terminal_vbox.pack_end(info_and_status_hbox, Gtk::PACK_SHRINK);
-  vpaned.pack2(terminal_vbox, true, true);
+  vpaned.pack2(terminal_scrolled_window, true, true);
   
   box.pack_end(vpaned);
   show_all_children();

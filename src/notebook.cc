@@ -86,11 +86,11 @@ void Notebook::open(const boost::filesystem::path &file_path) {
   
   source_views.back()->on_update_status=[this](Source::View* view, const std::string &status) {
     if(get_current_page()!=-1 && get_current_view()==view)
-      Singleton::status()->set_text(status+" ");
+      Singleton::status()->set_text(status);
   };
   source_views.back()->on_update_info=[this](Source::View* view, const std::string &info) {
     if(get_current_page()!=-1 && get_current_view()==view)
-      Singleton::info()->set_text(" "+info);
+      Singleton::info()->set_text(info);
   };
     
   scrolled_windows.emplace_back(new Gtk::ScrolledWindow());
