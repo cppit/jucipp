@@ -220,22 +220,32 @@ Source::View::View(const boost::filesystem::path &file_path, Glib::RefPtr<Gsv::L
               spellcheck_word(word.first, word.second);
             }
           }
-          else {
-            auto tags=iter.get_tags();
-            bool has_spellcheck_error=false;
-            for(auto &tag: tags) {
-              if(tag->property_name()=="spellcheck_error") {
-                has_spellcheck_error=true;
-                break;
-              }
-            }
-            if(has_spellcheck_error) {
-              auto word=spellcheck_get_word(iter);
-              get_buffer()->remove_tag_by_name("spellcheck_error", word.first, word.second);
-            }
-          }
         }
       }
+      delayed_spellcheck_error_clear.disconnect();
+      delayed_spellcheck_error_clear=Glib::signal_timeout().connect([this]() {
+        auto iter=get_buffer()->begin();
+        bool spell_check=get_source_buffer()->iter_has_context_class(iter, "string") || get_source_buffer()->iter_has_context_class(iter, "comment");
+        Gtk::TextIter begin_no_spellcheck_iter;
+        if(!spell_check)
+          begin_no_spellcheck_iter=iter;
+        while(iter!=get_buffer()->end()) {
+          auto iter1=iter;
+          auto iter2=iter;
+          get_source_buffer()->iter_forward_to_context_class_toggle(iter1, "string");
+          get_source_buffer()->iter_forward_to_context_class_toggle(iter2, "comment");
+          if(iter2<iter1)
+            iter=iter2;
+          else
+            iter=iter1;
+          spell_check=!spell_check;
+          if(!spell_check)
+            begin_no_spellcheck_iter=iter;
+          else
+            get_buffer()->remove_tag_by_name("spellcheck_error", begin_no_spellcheck_iter, iter);
+        }
+        return false;
+      }, 1000);
     });
     
     get_buffer()->signal_mark_set().connect([this](const Gtk::TextBuffer::iterator& iter, const Glib::RefPtr<Gtk::TextBuffer::Mark>& mark) {
@@ -253,12 +263,6 @@ Source::View::View(const boost::filesystem::path &file_path, Glib::RefPtr<Gsv::L
             }
           }
           if(need_suggestions) {
-            auto iter=get_buffer()->get_insert()->get_iter();
-            if(!((spellcheck_all && !get_source_buffer()->iter_has_context_class(iter, "no-spell-check")) || get_source_buffer()->iter_has_context_class(iter, "comment") || get_source_buffer()->iter_has_context_class(iter, "string"))) {
-              auto word=spellcheck_get_word(iter);
-              get_buffer()->remove_tag_by_name("spellcheck_error", word.first, word.second);
-              return false;
-            }
             spellcheck_suggestions_dialog=std::unique_ptr<SelectionDialog>(new SelectionDialog(*this, get_buffer()->create_mark(get_buffer()->get_insert()->get_iter()), false));
             spellcheck_suggestions_dialog->on_hide=[this](){
               spellcheck_suggestions_dialog_shown=false;
