@@ -232,8 +232,11 @@ Source::View::View(const boost::filesystem::path &file_path, Glib::RefPtr<Gsv::L
         while(iter!=get_buffer()->end()) {
           auto iter1=iter;
           auto iter2=iter;
-          get_source_buffer()->iter_forward_to_context_class_toggle(iter1, "string");
-          get_source_buffer()->iter_forward_to_context_class_toggle(iter2, "comment");
+          if(!get_source_buffer()->iter_forward_to_context_class_toggle(iter1, "string"))
+            iter1=get_buffer()->end();
+          if(!get_source_buffer()->iter_forward_to_context_class_toggle(iter2, "comment"))
+            iter2=get_buffer()->end();
+          
           if(iter2<iter1)
             iter=iter2;
           else
