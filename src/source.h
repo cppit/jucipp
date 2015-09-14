@@ -126,6 +126,7 @@ namespace Source {
     void spellcheck_word(const Gtk::TextIter& start, const Gtk::TextIter& end);
     std::vector<std::string> spellcheck_get_suggestions(const Gtk::TextIter& start, const Gtk::TextIter& end);
     sigc::connection delayed_spellcheck_suggestions_connection;
+    sigc::connection delayed_spellcheck_error_clear;
     bool last_keyval_is_backspace=false;
   };
   
