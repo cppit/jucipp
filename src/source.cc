@@ -310,8 +310,8 @@ void Source::View::set_tooltip_events() {
           Tooltips::init();
           Gdk::Rectangle rectangle(x, y, 1, 1);
           if(source_readable) {
-            type_tooltips.show(rectangle);
-            diagnostic_tooltips.show(rectangle);
+            show_type_tooltips(rectangle);
+            show_diagnostic_tooltips(rectangle);
           }
           return false;
         }, 100);
@@ -338,10 +338,10 @@ void Source::View::set_tooltip_events() {
         buffer_to_window_coords(Gtk::TextWindowType::TEXT_WINDOW_TEXT, rectangle.get_x(), rectangle.get_y(), location_window_x, location_window_y);
         rectangle.set_x(location_window_x-2);
         rectangle.set_y(location_window_y);
-        rectangle.set_width(4);
+        rectangle.set_width(5);
         if(source_readable) {
-          type_tooltips.show(rectangle);
-          diagnostic_tooltips.show(rectangle);
+          show_type_tooltips(rectangle);
+          show_diagnostic_tooltips(rectangle);
         }
         return false;
       }, 500);
@@ -1018,7 +1018,6 @@ Source::View(file_path, language), project_path(project_path), parse_error(false
       if(parsing_mutex.try_lock()) {
         update_syntax();
         update_diagnostics();
-        update_types();
         source_readable=true;
         set_status("");
         parsing_mutex.unlock();
@@ -1293,24 +1292,64 @@ void Source::ClangViewParse::update_diagnostics() {
   set_info("  "+diagnostic_info);
 }
 
-void Source::ClangViewParse::update_types() {
-  type_tooltips.clear();
-  for(auto &token: *clang_tokens) {
-    if(token.get_kind()==clang::Token_Identifier && token.has_type()) {
-      auto start=get_buffer()->get_iter_at_line_index(token.offsets.first.line-1, token.offsets.first.index-1);
-      auto end=get_buffer()->get_iter_at_line_index(token.offsets.second.line-1, token.offsets.second.index-1);
-      auto create_tooltip_buffer=[this, &token]() {
-        auto tooltip_buffer=Gtk::TextBuffer::create(get_buffer()->get_tag_table());
-        tooltip_buffer->insert_with_tag(tooltip_buffer->get_insert()->get_iter(), "Type: "+token.get_type(), "def:note");
-        auto brief_comment=token.get_brief_comments();
-        if(brief_comment!="")
-          tooltip_buffer->insert_with_tag(tooltip_buffer->get_insert()->get_iter(), "\n\n"+brief_comment, "def:note");
-        return tooltip_buffer;
-      };
+void Source::ClangViewParse::show_diagnostic_tooltips(const Gdk::Rectangle &rectangle) {
+  diagnostic_tooltips.show(rectangle);
+}
+
+void Source::ClangViewParse::show_type_tooltips(const Gdk::Rectangle &rectangle) {
+  if(source_readable) {
+    Gtk::TextIter iter;
+    int location_x, location_y;
+    window_to_buffer_coords(Gtk::TextWindowType::TEXT_WINDOW_TEXT, rectangle.get_x(), rectangle.get_y(), location_x, location_y);
+    location_x+=(rectangle.get_width()-1)/2;
+    get_iter_at_location(iter, location_x, location_y);
+    Gdk::Rectangle iter_rectangle;
+    get_iter_location(iter, iter_rectangle);
+    if(iter_rectangle.get_x()>location_x) {
+      if(!iter.starts_line()) {
+        if(!iter.backward_char())
+          return;
+      }
+    }
+    bool found_token=false;
+    if(!((*iter>='a' && *iter<='z') || (*iter>='A' && *iter<='Z') || (*iter>='0' && *iter<='9') || *iter=='_')) {
+      if(!iter.backward_char())
+        return;
+    }
       
-      type_tooltips.emplace_back(create_tooltip_buffer, *this, get_buffer()->create_mark(start), get_buffer()->create_mark(end));
+    while((*iter>='a' && *iter<='z') || (*iter>='A' && *iter<='Z') || (*iter>='0' && *iter<='9') || *iter=='_') {
+      if(!found_token)
+        found_token=true;
+      if(!iter.backward_char())
+        return;
+    }
+    if(found_token && iter.forward_char()) {
+      auto tokens=clang_tu->get_tokens(iter.get_line()+1, iter.get_line_index()+1, 
+                                       iter.get_line()+1, iter.get_line_index()+1);
+      
+      type_tooltips.clear();
+      for(auto &token: *tokens) {
+        if(token.get_kind()==clang::Token_Identifier && token.has_type()) {
+          auto start=get_buffer()->get_iter_at_line_index(token.offsets.first.line-1, token.offsets.first.index-1);
+          auto end=get_buffer()->get_iter_at_line_index(token.offsets.second.line-1, token.offsets.second.index-1);
+          auto create_tooltip_buffer=[this, &token]() {
+            auto tooltip_buffer=Gtk::TextBuffer::create(get_buffer()->get_tag_table());
+            tooltip_buffer->insert_with_tag(tooltip_buffer->get_insert()->get_iter(), "Type: "+token.get_type(), "def:note");
+            auto brief_comment=token.get_brief_comments();
+            if(brief_comment!="")
+              tooltip_buffer->insert_with_tag(tooltip_buffer->get_insert()->get_iter(), "\n\n"+brief_comment, "def:note");
+            return tooltip_buffer;
+          };
+          
+          type_tooltips.emplace_back(create_tooltip_buffer, *this, get_buffer()->create_mark(start), get_buffer()->create_mark(end));
+        }
+      }
+      
+      type_tooltips.show();
     }
   }
+  
+  //type_tooltips.show(rectangle);
 }
 
 //Clang indentation.

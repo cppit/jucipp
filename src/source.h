@@ -84,6 +84,8 @@ namespace Source {
     bool source_readable;
     Tooltips diagnostic_tooltips;
     Tooltips type_tooltips;
+    virtual void show_diagnostic_tooltips(const Gdk::Rectangle &rectangle) {}
+    virtual void show_type_tooltips(const Gdk::Rectangle &rectangle) {}
     gdouble on_motion_last_x;
     gdouble on_motion_last_y;
     sigc::connection delayed_tooltips_connection;
@@ -155,6 +157,9 @@ namespace Source {
     std::atomic<bool> parse_thread_stop;
     std::atomic<bool> parse_error;
     
+    void show_diagnostic_tooltips(const Gdk::Rectangle &rectangle);
+    void show_type_tooltips(const Gdk::Rectangle &rectangle);
+    
     std::regex bracket_regex;
     std::regex no_bracket_statement_regex;
     std::regex no_bracket_no_para_statement_regex;
@@ -163,7 +168,6 @@ namespace Source {
     void update_syntax();
     std::set<std::string> last_syntax_tags;
     void update_diagnostics();
-    void update_types();
     
     static clang::Index clang_index;
     std::vector<std::string> get_compilation_commands();
