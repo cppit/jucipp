@@ -676,7 +676,7 @@ void Window::rename_token_entry() {
   if(notebook.get_current_page()!=-1) {
     if(notebook.get_current_view()->get_token && notebook.get_current_view()->get_token_name) {
       auto token=std::make_shared<std::pair<std::string, int> >(notebook.get_current_view()->get_token());
-      if(token->second!=0 && token->first.size()>0 && notebook.get_current_view()->get_token_name) {
+      if(token->second>=0 && token->first.size()>0 && notebook.get_current_view()->get_token_name) {
         auto token_name=std::make_shared<std::string>(notebook.get_current_view()->get_token_name());
         for(int c=0;c<notebook.size();c++) {
           if(notebook.get_view(c)->tag_similar_tokens) {
