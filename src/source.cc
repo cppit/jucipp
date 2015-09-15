@@ -1834,7 +1834,7 @@ Source::ClangViewAutocomplete(file_path, project_path, language) {
         last_similar_tokens_tagged=token.first;
       }
     }
-    if(token.second>=0 && token.first.size()==0 && last_similar_tokens_tagged!="") {
+    if(token.second<0 && token.first.size()==0 && last_similar_tokens_tagged!="") {
       get_buffer()->remove_tag(similar_tokens_tag, get_buffer()->begin(), get_buffer()->end());
       last_similar_tokens_tagged="";
     }
