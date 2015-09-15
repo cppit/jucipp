@@ -1789,7 +1789,7 @@ Source::ClangViewAutocomplete(file_path, project_path, language) {
     }
   });
   
-  get_token=[this]() -> std::string {
+  get_token=[this]() -> std::pair<std::string, int> {
     if(source_readable) {
       auto iter=get_buffer()->get_insert()->get_iter();
       auto line=(unsigned)iter.get_line();
@@ -1799,12 +1799,12 @@ Source::ClangViewAutocomplete(file_path, project_path, language) {
           if(line==token.offsets.first.line-1 && index>=token.offsets.first.index-1 && index <=token.offsets.second.index-1) {
             auto referenced=token.get_cursor().get_referenced();
             if(referenced)
-              return referenced.get_usr();
+              return {referenced.get_usr(), static_cast<int>(referenced.get_kind())};
           }
         }
       }
     }
-    return "";
+    return {"", -1};
   };
   
   get_token_name=[this]() -> std::string {
@@ -1823,27 +1823,27 @@ Source::ClangViewAutocomplete(file_path, project_path, language) {
     return "";
   };
   
-  tag_similar_tokens=[this](const std::string &usr){
+  tag_similar_tokens=[this](const std::pair<std::string, int> &token){
     if(source_readable) {
-      if(usr.size()>0 && last_similar_tokens_tagged!=usr) {
+      if(token.second!=0 && token.first.size()>0 && last_similar_tokens_tagged!=token.first) {
         get_buffer()->remove_tag(similar_tokens_tag, get_buffer()->begin(), get_buffer()->end());
-        auto offsets=clang_tokens->get_similar_token_offsets(usr);
+        auto offsets=clang_tokens->get_similar_token_offsets(token.first, static_cast<clang::CursorKind>(token.second));
         for(auto &offset: offsets) {
           get_buffer()->apply_tag(similar_tokens_tag, get_buffer()->get_iter_at_line_index(offset.first.line-1, offset.first.index-1), get_buffer()->get_iter_at_line_index(offset.second.line-1, offset.second.index-1));
         }
-        last_similar_tokens_tagged=usr;
+        last_similar_tokens_tagged=token.first;
       }
     }
-    if(usr.size()==0 && last_similar_tokens_tagged!="") {
+    if(token.second!=0 && token.first.size()==0 && last_similar_tokens_tagged!="") {
       get_buffer()->remove_tag(similar_tokens_tag, get_buffer()->begin(), get_buffer()->end());
       last_similar_tokens_tagged="";
     }
   };
   
-  rename_similar_tokens=[this](const std::string &usr, const std::string &text) {
+  rename_similar_tokens=[this](const std::pair<std::string, int> &token, const std::string &text) {
     size_t number=0;
     if(source_readable) {
-      auto offsets=clang_tokens->get_similar_token_offsets(usr);
+      auto offsets=clang_tokens->get_similar_token_offsets(token.first, static_cast<clang::CursorKind>(token.second));
       std::vector<std::pair<Glib::RefPtr<Gtk::TextMark>, Glib::RefPtr<Gtk::TextMark> > > marks;
       for(auto &offset: offsets) {
         marks.emplace_back(get_buffer()->create_mark(get_buffer()->get_iter_at_line_index(offset.first.line-1, offset.first.index-1)), get_buffer()->create_mark(get_buffer()->get_iter_at_line_index(offset.second.line-1, offset.second.index-1)));
@@ -1867,8 +1867,8 @@ Source::ClangViewAutocomplete(file_path, project_path, language) {
     if(mark->get_name()=="insert") {
       delayed_tag_similar_tokens_connection.disconnect();
       delayed_tag_similar_tokens_connection=Glib::signal_timeout().connect([this]() {
-        auto usr=get_token();
-        tag_similar_tokens(usr);
+        auto token=get_token();
+        tag_similar_tokens(token);
         return false;
       }, 100);
     }
