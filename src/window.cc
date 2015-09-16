@@ -36,10 +36,15 @@ Window::Window() : box(Gtk::ORIENTATION_VERTICAL), notebook(directories), compil
   set_default_size(600, 400);
   set_events(Gdk::POINTER_MOTION_MASK|Gdk::FOCUS_CHANGE_MASK|Gdk::SCROLL_MASK);
   add(box);
-  
-  generate_keybindings();
+
+  configure();  
   //PluginApi(&this->notebook, &this->menu);
+  
+  //TODO: Do not use deprecated ui_manager? And make menu shortcuts update when config.json is saved (in configure())
+  generate_keybindings();
   create_menu();
+  menu.build();
+  add_accel_group(menu.ui_manager->get_accel_group());
   box.pack_start(menu.get_widget(), Gtk::PACK_SHRINK);
 
   directory_and_notebook_panes.pack1(directories, Gtk::SHRINK);
@@ -135,6 +140,15 @@ Window::Window() : box(Gtk::ORIENTATION_VERTICAL), notebook(directories), compil
   DEBUG("end");
 } // Window constructor
 
+void Window::configure() {
+  MainConfig(); // Read the configs here
+  auto style_context = Gtk::StyleContext::create();
+  auto screen = Gdk::Screen::get_default();
+  auto css_provider = Gtk::CssProvider::get_named(Singleton::Config::window()->theme_name, Singleton::Config::window()->theme_variant);
+  //TODO: add check if theme exists, or else write error to Singleton::terminal()
+  style_context->add_provider_for_screen(screen, css_provider, GTK_STYLE_PROVIDER_PRIORITY_APPLICATION);
+}
+
 void Window::create_menu() {
   menu.action_group->add(Gtk::Action::create("FileQuit", "Quit juCi++"), Gtk::AccelKey(menu.key_map["quit"]), [this]() {
     hide();
@@ -158,9 +172,19 @@ void Window::create_menu() {
   menu.action_group->add(Gtk::Action::create("FileSaveAs", "Save As"), Gtk::AccelKey(menu.key_map["save_as"]), [this]() {
     save_file_dialog();
   });
+  menu.action_group->add(Gtk::Action::create("Preferences", "Preferences..."), Gtk::AccelKey(menu.key_map["preferences"]), [this]() {
+    notebook.open(Singleton::config_dir()+"config.json");
+  });
 
   menu.action_group->add(Gtk::Action::create("FileSave", "Save"), Gtk::AccelKey(menu.key_map["save"]), [this]() {
     notebook.save_current();
+    if(notebook.get_current_page()!=-1) {
+      if(notebook.get_current_view()->file_path==Singleton::config_dir()+"config.json") {
+        configure();
+        for(int c=0;c<notebook.size();c++)
+          notebook.get_view(c)->configure();
+      }
+    }
   });
 
   menu.action_group->add(Gtk::Action::create("EditCopy", "Copy"), Gtk::AccelKey(menu.key_map["edit_copy"]), [this]() {
@@ -335,8 +359,6 @@ void Window::create_menu() {
     about.show();
     about.present();
   });
-  add_accel_group(menu.ui_manager->get_accel_group()); 
-  menu.build();
 }
 
 bool Window::on_key_press_event(GdkEventKey *event) {

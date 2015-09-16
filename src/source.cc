@@ -78,13 +78,158 @@ Source::View::View(const boost::filesystem::path &file_path, Glib::RefPtr<Gsv::L
   //TODO: (gtkmm's Gtk::Object has connect_property_changed, so subclassing this might be an idea)
   g_signal_connect(search_context, "notify::occurrences-count", G_CALLBACK(search_occurrences_updated), this);
   
+  get_buffer()->create_tag("def:warning");
+  get_buffer()->create_tag("def:warning_underline");
+  get_buffer()->create_tag("def:error");
+  get_buffer()->create_tag("def:error_underline");
+  get_buffer()->create_tag("def:note_background");
+  get_buffer()->create_tag("def:note");
+  if(spellcheck_config==NULL)
+    spellcheck_config=new_aspell_config();
+  spellcheck_checker=NULL;
+  auto tag=get_buffer()->create_tag("spellcheck_error");
+  tag->property_underline()=Pango::Underline::UNDERLINE_ERROR;
+
+  configure();
+    
+  get_buffer()->signal_changed().connect([this](){
+    if(spellcheck_checker==NULL)
+      return;
+    
+    delayed_spellcheck_suggestions_connection.disconnect();
+    
+    auto iter=get_buffer()->get_insert()->get_iter();
+    bool ends_line=iter.ends_line();
+    if(iter.backward_char()) {
+      auto context_iter=iter;
+      bool backward_success=true;
+      if(ends_line || *iter=='/' || *iter=='*') //iter_has_context_class is sadly bugged
+        backward_success=context_iter.backward_char();
+      if(backward_success) {
+        if(last_keyval_is_backspace && !is_word_iter(iter) && iter.forward_char()) {} //backspace fix
+        if((spellcheck_all && !get_source_buffer()->iter_has_context_class(context_iter, "no-spell-check")) || get_source_buffer()->iter_has_context_class(context_iter, "comment") || get_source_buffer()->iter_has_context_class(context_iter, "string")) {
+          if(!is_word_iter(iter)) { //Might have used space or - to split two words
+            auto first=iter;
+            auto second=iter;
+            if(first.backward_char() && second.forward_char() && !second.starts_line()) {
+              get_buffer()->remove_tag_by_name("spellcheck_error", first, second);
+              auto word=spellcheck_get_word(first);
+              spellcheck_word(word.first, word.second);
+              word=spellcheck_get_word(second);
+              spellcheck_word(word.first, word.second);
+            }
+          }
+          else {
+            auto word=spellcheck_get_word(iter);
+            spellcheck_word(word.first, word.second);
+          }
+        }
+      }
+    }
+    delayed_spellcheck_error_clear.disconnect();
+    delayed_spellcheck_error_clear=Glib::signal_timeout().connect([this]() {
+      auto iter=get_buffer()->begin();
+      Gtk::TextIter begin_no_spellcheck_iter;
+      if(spellcheck_all) {
+        bool spell_check=!get_source_buffer()->iter_has_context_class(iter, "no-spell-check");
+        if(!spell_check)
+          begin_no_spellcheck_iter=iter;
+        while(iter!=get_buffer()->end()) {
+          if(!get_source_buffer()->iter_forward_to_context_class_toggle(iter, "no-spell-check"))
+            iter=get_buffer()->end();
+          
+          spell_check=!spell_check;
+          if(!spell_check)
+            begin_no_spellcheck_iter=iter;
+          else
+            get_buffer()->remove_tag_by_name("spellcheck_error", begin_no_spellcheck_iter, iter);
+        }
+        return false;
+      }
+      
+      bool spell_check=get_source_buffer()->iter_has_context_class(iter, "string") || get_source_buffer()->iter_has_context_class(iter, "comment");
+      if(!spell_check)
+        begin_no_spellcheck_iter=iter;
+      while(iter!=get_buffer()->end()) {
+        auto iter1=iter;
+        auto iter2=iter;
+        if(!get_source_buffer()->iter_forward_to_context_class_toggle(iter1, "string"))
+          iter1=get_buffer()->end();
+        if(!get_source_buffer()->iter_forward_to_context_class_toggle(iter2, "comment"))
+          iter2=get_buffer()->end();
+        
+        if(iter2<iter1)
+          iter=iter2;
+        else
+          iter=iter1;
+        spell_check=!spell_check;
+        if(!spell_check)
+          begin_no_spellcheck_iter=iter;
+        else
+          get_buffer()->remove_tag_by_name("spellcheck_error", begin_no_spellcheck_iter, iter);
+      }
+      return false;
+    }, 1000);
+  });
+  
+  get_buffer()->signal_mark_set().connect([this](const Gtk::TextBuffer::iterator& iter, const Glib::RefPtr<Gtk::TextBuffer::Mark>& mark) {
+    if(spellcheck_checker==NULL)
+      return;
+    
+    if(mark->get_name()=="insert") {
+      if(spellcheck_suggestions_dialog_shown)
+        spellcheck_suggestions_dialog->hide();
+      delayed_spellcheck_suggestions_connection.disconnect();
+      delayed_spellcheck_suggestions_connection=Glib::signal_timeout().connect([this]() {
+        auto tags=get_buffer()->get_insert()->get_iter().get_tags();
+        bool need_suggestions=false;
+        for(auto &tag: tags) {
+          if(tag->property_name()=="spellcheck_error") {
+            need_suggestions=true;
+            break;
+          }
+        }
+        if(need_suggestions) {
+          spellcheck_suggestions_dialog=std::unique_ptr<SelectionDialog>(new SelectionDialog(*this, get_buffer()->create_mark(get_buffer()->get_insert()->get_iter()), false));
+          spellcheck_suggestions_dialog->on_hide=[this](){
+            spellcheck_suggestions_dialog_shown=false;
+          };
+          auto word=spellcheck_get_word(get_buffer()->get_insert()->get_iter());
+          auto suggestions=spellcheck_get_suggestions(word.first, word.second);
+          if(suggestions.size()==0)
+            return false;
+          for(auto &suggestion: suggestions)
+            spellcheck_suggestions_dialog->add_row(suggestion);
+          spellcheck_suggestions_dialog->on_select=[this, word](const std::string& selected, bool hide_window) {
+            get_source_buffer()->begin_user_action();
+            get_buffer()->erase(word.first, word.second);
+            get_buffer()->insert(get_buffer()->get_insert()->get_iter(), selected);
+            get_source_buffer()->end_user_action();
+            delayed_tooltips_connection.disconnect();
+          };
+          spellcheck_suggestions_dialog->show();
+          spellcheck_suggestions_dialog_shown=true;
+        }
+        return false;
+      }, 500);
+    }
+  });
+  
+  get_buffer()->signal_changed().connect([this](){
+    set_info(info);
+  });
+  
+  set_tooltip_events();
+}
+
+void Source::View::configure() {
   //TODO: Move this to notebook? Might take up too much memory doing this for every tab.
   auto style_scheme_manager=Gsv::StyleSchemeManager::get_default();
   style_scheme_manager->prepend_search_path(Singleton::style_dir());
-
+  
   if(Singleton::Config::source()->style.size()>0) {
     auto scheme = style_scheme_manager->get_scheme(Singleton::Config::source()->style);
-
+  
     if(scheme)
       get_source_buffer()->set_style_scheme(scheme);
     else
@@ -93,6 +238,8 @@ Source::View::View(const boost::filesystem::path &file_path, Glib::RefPtr<Gsv::L
   
   if(Singleton::Config::source()->wrap_lines)
     set_wrap_mode(Gtk::WrapMode::WRAP_CHAR);
+  else
+    set_wrap_mode(Gtk::WrapMode::WRAP_NONE);
   property_highlight_current_line() = Singleton::Config::source()->highlight_current_line;
   property_show_line_numbers() = Singleton::Config::source()->show_line_numbers;
   if(Singleton::Config::source()->font.size()>0)
@@ -102,8 +249,8 @@ Source::View::View(const boost::filesystem::path &file_path, Glib::RefPtr<Gsv::L
   auto scheme = get_source_buffer()->get_style_scheme();
   auto tag_table=get_buffer()->get_tag_table();
   auto style=scheme->get_style("def:warning");
-  auto diagnostic_tag=get_source_buffer()->create_tag("def:warning");
-  auto diagnostic_tag_underline=get_source_buffer()->create_tag("def:warning_underline");
+  auto diagnostic_tag=get_buffer()->get_tag_table()->lookup("def:warning");
+  auto diagnostic_tag_underline=get_buffer()->get_tag_table()->lookup("def:warning_underline");
   if(style && (style->property_foreground_set() || style->property_background_set())) {
     Glib::ustring warning_property;
     if(style->property_foreground_set()) {
@@ -112,7 +259,7 @@ Source::View::View(const boost::filesystem::path &file_path, Glib::RefPtr<Gsv::L
     }
     else if(style->property_background_set())
       warning_property=style->property_background().get_value();
-
+  
     diagnostic_tag_underline->property_underline()=Pango::Underline::UNDERLINE_ERROR;
     auto tag_class=G_OBJECT_GET_CLASS(diagnostic_tag_underline->gobj()); //For older GTK+ 3 versions:
     auto param_spec=g_object_class_find_property(tag_class, "underline-rgba");
@@ -121,8 +268,8 @@ Source::View::View(const boost::filesystem::path &file_path, Glib::RefPtr<Gsv::L
     }
   }
   style=scheme->get_style("def:error");
-  diagnostic_tag=get_source_buffer()->create_tag("def:error");
-  diagnostic_tag_underline=get_source_buffer()->create_tag("def:error_underline");
+  diagnostic_tag=get_buffer()->get_tag_table()->lookup("def:error");
+  diagnostic_tag_underline=get_buffer()->get_tag_table()->lookup("def:error_underline");
   if(style && (style->property_foreground_set() || style->property_background_set())) {
     Glib::ustring error_property;
     if(style->property_foreground_set()) {
@@ -140,18 +287,30 @@ Source::View::View(const boost::filesystem::path &file_path, Glib::RefPtr<Gsv::L
     }
   }
   //TODO: clear tag_class and param_spec?
-  
+
   //Add tooltip foreground and background
   style = scheme->get_style("def:note");
-  auto note_tag=get_source_buffer()->create_tag("def:note_background");
+  auto note_tag=get_buffer()->get_tag_table()->lookup("def:note_background");
   if(style->property_background_set()) {
     note_tag->property_background()=style->property_background();
   }
-  note_tag=get_source_buffer()->create_tag("def:note");
+  note_tag=get_buffer()->get_tag_table()->lookup("def:note");
   if(style->property_foreground_set()) {
     note_tag->property_foreground()=style->property_foreground();
   }
-  
+    
+  if(Singleton::Config::source()->spellcheck_language.size()>0)
+    aspell_config_replace(spellcheck_config, "lang", Singleton::Config::source()->spellcheck_language.c_str());
+  spellcheck_possible_err=new_aspell_speller(spellcheck_config);
+  if(spellcheck_checker!=NULL)
+    delete_aspell_speller(spellcheck_checker);
+  spellcheck_checker=NULL;
+  if (aspell_error_number(spellcheck_possible_err) != 0)
+    std::cerr << "Spell check error: " << aspell_error_message(spellcheck_possible_err) << std::endl;
+  else
+    spellcheck_checker = to_aspell_speller(spellcheck_possible_err);
+  get_buffer()->remove_tag_by_name("spellcheck_error", get_buffer()->begin(), get_buffer()->end());
+
   tab_char=Singleton::Config::source()->default_tab_char;
   tab_size=Singleton::Config::source()->default_tab_size;
   if(Singleton::Config::source()->auto_tab_char_and_size) {
@@ -170,133 +329,11 @@ Source::View::View(const boost::filesystem::path &file_path, Glib::RefPtr<Gsv::L
       tab_size=tab_char_and_size.second;
     }
   }
+  tab.clear();
   for(unsigned c=0;c<tab_size;c++)
     tab+=tab_char;
   
   tabs_regex=std::regex(std::string("^(")+tab_char+"*)(.*)$");
-  
-  if(spellcheck_config==NULL) {
-    spellcheck_config=new_aspell_config();
-    if(Singleton::Config::source()->spellcheck_language.size()>0)
-      aspell_config_replace(spellcheck_config, "lang", Singleton::Config::source()->spellcheck_language.c_str());
-  }
-
-  spellcheck_possible_err=new_aspell_speller(spellcheck_config);
-  spellcheck_checker=NULL;
-  if (aspell_error_number(spellcheck_possible_err) != 0)
-    std::cerr << "Spell check error: " << aspell_error_message(spellcheck_possible_err) << std::endl;
-  else {
-    spellcheck_checker = to_aspell_speller(spellcheck_possible_err);
-
-    auto tag=get_buffer()->create_tag("spellcheck_error");
-    tag->property_underline()=Pango::Underline::UNDERLINE_ERROR;
-    
-    get_buffer()->signal_changed().connect([this](){
-      delayed_spellcheck_suggestions_connection.disconnect();
-      
-      auto iter=get_buffer()->get_insert()->get_iter();
-      bool ends_line=iter.ends_line();
-      if(iter.backward_char()) {
-        auto context_iter=iter;
-        bool backward_success=true;
-        if(ends_line || *iter=='/' || *iter=='*') //iter_has_context_class is sadly bugged
-          backward_success=context_iter.backward_char();
-        if(backward_success) {
-          if(last_keyval_is_backspace && !is_word_iter(iter) && iter.forward_char()) {} //backspace fix
-          if((spellcheck_all && !get_source_buffer()->iter_has_context_class(context_iter, "no-spell-check")) || get_source_buffer()->iter_has_context_class(context_iter, "comment") || get_source_buffer()->iter_has_context_class(context_iter, "string")) {
-            if(!is_word_iter(iter)) { //Might have used space or - to split two words
-              auto first=iter;
-              auto second=iter;
-              if(first.backward_char() && second.forward_char() && !second.starts_line()) {
-                get_buffer()->remove_tag_by_name("spellcheck_error", first, second);
-                auto word=spellcheck_get_word(first);
-                spellcheck_word(word.first, word.second);
-                word=spellcheck_get_word(second);
-                spellcheck_word(word.first, word.second);
-              }
-            }
-            else {
-              auto word=spellcheck_get_word(iter);
-              spellcheck_word(word.first, word.second);
-            }
-          }
-        }
-      }
-      delayed_spellcheck_error_clear.disconnect();
-      delayed_spellcheck_error_clear=Glib::signal_timeout().connect([this]() {
-        auto iter=get_buffer()->begin();
-        bool spell_check=get_source_buffer()->iter_has_context_class(iter, "string") || get_source_buffer()->iter_has_context_class(iter, "comment");
-        Gtk::TextIter begin_no_spellcheck_iter;
-        if(!spell_check)
-          begin_no_spellcheck_iter=iter;
-        while(iter!=get_buffer()->end()) {
-          auto iter1=iter;
-          auto iter2=iter;
-          if(!get_source_buffer()->iter_forward_to_context_class_toggle(iter1, "string"))
-            iter1=get_buffer()->end();
-          if(!get_source_buffer()->iter_forward_to_context_class_toggle(iter2, "comment"))
-            iter2=get_buffer()->end();
-          
-          if(iter2<iter1)
-            iter=iter2;
-          else
-            iter=iter1;
-          spell_check=!spell_check;
-          if(!spell_check)
-            begin_no_spellcheck_iter=iter;
-          else
-            get_buffer()->remove_tag_by_name("spellcheck_error", begin_no_spellcheck_iter, iter);
-        }
-        return false;
-      }, 1000);
-    });
-    
-    get_buffer()->signal_mark_set().connect([this](const Gtk::TextBuffer::iterator& iter, const Glib::RefPtr<Gtk::TextBuffer::Mark>& mark) {
-      if(mark->get_name()=="insert") {
-        if(spellcheck_suggestions_dialog_shown)
-          spellcheck_suggestions_dialog->hide();
-        delayed_spellcheck_suggestions_connection.disconnect();
-        delayed_spellcheck_suggestions_connection=Glib::signal_timeout().connect([this]() {
-          auto tags=get_buffer()->get_insert()->get_iter().get_tags();
-          bool need_suggestions=false;
-          for(auto &tag: tags) {
-            if(tag->property_name()=="spellcheck_error") {
-              need_suggestions=true;
-              break;
-            }
-          }
-          if(need_suggestions) {
-            spellcheck_suggestions_dialog=std::unique_ptr<SelectionDialog>(new SelectionDialog(*this, get_buffer()->create_mark(get_buffer()->get_insert()->get_iter()), false));
-            spellcheck_suggestions_dialog->on_hide=[this](){
-              spellcheck_suggestions_dialog_shown=false;
-            };
-            auto word=spellcheck_get_word(get_buffer()->get_insert()->get_iter());
-            auto suggestions=spellcheck_get_suggestions(word.first, word.second);
-            if(suggestions.size()==0)
-              return false;
-            for(auto &suggestion: suggestions)
-              spellcheck_suggestions_dialog->add_row(suggestion);
-            spellcheck_suggestions_dialog->on_select=[this, word](const std::string& selected, bool hide_window) {
-              get_source_buffer()->begin_user_action();
-              get_buffer()->erase(word.first, word.second);
-              get_buffer()->insert(get_buffer()->get_insert()->get_iter(), selected);
-              get_source_buffer()->end_user_action();
-              delayed_tooltips_connection.disconnect();
-            };
-            spellcheck_suggestions_dialog->show();
-            spellcheck_suggestions_dialog_shown=true;
-          }
-          return false;
-        }, 500);
-      }
-    });
-  }
-  
-  get_buffer()->signal_changed().connect([this](){
-    set_info(info);
-  });
-  
-  set_tooltip_events();
 }
 
 void Source::View::set_tooltip_events() {
@@ -981,27 +1018,14 @@ clang::Index Source::ClangViewParse::clang_index(0, 0);
 Source::ClangViewParse::ClangViewParse(const boost::filesystem::path &file_path, const boost::filesystem::path& project_path, Glib::RefPtr<Gsv::Language> language):
 Source::View(file_path, language), project_path(project_path), parse_error(false) {
   DEBUG("start");
-  auto scheme = get_source_buffer()->get_style_scheme();
+  
   auto tag_table=get_buffer()->get_tag_table();
   for (auto &item : Singleton::Config::source()->clang_types) {
     if(!tag_table->lookup(item.second)) {
-      auto style = scheme->get_style(item.second);
-      auto tag = get_source_buffer()->create_tag(item.second);
-      if (style) {
-        if (style->property_foreground_set())
-          tag->property_foreground()  = style->property_foreground();
-        if (style->property_background_set())
-          tag->property_background() = style->property_background();
-        if (style->property_strikethrough_set())
-          tag->property_strikethrough() = style->property_strikethrough();
-        //   //    if (style->property_bold_set()) tag->property_weight() = style->property_bold();
-        //   //    if (style->property_italic_set()) tag->property_italic() = style->property_italic();
-        //   //    if (style->property_line_background_set()) tag->property_line_background() = style->property_line_background();
-        //   // if (style->property_underline_set()) tag->property_underline() = style->property_underline();
-      } else
-        INFO("Style " + item.second + " not found in " + scheme->get_name());
+      get_buffer()->create_tag(item.second);
     }
   }
+  configure();
   
   parsing_in_progress=Singleton::terminal()->print_in_progress("Parsing "+file_path.string());
   //GTK-calls must happen in main thread, so the parse_thread
@@ -1043,10 +1067,37 @@ Source::View(file_path, language), project_path(project_path), parse_error(false
     diagnostic_tooltips.hide();
   });
   
+  DEBUG("end");
+}
+
+void Source::ClangViewParse::configure() {
+  Source::View::configure();
+  
+  auto scheme = get_source_buffer()->get_style_scheme();
+  auto tag_table=get_buffer()->get_tag_table();
+  for (auto &item : Singleton::Config::source()->clang_types) {
+    auto tag = get_buffer()->get_tag_table()->lookup(item.second);
+    if(tag) {
+      auto style = scheme->get_style(item.second);
+      if (style) {
+        if (style->property_foreground_set())
+          tag->property_foreground()  = style->property_foreground();
+        if (style->property_background_set())
+          tag->property_background() = style->property_background();
+        if (style->property_strikethrough_set())
+          tag->property_strikethrough() = style->property_strikethrough();
+        //   //    if (style->property_bold_set()) tag->property_weight() = style->property_bold();
+        //   //    if (style->property_italic_set()) tag->property_italic() = style->property_italic();
+        //   //    if (style->property_line_background_set()) tag->property_line_background() = style->property_line_background();
+        //   // if (style->property_underline_set()) tag->property_underline() = style->property_underline();
+      } else
+        INFO("Style " + item.second + " not found in " + scheme->get_name());
+    }
+  }
+  
   bracket_regex=std::regex(std::string("^(")+tab_char+"*).*\\{ *$");
   no_bracket_statement_regex=std::regex(std::string("^(")+tab_char+"*)(if|for|else if|catch|while) *\\(.*[^;}] *$");
   no_bracket_no_para_statement_regex=std::regex(std::string("^(")+tab_char+"*)(else|try|do) *$");
-  DEBUG("end");
 }
 
 Source::ClangViewParse::~ClangViewParse() {

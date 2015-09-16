@@ -80,6 +80,8 @@ void MainConfig::update_config_file() {
       if(cfg.count("version")>0)
         cfg.find("version")->second.data()=default_cfg.get<std::string>("version");
     }
+    else
+      return;
   }
   catch(const std::exception &e) {
     cfg_ok=false;

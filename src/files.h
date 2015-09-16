@@ -47,6 +47,7 @@ const std::string configjson =
 "        \"open_file\": \"<primary>o\",\n"
 "        \"save\": \"<primary>s\",\n"
 "        \"save_as\": \"<primary><shift>s\",\n"
+"        \"preferences\": \"<primary>comma\",\n"
 "        \"quit\": \"<primary>q\",\n"
 "        \"split_window\": \"<primary><alt>s\",\n"
 "        \"close_tab\": \"<primary>w\",\n"

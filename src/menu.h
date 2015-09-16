@@ -11,7 +11,6 @@ public:
   Gtk::Widget& get_widget();
   void build();
   
-  Gtk::Box box;
   std::unordered_map<std::string, std::string> key_map;
   std::string ui_xml;
   Glib::RefPtr<Gtk::UIManager> ui_manager;

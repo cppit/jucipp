@@ -55,6 +55,8 @@ namespace Source {
     View(const boost::filesystem::path &file_path, Glib::RefPtr<Gsv::Language> language);
     ~View();
     
+    virtual void configure();
+    
     void search_highlight(const std::string &text, bool case_sensitive, bool regex);
     std::function<void(int number)> update_search_occurrences;
     void search_forward();
@@ -141,6 +143,8 @@ namespace Source {
   public:
     ClangViewParse(const boost::filesystem::path &file_path, const boost::filesystem::path& project_path, Glib::RefPtr<Gsv::Language> language);
     ~ClangViewParse();
+    void configure();
+    
     boost::filesystem::path project_path;
     void start_reparse();
     bool reparse_needed=false;

@@ -39,6 +39,7 @@ private:
   Menu menu;
   std::atomic<bool> compiling;
 
+  void configure();
   void create_menu();
   void hide();
   void new_file_dialog();

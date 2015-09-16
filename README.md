@@ -14,7 +14,7 @@ towards libclang with speed in mind.
 * Refactoring across files
 * Highlighting of similar types
 * Spell checking depending on file context
-* Basic editor functionallity
+* Basic editor functionality
 * Write your own plugins in python (disabled at the moment)
 
 ## Dependencies ##

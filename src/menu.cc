@@ -1,15 +1,14 @@
 #include "menu.h"
 #include <iostream>
 
-Menu::Menu() : box(Gtk::ORIENTATION_VERTICAL) {
+Menu::Menu() {
   action_group = Gtk::ActionGroup::create();
   ui_manager = Gtk::UIManager::create();
-
+  ui_manager->insert_action_group(action_group);
+  
   action_group->add(Gtk::Action::create("FileMenu", "File"));
   action_group->add(Gtk::Action::create("EditMenu", "Edit"));
   action_group->add(Gtk::Action::create("WindowMenu", "_Window"));
-  action_group->add(Gtk::Action::create("WindowSplitWindow", "Split window"), Gtk::AccelKey(key_map["split_window"]), [this]() {
-  });
   action_group->add(Gtk::Action::create("ProjectMenu", "P_roject"));
   action_group->add(Gtk::Action::create("SourceMenu", "_Source"));
   action_group->add(Gtk::Action::create("PluginMenu", "_Plugins"));
@@ -30,6 +29,8 @@ Menu::Menu() : box(Gtk::ORIENTATION_VERTICAL) {
   "      <separator/>\n"
   "      <menuitem action=\"FileSave\"/>\n"
   "      <menuitem action=\"FileSaveAs\"/>\n"
+  "      <separator/>\n"
+  "      <menuitem action=\"Preferences\"/>\n"
   "      <separator/>\n"
   "      <menuitem action=\"FileQuit\"/>\n"
   "    </menu>\n"
@@ -61,7 +62,6 @@ Menu::Menu() : box(Gtk::ORIENTATION_VERTICAL) {
   "    </menu>\n"
   "    <menu action=\"WindowMenu\">\n"
   "      <menuitem action=\"WindowCloseTab\"/>\n"
-  "      <menuitem action=\"WindowSplitWindow\"/>\n"
   "    </menu>\n"
   "    <menu action=\"PluginMenu\">\n"
   "    </menu>\n"
@@ -83,5 +83,6 @@ void Menu::build() {
   catch (const Glib::Error &ex) {
     std::cerr << "building menu failed" << ex.what();
   }
+  
   ui_manager->insert_action_group(action_group);
 }

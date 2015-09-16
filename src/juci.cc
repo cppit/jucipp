@@ -1,6 +1,5 @@
 #include "juci.h"
 #include "singletons.h"
-#include "config.h"
 #include <iostream>
 
 using namespace std; //TODO: remove
@@ -69,12 +68,7 @@ void app::on_activate() {
 }
 
 app::app() : Gtk::Application("no.sout.juci", Gio::APPLICATION_NON_UNIQUE | Gio::APPLICATION_HANDLES_COMMAND_LINE) {
-  MainConfig(); // Read the configs here
-  auto style_context = Gtk::StyleContext::create();
-  auto screen = Gdk::Screen::get_default();
-  auto css_provider = Gtk::CssProvider::get_named(Singleton::Config::window()->theme_name, Singleton::Config::window()->theme_variant);
-  //TODO: add check if theme exists, or else write error to Singleton::terminal()
-  style_context->add_provider_for_screen(screen, css_provider, GTK_STYLE_PROVIDER_PRIORITY_APPLICATION);
+  
 }
 
 int main(int argc, char *argv[]) {
