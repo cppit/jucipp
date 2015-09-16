@@ -378,6 +378,7 @@ Source::View::~View() {
   
   delayed_tooltips_connection.disconnect();
   delayed_spellcheck_suggestions_connection.disconnect();
+  delayed_spellcheck_error_clear.disconnect();
   
   if(spellcheck_checker!=NULL)
     delete_aspell_speller(spellcheck_checker);
