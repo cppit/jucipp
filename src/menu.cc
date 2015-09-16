@@ -83,6 +83,4 @@ void Menu::build() {
   catch (const Glib::Error &ex) {
     std::cerr << "building menu failed" << ex.what();
   }
-  
-  ui_manager->insert_action_group(action_group);
 }
