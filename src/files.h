@@ -1,7 +1,7 @@
 #include <string>
 const std::string configjson =
 "{\n"
-"    \"version\": \"0.9.1\",\n"
+"    \"version\": \"0.9.2\",\n"
 "    \"gtk_theme\": {\n"
 "        \"name\": \"Adwaita\", //Use \"\" for default theme, At least these two exist on all systems: Adwaita, Raleigh\n"
 "        \"variant\": \"\" //Use \"\" for default variant, and \"dark\" for dark theme variant\n"
@@ -58,6 +58,7 @@ const std::string configjson =
 "        \"edit_find\": \"<primary>f\",\n"
 "        \"source_goto_line\": \"<primary>g\",\n"
 "        \"source_center_cursor\": \"<primary>l\",\n"
+"        \"source_cycle_diagnostics\": \"<primary>e\",\n"
 "        \"source_goto_declaration\": \"<primary>d\",\n"
 "        \"source_goto_method\": \"<primary>m\",\n"
 "        \"source_rename\": \"<primary>r\",\n"

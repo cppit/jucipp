@@ -5,9 +5,14 @@
 #include "files.h"
 #include "sourcefile.h"
 
+#include <iostream> //TODO: remove
+using namespace std; //TODO: remove
+
 MainConfig::MainConfig() {
   find_or_create_config_files();
   boost::property_tree::json_parser::read_json(Singleton::config_dir() + "config.json", cfg);
+  update_config_file();
+  
   Singleton::Config::window()->keybindings = cfg.get_child("keybindings");
   GenerateSource();
   GenerateDirectoryFilter();
@@ -39,6 +44,49 @@ void MainConfig::find_or_create_config_files() {
   juci_style_path+="juci-dark.xml";
   if(!boost::filesystem::exists(juci_style_path))
     juci::filesystem::write(juci_style_path, juci_dark_style);
+}
+
+bool MainConfig::check_config_file(const boost::property_tree::ptree &default_cfg, std::string parent_path) {
+  if(parent_path.size()>0)
+    parent_path+=".";
+  bool exists=true;
+  for(auto &node: default_cfg) {
+    auto path=parent_path+node.first;
+    try {
+      cfg.get<std::string>(path);
+    }
+    catch(const std::exception &e) {
+      cfg.add(path, node.second.data());
+      exists=false;        
+    }
+    try {
+      exists&=check_config_file(default_cfg.get_child(node.first), path);
+    }
+    catch(const std::exception &e) {        
+    }
+  }
+  return exists;
+}
+
+void MainConfig::update_config_file() {
+  std::stringstream ss;
+  ss << configjson;
+  boost::property_tree::ptree default_cfg;
+  boost::property_tree::read_json(ss, default_cfg);
+  bool cfg_ok=true;
+  try {
+    if(default_cfg.get<std::string>("version")!=cfg.get<std::string>("version")) {
+      cfg_ok=false;
+      if(cfg.count("version")>0)
+        cfg.find("version")->second.data()=default_cfg.get<std::string>("version");
+    }
+  }
+  catch(const std::exception &e) {
+    cfg_ok=false;
+  }
+  cfg_ok&=check_config_file(default_cfg);
+  if(!cfg_ok)
+    boost::property_tree::write_json(Singleton::config_dir()+"config.json", cfg);
 }
 
 void MainConfig::GenerateSource() {
