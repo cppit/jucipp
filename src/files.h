@@ -1,7 +1,10 @@
 #include <string>
+
+#define JUCI_VERSION "0.9.2"
+
 const std::string configjson =
 "{\n"
-"    \"version\": \"0.9.2\",\n"
+"    \"version\": \""+std::string(JUCI_VERSION)+"\",\n"
 "    \"gtk_theme\": {\n"
 "        \"name\": \"Adwaita\", //Use \"\" for default theme, At least these two exist on all systems: Adwaita, Raleigh\n"
 "        \"variant\": \"\" //Use \"\" for default variant, and \"dark\" for dark theme variant\n"

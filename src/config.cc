@@ -69,13 +69,13 @@ bool MainConfig::check_config_file(const boost::property_tree::ptree &default_cf
 }
 
 void MainConfig::update_config_file() {
-  std::stringstream ss;
-  ss << configjson;
   boost::property_tree::ptree default_cfg;
-  boost::property_tree::read_json(ss, default_cfg);
   bool cfg_ok=true;
   try {
-    if(default_cfg.get<std::string>("version")!=cfg.get<std::string>("version")) {
+    if(cfg.get<std::string>("version")!=JUCI_VERSION) {
+      std::stringstream ss;
+      ss << configjson;
+      boost::property_tree::read_json(ss, default_cfg);
       cfg_ok=false;
       if(cfg.count("version")>0)
         cfg.find("version")->second.data()=default_cfg.get<std::string>("version");
