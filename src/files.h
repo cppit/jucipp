@@ -5,6 +5,10 @@
 const std::string configjson =
 "{\n"
 "    \"version\": \""+std::string(JUCI_VERSION)+"\",\n"
+"    \"default_window_size\": {\n"
+"        \"width\": 600,\n"
+"        \"height\": 400\n"
+"    },\n"
 "    \"gtk_theme\": {\n"
 "        \"name\": \"Adwaita\", //Use \"\" for default theme, At least these two exist on all systems: Adwaita, Raleigh\n"
 "        \"variant\": \"\" //Use \"\" for default variant, and \"dark\" for dark theme variant\n"

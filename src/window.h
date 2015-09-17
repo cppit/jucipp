@@ -19,6 +19,7 @@ public:
     std::string theme_name;
     std::string theme_variant;
     std::string version;
+    std::pair<int, int> default_size;
     boost::property_tree::ptree keybindings;
   };
 

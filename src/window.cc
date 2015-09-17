@@ -33,12 +33,13 @@ void Window::generate_keybindings() {
 Window::Window() : box(Gtk::ORIENTATION_VERTICAL), notebook(directories), compiling(false) {
   DEBUG("start");
   set_title("juCi++");
-  set_default_size(600, 400);
   set_events(Gdk::POINTER_MOTION_MASK|Gdk::FOCUS_CHANGE_MASK|Gdk::SCROLL_MASK);
-  add(box);
-
-  configure();  
+  configure();
+  set_default_size(Singleton::Config::window()->default_size.first, Singleton::Config::window()->default_size.second);
+  
   //PluginApi(&this->notebook, &this->menu);
+  
+  add(box);
   
   //TODO: Do not use deprecated ui_manager? And make menu shortcuts update when config.json is saved (in configure())
   generate_keybindings();
@@ -51,8 +52,8 @@ Window::Window() : box(Gtk::ORIENTATION_VERTICAL), notebook(directories), compil
   notebook_vbox.pack_start(notebook);
   notebook_vbox.pack_end(entry_box, Gtk::PACK_SHRINK);
   directory_and_notebook_panes.pack2(notebook_vbox, Gtk::SHRINK);
-  directory_and_notebook_panes.set_position(120);
-  vpaned.set_position(300);
+  directory_and_notebook_panes.set_position(static_cast<int>(0.2*Singleton::Config::window()->default_size.first));
+  vpaned.set_position(static_cast<int>(0.75*Singleton::Config::window()->default_size.second));
   vpaned.pack1(directory_and_notebook_panes, true, false);
   
   terminal_scrolled_window.add(*Singleton::terminal());
