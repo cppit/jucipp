@@ -5,8 +5,8 @@
 #include "files.h"
 #include "sourcefile.h"
 #include "singletons.h"
+#include <iostream>
 
-#include <iostream> //TODO: remove
 using namespace std; //TODO: remove
 
 MainConfig::MainConfig() {
@@ -97,6 +97,7 @@ void MainConfig::update_config_file() {
       return;
   }
   catch(const std::exception &e) {
+    std::cerr << "Error reading json-file: " << e.what() << std::endl;
     cfg_ok=false;
   }
   cfg_ok&=check_config_file(default_cfg);

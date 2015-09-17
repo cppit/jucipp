@@ -355,6 +355,19 @@ void Window::create_menu() {
       Singleton::info()->set_text("");
     }
   });
+  menu.action_group->add(Gtk::Action::create("WindowNextTab", "Next Tab"), Gtk::AccelKey(menu.key_map["next_tab"]), [this]() {
+    if(notebook.get_current_page()!=-1) {
+      notebook.open(notebook.get_view((notebook.get_current_page()+1)%notebook.size())->file_path);
+    }
+  });
+  menu.action_group->add(Gtk::Action::create("WindowPreviousTab", "Previous Tab"), Gtk::AccelKey(menu.key_map["previous_tab"]), [this]() {
+    if(notebook.get_current_page()!=-1) {
+      int previous_page=notebook.get_current_page()-1;
+      if(previous_page<0)
+        previous_page=notebook.size()-1;
+      notebook.open(notebook.get_view(previous_page)->file_path);
+    }
+  });
   menu.action_group->add(Gtk::Action::create("HelpAbout", "About"), [this] () {
     about.show();
     about.present();
@@ -366,7 +379,7 @@ bool Window::on_key_press_event(GdkEventKey *event) {
     entry_box.hide();
   }
 #ifdef __APPLE__ //For Apple's Command-left, right, up, down keys
-  else if((event->state & GDK_META_MASK)>0) {
+  else if((event->state & GDK_META_MASK)>0 && (event->state & GDK_MOD1_MASK)==0) {
     if(event->keyval==GDK_KEY_Left) {
       event->keyval=GDK_KEY_Home;
       event->state=event->state & GDK_SHIFT_MASK;
