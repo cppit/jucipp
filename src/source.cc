@@ -1475,7 +1475,7 @@ bool Source::ClangViewParse::on_key_press_event(GdkEventKey* key) {
         auto line=get_line_before(found_iter);
         if(std::regex_match(line, sm, tabs_regex)) {
           tabs=sm[1].str();
-          for(int c=0;c<sm[2].str().size()+1;c++)
+          for(size_t c=0;c<sm[2].str().size()+1;c++)
             tabs+=' ';
         }
       }
