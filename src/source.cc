@@ -1472,10 +1472,12 @@ bool Source::ClangViewParse::on_key_press_event(GdkEventKey* key) {
       iter=get_buffer()->get_insert()->get_iter();
       auto found_iter=iter;
       if(find_open_expression_symbol(iter, start_of_sentence_iter, found_iter)) {
-        auto offset=found_iter.get_line_offset();
-        tabs.clear();
-        for(int c=0;c<offset+1;c++)
-          tabs+=' ';
+        auto line=get_line_before(found_iter);
+        if(std::regex_match(line, sm, tabs_regex)) {
+          tabs=sm[1].str();
+          for(int c=0;c<sm[2].str().size()+1;c++)
+            tabs+=' ';
+        }
       }
       else if(std::regex_match(line, sm, no_bracket_statement_regex)) {
         get_source_buffer()->insert_at_cursor("\n"+tabs+tab);

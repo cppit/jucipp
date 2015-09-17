@@ -513,8 +513,13 @@ void Window::new_cpp_project_dialog() {
       Singleton::terminal()->print("Error: "+cpp_main_path.string()+" already exists.\n");
       return;
     }
+    auto tab_char=Singleton::Config::source()->default_tab_char;
+    auto tab_size=Singleton::Config::source()->default_tab_size;
+    std::string tab;
+    for(unsigned c=0;c<tab_size;c++)
+      tab+=tab_char;
     std::string cmakelists="cmake_minimum_required(VERSION 2.8)\n\nproject("+project_name+")\n\nset(CMAKE_CXX_FLAGS \"${CMAKE_CXX_FLAGS} -std=c++1y -Wall\")\n\nadd_executable("+project_name+" main.cpp)\n";
-    std::string cpp_main="#include <iostream>\n\nusing namespace std;\n\nint main() {\n  cout << \"Hello World!\" << endl;\n\n  return 0;\n}\n";
+    std::string cpp_main="#include <iostream>\n\nusing namespace std;\n\nint main() {\n"+tab+"cout << \"Hello World!\" << endl;\n\n"+tab+"return 0;\n}\n";
     if(juci::filesystem::write(cmakelists_path, cmakelists) && juci::filesystem::write(cpp_main_path, cpp_main)) {
       directories.open(project_path);
       notebook.open(cpp_main_path);
