@@ -4,24 +4,25 @@
 #include <exception>
 #include "files.h"
 #include "sourcefile.h"
+#include "singletons.h"
 
 #include <iostream> //TODO: remove
 using namespace std; //TODO: remove
 
 MainConfig::MainConfig() {
   find_or_create_config_files();
-  boost::property_tree::json_parser::read_json(Singleton::config_dir() + "config.json", cfg);
-  update_config_file();
-  
-  Singleton::Config::window()->keybindings = cfg.get_child("keybindings");
-  GenerateSource();
-  GenerateDirectoryFilter();
-  
-  Singleton::Config::window()->theme_name=cfg.get<std::string>("gtk_theme.name");
-  Singleton::Config::window()->theme_variant=cfg.get<std::string>("gtk_theme.variant");
-  Singleton::Config::window()->version = cfg.get<std::string>("version");
-  Singleton::Config::terminal()->make_command=cfg.get<std::string>("project.make_command");
-  Singleton::Config::terminal()->cmake_command=cfg.get<std::string>("project.cmake_command");
+  try {
+    boost::property_tree::json_parser::read_json(Singleton::config_dir() + "config.json", cfg);
+    update_config_file();
+    retrieve_config();
+  }
+  catch(const std::exception &e) {
+    Singleton::terminal()->print("Error reading "+Singleton::config_dir() + "config.json: "+e.what()+"\n");
+    std::stringstream ss;
+    ss << configjson;
+    boost::property_tree::read_json(ss, cfg);
+    retrieve_config();
+  }
 }
 
 void MainConfig::find_or_create_config_files() {
@@ -44,6 +45,18 @@ void MainConfig::find_or_create_config_files() {
   juci_style_path+="juci-dark.xml";
   if(!boost::filesystem::exists(juci_style_path))
     juci::filesystem::write(juci_style_path, juci_dark_style);
+}
+
+void MainConfig::retrieve_config() {
+  Singleton::Config::window()->keybindings = cfg.get_child("keybindings");
+  GenerateSource();
+  GenerateDirectoryFilter();
+  
+  Singleton::Config::window()->theme_name=cfg.get<std::string>("gtk_theme.name");
+  Singleton::Config::window()->theme_variant=cfg.get<std::string>("gtk_theme.variant");
+  Singleton::Config::window()->version = cfg.get<std::string>("version");
+  Singleton::Config::terminal()->make_command=cfg.get<std::string>("project.make_command");
+  Singleton::Config::terminal()->cmake_command=cfg.get<std::string>("project.cmake_command");
 }
 
 bool MainConfig::check_config_file(const boost::property_tree::ptree &default_cfg, std::string parent_path) {
