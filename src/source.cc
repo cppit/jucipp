@@ -89,8 +89,6 @@ Source::View::View(const boost::filesystem::path &file_path, Glib::RefPtr<Gsv::L
   spellcheck_checker=NULL;
   auto tag=get_buffer()->create_tag("spellcheck_error");
   tag->property_underline()=Pango::Underline::UNDERLINE_ERROR;
-
-  configure();
     
   get_buffer()->signal_changed().connect([this](){
     if(spellcheck_checker==NULL)
@@ -996,6 +994,8 @@ std::vector<std::string> Source::View::spellcheck_get_suggestions(const Gtk::Tex
 //// GenericView ////
 /////////////////////
 Source::GenericView::GenericView(const boost::filesystem::path &file_path, Glib::RefPtr<Gsv::Language> language) : View(file_path, language) {
+  configure();
+  
   if(language) {
     get_source_buffer()->set_language(language);
     Singleton::terminal()->print("Language for file "+file_path.string()+" set to "+language->get_name()+".\n");
