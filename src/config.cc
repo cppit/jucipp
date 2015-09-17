@@ -45,6 +45,10 @@ void MainConfig::find_or_create_config_files() {
   juci_style_path+="juci-dark.xml";
   if(!boost::filesystem::exists(juci_style_path))
     juci::filesystem::write(juci_style_path, juci_dark_style);
+  juci_style_path=Singleton::style_dir();
+  juci_style_path+="juci-dark-blue.xml";
+  if(!boost::filesystem::exists(juci_style_path))
+    juci::filesystem::write(juci_style_path, juci_dark_blue_style);
 }
 
 void MainConfig::retrieve_config() {
