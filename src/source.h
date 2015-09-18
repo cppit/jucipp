@@ -75,6 +75,7 @@ namespace Source {
     std::function<std::string()> get_token_name;
     std::function<void(const std::pair<std::string, int> &token)> tag_similar_tokens;
     std::function<size_t(const std::pair<std::string, int> &token, const std::string &text)> rename_similar_tokens;
+    std::function<void()> goto_next_diagnostic;
     
     std::function<void(View* view, const std::string &status)> on_update_status;
     std::function<void(View* view, const std::string &info)> on_update_info;
@@ -167,6 +168,8 @@ namespace Source {
     std::regex bracket_regex;
     std::regex no_bracket_statement_regex;
     std::regex no_bracket_no_para_statement_regex;
+    
+    std::set<int> diagnostic_offsets;
   private:
     std::map<std::string, std::string> get_buffer_map() const;
     void update_syntax();

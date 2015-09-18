@@ -267,6 +267,13 @@ void Window::create_menu() {
   menu.action_group->add(Gtk::Action::create("SourceRename", "Rename"), Gtk::AccelKey(menu.key_map["source_rename"]), [this]() {
     rename_token_entry();
   });
+  menu.action_group->add(Gtk::Action::create("SourceGotoNextDiagnostic", "Go to next Diagnostic"), Gtk::AccelKey(menu.key_map["source_goto_next_diagnostic"]), [this]() {
+    if(notebook.get_current_page()!=-1) {
+      if(notebook.get_current_view()->goto_next_diagnostic) {
+        notebook.get_current_view()->goto_next_diagnostic();
+      }
+    }
+  });
 
   menu.action_group->add(Gtk::Action::create("ProjectCompileAndRun", "Compile and Run"), Gtk::AccelKey(menu.key_map["compile_and_run"]), [this]() {
     if(notebook.get_current_page()==-1 || compiling)

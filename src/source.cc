@@ -1287,6 +1287,7 @@ void Source::ClangViewParse::update_syntax() {
 }
 
 void Source::ClangViewParse::update_diagnostics() {
+  diagnostic_offsets.clear();
   diagnostic_tooltips.clear();
   get_buffer()->remove_tag_by_name("def:warning_underline", get_buffer()->begin(), get_buffer()->end());
   get_buffer()->remove_tag_by_name("def:error_underline", get_buffer()->begin(), get_buffer()->end());
@@ -1312,6 +1313,7 @@ void Source::ClangViewParse::update_diagnostics() {
           end_line_index=end_line.size();
       }
       auto start=get_buffer()->get_iter_at_line_index(diagnostic.offsets.first.line-1, start_line_index);
+      diagnostic_offsets.emplace(start.get_offset());
       auto end=get_buffer()->get_iter_at_line_index(diagnostic.offsets.second.line-1, end_line_index);
       std::string diagnostic_tag_name;
       if(diagnostic.severity<=CXDiagnostic_Warning) {
@@ -1975,7 +1977,6 @@ Source::ClangViewAutocomplete(file_path, project_path, language) {
         (*rows)[method.first]=method.second;
         selection_dialog->add_row(method.first);
       }
-      //TODO see if rows gets destroyed when selection_dialog gets destroyed.
       selection_dialog->on_select=[this, rows](const std::string& selected, bool hide_window) {
         auto offset=rows->at(selected);
         get_buffer()->place_cursor(get_buffer()->get_iter_at_line_index(offset.line-1, offset.index-1));
@@ -1983,6 +1984,24 @@ Source::ClangViewAutocomplete(file_path, project_path, language) {
         delayed_tooltips_connection.disconnect();
       };
       selection_dialog->show();
+    }
+  };
+  
+  goto_next_diagnostic=[this]() {
+    if(source_readable) {
+      auto insert_offset=get_buffer()->get_insert()->get_iter().get_offset();
+      for(auto offset: diagnostic_offsets) {
+        if(offset>insert_offset) {
+          get_buffer()->place_cursor(get_buffer()->get_iter_at_offset(offset));
+          scroll_to(get_buffer()->get_insert(), 0.0, 1.0, 0.5);
+          return;
+        }
+      }
+      if(diagnostic_offsets.size()>0) {
+        auto iter=get_buffer()->get_iter_at_offset(*diagnostic_offsets.begin());
+        get_buffer()->place_cursor(iter);
+        scroll_to(get_buffer()->get_insert(), 0.0, 1.0, 0.5);
+      }
     }
   };
 }
