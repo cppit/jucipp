@@ -331,7 +331,7 @@ void Source::View::configure() {
   for(unsigned c=0;c<tab_size;c++)
     tab+=tab_char;
   
-  tabs_regex=std::regex(std::string("^(")+tab_char+"*)(.*)$");
+  tabs_regex=std::regex("^([ \\t]*)(.*)$");
 }
 
 void Source::View::set_tooltip_events() {
@@ -842,10 +842,9 @@ bool Source::View::on_key_press_event(GdkEventKey* key) {
     get_source_buffer()->end_user_action();
     return true;
   }
-  //"Smart" backspace key TODO: remove commented out lines if this works
+  //"Smart" backspace key
   else if(key->keyval==GDK_KEY_BackSpace && !get_buffer()->get_has_selection()) {
     auto insert_it=get_buffer()->get_insert()->get_iter();
-    //int line_nr=insert_it.get_line();
     auto line=get_line_before();
     std::smatch sm;
     if(std::regex_match(line, sm, tabs_regex) && sm[1].str().size()==line.size()) {
@@ -853,6 +852,21 @@ bool Source::View::on_key_press_event(GdkEventKey* key) {
       if(line_start_iter.backward_chars(line.size()))
         get_buffer()->erase(insert_it, line_start_iter);
     }
+  }
+  //"Smart" delete key
+  else if(key->keyval==GDK_KEY_Delete && !get_buffer()->get_has_selection()) {
+    auto insert_iter=get_buffer()->get_insert()->get_iter();
+    auto iter=insert_iter;
+    bool perform_smart_delete=false;
+    while(*iter==' ' || *iter=='\t' || iter.ends_line()) {
+      if(iter.ends_line())
+        perform_smart_delete=true;
+      if(!iter.forward_char()) {
+        break;
+      }
+    }
+    if(perform_smart_delete && iter.backward_char())
+      get_buffer()->erase(insert_iter, iter);
   }
 
   bool stop=Gsv::View::on_key_press_event(key);
@@ -1095,9 +1109,9 @@ void Source::ClangViewParse::configure() {
     }
   }
   
-  bracket_regex=std::regex(std::string("^(")+tab_char+"*).*\\{ *$");
-  no_bracket_statement_regex=std::regex(std::string("^(")+tab_char+"*)(if|for|else if|catch|while) *\\(.*[^;}] *$");
-  no_bracket_no_para_statement_regex=std::regex(std::string("^(")+tab_char+"*)(else|try|do) *$");
+  bracket_regex=std::regex("^([ \\t]*).*\\{ *$");
+  no_bracket_statement_regex=std::regex("^([ \\t]*)(if|for|else if|catch|while) *\\(.*[^;}] *$");
+  no_bracket_no_para_statement_regex=std::regex("^([ \\t]*)(else|try|do) *$");
 }
 
 Source::ClangViewParse::~ClangViewParse() {
