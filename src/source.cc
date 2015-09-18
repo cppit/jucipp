@@ -1397,7 +1397,9 @@ void Source::ClangViewParse::show_type_tooltips(const Gdk::Rectangle &rectangle)
       
       type_tooltips.clear();
       for(auto &token: *tokens) {
-        if(token.get_kind()==clang::Token_Identifier && token.has_type()) {
+        if(token.get_kind()==clang::Token_Identifier && token.has_type()) {          
+          if(static_cast<unsigned>(token.get_cursor().get_kind())==103) //These cursors are buggy
+            continue;
           auto start=get_buffer()->get_iter_at_line_index(token.offsets.first.line-1, token.offsets.first.index-1);
           auto end=get_buffer()->get_iter_at_line_index(token.offsets.second.line-1, token.offsets.second.index-1);
           auto create_tooltip_buffer=[this, &token]() {
@@ -1867,6 +1869,8 @@ Source::ClangViewAutocomplete(file_path, project_path, language) {
       for(auto &token: *clang_tokens) {
         if(token.get_kind()==clang::Token_Identifier && token.has_type()) {
           if(line==token.offsets.first.line-1 && index>=token.offsets.first.index-1 && index <=token.offsets.second.index-1) {
+            if(static_cast<unsigned>(token.get_cursor().get_kind())==103) //These cursors are buggy
+              continue;
             auto referenced=token.get_cursor().get_referenced();
             if(referenced)
               return {referenced.get_usr(), static_cast<int>(referenced.get_kind())};
