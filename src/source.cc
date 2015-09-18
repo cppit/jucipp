@@ -858,9 +858,12 @@ bool Source::View::on_key_press_event(GdkEventKey* key) {
     auto insert_iter=get_buffer()->get_insert()->get_iter();
     auto iter=insert_iter;
     bool perform_smart_delete=false;
-    while(*iter==' ' || *iter=='\t' || iter.ends_line()) {
-      if(iter.ends_line())
+    bool first_line=true;
+    while(*iter==' ' || *iter=='\t' || (first_line && iter.ends_line())) {
+      if(iter.ends_line()) {
         perform_smart_delete=true;
+        first_line=false;
+      }
       if(!iter.forward_char()) {
         break;
       }
