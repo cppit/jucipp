@@ -105,6 +105,7 @@ namespace Source {
     bool find_start_of_closed_expression(Gtk::TextIter iter, Gtk::TextIter &found_iter);
     bool find_open_expression_symbol(Gtk::TextIter iter, const Gtk::TextIter &until_iter, Gtk::TextIter &found_iter);
     bool find_right_bracket_forward(Gtk::TextIter iter, Gtk::TextIter &found_iter);
+    bool find_left_bracket_backward(Gtk::TextIter iter, Gtk::TextIter &found_iter);
     
     bool on_key_press_event(GdkEventKey* key);
     bool on_button_press_event(GdkEventButton *event);

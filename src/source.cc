@@ -744,6 +744,37 @@ bool Source::View::find_right_bracket_forward(Gtk::TextIter iter, Gtk::TextIter 
   return false;
 }
 
+bool Source::View::find_left_bracket_backward(Gtk::TextIter iter, Gtk::TextIter &found_iter) {
+  int count=0;
+  
+  bool ignore=false;
+  
+  while(iter.backward_char()) {
+    if(!get_source_buffer()->iter_has_context_class(iter, "comment") && !get_source_buffer()->iter_has_context_class(iter, "string")) {
+      if(*iter=='\'') {
+        auto before_iter=iter;
+        before_iter.backward_char();
+        auto before_before_iter=before_iter;
+        before_before_iter.backward_char();
+        if(*before_iter!='\\' || *before_before_iter=='\\')
+          ignore=!ignore;
+      }
+      else if(!ignore) {
+        if(*iter=='{') {
+          if(count==0) {
+            found_iter=iter;
+            return true;
+          }
+          count--;
+        }
+        else if(*iter=='}')
+          count++;
+      }
+    }
+  }
+  return false;
+}
+
 //Basic indentation
 bool Source::View::on_key_press_event(GdkEventKey* key) {
   if(spellcheck_suggestions_dialog_shown) {
@@ -1536,29 +1567,28 @@ bool Source::ClangViewParse::on_key_press_event(GdkEventKey* key) {
       }
       //Indenting after ':'
       else if(*iter==':') {
-        auto previous_sentence_iter=get_buffer()->get_iter_at_line(iter.get_line());
-        while(previous_sentence_iter && (*previous_sentence_iter==tab_char || previous_sentence_iter.ends_line())) {
-          previous_sentence_iter.backward_char();
-        }
-        if(!previous_sentence_iter.ends_line())
-          previous_sentence_iter.forward_char();
-        Gtk::TextIter start_of_previous_sentence_iter;
-        if(find_start_of_closed_expression(previous_sentence_iter, start_of_previous_sentence_iter)) {
-          std::smatch sm;
-          auto start_previous_sentence=get_line_before(start_of_previous_sentence_iter);
-          if(std::regex_match(start_previous_sentence, sm, tabs_regex)) {
-            if(tabs.size()==(sm[1].str().size()+tab_size)) {
-              auto start_line_iter=get_buffer()->get_iter_at_line(iter.get_line());
-              auto start_line_plus_tab_size=start_line_iter;
-              for(size_t c=0;c<tab_size;c++)
-                start_line_plus_tab_size.forward_char();
-              get_buffer()->erase(start_line_iter, start_line_plus_tab_size);
-            }
-            else {
-              get_source_buffer()->insert_at_cursor("\n"+tabs+tab);
-              scroll_to(get_source_buffer()->get_insert());
-              get_source_buffer()->end_user_action();
-              return true;
+        Gtk::TextIter left_bracket_iter;
+        if(find_left_bracket_backward(iter, left_bracket_iter)) {
+          if(!left_bracket_iter.ends_line())
+            left_bracket_iter.forward_char();
+          Gtk::TextIter start_of_previous_sentence_iter;
+          if(find_start_of_closed_expression(left_bracket_iter, start_of_previous_sentence_iter)) {
+            std::smatch sm;
+            auto start_previous_sentence=get_line_before(start_of_previous_sentence_iter);
+            if(std::regex_match(start_previous_sentence, sm, tabs_regex)) {
+              if(tabs.size()==(sm[1].str().size()+tab_size)) {
+                auto start_line_iter=get_buffer()->get_iter_at_line(iter.get_line());
+                auto start_line_plus_tab_size=start_line_iter;
+                for(size_t c=0;c<tab_size;c++)
+                  start_line_plus_tab_size.forward_char();
+                get_buffer()->erase(start_line_iter, start_line_plus_tab_size);
+              }
+              else {
+                get_source_buffer()->insert_at_cursor("\n"+tabs+tab);
+                scroll_to(get_source_buffer()->get_insert());
+                get_source_buffer()->end_user_action();
+                return true;
+              }
             }
           }
         }
