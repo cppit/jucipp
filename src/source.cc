@@ -1571,11 +1571,11 @@ bool Source::ClangViewParse::on_key_press_event(GdkEventKey* key) {
         if(find_left_bracket_backward(iter, left_bracket_iter)) {
           if(!left_bracket_iter.ends_line())
             left_bracket_iter.forward_char();
-          Gtk::TextIter start_of_previous_sentence_iter;
-          if(find_start_of_closed_expression(left_bracket_iter, start_of_previous_sentence_iter)) {
+          Gtk::TextIter start_of_left_bracket_sentence_iter;
+          if(find_start_of_closed_expression(left_bracket_iter, start_of_left_bracket_sentence_iter)) {
             std::smatch sm;
-            auto start_previous_sentence=get_line_before(start_of_previous_sentence_iter);
-            if(std::regex_match(start_previous_sentence, sm, tabs_regex)) {
+            auto start_left_bracket_sentence=get_line_before(start_of_left_bracket_sentence_iter);
+            if(std::regex_match(start_left_bracket_sentence, sm, tabs_regex)) {
               if(tabs.size()==(sm[1].str().size()+tab_size)) {
                 auto start_line_iter=get_buffer()->get_iter_at_line(iter.get_line());
                 auto start_line_plus_tab_size=start_line_iter;
