@@ -119,6 +119,8 @@ namespace Source {
     bool spellcheck_all=false;
     std::unique_ptr<SelectionDialog> spellcheck_suggestions_dialog;
     bool spellcheck_suggestions_dialog_shown=false;
+    bool last_keyval_is_backspace=false;
+    bool last_keyval_is_return=false;
   private:
     GtkSourceSearchContext *search_context;
     GtkSourceSearchSettings *search_settings;
@@ -133,7 +135,6 @@ namespace Source {
     std::vector<std::string> spellcheck_get_suggestions(const Gtk::TextIter& start, const Gtk::TextIter& end);
     sigc::connection delayed_spellcheck_suggestions_connection;
     sigc::connection delayed_spellcheck_error_clear;
-    bool last_keyval_is_backspace=false;
   };
   
   class GenericView : public View {

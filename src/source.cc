@@ -106,10 +106,21 @@ Source::View::View(const boost::filesystem::path &file_path, Glib::RefPtr<Gsv::L
       if(backward_success) {
         if(last_keyval_is_backspace && !is_word_iter(iter) && iter.forward_char()) {} //backspace fix
         if((spellcheck_all && !get_source_buffer()->iter_has_context_class(context_iter, "no-spell-check")) || get_source_buffer()->iter_has_context_class(context_iter, "comment") || get_source_buffer()->iter_has_context_class(context_iter, "string")) {
-          if(!is_word_iter(iter)) { //Might have used space or - to split two words
+          if(!is_word_iter(iter) || last_keyval_is_return) { //Might have used space or - to split two words
             auto first=iter;
             auto second=iter;
-            if(first.backward_char() && second.forward_char() && !second.starts_line()) {
+            if(last_keyval_is_return) {
+              while(first && !first.ends_line())
+                first.backward_char();
+              if(first.backward_char() && second.forward_char()) {
+                get_buffer()->remove_tag_by_name("spellcheck_error", first, second);
+                auto word=spellcheck_get_word(first);
+                spellcheck_word(word.first, word.second);
+                word=spellcheck_get_word(second);
+                spellcheck_word(word.first, word.second);
+              }
+            }
+            else if(first.backward_char() && second.forward_char() && !second.starts_line()) {
               get_buffer()->remove_tag_by_name("spellcheck_error", first, second);
               auto word=spellcheck_get_word(first);
               spellcheck_word(word.first, word.second);
@@ -786,6 +797,10 @@ bool Source::View::on_key_press_event(GdkEventKey* key) {
     last_keyval_is_backspace=true;
   else
     last_keyval_is_backspace=false;
+  if(key->keyval==GDK_KEY_Return)
+    last_keyval_is_return=true;
+  else
+    last_keyval_is_return=false;
   
   get_source_buffer()->begin_user_action();
   //Indent as in next or previous line
@@ -1462,6 +1477,11 @@ bool Source::ClangViewParse::on_key_press_event(GdkEventKey* key) {
     if(spellcheck_suggestions_dialog->on_key_press(key))
       return true;
   }
+  
+  if(key->keyval==GDK_KEY_Return)
+    last_keyval_is_return=true;
+  else
+    last_keyval_is_return=false;
   
   if(get_buffer()->get_has_selection()) {
     return Source::View::on_key_press_event(key);
