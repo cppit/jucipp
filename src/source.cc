@@ -1479,10 +1479,9 @@ bool Source::ClangViewParse::on_key_press_event(GdkEventKey* key) {
       return true;
   }
   
-  if(key->keyval==GDK_KEY_Return)
-    last_keyval_is_return=true;
-  else
-    last_keyval_is_return=false;
+  auto iter=get_buffer()->get_insert()->get_iter();
+  if(iter.backward_char() && (get_source_buffer()->iter_has_context_class(iter, "comment") || get_source_buffer()->iter_has_context_class(iter, "string")))
+    return Source::View::on_key_press_event(key);
   
   if(get_buffer()->get_has_selection()) {
     return Source::View::on_key_press_event(key);
