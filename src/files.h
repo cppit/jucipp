@@ -109,7 +109,8 @@ const std::string juci_light_style =
 "  <color name=\"blue\"                        value=\"#0000FF\"/>\n"
 "  <color name=\"dark-blue\"                   value=\"#002299\"/>\n"
 "  <color name=\"yellow\"                      value=\"#FFFF00\"/>\n"
-"  <color name=\"orange\"                      value=\"#EE7700\"/>\n"
+"  <color name=\"light-yellow\"                value=\"#FFFF88\"/>\n"
+"  <color name=\"orange\"                      value=\"#FF8800\"/>\n"
 "  <color name=\"purple\"                      value=\"#990099\"/>\n"
 "\n"
 "  <style name=\"text\"                        foreground=\"#000000\" background=\"#FFFFFF\"/>\n"
@@ -146,7 +147,7 @@ const std::string juci_light_style =
 "  <style name=\"def:preprocessor\"            foreground=\"green\"/>\n"
 "  <style name=\"def:error\"                   foreground=\"red\"/>\n"
 "  <style name=\"def:warning\"                 foreground=\"orange\"/>\n"
-"  <style name=\"def:note\"                    foreground=\"black\" background=\"yellow\"/>\n"
+"  <style name=\"def:note\"                    foreground=\"black\" background=\"light-yellow\"/>\n"
 "\n"
 "</style-scheme>\n";
 
@@ -178,7 +179,7 @@ const std::string juci_dark_style =
 "  <style name=\"bracket-mismatch\"            foreground=\"black\" background=\"#FF0000\" bold=\"true\"/>\n"
 "\n"
 "  <!-- Search Matching -->\n"
-"  <style name=\"search-match\"                background=\"#555555\"/>\n"
+"  <style name=\"search-match\"                foreground=\"black\" background=\"white\"/>\n"
 "\n"
 "  <!-- Language specifics -->\n"
 "  <style name=\"def:builtin\"                 foreground=\"blue\"/>\n"
@@ -259,7 +260,7 @@ const std::string juci_dark_blue_style =
 "  <style name=\"def:preprocessor\"            foreground=\"yellow\"/>\n"
 "  <style name=\"def:error\"                   foreground=\"red\"/>\n"
 "  <style name=\"def:warning\"                 foreground=\"yellow\"/>\n"
-"  <style name=\"def:note\"                    foreground=\"white\" background=\"blue\"/>\n"
+"  <style name=\"def:note\"                    foreground=\"white\" background=\"#404466\"/>\n"
 "\n"
 "</style-scheme>\n";
 
