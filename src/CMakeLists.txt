@@ -93,18 +93,18 @@ set(source_files juci.h
     cmake.cc)
 
 if(MSYS)
-  list(APPEND source_files terminal_win.cc dialogs_win.cc)
+  list(APPEND source_files terminal_win.cc)
   list(APPEND source_files dialogs_win.cc)
   message("MSYS detected")
 else()
-  list(APPEND source_files terminal.cc dialogs.cc)
+  list(APPEND source_files terminal.cc)
   list(APPEND source_files dialogs.cc)
   message("UNIX detected")
 endif()
 
 if(${validation})
   add_executable(${project_name} ${source_files})
-
+  
 #  add_library(${module} SHARED
 #    api
 #    api_ext)
