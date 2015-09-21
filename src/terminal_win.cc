@@ -332,7 +332,7 @@ void Terminal::kill_async_executes(bool force) {
 }
 
 int Terminal::print(const std::string &message, bool bold){
-  INFO("Terminal: PrintMessage");
+ JINFO("Terminal: PrintMessage");
   if(bold)
     get_buffer()->insert_with_tag(get_buffer()->end(), message, bold_tag);
   else
@@ -349,7 +349,7 @@ int Terminal::print(const std::string &message, bool bold){
 }
 
 void Terminal::print(int line_nr, const std::string &message){
-  INFO("Terminal: PrintMessage at line " << line_nr);
+ JINFO("Terminal: PrintMessage at line " << line_nr);
   auto iter=get_buffer()->get_iter_at_line(line_nr);
   while(!iter.ends_line())
     iter++;
