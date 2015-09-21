@@ -32,7 +32,7 @@ void Window::generate_keybindings() {
 }
 
 Window::Window() : box(Gtk::ORIENTATION_VERTICAL), notebook(*Singleton::directories()), compiling(false) {
-  DEBUG("start");
+  JDEBUG("start");
   set_title("juCi++");
   set_default_size(600, 400);
   set_events(Gdk::POINTER_MOTION_MASK|Gdk::FOCUS_CHANGE_MASK|Gdk::SCROLL_MASK);
@@ -133,7 +133,7 @@ Window::Window() : box(Gtk::ORIENTATION_VERTICAL), notebook(*Singleton::director
   about.set_comments("This is an open source IDE with high-end features to make your programming experience juicy");
   about.set_license_type(Gtk::License::LICENSE_MIT_X11);
   about.set_transient_for(*this);
-  DEBUG("end");
+  JDEBUG("end");
 } // Window constructor
 
 void Window::create_menu() {

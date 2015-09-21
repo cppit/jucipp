@@ -9,7 +9,7 @@ void init_logging() {
   boost::log::add_common_attributes();
   boost::log::add_file_log(boost::log::keywords::file_name = Singleton::log_dir() + "juci.log",
                boost::log::keywords::auto_flush = true);
-  INFO("Logging initalized");
+  JINFO("Logging initalized");
 }
 
 int app::on_command_line(const Glib::RefPtr<Gio::ApplicationCommandLine> &cmd) {
