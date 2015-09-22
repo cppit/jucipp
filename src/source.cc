@@ -1257,39 +1257,7 @@ std::vector<std::string> Source::ClangViewParse::get_compilation_commands() {
   }
   if(file_path.extension()==".h") //TODO: temporary fix for .h-files (parse as c++)
     arguments.emplace_back("-xc++");
-#ifdef _WIN32 //Temporary fix to MSYS2's libclang
-  arguments.emplace_back("-IC:/msys32/mingw32/lib/gcc/i686-w64-mingw32/5.2.0/include");
-  arguments.emplace_back("-IC:/msys32/mingw32//include");
-  arguments.emplace_back("-IC:/msys32/mingw32/lib/gcc/i686-w64-mingw32/5.2.0/include-fixed");
-  arguments.emplace_back("-IC:/msys32/mingw32/i686-w64-mingw32/include");
-  arguments.emplace_back("-IC:/msys32/mingw32/include/c++/5.2.0");
-  arguments.emplace_back("-IC:/msys32/mingw32/include/c++/5.2.0/i686-w64-mingw32");
-  arguments.emplace_back("-IC:/msys32/mingw32/include/c++/5.2.0/backward");
-  
-  arguments.emplace_back("-IC:/msys32/mingw64/lib/gcc/i686-w64-mingw32/5.2.0/include");
-  arguments.emplace_back("-IC:/msys32/mingw64//include");
-  arguments.emplace_back("-IC:/msys32/mingw64/lib/gcc/i686-w64-mingw32/5.2.0/include-fixed");
-  arguments.emplace_back("-IC:/msys32/mingw64/i686-w64-mingw32/include");
-  arguments.emplace_back("-IC:/msys32/mingw64/include/c++/5.2.0");
-  arguments.emplace_back("-IC:/msys32/mingw64/include/c++/5.2.0/i686-w64-mingw32");
-  arguments.emplace_back("-IC:/msys32/mingw64/include/c++/5.2.0/backward");
-  
-  arguments.emplace_back("-IC:/msys64/mingw32/lib/gcc/i686-w64-mingw32/5.2.0/include");
-  arguments.emplace_back("-IC:/msys64/mingw32//include");
-  arguments.emplace_back("-IC:/msys64/mingw32/lib/gcc/i686-w64-mingw32/5.2.0/include-fixed");
-  arguments.emplace_back("-IC:/msys64/mingw32/i686-w64-mingw32/include");
-  arguments.emplace_back("-IC:/msys64/mingw32/include/c++/5.2.0");
-  arguments.emplace_back("-IC:/msys64/mingw32/include/c++/5.2.0/i686-w64-mingw32");
-  arguments.emplace_back("-IC:/msys64/mingw32/include/c++/5.2.0/backward");
-  
-  arguments.emplace_back("-IC:/msys64/mingw64/lib/gcc/i686-w64-mingw32/5.2.0/include");
-  arguments.emplace_back("-IC:/msys64/mingw64//include");
-  arguments.emplace_back("-IC:/msys64/mingw64/lib/gcc/i686-w64-mingw32/5.2.0/include-fixed");
-  arguments.emplace_back("-IC:/msys64/mingw64/i686-w64-mingw32/include");
-  arguments.emplace_back("-IC:/msys64/mingw64/include/c++/5.2.0");
-  arguments.emplace_back("-IC:/msys64/mingw64/include/c++/5.2.0/i686-w64-mingw32");
-  arguments.emplace_back("-IC:/msys64/mingw64/include/c++/5.2.0/backward");
-#endif
+
   return arguments;
 }
 
