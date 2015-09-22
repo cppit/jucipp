@@ -128,10 +128,11 @@ Window::Window() : box(Gtk::ORIENTATION_VERTICAL), notebook(directories), compil
   });
   
   about.set_version(Singleton::Config::window()->version);
-  about.set_authors({"Jørgen Lien Sellæg",
-                     "Ole Christian Eidheim",
+  about.set_authors({"(in order of appearance)",
+                     "Ted Johan Kristoffersen", 
+                     "Jørgen Lien Sellæg",
                      "Geir Morten Larsen",
-                     "Ted Johan Kristoffersen"});
+                     "Ole Christian Eidheim"});
   about.set_name("About juCi++");
   about.set_program_name("juCi++");
   about.set_comments("This is an open source IDE with high-end features to make your programming experience juicy");
