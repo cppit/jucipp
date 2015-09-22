@@ -81,7 +81,6 @@ namespace Source {
     std::function<std::pair<std::string, clang::Offset>()> get_declaration_location;
     std::function<void()> goto_method;
     std::function<Token()> get_token;
-    std::function<void(const Token &token)> tag_similar_tokens;
     std::function<size_t(const Token &token, const std::string &text)> rename_similar_tokens;
     std::function<void()> goto_next_diagnostic;
     
@@ -233,6 +232,7 @@ namespace Source {
     ClangViewRefactor(const boost::filesystem::path &file_path, const boost::filesystem::path& project_path, Glib::RefPtr<Gsv::Language> language);
     ~ClangViewRefactor();
   private:
+    void tag_similar_tokens(const Token &token);
     Glib::RefPtr<Gtk::TextTag> similar_tokens_tag;
     std::string last_similar_tokens_tagged;
     sigc::connection delayed_tag_similar_tokens_connection;

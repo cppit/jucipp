@@ -1964,23 +1964,6 @@ Source::ClangViewAutocomplete(file_path, project_path, language) {
     return Token(-1, "", "");
   };
   
-  tag_similar_tokens=[this](const Token &token){
-    if(source_readable) {
-      if(token.type>=0 && token.usr.size()>0 && last_similar_tokens_tagged!=token.usr) {
-        get_buffer()->remove_tag(similar_tokens_tag, get_buffer()->begin(), get_buffer()->end());
-        auto offsets=clang_tokens->get_similar_token_offsets(static_cast<clang::CursorKind>(token.type), token.spelling, token.usr);
-        for(auto &offset: offsets) {
-          get_buffer()->apply_tag(similar_tokens_tag, get_buffer()->get_iter_at_line_index(offset.first.line-1, offset.first.index-1), get_buffer()->get_iter_at_line_index(offset.second.line-1, offset.second.index-1));
-        }
-        last_similar_tokens_tagged=token.usr;
-      }
-    }
-    if(token.type<0 && token.usr.size()==0 && last_similar_tokens_tagged!="") {
-      get_buffer()->remove_tag(similar_tokens_tag, get_buffer()->begin(), get_buffer()->end());
-      last_similar_tokens_tagged="";
-    }
-  };
-  
   rename_similar_tokens=[this](const Token &token, const std::string &text) {
     size_t number=0;
     if(source_readable) {
@@ -2076,6 +2059,23 @@ Source::ClangViewAutocomplete(file_path, project_path, language) {
       }
     }
   };
+}
+
+void Source::ClangViewRefactor::tag_similar_tokens(const Token &token) {
+  if(source_readable) {
+    if(token.type>=0 && token.usr.size()>0 && last_similar_tokens_tagged!=token.usr) {
+      get_buffer()->remove_tag(similar_tokens_tag, get_buffer()->begin(), get_buffer()->end());
+      auto offsets=clang_tokens->get_similar_token_offsets(static_cast<clang::CursorKind>(token.type), token.spelling, token.usr);
+      for(auto &offset: offsets) {
+        get_buffer()->apply_tag(similar_tokens_tag, get_buffer()->get_iter_at_line_index(offset.first.line-1, offset.first.index-1), get_buffer()->get_iter_at_line_index(offset.second.line-1, offset.second.index-1));
+      }
+      last_similar_tokens_tagged=token.usr;
+    }
+  }
+  if(token.type<0 && token.usr.size()==0 && last_similar_tokens_tagged!="") {
+    get_buffer()->remove_tag(similar_tokens_tag, get_buffer()->begin(), get_buffer()->end());
+    last_similar_tokens_tagged="";
+  }
 }
 
 Source::ClangViewRefactor::~ClangViewRefactor() {

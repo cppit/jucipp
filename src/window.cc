@@ -734,11 +734,6 @@ void Window::rename_token_entry() {
     if(notebook.get_current_view()->get_token) {
       auto token=std::make_shared<Source::Token>(notebook.get_current_view()->get_token());
       if(token->type>=0 && token->usr.size()>0) {
-        for(int c=0;c<notebook.size();c++) {
-          if(notebook.get_view(c)->tag_similar_tokens) {
-            notebook.get_view(c)->tag_similar_tokens(*token);
-          }
-        }
         entry_box.labels.emplace_back();
         auto label_it=entry_box.labels.begin();
         label_it->update=[label_it](int state, const std::string& message){
