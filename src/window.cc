@@ -722,10 +722,9 @@ void Window::goto_line_entry() {
 void Window::rename_token_entry() {
   entry_box.clear();
   if(notebook.get_current_page()!=-1) {
-    if(notebook.get_current_view()->get_token && notebook.get_current_view()->get_token_name) {
-      auto token=std::make_shared<std::pair<std::string, int> >(notebook.get_current_view()->get_token());
-      if(token->second>=0 && token->first.size()>0 && notebook.get_current_view()->get_token_name) {
-        auto token_name=std::make_shared<std::string>(notebook.get_current_view()->get_token_name());
+    if(notebook.get_current_view()->get_token) {
+      auto token=std::make_shared<Source::Token>(notebook.get_current_view()->get_token());
+      if(token->type>=0 && token->usr.size()>0) {
         for(int c=0;c<notebook.size();c++) {
           if(notebook.get_view(c)->tag_similar_tokens) {
             notebook.get_view(c)->tag_similar_tokens(*token);
@@ -737,8 +736,8 @@ void Window::rename_token_entry() {
           label_it->set_text("Warning: only opened and parsed tabs will have its content renamed, and modified files will be saved.");
         };
         label_it->update(0, "");
-        entry_box.entries.emplace_back(*token_name, [this, token_name, token](const std::string& content){
-          if(notebook.get_current_page()!=-1 && content!=*token_name) {
+        entry_box.entries.emplace_back(token->spelling, [this, token](const std::string& content){
+          if(notebook.get_current_page()!=-1 && content!=token->spelling) {
             for(int c=0;c<notebook.size();c++) {
               auto view=notebook.get_view(c);
               if(view->rename_similar_tokens) {

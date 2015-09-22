@@ -49,6 +49,15 @@ namespace Source {
     std::vector<clang::CompletionChunk> chunks;
     std::string brief_comments;
   };
+  
+  class Token {
+  public:
+    Token(int type, const std::string &spelling, const std::string &usr): 
+      type(type), spelling(spelling), usr(usr) {}
+    int type;
+    std::string spelling;
+    std::string usr;
+  };
 
   class View : public Gsv::View {
   public:
@@ -71,10 +80,9 @@ namespace Source {
     
     std::function<std::pair<std::string, clang::Offset>()> get_declaration_location;
     std::function<void()> goto_method;
-    std::function<std::pair<std::string, int>()> get_token;
-    std::function<std::string()> get_token_name;
-    std::function<void(const std::pair<std::string, int> &token)> tag_similar_tokens;
-    std::function<size_t(const std::pair<std::string, int> &token, const std::string &text)> rename_similar_tokens;
+    std::function<Token()> get_token;
+    std::function<void(const Token &token)> tag_similar_tokens;
+    std::function<size_t(const Token &token, const std::string &text)> rename_similar_tokens;
     std::function<void()> goto_next_diagnostic;
     
     std::function<void(View* view, const std::string &status)> on_update_status;
