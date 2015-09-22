@@ -3,6 +3,7 @@
 
 #include "window.h"
 #include "logging.h"
+
 class app : public Gtk::Application {
  public:
   app();
@@ -11,8 +12,8 @@ class app : public Gtk::Application {
 
  private:
   std::unique_ptr<Window> window;
-  std::vector<std::string> directories;
-  std::vector<std::string> files;
+  std::vector<boost::filesystem::path> directories;
+  std::vector<boost::filesystem::path> files;
 };
 
 #endif // JUCI_JUCI_H_

@@ -160,7 +160,7 @@ void Directories::select(const boost::filesystem::path &path) {
   if(current_path=="")
     return;
     
-  if(path.string().substr(0, current_path.string().size())!=current_path.string())
+  if(path.generic_string().substr(0, current_path.generic_string().size()+1)!=current_path.generic_string()+'/')
     return;
   
   std::list<boost::filesystem::path> paths;
