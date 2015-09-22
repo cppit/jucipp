@@ -124,15 +124,6 @@ Terminal::Terminal() {
   bold_tag=get_buffer()->create_tag();
   bold_tag->property_weight()=PANGO_WEIGHT_BOLD;
   
-  signal_size_allocate().connect([this](Gtk::Allocation& allocation){
-    auto iter=get_buffer()->end();
-    if(iter.backward_char()) {
-      auto mark=get_buffer()->create_mark(iter);
-      scroll_to(mark, 0.0, 1.0, 1.0);
-      get_buffer()->delete_mark(mark);
-    }
-  });
-  
   async_print_dispatcher.connect([this](){
     async_print_strings_mutex.lock();
     if(async_print_strings.size()>0) {
@@ -295,13 +286,6 @@ size_t Terminal::print(const std::string &message, bool bold){
     get_buffer()->insert_with_tag(get_buffer()->end(), umessage, bold_tag);
   else
     get_buffer()->insert(get_buffer()->end(), umessage);
-    
-  /*auto end_iter=get_buffer()->end();
-  if(end_iter.backward_char()) {
-    auto mark=get_buffer()->create_mark(end_iter);
-    scroll_to(mark, 0.0, 1.0, 1.0);
-    get_buffer()->delete_mark(mark);
-  }*/
   
   if(get_buffer()->get_line_count()>Singleton::Config::terminal()->history_size) {
     int lines=get_buffer()->get_line_count()-Singleton::Config::terminal()->history_size;
@@ -327,11 +311,6 @@ void Terminal::print(size_t line_nr, const std::string &message){
   auto end_line_iter=get_buffer()->get_iter_at_line(static_cast<int>(line_nr-deleted_lines));
   while(!end_line_iter.ends_line() && end_line_iter.forward_char()) {}
   get_buffer()->insert(end_line_iter, umessage);
-  
-  if(get_buffer()->get_line_count()>Singleton::Config::terminal()->history_size) {
-    int lines=get_buffer()->get_line_count()-Singleton::Config::terminal()->history_size;
-    get_buffer()->erase(get_buffer()->begin(), get_buffer()->get_iter_at_line(lines));
-  }
 }
 
 std::shared_ptr<Terminal::InProgress> Terminal::print_in_progress(std::string start_msg) {
@@ -370,7 +349,6 @@ bool Terminal::on_key_press_event(GdkEventKey *event) {
     if(unicode>=32 && unicode<=126) {
       stdin_buffer+=chr;
       get_buffer()->insert_at_cursor(stdin_buffer.substr(stdin_buffer.size()-1));
-      scroll_to(get_buffer()->get_insert());
     }
     else if(event->keyval==GDK_KEY_BackSpace) {
       if(stdin_buffer.size()>0 && get_buffer()->get_char_count()>0) {
@@ -378,14 +356,12 @@ bool Terminal::on_key_press_event(GdkEventKey *event) {
         iter--;
         stdin_buffer.pop_back();
         get_buffer()->erase(iter, get_buffer()->end());
-        scroll_to(get_buffer()->get_insert());
       }
     }
     else if(event->keyval==GDK_KEY_Return) {
       stdin_buffer+='\n';
       write(async_executes.back().second, stdin_buffer.c_str(), stdin_buffer.size());
       get_buffer()->insert_at_cursor(stdin_buffer.substr(stdin_buffer.size()-1));
-      scroll_to(get_buffer()->get_insert());
       stdin_buffer.clear();
     }
   }

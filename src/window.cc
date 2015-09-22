@@ -58,6 +58,7 @@ Window::Window() : box(Gtk::ORIENTATION_VERTICAL), notebook(directories), compil
   
   terminal_scrolled_window.add(*Singleton::terminal());
   terminal_vbox.pack_start(terminal_scrolled_window);
+    
   info_and_status_hbox.pack_start(*Singleton::info(), Gtk::PACK_SHRINK);
   info_and_status_hbox.pack_end(*Singleton::status(), Gtk::PACK_SHRINK);
   terminal_vbox.pack_end(info_and_status_hbox, Gtk::PACK_SHRINK);
@@ -69,6 +70,13 @@ Window::Window() : box(Gtk::ORIENTATION_VERTICAL), notebook(directories), compil
   directories.on_row_activated=[this](const std::string &file) {
     notebook.open(file);
   };
+
+  //Scroll to end of terminal whenever info is printed
+  Singleton::terminal()->signal_size_allocate().connect([this](Gtk::Allocation& allocation){
+    auto adjustment=terminal_scrolled_window.get_vadjustment();
+    adjustment->set_value(adjustment->get_upper()-adjustment->get_page_size());
+    Singleton::terminal()->queue_draw();
+  });
 
   entry_box.signal_show().connect([this](){
     box.set_focus_chain({&vpaned});
