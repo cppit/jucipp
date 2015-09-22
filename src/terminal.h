@@ -15,6 +15,7 @@ public:
   public:
     std::string cmake_command;
     std::string make_command;
+    int history_size;
   };
   
   class InProgress {
@@ -60,6 +61,8 @@ private:
   std::list<std::pair<pid_t, int> > async_executes;
 #endif
   std::string stdin_buffer;
+  
+  size_t deleted_lines=0;
 };
 
 #endif  // JUCI_TERMINAL_H_

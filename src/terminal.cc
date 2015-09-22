@@ -296,17 +296,26 @@ int Terminal::print(const std::string &message, bool bold){
   else
     get_buffer()->insert(get_buffer()->end(), umessage);
     
-  auto end_iter=get_buffer()->end();
+  /*auto end_iter=get_buffer()->end();
   if(end_iter.backward_char()) {
     auto mark=get_buffer()->create_mark(end_iter);
     scroll_to(mark, 0.0, 1.0, 1.0);
     get_buffer()->delete_mark(mark);
+  }*/
+  
+  if(get_buffer()->get_line_count()>Singleton::Config::terminal()->history_size) {
+    int lines=get_buffer()->get_line_count()-Singleton::Config::terminal()->history_size;
+    get_buffer()->erase(get_buffer()->begin(), get_buffer()->get_iter_at_line(lines));
+    deleted_lines+=static_cast<size_t>(lines);
   }
   
-  return get_buffer()->end().get_line();
+  return static_cast<int>(static_cast<size_t>(get_buffer()->end().get_line())+deleted_lines);
 }
 
 void Terminal::print(int line_nr, const std::string &message){
+  if(static_cast<size_t>(line_nr)<deleted_lines)
+    return;
+  
   Glib::ustring umessage=message;
   Glib::ustring::iterator iter;
   while(!umessage.validate(iter)) {
@@ -315,9 +324,14 @@ void Terminal::print(int line_nr, const std::string &message){
     umessage.replace(iter, next_char_iter, "?");
   }
   
-  auto end_line_iter=get_buffer()->get_iter_at_line(line_nr);
+  auto end_line_iter=get_buffer()->get_iter_at_line(static_cast<int>(static_cast<size_t>(line_nr)-deleted_lines));
   while(!end_line_iter.ends_line() && end_line_iter.forward_char()) {}
   get_buffer()->insert(end_line_iter, umessage);
+  
+  if(get_buffer()->get_line_count()>Singleton::Config::terminal()->history_size) {
+    int lines=get_buffer()->get_line_count()-Singleton::Config::terminal()->history_size;
+    get_buffer()->erase(get_buffer()->begin(), get_buffer()->get_iter_at_line(lines));
+  }
 }
 
 std::shared_ptr<Terminal::InProgress> Terminal::print_in_progress(std::string start_msg) {

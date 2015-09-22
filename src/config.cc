@@ -62,6 +62,7 @@ void MainConfig::retrieve_config() {
   Singleton::Config::window()->default_size = {cfg.get<int>("default_window_size.width"), cfg.get<int>("default_window_size.height")};
   Singleton::Config::terminal()->make_command=cfg.get<std::string>("project.make_command");
   Singleton::Config::terminal()->cmake_command=cfg.get<std::string>("project.cmake_command");
+  Singleton::Config::terminal()->history_size=cfg.get<int>("terminal_history_size");
 }
 
 bool MainConfig::check_config_file(const boost::property_tree::ptree &default_cfg, std::string parent_path) {

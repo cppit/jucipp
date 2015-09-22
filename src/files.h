@@ -9,6 +9,7 @@ const std::string configjson =
 "        \"width\": 600,\n"
 "        \"height\": 400\n"
 "    },\n"
+"    \"terminal_history_size\": 1000,\n"
 "    \"gtk_theme\": {\n"
 "        \"name\": \"Adwaita\", //Use \"\" for default theme, At least these two exist on all systems: Adwaita, Raleigh\n"
 "        \"variant\": \"\" //Use \"\" for default variant, and \"dark\" for dark theme variant\n"
