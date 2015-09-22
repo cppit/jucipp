@@ -41,11 +41,6 @@ validate(${LCL_FOUND} "clangmm" "clangmm" "clangmm")
 find_package(LibClang)
 validate(${LIBCLANG_FOUND} "clang" "libclang-dev" "llvm")
 
-#TODO: till clang is fixed on MSYS2 ((lib)clang.dll.a is missing):
-if(MSYS)
-  set(LIBCLANG_LIBRARIES "${CMAKE_INSTALL_PREFIX}/bin/clang.dll")
-endif()
-
 #find_package(PythonLibs 2.7)
 #validate(${PYTHONLIBS_FOUND} "python" "libpython-dev" "python") 
 
