@@ -26,7 +26,7 @@ public:
     void cancel(const std::string& msg);
   private:
     void start(const std::string& msg);
-    int line_nr;
+    size_t line_nr;
     std::atomic<bool> stop;
     Glib::Dispatcher waiting_print;
     std::thread wait_thread;
@@ -38,8 +38,8 @@ public:
   void kill_last_async_execute(bool force=false);
   void kill_async_executes(bool force=false);
   
-  int print(const std::string &message, bool bold=false);
-  void print(int line_nr, const std::string &message);
+  size_t print(const std::string &message, bool bold=false);
+  void print(size_t line_nr, const std::string &message);
   std::shared_ptr<InProgress> print_in_progress(std::string start_msg);
   void async_print(const std::string &message, bool bold=false);
   void async_print(int line_nr, const std::string &message);

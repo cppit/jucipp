@@ -282,7 +282,7 @@ void Terminal::kill_async_executes(bool force) {
   async_executes_mutex.unlock();
 }
 
-int Terminal::print(const std::string &message, bool bold){
+size_t Terminal::print(const std::string &message, bool bold){
   Glib::ustring umessage=message;
   Glib::ustring::iterator iter;
   while(!umessage.validate(iter)) {
@@ -309,11 +309,11 @@ int Terminal::print(const std::string &message, bool bold){
     deleted_lines+=static_cast<size_t>(lines);
   }
   
-  return static_cast<int>(static_cast<size_t>(get_buffer()->end().get_line())+deleted_lines);
+  return static_cast<size_t>(get_buffer()->end().get_line())+deleted_lines;
 }
 
-void Terminal::print(int line_nr, const std::string &message){
-  if(static_cast<size_t>(line_nr)<deleted_lines)
+void Terminal::print(size_t line_nr, const std::string &message){
+  if(line_nr<deleted_lines)
     return;
   
   Glib::ustring umessage=message;
@@ -324,7 +324,7 @@ void Terminal::print(int line_nr, const std::string &message){
     umessage.replace(iter, next_char_iter, "?");
   }
   
-  auto end_line_iter=get_buffer()->get_iter_at_line(static_cast<int>(static_cast<size_t>(line_nr)-deleted_lines));
+  auto end_line_iter=get_buffer()->get_iter_at_line(static_cast<int>(line_nr-deleted_lines));
   while(!end_line_iter.ends_line() && end_line_iter.forward_char()) {}
   get_buffer()->insert(end_line_iter, umessage);
   
