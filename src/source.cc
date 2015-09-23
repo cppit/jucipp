@@ -617,6 +617,89 @@ void Source::View::set_info(const std::string &info) {
     on_update_info(this, positions+" "+info);
 }
 
+void Source::View::spellcheck(const Gtk::TextIter& start, const Gtk::TextIter& end) {
+  cout << start.get_line() << ", " << start.get_line_offset() << " -- ";
+  cout << end.get_line() << ", " << end.get_line_offset() << endl;
+  auto iter=start;
+  while(iter && iter<=end) {
+    if(is_word_iter(iter)) {
+      auto word=spellcheck_get_word(iter);
+      spellcheck_word(word.first, word.second);
+      iter=word.second; 
+    }
+    iter.forward_char();
+  }
+}
+
+void Source::View::spellcheck() {
+  auto iter=get_buffer()->begin();
+  Gtk::TextIter begin_spellcheck_iter;
+  if(spellcheck_all) {
+    bool spell_check=!get_source_buffer()->iter_has_context_class(iter, "no-spell-check");
+    if(spell_check)
+      begin_spellcheck_iter=iter;
+    while(iter!=get_buffer()->end()) {
+      if(!get_source_buffer()->iter_forward_to_context_class_toggle(iter, "no-spell-check"))
+        iter=get_buffer()->end();
+      
+      spell_check=!spell_check;
+      if(spell_check)
+        begin_spellcheck_iter=iter;
+      else
+        spellcheck(begin_spellcheck_iter, iter);
+    }
+  }
+  else {
+    bool spell_check=get_source_buffer()->iter_has_context_class(iter, "string") || get_source_buffer()->iter_has_context_class(iter, "comment");
+    if(spell_check)
+      begin_spellcheck_iter=iter;
+    while(iter!=get_buffer()->end()) {
+      auto iter1=iter;
+      auto iter2=iter;
+      if(!get_source_buffer()->iter_forward_to_context_class_toggle(iter1, "string"))
+        iter1=get_buffer()->end();
+      if(!get_source_buffer()->iter_forward_to_context_class_toggle(iter2, "comment"))
+        iter2=get_buffer()->end();
+      
+      if(iter2<iter1)
+        iter=iter2;
+      else
+        iter=iter1;
+      spell_check=!spell_check;
+      if(spell_check)
+        begin_spellcheck_iter=iter;
+      else
+        spellcheck(begin_spellcheck_iter, iter);
+    }
+  }
+}
+
+void Source::View::remove_spellcheck_errors() {
+  get_buffer()->remove_tag_by_name("spellcheck_error", get_buffer()->begin(), get_buffer()->end());
+}
+
+void Source::View::goto_next_spellcheck_error() {
+  auto iter=get_buffer()->get_insert()->get_iter();
+  auto insert_iter=iter;
+  bool wrapped=false;
+  iter.forward_char();
+  while(iter && (!wrapped || iter<insert_iter)) {
+    auto toggled_tags=iter.get_toggled_tags();
+    for(auto &toggled_tag: toggled_tags) {
+      if(toggled_tag->property_name()=="spellcheck_error") {
+        get_buffer()->place_cursor(iter);
+        scroll_to(get_buffer()->get_insert(), 0.0, 1.0, 0.5);
+        return;
+      }
+    }
+    iter.forward_char();
+    if(!wrapped && iter==get_buffer()->end()) {
+      iter=get_buffer()->begin();
+      wrapped=true;
+    }
+  }
+}
+
 std::string Source::View::get_line(const Gtk::TextIter &iter) {
   auto line_start_it = get_buffer()->get_iter_at_line(iter.get_line());
   auto line_end_it = iter;

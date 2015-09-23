@@ -97,6 +97,10 @@ namespace Source {
     void set_info(const std::string &info);
     std::string status;
     std::string info;
+    
+    void spellcheck();
+    void remove_spellcheck_errors();
+    void goto_next_spellcheck_error();
   protected:
     bool source_readable;
     Tooltips diagnostic_tooltips;
@@ -149,6 +153,8 @@ namespace Source {
     std::vector<std::string> spellcheck_get_suggestions(const Gtk::TextIter& start, const Gtk::TextIter& end);
     sigc::connection delayed_spellcheck_suggestions_connection;
     sigc::connection delayed_spellcheck_error_clear;
+    
+    void spellcheck(const Gtk::TextIter& start, const Gtk::TextIter& end);
   };
   
   class GenericView : public View {

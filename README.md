@@ -7,7 +7,7 @@ towards libclang with speed in mind.
 
 ## Features
 * Fast and responsive
-* Syntax highlighing (even C++11/14, and more than 100 other file types)
+* Syntax highlighting (even C++11/14, and more than 100 other file types)
 * C++ warnings and errors on the fly
 * Fast C++ autocomletion (even external libraries)
 * Tooltips showing type information and doxygen documentation

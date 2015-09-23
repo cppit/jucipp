@@ -240,6 +240,19 @@ void Window::create_menu() {
     }
   });
 
+  menu.action_group->add(Gtk::Action::create("SourceSpellCheck", "Spell Check"));
+  menu.action_group->add(Gtk::Action::create("SourceSpellCheckBuffer", "Spell Check Buffer"), Gtk::AccelKey(menu.key_map["source_spellcheck"]), [this]() {
+    if(notebook.get_current_page()!=-1)
+        notebook.get_current_view()->spellcheck();
+  });
+  menu.action_group->add(Gtk::Action::create("SourceSpellCheckClear", "Clear Spelling Errors"), Gtk::AccelKey(menu.key_map["source_spellcheck_clear"]), [this]() {
+    if(notebook.get_current_page()!=-1)
+        notebook.get_current_view()->remove_spellcheck_errors();
+  });
+  menu.action_group->add(Gtk::Action::create("SourceSpellCheckNextError", "Go to next Spelling Error"), Gtk::AccelKey(menu.key_map["source_spellcheck_next_error"]), [this]() {
+    if(notebook.get_current_page()!=-1)
+        notebook.get_current_view()->goto_next_spellcheck_error();
+  });
   menu.action_group->add(Gtk::Action::create("SourceGotoLine", "Go to Line"), Gtk::AccelKey(menu.key_map["source_goto_line"]), [this]() {
     goto_line_entry();
   });
