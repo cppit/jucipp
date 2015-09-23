@@ -618,10 +618,8 @@ void Source::View::set_info(const std::string &info) {
 }
 
 void Source::View::spellcheck(const Gtk::TextIter& start, const Gtk::TextIter& end) {
-  cout << start.get_line() << ", " << start.get_line_offset() << " -- ";
-  cout << end.get_line() << ", " << end.get_line_offset() << endl;
   auto iter=start;
-  while(iter && iter<=end) {
+  while(iter && iter<end) {
     if(is_word_iter(iter)) {
       auto word=spellcheck_get_word(iter);
       spellcheck_word(word.first, word.second);
