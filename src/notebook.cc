@@ -65,7 +65,7 @@ void Notebook::open(const boost::filesystem::path &file_path) {
   can_read.close();
   
   auto language=Source::guess_language(file_path);
-  if(language && (language->get_id()=="chdr" || language->get_id()=="c" || language->get_id()=="cpp" || language->get_id()=="objc")) {
+  if(language && (language->get_id()=="chdr" || language->get_id()=="cpphdr" || language->get_id()=="c" || language->get_id()=="cpp" || language->get_id()=="objc")) {
     boost::filesystem::path project_path;
     if(directories.cmake && directories.cmake->project_path!="" && file_path.generic_string().substr(0, directories.cmake->project_path.generic_string().size()+1)==directories.cmake->project_path.generic_string()+'/') {
       project_path=directories.cmake->project_path;

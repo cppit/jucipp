@@ -16,6 +16,7 @@
 #include <set>
 #include <regex>
 #include <aspell.h>
+#include <boost/property_tree/xml_parser.hpp>
 
 namespace Source {
   Glib::RefPtr<Gsv::Language> guess_language(const boost::filesystem::path &file_path);
@@ -158,8 +159,15 @@ namespace Source {
   };
   
   class GenericView : public View {
+  private:
+    class CompletionBuffer : public Gtk::TextBuffer {
+    public:
+      static Glib::RefPtr<CompletionBuffer> create() {return Glib::RefPtr<CompletionBuffer>(new CompletionBuffer());}
+    };
   public:
     GenericView(const boost::filesystem::path &file_path, Glib::RefPtr<Gsv::Language> language);
+    
+    void add_keywords(Glib::RefPtr<CompletionBuffer> &completion_buffer, const boost::property_tree::ptree &pt);
   };
   
   class ClangViewParse : public View {

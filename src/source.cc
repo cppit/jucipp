@@ -1139,19 +1139,71 @@ std::vector<std::string> Source::View::spellcheck_get_suggestions(const Gtk::Tex
 /////////////////////
 Source::GenericView::GenericView(const boost::filesystem::path &file_path, Glib::RefPtr<Gsv::Language> language) : View(file_path, language) {
   configure();
+  spellcheck_all=true;
   
   if(language) {
     get_source_buffer()->set_language(language);
     Singleton::terminal()->print("Language for file "+file_path.string()+" set to "+language->get_name()+".\n");
   }
-  spellcheck_all=true;
+  
   auto completion=get_completion();
-  auto completion_words=Gsv::CompletionWords::create("", Glib::RefPtr<Gdk::Pixbuf>());
-  completion_words->register_provider(get_buffer());
-  completion->add_provider(completion_words);
   completion->property_show_headers()=false;
   completion->property_show_icons()=false;
   completion->property_accelerators()=0;
+  
+  auto completion_words=Gsv::CompletionWords::create("", Glib::RefPtr<Gdk::Pixbuf>());
+  completion_words->register_provider(get_buffer());
+  completion->add_provider(completion_words);
+  
+  if(language) {
+    auto language_manager=Gsv::LanguageManager::get_default();
+    auto search_paths=language_manager->get_search_path();
+    bool found_language_file=false;
+    boost::filesystem::path language_file;
+    for(auto &search_path: search_paths) {
+      boost::filesystem::path p(search_path+'/'+language->get_id()+".lang");
+      if(boost::filesystem::exists(p) && boost::filesystem::is_regular_file(p)) {
+        language_file=p;
+        found_language_file=true;
+        break;
+      }
+    }
+    if(found_language_file) {
+      auto completion_buffer_keywords=CompletionBuffer::create();
+      boost::property_tree::ptree pt;
+      try {
+        boost::property_tree::xml_parser::read_xml(language_file.string(), pt);
+      }
+      catch(const std::exception &e) {
+        Singleton::terminal()->print("Error: error parsing language file "+language_file.string()+": "+e.what()+'\n');
+      }
+      add_keywords(completion_buffer_keywords, pt);
+      completion_words->register_provider(completion_buffer_keywords);
+    }
+  }
+}
+
+void Source::GenericView::add_keywords(Glib::RefPtr<CompletionBuffer> &completion_buffer, const boost::property_tree::ptree &pt) {
+  bool case_insensitive=false;
+  for(auto &node: pt) {
+    if(node.first=="<xmlcomment>") {
+      if(static_cast<std::string>(node.second.data())==" case insensitive ")
+        case_insensitive=true;
+    }
+    else if(node.first=="keyword") {
+      auto data=static_cast<std::string>(node.second.data());
+      completion_buffer->insert_at_cursor(data+'\n');
+      if(case_insensitive) {
+        std::transform(data.begin(), data.end(), data.begin(), ::tolower);
+        completion_buffer->insert_at_cursor(data+'\n');
+      }
+    }
+    try {
+      add_keywords(completion_buffer, node.second);
+    }
+    catch(const std::exception &e) {        
+    }
+  }
 }
 
 ////////////////////////

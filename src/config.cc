@@ -79,7 +79,7 @@ bool MainConfig::check_config_file(const boost::property_tree::ptree &default_cf
       exists=false;        
     }
     try {
-      exists&=check_config_file(default_cfg.get_child(node.first), path);
+      exists&=check_config_file(node.second, path);
     }
     catch(const std::exception &e) {        
     }
