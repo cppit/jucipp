@@ -52,8 +52,15 @@ namespace Source {
   
   class Token {
   public:
+    Token(): type(-1) {}
     Token(int type, const std::string &spelling, const std::string &usr): 
       type(type), spelling(spelling), usr(usr) {}
+    operator bool() const {return (type>=0 && spelling.size()>0 && usr.size()>0);}
+    bool operator==(const Token &o) const {return (type==o.type &&
+                                                   spelling==o.spelling &&
+                                                   usr==o.usr);}
+    bool operator!=(const Token &o) const {return !(*this==o);}
+    
     int type;
     std::string spelling;
     std::string usr;
@@ -234,7 +241,7 @@ namespace Source {
   private:
     void tag_similar_tokens(const Token &token);
     Glib::RefPtr<Gtk::TextTag> similar_tokens_tag;
-    std::string last_similar_tokens_tagged;
+    Token last_tagged_token;
     sigc::connection delayed_tag_similar_tokens_connection;
     std::unique_ptr<SelectionDialog> selection_dialog;
     bool renaming=false;

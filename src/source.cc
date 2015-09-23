@@ -1905,9 +1905,9 @@ Source::ClangViewAutocomplete(file_path, project_path, language) {
   similar_tokens_tag->property_weight()=Pango::WEIGHT_BOLD;
   
   get_buffer()->signal_changed().connect([this]() {
-    if(!renaming && last_similar_tokens_tagged!="") {
+    if(!renaming && last_tagged_token) {
       get_buffer()->remove_tag(similar_tokens_tag, get_buffer()->begin(), get_buffer()->end());
-      last_similar_tokens_tagged="";
+      last_tagged_token=Token();
     }
   });
   
@@ -1929,7 +1929,7 @@ Source::ClangViewAutocomplete(file_path, project_path, language) {
         }
       }
     }
-    return Token(-1, "", "");
+    return Token();
   };
   
   rename_similar_tokens=[this](const Token &token, const std::string &text) {
@@ -2031,18 +2031,18 @@ Source::ClangViewAutocomplete(file_path, project_path, language) {
 
 void Source::ClangViewRefactor::tag_similar_tokens(const Token &token) {
   if(source_readable) {
-    if(token.type>=0 && token.usr.size()>0 && last_similar_tokens_tagged!=token.usr) {
+    if(token && last_tagged_token!=token) {
       get_buffer()->remove_tag(similar_tokens_tag, get_buffer()->begin(), get_buffer()->end());
       auto offsets=clang_tokens->get_similar_token_offsets(static_cast<clang::CursorKind>(token.type), token.spelling, token.usr);
       for(auto &offset: offsets) {
         get_buffer()->apply_tag(similar_tokens_tag, get_buffer()->get_iter_at_line_index(offset.first.line-1, offset.first.index-1), get_buffer()->get_iter_at_line_index(offset.second.line-1, offset.second.index-1));
       }
-      last_similar_tokens_tagged=token.usr;
+      last_tagged_token=token;
     }
   }
-  if(token.type<0 && token.usr.size()==0 && last_similar_tokens_tagged!="") {
+  if(!token && last_tagged_token) {
     get_buffer()->remove_tag(similar_tokens_tag, get_buffer()->begin(), get_buffer()->end());
-    last_similar_tokens_tagged="";
+    last_tagged_token=Token();
   }
 }
 
