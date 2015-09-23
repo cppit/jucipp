@@ -67,8 +67,11 @@ void Notebook::open(const boost::filesystem::path &file_path) {
   auto language=Source::guess_language(file_path);
   if(language && (language->get_id()=="chdr" || language->get_id()=="c" || language->get_id()=="cpp" || language->get_id()=="objc")) {
     boost::filesystem::path project_path;
-    if(directories.cmake && directories.cmake->project_path!="" && file_path.generic_string().substr(0, directories.cmake->project_path.generic_string().size()+1)==directories.cmake->project_path.generic_string()+'/')
+    if(directories.cmake && directories.cmake->project_path!="" && file_path.generic_string().substr(0, directories.cmake->project_path.generic_string().size()+1)==directories.cmake->project_path.generic_string()+'/') {
       project_path=directories.cmake->project_path;
+      if(boost::filesystem::exists(project_path.string()+"/CMakeLists.txt") && !boost::filesystem::exists(project_path.string()+"/compile_commands.json"))
+        CMake::create_compile_commands(project_path);
+    }
     else {
       project_path=file_path.parent_path();
       CMake cmake(project_path);
