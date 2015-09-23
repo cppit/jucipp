@@ -1161,7 +1161,7 @@ Source::GenericView::GenericView(const boost::filesystem::path &file_path, Glib:
     bool found_language_file=false;
     boost::filesystem::path language_file;
     for(auto &search_path: search_paths) {
-      boost::filesystem::path p(search_path+'/'+language->get_id()+".lang");
+      boost::filesystem::path p(std::string(search_path)+'/'+language->get_id()+".lang");
       if(boost::filesystem::exists(p) && boost::filesystem::is_regular_file(p)) {
         language_file=p;
         found_language_file=true;
