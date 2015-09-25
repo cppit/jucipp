@@ -26,6 +26,7 @@ private:
   bool save_modified_dialog();
   Directories &directories;
   std::vector<Source::View*> source_views; //Is NOT freed in destructor, this is intended for quick program exit.
+  std::vector<std::unique_ptr<Gtk::Widget> > source_maps;
   std::vector<std::unique_ptr<Gtk::ScrolledWindow> > scrolled_windows;
   std::vector<std::unique_ptr<Gtk::HBox> > hboxes;
 };

@@ -95,15 +95,21 @@ void Notebook::open(const boost::filesystem::path &file_path) {
     if(get_current_page()!=-1 && get_current_view()==view)
       Singleton::info()->set_text(" "+info);
   };
-    
+  
   scrolled_windows.emplace_back(new Gtk::ScrolledWindow());
   hboxes.emplace_back(new Gtk::HBox());
   scrolled_windows.back()->add(*source_views.back());
-  hboxes.back()->pack_start(*scrolled_windows.back(), true, true);
+  hboxes.back()->pack_start(*scrolled_windows.back());
+
+#if GTK_VERSION_GE(3, 18)
+  source_maps.emplace_back(Glib::wrap(gtk_source_map_new()));
+  gtk_source_map_set_view(GTK_SOURCE_MAP(source_maps.back()->gobj()), source_views.back()->gobj());
+  hboxes.back()->pack_end(*source_maps.back(), Gtk::PACK_SHRINK);
+#endif
   
   std::string title=file_path.filename().string();
-    
   append_page(*hboxes.back(), title);
+  
   set_tab_reorderable(*hboxes.back(), true);
   show_all_children();
   set_current_page(size()-1);
@@ -202,6 +208,9 @@ bool Notebook::close_current_page() {
     else
       delete source_view;
     source_views.erase(source_views.begin()+index);
+#if GTK_VERSION_GE(3, 18)
+    source_maps.erase(source_maps.begin()+index);
+#endif
     scrolled_windows.erase(scrolled_windows.begin()+index);
     hboxes.erase(hboxes.begin()+index);
   }
