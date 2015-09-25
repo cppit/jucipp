@@ -6,6 +6,10 @@
 #include <regex>
 #include "cmake.h"
 
+#if GTK_VERSION_GE(3, 18)
+#include "gtksourceview-3.0/gtksourceview/gtksourcemap.h"
+#endif
+
 #include <iostream> //TODO: remove
 using namespace std; //TODO: remove
 
@@ -103,10 +107,12 @@ void Notebook::open(const boost::filesystem::path &file_path) {
 
 #if GTK_VERSION_GE(3, 18)
   source_maps.emplace_back(Glib::wrap(gtk_source_map_new()));
-  gtk_source_map_set_view(GTK_SOURCE_MAP(source_maps.back()->gobj()), source_views.back()->gobj());
+  auto font_desc=Pango::FontDescription(Singleton::Config::source()->font);
+  font_desc.set_size(1);
+  source_maps.back()->override_font(font_desc);
   hboxes.back()->pack_end(*source_maps.back(), Gtk::PACK_SHRINK);
+  gtk_source_map_set_view(GTK_SOURCE_MAP(source_maps.back()->gobj()), source_views.back()->gobj());
 #endif
-  
   std::string title=file_path.filename().string();
   append_page(*hboxes.back(), title);
   

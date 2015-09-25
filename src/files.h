@@ -15,7 +15,7 @@ const std::string configjson =
 "        \"variant\": \"\" //Use \"\" for default variant, and \"dark\" for dark theme variant\n"
 "    },\n"
 "    \"source\": {\n"
-"        \"style\": \"juci-light\", //Use \"\" for default style, and for instance juci-dark together with dark gtk_theme variant. Styles from normal gtksourceview install: classic, cobalt, kate, oblivion, solarized-dark, solarized-light, tango\n"
+"        \"style\": \"juci-light\", //Use \"\" for default style, and for instance juci-dark or juci-dark-blue together with dark gtk_theme variant. Styles from normal gtksourceview install: classic, cobalt, kate, oblivion, solarized-dark, solarized-light, tango\n"
 #ifdef __APPLE__
 "        \"font\": \"Menlo 11\", "
 #else
