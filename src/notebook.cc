@@ -143,8 +143,9 @@ void Notebook::open(const boost::filesystem::path &file_path) {
 
 void Notebook::configure(int view_nr) {
 #if GTK_VERSION_GE(3, 18)
-  auto font_desc=Pango::FontDescription("Monospace "+Singleton::Config::source()->map_font_size); //Seems to only work with Monospace
-  source_maps.at(view_nr)->override_font(font_desc);
+  auto source_font_description=Pango::FontDescription(Singleton::Config::source()->font);
+  auto source_map_font_desc=Pango::FontDescription(static_cast<std::string>(source_font_description.get_family())+" "+Singleton::Config::source()->map_font_size); 
+  source_maps.at(view_nr)->override_font(source_map_font_desc);
   if(Singleton::Config::source()->show_map)
     source_maps.at(view_nr)->show();
   else
