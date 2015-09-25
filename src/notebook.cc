@@ -107,12 +107,11 @@ void Notebook::open(const boost::filesystem::path &file_path) {
 
 #if GTK_VERSION_GE(3, 18)
   source_maps.emplace_back(Glib::wrap(gtk_source_map_new()));
-  auto font_desc=Pango::FontDescription(Singleton::Config::source()->font);
-  font_desc.set_size(1);
-  source_maps.back()->override_font(font_desc);
   hboxes.back()->pack_end(*source_maps.back(), Gtk::PACK_SHRINK);
   gtk_source_map_set_view(GTK_SOURCE_MAP(source_maps.back()->gobj()), source_views.back()->gobj());
 #endif
+  configure(source_views.size()-1);
+  
   std::string title=file_path.filename().string();
   append_page(*hboxes.back(), title);
   
@@ -140,6 +139,17 @@ void Notebook::open(const boost::filesystem::path &file_path) {
   });
   
   DEBUG("end");
+}
+
+void Notebook::configure(int view_nr) {
+#if GTK_VERSION_GE(3, 18)
+  auto font_desc=Pango::FontDescription("Monospace "+std::to_string(Singleton::Config::source()->map_font_size)); //Seems to only work with Monospace
+  source_maps.at(view_nr)->override_font(font_desc);
+  if(Singleton::Config::source()->show_map)
+    source_maps.at(view_nr)->show();
+  else
+    source_maps.at(view_nr)->hide();
+#endif
 }
 
 bool Notebook::save(int page, bool reparse_needed) {

@@ -115,6 +115,12 @@ void MainConfig::GenerateSource() {
   auto source_cfg = Singleton::Config::source();
   auto source_json = cfg.get_child("source");
   
+  Singleton::Config::source()->style=source_json.get<std::string>("style");
+  source_cfg->font=source_json.get<std::string>("font");
+  
+  source_cfg->show_map = source_json.get<bool>("show_map");
+  source_cfg->map_font_size = source_json.get<unsigned>("map_font_size");
+  
   source_cfg->spellcheck_language = source_json.get<std::string>("spellcheck_language");
   
   source_cfg->default_tab_char = source_json.get<char>("default_tab_char");
@@ -128,9 +134,6 @@ void MainConfig::GenerateSource() {
   
   for (auto &i : source_json.get_child("clang_types"))
     source_cfg->clang_types[i.first] = i.second.get_value<std::string>();
-  
-  Singleton::Config::source()->style=source_json.get<std::string>("style");
-  source_cfg->font=source_json.get<std::string>("font");
 }
 
 void MainConfig::GenerateDirectoryFilter() {

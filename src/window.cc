@@ -190,8 +190,10 @@ void Window::create_menu() {
       if(notebook.get_current_page()!=-1) {
         if(notebook.get_current_view()->file_path==Singleton::config_dir()+"config.json") {
           configure();
-          for(int c=0;c<notebook.size();c++)
+          for(int c=0;c<notebook.size();c++) {
             notebook.get_view(c)->configure();
+            notebook.configure(c);
+          }
         }
       }
     }

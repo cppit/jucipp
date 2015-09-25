@@ -26,6 +26,10 @@ namespace Source {
     std::string style;
     std::string font;
     std::string spellcheck_language;
+    
+    bool show_map;
+    unsigned map_font_size;
+    
     bool auto_tab_char_and_size;
     char default_tab_char;
     unsigned default_tab_size;
