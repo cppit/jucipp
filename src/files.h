@@ -27,7 +27,7 @@ const std::string configjson =
 #endif
 "//Use \"\" for default font, and for instance \"Monospace 12\" to also set size.\n"
 "        \"show_map\": true,\n"
-"        \"map_font_size\": 1,\n"
+"        \"map_font_size\": \"1\",\n"
 "        \"spellcheck_language\": \"en_US\", //Use \"\" to set language from your locale settings\n"
 "        \"clang_types\": {\n"
 "            \"8\": \"def:function\",\n"

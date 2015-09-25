@@ -28,7 +28,7 @@ namespace Source {
     std::string spellcheck_language;
     
     bool show_map;
-    unsigned map_font_size;
+    std::string map_font_size;
     
     bool auto_tab_char_and_size;
     char default_tab_char;

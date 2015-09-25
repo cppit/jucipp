@@ -143,7 +143,7 @@ void Notebook::open(const boost::filesystem::path &file_path) {
 
 void Notebook::configure(int view_nr) {
 #if GTK_VERSION_GE(3, 18)
-  auto font_desc=Pango::FontDescription("Monospace "+std::to_string(Singleton::Config::source()->map_font_size)); //Seems to only work with Monospace
+  auto font_desc=Pango::FontDescription("Monospace "+Singleton::Config::source()->map_font_size); //Seems to only work with Monospace
   source_maps.at(view_nr)->override_font(font_desc);
   if(Singleton::Config::source()->show_map)
     source_maps.at(view_nr)->show();
@@ -218,15 +218,15 @@ bool Notebook::close_current_page() {
     int page = get_current_page();
     int index=get_index(page);
     remove_page(page);
+#if GTK_VERSION_GE(3, 18)
+    source_maps.erase(source_maps.begin()+index);
+#endif
     auto source_view=source_views.at(index);
     if(auto source_clang_view=dynamic_cast<Source::ClangView*>(source_view))
       source_clang_view->async_delete();
     else
       delete source_view;
     source_views.erase(source_views.begin()+index);
-#if GTK_VERSION_GE(3, 18)
-    source_maps.erase(source_maps.begin()+index);
-#endif
     scrolled_windows.erase(scrolled_windows.begin()+index);
     hboxes.erase(hboxes.begin()+index);
   }

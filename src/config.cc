@@ -119,7 +119,7 @@ void MainConfig::GenerateSource() {
   source_cfg->font=source_json.get<std::string>("font");
   
   source_cfg->show_map = source_json.get<bool>("show_map");
-  source_cfg->map_font_size = source_json.get<unsigned>("map_font_size");
+  source_cfg->map_font_size = source_json.get<std::string>("map_font_size");
   
   source_cfg->spellcheck_language = source_json.get<std::string>("spellcheck_language");
   
