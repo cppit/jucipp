@@ -1387,6 +1387,19 @@ std::vector<std::string> Source::ClangViewParse::get_compilation_commands() {
       arguments.emplace_back(lol[a]);
     }
   }
+  auto clang_version_string=clang::to_string(clang_getClangVersion());
+  const std::regex clang_version_regex("^clang version ([0-9.]+).*$");
+  std::smatch sm;
+  if(std::regex_match(clang_version_string, sm, clang_version_regex)) {
+    auto clang_version=sm[1].str();
+    arguments.emplace_back("-I/usr/lib/clang/"+clang_version+"/include");
+    arguments.emplace_back("-I/usr/local/lib/clang/"+clang_version+"/include");
+    arguments.emplace_back("-IC:/msys32/mingw32/lib/clang/"+clang_version+"/include");
+    arguments.emplace_back("-IC:/msys32/mingw64/lib/clang/"+clang_version+"/include");
+    arguments.emplace_back("-IC:/msys64/mingw32/lib/clang/"+clang_version+"/include");
+    arguments.emplace_back("-IC:/msys64/mingw64/lib/clang/"+clang_version+"/include");
+  }
+
   if(file_path.extension()==".h") //TODO: temporary fix for .h-files (parse as c++)
     arguments.emplace_back("-xc++");
 
