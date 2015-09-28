@@ -1,4 +1,4 @@
-#include "dialogs.h"
+#include <dialogs.h>
 #include "singletons.h"
 #include <gtkmm.h>
 #include <vector>

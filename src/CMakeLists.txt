@@ -88,7 +88,6 @@ set(source_files juci.h
     tooltips.cc
     singletons.h
     singletons.cc
-    dialogs.h
     cmake.h
     cmake.cc)
 
@@ -98,6 +97,7 @@ if(MSYS)
   message("MSYS detected")
 else()
   list(APPEND source_files terminal.cc)
+  list(APPEND source_files dialogs.h)
   list(APPEND source_files dialogs.cc)
   message("UNIX detected")
 endif()
@@ -115,6 +115,7 @@ if(${validation})
     ${GTKMM_INCLUDE_DIRS}
     ${GTKSVMM_INCLUDE_DIRS}
     ${LCL_INCLUDE_DIRS}
+    "C:/msys64/mingw64/include/dialogs"
     ${LIBCLANG_INCLUDE_DIRS}
     ${ASPELL_INCLUDE_DIR})
 
@@ -124,6 +125,7 @@ if(${validation})
     ${Boost_LIBRARY_DIRS}
 #    ${PYTHON_INCLUDE_DIRS}
     ${LCL_LIBRARY_DIRS}
+    C:/msys64/mingw64/bin
     ${LIBCLANG_LIBRARY_DIRS})
 
 #  set_target_properties(${module}
@@ -132,11 +134,11 @@ if(${validation})
 
 #  target_link_libraries(${module} ${PYTHON_LIBRARIES} ${Boost_LIBRARIES})
 #  target_link_libraries(${module} ${Boost_LIBRARIES})
-
   target_link_libraries(${project_name}
     ${LIBCLANG_LIBRARIES}
     ${LCL_LIBRARIES}
     ${GTKMM_LIBRARIES}
+    "C:/msys64/mingw64/bin/libdialogs.dll"
     ${GTKSVMM_LIBRARIES}
     ${Boost_LIBRARIES}
     ${ASPELL_LIBRARIES}

@@ -38,6 +38,10 @@ Window::Window() : box(Gtk::ORIENTATION_VERTICAL), notebook(*Singleton::director
   set_events(Gdk::POINTER_MOTION_MASK|Gdk::FOCUS_CHANGE_MASK|Gdk::SCROLL_MASK);
   add(box);
   
+  auto i = Gtk::IconTheme::get_default();
+  for (auto &c : i->get_search_path())
+    Singleton::terminal()->print(c + "\n");
+  
   generate_keybindings();
   //PluginApi(&this->notebook, &this->menu);
   create_menu();
@@ -161,13 +165,17 @@ void Window::create_menu() {
   menu.action_group->add(Gtk::Action::create("FileNewFolder", "New Folder"), Gtk::AccelKey(menu.key_map["new_folder"]), [this]() {
     auto time_now=std::chrono::system_clock::to_time_t(std::chrono::system_clock::now());
       boost::filesystem::path path = Dialog::new_folder();
-      if(boost::filesystem::last_write_time(path)>=time_now) {
-        if(Singleton::directories()->current_path!="")
-          Singleton::directories()->update();
-        Singleton::terminal()->print("New folder "+path.string()+" created.\n");
+      if(boost::filesystem::exists(path)) {
+        if(boost::filesystem::last_write_time(path)>=time_now) {
+          if(Singleton::directories()->current_path!="")
+            Singleton::directories()->update();
+          Singleton::terminal()->print("New folder "+path.string()+" created.\n");
+        }
+        else
+          Singleton::terminal()->print("Error: "+path.string()+" already exists.\n");
+      } else {
+        Singleton::terminal()->print("Cancel \n");
       }
-      else
-        Singleton::terminal()->print("Error: "+path.string()+" already exists.\n");
       Singleton::directories()->select(path);
   });
   menu.action_group->add(Gtk::Action::create("FileNewProject", "New Project"));
@@ -204,7 +212,11 @@ void Window::create_menu() {
       notebook.open(Dialog::select_file());
   });
   menu.action_group->add(Gtk::Action::create("FileOpenFolder", "Open Folder"), Gtk::AccelKey(menu.key_map["open_folder"]), [this]() {
-    Singleton::directories()->open(Dialog::select_folder());
+    auto path = Dialog::select_folder();
+    if (boost::filesystem::exists(path))
+      Singleton::directories()->open(path);
+    else
+      Singleton::terminal()->print("Cancel \n");
   });
   menu.action_group->add(Gtk::Action::create("FileSaveAs", "Save As"), Gtk::AccelKey(menu.key_map["save_as"]), [this]() {
       auto path = Dialog::save_file();
