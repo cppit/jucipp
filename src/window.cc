@@ -4,7 +4,6 @@
 #include "sourcefile.h"
 #include "config.h"
 //#include "api.h"
-#include <boost/lexical_cast.hpp>
 
 #include <iostream> //TODO: remove
 using namespace std; //TODO: remove
@@ -100,7 +99,7 @@ Window::Window() : box(Gtk::ORIENTATION_VERTICAL), notebook(directories), compil
     if(notebook.get_current_page()!=-1) {
       if(search_entry_shown && entry_box.labels.size()>0) {
         notebook.get_current_view()->update_search_occurrences=[this](int number){
-          entry_box.labels.begin()->update(0, boost::lexical_cast<std::string>(number));
+          entry_box.labels.begin()->update(0, std::to_string(number));
         };
         notebook.get_current_view()->search_highlight(last_search, case_sensitive_search, regex_search);
       }
@@ -327,7 +326,7 @@ void Window::create_menu() {
               last_char=executable_path_spaces_fixed[c];
             }
             Singleton::terminal()->async_execute(executable_path_spaces_fixed, project_path, [this, executable_path](int exit_code){
-              Singleton::terminal()->async_print(executable_path.string()+" returned: "+boost::lexical_cast<std::string>(exit_code)+'\n');
+              Singleton::terminal()->async_print(executable_path.string()+" returned: "+std::to_string(exit_code)+'\n');
             });
           }
         });
@@ -358,7 +357,7 @@ void Window::create_menu() {
         last_run_command=content;
         Singleton::terminal()->async_print("Running: "+content+'\n');
         Singleton::terminal()->async_execute(content, directories.current_path, [this, content](int exit_code){
-          Singleton::terminal()->async_print(content+" returned: "+boost::lexical_cast<std::string>(exit_code)+'\n');
+          Singleton::terminal()->async_print(content+" returned: "+std::to_string(exit_code)+'\n');
         });
       }
       entry_box.hide();
@@ -633,13 +632,16 @@ void Window::search_and_replace_entry() {
   auto label_it=entry_box.labels.begin();
   label_it->update=[label_it](int state, const std::string& message){
     if(state==0) {
-      auto number = boost::lexical_cast<int>(message);
-      if(number==0)
-        label_it->set_text("");
-      else if(number==1)
-        label_it->set_text("1 result found");
-      else if(number>1)
-        label_it->set_text(boost::lexical_cast<std::string>(number)+" results found");
+      try {
+        auto number = stoi(message);
+        if(number==0)
+          label_it->set_text("");
+        else if(number==1)
+          label_it->set_text("1 result found");
+        else if(number>1)
+          label_it->set_text(message+" results found");
+      }
+      catch(const std::exception &e) {}
     }
   };
   entry_box.entries.emplace_back(last_search, [this](const std::string& content){
@@ -650,7 +652,7 @@ void Window::search_and_replace_entry() {
   search_entry_it->set_placeholder_text("Find");
   if(notebook.get_current_page()!=-1) {
     notebook.get_current_view()->update_search_occurrences=[label_it](int number){
-      label_it->update(0, boost::lexical_cast<std::string>(number));
+      label_it->update(0, std::to_string(number));
     };
     notebook.get_current_view()->search_highlight(search_entry_it->get_text(), case_sensitive_search, regex_search);
   }
@@ -721,8 +723,8 @@ void Window::goto_line_entry() {
       if(notebook.get_current_page()!=-1) {
         auto buffer=notebook.get_current_view()->get_buffer();
         try {
-          auto line = boost::lexical_cast<unsigned>(content);
-          if(line>0 && line<=(unsigned long)buffer->get_line_count()) {
+          auto line = stoi(content);
+          if(line>0 && line<=buffer->get_line_count()) {
             line--;
             buffer->place_cursor(buffer->get_iter_at_line(line));
             while(gtk_events_pending())
@@ -762,7 +764,7 @@ void Window::rename_token_entry() {
               if(view->rename_similar_tokens) {
                 auto number=view->rename_similar_tokens(*token, content);
                 if(number>0) {
-                  Singleton::terminal()->print("Replaced "+boost::lexical_cast<std::string>(number)+" occurrences in file "+view->file_path.string()+"\n");
+                  Singleton::terminal()->print("Replaced "+std::to_string(number)+" occurrences in file "+view->file_path.string()+"\n");
                   notebook.save(c);
                 }
               }

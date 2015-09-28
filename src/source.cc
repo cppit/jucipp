@@ -6,7 +6,6 @@
 #include <algorithm>
 #include "singletons.h"
 #include <gtksourceview/gtksource.h>
-#include <boost/lexical_cast.hpp>
 #include <iostream>
 
 using namespace std; //TODO: remove
@@ -331,7 +330,7 @@ void Source::View::configure() {
           tab_str="<space>";
         else
           tab_str="<tab>";
-        Singleton::terminal()->print("Tab char and size for file "+file_path.string()+" set to: "+tab_str+", "+boost::lexical_cast<std::string>(tab_char_and_size.second)+".\n");
+        Singleton::terminal()->print("Tab char and size for file "+file_path.string()+" set to: "+tab_str+", "+std::to_string(tab_char_and_size.second)+".\n");
       }
       
       tab_char=tab_char_and_size.first;
@@ -1422,17 +1421,13 @@ void Source::ClangViewParse::update_syntax() {
     buffer->remove_tag_by_name(tag, buffer->begin(), buffer->end());
   last_syntax_tags.clear();
   for (auto &range : ranges) {
-    auto type = boost::lexical_cast<std::string>(range.kind);
-    try {
-      last_syntax_tags.emplace(Singleton::Config::source()->clang_types.at(type));
-    } catch (std::exception) {
-      //cout << range.kind << ": " << range.offsets.first.line << ", " << range.offsets.first.index << endl; //TODO: remove
-      continue;
+    auto type_it=Singleton::Config::source()->clang_types.find(std::to_string(range.kind));
+    if(type_it!=Singleton::Config::source()->clang_types.end()) {
+      last_syntax_tags.emplace(type_it->second);
+      Gtk::TextIter begin_iter = buffer->get_iter_at_line_index(range.offsets.first.line-1, range.offsets.first.index-1);
+      Gtk::TextIter end_iter  = buffer->get_iter_at_line_index(range.offsets.second.line-1, range.offsets.second.index-1);
+      buffer->apply_tag_by_name(type_it->second, begin_iter, end_iter);
     }
-    
-    Gtk::TextIter begin_iter = buffer->get_iter_at_line_index(range.offsets.first.line-1, range.offsets.first.index-1);
-    Gtk::TextIter end_iter  = buffer->get_iter_at_line_index(range.offsets.second.line-1, range.offsets.second.index-1);
-    buffer->apply_tag_by_name(Singleton::Config::source()->clang_types.at(type), begin_iter, end_iter);
   }
 }
 
@@ -1950,7 +1945,7 @@ void Source::ClangViewAutocomplete::autocomplete() {
     autocomplete_thread=std::thread([this, ac_data, line_nr, column_nr, buffer_map](){
       parsing_mutex.lock();
       if(!parse_thread_stop)
-        *ac_data=move(get_autocomplete_suggestions(line_nr, column_nr, *buffer_map));
+        *ac_data=get_autocomplete_suggestions(line_nr, column_nr, *buffer_map);
       if(!parse_thread_stop)
         autocomplete_done();
       else
