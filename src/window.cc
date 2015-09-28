@@ -154,7 +154,7 @@ void Window::configure() {
   auto screen = Gdk::Screen::get_default();
   auto css_provider = Gtk::CssProvider::get_named(Singleton::Config::window()->theme_name, Singleton::Config::window()->theme_variant);
   //TODO: add check if theme exists, or else write error to Singleton::terminal()
-  style_context->add_provider_for_screen(screen, css_provider, GTK_STYLE_PROVIDER_PRIORITY_APPLICATION);
+  style_context->add_provider_for_screen(screen, css_provider, GTK_STYLE_PROVIDER_PRIORITY_SETTINGS);
 }
 
 void Window::create_menu() {
