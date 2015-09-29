@@ -112,6 +112,9 @@ Window::Window() : box(Gtk::ORIENTATION_VERTICAL), notebook(directories), compil
 
       if(auto menu_item=dynamic_cast<Gtk::MenuItem*>(menu.ui_manager->get_widget("/MenuBar/SourceMenu/SourceRename")))
         menu_item->set_sensitive((bool)notebook.get_current_view()->rename_similar_tokens);
+      
+      if(auto menu_item=dynamic_cast<Gtk::MenuItem*>(menu.ui_manager->get_widget("/MenuBar/SourceMenu/SourceGotoNextDiagnostic")))
+        menu_item->set_sensitive((bool)notebook.get_current_view()->goto_next_diagnostic);
     
       directories.select(notebook.get_current_view()->file_path);
       
