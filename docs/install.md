@@ -44,9 +44,9 @@ make install
 ```
 
 ##Windows with MSYS2 (https://msys2.github.io/)
-Install dependencies(replace [arch] with i686 or x86_64 depending on your MSYS2 install):
+Install dependencies (replace x86_64 with i686 for 32-bit MSYS2 installs):
 ```sh
-pacman -S patch autoconf automake-wrapper mingw-w64-[arch]-gtkmm3 mingw-w64-[arch]-boost mingw-w64-[arch]-aspell mingw-w64-[arch]-aspell-en git
+pacman -S patch autoconf automake-wrapper mingw-w64-x86_64-gtkmm3 mingw-w64-x86_64-gtksourceviewmm3 mingw-w64-x86_64-boost mingw-w64-x86_64-aspell mingw-w64-x86_64-aspell-en git
 ```
 
 Get juCi++ source:
@@ -55,20 +55,9 @@ git clone https://github.com/cppit/jucipp.git
 cd jucipp
 ```
 
-Compiling and installing gtksourceview3 and gtksourceviewmm3:
+Compile and install juCi++ source (replace mingw64 with mingw32 for 32-bit MSYS2 installs):
 ```sh
-cd MINGW-packages/mingw-w64-gtksourceview3/
-makepkg-mingw -sLf
-pacman -U mingw-w64-[arch]-gtksourceview3-3.12.0-2-any.pkg.tar.xz
-cd ../mingw-w64-gtksourceviewmm3/
-makepkg-mingw -sLf
-pacman -U mingw-w64-[arch]-gtksourceviewmm3-3.12.0-1-any.pkg.tar.xz
-cd ../../
-```
-
-Compile and install juCi++ source:
-```sh
-cmake -G"MSYS Makefiles" -DCMAKE_INSTALL_PREFIX=/mingw[32 or 64] .
+cmake -G"MSYS Makefiles" -DCMAKE_INSTALL_PREFIX=/mingw64 .
 make
 make install
 ```
