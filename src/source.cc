@@ -915,7 +915,7 @@ bool Source::View::on_key_press_event(GdkEventKey* key) {
   else if(key->keyval==GDK_KEY_Tab) {
     auto iter=get_buffer()->get_insert()->get_iter();
     //Special case if insert is at beginning of empty line:
-    if(iter.starts_line() && iter.ends_line()) {
+    if(iter.starts_line() && iter.ends_line() && !get_buffer()->get_has_selection()) {
       auto prev_line_iter=iter;
       while(prev_line_iter.starts_line() && prev_line_iter.backward_char()) {}
       auto line=get_line_before(prev_line_iter);
