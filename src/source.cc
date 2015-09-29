@@ -913,6 +913,30 @@ bool Source::View::on_key_press_event(GdkEventKey* key) {
   }
   //Indent right when clicking tab, no matter where in the line the cursor is. Also works on selected text.
   else if(key->keyval==GDK_KEY_Tab) {
+    auto iter=get_buffer()->get_insert()->get_iter();
+    //Special case if insert is at beginning of empty line:
+    if(iter.starts_line() && iter.ends_line()) {
+      auto prev_line_iter=iter;
+      while(prev_line_iter.starts_line() && prev_line_iter.backward_char()) {}
+      auto line=get_line_before(prev_line_iter);
+      std::smatch sm;
+      if(std::regex_match(line, sm, tabs_regex)) {
+        auto tabs=sm[1].str();
+        auto next_line_iter=iter;
+        while(next_line_iter.starts_line() && next_line_iter.forward_char()) {}
+        line=get_line(next_line_iter);
+        if(std::regex_match(line, sm, tabs_regex)) {
+          if(sm[1].str().size()<tabs.size())
+            tabs=sm[1].str();
+          if(tabs.size()>=tab_size) {
+            get_buffer()->insert_at_cursor(tabs);
+            get_source_buffer()->end_user_action();
+            return true;
+          }
+        }
+      }
+    }
+    
     Gtk::TextIter selection_start, selection_end;
     get_source_buffer()->get_selection_bounds(selection_start, selection_end);
     int line_start=selection_start.get_line();
