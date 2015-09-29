@@ -1006,20 +1006,22 @@ bool Source::View::on_key_press_event(GdkEventKey* key) {
   //"Smart" delete key
   else if(key->keyval==GDK_KEY_Delete && !get_buffer()->get_has_selection()) {
     auto insert_iter=get_buffer()->get_insert()->get_iter();
-    auto iter=insert_iter;
-    bool perform_smart_delete=false;
-    bool first_line=true;
-    while(*iter==' ' || *iter=='\t' || (first_line && iter.ends_line())) {
-      if(iter.ends_line()) {
-        perform_smart_delete=true;
-        first_line=false;
+    if(!(insert_iter.starts_line() && insert_iter.ends_line())) {
+      auto iter=insert_iter;
+      bool perform_smart_delete=false;
+      bool first_line=true;
+      while(*iter==' ' || *iter=='\t' || (first_line && iter.ends_line())) {
+        if(iter.ends_line()) {
+          perform_smart_delete=true;
+          first_line=false;
+        }
+        if(!iter.forward_char()) {
+          break;
+        }
       }
-      if(!iter.forward_char()) {
-        break;
-      }
+      if(perform_smart_delete && iter.backward_char())
+        get_buffer()->erase(insert_iter, iter);
     }
-    if(perform_smart_delete && iter.backward_char())
-      get_buffer()->erase(insert_iter, iter);
   }
 
   bool stop=Gsv::View::on_key_press_event(key);
