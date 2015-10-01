@@ -92,6 +92,7 @@ void EntryBox::clear() {
 void EntryBox::show() {
   std::vector<Gtk::Widget*> focus_chain;
   for(auto& entry: entries) {
+    entry.set_max_length(0);
     lower_box.pack_start(entry, Gtk::PACK_SHRINK);
     focus_chain.emplace_back(&entry);
   }
