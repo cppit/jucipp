@@ -1433,7 +1433,7 @@ std::vector<std::string> Source::ClangViewParse::get_compilation_commands() {
     arguments.emplace_back("-IC:/msys64/mingw32/lib/clang/"+clang_version+"/include");
     arguments.emplace_back("-IC:/msys64/mingw64/lib/clang/"+clang_version+"/include");
   }
-
+  arguments.emplace_back("-fretain-comments-from-system-headers");
   if(file_path.extension()==".h") //TODO: temporary fix for .h-files (parse as c++)
     arguments.emplace_back("-xc++");
 
