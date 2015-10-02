@@ -2216,16 +2216,29 @@ Source::ClangViewAutocomplete(file_path, project_path, language) {
 void Source::ClangViewRefactor::tag_similar_tokens(const Token &token) {
   if(source_readable) {
     if(token && last_tagged_token!=token) {
-      get_buffer()->remove_tag(similar_tokens_tag, get_buffer()->begin(), get_buffer()->end());
+      for(auto &mark: similar_token_marks) {
+        get_buffer()->remove_tag(similar_tokens_tag, mark.first->get_iter(), mark.second->get_iter());
+        get_buffer()->delete_mark(mark.first);
+        get_buffer()->delete_mark(mark.second);
+      }
+      similar_token_marks.clear();
       auto offsets=clang_tokens->get_similar_token_offsets(static_cast<clang::CursorKind>(token.type), token.spelling, token.usr);
       for(auto &offset: offsets) {
-        get_buffer()->apply_tag(similar_tokens_tag, get_buffer()->get_iter_at_line_index(offset.first.line-1, offset.first.index-1), get_buffer()->get_iter_at_line_index(offset.second.line-1, offset.second.index-1));
+        auto start_iter=get_buffer()->get_iter_at_line_index(offset.first.line-1, offset.first.index-1);
+        auto end_iter=get_buffer()->get_iter_at_line_index(offset.second.line-1, offset.second.index-1);
+        get_buffer()->apply_tag(similar_tokens_tag, start_iter, end_iter);
+        similar_token_marks.emplace_back(get_buffer()->create_mark(start_iter), get_buffer()->create_mark(end_iter)); 
       }
       last_tagged_token=token;
     }
   }
   if(!token && last_tagged_token) {
-    get_buffer()->remove_tag(similar_tokens_tag, get_buffer()->begin(), get_buffer()->end());
+    for(auto &mark: similar_token_marks) {
+      get_buffer()->remove_tag(similar_tokens_tag, mark.first->get_iter(), mark.second->get_iter());
+      get_buffer()->delete_mark(mark.first);
+      get_buffer()->delete_mark(mark.second);
+    }
+    similar_token_marks.clear();
     last_tagged_token=Token();
   }
 }
