@@ -2077,7 +2077,7 @@ bool Source::ClangViewAutocomplete::restart_parse() {
 Source::ClangViewRefactor::ClangViewRefactor(const boost::filesystem::path &file_path, const boost::filesystem::path& project_path, Glib::RefPtr<Gsv::Language> language):
 Source::ClangViewAutocomplete(file_path, project_path, language) {
   similar_tokens_tag=get_buffer()->create_tag();
-  similar_tokens_tag->property_weight()=Pango::WEIGHT_ULTRAHEAVY;
+  similar_tokens_tag->property_weight()=1000; //TODO: replace with Pango::WEIGHT_ULTRAHEAVY in 2016 or so (when Ubuntu 14 is history)
   
   get_buffer()->signal_changed().connect([this]() {
     if(!renaming && last_tagged_token) {
