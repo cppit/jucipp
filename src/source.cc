@@ -2081,7 +2081,12 @@ Source::ClangViewAutocomplete(file_path, project_path, language) {
   
   get_buffer()->signal_changed().connect([this]() {
     if(!renaming && last_tagged_token) {
-      get_buffer()->remove_tag(similar_tokens_tag, get_buffer()->begin(), get_buffer()->end());
+      for(auto &mark: similar_token_marks) {
+        get_buffer()->remove_tag(similar_tokens_tag, mark.first->get_iter(), mark.second->get_iter());
+        get_buffer()->delete_mark(mark.first);
+        get_buffer()->delete_mark(mark.second);
+      }
+      similar_token_marks.clear();
       last_tagged_token=Token();
     }
   });
