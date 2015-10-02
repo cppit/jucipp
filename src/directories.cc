@@ -23,7 +23,7 @@ namespace sigc {
 }
 
 Directories::Directories() : stop_update_thread(false) {
-  DEBUG("start");
+  JDEBUG("start");
   add(tree_view);
   set_policy(Gtk::POLICY_AUTOMATIC, Gtk::POLICY_AUTOMATIC);
   tree_store = Gtk::TreeStore::create(column_record);
@@ -120,7 +120,7 @@ Directories::~Directories() {
 }
 
 void Directories::open(const boost::filesystem::path& dir_path) {
-  DEBUG("start");
+ JDEBUG("start");
   if(dir_path=="")
     return;
   
@@ -142,21 +142,21 @@ void Directories::open(const boost::filesystem::path& dir_path) {
     
   current_path=dir_path;
   
-  DEBUG("end");
+ JDEBUG("end");
 }
 
 void Directories::update() {
-  DEBUG("start");
+ JDEBUG("start");
   update_mutex.lock();
   for(auto &last_write_time: last_write_times) {
     add_path(last_write_time.first, last_write_time.second.first);
   }
   update_mutex.unlock();
-  DEBUG("end");
+ JDEBUG("end");
 }
 
 void Directories::select(const boost::filesystem::path &path) {
-  DEBUG("start");
+ JDEBUG("start");
   if(current_path=="")
     return;
     
@@ -196,7 +196,7 @@ void Directories::select(const boost::filesystem::path &path) {
     }
     return false;
   });
-  DEBUG("end");
+ JDEBUG("end");
 }
 
 bool Directories::ignored(std::string path) {

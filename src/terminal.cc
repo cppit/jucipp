@@ -145,7 +145,7 @@ Terminal::Terminal() {
 }
 
 int Terminal::execute(const std::string &command, const boost::filesystem::path &path) {
-  DEBUG("start");
+  JDEBUG("start");
   int stdin_fd, stdout_fd, stderr_fd;
   auto pid=popen3(command, path.string(), &stdin_fd, &stdout_fd, &stderr_fd);
   
@@ -183,14 +183,14 @@ int Terminal::execute(const std::string &command, const boost::filesystem::path 
     close(stdout_fd);
     close(stderr_fd);
     
-    DEBUG("end");
+    JDEBUG("end");
     return exit_code;
   }
 }
 
 void Terminal::async_execute(const std::string &command, const boost::filesystem::path &path, std::function<void(int exit_code)> callback) {
   std::thread async_execute_thread([this, command, path, callback](){
-    DEBUG("start");
+    JDEBUG("start");
     int stdin_fd, stdout_fd, stderr_fd;
     async_executes_mutex.lock();
     stdin_buffer.clear();
@@ -245,7 +245,7 @@ void Terminal::async_execute(const std::string &command, const boost::filesystem
       if(callback)
         callback(exit_code);
 
-      DEBUG("end");
+      JDEBUG("end");
     }
   });
   async_execute_thread.detach();

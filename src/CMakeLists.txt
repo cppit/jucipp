@@ -88,13 +88,18 @@ set(source_files juci.h
 
 if(MSYS)
   list(APPEND source_files terminal_win.cc)
+  list(APPEND source_files dialogs_win.cc)
+  message("MSYS detected")
 else()
   list(APPEND source_files terminal.cc)
+  list(APPEND source_files dialogs.h)
+  list(APPEND source_files dialogs.cc)
+  message("UNIX detected")
 endif()
 
 if(${validation})
   add_executable(${project_name} ${source_files})
-
+  
 #  add_library(${module} SHARED
 #    api
 #    api_ext)
@@ -122,7 +127,6 @@ if(${validation})
 
 #  target_link_libraries(${module} ${PYTHON_LIBRARIES} ${Boost_LIBRARIES})
 #  target_link_libraries(${module} ${Boost_LIBRARIES})
-
   target_link_libraries(${project_name}
     ${LIBCLANG_LIBRARIES}
     ${LCL_LIBRARIES}

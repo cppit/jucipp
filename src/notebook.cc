@@ -52,7 +52,7 @@ Source::View* Notebook::get_current_view() {
 }
 
 void Notebook::open(const boost::filesystem::path &file_path) {
-  DEBUG("start");
+  JDEBUG("start");
   for(int c=0;c<size();c++) {
     if(file_path==get_view(c)->file_path) {
       set_current_page(c);
@@ -138,7 +138,7 @@ void Notebook::open(const boost::filesystem::path &file_path) {
       set_tab_label_text(*(get_nth_page(page)), title);
   });
   
-  DEBUG("end");
+  JDEBUG("end");
 }
 
 void Notebook::configure(int view_nr) {
@@ -154,9 +154,9 @@ void Notebook::configure(int view_nr) {
 }
 
 bool Notebook::save(int page, bool reparse_needed) {
-  DEBUG("start");
+  JDEBUG("start");
   if(page>=size()) {
-    DEBUG("end false");
+    JDEBUG("end false");
     return false;
   }
   auto view=get_view(page);
@@ -192,12 +192,12 @@ bool Notebook::save(int page, bool reparse_needed) {
           }
         }
       }
-      DEBUG("end true");
+      JDEBUG("end true");
       return true;
     }
     Singleton::terminal()->print("Error: could not save file " +view->file_path.string()+"\n");
   }
-  DEBUG("end false");
+  JDEBUG("end false");
   return false;
 }
 
@@ -208,11 +208,11 @@ bool Notebook::save_current() {
 }
 
 bool Notebook::close_current_page() {
-  DEBUG("start");
+  JDEBUG("start");
   if (get_current_page()!=-1) {
     if(get_current_view()->get_buffer()->get_modified()){
       if(!save_modified_dialog()) {
-        DEBUG("end false");
+        JDEBUG("end false");
         return false;
       }
     }
@@ -231,7 +231,7 @@ bool Notebook::close_current_page() {
     scrolled_windows.erase(scrolled_windows.begin()+index);
     hboxes.erase(hboxes.begin()+index);
   }
-  DEBUG("end true");
+  JDEBUG("end true");
   return true;
 }
 
