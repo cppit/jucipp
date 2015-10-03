@@ -1223,7 +1223,9 @@ void Source::GenericView::parse_language_file(Glib::RefPtr<CompletionBuffer> &co
   bool case_insensitive=false;
   for(auto &node: pt) {
     if(node.first=="<xmlcomment>") {
-      if(static_cast<std::string>(node.second.data())==" case insensitive ")
+      auto data=static_cast<std::string>(node.second.data());
+      std::transform(data.begin(), data.end(), data.begin(), ::tolower);
+      if(data.find("case insensitive")!=std::string::npos)
         case_insensitive=true;
     }
     else if(node.first=="keyword") {
