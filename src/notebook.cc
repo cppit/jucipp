@@ -107,7 +107,6 @@ void Notebook::open(const boost::filesystem::path &file_path) {
 
 #if GTK_VERSION_GE(3, 18)
   source_maps.emplace_back(Glib::wrap(gtk_source_map_new()));
-  hboxes.back()->pack_end(*source_maps.back(), Gtk::PACK_SHRINK);
   gtk_source_map_set_view(GTK_SOURCE_MAP(source_maps.back()->gobj()), source_views.back()->gobj());
 #endif
   configure(source_views.size()-1);
@@ -146,10 +145,12 @@ void Notebook::configure(int view_nr) {
   auto source_font_description=Pango::FontDescription(Singleton::Config::source()->font);
   auto source_map_font_desc=Pango::FontDescription(static_cast<std::string>(source_font_description.get_family())+" "+Singleton::Config::source()->map_font_size); 
   source_maps.at(view_nr)->override_font(source_map_font_desc);
-  if(Singleton::Config::source()->show_map)
-    source_maps.at(view_nr)->show();
-  else
-    source_maps.at(view_nr)->hide();
+  if(Singleton::Config::source()->show_map) {
+    if(hboxes.at(view_nr)->get_children().size()==1)
+      hboxes.at(view_nr)->pack_end(*source_maps.at(view_nr), Gtk::PACK_SHRINK);
+  }
+  else if(hboxes.at(view_nr)->get_children().size()==2)
+    hboxes.at(view_nr)->remove(*source_maps.at(view_nr));
 #endif
 }
 
