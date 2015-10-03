@@ -28,7 +28,7 @@ towards libclang with speed in mind.
 * libgtksourceviewmm-3.0-dev
 * libaspell-dev
 * libclang-dev
-* [libclangmm](../../../libclangmm/)
+* [libclangmm](http://github.com/cppit/libclangmm/)
 
 ## Installation ##
-See [installation guide](docs/install.md).
+See [installation guide](http://github.com/cppit/jucipp/blob/master/docs/install.md).
