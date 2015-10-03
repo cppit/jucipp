@@ -2136,7 +2136,7 @@ Source::ClangViewAutocomplete(file_path, project_path, language) {
       for(auto &mark: marks) {
         renaming=true;
         get_buffer()->erase(mark.first->get_iter(), mark.second->get_iter());
-        get_buffer()->insert_with_tag(mark.first->get_iter(), text, similar_tokens_tag);
+        get_buffer()->insert(mark.first->get_iter(), text);
         get_buffer()->delete_mark(mark.first);
         get_buffer()->delete_mark(mark.second);
       }
