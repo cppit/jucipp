@@ -48,8 +48,6 @@ Glib::RefPtr<Gsv::Language> Source::guess_language(const boost::filesystem::path
 AspellConfig* Source::View::spellcheck_config=NULL;
 
 Source::View::View(const boost::filesystem::path &file_path, Glib::RefPtr<Gsv::Language> language): file_path(file_path) {
-  set_smart_home_end(Gsv::SMART_HOME_END_BEFORE);
-  
   get_source_buffer()->begin_not_undoable_action();
   if(language) {
     if(juci::filesystem::read_non_utf8(file_path, get_buffer())==-1)
@@ -1030,6 +1028,58 @@ bool Source::View::on_key_press_event(GdkEventKey* key) {
     }
     if(perform_smart_delete && iter.backward_char())
       get_buffer()->erase(insert_iter, iter);
+  }
+  //Next two are smart home/end keys that works with wrapped lines
+  else if(key->keyval==GDK_KEY_End && (key->state&GDK_CONTROL_MASK)==0) {
+    auto iter=get_buffer()->get_insert()->get_iter();
+    auto end_line_iter=iter;
+    while(!end_line_iter.ends_line() && end_line_iter.forward_char()) {}
+    auto end_sentence_iter=end_line_iter;
+    while(!end_sentence_iter.starts_line() && 
+          (*end_sentence_iter==' ' || *end_sentence_iter=='\t' || end_sentence_iter.ends_line()) &&
+          end_sentence_iter.backward_char()) {}
+    if(!end_sentence_iter.ends_line())
+      end_sentence_iter.forward_char();
+    
+    if(iter<end_sentence_iter || iter==end_line_iter) {
+      if((key->state&GDK_SHIFT_MASK)>0)
+        get_buffer()->move_mark_by_name("insert", end_sentence_iter);
+      else
+        get_buffer()->place_cursor(end_sentence_iter);
+    }
+    else {
+      if((key->state&GDK_SHIFT_MASK)>0)
+        get_buffer()->move_mark_by_name("insert", end_line_iter);
+      else
+        get_buffer()->place_cursor(end_line_iter);
+    }
+    scroll_to(get_buffer()->get_insert());
+    get_source_buffer()->end_user_action();
+    return true;
+  }
+  else if(key->keyval==GDK_KEY_Home && (key->state&GDK_CONTROL_MASK)==0) {
+    auto iter=get_buffer()->get_insert()->get_iter();
+    auto start_line_iter=get_buffer()->get_iter_at_line(iter.get_line());
+    auto start_sentence_iter=start_line_iter;
+    while(!start_sentence_iter.ends_line() && 
+          (*start_sentence_iter==' ' || *start_sentence_iter=='\t' || start_sentence_iter.starts_line()) &&
+          start_sentence_iter.forward_char()) {}
+    
+    if(iter>start_sentence_iter || iter==start_line_iter) {
+      if((key->state&GDK_SHIFT_MASK)>0)
+        get_buffer()->move_mark_by_name("insert", start_sentence_iter);
+      else
+        get_buffer()->place_cursor(start_sentence_iter);
+    }
+    else {
+      if((key->state&GDK_SHIFT_MASK)>0)
+        get_buffer()->move_mark_by_name("insert", start_line_iter);
+      else
+        get_buffer()->place_cursor(start_line_iter);
+    }
+    scroll_to(get_buffer()->get_insert());
+    get_source_buffer()->end_user_action();
+    return true;
   }
 
   bool stop=Gsv::View::on_key_press_event(key);
