@@ -1210,13 +1210,16 @@ Source::GenericView::GenericView(const boost::filesystem::path &file_path, Glib:
       catch(const std::exception &e) {
         Singleton::terminal()->print("Error: error parsing language file "+language_file.string()+": "+e.what()+'\n');
       }
-      add_keywords(completion_buffer_keywords, pt);
+      bool has_context_class=false;
+      parse_language_file(completion_buffer_keywords, has_context_class, pt);
+      if(!has_context_class)
+        spellcheck_all=false;
       completion_words->register_provider(completion_buffer_keywords);
     }
   }
 }
 
-void Source::GenericView::add_keywords(Glib::RefPtr<CompletionBuffer> &completion_buffer, const boost::property_tree::ptree &pt) {
+void Source::GenericView::parse_language_file(Glib::RefPtr<CompletionBuffer> &completion_buffer, bool &has_context_class, const boost::property_tree::ptree &pt) {
   bool case_insensitive=false;
   for(auto &node: pt) {
     if(node.first=="<xmlcomment>") {
@@ -1231,8 +1234,14 @@ void Source::GenericView::add_keywords(Glib::RefPtr<CompletionBuffer> &completio
         completion_buffer->insert_at_cursor(data+'\n');
       }
     }
+    else if(!has_context_class && node.first=="context") {
+      auto class_attribute=node.second.get<std::string>("<xmlattr>.class", "");
+      auto class_disabled_attribute=node.second.get<std::string>("<xmlattr>.class-disabled", "");
+      if(class_attribute.size()>0 || class_disabled_attribute.size()>0)
+        has_context_class=true;
+    }
     try {
-      add_keywords(completion_buffer, node.second);
+      parse_language_file(completion_buffer, has_context_class, node.second);
     }
     catch(const std::exception &e) {        
     }
