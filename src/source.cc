@@ -1983,21 +1983,32 @@ void Source::ClangViewAutocomplete::autocomplete() {
         completion_dialog->on_select=[this, rows](const std::string& selected, bool hide_window) {
           auto row = rows->at(selected);
           get_buffer()->erase(completion_dialog->start_mark->get_iter(), get_buffer()->get_insert()->get_iter());
+          auto iter=get_buffer()->get_insert()->get_iter();
+          if(*iter=='<' || *iter=='(') {
+            auto bracket_pos=row.find(*iter);
+            if(bracket_pos!=std::string::npos) {
+              row=row.substr(0, bracket_pos);
+            }
+          }
           get_buffer()->insert(completion_dialog->start_mark->get_iter(), row);
           if(hide_window) {
-            char find_char=row.back();
-            if(find_char==')' || find_char=='>') {
-              if(find_char==')')
-                find_char='(';
-              else
-                find_char='<';
-              size_t pos=row.find(find_char);
-              if(pos!=std::string::npos) {
-                auto start_offset=completion_dialog->start_mark->get_iter().get_offset()+pos+1;
-                auto end_offset=completion_dialog->start_mark->get_iter().get_offset()+row.size()-1;
-                if(start_offset!=end_offset)
-                  get_buffer()->select_range(get_buffer()->get_iter_at_offset(start_offset), get_buffer()->get_iter_at_offset(end_offset));
-              }
+            auto para_pos=row.find('(');
+            auto angle_pos=row.find('<');
+            size_t start_pos=std::string::npos;
+            size_t end_pos=std::string::npos;
+            if(angle_pos<para_pos) {
+              start_pos=angle_pos;
+              end_pos=row.find('>');
+            }
+            else if(para_pos!=std::string::npos) {
+              start_pos=para_pos;
+              end_pos=row.size()-1;
+            }
+            if(start_pos!=std::string::npos && end_pos!=std::string::npos) {
+              auto start_offset=completion_dialog->start_mark->get_iter().get_offset()+start_pos+1;
+              auto end_offset=completion_dialog->start_mark->get_iter().get_offset()+end_pos;
+              if(start_offset!=end_offset)
+                get_buffer()->select_range(get_buffer()->get_iter_at_offset(start_offset), get_buffer()->get_iter_at_offset(end_offset));
             }
           }
         };
