@@ -994,8 +994,14 @@ bool Source::View::on_key_press_event(GdkEventKey* key) {
   else if(key->keyval==GDK_KEY_BackSpace && !get_buffer()->get_has_selection()) {
     auto insert_it=get_buffer()->get_insert()->get_iter();
     auto line=get_line_before();
-    std::smatch sm;
-    if(std::regex_match(line, sm, tabs_regex) && sm[1].str().size()==line.size()) {
+    bool do_smart_backspace=true;
+    for(auto &chr: line) {
+      if(chr!=' ' && chr!='\t') {
+        do_smart_backspace=false;
+        break;
+      }
+    }
+    if(do_smart_backspace) {
       auto line_start_iter=insert_it;
       if(line_start_iter.backward_chars(line.size()))
         get_buffer()->erase(insert_it, line_start_iter);
@@ -1005,31 +1011,26 @@ bool Source::View::on_key_press_event(GdkEventKey* key) {
   else if(key->keyval==GDK_KEY_Delete && !get_buffer()->get_has_selection()) {
     auto insert_iter=get_buffer()->get_insert()->get_iter();
     auto iter=insert_iter;
-    bool perform_smart_delete=false;
-    if(iter.starts_line() && iter.ends_line()) {}
-    else if(iter.ends_line() && iter.forward_char()) {
-      if(!iter.ends_line()) {
-        bool first_line=true;
-        while((*iter==' ' || *iter=='\t' || (first_line && iter.ends_line())) && iter.forward_char()) {
-          perform_smart_delete=true;
-          if(first_line && iter.ends_line())
-            first_line=false;
-        }
+    bool do_smart_delete=true;
+    do {
+      if(*iter!=' ' && *iter!='\t' && !iter.ends_line()) {
+        do_smart_delete=false;
+        break;
       }
-    }
-    else {
-      while((*iter==' ' || *iter=='\t') && iter.forward_char()) {
-        perform_smart_delete=true;
-        if(iter.ends_line()) {
-          iter.forward_char();
-          break;
-        }
+      if(iter.ends_line()) {
+        iter.forward_char();
+        break;
       }
+    } while(iter.forward_char());
+    if(do_smart_delete) {
+      if(!insert_iter.starts_line())
+        while((*iter==' ' || *iter=='\t') && iter.forward_char()) {}
+      if(iter.backward_char())
+        get_buffer()->erase(insert_iter, iter);
     }
-    if(perform_smart_delete && iter.backward_char())
-      get_buffer()->erase(insert_iter, iter);
   }
   //Next two are smart home/end keys that works with wrapped lines
+  //Note that smart end goes FIRST to end of line to avoid hiding empty chars after expressions
   else if(key->keyval==GDK_KEY_End && (key->state&GDK_CONTROL_MASK)==0) {
     auto iter=get_buffer()->get_insert()->get_iter();
     auto end_line_iter=iter;
@@ -1041,7 +1042,7 @@ bool Source::View::on_key_press_event(GdkEventKey* key) {
     if(!end_sentence_iter.ends_line())
       end_sentence_iter.forward_char();
     
-    if(iter<end_sentence_iter || iter==end_line_iter) {
+    if(iter==end_line_iter) {
       if((key->state&GDK_SHIFT_MASK)>0)
         get_buffer()->move_mark_by_name("insert", end_sentence_iter);
       else
