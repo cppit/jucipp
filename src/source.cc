@@ -1018,7 +1018,8 @@ bool Source::View::on_key_press_event(GdkEventKey* key) {
         break;
       }
       if(iter.ends_line()) {
-        iter.forward_char();
+        if(!iter.forward_char())
+          do_smart_delete=false;
         break;
       }
     } while(iter.forward_char());
@@ -1063,7 +1064,7 @@ bool Source::View::on_key_press_event(GdkEventKey* key) {
     auto start_line_iter=get_buffer()->get_iter_at_line(iter.get_line());
     auto start_sentence_iter=start_line_iter;
     while(!start_sentence_iter.ends_line() && 
-          (*start_sentence_iter==' ' || *start_sentence_iter=='\t' || start_sentence_iter.starts_line()) &&
+          (*start_sentence_iter==' ' || *start_sentence_iter=='\t') &&
           start_sentence_iter.forward_char()) {}
     
     if(iter>start_sentence_iter || iter==start_line_iter) {
