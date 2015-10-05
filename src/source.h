@@ -38,22 +38,6 @@ namespace Source {
     bool show_line_numbers;
     std::unordered_map<std::string, std::string> clang_types;
   };
-
-  class Range {
-  public:
-    Range(std::pair<clang::Offset, clang::Offset> offsets, int kind):
-      offsets(offsets), kind(kind) {}
-    std::pair<clang::Offset, clang::Offset> offsets;
-    int kind;
-  };
-
-  class AutoCompleteData {
-  public:
-    explicit AutoCompleteData(const std::vector<clang::CompletionChunk> &chunks) :
-      chunks(chunks) { }
-    std::vector<clang::CompletionChunk> chunks;
-    std::string brief_comments;
-  };
   
   class Token {
   public:
@@ -69,6 +53,31 @@ namespace Source {
     int type;
     std::string spelling;
     std::string usr;
+  };
+  
+  class FixIt {
+  public:
+    class Offset {
+    public:
+      Offset() {}
+      Offset(unsigned line, unsigned offset): line(line), offset(offset) {}
+      bool operator==(const Offset &o) {return (line==o.line && offset==o.offset);}
+      
+      unsigned line;
+      unsigned offset;
+    };
+    
+    enum class Type {INSERT, REPLACE, ERASE};
+    
+    FixIt(Type type, const std::string &source, const std::pair<Offset, Offset> &offsets): 
+      type(type), source(source), offsets(offsets) {}
+    FixIt(const std::string &source, const std::pair<Offset, Offset> &offsets);
+    
+    std::string string();
+    
+    Type type;
+    std::string source;
+    std::pair<Offset, Offset> offsets;
   };
 
   class View : public Gsv::View {
@@ -95,6 +104,7 @@ namespace Source {
     std::function<Token()> get_token;
     std::function<size_t(const Token &token, const std::string &text)> rename_similar_tokens;
     std::function<void()> goto_next_diagnostic;
+    std::function<void()> apply_fix_its;
     
     std::function<void(View* view, const std::string &status)> on_update_status;
     std::function<void(View* view, const std::string &info)> on_update_info;
@@ -176,6 +186,14 @@ namespace Source {
   
   class ClangViewParse : public View {
   public:
+    class TokenRange {
+    public:
+      TokenRange(std::pair<clang::Offset, clang::Offset> offsets, int kind):
+        offsets(offsets), kind(kind) {}
+      std::pair<clang::Offset, clang::Offset> offsets;
+      int kind;
+    };
+    
     ClangViewParse(const boost::filesystem::path &file_path, const boost::filesystem::path& project_path, Glib::RefPtr<Gsv::Language> language);
     ~ClangViewParse();
     void configure();
@@ -204,6 +222,7 @@ namespace Source {
     std::regex no_bracket_no_para_statement_regex;
     
     std::set<int> diagnostic_offsets;
+    std::vector<FixIt> fix_its;
   private:
     std::map<std::string, std::string> get_buffer_map() const;
     void update_syntax();
@@ -224,6 +243,14 @@ namespace Source {
     
   class ClangViewAutocomplete : public ClangViewParse {
   public:
+    class AutoCompleteData {
+    public:
+      explicit AutoCompleteData(const std::vector<clang::CompletionChunk> &chunks) :
+        chunks(chunks) { }
+      std::vector<clang::CompletionChunk> chunks;
+      std::string brief_comments;
+    };
+    
     ClangViewAutocomplete(const boost::filesystem::path &file_path, const boost::filesystem::path& project_path, Glib::RefPtr<Gsv::Language> language);
     void async_delete();
     bool restart_parse();
@@ -235,7 +262,7 @@ namespace Source {
     void autocomplete();
     std::unique_ptr<CompletionDialog> completion_dialog;
     bool completion_dialog_shown=false;
-    std::vector<Source::AutoCompleteData> get_autocomplete_suggestions(int line_number, int column, std::map<std::string, std::string>& buffer_map);
+    std::vector<AutoCompleteData> get_autocomplete_suggestions(int line_number, int column, std::map<std::string, std::string>& buffer_map);
     Glib::Dispatcher autocomplete_done;
     sigc::connection autocomplete_done_connection;
     Glib::Dispatcher autocomplete_fail;

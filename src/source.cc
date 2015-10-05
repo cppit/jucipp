@@ -42,6 +42,38 @@ Glib::RefPtr<Gsv::Language> Source::guess_language(const boost::filesystem::path
   return language;
 }
 
+Source::FixIt::FixIt(const std::string &source, const std::pair<Offset, Offset> &offsets) : source(source), offsets(offsets) {
+  if(source.size()==0)
+    type=Type::ERASE;
+  else {
+    if(this->offsets.first==this->offsets.second)
+      type=Type::INSERT;
+    else
+      type=Type::REPLACE;
+  }
+}
+
+std::string Source::FixIt::string() {
+  std::string text;
+  if(type==Type::INSERT) {
+    text+="Insert "+source+" at ";
+    text+=std::to_string(offsets.first.line)+":"+std::to_string(offsets.first.offset);
+  }
+  else if(type==Type::REPLACE) {
+    text+="Replace ";
+    text+=std::to_string(offsets.first.line)+":"+std::to_string(offsets.first.offset)+" - ";
+    text+=std::to_string(offsets.second.line)+":"+std::to_string(offsets.second.offset);
+    text+=" with "+source;
+  }
+  else {
+    text+="Erase ";
+    text+=std::to_string(offsets.first.line)+":"+std::to_string(offsets.first.offset)+" - ";
+    text+=std::to_string(offsets.second.line)+":"+std::to_string(offsets.second.offset);
+  }
+  
+  return text;
+}
+
 //////////////
 //// View ////
 //////////////
@@ -1504,7 +1536,7 @@ std::vector<std::string> Source::ClangViewParse::get_compilation_commands() {
 }
 
 void Source::ClangViewParse::update_syntax() {
-  std::vector<Source::Range> ranges;
+  std::vector<TokenRange> ranges;
   for (auto &token : *clang_tokens) {
     //if(token.get_kind()==0) // PunctuationToken
       //ranges.emplace_back(token.offsets, (int) token.get_cursor().get_kind());
@@ -1544,11 +1576,13 @@ void Source::ClangViewParse::update_syntax() {
 void Source::ClangViewParse::update_diagnostics() {
   diagnostic_offsets.clear();
   diagnostic_tooltips.clear();
+  fix_its.clear();
   get_buffer()->remove_tag_by_name("def:warning_underline", get_buffer()->begin(), get_buffer()->end());
   get_buffer()->remove_tag_by_name("def:error_underline", get_buffer()->begin(), get_buffer()->end());
   auto diagnostics=clang_tu->get_diagnostics();
-  size_t warnings=0;
-  size_t errors=0;
+  size_t num_warnings=0;
+  size_t num_errors=0;
+  size_t num_fix_its=0;
   for(auto &diagnostic: diagnostics) {
     if(diagnostic.path==file_path.string()) {
       auto start_line=get_line(diagnostic.offsets.first.line-1); //index is sometimes off the line
@@ -1573,19 +1607,50 @@ void Source::ClangViewParse::update_diagnostics() {
       std::string diagnostic_tag_name;
       if(diagnostic.severity<=CXDiagnostic_Warning) {
         diagnostic_tag_name="def:warning";
-        warnings++;
+        num_warnings++;
       }
       else {
         diagnostic_tag_name="def:error";
-        errors++;
+        num_errors++;
       }
       
       auto spelling=diagnostic.spelling;
       auto severity_spelling=diagnostic.severity_spelling;
-      auto create_tooltip_buffer=[this, spelling, severity_spelling, diagnostic_tag_name]() {
+      
+      std::string fix_its_string;
+      unsigned fix_its_count=0;
+      for(auto &fix_it: diagnostic.fix_its) {
+        //Convert line index to line offset for correct output:
+        auto clang_offsets=fix_it.offsets;
+        std::pair<FixIt::Offset, FixIt::Offset> offsets;
+        offsets.first.line=clang_offsets.first.line;
+        offsets.second.line=clang_offsets.second.line;
+        auto iter=get_buffer()->get_iter_at_line_index(clang_offsets.first.line-1, clang_offsets.first.index-1);
+        offsets.first.offset=iter.get_line_offset()+1;
+        iter=get_buffer()->get_iter_at_line_index(clang_offsets.second.line-1, clang_offsets.second.index-1);
+        offsets.second.offset=iter.get_line_offset()+1;
+        
+        fix_its.emplace_back(fix_it.source, offsets);
+        
+        if(fix_its_string.size()>0)
+          fix_its_string+='\n';
+        fix_its_string+=fix_its.back().string();
+        fix_its_count++;
+        num_fix_its++;
+      }
+      
+      if(fix_its_count==1)
+        fix_its_string.insert(0, "Fix-it:\n");
+      else if(fix_its_count>1)
+        fix_its_string.insert(0, "Fix-its:\n");
+      
+      auto create_tooltip_buffer=[this, spelling, severity_spelling, diagnostic_tag_name, fix_its_string]() {
         auto tooltip_buffer=Gtk::TextBuffer::create(get_buffer()->get_tag_table());
         tooltip_buffer->insert_with_tag(tooltip_buffer->get_insert()->get_iter(), severity_spelling, diagnostic_tag_name);
         tooltip_buffer->insert_with_tag(tooltip_buffer->get_insert()->get_iter(), ":\n"+spelling, "def:note");
+        if(fix_its_string.size()>0) {
+          tooltip_buffer->insert_with_tag(tooltip_buffer->get_insert()->get_iter(), ":\n\n"+fix_its_string, "def:note");
+        }
         return tooltip_buffer;
       };
       diagnostic_tooltips.emplace_back(create_tooltip_buffer, *this, get_buffer()->create_mark(start), get_buffer()->create_mark(end));
@@ -1600,16 +1665,23 @@ void Source::ClangViewParse::update_diagnostics() {
     }
   }
   std::string diagnostic_info;
-  if(warnings>0) {
-    diagnostic_info+=std::to_string(warnings)+" warning";
-    if(warnings>1)
+  if(num_warnings>0) {
+    diagnostic_info+=std::to_string(num_warnings)+" warning";
+    if(num_warnings>1)
       diagnostic_info+='s';
   }
-  if(errors>0) {
-    if(warnings>0)
+  if(num_errors>0) {
+    if(num_warnings>0)
       diagnostic_info+=", ";
-    diagnostic_info+=std::to_string(errors)+" error";
-    if(errors>1)
+    diagnostic_info+=std::to_string(num_errors)+" error";
+    if(num_errors>1)
+      diagnostic_info+='s';
+  }
+  if(num_fix_its>0) {
+    if(num_warnings>0 || num_errors>0)
+      diagnostic_info+=", ";
+    diagnostic_info+=std::to_string(num_fix_its)+" fix it";
+    if(num_fix_its>1)
       diagnostic_info+='s';
   }
   set_info("  "+diagnostic_info);
@@ -1966,7 +2038,7 @@ void Source::ClangViewAutocomplete::autocomplete() {
   if(!autocomplete_starting) {
     autocomplete_starting=true;
     autocomplete_cancel_starting=false;
-    std::shared_ptr<std::vector<Source::AutoCompleteData> > ac_data=std::make_shared<std::vector<Source::AutoCompleteData> >();
+    std::shared_ptr<std::vector<AutoCompleteData> > ac_data=std::make_shared<std::vector<AutoCompleteData> >();
     autocomplete_done_connection.disconnect();
     autocomplete_done_connection=autocomplete_done.connect([this, ac_data](){
       autocomplete_starting=false;
@@ -2076,8 +2148,8 @@ void Source::ClangViewAutocomplete::autocomplete() {
   }
 }
 
-std::vector<Source::AutoCompleteData> Source::ClangViewAutocomplete::get_autocomplete_suggestions(int line_number, int column, std::map<std::string, std::string>& buffer_map) {
-  std::vector<Source::AutoCompleteData> suggestions;
+std::vector<Source::ClangViewAutocomplete::AutoCompleteData> Source::ClangViewAutocomplete::get_autocomplete_suggestions(int line_number, int column, std::map<std::string, std::string>& buffer_map) {
+  std::vector<AutoCompleteData> suggestions;
   auto results=clang_tu->get_code_completions(buffer_map, line_number, column);
   if(results.cx_results==NULL) {
     parse_thread_stop=true;
@@ -2288,6 +2360,37 @@ Source::ClangViewAutocomplete(file_path, project_path, language) {
         get_buffer()->place_cursor(iter);
         scroll_to(get_buffer()->get_insert(), 0.0, 1.0, 0.5);
       }
+    }
+  };
+  
+  apply_fix_its=[this]() {
+    std::vector<std::pair<Glib::RefPtr<Gtk::TextMark>, Glib::RefPtr<Gtk::TextMark> > > fix_it_marks;
+    if(source_readable) {
+      for(auto &fix_it: fix_its) {
+        auto start_iter=get_buffer()->get_iter_at_line_offset(fix_it.offsets.first.line-1, fix_it.offsets.first.offset-1);
+        auto end_iter=get_buffer()->get_iter_at_line_offset(fix_it.offsets.second.line-1, fix_it.offsets.second.offset-1);
+        fix_it_marks.emplace_back(get_buffer()->create_mark(start_iter), get_buffer()->create_mark(end_iter));
+      }
+      size_t c=0;
+      get_source_buffer()->begin_user_action();
+      for(auto &fix_it: fix_its) {
+        if(fix_it.type==FixIt::Type::INSERT) {
+          get_buffer()->insert(fix_it_marks[c].first->get_iter(), fix_it.source);
+        }
+        if(fix_it.type==FixIt::Type::REPLACE) {
+          get_buffer()->erase(fix_it_marks[c].first->get_iter(), fix_it_marks[c].second->get_iter());
+          get_buffer()->insert(fix_it_marks[c].first->get_iter(), fix_it.source);
+        }
+        if(fix_it.type==FixIt::Type::ERASE) {
+          get_buffer()->erase(fix_it_marks[c].first->get_iter(), fix_it_marks[c].second->get_iter());
+        }
+        c++;
+      }
+      for(auto &mark_pair: fix_it_marks) {
+        get_buffer()->delete_mark(mark_pair.first);
+        get_buffer()->delete_mark(mark_pair.second);
+      }
+      get_source_buffer()->end_user_action();
     }
   };
 }

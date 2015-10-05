@@ -1,6 +1,6 @@
 #include <string>
 
-#define JUCI_VERSION "0.9.2"
+#define JUCI_VERSION "0.9.3"
 
 const std::string configjson =
 "{\n"
@@ -74,6 +74,7 @@ const std::string configjson =
 "        \"source_goto_method\": \"<primary>m\",\n"
 "        \"source_rename\": \"<primary>r\",\n"
 "        \"source_goto_next_diagnostic\": \"<primary>e\",\n"
+"        \"source_apply_fix_its\": \"<alt>space\",\n"
 "        \"compile_and_run\": \"<primary>Return\",\n"
 "        \"compile\": \"<primary><shift>Return\",\n"
 "        \"run_command\": \"<alt>Return\",\n"

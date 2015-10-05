@@ -59,6 +59,7 @@ Menu::Menu() {
   "      <menuitem action=\"SourceRename\"/>\n"
   "      <separator/>\n"
   "      <menuitem action=\"SourceGotoNextDiagnostic\"/>\n"
+  "      <menuitem action=\"SourceApplyFixIts\"/>\n"
   "      <separator/>\n"
   "    </menu>\n"
   "    <menu action=\"ProjectMenu\">\n"

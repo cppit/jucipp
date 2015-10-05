@@ -115,6 +115,9 @@ Window::Window() : box(Gtk::ORIENTATION_VERTICAL), notebook(directories), compil
       
       if(auto menu_item=dynamic_cast<Gtk::MenuItem*>(menu.ui_manager->get_widget("/MenuBar/SourceMenu/SourceGotoNextDiagnostic")))
         menu_item->set_sensitive((bool)notebook.get_current_view()->goto_next_diagnostic);
+      
+      if(auto menu_item=dynamic_cast<Gtk::MenuItem*>(menu.ui_manager->get_widget("/MenuBar/SourceMenu/SourceApplyFixIts")))
+      menu_item->set_sensitive((bool)notebook.get_current_view()->apply_fix_its);
     
       directories.select(notebook.get_current_view()->file_path);
       
@@ -297,6 +300,13 @@ void Window::create_menu() {
     if(notebook.get_current_page()!=-1) {
       if(notebook.get_current_view()->goto_next_diagnostic) {
         notebook.get_current_view()->goto_next_diagnostic();
+      }
+    }
+  });
+  menu.action_group->add(Gtk::Action::create("SourceApplyFixIts", "Apply Fix Its"), Gtk::AccelKey(menu.key_map["source_apply_fix_its"]), [this]() {
+    if(notebook.get_current_page()!=-1) {
+      if(notebook.get_current_view()->apply_fix_its) {
+        notebook.get_current_view()->apply_fix_its();
       }
     }
   });
