@@ -303,7 +303,7 @@ void Window::create_menu() {
       }
     }
   });
-  menu.action_group->add(Gtk::Action::create("SourceApplyFixIts", "Apply Fix Its"), Gtk::AccelKey(menu.key_map["source_apply_fix_its"]), [this]() {
+  menu.action_group->add(Gtk::Action::create("SourceApplyFixIts", "Apply Fix-Its"), Gtk::AccelKey(menu.key_map["source_apply_fix_its"]), [this]() {
     if(notebook.get_current_page()!=-1) {
       if(notebook.get_current_view()->apply_fix_its) {
         notebook.get_current_view()->apply_fix_its();

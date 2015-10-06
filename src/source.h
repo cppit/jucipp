@@ -98,6 +98,7 @@ namespace Source {
     void paste();
         
     boost::filesystem::path file_path;
+    Glib::RefPtr<Gsv::Language> language;
     
     std::function<std::pair<std::string, clang::Offset>()> get_declaration_location;
     std::function<void()> goto_method;

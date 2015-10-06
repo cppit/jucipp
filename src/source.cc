@@ -79,7 +79,7 @@ std::string Source::FixIt::string() {
 //////////////
 AspellConfig* Source::View::spellcheck_config=NULL;
 
-Source::View::View(const boost::filesystem::path &file_path, Glib::RefPtr<Gsv::Language> language): file_path(file_path) {
+Source::View::View(const boost::filesystem::path &file_path, Glib::RefPtr<Gsv::Language> language): file_path(file_path), language(language) {
   get_source_buffer()->begin_not_undoable_action();
   if(language) {
     if(juci::filesystem::read_non_utf8(file_path, get_buffer())==-1)

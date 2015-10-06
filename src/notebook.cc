@@ -165,10 +165,12 @@ bool Notebook::save(int page, bool reparse_needed) {
     if(juci::filesystem::write(view->file_path, view->get_buffer())) {
       if(reparse_needed) {
         if(auto clang_view=dynamic_cast<Source::ClangView*>(view)) {
-          for(auto a_view: source_views) {
-            if(auto a_clang_view=dynamic_cast<Source::ClangView*>(a_view)) {
-              if(clang_view!=a_clang_view)
-                a_clang_view->reparse_needed=true;
+          if(clang_view->language->get_id()=="chdr" || clang_view->language->get_id()=="cpphdr") {
+            for(auto a_view: source_views) {
+              if(auto a_clang_view=dynamic_cast<Source::ClangView*>(a_view)) {
+                  if(clang_view!=a_clang_view)
+                    a_clang_view->reparse_needed=true;
+              }
             }
           }
         }
