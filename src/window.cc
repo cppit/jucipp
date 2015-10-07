@@ -368,8 +368,17 @@ void Window::create_menu() {
     entry_box.entries.emplace_back(last_run_command, [this](const std::string& content){
       if(content!="") {
         last_run_command=content;
+        boost::filesystem::path run_path;
+        if(notebook.get_current_page()!=-1) {
+          if(notebook.get_current_view()->project_path!="")
+            run_path=notebook.get_current_view()->project_path;
+          else
+            run_path=notebook.get_current_view()->file_path.parent_path();
+        }
+        else
+          run_path=directories.current_path;
         Singleton::terminal()->async_print("Running: "+content+'\n');
-        Singleton::terminal()->async_execute(content, directories.current_path, [this, content](int exit_code){
+        Singleton::terminal()->async_execute(content, run_path, [this, content](int exit_code){
           Singleton::terminal()->async_print(content+" returned: "+std::to_string(exit_code)+'\n');
         });
       }
