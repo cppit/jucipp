@@ -180,17 +180,24 @@ bool Notebook::save(int page, bool reparse_needed) {
       Singleton::terminal()->print("File saved to: " +view->file_path.string()+"\n");
       
       //If CMakeLists.txt have been modified:
-      //TODO: recreate cmake even without directories open?
+      boost::filesystem::path project_path;
       if(view->file_path.filename()=="CMakeLists.txt") {
         if(directories.cmake && directories.cmake->project_path!="" && view->file_path.generic_string().substr(0, directories.cmake->project_path.generic_string().size()+1)==directories.cmake->project_path.generic_string()+'/' && CMake::create_compile_commands(directories.cmake->project_path)) {
-          for(auto source_view: source_views) {
-            if(auto source_clang_view=dynamic_cast<Source::ClangView*>(source_view)) {
-              if(directories.cmake->project_path.string()==source_clang_view->project_path) {
-                if(source_clang_view->restart_parse())
-                  Singleton::terminal()->async_print("Reparsing "+source_clang_view->file_path.string()+"\n");
-                else
-                  Singleton::terminal()->async_print("Error: failed to reparse "+source_clang_view->file_path.string()+". Please reopen the file manually.\n");
-              }
+          project_path=directories.cmake->project_path;
+        }
+        else {
+          CMake cmake(view->file_path.parent_path());
+          if(cmake.project_path!="" && CMake::create_compile_commands(cmake.project_path)) {
+            project_path=cmake.project_path;
+          }
+        }
+        for(auto source_view: source_views) {
+          if(auto source_clang_view=dynamic_cast<Source::ClangView*>(source_view)) {
+            if(project_path==source_clang_view->project_path) {
+              if(source_clang_view->restart_parse())
+                Singleton::terminal()->async_print("Reparsing "+source_clang_view->file_path.string()+"\n");
+              else
+                Singleton::terminal()->async_print("Error: failed to reparse "+source_clang_view->file_path.string()+". Please reopen the file manually.\n");
             }
           }
         }

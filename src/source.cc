@@ -79,7 +79,7 @@ std::string Source::FixIt::string() {
 //////////////
 AspellConfig* Source::View::spellcheck_config=NULL;
 
-Source::View::View(const boost::filesystem::path &file_path, Glib::RefPtr<Gsv::Language> language): file_path(file_path), language(language) {
+Source::View::View(const boost::filesystem::path &file_path, const boost::filesystem::path &project_path, Glib::RefPtr<Gsv::Language> language): file_path(file_path), project_path(project_path), language(language) {
   get_source_buffer()->begin_not_undoable_action();
   if(language) {
     if(juci::filesystem::read_non_utf8(file_path, get_buffer())==-1)
@@ -1254,7 +1254,7 @@ std::vector<std::string> Source::View::spellcheck_get_suggestions(const Gtk::Tex
 /////////////////////
 //// GenericView ////
 /////////////////////
-Source::GenericView::GenericView(const boost::filesystem::path &file_path, Glib::RefPtr<Gsv::Language> language) : View(file_path, language) {
+Source::GenericView::GenericView(const boost::filesystem::path &file_path, Glib::RefPtr<Gsv::Language> language) : View(file_path, "", language) {
   configure();
   spellcheck_all=true;
   
@@ -1340,7 +1340,7 @@ void Source::GenericView::parse_language_file(Glib::RefPtr<CompletionBuffer> &co
 clang::Index Source::ClangViewParse::clang_index(0, 0);
 
 Source::ClangViewParse::ClangViewParse(const boost::filesystem::path &file_path, const boost::filesystem::path& project_path, Glib::RefPtr<Gsv::Language> language):
-Source::View(file_path, language), project_path(project_path), parse_error(false) {
+Source::View(file_path, project_path, language), parse_error(false) {
   DEBUG("start");
   
   auto tag_table=get_buffer()->get_tag_table();

@@ -82,7 +82,7 @@ namespace Source {
 
   class View : public Gsv::View {
   public:
-    View(const boost::filesystem::path &file_path, Glib::RefPtr<Gsv::Language> language);
+    View(const boost::filesystem::path &file_path, const boost::filesystem::path &project_path, Glib::RefPtr<Gsv::Language> language);
     ~View();
     
     virtual void configure();
@@ -98,6 +98,7 @@ namespace Source {
     void paste();
         
     boost::filesystem::path file_path;
+    boost::filesystem::path project_path;
     Glib::RefPtr<Gsv::Language> language;
     
     std::function<std::pair<std::string, clang::Offset>()> get_declaration_location;
@@ -199,7 +200,6 @@ namespace Source {
     ~ClangViewParse();
     void configure();
     
-    boost::filesystem::path project_path;
     void start_reparse();
     bool reparse_needed=false;
   protected:
