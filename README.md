@@ -7,7 +7,7 @@ towards libclang with speed and ease of use in mind.
 
 ## Features
 * Platform independent
-* Fast and responsive
+* Fast and responsive (written in C++)
 * Syntax highlighting (even C++11/14, and more than 100 other file types)
 * (Obj)C(++) warnings and errors on the fly
 * (Obj)C(++) Fix-its
