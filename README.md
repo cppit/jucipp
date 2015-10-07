@@ -8,14 +8,23 @@ towards libclang with speed in mind.
 ## Features
 * Fast and responsive
 * Syntax highlighting (even C++11/14, and more than 100 other file types)
-* C++ warnings and errors on the fly
-* Fast C++ autocomletion (even external libraries)
+* (Obj)C(++) warnings and errors on the fly
+* (Obj)C(++) Fix-its
+* Automated CMake processing
+* Fast (Obj)C(++) autocomletion (even external libraries)
+* Keyword and buffer autocomletion for other file types
 * Tooltips showing type information and doxygen documentation
 * Refactoring across files
 * Highlighting of similar types
 * Spell checking depending on file context
-* Basic editor functionality
+* Run shell commands within JuCi++, even on Windows
+* Regex search and replace
+* Smart paste, keys and indentation
+* Source minimap
+* Full UTF-8 support
 * Write your own plugins in python (disabled at the moment)
+
+See [enhancements](https://github.com/cppit/jucipp/labels/enhancement) for planned features.
 
 ## Dependencies ##
 * libboost-filesystem-dev 
