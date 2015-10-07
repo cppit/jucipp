@@ -1,11 +1,12 @@
 # juCi++
-###### a lightweight C++-IDE with support for C++11 and C++14.
+###### a lightweight platform independent C++-IDE with support for C++11 and C++14.
 ## About
 Current IDEs struggle with C++ support due to the complexity of
 the programming language. juCI++, however, is designed especially 
-towards libclang with speed in mind. 
+towards libclang with speed and ease of use in mind. 
 
 ## Features
+* Platform independent
 * Fast and responsive
 * Syntax highlighting (even C++11/14, and more than 100 other file types)
 * (Obj)C(++) warnings and errors on the fly
@@ -22,7 +23,7 @@ towards libclang with speed in mind.
 * Smart paste, keys and indentation
 * Source minimap
 * Full UTF-8 support
-* Write your own plugins in python (disabled at the moment)
+* Write your own plugins in Python (disabled at the moment)
 
 See [enhancements](https://github.com/cppit/jucipp/labels/enhancement) for planned features.
 
