@@ -89,7 +89,7 @@ void Notebook::open(const boost::filesystem::path &file_path) {
     source_views.emplace_back(new Source::ClangView(file_path, project_path, language));
   }
   else
-    source_views.emplace_back(new Source::GenericView(file_path, language));
+    source_views.emplace_back(new Source::GenericView(file_path, "", language));
   
   source_views.back()->on_update_status=[this](Source::View* view, const std::string &status) {
     if(get_current_page()!=-1 && get_current_view()==view)
@@ -191,13 +191,15 @@ bool Notebook::save(int page, bool reparse_needed) {
             project_path=cmake.project_path;
           }
         }
-        for(auto source_view: source_views) {
-          if(auto source_clang_view=dynamic_cast<Source::ClangView*>(source_view)) {
-            if(project_path==source_clang_view->project_path) {
-              if(source_clang_view->restart_parse())
-                Singleton::terminal()->async_print("Reparsing "+source_clang_view->file_path.string()+"\n");
-              else
-                Singleton::terminal()->async_print("Error: failed to reparse "+source_clang_view->file_path.string()+". Please reopen the file manually.\n");
+        if(project_path!="") {
+          for(auto source_view: source_views) {
+            if(auto source_clang_view=dynamic_cast<Source::ClangView*>(source_view)) {
+              if(project_path==source_clang_view->project_path) {
+                if(source_clang_view->restart_parse())
+                  Singleton::terminal()->async_print("Reparsing "+source_clang_view->file_path.string()+"\n");
+                else
+                  Singleton::terminal()->async_print("Error: failed to reparse "+source_clang_view->file_path.string()+". Please reopen the file manually.\n");
+              }
             }
           }
         }

@@ -1254,7 +1254,7 @@ std::vector<std::string> Source::View::spellcheck_get_suggestions(const Gtk::Tex
 /////////////////////
 //// GenericView ////
 /////////////////////
-Source::GenericView::GenericView(const boost::filesystem::path &file_path, Glib::RefPtr<Gsv::Language> language) : View(file_path, "", language) {
+Source::GenericView::GenericView(const boost::filesystem::path &file_path, const boost::filesystem::path &project_path, Glib::RefPtr<Gsv::Language> language) : View(file_path, project_path, language) {
   configure();
   spellcheck_all=true;
   

@@ -365,6 +365,12 @@ void Window::create_menu() {
   });
   menu.action_group->add(Gtk::Action::create("ProjectRunCommand", "Run Command"), Gtk::AccelKey(menu.key_map["run_command"]), [this]() {
     entry_box.clear();
+    entry_box.labels.emplace_back();
+    auto label_it=entry_box.labels.begin();
+    label_it->update=[label_it](int state, const std::string& message){
+      label_it->set_text("Run Command directory order: file project path, file directory, opened directory, current directory");
+    };
+    label_it->update(0, "");
     entry_box.entries.emplace_back(last_run_command, [this](const std::string& content){
       if(content!="") {
         last_run_command=content;
@@ -777,7 +783,7 @@ void Window::rename_token_entry() {
         entry_box.labels.emplace_back();
         auto label_it=entry_box.labels.begin();
         label_it->update=[label_it](int state, const std::string& message){
-          label_it->set_text("Warning: only opened and parsed tabs will have its content renamed, and modified files will be saved.");
+          label_it->set_text("Warning: only opened and parsed tabs will have its content renamed, and modified files will be saved");
         };
         label_it->update(0, "");
         entry_box.entries.emplace_back(token->spelling, [this, token](const std::string& content){
