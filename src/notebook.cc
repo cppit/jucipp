@@ -88,8 +88,12 @@ void Notebook::open(const boost::filesystem::path &file_path) {
     }
     source_views.emplace_back(new Source::ClangView(file_path, project_path, language));
   }
-  else
-    source_views.emplace_back(new Source::GenericView(file_path, "", language));
+  else {
+    boost::filesystem::path project_path;
+    if(directories.cmake && directories.cmake->project_path!="" && file_path.generic_string().substr(0, directories.cmake->project_path.generic_string().size()+1)==directories.cmake->project_path.generic_string()+'/')
+      project_path=directories.cmake->project_path;
+    source_views.emplace_back(new Source::GenericView(file_path, project_path, language));
+  }
   
   source_views.back()->on_update_status=[this](Source::View* view, const std::string &status) {
     if(get_current_page()!=-1 && get_current_view()==view)
