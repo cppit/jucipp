@@ -1,4 +1,4 @@
-# juCi++ - Installation Guide
+# juCi++ Installation Guide
 
 ## Debian/Ubuntu 15
 Install dependencies:
