@@ -1,5 +1,4 @@
-# juCi++
-## Installation guide ##
+# juCi++ - Installation Guide
 
 ## Debian/Ubuntu 15
 Install dependencies:
@@ -9,7 +8,7 @@ sudo apt-get install git cmake make g++ libclang-dev pkg-config libboost-system-
 
 Get juCi++ source, compile and install:
 ```sh
-git clone http://github.com/cppit/jucipp.git
+git clone --recursive http://github.com/cppit/jucipp
 cd jucipp
 cmake .
 make
@@ -28,7 +27,7 @@ sudo apt-get install git cmake make g++ libclang-dev pkg-config libboost-system1
 
 Get juCi++ source, compile and install:
 ```sh
-git clone http://github.com/cppit/jucipp.git
+git clone --recursive http://github.com/cppit/jucipp
 cd jucipp
 cmake .
 make
@@ -43,7 +42,7 @@ brew install cmake --with-clang llvm pkg-config boost gtkmm3 homebrew/x11/gtksou
 
 Get juCi++ source, compile and install:
 ```sh
-git clone https://github.com/cppit/jucipp.git
+git clone --recursive https://github.com/cppit/jucipp
 cd jucipp
 cmake .
 make
@@ -51,14 +50,14 @@ make install
 ```
 
 ##Windows with MSYS2 (https://msys2.github.io/)
-Install dependencies (replace x86_64 with i686 for 32-bit MSYS2 installs):
+Install dependencies (replace `x86_64` with `i686` for 32-bit MSYS2 installs):
 ```sh
-pacman -S patch autoconf automake-wrapper mingw-w64-x86_64-gtkmm3 mingw-w64-x86_64-gtksourceviewmm3 mingw-w64-x86_64-boost mingw-w64-x86_64-aspell mingw-w64-x86_64-aspell-en git
+pacman -S git mingw-w64-x86_64-cmake make mingw-w64-x86_64-toolchain mingw-w64-x86_64-clang mingw-w64-x86_64-gtkmm3 mingw-w64-x86_64-gtksourceviewmm3 mingw-w64-x86_64-boost mingw-w64-x86_64-aspell mingw-w64-x86_64-aspell-en
 ```
 
-Get juCi++ source, compile and install (replace mingw64 with mingw32 for 32-bit MSYS2 installs):
+Get juCi++ source, compile and install (replace `mingw64` with `mingw32` for 32-bit MSYS2 installs):
 ```sh
-git clone https://github.com/cppit/jucipp.git
+git clone --recursive https://github.com/cppit/jucipp
 cd jucipp
 cmake -G"MSYS Makefiles" -DCMAKE_INSTALL_PREFIX=/mingw64 .
 make
