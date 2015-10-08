@@ -1,3 +1,4 @@
+#ifdef _WIN32
 #include "dialogs.h"
 #include <c_dialogs.h>
 
@@ -20,3 +21,4 @@ std::string Dialog::select_file() {
 std::string Dialog::save_file() {
   return c_save_file();
 }
+#endif

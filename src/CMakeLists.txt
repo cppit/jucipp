@@ -70,6 +70,7 @@ set(source_files juci.h
     sourcefile.cc
     window.cc
     window.h
+    dialogs.h
 #    api.h
 #    api.cc
     notebook.cc
@@ -88,11 +89,16 @@ set(source_files juci.h
 
 if(MSYS)
   list(APPEND source_files terminal_win.cc)
-  list(APPEND source_files dialogs_win.cc)
+    list(APPEND source_files dialogs_win.cc)
+  set(DIALOGS_INCLUDE_DIRS "../WIN-packages/")
+  # if (64 bit) 
+  set(DIALOGS_LIBRARY_DIRS "../WIN-packages/x64/libdialogs.dll")
+  # else
+  # set(DIALOGS_LIBRARY_DIRS "../WIN-packages/x32/libdialogs.dll")
+  #TODO figure out how to do this....
   message("MSYS detected")
 else()
   list(APPEND source_files terminal.cc)
-  list(APPEND source_files dialogs.h)
   list(APPEND source_files dialogs.cc)
   message("UNIX detected")
 endif()
@@ -110,6 +116,7 @@ if(${validation})
     ${GTKMM_INCLUDE_DIRS}
     ${GTKSVMM_INCLUDE_DIRS}
     ${LCL_INCLUDE_DIRS}
+    ${DIALOGS_INCLUDE_DIRS}
     ${LIBCLANG_INCLUDE_DIRS}
     ${ASPELL_INCLUDE_DIR})
 
@@ -134,6 +141,7 @@ if(${validation})
     ${GTKSVMM_LIBRARIES}
     ${Boost_LIBRARIES}
     ${ASPELL_LIBRARIES}
+    ${DIALOGS_LIBRARIES}
 #    ${PYTHON_LIBRARIES}
     )
 
