@@ -171,7 +171,7 @@ namespace Source {
   public:
     GenericView(const boost::filesystem::path &file_path, Glib::RefPtr<Gsv::Language> language);
     
-    void add_keywords(Glib::RefPtr<CompletionBuffer> &completion_buffer, const boost::property_tree::ptree &pt);
+    void parse_language_file(Glib::RefPtr<CompletionBuffer> &completion_buffer, bool &has_context_class, const boost::property_tree::ptree &pt);
   };
   
   class ClangViewParse : public View {
@@ -257,6 +257,7 @@ namespace Source {
     ClangViewRefactor(const boost::filesystem::path &file_path, const boost::filesystem::path& project_path, Glib::RefPtr<Gsv::Language> language);
     ~ClangViewRefactor();
   private:
+    std::list<std::pair<Glib::RefPtr<Gtk::TextMark>, Glib::RefPtr<Gtk::TextMark> > > similar_token_marks;
     void tag_similar_tokens(const Token &token);
     Glib::RefPtr<Gtk::TextTag> similar_tokens_tag;
     Token last_tagged_token;

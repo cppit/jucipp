@@ -641,6 +641,7 @@ void Window::goto_line_entry() {
       }
     });
     auto entry_it=entry_box.entries.begin();
+    entry_it->set_placeholder_text("Line number");
     entry_box.buttons.emplace_back("Go to line", [this, entry_it](){
       entry_it->activate();
     });
@@ -676,6 +677,7 @@ void Window::rename_token_entry() {
           }
         });
         auto entry_it=entry_box.entries.begin();
+        entry_it->set_placeholder_text("New name");
         entry_box.buttons.emplace_back("Rename", [this, entry_it](){
           entry_it->activate();
         });

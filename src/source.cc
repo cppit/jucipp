@@ -1006,22 +1006,30 @@ bool Source::View::on_key_press_event(GdkEventKey* key) {
   //"Smart" delete key
   else if(key->keyval==GDK_KEY_Delete && !get_buffer()->get_has_selection()) {
     auto insert_iter=get_buffer()->get_insert()->get_iter();
-    if(!(insert_iter.starts_line() && insert_iter.ends_line())) {
-      auto iter=insert_iter;
-      bool perform_smart_delete=false;
-      bool first_line=true;
-      while(*iter==' ' || *iter=='\t' || (first_line && iter.ends_line())) {
-        if(iter.ends_line()) {
+    auto iter=insert_iter;
+    bool perform_smart_delete=false;
+    if(iter.starts_line() && iter.ends_line()) {}
+    else if(iter.ends_line() && iter.forward_char()) {
+      if(!iter.ends_line()) {
+        bool first_line=true;
+        while((*iter==' ' || *iter=='\t' || (first_line && iter.ends_line())) && iter.forward_char()) {
           perform_smart_delete=true;
-          first_line=false;
+          if(first_line && iter.ends_line())
+            first_line=false;
         }
-        if(!iter.forward_char()) {
+      }
+    }
+    else {
+      while((*iter==' ' || *iter=='\t') && iter.forward_char()) {
+        perform_smart_delete=true;
+        if(iter.ends_line()) {
+          iter.forward_char();
           break;
         }
       }
-      if(perform_smart_delete && iter.backward_char())
-        get_buffer()->erase(insert_iter, iter);
     }
+    if(perform_smart_delete && iter.backward_char())
+      get_buffer()->erase(insert_iter, iter);
   }
 
   bool stop=Gsv::View::on_key_press_event(key);
@@ -1202,17 +1210,22 @@ Source::GenericView::GenericView(const boost::filesystem::path &file_path, Glib:
       catch(const std::exception &e) {
         Singleton::terminal()->print("Error: error parsing language file "+language_file.string()+": "+e.what()+'\n');
       }
-      add_keywords(completion_buffer_keywords, pt);
+      bool has_context_class=false;
+      parse_language_file(completion_buffer_keywords, has_context_class, pt);
+      if(!has_context_class)
+        spellcheck_all=false;
       completion_words->register_provider(completion_buffer_keywords);
     }
   }
 }
 
-void Source::GenericView::add_keywords(Glib::RefPtr<CompletionBuffer> &completion_buffer, const boost::property_tree::ptree &pt) {
+void Source::GenericView::parse_language_file(Glib::RefPtr<CompletionBuffer> &completion_buffer, bool &has_context_class, const boost::property_tree::ptree &pt) {
   bool case_insensitive=false;
   for(auto &node: pt) {
     if(node.first=="<xmlcomment>") {
-      if(static_cast<std::string>(node.second.data())==" case insensitive ")
+      auto data=static_cast<std::string>(node.second.data());
+      std::transform(data.begin(), data.end(), data.begin(), ::tolower);
+      if(data.find("case insensitive")!=std::string::npos)
         case_insensitive=true;
     }
     else if(node.first=="keyword") {
@@ -1223,8 +1236,14 @@ void Source::GenericView::add_keywords(Glib::RefPtr<CompletionBuffer> &completio
         completion_buffer->insert_at_cursor(data+'\n');
       }
     }
+    else if(!has_context_class && node.first=="context") {
+      auto class_attribute=node.second.get<std::string>("<xmlattr>.class", "");
+      auto class_disabled_attribute=node.second.get<std::string>("<xmlattr>.class-disabled", "");
+      if(class_attribute.size()>0 || class_disabled_attribute.size()>0)
+        has_context_class=true;
+    }
     try {
-      add_keywords(completion_buffer, node.second);
+      parse_language_file(completion_buffer, has_context_class, node.second);
     }
     catch(const std::exception &e) {        
     }
@@ -1416,13 +1435,13 @@ std::vector<std::string> Source::ClangViewParse::get_compilation_commands() {
   if(std::regex_match(clang_version_string, sm, clang_version_regex)) {
     auto clang_version=sm[1].str();
     arguments.emplace_back("-I/usr/lib/clang/"+clang_version+"/include");
-    arguments.emplace_back("-I/usr/local/lib/clang/"+clang_version+"/include");
+    arguments.emplace_back("-I/usr/local/Cellar/llvm/"+clang_version+"/lib/clang/"+clang_version+"/include");
     arguments.emplace_back("-IC:/msys32/mingw32/lib/clang/"+clang_version+"/include");
     arguments.emplace_back("-IC:/msys32/mingw64/lib/clang/"+clang_version+"/include");
     arguments.emplace_back("-IC:/msys64/mingw32/lib/clang/"+clang_version+"/include");
     arguments.emplace_back("-IC:/msys64/mingw64/lib/clang/"+clang_version+"/include");
   }
-
+  arguments.emplace_back("-fretain-comments-from-system-headers");
   if(file_path.extension()==".h") //TODO: temporary fix for .h-files (parse as c++)
     arguments.emplace_back("-xc++");
 
@@ -2066,11 +2085,16 @@ bool Source::ClangViewAutocomplete::restart_parse() {
 Source::ClangViewRefactor::ClangViewRefactor(const boost::filesystem::path &file_path, const boost::filesystem::path& project_path, Glib::RefPtr<Gsv::Language> language):
 Source::ClangViewAutocomplete(file_path, project_path, language) {
   similar_tokens_tag=get_buffer()->create_tag();
-  similar_tokens_tag->property_weight()=Pango::WEIGHT_ULTRAHEAVY;
+  similar_tokens_tag->property_weight()=1000; //TODO: replace with Pango::WEIGHT_ULTRAHEAVY in 2016 or so (when Ubuntu 14 is history)
   
   get_buffer()->signal_changed().connect([this]() {
     if(!renaming && last_tagged_token) {
-      get_buffer()->remove_tag(similar_tokens_tag, get_buffer()->begin(), get_buffer()->end());
+      for(auto &mark: similar_token_marks) {
+        get_buffer()->remove_tag(similar_tokens_tag, mark.first->get_iter(), mark.second->get_iter());
+        get_buffer()->delete_mark(mark.first);
+        get_buffer()->delete_mark(mark.second);
+      }
+      similar_token_marks.clear();
       last_tagged_token=Token();
     }
   });
@@ -2109,7 +2133,7 @@ Source::ClangViewAutocomplete(file_path, project_path, language) {
       for(auto &mark: marks) {
         renaming=true;
         get_buffer()->erase(mark.first->get_iter(), mark.second->get_iter());
-        get_buffer()->insert_with_tag(mark.first->get_iter(), text, similar_tokens_tag);
+        get_buffer()->insert(mark.first->get_iter(), text);
         get_buffer()->delete_mark(mark.first);
         get_buffer()->delete_mark(mark.second);
       }
@@ -2205,16 +2229,29 @@ Source::ClangViewAutocomplete(file_path, project_path, language) {
 void Source::ClangViewRefactor::tag_similar_tokens(const Token &token) {
   if(source_readable) {
     if(token && last_tagged_token!=token) {
-      get_buffer()->remove_tag(similar_tokens_tag, get_buffer()->begin(), get_buffer()->end());
+      for(auto &mark: similar_token_marks) {
+        get_buffer()->remove_tag(similar_tokens_tag, mark.first->get_iter(), mark.second->get_iter());
+        get_buffer()->delete_mark(mark.first);
+        get_buffer()->delete_mark(mark.second);
+      }
+      similar_token_marks.clear();
       auto offsets=clang_tokens->get_similar_token_offsets(static_cast<clang::CursorKind>(token.type), token.spelling, token.usr);
       for(auto &offset: offsets) {
-        get_buffer()->apply_tag(similar_tokens_tag, get_buffer()->get_iter_at_line_index(offset.first.line-1, offset.first.index-1), get_buffer()->get_iter_at_line_index(offset.second.line-1, offset.second.index-1));
+        auto start_iter=get_buffer()->get_iter_at_line_index(offset.first.line-1, offset.first.index-1);
+        auto end_iter=get_buffer()->get_iter_at_line_index(offset.second.line-1, offset.second.index-1);
+        get_buffer()->apply_tag(similar_tokens_tag, start_iter, end_iter);
+        similar_token_marks.emplace_back(get_buffer()->create_mark(start_iter), get_buffer()->create_mark(end_iter)); 
       }
       last_tagged_token=token;
     }
   }
   if(!token && last_tagged_token) {
-    get_buffer()->remove_tag(similar_tokens_tag, get_buffer()->begin(), get_buffer()->end());
+    for(auto &mark: similar_token_marks) {
+      get_buffer()->remove_tag(similar_tokens_tag, mark.first->get_iter(), mark.second->get_iter());
+      get_buffer()->delete_mark(mark.first);
+      get_buffer()->delete_mark(mark.second);
+    }
+    similar_token_marks.clear();
     last_tagged_token=Token();
   }
 }
