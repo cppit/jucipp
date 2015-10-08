@@ -4,7 +4,7 @@
 #include <vector>
 
 std::string open_dialog(const std::string &title,
-                        const std::vector<std::pair<std::string, Gtk::ResponseType>> buttons,
+                        const std::vector<std::pair<std::string, Gtk::ResponseType>> &buttons,
                         Gtk::FileChooserAction gtk_options) {
   Gtk::FileChooserDialog dialog(title, gtk_options);
   if(Singleton::directories()->current_path!="")
@@ -48,3 +48,4 @@ std::string Dialog::save_file() {
             {std::make_pair("Cancel", Gtk::RESPONSE_CANCEL),std::make_pair("Save", Gtk::RESPONSE_OK)},
             Gtk::FILE_CHOOSER_ACTION_OPEN);
 }
+
