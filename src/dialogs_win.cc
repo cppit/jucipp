@@ -1,6 +1,6 @@
 #ifdef _WIN32
 #include "dialogs.h"
-#include <c_dialogs.h>
+#include <dialogs_win.h>
 
 std::string Dialog::select_folder() {
   return c_select_folder();
