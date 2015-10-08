@@ -74,7 +74,7 @@ const std::string configjson =
 "        \"source_goto_method\": \"<primary>m\",\n"
 "        \"source_rename\": \"<primary>r\",\n"
 "        \"source_goto_next_diagnostic\": \"<primary>e\",\n"
-"        \"source_apply_fix_its\": \"<alt>space\",\n"
+"        \"source_apply_fix_its\": \"<control>space\",\n"
 "        \"compile_and_run\": \"<primary>Return\",\n"
 "        \"compile\": \"<primary><shift>Return\",\n"
 "        \"run_command\": \"<alt>Return\",\n"
