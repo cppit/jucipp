@@ -35,9 +35,6 @@ function(validate FOUND APPLE UNIX WINDOWS)
   endif()
 endfunction(validate)
 
-find_package(LibClangmm)
-validate(${LCL_FOUND} "clangmm" "clangmm" "clangmm")
-
 find_package(LibClang)
 validate(${LIBCLANG_FOUND} "clang" "libclang-dev" "llvm")
 
@@ -84,7 +81,22 @@ set(source_files juci.h
     singletons.h
     singletons.cc
     cmake.h
-    cmake.cc)
+    cmake.cc
+    
+    ../libclangmm/src/CodeCompleteResults.cc
+    ../libclangmm/src/CompilationDatabase.cc
+    ../libclangmm/src/CompileCommand.cc     
+    ../libclangmm/src/CompileCommands.cc    
+    ../libclangmm/src/CompletionString.cc   
+    ../libclangmm/src/Cursor.cc
+    ../libclangmm/src/Index.cc
+    ../libclangmm/src/SourceLocation.cc
+    ../libclangmm/src/SourceRange.cc
+    ../libclangmm/src/Token.cc
+    ../libclangmm/src/Tokens.cc
+    ../libclangmm/src/TranslationUnit.cc
+    ../libclangmm/src/Diagnostic.cc
+    ../libclangmm/src/Utility.cc)
 
 if(MSYS)
   list(APPEND source_files terminal_win.cc)
@@ -106,7 +118,8 @@ if(${validation})
     ${GTKSVMM_INCLUDE_DIRS}
     ${LCL_INCLUDE_DIRS}
     ${LIBCLANG_INCLUDE_DIRS}
-    ${ASPELL_INCLUDE_DIR})
+    ${ASPELL_INCLUDE_DIR}
+    ../libclangmm/src)
 
   link_directories(
     ${GTKMM_LIBRARY_DIRS}

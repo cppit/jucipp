@@ -1,11 +1,13 @@
 # juCi++
 ## Installation guide ##
-Before installation, please install libclangmm, see [installation guide](http://github.com/cppit/libclangmm/blob/master/docs/install.md).
 
 ## Debian/Ubuntu 15
+Install dependencies:
 ```sh
-sudo apt-get install pkg-config libboost-system-dev libboost-thread-dev libboost-filesystem-dev libboost-log-dev libgtkmm-3.0-dev libgtksourceviewmm-3.0-dev aspell-en libaspell-dev git
+sudo apt-get install git cmake make g++ libclang-dev pkg-config libboost-system-dev libboost-thread-dev libboost-filesystem-dev libboost-log-dev libgtkmm-3.0-dev libgtksourceviewmm-3.0-dev aspell-en libaspell-dev
 ```
+
+Get juCi++ source, compile and install:
 ```sh
 git clone http://github.com/cppit/jucipp.git
 cd jucipp
@@ -15,13 +17,16 @@ sudo make install
 ```
 
 ## Ubuntu 14/Linux Mint 17
+Install dependencies:
 ```sh
 sudo add-apt-repository ppa:ubuntu-toolchain-r/test
 sudo apt-get update
 sudo apt-get install g++-4.9
 sudo apt-get remove g++-4.8
-sudo apt-get install pkg-config libboost-system1.55-dev libboost-thread1.55-dev libboost-filesystem1.55-dev libboost-log1.55-dev libgtkmm-3.0-dev libgtksourceviewmm-3.0-dev aspell-en libaspell-dev git
+sudo apt-get install git cmake make g++ libclang-dev pkg-config libboost-system1.55-dev libboost-thread1.55-dev libboost-filesystem1.55-dev libboost-log1.55-dev libgtkmm-3.0-dev libgtksourceviewmm-3.0-dev aspell-en libaspell-dev
 ```
+
+Get juCi++ source, compile and install:
 ```sh
 git clone http://github.com/cppit/jucipp.git
 cd jucipp
@@ -31,10 +36,12 @@ sudo make install
 ```
 
 ## OS X with Homebrew (http://brew.sh/)
+Install dependencies (installing llvm may take some time):
 ```sh
-brew install pkg-config boost gtkmm3 homebrew/x11/gtksourceviewmm3 aspell git
+brew install cmake --with-clang llvm pkg-config boost gtkmm3 homebrew/x11/gtksourceviewmm3 aspell
 ```
 
+Get juCi++ source, compile and install:
 ```sh
 git clone https://github.com/cppit/jucipp.git
 cd jucipp
@@ -49,14 +56,10 @@ Install dependencies (replace x86_64 with i686 for 32-bit MSYS2 installs):
 pacman -S patch autoconf automake-wrapper mingw-w64-x86_64-gtkmm3 mingw-w64-x86_64-gtksourceviewmm3 mingw-w64-x86_64-boost mingw-w64-x86_64-aspell mingw-w64-x86_64-aspell-en git
 ```
 
-Get juCi++ source:
+Get juCi++ source, compile and install (replace mingw64 with mingw32 for 32-bit MSYS2 installs):
 ```sh
 git clone https://github.com/cppit/jucipp.git
 cd jucipp
-```
-
-Compile and install juCi++ source (replace mingw64 with mingw32 for 32-bit MSYS2 installs):
-```sh
 cmake -G"MSYS Makefiles" -DCMAKE_INSTALL_PREFIX=/mingw64 .
 make
 make install
