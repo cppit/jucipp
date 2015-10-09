@@ -2345,6 +2345,89 @@ Source::ClangViewAutocomplete(file_path, project_path, language) {
     }
   };
   
+  get_token_data=[this]() {
+    const auto find_non_word_char=[](const std::string &str, size_t start_pos) {
+      for(size_t c=start_pos;c<str.size();c++) {
+        if(!((str[c]>='a' && str[c]<='z') ||
+             (str[c]>='A' && str[c]<='Z') ||
+             (str[c]>='0' && str[c]<='9') ||
+             str[c]=='_'))
+        return c;
+      }
+      return std::string::npos;
+    };
+    
+    std::vector<std::string> data;
+    if(source_readable) {
+      auto iter=get_buffer()->get_insert()->get_iter();
+      auto line=(unsigned)iter.get_line();
+      auto index=(unsigned)iter.get_line_index();
+      for(auto &token: *clang_tokens) {
+        auto cursor=token.get_cursor();
+        if(token.get_kind()==clang::Token_Identifier && cursor.has_type()) {
+          if(line==token.offsets.first.line-1 && index>=token.offsets.first.index-1 && index <=token.offsets.second.index-1) {
+            auto referenced=cursor.get_referenced();
+            if(referenced) {
+              auto usr=referenced.get_usr();
+              data.emplace_back("clang");
+              
+              //namespace - not working
+              size_t pos1=usr.find("@N@");
+              size_t pos2;
+              std::string first_namespace;
+              while(pos1!=std::string::npos) {
+                pos1+=3;
+                pos2=find_non_word_char(usr, pos1);
+                if(pos1!=std::string::npos && pos2!=std::string::npos) {
+                  auto ns=usr.substr(pos1, pos2-pos1);
+                  if(first_namespace.size()==0)
+                    first_namespace=ns;
+                  else if(ns==first_namespace || ns=="std")
+                    break;
+                  data.emplace_back(ns);
+                  pos1=usr.find("@N@", pos2);
+                }
+                else
+                  pos1=std::string::npos;
+              }
+              
+              //type
+              pos1=usr.find("@T@");
+              if(pos1==std::string::npos)
+                pos1=usr.find("@S@");
+              if(pos1!=std::string::npos) {
+                pos1+=3;
+                pos2=find_non_word_char(usr, pos1);
+              }
+              if(pos1!=std::string::npos) {
+                if(pos2!=std::string::npos)
+                  data.emplace_back(usr.substr(pos1, pos2-pos1));
+                else
+                  data.emplace_back(usr.substr(pos1));
+              }
+              
+              //function
+              pos1=usr.find("@F@");
+              if(pos1!=std::string::npos) {
+                pos1+=3;
+                pos2=find_non_word_char(usr, pos1);
+              }
+              if(pos1!=std::string::npos) {
+                if(pos2!=std::string::npos)
+                  data.emplace_back(usr.substr(pos1, pos2-pos1));
+                else
+                  data.emplace_back(usr.substr(pos1));
+              }
+              
+              break;
+            }
+          }
+        }
+      }
+    }
+    return data;
+  };
+  
   goto_next_diagnostic=[this]() {
     if(source_readable) {
       auto insert_offset=get_buffer()->get_insert()->get_iter().get_offset();

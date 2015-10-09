@@ -23,6 +23,12 @@ namespace Source {
   
   class Config {
   public:
+    class DocumentationSearch {
+    public:
+      std::string separator;
+      std::unordered_map<std::string, std::string> queries;
+    };
+    
     std::string style;
     std::string font;
     std::string spellcheck_language;
@@ -37,6 +43,8 @@ namespace Source {
     bool highlight_current_line;
     bool show_line_numbers;
     std::unordered_map<std::string, std::string> clang_types;
+    
+    std::unordered_map<std::string, DocumentationSearch> documentation_searches;
   };
   
   class Token {
@@ -104,6 +112,7 @@ namespace Source {
     std::function<std::pair<std::string, clang::Offset>()> get_declaration_location;
     std::function<void()> goto_method;
     std::function<Token()> get_token;
+    std::function<std::vector<std::string>()> get_token_data;
     std::function<size_t(const Token &token, const std::string &text)> rename_similar_tokens;
     std::function<void()> goto_next_diagnostic;
     std::function<void()> apply_fix_its;

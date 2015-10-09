@@ -54,6 +54,8 @@ Menu::Menu() {
   "      <menuitem action=\"SourceGotoLine\"/>\n"
   "      <menuitem action=\"SourceCenterCursor\"/>\n"
   "      <separator/>\n"
+  "      <menuitem action=\"SourceFindDocumentation\"/>\n"
+  "      <separator/>\n"
   "      <menuitem action=\"SourceGotoDeclaration\"/>\n"
   "      <menuitem action=\"SourceGotoMethod\"/>\n"
   "      <menuitem action=\"SourceRename\"/>\n"

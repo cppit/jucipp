@@ -117,7 +117,10 @@ Window::Window() : box(Gtk::ORIENTATION_VERTICAL), notebook(directories), compil
         menu_item->set_sensitive((bool)notebook.get_current_view()->goto_next_diagnostic);
       
       if(auto menu_item=dynamic_cast<Gtk::MenuItem*>(menu.ui_manager->get_widget("/MenuBar/SourceMenu/SourceApplyFixIts")))
-      menu_item->set_sensitive((bool)notebook.get_current_view()->apply_fix_its);
+        menu_item->set_sensitive((bool)notebook.get_current_view()->apply_fix_its);
+      
+      if(auto menu_item=dynamic_cast<Gtk::MenuItem*>(menu.ui_manager->get_widget("/MenuBar/SourceMenu/SourceFindDocumentation")))
+        menu_item->set_sensitive((bool)notebook.get_current_view()->get_token_data);
     
       directories.select(notebook.get_current_view()->file_path);
       
@@ -295,6 +298,38 @@ void Window::create_menu() {
   });
   menu.action_group->add(Gtk::Action::create("SourceRename", "Rename"), Gtk::AccelKey(menu.key_map["source_rename"]), [this]() {
     rename_token_entry();
+  });
+  menu.action_group->add(Gtk::Action::create("SourceFindDocumentation", "Find Documentation"), Gtk::AccelKey(menu.key_map["source_find_documentation"]), [this]() {
+    if(notebook.get_current_page()!=-1) {
+      if(notebook.get_current_view()->get_token_data) {
+        auto data=notebook.get_current_view()->get_token_data();        
+        if(data.size()>0) {
+          auto documentation_search=Singleton::Config::source()->documentation_searches.find(data[0]);
+          if(documentation_search!=Singleton::Config::source()->documentation_searches.end()) {
+            std::string token_query;
+            for(size_t c=1;c<data.size();c++) {
+              if(data[c].size()>0) {
+                if(token_query.size()>0)
+                  token_query+=documentation_search->second.separator;
+                token_query+=data[c];
+              }
+            }
+            if(token_query.size()>0) {
+              std::unordered_map<std::string, std::string>::iterator query;
+              if(data[1].size()>0)
+                query=documentation_search->second.queries.find(data[1]);
+              else
+                query=documentation_search->second.queries.find("@empty");
+              if(query==documentation_search->second.queries.end())
+                query=documentation_search->second.queries.find("@any");
+              
+              if(query!=documentation_search->second.queries.end())
+                Singleton::terminal()->execute("open \""+query->second+token_query+"\"");
+            }
+          }
+        }
+      }
+    }
   });
   menu.action_group->add(Gtk::Action::create("SourceGotoNextDiagnostic", "Go to next Diagnostic"), Gtk::AccelKey(menu.key_map["source_goto_next_diagnostic"]), [this]() {
     if(notebook.get_current_page()!=-1) {
