@@ -69,31 +69,24 @@ void Notebook::open(const boost::filesystem::path &file_path) {
   can_read.close();
   
   auto language=Source::guess_language(file_path);
+  boost::filesystem::path project_path;
+  if(directories.cmake && directories.cmake->project_path!="" && file_path.generic_string().substr(0, directories.cmake->project_path.generic_string().size()+1)==directories.cmake->project_path.generic_string()+'/')
+    project_path=directories.cmake->project_path;
+  else {
+    project_path=file_path.parent_path();
+    CMake cmake(project_path);
+    if(cmake.project_path!="") {
+      project_path=cmake.project_path;
+      Singleton::terminal()->print("Project path for "+file_path.string()+" set to "+project_path.string()+"\n");
+    }
+  }
   if(language && (language->get_id()=="chdr" || language->get_id()=="cpphdr" || language->get_id()=="c" || language->get_id()=="cpp" || language->get_id()=="objc")) {
-    boost::filesystem::path project_path;
-    if(directories.cmake && directories.cmake->project_path!="" && file_path.generic_string().substr(0, directories.cmake->project_path.generic_string().size()+1)==directories.cmake->project_path.generic_string()+'/') {
-      project_path=directories.cmake->project_path;
-      if(boost::filesystem::exists(project_path.string()+"/CMakeLists.txt") && !boost::filesystem::exists(project_path.string()+"/compile_commands.json"))
-        CMake::create_compile_commands(project_path);
-    }
-    else {
-      project_path=file_path.parent_path();
-      CMake cmake(project_path);
-      if(cmake.project_path!="") {
-        project_path=cmake.project_path;
-        Singleton::terminal()->print("Project path for "+file_path.string()+" set to "+project_path.string()+"\n");
-      }
-      else
-        Singleton::terminal()->print("Error: could not find project path for "+file_path.string()+"\n");
-    }
+    if(boost::filesystem::exists(project_path.string()+"/CMakeLists.txt") && !boost::filesystem::exists(project_path.string()+"/compile_commands.json"))
+      CMake::create_compile_commands(project_path);
     source_views.emplace_back(new Source::ClangView(file_path, project_path, language));
   }
-  else {
-    boost::filesystem::path project_path;
-    if(directories.cmake && directories.cmake->project_path!="" && file_path.generic_string().substr(0, directories.cmake->project_path.generic_string().size()+1)==directories.cmake->project_path.generic_string()+'/')
-      project_path=directories.cmake->project_path;
+  else
     source_views.emplace_back(new Source::GenericView(file_path, project_path, language));
-  }
   
   source_views.back()->on_update_status=[this](Source::View* view, const std::string &status) {
     if(get_current_page()!=-1 && get_current_view()==view)
