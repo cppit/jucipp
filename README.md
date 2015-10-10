@@ -17,6 +17,7 @@ towards libclang with speed and ease of use in mind.
 * Tooltips showing type information and doxygen documentation
 * Refactoring across files
 * Highlighting of similar types
+* Documentation search
 * Spell checking depending on file context
 * Run shell commands within JuCi++, even on Windows
 * Regex search and replace

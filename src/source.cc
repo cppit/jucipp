@@ -2369,27 +2369,35 @@ Source::ClangViewAutocomplete(file_path, project_path, language) {
             auto referenced=cursor.get_referenced();
             if(referenced) {
               auto usr=referenced.get_usr();
+              boost::filesystem::path referenced_path=referenced.get_source_location().get_path();
+              
+              //Return empty if referenced is within project
+              if(referenced_path.generic_string().substr(0, this->project_path.generic_string().size()+1)==this->project_path.generic_string()+'/')
+                return data;
+              
               data.emplace_back("clang");
               
               //namespace - not working
-              size_t pos1=usr.find("@N@");
-              size_t pos2;
-              std::string first_namespace;
-              while(pos1!=std::string::npos) {
+              size_t pos1=0, pos2;
+              while((pos1=usr.find('@', pos1))!=std::string::npos && pos1+1<usr.size() && usr[pos1+1]=='N') {
                 pos1+=3;
                 pos2=find_non_word_char(usr, pos1);
-                if(pos1!=std::string::npos && pos2!=std::string::npos) {
+                if(pos2!=std::string::npos) {
                   auto ns=usr.substr(pos1, pos2-pos1);
-                  if(first_namespace.size()==0)
-                    first_namespace=ns;
-                  else if(ns==first_namespace || ns=="std")
+                  if(ns=="__1")
                     break;
                   data.emplace_back(ns);
-                  pos1=usr.find("@N@", pos2);
+                  pos1=pos2;
                 }
                 else
-                  pos1=std::string::npos;
+                  break;
               }
+              if(data.size()==1)
+                data.emplace_back("");
+              
+              //function
+              pos1=usr.find("@F@");
+              size_t function_pos=pos1;
               
               //type
               pos1=usr.find("@T@");
@@ -2399,7 +2407,7 @@ Source::ClangViewAutocomplete(file_path, project_path, language) {
                 pos1+=3;
                 pos2=find_non_word_char(usr, pos1);
               }
-              if(pos1!=std::string::npos) {
+              if(pos1!=std::string::npos && pos1<function_pos) {
                 if(pos2!=std::string::npos)
                   data.emplace_back(usr.substr(pos1, pos2-pos1));
                 else
@@ -2407,7 +2415,7 @@ Source::ClangViewAutocomplete(file_path, project_path, language) {
               }
               
               //function
-              pos1=usr.find("@F@");
+              pos1=function_pos;
               if(pos1!=std::string::npos) {
                 pos1+=3;
                 pos2=find_non_word_char(usr, pos1);

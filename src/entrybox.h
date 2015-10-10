@@ -12,7 +12,7 @@ class EntryBox : public Gtk::Box {
 public:
   class Entry : public Gtk::Entry {
   public:
-    Entry(const std::string& content="", std::function<void(const std::string& content)> on_activate=nullptr, unsigned length=50);
+    Entry(const std::string& content="", std::function<void(const std::string& content)> on_activate=nullptr, unsigned width_chars=-1);
     std::function<void(const std::string& content)> on_activate;
   private:
     size_t selected_history;

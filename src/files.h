@@ -97,7 +97,7 @@ const std::string configjson =
 "        \"clang\": {\n"
 "            \"separator\": \"::\",\n"
 "            \"queries\": {\n"
-"                \"@empty\": \"https://www.google.com/search?btnI&q=site:http://www.cplusplus.com/reference/+\",\n"
+"                \"@empty\": \"https://www.google.com/search?btnI&q=c%2B%2B+\",\n"
 "                \"std\": \"https://www.google.com/search?btnI&q=site:http://www.cplusplus.com/reference/+\",\n"
 "                \"boost\": \"https://www.google.com/search?btnI&q=site:http://www.boost.org/doc/libs/1_59_0/+\",\n"
 "                \"Gtk\": \"https://www.google.com/search?btnI&q=site:https://developer.gnome.org/gtkmm/stable/+\",\n"
