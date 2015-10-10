@@ -323,8 +323,16 @@ void Window::create_menu() {
               if(query==documentation_search->second.queries.end())
                 query=documentation_search->second.queries.find("@any");
               
-              if(query!=documentation_search->second.queries.end())
-                Singleton::terminal()->execute("open \""+query->second+token_query+"\"");
+              if(query!=documentation_search->second.queries.end()) {
+                std::string uri=query->second+token_query;
+#ifdef __APPLE__
+                Singleton::terminal()->execute("open \""+uri+"\"");
+#else
+                GError* error=NULL;
+                gtk_show_uri(NULL, uri.c_str(), GDK_CURRENT_TIME, &error);
+                g_clear_error(&error);
+#endif
+              }
             }
           }
         }

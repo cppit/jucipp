@@ -9,10 +9,10 @@ towards libclang with speed and ease of use in mind.
 * Platform independent
 * Fast and responsive (written in C++)
 * Syntax highlighting (even C++11/14, and more than 100 other file types)
-* (Obj)C(++) warnings and errors on the fly
-* (Obj)C(++) Fix-its
+* C++ warnings and errors on the fly
+* C++ Fix-its
 * Automated CMake processing
-* Fast (Obj)C(++) autocomletion (even external libraries)
+* Fast C++ autocomletion (including external libraries)
 * Keyword and buffer autocomletion for other file types
 * Tooltips showing type information and doxygen documentation
 * Refactoring across files
