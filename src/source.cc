@@ -2371,15 +2371,17 @@ Source::ClangViewAutocomplete(file_path, project_path, language) {
               auto usr=referenced.get_usr();
               boost::filesystem::path referenced_path=referenced.get_source_location().get_path();
               
+              //Singleton::terminal()->print(usr+'\n', true); //TODO: remove
+              
               //Return empty if referenced is within project
               if(referenced_path.generic_string().substr(0, this->project_path.generic_string().size()+1)==this->project_path.generic_string()+'/')
                 return data;
               
               data.emplace_back("clang");
               
-              //namespace - not working
-              size_t pos1=0, pos2;
-              while((pos1=usr.find('@', pos1))!=std::string::npos && pos1+1<usr.size() && usr[pos1+1]=='N') {
+              //namespace
+              size_t pos1, pos2=0;
+              while((pos1=usr.find('@', pos2))!=std::string::npos && pos1+1<usr.size() && usr[pos1+1]=='N') {
                 pos1+=3;
                 pos2=find_non_word_char(usr, pos1);
                 if(pos2!=std::string::npos) {
@@ -2387,7 +2389,6 @@ Source::ClangViewAutocomplete(file_path, project_path, language) {
                   if(ns=="__1")
                     break;
                   data.emplace_back(ns);
-                  pos1=pos2;
                 }
                 else
                   break;
@@ -2395,32 +2396,46 @@ Source::ClangViewAutocomplete(file_path, project_path, language) {
               if(data.size()==1)
                 data.emplace_back("");
               
-              //function
-              pos1=usr.find("@F@");
-              size_t function_pos=pos1;
+              //template arguments
+              size_t template_pos=usr.find('$');
               
+              bool found_type_or_function=false;
               //type
-              pos1=usr.find("@T@");
+              pos2=0;
+              while(((pos1=usr.find("T@", pos2))!=std::string::npos || (pos1=usr.find("S@", pos2))!=std::string::npos) && pos1<template_pos) {
+                found_type_or_function=true;
+                pos1+=2;
+                pos2=find_non_word_char(usr, pos1);
+                if(pos2!=std::string::npos)
+                  data.emplace_back(usr.substr(pos1, pos2-pos1));
+                else {
+                  data.emplace_back(usr.substr(pos1));
+                  break;
+                }
+              }
+              
+              //function/constant//variable
+              pos1=usr.find("F@");
               if(pos1==std::string::npos)
-                pos1=usr.find("@S@");
+                pos1=usr.find("C@");
+              if(pos1==std::string::npos)
+                pos1=usr.find("I@");
               if(pos1!=std::string::npos) {
-                pos1+=3;
+                pos1+=2;
                 pos2=find_non_word_char(usr, pos1);
               }
-              if(pos1!=std::string::npos && pos1<function_pos) {
+              if(pos1!=std::string::npos) {
+                found_type_or_function=true;
                 if(pos2!=std::string::npos)
                   data.emplace_back(usr.substr(pos1, pos2-pos1));
                 else
                   data.emplace_back(usr.substr(pos1));
               }
               
-              //function
-              pos1=function_pos;
-              if(pos1!=std::string::npos) {
-                pos1+=3;
+              //Sometimes a method is at end without a identifier it seems:
+              if(!found_type_or_function && (pos1=usr.rfind('@'))!=std::string::npos) {
+                pos1++;
                 pos2=find_non_word_char(usr, pos1);
-              }
-              if(pos1!=std::string::npos) {
                 if(pos2!=std::string::npos)
                   data.emplace_back(usr.substr(pos1, pos2-pos1));
                 else
