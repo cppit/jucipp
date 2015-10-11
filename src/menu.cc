@@ -43,6 +43,8 @@ Menu::Menu() {
   "      <menuitem action=\"EditPaste\"/>\n"
   "      <separator/>\n"
   "      <menuitem action=\"EditFind\"/>\n"
+  "      <separator/>\n"
+  "      <menuitem action=\"EditSetTab\"/>\n"
   "    </menu>\n"
   "    <menu action=\"SourceMenu\">\n"
   "      <menu action=\"SourceSpellCheck\">\n"

@@ -260,6 +260,17 @@ Source::View::View(const boost::filesystem::path &file_path, const boost::filesy
   set_tooltip_events();
 }
 
+void Source::View::set_tab_char_and_size(char tab_char, unsigned tab_size) {
+  this->tab_char=tab_char;
+  this->tab_size=tab_size;
+      
+  tab.clear();
+  for(unsigned c=0;c<tab_size;c++)
+    tab+=tab_char;
+  
+  tabs_regex=std::regex("^([ \\t]*)(.*)$");
+}
+
 void Source::View::configure() {
   //TODO: Move this to notebook? Might take up too much memory doing this for every tab.
   auto style_scheme_manager=Gsv::StyleSchemeManager::get_default();
@@ -367,11 +378,7 @@ void Source::View::configure() {
       tab_size=tab_char_and_size.second;
     }
   }
-  tab.clear();
-  for(unsigned c=0;c<tab_size;c++)
-    tab+=tab_char;
-  
-  tabs_regex=std::regex("^([ \\t]*)(.*)$");
+  set_tab_char_and_size(tab_char, tab_size);
 }
 
 void Source::View::set_tooltip_events() {

@@ -65,6 +65,7 @@ const std::string configjson =
 "        \"edit_undo\": \"<primary>z\",\n"
 "        \"edit_redo\": \"<primary><shift>z\",\n"
 "        \"edit_find\": \"<primary>f\",\n"
+"        \"edit_set_tab\": \"\",\n"
 "        \"source_spellcheck\": \"\",\n"
 "        \"source_spellcheck_clear\": \"\",\n"
 "        \"source_spellcheck_next_error\": \"<primary><shift>e\",\n"

@@ -127,6 +127,9 @@ namespace Source {
     void spellcheck();
     void remove_spellcheck_errors();
     void goto_next_spellcheck_error();
+    
+    void set_tab_char_and_size(char tab_char, unsigned tab_size);
+    std::pair<char, unsigned> get_tab_char_and_size() {return {tab_char, tab_size};}
   protected:
     bool source_readable;
     Tooltips diagnostic_tooltips;

@@ -249,6 +249,9 @@ void Window::create_menu() {
       }
     }
   });
+  menu.action_group->add(Gtk::Action::create("EditSetTab", "Set Tab Char and Size"), Gtk::AccelKey(menu.key_map["edit_set_tab"]), [this]() {
+    set_tab_entry();
+  });
 
   menu.action_group->add(Gtk::Action::create("SourceSpellCheck", "Spell Check"));
   menu.action_group->add(Gtk::Action::create("SourceSpellCheckBuffer", "Spell Check Buffer"), Gtk::AccelKey(menu.key_map["source_spellcheck"]), [this]() {
@@ -785,6 +788,65 @@ void Window::search_and_replace_entry() {
   });
   search_entry_shown=true;
   entry_box.show();
+}
+
+void Window::set_tab_entry() {
+  entry_box.clear();
+  if(notebook.get_current_page()!=-1) {
+    auto tab_char_and_size=notebook.get_current_view()->get_tab_char_and_size();
+    
+    entry_box.labels.emplace_back();
+    auto label_it=entry_box.labels.begin();
+    
+    entry_box.entries.emplace_back(std::to_string(tab_char_and_size.second));
+    auto entry_tab_size_it=entry_box.entries.begin();
+    entry_tab_size_it->set_placeholder_text("Tab size");
+    
+    char tab_char=tab_char_and_size.first;
+    std::string tab_char_string;
+    if(tab_char==' ')
+      tab_char_string="space";
+    else if(tab_char=='\t')
+      tab_char_string="tab";
+      
+    entry_box.entries.emplace_back(tab_char_string);
+    auto entry_tab_char_it=entry_box.entries.rbegin();
+    entry_tab_char_it->set_placeholder_text("Tab char");
+    
+    const auto activate_function=[this, entry_tab_char_it, entry_tab_size_it, label_it](const std::string& content){
+      if(notebook.get_current_page()!=-1) {
+        char tab_char=0;
+        unsigned tab_size=0;
+        try {
+          tab_size = static_cast<unsigned>(stoul(entry_tab_size_it->get_text()));
+          std::string tab_char_string=entry_tab_char_it->get_text();
+          std::transform(tab_char_string.begin(), tab_char_string.end(), tab_char_string.begin(), ::tolower);
+          if(tab_char_string=="space")
+            tab_char=' ';
+          else if(tab_char_string=="tab")
+            tab_char='\t';
+        }
+        catch(const std::exception &e) {}
+
+        if(tab_char!=0 && tab_size>0) {
+          notebook.get_current_view()->set_tab_char_and_size(tab_char, tab_size);
+          entry_box.hide();
+        }
+        else {
+          label_it->set_text("Tab size must be >0 and tab char set to either 'space' or 'tab'");
+        }
+      }
+    };
+    
+    entry_tab_char_it->on_activate=activate_function;
+    entry_tab_size_it->on_activate=activate_function;
+    
+    entry_box.buttons.emplace_back("Set tab char and size", [this, entry_tab_char_it](){
+      entry_tab_char_it->activate();
+    });
+    
+    entry_box.show();
+  }
 }
 
 void Window::goto_line_entry() {

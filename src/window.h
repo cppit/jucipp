@@ -50,6 +50,7 @@ private:
   void open_file_dialog();
   void save_file_dialog();
   void search_and_replace_entry();
+  void set_tab_entry();
   void goto_line_entry();
   void rename_token_entry();
   void generate_keybindings();
