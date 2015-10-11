@@ -249,7 +249,7 @@ void Window::create_menu() {
       }
     }
   });
-  menu.action_group->add(Gtk::Action::create("EditSetTab", "Set Tab Char and Size"), Gtk::AccelKey(menu.key_map["edit_set_tab"]), [this]() {
+  menu.action_group->add(Gtk::Action::create("EditSetTab", "Set Tab in Current Buffer"), Gtk::AccelKey(menu.key_map["edit_set_tab"]), [this]() {
     set_tab_entry();
   });
 
@@ -841,7 +841,7 @@ void Window::set_tab_entry() {
     entry_tab_char_it->on_activate=activate_function;
     entry_tab_size_it->on_activate=activate_function;
     
-    entry_box.buttons.emplace_back("Set tab char and size", [this, entry_tab_char_it](){
+    entry_box.buttons.emplace_back("Set tab in current buffer", [this, entry_tab_char_it](){
       entry_tab_char_it->activate();
     });
     

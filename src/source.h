@@ -148,6 +148,10 @@ namespace Source {
     std::string get_line_before(const Gtk::TextIter &iter);
     std::string get_line_before(Glib::RefPtr<Gtk::TextBuffer::Mark> mark);
     std::string get_line_before();
+    Gtk::TextIter get_tabs_end_iter(const Gtk::TextIter &iter);
+    Gtk::TextIter get_tabs_end_iter(Glib::RefPtr<Gtk::TextBuffer::Mark> mark);
+    Gtk::TextIter get_tabs_end_iter(int line_nr);
+    Gtk::TextIter get_tabs_end_iter();
     
     bool find_start_of_closed_expression(Gtk::TextIter iter, Gtk::TextIter &found_iter);
     bool find_open_expression_symbol(Gtk::TextIter iter, const Gtk::TextIter &until_iter, Gtk::TextIter &found_iter);
@@ -161,7 +165,6 @@ namespace Source {
     unsigned tab_size;
     char tab_char;
     std::string tab;
-    std::regex tabs_regex;
     
     bool spellcheck_all=false;
     std::unique_ptr<SelectionDialog> spellcheck_suggestions_dialog;
