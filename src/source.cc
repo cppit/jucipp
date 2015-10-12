@@ -929,16 +929,32 @@ bool Source::View::on_key_press_event(GdkEventKey* key) {
     last_keyval_is_return=false;
   
   get_source_buffer()->begin_user_action();
+  auto iter=get_buffer()->get_insert()->get_iter();
   //Indent as in next or previous line
-  if(key->keyval==GDK_KEY_Return && !get_buffer()->get_has_selection()) {
-    auto insert_it=get_buffer()->get_insert()->get_iter();
-    int line_nr=insert_it.get_line();
+  if(key->keyval==GDK_KEY_Return && !get_buffer()->get_has_selection() && !iter.starts_line()) {
+    //First remove spaces or tabs around cursor
+    auto start_blank_iter=iter;
+    auto end_blank_iter=iter;
+    while((*end_blank_iter==' ' || *end_blank_iter=='\t') &&
+          !end_blank_iter.ends_line() && end_blank_iter.forward_char()) {}
+    start_blank_iter.backward_char();
+    while((*start_blank_iter==' ' || *start_blank_iter=='\t' || start_blank_iter.ends_line()) &&
+          !start_blank_iter.starts_line() && start_blank_iter.backward_char()) {}
+    if(!start_blank_iter.starts_line()) {
+      start_blank_iter.forward_char();
+      get_buffer()->erase(start_blank_iter, end_blank_iter);
+    }
+    else
+      get_buffer()->erase(iter, end_blank_iter);
+    iter=get_buffer()->get_insert()->get_iter();
+    
+    int line_nr=iter.get_line();
     auto tabs_end_iter=get_tabs_end_iter();
     auto line_tabs=get_line_before(tabs_end_iter);
     if((line_nr+1)<get_buffer()->get_line_count()) {
       auto next_line_tabs_end_iter=get_tabs_end_iter(line_nr+1);
       auto next_line_tabs=get_line_before(next_line_tabs_end_iter);
-      if(insert_it.ends_line()) {
+      if(iter.ends_line()) {
         if(next_line_tabs.size()>line_tabs.size()) {
           get_source_buffer()->insert_at_cursor("\n"+next_line_tabs);
           scroll_to(get_source_buffer()->get_insert());
@@ -954,7 +970,6 @@ bool Source::View::on_key_press_event(GdkEventKey* key) {
   }
   //Indent right when clicking tab, no matter where in the line the cursor is. Also works on selected text.
   else if(key->keyval==GDK_KEY_Tab) {
-    auto iter=get_buffer()->get_insert()->get_iter();
     //Special case if insert is at beginning of empty line:
     if(iter.starts_line() && iter.ends_line() && !get_buffer()->get_has_selection()) {
       auto prev_line_iter=iter;
@@ -1037,7 +1052,6 @@ bool Source::View::on_key_press_event(GdkEventKey* key) {
   }
   //"Smart" backspace key
   else if(key->keyval==GDK_KEY_BackSpace && !get_buffer()->get_has_selection()) {
-    auto insert_it=get_buffer()->get_insert()->get_iter();
     auto line=get_line_before();
     bool do_smart_backspace=true;
     for(auto &chr: line) {
@@ -1047,15 +1061,14 @@ bool Source::View::on_key_press_event(GdkEventKey* key) {
       }
     }
     if(do_smart_backspace) {
-      auto line_start_iter=insert_it;
+      auto line_start_iter=iter;
       if(line_start_iter.backward_chars(line.size()))
-        get_buffer()->erase(insert_it, line_start_iter);
+        get_buffer()->erase(iter, line_start_iter);
     }
   }
   //"Smart" delete key
   else if(key->keyval==GDK_KEY_Delete && !get_buffer()->get_has_selection()) {
-    auto insert_iter=get_buffer()->get_insert()->get_iter();
-    auto iter=insert_iter;
+    auto insert_iter=iter;
     bool do_smart_delete=true;
     do {
       if(*iter!=' ' && *iter!='\t' && !iter.ends_line()) {
@@ -1078,7 +1091,6 @@ bool Source::View::on_key_press_event(GdkEventKey* key) {
   //Next two are smart home/end keys that works with wrapped lines
   //Note that smart end goes FIRST to end of line to avoid hiding empty chars after expressions
   else if(key->keyval==GDK_KEY_End && (key->state&GDK_CONTROL_MASK)==0) {
-    auto iter=get_buffer()->get_insert()->get_iter();
     auto end_line_iter=iter;
     while(!end_line_iter.ends_line() && end_line_iter.forward_char()) {}
     auto end_sentence_iter=end_line_iter;
@@ -1105,7 +1117,6 @@ bool Source::View::on_key_press_event(GdkEventKey* key) {
     return true;
   }
   else if(key->keyval==GDK_KEY_Home && (key->state&GDK_CONTROL_MASK)==0) {
-    auto iter=get_buffer()->get_insert()->get_iter();
     auto start_line_iter=get_buffer()->get_iter_at_line(iter.get_line());
     auto start_sentence_iter=start_line_iter;
     while(!start_sentence_iter.ends_line() && 
@@ -1778,10 +1789,25 @@ bool Source::ClangViewParse::on_key_press_event(GdkEventKey* key) {
     return Source::View::on_key_press_event(key);
   }
   get_source_buffer()->begin_user_action();
-  
+  iter=get_buffer()->get_insert()->get_iter();
   //Indent depending on if/else/etc and brackets
-  if(key->keyval==GDK_KEY_Return) {
-    auto iter=get_buffer()->get_insert()->get_iter();
+  if(key->keyval==GDK_KEY_Return && !iter.starts_line()) {
+    //First remove spaces or tabs around cursor
+    auto start_blank_iter=iter;
+    auto end_blank_iter=iter;
+    while((*end_blank_iter==' ' || *end_blank_iter=='\t') &&
+          !end_blank_iter.ends_line() && end_blank_iter.forward_char()) {}
+    start_blank_iter.backward_char();
+    while((*start_blank_iter==' ' || *start_blank_iter=='\t' || start_blank_iter.ends_line()) &&
+          !start_blank_iter.starts_line() && start_blank_iter.backward_char()) {}
+    if(!start_blank_iter.starts_line()) {
+      start_blank_iter.forward_char();
+      get_buffer()->erase(start_blank_iter, end_blank_iter);
+    }
+    else
+      get_buffer()->erase(iter, end_blank_iter);
+    iter=get_buffer()->get_insert()->get_iter();
+    
     Gtk::TextIter start_of_sentence_iter;
     if(find_start_of_closed_expression(iter, start_of_sentence_iter)) {
       auto start_sentence_tabs_end_iter=get_tabs_end_iter(start_of_sentence_iter);
