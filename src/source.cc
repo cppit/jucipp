@@ -1042,9 +1042,9 @@ bool Source::View::on_key_press_event(GdkEventKey* key) {
       Gtk::TextIter line_it = get_source_buffer()->get_iter_at_line(line_nr);
       Gtk::TextIter line_plus_it=line_it;
       if(!get_buffer()->get_has_selection() || line_it!=selection_end) {
-        if(indent_left_steps==0 || line_plus_it.forward_chars(indent_left_steps))
-          if(!ignore_line.at(line_nr-line_start))
-            get_source_buffer()->erase(line_it, line_plus_it);
+        line_plus_it.forward_chars(indent_left_steps);
+        if(!ignore_line.at(line_nr-line_start))
+          get_source_buffer()->erase(line_it, line_plus_it);
       }
     }
     get_source_buffer()->end_user_action();
