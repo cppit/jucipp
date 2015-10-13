@@ -12,7 +12,7 @@ endif()
 
 INCLUDE(FindPkgConfig)
 
-find_package(LibClang)
+find_package(LibClang REQUIRED)
 
 #find_package(PythonLibs 2.7)
 
