@@ -12,44 +12,16 @@ endif()
 
 INCLUDE(FindPkgConfig)
 
-set(validation true)
-
-function(install_help APPLE UNIX WINDOWS)
-  message("Install package with:")
-  if(UNIX)
-    if(APPLE)
-      message("brew install ${APPLE}")
-    else()
-      message("sudo apt-get install ${UNIX}")
-    endif(APPLE)
-  endif(UNIX)
-  if(WINDOWS)
-    #message("choco install ${WINDOWS}") #Removed this for the time being
-  endif(WINDOWS)
-endfunction(install_help)
-
-function(validate FOUND APPLE UNIX WINDOWS)
-  if(!${FOUND})
-    set(validation false)
-    install_help(${APPLE} ${UNIX} ${WINDOWS})
-  endif()
-endfunction(validate)
-
 find_package(LibClang)
-validate(${LIBCLANG_FOUND} "clang" "libclang-dev" "llvm")
 
 #find_package(PythonLibs 2.7)
-#validate(${PYTHONLIBS_FOUND} "python" "libpython-dev" "python") 
 
 #find_package(Boost 1.55 COMPONENTS python thread log system filesystem REQUIRED)
 find_package(Boost 1.55 COMPONENTS thread log system filesystem REQUIRED)
-validate(${Boost_FOUND} "boost" "libboost-all-dev" "boost")
 
-pkg_check_modules(GTKMM gtkmm-3.0) # The name GTKMM is set here for the variables abouve
-validate(${GTKMM_FOUND} "gtkmm" "libgtkmm-dev" "gtkmm")
+pkg_check_modules(GTKMM gtkmm-3.0 REQUIRED) # The name GTKMM is set here for the variables abouve
 
-pkg_check_modules(GTKSVMM gtksourceviewmm-3.0)
-validate(${GTKSVMM_FOUND} "gtksvmm" "libgtksvmm-dev" "gtkmmsv")
+pkg_check_modules(GTKSVMM gtksourceviewmm-3.0 REQUIRED)
 
 find_package(ASPELL REQUIRED)
 
@@ -104,30 +76,31 @@ else()
   list(APPEND source_files terminal.cc)
 endif()
 
-if(${validation})
-  add_executable(${project_name} ${source_files})
+add_executable(${project_name} ${source_files})
 
 #  add_library(${module} SHARED
 #    api
 #    api_ext)
 
-  include_directories(
-    ${Boost_INCLUDE_DIRS}
+include_directories(
+  ${Boost_INCLUDE_DIRS}
 #    ${PYTHON_INCLUDE_DIRS}
-    ${GTKMM_INCLUDE_DIRS}
-    ${GTKSVMM_INCLUDE_DIRS}
-    ${LCL_INCLUDE_DIRS}
-    ${LIBCLANG_INCLUDE_DIRS}
-    ${ASPELL_INCLUDE_DIR}
-    ../libclangmm/src)
+  ${GTKMM_INCLUDE_DIRS}
+  ${GTKSVMM_INCLUDE_DIRS}
+  ${LCL_INCLUDE_DIRS}
+  ${LIBCLANG_INCLUDE_DIRS}
+  ${ASPELL_INCLUDE_DIR}
+  ../libclangmm/src
+)
 
-  link_directories(
-    ${GTKMM_LIBRARY_DIRS}
-    ${GTKSVMM_LIBRARY_DIRS}
-    ${Boost_LIBRARY_DIRS}
+link_directories(
+  ${GTKMM_LIBRARY_DIRS}
+  ${GTKSVMM_LIBRARY_DIRS}
+  ${Boost_LIBRARY_DIRS}
 #    ${PYTHON_INCLUDE_DIRS}
-    ${LCL_LIBRARY_DIRS}
-    ${LIBCLANG_LIBRARY_DIRS})
+  ${LCL_LIBRARY_DIRS}
+  ${LIBCLANG_LIBRARY_DIRS}
+)
 
 #  set_target_properties(${module}
 #    PROPERTIES PREFIX ""
@@ -136,20 +109,18 @@ if(${validation})
 #  target_link_libraries(${module} ${PYTHON_LIBRARIES} ${Boost_LIBRARIES})
 #  target_link_libraries(${module} ${Boost_LIBRARIES})
 
-  target_link_libraries(${project_name}
-    ${LIBCLANG_LIBRARIES}
-    ${LCL_LIBRARIES}
-    ${GTKMM_LIBRARIES}
-    ${GTKSVMM_LIBRARIES}
-    ${Boost_LIBRARIES}
-    ${ASPELL_LIBRARIES}
+target_link_libraries(${project_name}
+  ${LIBCLANG_LIBRARIES}
+  ${LCL_LIBRARIES}
+  ${GTKMM_LIBRARIES}
+  ${GTKSVMM_LIBRARIES}
+  ${Boost_LIBRARIES}
+  ${ASPELL_LIBRARIES}
 #    ${PYTHON_LIBRARIES}
-    )
+)
 
 #  install(TARGETS ${project_name} ${module}
-  install(TARGETS ${project_name}
-    RUNTIME DESTINATION bin
+install(TARGETS ${project_name}
+  RUNTIME DESTINATION bin
 #    LIBRARY DESTINATION ${lib_install_path}
-    )
-endif(${validation})
-
+)
