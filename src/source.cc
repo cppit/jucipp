@@ -1857,12 +1857,13 @@ bool Source::ClangViewParse::on_key_press_event(GdkEventKey* key) {
       iter=get_buffer()->get_insert()->get_iter();
       auto found_iter=iter;
       if(find_open_expression_symbol(iter, start_of_sentence_iter, found_iter)) {
-        auto line=get_line_before(found_iter);
         auto tabs_end_iter=get_tabs_end_iter(found_iter);
         tabs=get_line_before(tabs_end_iter);
         auto iter=tabs_end_iter;
-        while(iter<=found_iter && iter.forward_char())
+        while(iter<=found_iter) {
           tabs+=' ';
+          iter.forward_char();
+        }
       }
       else if(std::regex_match(line, sm, no_bracket_statement_regex)) {
         get_source_buffer()->insert_at_cursor("\n"+tabs+tab);
@@ -1945,8 +1946,8 @@ bool Source::ClangViewParse::on_key_press_event(GdkEventKey* key) {
       Gtk::TextIter insert_it = get_source_buffer()->get_insert()->get_iter();
       Gtk::TextIter line_it = get_source_buffer()->get_iter_at_line(insert_it.get_line());
       Gtk::TextIter line_plus_it=line_it;
-      if(tab_size==0 || line_plus_it.forward_chars(tab_size))
-        get_source_buffer()->erase(line_it, line_plus_it);
+      line_plus_it.forward_chars(tab_size);
+      get_source_buffer()->erase(line_it, line_plus_it);
     }
     get_source_buffer()->insert_at_cursor("}");
     get_source_buffer()->end_user_action();
