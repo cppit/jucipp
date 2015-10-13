@@ -1997,7 +1997,7 @@ Source::ClangViewParse(file_path, project_path, language), autocomplete_cancel_s
     return false;
   });
   
-  autocomplete_fail.connect([this]() {
+  autocomplete_fail_connection=autocomplete_fail.connect([this]() {
     Singleton::terminal()->print("Error: autocomplete failed, reparsing "+this->file_path.string()+"\n");
     restart_parse();
     autocomplete_starting=false;
@@ -2219,6 +2219,8 @@ std::vector<Source::ClangViewAutocomplete::AutoCompleteData> Source::ClangViewAu
 
 void Source::ClangViewAutocomplete::async_delete() {
   parsing_in_progress->cancel("canceled, freeing resources in the background");
+  autocomplete_done_connection.disconnect();
+  autocomplete_fail_connection.disconnect();
   parse_thread_stop=true;
   delete_thread=std::thread([this](){
     //TODO: Is it possible to stop the clang-process in progress?

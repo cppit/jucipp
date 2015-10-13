@@ -282,6 +282,7 @@ namespace Source {
     Glib::Dispatcher autocomplete_done;
     sigc::connection autocomplete_done_connection;
     Glib::Dispatcher autocomplete_fail;
+    sigc::connection autocomplete_fail_connection;
     bool autocomplete_starting=false;
     std::atomic<bool> autocomplete_cancel_starting;
     guint last_keyval=0;
