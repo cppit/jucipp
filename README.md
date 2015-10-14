@@ -29,16 +29,14 @@ towards libclang with speed and ease of use in mind.
 See [enhancements](https://github.com/cppit/jucipp/labels/enhancement) for planned features.
 
 ## Dependencies ##
-* libboost-filesystem-dev 
-* libboost-log-dev 
-* libboost-test-dev 
-* libboost-thread-dev 
-* libboost-system-dev 
-* libgtkmm-3.0-dev 
-* libgtksourceview2.0-dev 
-* libgtksourceviewmm-3.0-dev
-* libaspell-dev
-* libclang-dev
+* boost-filesystem
+* boost-log
+* boost-thread
+* boost-system
+* gtkmm-3.0
+* gtksourceviewmm-3.0
+* aspell
+* libclang
 * [libclangmm](http://github.com/cppit/libclangmm/)
 
 ## Installation ##
