@@ -31,6 +31,8 @@ set(source_files juci.h
     menu.cc
     source.h
     source.cc
+    source_clang.h
+    source_clang.cc
     selectiondialog.h
     selectiondialog.cc
     config.h

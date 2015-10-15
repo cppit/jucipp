@@ -6,7 +6,6 @@
 #include "entrybox.h"
 #include "notebook.h"
 #include "menu.h"
-#include <boost/property_tree/json_parser.hpp>
 #include <atomic>
 
 class Window : public Gtk::Window {

@@ -24,7 +24,6 @@ towards libclang with speed and ease of use in mind.
 * Smart paste, keys and indentation
 * Source minimap
 * Full UTF-8 support
-* Write your own plugins in Python (disabled at the moment)
 
 See [enhancements](https://github.com/cppit/jucipp/labels/enhancement) for planned features.
 
