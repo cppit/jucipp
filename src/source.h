@@ -3,7 +3,6 @@
 #include <unordered_map>
 #include <vector>
 #include "gtkmm.h"
-#include "clangmm.h"
 #include <string>
 #include "gtksourceviewmm.h"
 #include "terminal.h"
@@ -57,25 +56,23 @@ namespace Source {
     std::string usr;
   };
   
+  class Offset {
+  public:
+    Offset() {}
+    Offset(unsigned line, unsigned index): line(line), index(index) {}
+    bool operator==(const Offset &o) {return (line==o.line && index==o.index);}
+    
+    unsigned line;
+    unsigned index;
+  };
+  
   class FixIt {
   public:
-    class Offset {
-    public:
-      Offset() {}
-      Offset(unsigned line, unsigned offset): line(line), offset(offset) {}
-      bool operator==(const Offset &o) {return (line==o.line && offset==o.offset);}
-      
-      unsigned line;
-      unsigned offset;
-    };
-    
     enum class Type {INSERT, REPLACE, ERASE};
     
-    FixIt(Type type, const std::string &source, const std::pair<Offset, Offset> &offsets): 
-      type(type), source(source), offsets(offsets) {}
     FixIt(const std::string &source, const std::pair<Offset, Offset> &offsets);
     
-    std::string string();
+    std::string string(Glib::RefPtr<Gtk::TextBuffer> buffer);
     
     Type type;
     std::string source;
@@ -103,7 +100,7 @@ namespace Source {
     boost::filesystem::path project_path;
     Glib::RefPtr<Gsv::Language> language;
     
-    std::function<std::pair<std::string, clang::Offset>()> get_declaration_location;
+    std::function<std::pair<std::string, Offset>()> get_declaration_location;
     std::function<void()> goto_method;
     std::function<Token()> get_token;
     std::function<std::vector<std::string>()> get_token_data;

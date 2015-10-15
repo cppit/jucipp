@@ -303,19 +303,17 @@ void Source::ClangViewParse::update_diagnostics() {
       for(auto &fix_it: diagnostic.fix_its) {
         //Convert line index to line offset for correct output:
         auto clang_offsets=fix_it.offsets;
-        std::pair<FixIt::Offset, FixIt::Offset> offsets;
+        std::pair<Offset, Offset> offsets;
         offsets.first.line=clang_offsets.first.line;
+        offsets.first.index=clang_offsets.first.index;
         offsets.second.line=clang_offsets.second.line;
-        auto iter=get_buffer()->get_iter_at_line_index(clang_offsets.first.line-1, clang_offsets.first.index-1);
-        offsets.first.offset=iter.get_line_offset()+1;
-        iter=get_buffer()->get_iter_at_line_index(clang_offsets.second.line-1, clang_offsets.second.index-1);
-        offsets.second.offset=iter.get_line_offset()+1;
+        offsets.second.index=clang_offsets.second.index;
         
         fix_its.emplace_back(fix_it.source, offsets);
         
         if(fix_its_string.size()>0)
           fix_its_string+='\n';
-        fix_its_string+=fix_its.back().string();
+        fix_its_string+=fix_its.back().string(get_buffer());
         fix_its_count++;
         num_fix_its++;
       }
@@ -986,7 +984,7 @@ Source::ClangViewAutocomplete(file_path, project_path, language) {
   });
   
   get_declaration_location=[this](){
-    std::pair<std::string, clang::Offset> location;
+    std::pair<std::string, Offset> location;
     if(source_readable) {
       auto iter=get_buffer()->get_insert()->get_iter();
       auto line=(unsigned)iter.get_line();
@@ -998,7 +996,9 @@ Source::ClangViewAutocomplete(file_path, project_path, language) {
             auto referenced=cursor.get_referenced();
             if(referenced) {
               location.first=referenced.get_source_location().get_path();
-              location.second=referenced.get_source_location().get_offset();
+              auto clang_offset=referenced.get_source_location().get_offset();
+              location.second.line=clang_offset.line;
+              location.second.index=clang_offset.index;
               break;
             }
           }
@@ -1166,8 +1166,8 @@ Source::ClangViewAutocomplete(file_path, project_path, language) {
     std::vector<std::pair<Glib::RefPtr<Gtk::TextMark>, Glib::RefPtr<Gtk::TextMark> > > fix_it_marks;
     if(source_readable) {
       for(auto &fix_it: fix_its) {
-        auto start_iter=get_buffer()->get_iter_at_line_offset(fix_it.offsets.first.line-1, fix_it.offsets.first.offset-1);
-        auto end_iter=get_buffer()->get_iter_at_line_offset(fix_it.offsets.second.line-1, fix_it.offsets.second.offset-1);
+        auto start_iter=get_buffer()->get_iter_at_line_index(fix_it.offsets.first.line-1, fix_it.offsets.first.index-1);
+        auto end_iter=get_buffer()->get_iter_at_line_index(fix_it.offsets.second.line-1, fix_it.offsets.second.index-1);
         fix_it_marks.emplace_back(get_buffer()->create_mark(start_iter), get_buffer()->create_mark(end_iter));
       }
       size_t c=0;

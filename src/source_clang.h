@@ -6,6 +6,7 @@
 #include <mutex>
 #include <set>
 #include <regex>
+#include "clangmm.h"
 #include "source.h"
 
 namespace Source {
