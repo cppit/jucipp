@@ -30,7 +30,7 @@ void Window::generate_keybindings() {
   }
 }
 
-Window::Window() : box(Gtk::ORIENTATION_VERTICAL), notebook(*Singleton::directories()), compiling(false) {
+Window::Window() : box(Gtk::ORIENTATION_VERTICAL), compiling(false) {
   JDEBUG("start");
   set_title("juCi++");
   set_events(Gdk::POINTER_MOTION_MASK|Gdk::FOCUS_CHANGE_MASK|Gdk::SCROLL_MASK);
