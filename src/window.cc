@@ -195,7 +195,7 @@ void Window::create_menu() {
         else
           Singleton::terminal()->print("Error: "+path.string()+" already exists.\n");
       } else {
-        Singleton::terminal()->print("Cancel \n");
+        Singleton::terminal()->print("Dialog was closed \n");
       }
       Singleton::directories()->select(path);
   });
@@ -237,24 +237,24 @@ void Window::create_menu() {
     if (boost::filesystem::exists(path))
       Singleton::directories()->open(path);
     else
-      Singleton::terminal()->print("Cancel \n");
+      Singleton::terminal()->print("Dialog was closed \n");
   });
   menu.action_group->add(Gtk::Action::create("FileSaveAs", "Save As"), Gtk::AccelKey(menu.key_map["save_as"]), [this]() {
-      auto path = Dialog::save_file();
-      if(path.size()>0) {
-        std::ofstream file(path);
-        if(file) {
-          file << notebook.get_current_view()->get_buffer()->get_text();
-          file.close();
-          if(Singleton::directories()->current_path!="")
-            Singleton::directories()->update();
-          notebook.open(path);
-          Singleton::terminal()->print("File saved to: " + notebook.get_current_view()->file_path.string()+"\n");
-        }
-        else
-          Singleton::terminal()->print("Error saving file\n");
+    auto path = Dialog::save_file();
+    if(path.size()>0) {
+      std::ofstream file(path);
+      if(file) {
+        file << notebook.get_current_view()->get_buffer()->get_text();
+        file.close();
+        if(Singleton::directories()->current_path!="")
+          Singleton::directories()->update();
+        notebook.open(path);
+        Singleton::terminal()->print("File saved to: " + notebook.get_current_view()->file_path.string()+"\n");
       }
-  });
+      else
+        Singleton::terminal()->print("Error saving file\n");
+    }
+});
   menu.action_group->add(Gtk::Action::create("Preferences", "Preferences..."), Gtk::AccelKey(menu.key_map["preferences"]), [this]() {
     notebook.open(Singleton::config_dir()+"config.json");
   });
