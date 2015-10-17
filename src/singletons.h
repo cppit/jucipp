@@ -11,6 +11,7 @@
 #include <gtkmm.h>
 #include <string>
 #include "filesystem.h"
+#include <iostream>
 
 class Singleton {
 public:
@@ -27,12 +28,10 @@ public:
     static std::unique_ptr<Directories::Config> directories_;
     static std::unique_ptr<Terminal::Config> terminal_;
   };
-  static std::string create_config_path(const std::string &subfolder) {
-    return juci::filesystem::get_home_folder() + subfolder;
-  }
-  static std::string config_dir() { return create_config_path("/.juci/config/"); }
-  static std::string log_dir() { return create_config_path("/.juci/log/"); }
-  static std::string style_dir() { return create_config_path("/.juci/styles/"); }
+  static std::string create_config_path(const std::string &subfolder);
+  static std::string config_dir();
+  static std::string log_dir();
+  static std::string style_dir();
   static Terminal *terminal();
   static Directories *directories();
   static Gtk::Label *status();

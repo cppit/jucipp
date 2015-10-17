@@ -22,6 +22,9 @@ std::string safe_get_env(const std::string &env) {
   return nullptr==ptr ? "" : std::string(ptr);
 }
 
+/**
+ * Returns home folder, empty on error
+ */
 std::string juci::filesystem::get_home_folder() {
   auto home=safe_get_env("HOME");
   if(home.empty())
@@ -30,9 +33,22 @@ std::string juci::filesystem::get_home_folder() {
   if((status.permissions() & 0222)>=2) {
     return home;
   } else {
-    Singleton::terminal()->print("Invalid permissions. Cannot write in " + home + "\n");
-    throw new std::exception;
+    JERROR("No write permissions in home, var:");
+    DEBUG_VAR(home);
+    return "";
   }
+}
+
+/**
+ * Returns tmp folder, empty on error.
+ */
+std::string juci::filesystem::get_tmp_folder() {
+  boost::system::error_code code;
+  auto path = boost::filesystem::temp_directory_path(code);
+  if (code.value()!=0) {
+    return "";
+  }
+  return path.string();
 }
 
 int juci::filesystem::read(const std::string &path, Glib::RefPtr<Gtk::TextBuffer> text_buffer) {
