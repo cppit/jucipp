@@ -12,12 +12,11 @@ std::string open_dialog(const std::string &title,
   else
     gtk_file_chooser_set_current_folder((GtkFileChooser*)dialog.gobj(), boost::filesystem::current_path().string().c_str());
   dialog.set_position(Gtk::WindowPosition::WIN_POS_CENTER_ALWAYS);
-  // dialog.set_transient_for(parent); TODO add parent
+  dialog.set_transient_for(*Singleton::window()); 
   for (auto &button : buttons) 
     dialog.add_button(button.first, button.second);
   return dialog.run() == Gtk::RESPONSE_OK ? dialog.get_filename() : "";
 }
-
 
 std::string Dialog::select_folder() {
   return open_dialog("Please choose a folder",

@@ -6,6 +6,7 @@ std::unique_ptr<Terminal::Config> Singleton::Config::terminal_=std::unique_ptr<T
 std::unique_ptr<Window::Config> Singleton::Config::window_ = std::unique_ptr<Window::Config>(new Window::Config());
 std::unique_ptr<Terminal> Singleton::terminal_=std::unique_ptr<Terminal>();
 std::unique_ptr<Directories> Singleton::directories_=std::unique_ptr<Directories>();
+std::unique_ptr<Window> Singleton::window_=std::unique_ptr<Window>();
 
 Terminal *Singleton::terminal() {
   if(!terminal_)
@@ -18,6 +19,13 @@ Directories *Singleton::directories() {
     directories_=std::unique_ptr<Directories>(new Directories());
   return directories_.get();
 }
+
+Window *Singleton::window() {
+  if(!window_)
+    window_=std::unique_ptr<Window>(new Window());
+  return window_.get();
+}
+
 std::unique_ptr<Gtk::Label> Singleton::status_=std::unique_ptr<Gtk::Label>();
 Gtk::Label *Singleton::status() {
   if(!status_)

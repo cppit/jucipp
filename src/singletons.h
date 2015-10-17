@@ -10,6 +10,7 @@
 #include "terminal.h"
 #include "notebook.h"
 #include "menu.h"
+#include "window.h"
 
 class Singleton {
 public:
@@ -34,11 +35,13 @@ public:
   static Directories *directories();
   static Gtk::Label *status();
   static Gtk::Label *info();
+  static Window *window();
 private:
   static std::unique_ptr<Terminal> terminal_;
   static std::unique_ptr<Gtk::Label> status_;
   static std::unique_ptr<Gtk::Label> info_;
   static std::unique_ptr<Directories> directories_;
+  static std::unique_ptr<Window> window_;
 };
 
 #endif // JUCI_SINGLETONS_H_

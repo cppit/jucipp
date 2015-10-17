@@ -37,9 +37,8 @@ int app::on_command_line(const Glib::RefPtr<Gio::ApplicationCommandLine> &cmd) {
 }
 
 void app::on_activate() {
-  window = std::unique_ptr<Window>(new Window());
-  add_window(*window);
-  window->show();
+  add_window(*Singleton::window());
+  Singleton::window()->show();
   bool first_directory=true;
   for(auto &directory: directories) {
     if(first_directory) {
@@ -64,7 +63,7 @@ void app::on_activate() {
     }
   }
   for(auto &file: files)
-    window->notebook.open(file);
+    Singleton::window()->notebook.open(file);
 }
 
 app::app() : Gtk::Application("no.sout.juci", Gio::APPLICATION_NON_UNIQUE | Gio::APPLICATION_HANDLES_COMMAND_LINE) {
