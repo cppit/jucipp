@@ -15,6 +15,23 @@ std::string juci::filesystem::read(const std::string &path) {
   return ss.str();
 }
 
+std::string safe_get_env(const std::string &env) {
+  auto ptr = std::getenv(env.c_str());
+  return nullptr==ptr ? "" : std::string(ptr);
+}
+
+std::string juci::filesystem::get_home_folder() {
+  auto home=safe_get_env("HOME");
+  if(home.empty())
+    home=safe_get_env("AppData");
+  auto status = boost::filesystem::status(home);
+  if((status.permissions() & 0222)>=2) {
+    return home;
+  } else {
+    throw new std::exception;
+  }
+}
+
 int juci::filesystem::read(const std::string &path, Glib::RefPtr<Gtk::TextBuffer> text_buffer) {
   std::ifstream input(path, std::ofstream::binary);
   

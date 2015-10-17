@@ -10,12 +10,7 @@
 #include "menu.h"
 #include <gtkmm.h>
 #include <string>
-
-#ifdef _WIN32
-#define HOME "AppData"
-#else
-#define HOME "HOME"
-#endif
+#include "sourcefile.h"
 
 class Singleton {
 public:
@@ -32,9 +27,12 @@ public:
     static std::unique_ptr<Directories::Config> directories_;
     static std::unique_ptr<Terminal::Config> terminal_;
   };
-  static std::string config_dir() { return std::string(getenv(HOME)) + "/.juci/config/"; }
-  static std::string log_dir() { return std::string(getenv(HOME)) + "/.juci/log/"; }
-  static std::string style_dir() { return std::string(getenv(HOME)) + "/.juci/styles/"; }
+  static std::string create_config_path(const std::string &subfolder) {
+    return juci::filesystem::get_home_folder() + subfolder;
+  }
+  static std::string config_dir() { return create_config_path("/.juci/config/"); }
+  static std::string log_dir() { return create_config_path("/.juci/log/"); }
+  static std::string style_dir() { return create_config_path("/.juci/styles/"); }
   static Terminal *terminal();
   static Directories *directories();
   static Gtk::Label *status();
