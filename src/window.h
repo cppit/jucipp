@@ -6,7 +6,6 @@
 #include "entrybox.h"
 #include "notebook.h"
 #include "menu.h"
-#include <boost/property_tree/json_parser.hpp>
 #include <atomic>
 
 class Window : public Gtk::Window {
@@ -43,6 +42,7 @@ private:
   void create_menu();
   void hide();
   void search_and_replace_entry();
+  void set_tab_entry();
   void goto_line_entry();
   void rename_token_entry();
   void generate_keybindings();

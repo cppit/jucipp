@@ -142,11 +142,11 @@ void CMake::find_variables() {
         const std::regex set_regex("^ *set *\\( *([A-Za-z_][A-Za-z_0-9]*) +(.*)\\) *$");
         std::smatch sm;
         if(std::regex_match(line, sm, set_regex)) {
-          std::string data=sm[2];
+          auto data=sm[2].str();
           while(data.size()>0 && data.back()==' ')
             data.pop_back();
           parse_variable_parameters(data);
-          variables[sm[1]]=data;
+          variables[sm[1].str()]=data;
         }
       }
       pos=end_line+1;
@@ -264,7 +264,7 @@ std::vector<std::pair<boost::filesystem::path, std::vector<std::string> > > CMak
         const std::regex function_regex("^ *"+name+" *\\( *(.*)\\) *$");
         std::smatch sm;
         if(std::regex_match(line, sm, function_regex)) {
-          std::string data=sm[1];
+          auto data=sm[1].str();
           while(data.size()>0 && data.back()==' ')
             data.pop_back();
           auto parameters=get_function_parameters(data);

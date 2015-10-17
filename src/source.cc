@@ -1,7 +1,6 @@
 #include "source.h"
 #include "sourcefile.h"
 #include <boost/property_tree/json_parser.hpp>
-#include <boost/timer/timer.hpp>
 #include "logging.h"
 #include <algorithm>
 #include "singletons.h"
@@ -42,14 +41,49 @@ Glib::RefPtr<Gsv::Language> Source::guess_language(const boost::filesystem::path
   return language;
 }
 
+Source::FixIt::FixIt(const std::string &source, const std::pair<Offset, Offset> &offsets) : source(source), offsets(offsets) {
+  if(source.size()==0)
+    type=Type::ERASE;
+  else {
+    if(this->offsets.first==this->offsets.second)
+      type=Type::INSERT;
+    else
+      type=Type::REPLACE;
+  }
+}
+
+std::string Source::FixIt::string(Glib::RefPtr<Gtk::TextBuffer> buffer) {
+  auto iter=buffer->get_iter_at_line_index(offsets.first.line-1, offsets.first.index-1);
+  unsigned first_line_offset=iter.get_line_offset()+1;
+  iter=buffer->get_iter_at_line_index(offsets.second.line-1, offsets.second.index-1);
+  unsigned second_line_offset=iter.get_line_offset()+1;
+  
+  std::string text;
+  if(type==Type::INSERT) {
+    text+="Insert "+source+" at ";
+    text+=std::to_string(offsets.first.line)+":"+std::to_string(first_line_offset);
+  }
+  else if(type==Type::REPLACE) {
+    text+="Replace ";
+    text+=std::to_string(offsets.first.line)+":"+std::to_string(first_line_offset)+" - ";
+    text+=std::to_string(offsets.second.line)+":"+std::to_string(second_line_offset);
+    text+=" with "+source;
+  }
+  else {
+    text+="Erase ";
+    text+=std::to_string(offsets.first.line)+":"+std::to_string(first_line_offset)+" - ";
+    text+=std::to_string(offsets.second.line)+":"+std::to_string(second_line_offset);
+  }
+  
+  return text;
+}
+
 //////////////
 //// View ////
 //////////////
 AspellConfig* Source::View::spellcheck_config=NULL;
 
-Source::View::View(const boost::filesystem::path &file_path, Glib::RefPtr<Gsv::Language> language): file_path(file_path) {
-  set_smart_home_end(Gsv::SMART_HOME_END_BEFORE);
-  
+Source::View::View(const boost::filesystem::path &file_path, const boost::filesystem::path &project_path, Glib::RefPtr<Gsv::Language> language): file_path(file_path), project_path(project_path), language(language) {
   get_source_buffer()->begin_not_undoable_action();
   if(language) {
     if(juci::filesystem::read_non_utf8(file_path, get_buffer())==-1)
@@ -228,6 +262,35 @@ Source::View::View(const boost::filesystem::path &file_path, Glib::RefPtr<Gsv::L
   });
   
   set_tooltip_events();
+  
+  tab_char=Singleton::Config::source()->default_tab_char;
+  tab_size=Singleton::Config::source()->default_tab_size;
+  if(Singleton::Config::source()->auto_tab_char_and_size) {
+    auto tab_char_and_size=find_tab_char_and_size();
+    if(tab_char_and_size.first!=0) {
+      if(tab_char!=tab_char_and_size.first || tab_size!=tab_char_and_size.second) {
+        std::string tab_str;
+        if(tab_char_and_size.first==' ')
+          tab_str="<space>";
+        else
+          tab_str="<tab>";
+        Singleton::terminal()->print("Tab char and size for file "+file_path.string()+" set to: "+tab_str+", "+std::to_string(tab_char_and_size.second)+".\n");
+      }
+      
+      tab_char=tab_char_and_size.first;
+      tab_size=tab_char_and_size.second;
+    }
+  }
+  set_tab_char_and_size(tab_char, tab_size);
+}
+
+void Source::View::set_tab_char_and_size(char tab_char, unsigned tab_size) {
+  this->tab_char=tab_char;
+  this->tab_size=tab_size;
+      
+  tab.clear();
+  for(unsigned c=0;c<tab_size;c++)
+    tab+=tab_char;
 }
 
 void Source::View::configure() {
@@ -318,30 +381,6 @@ void Source::View::configure() {
   else
     spellcheck_checker = to_aspell_speller(spellcheck_possible_err);
   get_buffer()->remove_tag_by_name("spellcheck_error", get_buffer()->begin(), get_buffer()->end());
-
-  tab_char=Singleton::Config::source()->default_tab_char;
-  tab_size=Singleton::Config::source()->default_tab_size;
-  if(Singleton::Config::source()->auto_tab_char_and_size) {
-    auto tab_char_and_size=find_tab_char_and_size();
-    if(tab_char_and_size.first!=0) {
-      if(tab_char!=tab_char_and_size.first || tab_size!=tab_char_and_size.second) {
-        std::string tab_str;
-        if(tab_char_and_size.first==' ')
-          tab_str="<space>";
-        else
-          tab_str="<tab>";
-        Singleton::terminal()->print("Tab char and size for file "+file_path.string()+" set to: "+tab_str+", "+std::to_string(tab_char_and_size.second)+".\n");
-      }
-      
-      tab_char=tab_char_and_size.first;
-      tab_size=tab_char_and_size.second;
-    }
-  }
-  tab.clear();
-  for(unsigned c=0;c<tab_size;c++)
-    tab+=tab_char;
-  
-  tabs_regex=std::regex("^([ \\t]*)(.*)$");
 }
 
 void Source::View::set_tooltip_events() {
@@ -503,10 +542,10 @@ void Source::View::paste() {
   }
 
   auto line=get_line_before();
-  std::smatch sm;
   std::string prefix_tabs;
-  if(!get_buffer()->get_has_selection() && std::regex_match(line, sm, tabs_regex) && sm[2].str().size()==0) {
-    prefix_tabs=sm[1].str();
+  auto tabs_end_iter=get_tabs_end_iter();
+  if(!get_buffer()->get_has_selection() && tabs_end_iter.ends_line()) {
+    prefix_tabs=get_line_before(tabs_end_iter);
 
     Glib::ustring::size_type start_line=0;
     Glib::ustring::size_type end_line=0;
@@ -704,15 +743,12 @@ std::string Source::View::get_line(const Gtk::TextIter &iter) {
   std::string line(get_source_buffer()->get_text(line_start_it, line_end_it));
   return line;
 }
-
 std::string Source::View::get_line(Glib::RefPtr<Gtk::TextBuffer::Mark> mark) {
   return get_line(mark->get_iter());
 }
-
 std::string Source::View::get_line(int line_nr) {
   return get_line(get_buffer()->get_iter_at_line(line_nr));
 }
-
 std::string Source::View::get_line() {
   return get_line(get_buffer()->get_insert());
 }
@@ -722,13 +758,26 @@ std::string Source::View::get_line_before(const Gtk::TextIter &iter) {
   std::string line(get_source_buffer()->get_text(line_it, iter));
   return line;
 }
-
 std::string Source::View::get_line_before(Glib::RefPtr<Gtk::TextBuffer::Mark> mark) {
   return get_line_before(mark->get_iter());
 }
-
 std::string Source::View::get_line_before() {
   return get_line_before(get_buffer()->get_insert());
+}
+
+Gtk::TextIter Source::View::get_tabs_end_iter(const Gtk::TextIter &iter) {
+  return get_tabs_end_iter(iter.get_line());
+}
+Gtk::TextIter Source::View::get_tabs_end_iter(Glib::RefPtr<Gtk::TextBuffer::Mark> mark) {
+  return get_tabs_end_iter(mark->get_iter());
+}
+Gtk::TextIter Source::View::get_tabs_end_iter(int line_nr) {
+  auto sentence_iter = get_source_buffer()->get_iter_at_line(line_nr);
+  while((*sentence_iter==' ' || *sentence_iter=='\t') && !sentence_iter.ends_line() && sentence_iter.forward_char()) {}
+  return sentence_iter;
+}
+Gtk::TextIter Source::View::get_tabs_end_iter() {
+  return get_tabs_end_iter(get_buffer()->get_insert());
 }
 
 bool Source::View::find_start_of_closed_expression(Gtk::TextIter iter, Gtk::TextIter &found_iter) {
@@ -883,29 +932,40 @@ bool Source::View::on_key_press_event(GdkEventKey* key) {
     last_keyval_is_return=false;
   
   get_source_buffer()->begin_user_action();
+  auto iter=get_buffer()->get_insert()->get_iter();
   //Indent as in next or previous line
-  if(key->keyval==GDK_KEY_Return && !get_buffer()->get_has_selection()) {
-    auto insert_it=get_buffer()->get_insert()->get_iter();
-    int line_nr=insert_it.get_line();
-    auto line=get_line_before();
-    std::smatch sm;
-    if(std::regex_match(line, sm, tabs_regex)) {
-      if((line_nr+1)<get_buffer()->get_line_count()) {
-        string next_line=get_line(line_nr+1);
-        auto line_end_iter=get_buffer()->get_iter_at_line(line_nr+1);
-        if(line_end_iter.backward_char()) {
-          std::smatch sm2;
-          if(insert_it==line_end_iter && std::regex_match(next_line, sm2, tabs_regex)) {
-            if(sm2[1].str().size()>sm[1].str().size()) {
-              get_source_buffer()->insert_at_cursor("\n"+sm2[1].str());
-              scroll_to(get_source_buffer()->get_insert());
-              get_source_buffer()->end_user_action();
-              return true;
-            }
-          }
+  if(key->keyval==GDK_KEY_Return && !get_buffer()->get_has_selection() && !iter.starts_line()) {
+    //First remove spaces or tabs around cursor
+    auto start_blank_iter=iter;
+    auto end_blank_iter=iter;
+    while((*end_blank_iter==' ' || *end_blank_iter=='\t') &&
+          !end_blank_iter.ends_line() && end_blank_iter.forward_char()) {}
+    start_blank_iter.backward_char();
+    while((*start_blank_iter==' ' || *start_blank_iter=='\t' || start_blank_iter.ends_line()) &&
+          !start_blank_iter.starts_line() && start_blank_iter.backward_char()) {}
+    if(!start_blank_iter.starts_line()) {
+      start_blank_iter.forward_char();
+      get_buffer()->erase(start_blank_iter, end_blank_iter);
+    }
+    else
+      get_buffer()->erase(iter, end_blank_iter);
+    iter=get_buffer()->get_insert()->get_iter();
+    
+    int line_nr=iter.get_line();
+    auto tabs_end_iter=get_tabs_end_iter();
+    auto line_tabs=get_line_before(tabs_end_iter);
+    if((line_nr+1)<get_buffer()->get_line_count()) {
+      auto next_line_tabs_end_iter=get_tabs_end_iter(line_nr+1);
+      auto next_line_tabs=get_line_before(next_line_tabs_end_iter);
+      if(iter.ends_line()) {
+        if(next_line_tabs.size()>line_tabs.size()) {
+          get_source_buffer()->insert_at_cursor("\n"+next_line_tabs);
+          scroll_to(get_source_buffer()->get_insert());
+          get_source_buffer()->end_user_action();
+          return true;
         }
       }
-      get_source_buffer()->insert_at_cursor("\n"+sm[1].str());
+      get_source_buffer()->insert_at_cursor("\n"+line_tabs);
       scroll_to(get_source_buffer()->get_insert());
       get_source_buffer()->end_user_action();
       return true;
@@ -913,27 +973,27 @@ bool Source::View::on_key_press_event(GdkEventKey* key) {
   }
   //Indent right when clicking tab, no matter where in the line the cursor is. Also works on selected text.
   else if(key->keyval==GDK_KEY_Tab) {
-    auto iter=get_buffer()->get_insert()->get_iter();
     //Special case if insert is at beginning of empty line:
     if(iter.starts_line() && iter.ends_line() && !get_buffer()->get_has_selection()) {
       auto prev_line_iter=iter;
       while(prev_line_iter.starts_line() && prev_line_iter.backward_char()) {}
-      auto line=get_line_before(prev_line_iter);
-      std::smatch sm;
-      if(std::regex_match(line, sm, tabs_regex)) {
-        auto tabs=sm[1].str();
-        auto next_line_iter=iter;
-        while(next_line_iter.starts_line() && next_line_iter.forward_char()) {}
-        line=get_line(next_line_iter);
-        if(std::regex_match(line, sm, tabs_regex)) {
-          if(sm[1].str().size()<tabs.size())
-            tabs=sm[1].str();
-          if(tabs.size()>=tab_size) {
-            get_buffer()->insert_at_cursor(tabs);
-            get_source_buffer()->end_user_action();
-            return true;
-          }
-        }
+      auto prev_line_tabs_end_iter=get_tabs_end_iter(prev_line_iter);
+      auto previous_line_tabs=get_line_before(prev_line_tabs_end_iter);
+
+      auto next_line_iter=iter;
+      while(next_line_iter.starts_line() && next_line_iter.forward_char()) {}
+      auto next_line_tabs_end_iter=get_tabs_end_iter(next_line_iter);
+      auto next_line_tabs=get_line_before(next_line_tabs_end_iter);
+      
+      std::string tabs;
+      if(previous_line_tabs.size()<next_line_tabs.size())
+        tabs=previous_line_tabs;
+      else
+        tabs=next_line_tabs;
+      if(tabs.size()>=tab_size) {
+        get_buffer()->insert_at_cursor(tabs);
+        get_source_buffer()->end_user_action();
+        return true;
       }
     }
     
@@ -960,15 +1020,16 @@ bool Source::View::on_key_press_event(GdkEventKey* key) {
     std::vector<bool> ignore_line;
     for(int line_nr=line_start;line_nr<=line_end;line_nr++) {
       auto line_it = get_source_buffer()->get_iter_at_line(line_nr);
-      if(!get_buffer()->get_has_selection() || line_it!=selection_end) {
-        string line=get_line(line_nr);
-        std::smatch sm;
-        if(std::regex_match(line, sm, tabs_regex) && (sm[1].str().size()>0 || sm[2].str().size()==0)) {
-          if(sm[2].str().size()>0) {
-            indent_left_steps=std::min(indent_left_steps, (unsigned)sm[1].str().size());
+      if(!get_buffer()->get_has_selection() || line_it!=selection_end) {        
+        auto tabs_end_iter=get_tabs_end_iter(line_nr);
+        auto line_tabs=get_line_before(tabs_end_iter);
+        
+        if(line_tabs.size()>0 || tabs_end_iter.ends_line()) {
+          if(!tabs_end_iter.ends_line()) {
+            indent_left_steps=std::min(indent_left_steps, static_cast<unsigned>(line_tabs.size()));
             ignore_line.push_back(false);
           }
-          else if((unsigned)sm[1].str().size()<indent_left_steps)
+          else if(static_cast<unsigned>(line_tabs.size())<indent_left_steps)
             ignore_line.push_back(true);
           else
             ignore_line.push_back(false);
@@ -984,9 +1045,9 @@ bool Source::View::on_key_press_event(GdkEventKey* key) {
       Gtk::TextIter line_it = get_source_buffer()->get_iter_at_line(line_nr);
       Gtk::TextIter line_plus_it=line_it;
       if(!get_buffer()->get_has_selection() || line_it!=selection_end) {
-        if(indent_left_steps==0 || line_plus_it.forward_chars(indent_left_steps))
-          if(!ignore_line.at(line_nr-line_start))
-            get_source_buffer()->erase(line_it, line_plus_it);
+        line_plus_it.forward_chars(indent_left_steps);
+        if(!ignore_line.at(line_nr-line_start))
+          get_source_buffer()->erase(line_it, line_plus_it);
       }
     }
     get_source_buffer()->end_user_action();
@@ -994,42 +1055,92 @@ bool Source::View::on_key_press_event(GdkEventKey* key) {
   }
   //"Smart" backspace key
   else if(key->keyval==GDK_KEY_BackSpace && !get_buffer()->get_has_selection()) {
-    auto insert_it=get_buffer()->get_insert()->get_iter();
     auto line=get_line_before();
-    std::smatch sm;
-    if(std::regex_match(line, sm, tabs_regex) && sm[1].str().size()==line.size()) {
-      auto line_start_iter=insert_it;
+    bool do_smart_backspace=true;
+    for(auto &chr: line) {
+      if(chr!=' ' && chr!='\t') {
+        do_smart_backspace=false;
+        break;
+      }
+    }
+    if(do_smart_backspace) {
+      auto line_start_iter=iter;
       if(line_start_iter.backward_chars(line.size()))
-        get_buffer()->erase(insert_it, line_start_iter);
+        get_buffer()->erase(iter, line_start_iter);
     }
   }
   //"Smart" delete key
   else if(key->keyval==GDK_KEY_Delete && !get_buffer()->get_has_selection()) {
-    auto insert_iter=get_buffer()->get_insert()->get_iter();
-    auto iter=insert_iter;
-    bool perform_smart_delete=false;
-    if(iter.starts_line() && iter.ends_line()) {}
-    else if(iter.ends_line() && iter.forward_char()) {
-      if(!iter.ends_line()) {
-        bool first_line=true;
-        while((*iter==' ' || *iter=='\t' || (first_line && iter.ends_line())) && iter.forward_char()) {
-          perform_smart_delete=true;
-          if(first_line && iter.ends_line())
-            first_line=false;
-        }
+    auto insert_iter=iter;
+    bool do_smart_delete=true;
+    do {
+      if(*iter!=' ' && *iter!='\t' && !iter.ends_line()) {
+        do_smart_delete=false;
+        break;
       }
+      if(iter.ends_line()) {
+        if(!iter.forward_char())
+          do_smart_delete=false;
+        break;
+      }
+    } while(iter.forward_char());
+    if(do_smart_delete) {
+      if(!insert_iter.starts_line())
+        while((*iter==' ' || *iter=='\t') && iter.forward_char()) {}
+      if(iter.backward_char())
+        get_buffer()->erase(insert_iter, iter);
+    }
+  }
+  //Next two are smart home/end keys that works with wrapped lines
+  //Note that smart end goes FIRST to end of line to avoid hiding empty chars after expressions
+  else if(key->keyval==GDK_KEY_End && (key->state&GDK_CONTROL_MASK)==0) {
+    auto end_line_iter=iter;
+    while(!end_line_iter.ends_line() && end_line_iter.forward_char()) {}
+    auto end_sentence_iter=end_line_iter;
+    while(!end_sentence_iter.starts_line() && 
+          (*end_sentence_iter==' ' || *end_sentence_iter=='\t' || end_sentence_iter.ends_line()) &&
+          end_sentence_iter.backward_char()) {}
+    if(!end_sentence_iter.ends_line())
+      end_sentence_iter.forward_char();
+    
+    if(iter==end_line_iter) {
+      if((key->state&GDK_SHIFT_MASK)>0)
+        get_buffer()->move_mark_by_name("insert", end_sentence_iter);
+      else
+        get_buffer()->place_cursor(end_sentence_iter);
     }
     else {
-      while((*iter==' ' || *iter=='\t') && iter.forward_char()) {
-        perform_smart_delete=true;
-        if(iter.ends_line()) {
-          iter.forward_char();
-          break;
-        }
-      }
+      if((key->state&GDK_SHIFT_MASK)>0)
+        get_buffer()->move_mark_by_name("insert", end_line_iter);
+      else
+        get_buffer()->place_cursor(end_line_iter);
     }
-    if(perform_smart_delete && iter.backward_char())
-      get_buffer()->erase(insert_iter, iter);
+    scroll_to(get_buffer()->get_insert());
+    get_source_buffer()->end_user_action();
+    return true;
+  }
+  else if(key->keyval==GDK_KEY_Home && (key->state&GDK_CONTROL_MASK)==0) {
+    auto start_line_iter=get_buffer()->get_iter_at_line(iter.get_line());
+    auto start_sentence_iter=start_line_iter;
+    while(!start_sentence_iter.ends_line() && 
+          (*start_sentence_iter==' ' || *start_sentence_iter=='\t') &&
+          start_sentence_iter.forward_char()) {}
+    
+    if(iter>start_sentence_iter || iter==start_line_iter) {
+      if((key->state&GDK_SHIFT_MASK)>0)
+        get_buffer()->move_mark_by_name("insert", start_sentence_iter);
+      else
+        get_buffer()->place_cursor(start_sentence_iter);
+    }
+    else {
+      if((key->state&GDK_SHIFT_MASK)>0)
+        get_buffer()->move_mark_by_name("insert", start_line_iter);
+      else
+        get_buffer()->place_cursor(start_line_iter);
+    }
+    scroll_to(get_buffer()->get_insert());
+    get_source_buffer()->end_user_action();
+    return true;
   }
 
   bool stop=Gsv::View::on_key_press_event(key);
@@ -1059,25 +1170,15 @@ bool Source::View::on_button_press_event(GdkEventButton *event) {
 }
 
 std::pair<char, unsigned> Source::View::find_tab_char_and_size() {
-  const std::regex indent_regex("^([ \t]+)(.*)$");
   auto size=get_buffer()->get_line_count();
   std::unordered_map<char, size_t> tab_chars;
   std::unordered_map<unsigned, size_t> tab_sizes;
   unsigned last_tab_size=0;
   for(int c=0;c<size;c++) {
-    auto line=get_line(c);
-    std::smatch sm;
-    std::string str;
-    if(std::regex_match(line, sm, indent_regex)) {
-      if(sm[2].str().size()==0)
-        continue;
-      str=sm[1].str();
-    }
-    else {
-      str="";
-      if(line.size()==0)
-        continue;
-    }
+    auto tabs_end_iter=get_tabs_end_iter(c);
+    if(tabs_end_iter.starts_line() && tabs_end_iter.ends_line())
+      continue;
+    std::string str=get_line_before(tabs_end_iter);
     
     long tab_diff=abs(static_cast<long>(str.size()-last_tab_size));
     if(tab_diff>0) {
@@ -1170,7 +1271,7 @@ std::vector<std::string> Source::View::spellcheck_get_suggestions(const Gtk::Tex
 /////////////////////
 //// GenericView ////
 /////////////////////
-Source::GenericView::GenericView(const boost::filesystem::path &file_path, Glib::RefPtr<Gsv::Language> language) : View(file_path, language) {
+Source::GenericView::GenericView(const boost::filesystem::path &file_path, const boost::filesystem::path &project_path, Glib::RefPtr<Gsv::Language> language) : View(file_path, project_path, language) {
   configure();
   spellcheck_all=true;
   
@@ -1247,1022 +1348,5 @@ void Source::GenericView::parse_language_file(Glib::RefPtr<CompletionBuffer> &co
     }
     catch(const std::exception &e) {        
     }
-  }
-}
-
-////////////////////////
-//// ClangViewParse ////
-////////////////////////
-clang::Index Source::ClangViewParse::clang_index(0, 0);
-
-Source::ClangViewParse::ClangViewParse(const boost::filesystem::path &file_path, const boost::filesystem::path& project_path, Glib::RefPtr<Gsv::Language> language):
-Source::View(file_path, language), project_path(project_path), parse_error(false) {
-  auto tag_table=get_buffer()->get_tag_table();
-  for (auto &item : Singleton::Config::source()->clang_types) {
-    if(!tag_table->lookup(item.second)) {
-      get_buffer()->create_tag(item.second);
-    }
-  }
-
-  configure();
-  
-  parsing_in_progress=Singleton::terminal()->print_in_progress("Parsing "+file_path.string());
-  //GTK-calls must happen in main thread, so the parse_thread
-  //sends signals to the main thread that it is to call the following functions:
-  parse_start.connect([this]{
-    if(parse_thread_buffer_map_mutex.try_lock()) {
-      parse_thread_buffer_map=get_buffer_map();
-      parse_thread_mapped=true;
-      parse_thread_buffer_map_mutex.unlock();
-    }
-    parse_thread_go=true;
-  });
-  parse_done.connect([this](){
-    if(parse_thread_mapped) {
-      if(parsing_mutex.try_lock()) {
-        update_syntax();
-        update_diagnostics();
-        source_readable=true;
-        set_status("");
-        parsing_mutex.unlock();
-      }
-      parsing_in_progress->done("done");
-    }
-    else {
-      parse_thread_go=true;
-    }
-  });
-  parse_fail.connect([this](){
-    Singleton::terminal()->print("Error: failed to reparse "+this->file_path.string()+".\n");
-    set_status("");
-    set_info("");
-    parsing_in_progress->cancel("failed");
-  });
-  init_parse();
-  
-  get_buffer()->signal_changed().connect([this]() {
-    start_reparse();
-    type_tooltips.hide();
-    diagnostic_tooltips.hide();
-  });
-}
-
-void Source::ClangViewParse::configure() {
-  Source::View::configure();
-  
-  auto scheme = get_source_buffer()->get_style_scheme();
-  auto tag_table=get_buffer()->get_tag_table();
-  for (auto &item : Singleton::Config::source()->clang_types) {
-    auto tag = get_buffer()->get_tag_table()->lookup(item.second);
-    if(tag) {
-      auto style = scheme->get_style(item.second);
-      if (style) {
-        if (style->property_foreground_set())
-          tag->property_foreground()  = style->property_foreground();
-        if (style->property_background_set())
-          tag->property_background() = style->property_background();
-        if (style->property_strikethrough_set())
-          tag->property_strikethrough() = style->property_strikethrough();
-        //   //    if (style->property_bold_set()) tag->property_weight() = style->property_bold();
-        //   //    if (style->property_italic_set()) tag->property_italic() = style->property_italic();
-        //   //    if (style->property_line_background_set()) tag->property_line_background() = style->property_line_background();
-        //   // if (style->property_underline_set()) tag->property_underline() = style->property_underline();
-      } else
-        JINFO("Style " + item.second + " not found in " + scheme->get_name());
-    }
-  }
-  
-  bracket_regex=std::regex("^([ \\t]*).*\\{ *$");
-  no_bracket_statement_regex=std::regex("^([ \\t]*)(if|for|else if|catch|while) *\\(.*[^;}] *$");
-  no_bracket_no_para_statement_regex=std::regex("^([ \\t]*)(else|try|do) *$");
-}
-
-Source::ClangViewParse::~ClangViewParse() {
-  delayed_reparse_connection.disconnect();
-}
-
-void Source::ClangViewParse::init_parse() {
-  type_tooltips.hide();
-  diagnostic_tooltips.hide();
-  source_readable=false;
-  parse_thread_go=true;
-  parse_thread_mapped=false;
-  parse_thread_stop=false;
-  
-  auto buffer_map=get_buffer_map();
-  //Remove includes for first parse for initial syntax highlighting
-  auto& str=buffer_map[file_path.string()];
-  std::size_t pos=0;
-  while((pos=str.find("#include", pos))!=std::string::npos) {
-    auto start_pos=pos;
-    pos=str.find('\n', pos+8);
-    if(pos==std::string::npos)
-      break;
-    if(start_pos==0 || str[start_pos-1]=='\n') {
-      str.replace(start_pos, pos-start_pos, pos-start_pos, ' ');
-    }
-    pos++;
-  }
-  clang_tu = std::unique_ptr<clang::TranslationUnit>(new clang::TranslationUnit(clang_index, file_path.string(), get_compilation_commands(), buffer_map));
-  clang_tokens=clang_tu->get_tokens(0, buffer_map.find(file_path.string())->second.size()-1);
-  update_syntax();
-  
-  set_status("parsing...");
-  if(parse_thread.joinable())
-    parse_thread.join();
-  parse_thread=std::thread([this]() {
-    while(true) {
-      while(!parse_thread_go && !parse_thread_stop)
-        std::this_thread::sleep_for(std::chrono::milliseconds(10));
-      if(parse_thread_stop)
-        break;
-      if(!parse_thread_mapped) {
-        parse_thread_go=false;
-        parse_start();
-      }
-      else if (parse_thread_mapped && parsing_mutex.try_lock() && parse_thread_buffer_map_mutex.try_lock()) {
-        int status=clang_tu->ReparseTranslationUnit(parse_thread_buffer_map);
-        if(status==0)
-          clang_tokens=clang_tu->get_tokens(0, parse_thread_buffer_map.find(file_path.string())->second.size()-1);
-        else
-          parse_error=true;
-        parse_thread_go=false;
-        parsing_mutex.unlock();
-        parse_thread_buffer_map_mutex.unlock();
-        if(status!=0) {
-          parse_fail();
-          parse_thread_stop=true;
-        }
-        else
-          parse_done();
-      }
-    }
-  });
-}
-
-std::map<std::string, std::string> Source::ClangViewParse::get_buffer_map() const {
-  std::map<std::string, std::string> buffer_map;
-  buffer_map[file_path.string()]=get_source_buffer()->get_text();
-  return buffer_map;
-}
-
-void Source::ClangViewParse::start_reparse() {
-  parse_thread_mapped=false;
-  source_readable=false;
-  delayed_reparse_connection.disconnect();
-  delayed_reparse_connection=Glib::signal_timeout().connect([this]() {
-    source_readable=false;
-    parse_thread_go=true;
-    set_status("parsing...");
-    return false;
-  }, 1000);
-}
-
-std::vector<std::string> Source::ClangViewParse::get_compilation_commands() {
-  clang::CompilationDatabase db(project_path.string());
-  clang::CompileCommands commands(file_path.string(), db);
-  std::vector<clang::CompileCommand> cmds = commands.get_commands();
-  std::vector<std::string> arguments;
-  for (auto &i : cmds) {
-    std::vector<std::string> lol = i.get_command_as_args();
-    for (size_t a = 1; a < lol.size()-4; a++) {
-      arguments.emplace_back(lol[a]);
-    }
-  }
-  auto clang_version_string=clang::to_string(clang_getClangVersion());
-  const std::regex clang_version_regex("^[A-Za-z ]+([0-9.]+).*$");
-  std::smatch sm;
-  if(std::regex_match(clang_version_string, sm, clang_version_regex)) {
-    auto clang_version=sm[1].str();
-    arguments.emplace_back("-I/usr/lib/clang/"+clang_version+"/include");
-    arguments.emplace_back("-I/usr/local/Cellar/llvm/"+clang_version+"/lib/clang/"+clang_version+"/include");
-    arguments.emplace_back("-IC:/msys32/mingw32/lib/clang/"+clang_version+"/include");
-    arguments.emplace_back("-IC:/msys32/mingw64/lib/clang/"+clang_version+"/include");
-    arguments.emplace_back("-IC:/msys64/mingw32/lib/clang/"+clang_version+"/include");
-    arguments.emplace_back("-IC:/msys64/mingw64/lib/clang/"+clang_version+"/include");
-  }
-  arguments.emplace_back("-fretain-comments-from-system-headers");
-  if(file_path.extension()==".h") //TODO: temporary fix for .h-files (parse as c++)
-    arguments.emplace_back("-xc++");
-
-  return arguments;
-}
-
-void Source::ClangViewParse::update_syntax() {
-  std::vector<Source::Range> ranges;
-  for (auto &token : *clang_tokens) {
-    //if(token.get_kind()==0) // PunctuationToken
-      //ranges.emplace_back(token.offsets, (int) token.get_cursor().get_kind());
-    if(token.get_kind()==1) // KeywordToken
-      ranges.emplace_back(token.offsets, 702);
-    else if(token.get_kind()==2) {// IdentifierToken 
-      auto kind=(int)token.get_cursor().get_kind();
-      if(kind==101 || kind==102)
-        kind=(int)token.get_cursor().get_referenced().get_kind();
-      if(kind!=500)
-        ranges.emplace_back(token.offsets, kind);
-    }
-    else if(token.get_kind()==3) { // LiteralToken
-      ranges.emplace_back(token.offsets, 109);
-    }
-    else if(token.get_kind()==4) // CommentToken
-      ranges.emplace_back(token.offsets, 705);
-  }
-  if (ranges.empty() || ranges.size() == 0) {
-    return;
-  }
-  auto buffer = get_source_buffer();
-  for(auto &tag: last_syntax_tags)
-    buffer->remove_tag_by_name(tag, buffer->begin(), buffer->end());
-  last_syntax_tags.clear();
-  for (auto &range : ranges) {
-    auto type_it=Singleton::Config::source()->clang_types.find(std::to_string(range.kind));
-    if(type_it!=Singleton::Config::source()->clang_types.end()) {
-      last_syntax_tags.emplace(type_it->second);
-      Gtk::TextIter begin_iter = buffer->get_iter_at_line_index(range.offsets.first.line-1, range.offsets.first.index-1);
-      Gtk::TextIter end_iter  = buffer->get_iter_at_line_index(range.offsets.second.line-1, range.offsets.second.index-1);
-      buffer->apply_tag_by_name(type_it->second, begin_iter, end_iter);
-    }
-  }
-}
-
-void Source::ClangViewParse::update_diagnostics() {
-  diagnostic_offsets.clear();
-  diagnostic_tooltips.clear();
-  get_buffer()->remove_tag_by_name("def:warning_underline", get_buffer()->begin(), get_buffer()->end());
-  get_buffer()->remove_tag_by_name("def:error_underline", get_buffer()->begin(), get_buffer()->end());
-  auto diagnostics=clang_tu->get_diagnostics();
-  size_t warnings=0;
-  size_t errors=0;
-  for(auto &diagnostic: diagnostics) {
-    if(diagnostic.path==file_path.string()) {
-      auto start_line=get_line(diagnostic.offsets.first.line-1); //index is sometimes off the line
-      auto start_line_index=diagnostic.offsets.first.index-1;
-      if(start_line_index>=start_line.size()) {
-        if(start_line.size()==0)
-          start_line_index=0;
-        else
-          start_line_index=start_line.size()-1;
-      }
-      auto end_line=get_line(diagnostic.offsets.second.line-1); //index is sometimes off the line
-      auto end_line_index=diagnostic.offsets.second.index-1;
-      if(end_line_index>end_line.size()) {
-        if(end_line.size()==0)
-          end_line_index=0;
-        else
-          end_line_index=end_line.size();
-      }
-      auto start=get_buffer()->get_iter_at_line_index(diagnostic.offsets.first.line-1, start_line_index);
-      diagnostic_offsets.emplace(start.get_offset());
-      auto end=get_buffer()->get_iter_at_line_index(diagnostic.offsets.second.line-1, end_line_index);
-      std::string diagnostic_tag_name;
-      if(diagnostic.severity<=CXDiagnostic_Warning) {
-        diagnostic_tag_name="def:warning";
-        warnings++;
-      }
-      else {
-        diagnostic_tag_name="def:error";
-        errors++;
-      }
-      
-      auto spelling=diagnostic.spelling;
-      auto severity_spelling=diagnostic.severity_spelling;
-      auto create_tooltip_buffer=[this, spelling, severity_spelling, diagnostic_tag_name]() {
-        auto tooltip_buffer=Gtk::TextBuffer::create(get_buffer()->get_tag_table());
-        tooltip_buffer->insert_with_tag(tooltip_buffer->get_insert()->get_iter(), severity_spelling, diagnostic_tag_name);
-        tooltip_buffer->insert_with_tag(tooltip_buffer->get_insert()->get_iter(), ":\n"+spelling, "def:note");
-        return tooltip_buffer;
-      };
-      diagnostic_tooltips.emplace_back(create_tooltip_buffer, *this, get_buffer()->create_mark(start), get_buffer()->create_mark(end));
-    
-      get_buffer()->apply_tag_by_name(diagnostic_tag_name+"_underline", start, end);
-      auto iter=get_buffer()->get_insert()->get_iter();
-      if(iter.ends_line()) {
-        auto next_iter=iter;
-        if(next_iter.forward_char())
-          get_buffer()->remove_tag_by_name(diagnostic_tag_name+"_underline", iter, next_iter);
-      }
-    }
-  }
-  std::string diagnostic_info;
-  if(warnings>0) {
-    diagnostic_info+=std::to_string(warnings)+" warning";
-    if(warnings>1)
-      diagnostic_info+='s';
-  }
-  if(errors>0) {
-    if(warnings>0)
-      diagnostic_info+=", ";
-    diagnostic_info+=std::to_string(errors)+" error";
-    if(errors>1)
-      diagnostic_info+='s';
-  }
-  set_info("  "+diagnostic_info);
-}
-
-void Source::ClangViewParse::show_diagnostic_tooltips(const Gdk::Rectangle &rectangle) {
-  diagnostic_tooltips.show(rectangle);
-}
-
-void Source::ClangViewParse::show_type_tooltips(const Gdk::Rectangle &rectangle) {
-  if(source_readable) {
-    Gtk::TextIter iter;
-    int location_x, location_y;
-    window_to_buffer_coords(Gtk::TextWindowType::TEXT_WINDOW_TEXT, rectangle.get_x(), rectangle.get_y(), location_x, location_y);
-    location_x+=(rectangle.get_width()-1)/2;
-    get_iter_at_location(iter, location_x, location_y);
-    Gdk::Rectangle iter_rectangle;
-    get_iter_location(iter, iter_rectangle);
-    if(iter_rectangle.get_x()>location_x) {
-      if(!iter.starts_line()) {
-        if(!iter.backward_char())
-          return;
-      }
-    }
-    bool found_token=false;
-    if(!((*iter>='a' && *iter<='z') || (*iter>='A' && *iter<='Z') || (*iter>='0' && *iter<='9') || *iter=='_')) {
-      if(!iter.backward_char())
-        return;
-    }
-      
-    while((*iter>='a' && *iter<='z') || (*iter>='A' && *iter<='Z') || (*iter>='0' && *iter<='9') || *iter=='_') {
-      if(!found_token)
-        found_token=true;
-      if(!iter.backward_char())
-        return;
-    }
-    if(found_token && iter.forward_char()) {
-      auto tokens=clang_tu->get_tokens(iter.get_line()+1, iter.get_line_index()+1, 
-                                       iter.get_line()+1, iter.get_line_index()+1);
-      
-      type_tooltips.clear();
-      for(auto &token: *tokens) {
-        auto cursor=token.get_cursor();
-        if(token.get_kind()==clang::Token_Identifier && cursor.has_type()) {
-          if(static_cast<unsigned>(token.get_cursor().get_kind())==103) //These cursors are buggy
-            continue;
-          auto start=get_buffer()->get_iter_at_line_index(token.offsets.first.line-1, token.offsets.first.index-1);
-          auto end=get_buffer()->get_iter_at_line_index(token.offsets.second.line-1, token.offsets.second.index-1);
-          auto create_tooltip_buffer=[this, &token]() {
-            auto tooltip_buffer=Gtk::TextBuffer::create(get_buffer()->get_tag_table());
-            tooltip_buffer->insert_with_tag(tooltip_buffer->get_insert()->get_iter(), "Type: "+token.get_cursor().get_type(), "def:note");
-            auto brief_comment=token.get_cursor().get_brief_comments();
-            if(brief_comment!="")
-              tooltip_buffer->insert_with_tag(tooltip_buffer->get_insert()->get_iter(), "\n\n"+brief_comment, "def:note");
-            return tooltip_buffer;
-          };
-          
-          type_tooltips.emplace_back(create_tooltip_buffer, *this, get_buffer()->create_mark(start), get_buffer()->create_mark(end));
-        }
-      }
-      
-      type_tooltips.show();
-    }
-  }
-  
-  //type_tooltips.show(rectangle);
-}
-
-//Clang indentation.
-bool Source::ClangViewParse::on_key_press_event(GdkEventKey* key) {
-  if(spellcheck_suggestions_dialog_shown) {
-    if(spellcheck_suggestions_dialog->on_key_press(key))
-      return true;
-  }
-  
-  auto iter=get_buffer()->get_insert()->get_iter();
-  if(iter.backward_char() && (get_source_buffer()->iter_has_context_class(iter, "comment") || get_source_buffer()->iter_has_context_class(iter, "string")))
-    return Source::View::on_key_press_event(key);
-  
-  if(get_buffer()->get_has_selection()) {
-    return Source::View::on_key_press_event(key);
-  }
-  get_source_buffer()->begin_user_action();
-  
-  //Indent depending on if/else/etc and brackets
-  if(key->keyval==GDK_KEY_Return) {
-    auto iter=get_buffer()->get_insert()->get_iter();
-    Gtk::TextIter start_of_sentence_iter;
-    if(find_start_of_closed_expression(iter, start_of_sentence_iter)) {
-      auto start_line=get_line_before(start_of_sentence_iter);
-      std::smatch sm;
-      std::string tabs;
-      if(std::regex_match(start_line, sm, tabs_regex)) {
-        tabs=sm[1].str();
-      }
-      
-      if(iter.backward_char() && *iter=='{') {
-        auto found_iter=iter;
-        bool found_right_bracket=find_right_bracket_forward(iter, found_iter);
-        
-        bool has_bracket=false;
-        if(found_right_bracket) {
-          auto line=get_line_before(found_iter);
-          if(std::regex_match(line, sm, tabs_regex)) {
-            if(tabs.size()==sm[1].str().size())
-              has_bracket=true;
-          }
-        }
-        if(*get_buffer()->get_insert()->get_iter()=='}') {
-          get_source_buffer()->insert_at_cursor("\n"+tabs+tab+"\n"+tabs);
-          auto insert_it = get_source_buffer()->get_insert()->get_iter();
-          if(insert_it.backward_chars(tabs.size()+1)) {
-            scroll_to(get_source_buffer()->get_insert());
-            get_source_buffer()->place_cursor(insert_it);
-          }
-          get_source_buffer()->end_user_action();
-          return true;
-        }
-        else if(!has_bracket) {
-          //Insert new lines with bracket end
-          get_source_buffer()->insert_at_cursor("\n"+tabs+tab+"\n"+tabs+"}");
-          auto insert_it = get_source_buffer()->get_insert()->get_iter();
-          if(insert_it.backward_chars(tabs.size()+2)) {
-            scroll_to(get_source_buffer()->get_insert());
-            get_source_buffer()->place_cursor(insert_it);
-          }
-          get_source_buffer()->end_user_action();
-          return true;
-        }
-        else {
-          get_source_buffer()->insert_at_cursor("\n"+tabs+tab);
-          scroll_to(get_buffer()->get_insert());
-          get_source_buffer()->end_user_action();
-          return true;
-        }
-      }
-      auto line=get_line_before();
-      iter=get_buffer()->get_insert()->get_iter();
-      auto found_iter=iter;
-      if(find_open_expression_symbol(iter, start_of_sentence_iter, found_iter)) {
-        auto line=get_line_before(found_iter);
-        if(std::regex_match(line, sm, tabs_regex)) {
-          tabs=sm[1].str();
-          for(size_t c=0;c<sm[2].str().size()+1;c++)
-            tabs+=' ';
-        }
-      }
-      else if(std::regex_match(line, sm, no_bracket_statement_regex)) {
-        get_source_buffer()->insert_at_cursor("\n"+tabs+tab);
-        scroll_to(get_source_buffer()->get_insert());
-        get_source_buffer()->end_user_action();
-        return true;
-      }
-      else if(std::regex_match(line, sm, no_bracket_no_para_statement_regex)) {
-        get_source_buffer()->insert_at_cursor("\n"+tabs+tab);
-        scroll_to(get_source_buffer()->get_insert());
-        get_source_buffer()->end_user_action();
-        return true;
-      }
-      //Indenting after for instance if(...)\n...;\n
-      else if(iter.backward_char() && *iter==';') {
-        std::smatch sm2;
-        size_t line_nr=get_source_buffer()->get_insert()->get_iter().get_line();
-        if(line_nr>0 && tabs.size()>=tab_size) {
-          string previous_line=get_line(line_nr-1);
-          if(!std::regex_match(previous_line, sm2, bracket_regex)) {
-            if(std::regex_match(previous_line, sm2, no_bracket_statement_regex)) {
-              get_source_buffer()->insert_at_cursor("\n"+sm2[1].str());
-              scroll_to(get_source_buffer()->get_insert());
-              get_source_buffer()->end_user_action();
-              return true;
-            }
-            else if(std::regex_match(previous_line, sm2, no_bracket_no_para_statement_regex)) {
-              get_source_buffer()->insert_at_cursor("\n"+sm2[1].str());
-              scroll_to(get_source_buffer()->get_insert());
-              get_source_buffer()->end_user_action();
-              return true;
-            }
-          }
-        }
-      }
-      //Indenting after ':'
-      else if(*iter==':') {
-        Gtk::TextIter left_bracket_iter;
-        if(find_left_bracket_backward(iter, left_bracket_iter)) {
-          if(!left_bracket_iter.ends_line())
-            left_bracket_iter.forward_char();
-          Gtk::TextIter start_of_left_bracket_sentence_iter;
-          if(find_start_of_closed_expression(left_bracket_iter, start_of_left_bracket_sentence_iter)) {
-            std::smatch sm;
-            auto start_left_bracket_sentence=get_line_before(start_of_left_bracket_sentence_iter);
-            if(std::regex_match(start_left_bracket_sentence, sm, tabs_regex)) {
-              if(tabs.size()==(sm[1].str().size()+tab_size)) {
-                auto start_line_iter=get_buffer()->get_iter_at_line(iter.get_line());
-                auto start_line_plus_tab_size=start_line_iter;
-                for(size_t c=0;c<tab_size;c++)
-                  start_line_plus_tab_size.forward_char();
-                get_buffer()->erase(start_line_iter, start_line_plus_tab_size);
-              }
-              else {
-                get_source_buffer()->insert_at_cursor("\n"+tabs+tab);
-                scroll_to(get_source_buffer()->get_insert());
-                get_source_buffer()->end_user_action();
-                return true;
-              }
-            }
-          }
-        }
-      }
-      get_source_buffer()->insert_at_cursor("\n"+tabs);
-      scroll_to(get_source_buffer()->get_insert());
-      get_source_buffer()->end_user_action();
-      return true;
-    }
-  }
-  //Indent left when writing } on a new line
-  else if(key->keyval==GDK_KEY_braceright) {
-    string line=get_line_before();
-    if(line.size()>=tab_size) {
-      for(auto c: line) {
-        if(c!=tab_char) {
-          get_source_buffer()->insert_at_cursor("}");
-          get_source_buffer()->end_user_action();
-          return true;
-        }
-      }
-      Gtk::TextIter insert_it = get_source_buffer()->get_insert()->get_iter();
-      Gtk::TextIter line_it = get_source_buffer()->get_iter_at_line(insert_it.get_line());
-      Gtk::TextIter line_plus_it=line_it;
-      if(tab_size==0 || line_plus_it.forward_chars(tab_size))
-        get_source_buffer()->erase(line_it, line_plus_it);
-    }
-    get_source_buffer()->insert_at_cursor("}");
-    get_source_buffer()->end_user_action();
-    return true;
-  }
-  
-  get_source_buffer()->end_user_action();
-  return Source::View::on_key_press_event(key);
-}
-
-//////////////////////////////
-//// ClangViewAutocomplete ///
-//////////////////////////////
-Source::ClangViewAutocomplete::ClangViewAutocomplete(const boost::filesystem::path &file_path, const boost::filesystem::path& project_path, Glib::RefPtr<Gsv::Language> language):
-Source::ClangViewParse(file_path, project_path, language), autocomplete_cancel_starting(false) {
-  get_buffer()->signal_changed().connect([this](){
-    if(completion_dialog_shown)
-      delayed_reparse_connection.disconnect();
-    start_autocomplete();
-  });
-  get_buffer()->signal_mark_set().connect([this](const Gtk::TextBuffer::iterator& iterator, const Glib::RefPtr<Gtk::TextBuffer::Mark>& mark){
-    if(mark->get_name()=="insert") {
-      autocomplete_cancel_starting=true;
-      if(completion_dialog_shown)
-        completion_dialog->hide();
-    }
-  });
-  signal_scroll_event().connect([this](GdkEventScroll* event){
-    if(completion_dialog_shown)
-      completion_dialog->hide();
-    return false;
-  }, false);
-  signal_key_release_event().connect([this](GdkEventKey* key){
-    if(completion_dialog_shown) {
-      if(completion_dialog->on_key_release(key))
-        return true;
-    }
-    
-    return false;
-  }, false);
-
-  signal_focus_out_event().connect([this](GdkEventFocus* event) {
-    autocomplete_cancel_starting=true;
-    if(completion_dialog_shown)
-      completion_dialog->hide();
-      
-    return false;
-  });
-  
-  autocomplete_fail.connect([this]() {
-    Singleton::terminal()->print("Error: autocomplete failed, reparsing "+this->file_path.string()+"\n");
-    restart_parse();
-    autocomplete_starting=false;
-    autocomplete_cancel_starting=false;
-  });
-  
-  do_delete_object.connect([this](){
-    if(delete_thread.joinable())
-      delete_thread.join();
-    delete this;
-  });
-  do_restart_parse.connect([this](){
-    init_parse();
-    restart_parse_running=false;
-  });
-}
-
-bool Source::ClangViewAutocomplete::on_key_press_event(GdkEventKey *key) {
-  last_keyval=key->keyval;
-  if(completion_dialog_shown) {
-    if(completion_dialog->on_key_press(key))
-      return true;
-  }
-  return ClangViewParse::on_key_press_event(key);
-}
-
-void Source::ClangViewAutocomplete::start_autocomplete() {
-  if(!has_focus())
-    return;
-  auto iter=get_buffer()->get_insert()->get_iter();
-  if(!((last_keyval>='0' && last_keyval<='9') || 
-       (last_keyval>='a' && last_keyval<='z') || (last_keyval>='A' && last_keyval<='Z') ||
-       last_keyval=='_' || last_keyval=='.' || last_keyval==':' || 
-       (last_keyval=='>' && iter.backward_char() && iter.backward_char() && *iter=='-'))) {
-    autocomplete_cancel_starting=true;
-    return;
-  }
-  std::string line=" "+get_line_before();
-  if((std::count(line.begin(), line.end(), '\"')%2)!=1 && line.find("//")==std::string::npos) {
-    const std::regex in_specified_namespace("^(.*[a-zA-Z0-9_\\)\\]\\>])(->|\\.|::)([a-zA-Z0-9_]*)$");
-    const std::regex within_namespace("^(.*)([^a-zA-Z0-9_]+)([a-zA-Z0-9_]{3,})$");
-    std::smatch sm;
-    if(std::regex_match(line, sm, in_specified_namespace)) {
-      prefix_mutex.lock();
-      prefix=sm[3].str();
-      prefix_mutex.unlock();
-      if((prefix.size()==0 || prefix[0]<'0' || prefix[0]>'9') && !autocomplete_starting && !completion_dialog_shown) {
-        autocomplete();
-      }
-      else if(last_keyval=='.' && autocomplete_starting)
-        autocomplete_cancel_starting=true;
-    }
-    else if(std::regex_match(line, sm, within_namespace)) {
-      prefix_mutex.lock();
-      prefix=sm[3].str();
-      prefix_mutex.unlock();
-      if((prefix.size()==0 || prefix[0]<'0' || prefix[0]>'9') && !autocomplete_starting && !completion_dialog_shown) {
-        autocomplete();
-      }
-    }
-    else
-      autocomplete_cancel_starting=true;
-    if(autocomplete_starting || completion_dialog_shown)
-      delayed_reparse_connection.disconnect();
-  }
-}
-
-void Source::ClangViewAutocomplete::autocomplete() {
-  if(parse_thread_stop) {
-    return;
-  }
-    
-  if(!autocomplete_starting) {
-    autocomplete_starting=true;
-    autocomplete_cancel_starting=false;
-    std::shared_ptr<std::vector<Source::AutoCompleteData> > ac_data=std::make_shared<std::vector<Source::AutoCompleteData> >();
-    autocomplete_done_connection.disconnect();
-    autocomplete_done_connection=autocomplete_done.connect([this, ac_data](){
-      autocomplete_starting=false;
-      if(!autocomplete_cancel_starting) {
-        auto start_iter=get_buffer()->get_insert()->get_iter();
-        if(prefix.size()>0 && !start_iter.backward_chars(prefix.size()))
-          return;
-        completion_dialog=std::unique_ptr<CompletionDialog>(new CompletionDialog(*this, get_buffer()->create_mark(start_iter)));
-        auto rows=std::make_shared<std::unordered_map<std::string, std::string> >();
-        completion_dialog->on_hide=[this](){
-          get_source_buffer()->end_user_action();
-          completion_dialog_shown=false;
-          source_readable=false;
-          start_reparse();
-        };
-        completion_dialog->on_select=[this, rows](const std::string& selected, bool hide_window) {
-          auto row = rows->at(selected);
-          get_buffer()->erase(completion_dialog->start_mark->get_iter(), get_buffer()->get_insert()->get_iter());
-          get_buffer()->insert(completion_dialog->start_mark->get_iter(), row);
-          if(hide_window) {
-            char find_char=row.back();
-            if(find_char==')' || find_char=='>') {
-              if(find_char==')')
-                find_char='(';
-              else
-                find_char='<';
-              size_t pos=row.find(find_char);
-              if(pos!=std::string::npos) {
-                auto start_offset=completion_dialog->start_mark->get_iter().get_offset()+pos+1;
-                auto end_offset=completion_dialog->start_mark->get_iter().get_offset()+row.size()-1;
-                if(start_offset!=end_offset)
-                  get_buffer()->select_range(get_buffer()->get_iter_at_offset(start_offset), get_buffer()->get_iter_at_offset(end_offset));
-              }
-            }
-          }
-        };
-        for (auto &data : *ac_data) {
-          std::stringstream ss;
-          std::string return_value;
-          for (auto &chunk : data.chunks) {
-            switch (chunk.kind) {
-            case clang::CompletionChunk_ResultType:
-              return_value = chunk.chunk;
-              break;
-            case clang::CompletionChunk_Informative: break;
-            default: ss << chunk.chunk; break;
-            }
-          }
-          auto ss_str=ss.str();
-          if (ss_str.length() > 0) { // if length is 0 the result is empty
-            (*rows)[ss.str() + " --> " + return_value] = ss_str;
-            completion_dialog->add_row(ss.str() + " --> " + return_value, data.brief_comments);
-          }
-        }
-        set_status("");
-        if (!rows->empty()) {
-          completion_dialog_shown=true;
-          get_source_buffer()->begin_user_action();
-          completion_dialog->show();
-        }
-        else
-          start_reparse();
-      }
-      else {
-        set_status("");
-        start_reparse();
-        start_autocomplete();
-      }
-    });
-    
-    std::shared_ptr<std::map<std::string, std::string> > buffer_map=std::make_shared<std::map<std::string, std::string> >();
-    auto ustr=get_buffer()->get_text();
-    auto iter=get_buffer()->get_insert()->get_iter();
-    auto line_nr=iter.get_line()+1;
-    auto column_nr=iter.get_line_offset()+1;
-    auto pos=iter.get_offset()-1;
-    while(pos>=0 && ((ustr[pos]>='a' && ustr[pos]<='z') || (ustr[pos]>='A' && ustr[pos]<='Z') || (ustr[pos]>='0' && ustr[pos]<='9') || ustr[pos]=='_')) {
-      ustr.replace(pos, 1, " ");
-      column_nr--;
-      pos--;
-    }
-    (*buffer_map)[this->file_path.string()]=std::move(ustr); //TODO: does this work?
-    set_status("autocomplete...");
-    if(autocomplete_thread.joinable())
-      autocomplete_thread.join();
-    autocomplete_thread=std::thread([this, ac_data, line_nr, column_nr, buffer_map](){
-      parsing_mutex.lock();
-      if(!parse_thread_stop)
-        *ac_data=get_autocomplete_suggestions(line_nr, column_nr, *buffer_map);
-      if(!parse_thread_stop)
-        autocomplete_done();
-      else
-        autocomplete_fail();
-      parsing_mutex.unlock();
-    });
-  }
-}
-
-std::vector<Source::AutoCompleteData> Source::ClangViewAutocomplete::get_autocomplete_suggestions(int line_number, int column, std::map<std::string, std::string>& buffer_map) {
-  std::vector<Source::AutoCompleteData> suggestions;
-  auto results=clang_tu->get_code_completions(buffer_map, line_number, column);
-  if(results.cx_results==NULL) {
-    parse_thread_stop=true;
-    return suggestions;
-  }
-    
-  if(!autocomplete_cancel_starting) {
-    prefix_mutex.lock();
-    auto prefix_copy=prefix;
-    prefix_mutex.unlock();
-    for (unsigned i = 0; i < results.size(); i++) {
-      auto result=results.get(i);
-      if(result.available()) {
-        auto chunks=result.get_chunks();
-        bool match=false;
-        for(auto &chunk: chunks) {
-          if(chunk.kind!=clang::CompletionChunk_ResultType && chunk.kind!=clang::CompletionChunk_Informative) {
-            if(chunk.chunk.size()>=prefix_copy.size() && chunk.chunk.compare(0, prefix_copy.size(), prefix_copy)==0)
-              match=true;
-            break;
-          }
-        }
-        if(match) {
-          suggestions.emplace_back(std::move(chunks));
-          suggestions.back().brief_comments=result.get_brief_comments();
-        }
-      }
-    }
-  }
-  return suggestions;
-}
-
-void Source::ClangViewAutocomplete::async_delete() {
-  parsing_in_progress->cancel("canceled, freeing resources in the background");
-  parse_thread_stop=true;
-  delete_thread=std::thread([this](){
-    //TODO: Is it possible to stop the clang-process in progress?
-    if(restart_parse_thread.joinable())
-      restart_parse_thread.join();
-    if(parse_thread.joinable())
-      parse_thread.join();
-    if(autocomplete_thread.joinable())
-      autocomplete_thread.join();
-    do_delete_object();
-  });
-}
-
-bool Source::ClangViewAutocomplete::restart_parse() {
-  if(!restart_parse_running && !parse_error) {
-    reparse_needed=false;
-    restart_parse_running=true;
-    parse_thread_stop=true;
-    if(restart_parse_thread.joinable())
-      restart_parse_thread.join();
-    restart_parse_thread=std::thread([this](){
-      if(parse_thread.joinable())
-        parse_thread.join();
-      if(autocomplete_thread.joinable())
-        autocomplete_thread.join();
-      do_restart_parse();
-    });
-    return true;
-  }
-  return false;
-}
-
-////////////////////////////
-//// ClangViewRefactor /////
-////////////////////////////
-
-Source::ClangViewRefactor::ClangViewRefactor(const boost::filesystem::path &file_path, const boost::filesystem::path& project_path, Glib::RefPtr<Gsv::Language> language):
-Source::ClangViewAutocomplete(file_path, project_path, language) {
-  similar_tokens_tag=get_buffer()->create_tag();
-  similar_tokens_tag->property_weight()=1000; //TODO: replace with Pango::WEIGHT_ULTRAHEAVY in 2016 or so (when Ubuntu 14 is history)
-  
-  get_buffer()->signal_changed().connect([this]() {
-    if(!renaming && last_tagged_token) {
-      for(auto &mark: similar_token_marks) {
-        get_buffer()->remove_tag(similar_tokens_tag, mark.first->get_iter(), mark.second->get_iter());
-        get_buffer()->delete_mark(mark.first);
-        get_buffer()->delete_mark(mark.second);
-      }
-      similar_token_marks.clear();
-      last_tagged_token=Token();
-    }
-  });
-  
-  get_token=[this]() -> Token {
-    if(source_readable) {
-      auto iter=get_buffer()->get_insert()->get_iter();
-      auto line=(unsigned)iter.get_line();
-      auto index=(unsigned)iter.get_line_index();
-      for(auto &token: *clang_tokens) {
-        auto cursor=token.get_cursor();
-        if(token.get_kind()==clang::Token_Identifier && cursor.has_type()) {
-          if(line==token.offsets.first.line-1 && index>=token.offsets.first.index-1 && index <=token.offsets.second.index-1) {
-            if(static_cast<unsigned>(token.get_cursor().get_kind())==103) //These cursors are buggy
-              continue;
-            auto referenced=cursor.get_referenced();
-            if(referenced)
-              return Token(static_cast<int>(referenced.get_kind()), token.get_spelling(), referenced.get_usr());
-          }
-        }
-      }
-    }
-    return Token();
-  };
-  
-  rename_similar_tokens=[this](const Token &token, const std::string &text) {
-    size_t number=0;
-    if(source_readable) {
-      auto offsets=clang_tokens->get_similar_token_offsets(static_cast<clang::CursorKind>(token.type), token.spelling, token.usr);
-      std::vector<std::pair<Glib::RefPtr<Gtk::TextMark>, Glib::RefPtr<Gtk::TextMark> > > marks;
-      for(auto &offset: offsets) {
-        marks.emplace_back(get_buffer()->create_mark(get_buffer()->get_iter_at_line_index(offset.first.line-1, offset.first.index-1)), get_buffer()->create_mark(get_buffer()->get_iter_at_line_index(offset.second.line-1, offset.second.index-1)));
-        number++;
-      }
-      get_source_buffer()->begin_user_action();
-      for(auto &mark: marks) {
-        renaming=true;
-        get_buffer()->erase(mark.first->get_iter(), mark.second->get_iter());
-        get_buffer()->insert(mark.first->get_iter(), text);
-        get_buffer()->delete_mark(mark.first);
-        get_buffer()->delete_mark(mark.second);
-      }
-      get_source_buffer()->end_user_action();
-      renaming=false;
-    }
-    return number;
-  };
-  
-  get_buffer()->signal_mark_set().connect([this](const Gtk::TextBuffer::iterator& iterator, const Glib::RefPtr<Gtk::TextBuffer::Mark>& mark){
-    if(mark->get_name()=="insert") {
-      delayed_tag_similar_tokens_connection.disconnect();
-      delayed_tag_similar_tokens_connection=Glib::signal_timeout().connect([this]() {
-        auto token=get_token();
-        tag_similar_tokens(token);
-        return false;
-      }, 100);
-    }
-  });
-  
-  get_declaration_location=[this](){
-    std::pair<std::string, clang::Offset> location;
-    if(source_readable) {
-      auto iter=get_buffer()->get_insert()->get_iter();
-      auto line=(unsigned)iter.get_line();
-      auto index=(unsigned)iter.get_line_index();
-      for(auto &token: *clang_tokens) {
-        auto cursor=token.get_cursor();
-        if(token.get_kind()==clang::Token_Identifier && cursor.has_type()) {
-          if(line==token.offsets.first.line-1 && index>=token.offsets.first.index-1 && index <=token.offsets.second.index-1) {
-            auto referenced=cursor.get_referenced();
-            if(referenced) {
-              location.first=referenced.get_source_location().get_path();
-              location.second=referenced.get_source_location().get_offset();
-              break;
-            }
-          }
-        }
-      }
-    }
-    return location;
-  };
-  
-  goto_method=[this](){    
-    if(source_readable) {
-      auto iter=get_buffer()->get_insert()->get_iter();
-      Gdk::Rectangle visible_rect;
-      get_visible_rect(visible_rect);
-      Gdk::Rectangle iter_rect;
-      get_iter_location(iter, iter_rect);
-      iter_rect.set_width(1);
-      if(!visible_rect.intersects(iter_rect)) {
-        get_iter_at_location(iter, 0, visible_rect.get_y()+visible_rect.get_height()/3);
-      }
-      selection_dialog=std::unique_ptr<SelectionDialog>(new SelectionDialog(*this, get_buffer()->create_mark(iter)));
-      auto rows=std::make_shared<std::unordered_map<std::string, clang::Offset> >();
-      auto methods=clang_tokens->get_cxx_methods();
-      if(methods.size()==0)
-        return;
-      for(auto &method: methods) {
-        (*rows)[method.first]=method.second;
-        selection_dialog->add_row(method.first);
-      }
-      selection_dialog->on_select=[this, rows](const std::string& selected, bool hide_window) {
-        auto offset=rows->at(selected);
-        get_buffer()->place_cursor(get_buffer()->get_iter_at_line_index(offset.line-1, offset.index-1));
-        scroll_to(get_buffer()->get_insert(), 0.0, 1.0, 0.5);
-        delayed_tooltips_connection.disconnect();
-      };
-      selection_dialog->show();
-    }
-  };
-  
-  goto_next_diagnostic=[this]() {
-    if(source_readable) {
-      auto insert_offset=get_buffer()->get_insert()->get_iter().get_offset();
-      for(auto offset: diagnostic_offsets) {
-        if(offset>insert_offset) {
-          get_buffer()->place_cursor(get_buffer()->get_iter_at_offset(offset));
-          scroll_to(get_buffer()->get_insert(), 0.0, 1.0, 0.5);
-          return;
-        }
-      }
-      if(diagnostic_offsets.size()>0) {
-        auto iter=get_buffer()->get_iter_at_offset(*diagnostic_offsets.begin());
-        get_buffer()->place_cursor(iter);
-        scroll_to(get_buffer()->get_insert(), 0.0, 1.0, 0.5);
-      }
-    }
-  };
-}
-
-void Source::ClangViewRefactor::tag_similar_tokens(const Token &token) {
-  if(source_readable) {
-    if(token && last_tagged_token!=token) {
-      for(auto &mark: similar_token_marks) {
-        get_buffer()->remove_tag(similar_tokens_tag, mark.first->get_iter(), mark.second->get_iter());
-        get_buffer()->delete_mark(mark.first);
-        get_buffer()->delete_mark(mark.second);
-      }
-      similar_token_marks.clear();
-      auto offsets=clang_tokens->get_similar_token_offsets(static_cast<clang::CursorKind>(token.type), token.spelling, token.usr);
-      for(auto &offset: offsets) {
-        auto start_iter=get_buffer()->get_iter_at_line_index(offset.first.line-1, offset.first.index-1);
-        auto end_iter=get_buffer()->get_iter_at_line_index(offset.second.line-1, offset.second.index-1);
-        get_buffer()->apply_tag(similar_tokens_tag, start_iter, end_iter);
-        similar_token_marks.emplace_back(get_buffer()->create_mark(start_iter), get_buffer()->create_mark(end_iter)); 
-      }
-      last_tagged_token=token;
-    }
-  }
-  if(!token && last_tagged_token) {
-    for(auto &mark: similar_token_marks) {
-      get_buffer()->remove_tag(similar_tokens_tag, mark.first->get_iter(), mark.second->get_iter());
-      get_buffer()->delete_mark(mark.first);
-      get_buffer()->delete_mark(mark.second);
-    }
-    similar_token_marks.clear();
-    last_tagged_token=Token();
-  }
-}
-
-Source::ClangViewRefactor::~ClangViewRefactor() {
-  delayed_tag_similar_tokens_connection.disconnect();
-}
-
-Source::ClangView::ClangView(const boost::filesystem::path &file_path, const boost::filesystem::path& project_path, Glib::RefPtr<Gsv::Language> language): ClangViewRefactor(file_path, project_path, language) {
-  if(language) {
-    get_source_buffer()->set_highlight_syntax(true);
-    get_source_buffer()->set_language(language);
   }
 }

@@ -116,6 +116,12 @@ Window::Window() : box(Gtk::ORIENTATION_VERTICAL), compiling(false) {
       
       if(auto menu_item=dynamic_cast<Gtk::MenuItem*>(menu.ui_manager->get_widget("/MenuBar/SourceMenu/SourceGotoNextDiagnostic")))
         menu_item->set_sensitive((bool)notebook.get_current_view()->goto_next_diagnostic);
+      
+      if(auto menu_item=dynamic_cast<Gtk::MenuItem*>(menu.ui_manager->get_widget("/MenuBar/SourceMenu/SourceApplyFixIts")))
+        menu_item->set_sensitive((bool)notebook.get_current_view()->apply_fix_its);
+      
+      if(auto menu_item=dynamic_cast<Gtk::MenuItem*>(menu.ui_manager->get_widget("/MenuBar/SourceMenu/SourceFindDocumentation")))
+        menu_item->set_sensitive((bool)notebook.get_current_view()->get_token_data);
     
       Singleton::directories()->select(notebook.get_current_view()->file_path);
       
@@ -327,6 +333,13 @@ void Window::create_menu() {
     if(notebook.get_current_page()!=-1)
         notebook.get_current_view()->goto_next_spellcheck_error();
   });
+  menu.action_group->add(Gtk::Action::create("SourceIndentation", "Indentation"));
+  menu.action_group->add(Gtk::Action::create("SourceIndentationSetBufferTab", "Set Current Buffer Tab"), Gtk::AccelKey(menu.key_map["source_indentation_set_buffer_tab"]), [this]() {
+    set_tab_entry();
+  });
+  menu.action_group->add(Gtk::Action::create("SourceIndentationAutoIndentBuffer", "Auto-Indent Current Buffer"), Gtk::AccelKey(menu.key_map["source_indentation_auto_indent_buffer"]), [this]() {
+    Singleton::terminal()->print("Auto-Indent Current Buffer will soon be implemented.\n");
+  });
   menu.action_group->add(Gtk::Action::create("SourceGotoLine", "Go to Line"), Gtk::AccelKey(menu.key_map["source_goto_line"]), [this]() {
     goto_line_entry();
   });
@@ -363,10 +376,57 @@ void Window::create_menu() {
   menu.action_group->add(Gtk::Action::create("SourceRename", "Rename"), Gtk::AccelKey(menu.key_map["source_rename"]), [this]() {
     rename_token_entry();
   });
+  menu.action_group->add(Gtk::Action::create("SourceFindDocumentation", "Find Documentation"), Gtk::AccelKey(menu.key_map["source_find_documentation"]), [this]() {
+    if(notebook.get_current_page()!=-1) {
+      if(notebook.get_current_view()->get_token_data) {
+        auto data=notebook.get_current_view()->get_token_data();        
+        if(data.size()>0) {
+          auto documentation_search=Singleton::Config::source()->documentation_searches.find(data[0]);
+          if(documentation_search!=Singleton::Config::source()->documentation_searches.end()) {
+            std::string token_query;
+            for(size_t c=1;c<data.size();c++) {
+              if(data[c].size()>0) {
+                if(token_query.size()>0)
+                  token_query+=documentation_search->second.separator;
+                token_query+=data[c];
+              }
+            }
+            if(token_query.size()>0) {
+              std::unordered_map<std::string, std::string>::iterator query;
+              if(data[1].size()>0)
+                query=documentation_search->second.queries.find(data[1]);
+              else
+                query=documentation_search->second.queries.find("@empty");
+              if(query==documentation_search->second.queries.end())
+                query=documentation_search->second.queries.find("@any");
+              
+              if(query!=documentation_search->second.queries.end()) {
+                std::string uri=query->second+token_query;
+#ifdef __APPLE__
+                Singleton::terminal()->execute("open \""+uri+"\"");
+#else
+                GError* error=NULL;
+                gtk_show_uri(NULL, uri.c_str(), GDK_CURRENT_TIME, &error);
+                g_clear_error(&error);
+#endif
+              }
+            }
+          }
+        }
+      }
+    }
+  });
   menu.action_group->add(Gtk::Action::create("SourceGotoNextDiagnostic", "Go to next Diagnostic"), Gtk::AccelKey(menu.key_map["source_goto_next_diagnostic"]), [this]() {
     if(notebook.get_current_page()!=-1) {
       if(notebook.get_current_view()->goto_next_diagnostic) {
         notebook.get_current_view()->goto_next_diagnostic();
+      }
+    }
+  });
+  menu.action_group->add(Gtk::Action::create("SourceApplyFixIts", "Apply Fix-Its"), Gtk::AccelKey(menu.key_map["source_apply_fix_its"]), [this]() {
+    if(notebook.get_current_page()!=-1) {
+      if(notebook.get_current_view()->apply_fix_its) {
+        notebook.get_current_view()->apply_fix_its();
       }
     }
   });
@@ -425,12 +485,28 @@ void Window::create_menu() {
   });
   menu.action_group->add(Gtk::Action::create("ProjectRunCommand", "Run Command"), Gtk::AccelKey(menu.key_map["run_command"]), [this]() {
     entry_box.clear();
+    entry_box.labels.emplace_back();
+    auto label_it=entry_box.labels.begin();
+    label_it->update=[label_it](int state, const std::string& message){
+      label_it->set_text("Run Command directory order: file project path, file directory, opened directory, current directory");
+    };
+    label_it->update(0, "");
     entry_box.entries.emplace_back(last_run_command, [this](const std::string& content){
       if(content!="") {
         last_run_command=content;
+        boost::filesystem::path run_path;
+        if(notebook.get_current_page()!=-1) {
+          if(notebook.get_current_view()->project_path!="")
+            run_path=notebook.get_current_view()->project_path;
+          else
+            run_path=notebook.get_current_view()->file_path.parent_path();
+        }
+        else
+          run_path=Singleton::directories()->current_path;
         Singleton::terminal()->async_print("Running: "+content+'\n');
-        Singleton::terminal()->async_execute(content, Singleton::directories()->current_path, [this, content](int exit_code) {
-          Singleton::terminal()->async_print(content + " returned: " + std::to_string(exit_code)+'\n');
+
+        Singleton::terminal()->async_execute(content, run_path, [this, content](int exit_code){
+          Singleton::terminal()->async_print(content+" returned: "+std::to_string(exit_code)+'\n');
         });
       }
       entry_box.hide();
@@ -617,6 +693,65 @@ void Window::search_and_replace_entry() {
   entry_box.show();
 }
 
+void Window::set_tab_entry() {
+  entry_box.clear();
+  if(notebook.get_current_page()!=-1) {
+    auto tab_char_and_size=notebook.get_current_view()->get_tab_char_and_size();
+    
+    entry_box.labels.emplace_back();
+    auto label_it=entry_box.labels.begin();
+    
+    entry_box.entries.emplace_back(std::to_string(tab_char_and_size.second));
+    auto entry_tab_size_it=entry_box.entries.begin();
+    entry_tab_size_it->set_placeholder_text("Tab size");
+    
+    char tab_char=tab_char_and_size.first;
+    std::string tab_char_string;
+    if(tab_char==' ')
+      tab_char_string="space";
+    else if(tab_char=='\t')
+      tab_char_string="tab";
+      
+    entry_box.entries.emplace_back(tab_char_string);
+    auto entry_tab_char_it=entry_box.entries.rbegin();
+    entry_tab_char_it->set_placeholder_text("Tab char");
+    
+    const auto activate_function=[this, entry_tab_char_it, entry_tab_size_it, label_it](const std::string& content){
+      if(notebook.get_current_page()!=-1) {
+        char tab_char=0;
+        unsigned tab_size=0;
+        try {
+          tab_size = static_cast<unsigned>(stoul(entry_tab_size_it->get_text()));
+          std::string tab_char_string=entry_tab_char_it->get_text();
+          std::transform(tab_char_string.begin(), tab_char_string.end(), tab_char_string.begin(), ::tolower);
+          if(tab_char_string=="space")
+            tab_char=' ';
+          else if(tab_char_string=="tab")
+            tab_char='\t';
+        }
+        catch(const std::exception &e) {}
+
+        if(tab_char!=0 && tab_size>0) {
+          notebook.get_current_view()->set_tab_char_and_size(tab_char, tab_size);
+          entry_box.hide();
+        }
+        else {
+          label_it->set_text("Tab size must be >0 and tab char set to either 'space' or 'tab'");
+        }
+      }
+    };
+    
+    entry_tab_char_it->on_activate=activate_function;
+    entry_tab_size_it->on_activate=activate_function;
+    
+    entry_box.buttons.emplace_back("Set tab in current buffer", [this, entry_tab_char_it](){
+      entry_tab_char_it->activate();
+    });
+    
+    entry_box.show();
+  }
+}
+
 void Window::goto_line_entry() {
   entry_box.clear();
   if(notebook.get_current_page()!=-1) {
@@ -656,7 +791,7 @@ void Window::rename_token_entry() {
         entry_box.labels.emplace_back();
         auto label_it=entry_box.labels.begin();
         label_it->update=[label_it](int state, const std::string& message){
-          label_it->set_text("Warning: only opened and parsed tabs will have its content renamed, and modified files will be saved.");
+          label_it->set_text("Warning: only opened and parsed tabs will have its content renamed, and modified files will be saved");
         };
         label_it->update(0, "");
         entry_box.entries.emplace_back(token->spelling, [this, token](const std::string& content){

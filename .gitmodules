@@ -1,0 +1,3 @@
+[submodule "libclangmm"]
+	path = libclangmm
+	url = https://github.com/eidheim/libclangmm.git

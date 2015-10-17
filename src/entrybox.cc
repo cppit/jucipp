@@ -16,8 +16,9 @@ namespace sigc {
 
 std::unordered_map<std::string, std::vector<std::string> > EntryBox::entry_histories;
 
-EntryBox::Entry::Entry(const std::string& content, std::function<void(const std::string& content)> on_activate, unsigned length) : Gtk::Entry(), on_activate(on_activate) {
-  set_max_length(length);
+EntryBox::Entry::Entry(const std::string& content, std::function<void(const std::string& content)> on_activate, unsigned width_chars) : Gtk::Entry(), on_activate(on_activate) {
+  set_max_length(0);
+  set_width_chars(width_chars);
   set_text(content);
   selected_history=0;
   signal_activate().connect([this](){
@@ -92,7 +93,6 @@ void EntryBox::clear() {
 void EntryBox::show() {
   std::vector<Gtk::Widget*> focus_chain;
   for(auto& entry: entries) {
-    entry.set_max_length(0);
     lower_box.pack_start(entry, Gtk::PACK_SHRINK);
     focus_chain.emplace_back(&entry);
   }
