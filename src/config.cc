@@ -147,7 +147,7 @@ void MainConfig::GenerateSource() {
 
 void MainConfig::GenerateDirectoryFilter() {
   auto dir_cfg=Singleton::Config::directories();
-  DEBUG("Fetching directory filter");
+  JDEBUG("Fetching directory filter");
   boost::property_tree::ptree dir_json = cfg.get_child("directoryfilter");
   boost::property_tree::ptree ignore_json = dir_json.get_child("ignore");
   boost::property_tree::ptree except_json = dir_json.get_child("exceptions");
@@ -155,5 +155,5 @@ void MainConfig::GenerateDirectoryFilter() {
     dir_cfg->exceptions.emplace_back(i.second.get_value<std::string>());
   for ( auto &i : ignore_json )
     dir_cfg->ignored.emplace_back(i.second.get_value<std::string>());
-  DEBUG("Directory filter fetched");
+  JDEBUG("Directory filter fetched");
 }

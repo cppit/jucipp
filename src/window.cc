@@ -4,6 +4,7 @@
 #include "sourcefile.h"
 #include "config.h"
 //#include "api.h"
+#include "dialogs.h"
 
 #include <iostream> //TODO: remove
 using namespace std; //TODO: remove
@@ -29,8 +30,8 @@ void Window::generate_keybindings() {
   }
 }
 
-Window::Window() : box(Gtk::ORIENTATION_VERTICAL), notebook(directories), compiling(false) {
-  DEBUG("start");
+Window::Window() : box(Gtk::ORIENTATION_VERTICAL), compiling(false) {
+  JDEBUG("start");
   set_title("juCi++");
   set_events(Gdk::POINTER_MOTION_MASK|Gdk::FOCUS_CHANGE_MASK|Gdk::SCROLL_MASK);
   configure();
@@ -39,7 +40,7 @@ Window::Window() : box(Gtk::ORIENTATION_VERTICAL), notebook(directories), compil
   //PluginApi(&this->notebook, &this->menu);
   
   add(box);
-  
+
   //TODO: Do not use deprecated ui_manager? And make menu shortcuts update when config.json is saved (in configure())
   generate_keybindings();
   create_menu();
@@ -47,7 +48,7 @@ Window::Window() : box(Gtk::ORIENTATION_VERTICAL), notebook(directories), compil
   add_accel_group(menu.ui_manager->get_accel_group());
   box.pack_start(menu.get_widget(), Gtk::PACK_SHRINK);
 
-  directory_and_notebook_panes.pack1(directories, Gtk::SHRINK);
+  directory_and_notebook_panes.pack1(*Singleton::directories(), Gtk::SHRINK);
   notebook_vbox.pack_start(notebook);
   notebook_vbox.pack_end(entry_box, Gtk::PACK_SHRINK);
   directory_and_notebook_panes.pack2(notebook_vbox, Gtk::SHRINK);
@@ -66,7 +67,7 @@ Window::Window() : box(Gtk::ORIENTATION_VERTICAL), notebook(directories), compil
   box.pack_end(vpaned);
   show_all_children();
 
-  directories.on_row_activated=[this](const std::string &file) {
+  Singleton::directories()->on_row_activated=[this](const std::string &file) {
     notebook.open(file);
   };
 
@@ -122,7 +123,7 @@ Window::Window() : box(Gtk::ORIENTATION_VERTICAL), notebook(directories), compil
       if(auto menu_item=dynamic_cast<Gtk::MenuItem*>(menu.ui_manager->get_widget("/MenuBar/SourceMenu/SourceFindDocumentation")))
         menu_item->set_sensitive((bool)notebook.get_current_view()->get_token_data);
     
-      directories.select(notebook.get_current_view()->file_path);
+      Singleton::directories()->select(notebook.get_current_view()->file_path);
       
       if(auto source_view=dynamic_cast<Source::ClangView*>(notebook.get_current_view())) {
         if(source_view->reparse_needed) {
@@ -154,7 +155,7 @@ Window::Window() : box(Gtk::ORIENTATION_VERTICAL), notebook(directories), compil
   about.set_comments("This is an open source IDE with high-end features to make your programming experience juicy");
   about.set_license_type(Gtk::License::LICENSE_MIT_X11);
   about.set_transient_for(*this);
-  DEBUG("end");
+  JDEBUG("end");
 } // Window constructor
 
 void Window::configure() {
@@ -171,24 +172,93 @@ void Window::create_menu() {
     hide();
   });
   menu.action_group->add(Gtk::Action::create("FileNewFile", "New File"), Gtk::AccelKey(menu.key_map["new_file"]), [this]() {
-    new_file_dialog();
+      boost::filesystem::path path = Dialog::new_file();
+      if(path!="") {
+        if(boost::filesystem::exists(path)) {
+          Singleton::terminal()->print("Error: "+path.string()+" already exists.\n");
+        }
+        else {
+          if(juci::filesystem::write(path)) {
+            if(Singleton::directories()->current_path!="")
+              Singleton::directories()->update();
+            notebook.open(path.string());
+            Singleton::terminal()->print("New file "+path.string()+" created.\n");
+          }
+          else
+            Singleton::terminal()->print("Error: could not create new file "+path.string()+".\n");
+        }
+      }
   });
   menu.action_group->add(Gtk::Action::create("FileNewFolder", "New Folder"), Gtk::AccelKey(menu.key_map["new_folder"]), [this]() {
-    new_folder_dialog();
+    auto time_now=std::chrono::system_clock::to_time_t(std::chrono::system_clock::now());
+      boost::filesystem::path path = Dialog::new_folder();
+      if(path!="" && boost::filesystem::exists(path)) {
+        if(boost::filesystem::last_write_time(path)>=time_now) {
+          if(Singleton::directories()->current_path!="")
+            Singleton::directories()->update();
+          Singleton::terminal()->print("New folder "+path.string()+" created.\n");
+        }
+        else
+          Singleton::terminal()->print("Error: "+path.string()+" already exists.\n");
+      }
+      Singleton::directories()->select(path);
   });
   menu.action_group->add(Gtk::Action::create("FileNewProject", "New Project"));
   menu.action_group->add(Gtk::Action::create("FileNewProjectCpp", "C++"), [this]() {
-    new_cpp_project_dialog();
+      boost::filesystem::path project_path = Dialog::new_folder();
+      if(project_path=="")
+        return;
+      auto project_name=project_path.filename().string();
+      for(size_t c=0;c<project_name.size();c++) {
+        if(project_name[c]==' ')
+          project_name[c]='_';
+      }
+      auto cmakelists_path=project_path;
+      cmakelists_path+="/CMakeLists.txt";
+      auto cpp_main_path=project_path;
+      cpp_main_path+="/main.cpp";
+      if(boost::filesystem::exists(cmakelists_path)) {
+        Singleton::terminal()->print("Error: "+cmakelists_path.string()+" already exists.\n");
+        return;
+      }
+      if(boost::filesystem::exists(cpp_main_path)) {
+        Singleton::terminal()->print("Error: "+cpp_main_path.string()+" already exists.\n");
+        return;
+      }
+      std::string cmakelists="cmake_minimum_required(VERSION 2.8)\n\nproject("+project_name+")\n\nset(CMAKE_CXX_FLAGS \"${CMAKE_CXX_FLAGS} -std=c++1y -Wall\")\n\nadd_executable("+project_name+" main.cpp)\n";
+      std::string cpp_main="#include <iostream>\n\nusing namespace std;\n\nint main() {\n  cout << \"Hello World!\" << endl;\n\n  return 0;\n}\n";
+      if(juci::filesystem::write(cmakelists_path, cmakelists) && juci::filesystem::write(cpp_main_path, cpp_main)) {
+        Singleton::directories()->open(project_path);
+        notebook.open(cpp_main_path);
+        Singleton::terminal()->print("C++ project "+project_name+" created.\n");
+      }
+      else
+        Singleton::terminal()->print("Error: Could not create project "+project_path.string()+"\n");
   });
   menu.action_group->add(Gtk::Action::create("FileOpenFile", "Open File"), Gtk::AccelKey(menu.key_map["open_file"]), [this]() {
-    open_file_dialog();
+      notebook.open(Dialog::select_file());
   });
   menu.action_group->add(Gtk::Action::create("FileOpenFolder", "Open Folder"), Gtk::AccelKey(menu.key_map["open_folder"]), [this]() {
-    open_folder_dialog();
+    auto path = Dialog::select_folder();
+    if (path!="" && boost::filesystem::exists(path))
+      Singleton::directories()->open(path);
   });
   menu.action_group->add(Gtk::Action::create("FileSaveAs", "Save As"), Gtk::AccelKey(menu.key_map["save_as"]), [this]() {
-    save_file_dialog();
-  });
+    auto path = Dialog::save_file();
+    if(path!="") {
+      std::ofstream file(path);
+      if(file) {
+        file << notebook.get_current_view()->get_buffer()->get_text();
+        file.close();
+        if(Singleton::directories()->current_path!="")
+          Singleton::directories()->update();
+        notebook.open(path);
+        Singleton::terminal()->print("File saved to: " + notebook.get_current_view()->file_path.string()+"\n");
+      }
+      else
+        Singleton::terminal()->print("Error saving file\n");
+    }
+});
   menu.action_group->add(Gtk::Action::create("Preferences", "Preferences..."), Gtk::AccelKey(menu.key_map["preferences"]), [this]() {
     notebook.open(Singleton::config_dir()+"config.json");
   });
@@ -249,9 +319,6 @@ void Window::create_menu() {
       }
     }
   });
-  menu.action_group->add(Gtk::Action::create("EditSetTab", "Set Tab in Current Buffer"), Gtk::AccelKey(menu.key_map["edit_set_tab"]), [this]() {
-    set_tab_entry();
-  });
 
   menu.action_group->add(Gtk::Action::create("SourceSpellCheck", "Spell Check"));
   menu.action_group->add(Gtk::Action::create("SourceSpellCheckBuffer", "Spell Check Buffer"), Gtk::AccelKey(menu.key_map["source_spellcheck"]), [this]() {
@@ -265,6 +332,13 @@ void Window::create_menu() {
   menu.action_group->add(Gtk::Action::create("SourceSpellCheckNextError", "Go to next Spelling Error"), Gtk::AccelKey(menu.key_map["source_spellcheck_next_error"]), [this]() {
     if(notebook.get_current_page()!=-1)
         notebook.get_current_view()->goto_next_spellcheck_error();
+  });
+  menu.action_group->add(Gtk::Action::create("SourceIndentation", "Indentation"));
+  menu.action_group->add(Gtk::Action::create("SourceIndentationSetBufferTab", "Set Current Buffer Tab"), Gtk::AccelKey(menu.key_map["source_indentation_set_buffer_tab"]), [this]() {
+    set_tab_entry();
+  });
+  menu.action_group->add(Gtk::Action::create("SourceIndentationAutoIndentBuffer", "Auto-Indent Current Buffer"), Gtk::AccelKey(menu.key_map["source_indentation_auto_indent_buffer"]), [this]() {
+    Singleton::terminal()->print("Auto-Indent Current Buffer will soon be implemented.\n");
   });
   menu.action_group->add(Gtk::Action::create("SourceGotoLine", "Go to Line"), Gtk::AccelKey(menu.key_map["source_goto_line"]), [this]() {
     goto_line_entry();
@@ -428,8 +502,9 @@ void Window::create_menu() {
             run_path=notebook.get_current_view()->file_path.parent_path();
         }
         else
-          run_path=directories.current_path;
+          run_path=Singleton::directories()->current_path;
         Singleton::terminal()->async_print("Running: "+content+'\n');
+
         Singleton::terminal()->async_execute(content, run_path, [this, content](int exit_code){
           Singleton::terminal()->async_print(content+" returned: "+std::to_string(exit_code)+'\n');
         });
@@ -526,178 +601,6 @@ void Window::hide() {
   }
   Singleton::terminal()->kill_async_executes();
   Gtk::Window::hide();
-}
-
-void Window::new_file_dialog() {
-  Gtk::FileChooserDialog dialog("Please create a new file", Gtk::FILE_CHOOSER_ACTION_SAVE);
-  if(directories.current_path!="")
-    gtk_file_chooser_set_current_folder((GtkFileChooser*)dialog.gobj(), directories.current_path.string().c_str());
-  else
-    gtk_file_chooser_set_current_folder((GtkFileChooser*)dialog.gobj(), boost::filesystem::current_path().string().c_str());
-  dialog.set_transient_for(*this);
-  dialog.set_position(Gtk::WindowPosition::WIN_POS_CENTER_ALWAYS);
-  dialog.add_button("Cancel", Gtk::RESPONSE_CANCEL);
-  dialog.add_button("Save", Gtk::RESPONSE_OK);
-
-  int result = dialog.run();
-  if(result==Gtk::RESPONSE_OK) {
-    boost::filesystem::path path = dialog.get_filename();
-    if(path!="") {
-      if(boost::filesystem::exists(path)) {
-        Singleton::terminal()->print("Error: "+path.string()+" already exists.\n");
-      }
-      else {
-        if(juci::filesystem::write(path)) {
-          if(directories.current_path!="")
-            directories.update();
-          notebook.open(path.string());
-          Singleton::terminal()->print("New file "+path.string()+" created.\n");
-        }
-        else
-          Singleton::terminal()->print("Error: could not create new file "+path.string()+".\n");
-      }
-    }
-  }
-}
-
-void Window::new_folder_dialog() {
-  auto time_now=std::chrono::system_clock::to_time_t(std::chrono::system_clock::now());
-  Gtk::FileChooserDialog dialog("Please create a new folder", Gtk::FILE_CHOOSER_ACTION_CREATE_FOLDER);
-  if(directories.current_path!="")
-    gtk_file_chooser_set_current_folder((GtkFileChooser*)dialog.gobj(), directories.current_path.string().c_str());
-  else
-    gtk_file_chooser_set_current_folder((GtkFileChooser*)dialog.gobj(), boost::filesystem::current_path().string().c_str());
-  dialog.set_transient_for(*this);
-  dialog.set_position(Gtk::WindowPosition::WIN_POS_CENTER_ALWAYS);
-  dialog.add_button("Cancel", Gtk::RESPONSE_CANCEL);
-  dialog.add_button("Create", Gtk::RESPONSE_OK);
-
-  int result = dialog.run();
-  if(result==Gtk::RESPONSE_OK) {
-    boost::filesystem::path path=dialog.get_filename();
-    if(boost::filesystem::last_write_time(path)>=time_now) {
-      if(directories.current_path!="")
-        directories.update();
-      Singleton::terminal()->print("New folder "+path.string()+" created.\n");
-    }
-    else
-      Singleton::terminal()->print("Error: "+path.string()+" already exists.\n");
-    directories.select(path);
-  }
-}
-
-void Window::new_cpp_project_dialog() {
-  Gtk::FileChooserDialog dialog("Please create and/or choose a folder", Gtk::FILE_CHOOSER_ACTION_CREATE_FOLDER);
-  if(directories.current_path!="")
-    gtk_file_chooser_set_current_folder((GtkFileChooser*)dialog.gobj(), directories.current_path.string().c_str());
-  else
-    gtk_file_chooser_set_current_folder((GtkFileChooser*)dialog.gobj(), boost::filesystem::current_path().string().c_str());
-  dialog.set_transient_for(*this);
-  dialog.set_position(Gtk::WindowPosition::WIN_POS_CENTER_ALWAYS);
-  dialog.add_button("Cancel", Gtk::RESPONSE_CANCEL);
-  dialog.add_button("Create", Gtk::RESPONSE_OK);
-
-  int result = dialog.run();
-  if(result==Gtk::RESPONSE_OK) {
-    boost::filesystem::path project_path=dialog.get_filename();
-    auto project_name=project_path.filename().string();
-    for(size_t c=0;c<project_name.size();c++) {
-      if(project_name[c]==' ')
-        project_name[c]='_';
-    }
-    auto cmakelists_path=project_path;
-    cmakelists_path+="/CMakeLists.txt";
-    auto cpp_main_path=project_path;
-    cpp_main_path+="/main.cpp";
-    if(boost::filesystem::exists(cmakelists_path)) {
-      Singleton::terminal()->print("Error: "+cmakelists_path.string()+" already exists.\n");
-      return;
-    }
-    if(boost::filesystem::exists(cpp_main_path)) {
-      Singleton::terminal()->print("Error: "+cpp_main_path.string()+" already exists.\n");
-      return;
-    }
-    auto tab_char=Singleton::Config::source()->default_tab_char;
-    auto tab_size=Singleton::Config::source()->default_tab_size;
-    std::string tab;
-    for(unsigned c=0;c<tab_size;c++)
-      tab+=tab_char;
-    std::string cmakelists="cmake_minimum_required(VERSION 2.8)\n\nproject("+project_name+")\n\nset(CMAKE_CXX_FLAGS \"${CMAKE_CXX_FLAGS} -std=c++1y -Wall\")\n\nadd_executable("+project_name+" main.cpp)\n";
-    std::string cpp_main="#include <iostream>\n\nusing namespace std;\n\nint main() {\n"+tab+"cout << \"Hello World!\" << endl;\n\n"+tab+"return 0;\n}\n";
-    if(juci::filesystem::write(cmakelists_path, cmakelists) && juci::filesystem::write(cpp_main_path, cpp_main)) {
-      directories.open(project_path);
-      notebook.open(cpp_main_path);
-      Singleton::terminal()->print("C++ project "+project_name+" created.\n");
-    }
-    else
-      Singleton::terminal()->print("Error: Could not create project "+project_path.string()+"\n");
-  }
-}
-
-void Window::open_folder_dialog() {
-  Gtk::FileChooserDialog dialog("Please choose a folder", Gtk::FILE_CHOOSER_ACTION_SELECT_FOLDER);
-  if(directories.current_path!="")
-    gtk_file_chooser_set_current_folder((GtkFileChooser*)dialog.gobj(), directories.current_path.string().c_str());
-  else
-    gtk_file_chooser_set_current_folder((GtkFileChooser*)dialog.gobj(), boost::filesystem::current_path().string().c_str());
-  dialog.set_transient_for(*this);
-  dialog.set_position(Gtk::WindowPosition::WIN_POS_CENTER_ALWAYS);
-  dialog.add_button("Cancel", Gtk::RESPONSE_CANCEL);
-  dialog.add_button("Open", Gtk::RESPONSE_OK);
-
-  int result = dialog.run();
-
-  if(result==Gtk::RESPONSE_OK) {
-    std::string project_path=dialog.get_filename();
-    directories.open(project_path);
-  }
-}
-
-void Window::open_file_dialog() {
-  Gtk::FileChooserDialog dialog("Please choose a file", Gtk::FILE_CHOOSER_ACTION_OPEN);
-  if(directories.current_path!="")
-    gtk_file_chooser_set_current_folder((GtkFileChooser*)dialog.gobj(), directories.current_path.string().c_str());
-  else
-    gtk_file_chooser_set_current_folder((GtkFileChooser*)dialog.gobj(), boost::filesystem::current_path().string().c_str());
-  dialog.set_transient_for(*this);
-  dialog.set_position(Gtk::WindowPosition::WIN_POS_CENTER_ALWAYS);
-  dialog.add_button("Cancel", Gtk::RESPONSE_CANCEL);
-  dialog.add_button("Open", Gtk::RESPONSE_OK);
-
-  int result = dialog.run();
-
-  if(result==Gtk::RESPONSE_OK) {
-    std::string path = dialog.get_filename();
-    notebook.open(path);
-  }
-}
-
-void Window::save_file_dialog() {
-  if(notebook.get_current_page()==-1)
-    return;
-  Gtk::FileChooserDialog dialog(*this, "Please choose a file", Gtk::FILE_CHOOSER_ACTION_SAVE);
-  gtk_file_chooser_set_filename((GtkFileChooser*)dialog.gobj(), notebook.get_current_view()->file_path.string().c_str());
-  dialog.set_position(Gtk::WindowPosition::WIN_POS_CENTER_ALWAYS);
-  dialog.add_button("Cancel", Gtk::RESPONSE_CANCEL);
-  dialog.add_button("Save", Gtk::RESPONSE_OK);
-
-  int result = dialog.run();
-  if(result==Gtk::RESPONSE_OK) {
-    auto path = dialog.get_filename();
-    if(path.size()>0) {
-      std::ofstream file(path);
-      if(file) {
-        file << notebook.get_current_view()->get_buffer()->get_text();
-        file.close();
-        if(directories.current_path!="")
-          directories.update();
-        notebook.open(path);
-        Singleton::terminal()->print("File saved to: " + notebook.get_current_view()->file_path.string()+"\n");
-      }
-      else
-        Singleton::terminal()->print("Error saving file\n");
-    }
-  }
 }
 
 void Window::search_and_replace_entry() {

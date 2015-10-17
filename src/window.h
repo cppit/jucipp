@@ -11,7 +11,6 @@
 class Window : public Gtk::Window {
 public:
   Window();
-  Directories directories;
   Notebook notebook;
   class Config {
   public:
@@ -42,12 +41,6 @@ private:
   void configure();
   void create_menu();
   void hide();
-  void new_file_dialog();
-  void new_folder_dialog();
-  void new_cpp_project_dialog();
-  void open_folder_dialog();
-  void open_file_dialog();
-  void save_file_dialog();
   void search_and_replace_entry();
   void set_tab_entry();
   void goto_line_entry();
