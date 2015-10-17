@@ -1,4 +1,5 @@
 #include "sourcefile.h"
+#include "singletons.h"
 #include <fstream>
 #include <sstream>
 
@@ -28,6 +29,7 @@ std::string juci::filesystem::get_home_folder() {
   if((status.permissions() & 0222)>=2) {
     return home;
   } else {
+    Singleton::terminal()->print("Invalid permissions. Cannot write in " + home + "\n");
     throw new std::exception;
   }
 }
