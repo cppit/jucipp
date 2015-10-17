@@ -89,19 +89,17 @@ set(source_files juci.h
 
 if(MSYS)
   list(APPEND source_files terminal_win.cc)
-    list(APPEND source_files dialogs_win.cc)
-  set(DIALOGS_INCLUDE_DIRS   "${CMAKE_SOURCE_DIR}/WIN-packages/")
+  list(APPEND source_files dialogs_win.cc)
+  set(DIALOGS_INCLUDE_DIRS "${CMAKE_SOURCE_DIR}/WIN-packages/")
   # if (64 bit) 
   set(DIALOGS_LIBRARIES "${CMAKE_SOURCE_DIR}/WIN-packages/x64/libdialogs.dll")
   message(${DIALOGS_LIBRARIES})
   # else
   # set(DIALOGS_LIBRARIES "${CMAKE_SOURCE_DIR}/WIN-packages/x32/libdialogs.dll")
   #TODO figure out how to do this....
-  message("MSYS detected")
 else()
   list(APPEND source_files terminal.cc)
   list(APPEND source_files dialogs.cc)
-  message("UNIX detected")
 endif()
 
 if(${validation})

@@ -46,6 +46,6 @@ std::string Dialog::select_file() {
 std::string Dialog::save_file() {
   return open_dialog("Please choose a file",
             {std::make_pair("Cancel", Gtk::RESPONSE_CANCEL),std::make_pair("Save", Gtk::RESPONSE_OK)},
-            Gtk::FILE_CHOOSER_ACTION_OPEN);
+            Gtk::FILE_CHOOSER_ACTION_SAVE);
 }
 

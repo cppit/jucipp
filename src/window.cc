@@ -186,7 +186,7 @@ void Window::create_menu() {
   menu.action_group->add(Gtk::Action::create("FileNewFolder", "New Folder"), Gtk::AccelKey(menu.key_map["new_folder"]), [this]() {
     auto time_now=std::chrono::system_clock::to_time_t(std::chrono::system_clock::now());
       boost::filesystem::path path = Dialog::new_folder();
-      if(boost::filesystem::exists(path)) {
+      if(path!="" && boost::filesystem::exists(path)) {
         if(boost::filesystem::last_write_time(path)>=time_now) {
           if(Singleton::directories()->current_path!="")
             Singleton::directories()->update();
@@ -194,14 +194,14 @@ void Window::create_menu() {
         }
         else
           Singleton::terminal()->print("Error: "+path.string()+" already exists.\n");
-      } else {
-        Singleton::terminal()->print("Dialog was closed \n");
       }
       Singleton::directories()->select(path);
   });
   menu.action_group->add(Gtk::Action::create("FileNewProject", "New Project"));
   menu.action_group->add(Gtk::Action::create("FileNewProjectCpp", "C++"), [this]() {
       boost::filesystem::path project_path = Dialog::new_folder();
+      if(project_path=="")
+        return;
       auto project_name=project_path.filename().string();
       for(size_t c=0;c<project_name.size();c++) {
         if(project_name[c]==' ')
@@ -234,14 +234,12 @@ void Window::create_menu() {
   });
   menu.action_group->add(Gtk::Action::create("FileOpenFolder", "Open Folder"), Gtk::AccelKey(menu.key_map["open_folder"]), [this]() {
     auto path = Dialog::select_folder();
-    if (boost::filesystem::exists(path))
+    if (path!="" && boost::filesystem::exists(path))
       Singleton::directories()->open(path);
-    else
-      Singleton::terminal()->print("Dialog was closed \n");
   });
   menu.action_group->add(Gtk::Action::create("FileSaveAs", "Save As"), Gtk::AccelKey(menu.key_map["save_as"]), [this]() {
     auto path = Dialog::save_file();
-    if(path.size()>0) {
+    if(path!="") {
       std::ofstream file(path);
       if(file) {
         file << notebook.get_current_view()->get_buffer()->get_text();
