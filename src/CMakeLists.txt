@@ -37,8 +37,8 @@ set(source_files juci.h
     selectiondialog.cc
     config.h
     config.cc
-    sourcefile.h
-    sourcefile.cc
+    filesystem.h
+    filesystem.cc
     window.cc
     window.h
     dialogs.h

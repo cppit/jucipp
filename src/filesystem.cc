@@ -1,7 +1,8 @@
-#include "sourcefile.h"
+#include "filesystem.h"
 #include "singletons.h"
 #include <fstream>
 #include <sstream>
+#include <iostream>
 
 const size_t buffer_size=131072;
 

@@ -3,8 +3,6 @@
 #include "logging.h"
 #include <exception>
 #include "files.h"
-#include "sourcefile.h"
-#include "singletons.h"
 #include <iostream>
 
 using namespace std; //TODO: remove

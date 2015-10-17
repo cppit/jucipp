@@ -1,7 +1,6 @@
 #include "window.h"
 #include "logging.h"
 #include "singletons.h"
-#include "sourcefile.h"
 #include "config.h"
 //#include "api.h"
 #include "dialogs.h"

@@ -1,9 +1,8 @@
+#include "singletons.h"
 #include "source.h"
-#include "sourcefile.h"
 #include <boost/property_tree/json_parser.hpp>
 #include "logging.h"
 #include <algorithm>
-#include "singletons.h"
 #include <gtksourceview/gtksource.h>
 #include <iostream>
 

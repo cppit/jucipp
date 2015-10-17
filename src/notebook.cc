@@ -1,7 +1,6 @@
+#include "singletons.h"
 #include "notebook.h"
 #include "logging.h"
-#include "sourcefile.h"
-#include "singletons.h"
 #include <fstream>
 #include <regex>
 #include "cmake.h"

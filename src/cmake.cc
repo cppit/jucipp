@@ -1,7 +1,6 @@
 #include "cmake.h"
-#include "sourcefile.h"
-#include <regex>
 #include "singletons.h"
+#include <regex>
 
 #include <iostream> //TODO: remove
 using namespace std; //TODO: remove
