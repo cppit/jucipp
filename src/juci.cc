@@ -8,7 +8,7 @@ void init_logging() {
   boost::log::add_common_attributes();
   boost::log::add_file_log(boost::log::keywords::file_name = Singleton::log_dir() + "juci.log",
                boost::log::keywords::auto_flush = true);
-  INFO("Logging initalized");
+  JINFO("Logging initalized");
 }
 
 int app::on_command_line(const Glib::RefPtr<Gio::ApplicationCommandLine> &cmd) {
@@ -44,7 +44,7 @@ void app::on_activate() {
   bool first_directory=true;
   for(auto &directory: directories) {
     if(first_directory) {
-      window->directories.open(directory);
+      Singleton::directories()->open(directory);
       first_directory=false;
     }
     else {

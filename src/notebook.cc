@@ -27,7 +27,7 @@ namespace sigc {
 #endif
 }
 
-Notebook::Notebook(Directories &directories) : Gtk::Notebook(), directories(directories) {
+Notebook::Notebook() : Gtk::Notebook() {
   Gsv::init();
 }
 
@@ -52,7 +52,7 @@ Source::View* Notebook::get_current_view() {
 }
 
 void Notebook::open(const boost::filesystem::path &file_path) {
-  DEBUG("start");
+  JDEBUG("start");
   for(int c=0;c<size();c++) {
     if(file_path==get_view(c)->file_path) {
       set_current_page(c);
@@ -71,6 +71,7 @@ void Notebook::open(const boost::filesystem::path &file_path) {
   auto language=Source::guess_language(file_path);
   if(language && (language->get_id()=="chdr" || language->get_id()=="cpphdr" || language->get_id()=="c" || language->get_id()=="cpp" || language->get_id()=="objc")) {
     boost::filesystem::path project_path;
+    auto directories = *Singleton::directories();
     if(directories.cmake && directories.cmake->project_path!="" && file_path.generic_string().substr(0, directories.cmake->project_path.generic_string().size()+1)==directories.cmake->project_path.generic_string()+'/') {
       project_path=directories.cmake->project_path;
       if(boost::filesystem::exists(project_path.string()+"/CMakeLists.txt") && !boost::filesystem::exists(project_path.string()+"/compile_commands.json"))
@@ -137,7 +138,7 @@ void Notebook::open(const boost::filesystem::path &file_path) {
       set_tab_label_text(*(get_nth_page(page)), title);
   });
   
-  DEBUG("end");
+  JDEBUG("end");
 }
 
 void Notebook::configure(int view_nr) {
@@ -155,9 +156,9 @@ void Notebook::configure(int view_nr) {
 }
 
 bool Notebook::save(int page, bool reparse_needed) {
-  DEBUG("start");
+  JDEBUG("start");
   if(page>=size()) {
-    DEBUG("end false");
+    JDEBUG("end false");
     return false;
   }
   auto view=get_view(page);
@@ -180,6 +181,7 @@ bool Notebook::save(int page, bool reparse_needed) {
       //If CMakeLists.txt have been modified:
       //TODO: recreate cmake even without directories open?
       if(view->file_path.filename()=="CMakeLists.txt") {
+        auto directories = *Singleton::directories();
         if(directories.cmake && directories.cmake->project_path!="" && view->file_path.generic_string().substr(0, directories.cmake->project_path.generic_string().size()+1)==directories.cmake->project_path.generic_string()+'/' && CMake::create_compile_commands(directories.cmake->project_path)) {
           for(auto source_view: source_views) {
             if(auto source_clang_view=dynamic_cast<Source::ClangView*>(source_view)) {
@@ -193,12 +195,12 @@ bool Notebook::save(int page, bool reparse_needed) {
           }
         }
       }
-      DEBUG("end true");
+      JDEBUG("end true");
       return true;
     }
     Singleton::terminal()->print("Error: could not save file " +view->file_path.string()+"\n");
   }
-  DEBUG("end false");
+  JDEBUG("end false");
   return false;
 }
 
@@ -209,11 +211,11 @@ bool Notebook::save_current() {
 }
 
 bool Notebook::close_current_page() {
-  DEBUG("start");
+  JDEBUG("start");
   if (get_current_page()!=-1) {
     if(get_current_view()->get_buffer()->get_modified()){
       if(!save_modified_dialog()) {
-        DEBUG("end false");
+        JDEBUG("end false");
         return false;
       }
     }
@@ -232,7 +234,7 @@ bool Notebook::close_current_page() {
     scrolled_windows.erase(scrolled_windows.begin()+index);
     hboxes.erase(hboxes.begin()+index);
   }
-  DEBUG("end true");
+  JDEBUG("end true");
   return true;
 }
 

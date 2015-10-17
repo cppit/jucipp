@@ -1257,14 +1257,13 @@ clang::Index Source::ClangViewParse::clang_index(0, 0);
 
 Source::ClangViewParse::ClangViewParse(const boost::filesystem::path &file_path, const boost::filesystem::path& project_path, Glib::RefPtr<Gsv::Language> language):
 Source::View(file_path, language), project_path(project_path), parse_error(false) {
-  DEBUG("start");
-  
   auto tag_table=get_buffer()->get_tag_table();
   for (auto &item : Singleton::Config::source()->clang_types) {
     if(!tag_table->lookup(item.second)) {
       get_buffer()->create_tag(item.second);
     }
   }
+
   configure();
   
   parsing_in_progress=Singleton::terminal()->print_in_progress("Parsing "+file_path.string());
@@ -1306,8 +1305,6 @@ Source::View(file_path, language), project_path(project_path), parse_error(false
     type_tooltips.hide();
     diagnostic_tooltips.hide();
   });
-  
-  DEBUG("end");
 }
 
 void Source::ClangViewParse::configure() {
@@ -1331,7 +1328,7 @@ void Source::ClangViewParse::configure() {
         //   //    if (style->property_line_background_set()) tag->property_line_background() = style->property_line_background();
         //   // if (style->property_underline_set()) tag->property_underline() = style->property_underline();
       } else
-        INFO("Style " + item.second + " not found in " + scheme->get_name());
+        JINFO("Style " + item.second + " not found in " + scheme->get_name());
     }
   }
   

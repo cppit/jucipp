@@ -12,7 +12,7 @@
 
 class Notebook : public Gtk::Notebook {
 public:
-  Notebook(Directories &directories);
+  Notebook();
   Source::View* get_view(int page);
   size_t get_index(int page);
   int size();
@@ -25,7 +25,6 @@ public:
       
 private:
   bool save_modified_dialog();
-  Directories &directories;
   std::vector<Source::View*> source_views; //Is NOT freed in destructor, this is intended for quick program exit.
   std::vector<std::unique_ptr<Gtk::Widget> > source_maps;
   std::vector<std::unique_ptr<Gtk::ScrolledWindow> > scrolled_windows;
