@@ -3,7 +3,7 @@
 #include <vector>
 #include <string>
 #include <boost/filesystem.hpp>
-#include "gtkmm.h"
+#include <gtkmm.h>
 
 namespace juci {
   class filesystem {

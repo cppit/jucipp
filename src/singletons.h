@@ -1,17 +1,15 @@
-
 #ifndef JUCI_SINGLETONS_H_
 #define JUCI_SINGLETONS_H_
 
+#include <gtkmm.h>
+
+#include "filesystem.h"
 #include "source.h"
 #include "window.h"
 #include "directories.h"
 #include "terminal.h"
 #include "notebook.h"
 #include "menu.h"
-#include <gtkmm.h>
-#include <string>
-#include "filesystem.h"
-#include <iostream>
 
 class Singleton {
 public:

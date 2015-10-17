@@ -1,10 +1,9 @@
 #include "juci.h"
 #include "singletons.h"
-#include <iostream>
 
 using namespace std; //TODO: remove
 
-void init_logging() {
+void app::init_logging() {
   boost::log::add_common_attributes();
   boost::log::add_file_log(boost::log::keywords::file_name = Singleton::log_dir() + "juci.log",
                boost::log::keywords::auto_flush = true);
@@ -69,10 +68,9 @@ void app::on_activate() {
 }
 
 app::app() : Gtk::Application("no.sout.juci", Gio::APPLICATION_NON_UNIQUE | Gio::APPLICATION_HANDLES_COMMAND_LINE) {
-  
+  init_logging();
 }
 
 int main(int argc, char *argv[]) {
-  init_logging();
   return app().run(argc, argv);
 }

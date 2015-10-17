@@ -1,8 +1,9 @@
-#include "filesystem.h"
-#include "singletons.h"
 #include <fstream>
-#include <sstream>
 #include <iostream>
+#include <sstream>
+
+#include "filesystem.h"
+#include "logging.h"
 
 const size_t buffer_size=131072;
 

@@ -14,6 +14,7 @@ class app : public Gtk::Application {
   std::unique_ptr<Window> window;
   std::vector<boost::filesystem::path> directories;
   std::vector<boost::filesystem::path> files;
+  void init_logging();
 };
 
 #endif // JUCI_JUCI_H_
