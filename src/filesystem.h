@@ -5,13 +5,12 @@
 #include <boost/filesystem.hpp>
 #include <gtkmm.h>
 
-namespace juci {
-  class filesystem {
-  public:
-    static std::string read(const std::string &path);
-    static std::string read(const boost::filesystem::path &path) { return read(path.string()); }
-    static int read(const std::string &path, Glib::RefPtr<Gtk::TextBuffer> text_buffer);
-    static int read(const boost::filesystem::path &path, Glib::RefPtr<Gtk::TextBuffer> text_buffer) { return read(path.string(), text_buffer); }
+enum filesystem_options {
+  DIRS = 1,
+  FILES = 2,
+  ALL = DIRS | FILES,
+  SORTED = 4
+};
 
 class filesystem {
 public:
@@ -32,6 +31,11 @@ public:
   static bool write(const boost::filesystem::path &path) { return write(path, ""); };
   static bool write(const std::string &path, Glib::RefPtr<Gtk::TextBuffer> text_buffer);
   static bool write(const boost::filesystem::path &path, Glib::RefPtr<Gtk::TextBuffer> text_buffer) { return write(path.string(), text_buffer); }
+  static std::vector<boost::filesystem::path> get_directory_content(const boost::filesystem::path &path, int filter);
+  static std::vector<boost::filesystem::path> dirs(const boost::filesystem::path &path);
+  static std::vector<boost::filesystem::path> files(const boost::filesystem::path &path);
+  static std::vector<boost::filesystem::path> contents(const boost::filesystem::path &path);
+  static std::vector<boost::filesystem::path> seperate_contents(const boost::filesystem::path &path);
 
   static std::string get_home_folder();
   static std::string get_tmp_folder();
