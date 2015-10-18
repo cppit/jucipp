@@ -7,7 +7,7 @@ using namespace std; //TODO: remove
 
 CMake::CMake(const boost::filesystem::path &path) {
   const auto find_cmake_project=[this](const boost::filesystem::path &cmake_path) {
-    for(auto &line: juci::filesystem::read_lines(cmake_path)) {
+    for(auto &line: filesystem::read_lines(cmake_path)) {
       const std::regex project_regex("^ *project *\\(.*$");
       std::smatch sm;
       if(std::regex_match(line, sm, project_regex)) {
@@ -49,7 +49,7 @@ bool CMake::create_compile_commands(const boost::filesystem::path &path) {
 #ifdef _WIN32 //Temporary fix to MSYS2's libclang
     auto compile_commands_path=path;
     compile_commands_path+="/compile_commands.json";
-    auto compile_commands_file=juci::filesystem::read(compile_commands_path);
+    auto compile_commands_file=filesystem::read(compile_commands_path);
     size_t pos=0;
     while((pos=compile_commands_file.find("-I/", pos))!=std::string::npos) {
       if(pos+3<compile_commands_file.size()) {
@@ -60,7 +60,7 @@ bool CMake::create_compile_commands(const boost::filesystem::path &path) {
       else
         break;
     }
-    juci::filesystem::write(compile_commands_path, compile_commands_file);
+    filesystem::write(compile_commands_path, compile_commands_file);
 #endif
     return true;
   }
@@ -69,7 +69,7 @@ bool CMake::create_compile_commands(const boost::filesystem::path &path) {
 
 void CMake::read_files() {
   for(auto &path: paths)
-    files.emplace_back(juci::filesystem::read(path));
+    files.emplace_back(filesystem::read(path));
 }
 
 void CMake::remove_tabs() {

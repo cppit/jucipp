@@ -159,7 +159,7 @@ bool Notebook::save(int page, bool reparse_needed) {
   }
   auto view=get_view(page);
   if (view->file_path != "" && view->get_buffer()->get_modified()) {
-    if(juci::filesystem::write(view->file_path, view->get_buffer())) {
+    if(filesystem::write(view->file_path, view->get_buffer())) {
       if(reparse_needed) {
         if(auto clang_view=dynamic_cast<Source::ClangView*>(view)) {
           if(clang_view->language->get_id()=="chdr" || clang_view->language->get_id()=="cpphdr") {

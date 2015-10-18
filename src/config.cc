@@ -29,8 +29,8 @@ void MainConfig::find_or_create_config_files() {
   for (auto &file : files) {
     auto path = boost::filesystem::path(Singleton::config_dir() + file);
     if (!boost::filesystem::is_regular_file(path)) {
-      if (file == "config.json") juci::filesystem::write(path, configjson);
-      if (file == "plugins.py") juci::filesystem::write(path, pluginspy);
+      if (file == "config.json") filesystem::write(path, configjson);
+      if (file == "plugins.py") filesystem::write(path, pluginspy);
     }
   }
   
@@ -38,15 +38,15 @@ void MainConfig::find_or_create_config_files() {
   boost::filesystem::path juci_style_path=Singleton::style_dir();
   juci_style_path+="juci-light.xml";
   if(!boost::filesystem::exists(juci_style_path))
-    juci::filesystem::write(juci_style_path, juci_light_style);
+    filesystem::write(juci_style_path, juci_light_style);
   juci_style_path=Singleton::style_dir();
   juci_style_path+="juci-dark.xml";
   if(!boost::filesystem::exists(juci_style_path))
-    juci::filesystem::write(juci_style_path, juci_dark_style);
+    filesystem::write(juci_style_path, juci_dark_style);
   juci_style_path=Singleton::style_dir();
   juci_style_path+="juci-dark-blue.xml";
   if(!boost::filesystem::exists(juci_style_path))
-    juci::filesystem::write(juci_style_path, juci_dark_blue_style);
+    filesystem::write(juci_style_path, juci_dark_blue_style);
 }
 
 void MainConfig::retrieve_config() {

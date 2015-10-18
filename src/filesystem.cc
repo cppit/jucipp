@@ -8,7 +8,7 @@
 const size_t buffer_size=131072;
 
 //Only use on small files
-std::string juci::filesystem::read(const std::string &path) {
+std::string filesystem::read(const std::string &path) {
   std::stringstream ss;
   std::ifstream input(path, std::ofstream::binary);
   if(input) {
@@ -26,7 +26,7 @@ std::string safe_get_env(const std::string &env) {
 /**
  * Returns home folder, empty on error
  */
-std::string juci::filesystem::get_home_folder() {
+std::string filesystem::get_home_folder() {
   auto home=safe_get_env("HOME");
   if(home.empty())
     home=safe_get_env("AppData");
@@ -43,7 +43,7 @@ std::string juci::filesystem::get_home_folder() {
 /**
  * Returns tmp folder, empty on error.
  */
-std::string juci::filesystem::get_tmp_folder() {
+std::string filesystem::get_tmp_folder() {
   boost::system::error_code code;
   auto path = boost::filesystem::temp_directory_path(code);
   if (code.value()!=0) {
@@ -52,7 +52,7 @@ std::string juci::filesystem::get_tmp_folder() {
   return path.string();
 }
 
-int juci::filesystem::read(const std::string &path, Glib::RefPtr<Gtk::TextBuffer> text_buffer) {
+int filesystem::read(const std::string &path, Glib::RefPtr<Gtk::TextBuffer> text_buffer) {
   std::ifstream input(path, std::ofstream::binary);
   
   if(input) {
@@ -97,7 +97,7 @@ int juci::filesystem::read(const std::string &path, Glib::RefPtr<Gtk::TextBuffer
   return 0;
 }
 
-int juci::filesystem::read_non_utf8(const std::string &path, Glib::RefPtr<Gtk::TextBuffer> text_buffer) {
+int filesystem::read_non_utf8(const std::string &path, Glib::RefPtr<Gtk::TextBuffer> text_buffer) {
   std::ifstream input(path, std::ofstream::binary);
   
   if(input) {
@@ -127,7 +127,7 @@ int juci::filesystem::read_non_utf8(const std::string &path, Glib::RefPtr<Gtk::T
 }
 
 //Only use on small files
-std::vector<std::string> juci::filesystem::read_lines(const std::string &path) {
+std::vector<std::string> filesystem::read_lines(const std::string &path) {
   std::vector<std::string> res;
   std::ifstream input(path, std::ofstream::binary);
   if (input) {
@@ -138,7 +138,7 @@ std::vector<std::string> juci::filesystem::read_lines(const std::string &path) {
 }
 
 //Only use on small files
-bool juci::filesystem::write(const std::string &path, const std::string &new_content) {
+bool filesystem::write(const std::string &path, const std::string &new_content) {
   std::ofstream output(path, std::ofstream::binary);
   if(output)
     output << new_content;
@@ -148,7 +148,7 @@ bool juci::filesystem::write(const std::string &path, const std::string &new_con
   return true;
 }
 
-bool juci::filesystem::write(const std::string &path, Glib::RefPtr<Gtk::TextBuffer> buffer) {
+bool filesystem::write(const std::string &path, Glib::RefPtr<Gtk::TextBuffer> buffer) {
   std::ofstream output(path, std::ofstream::binary);
   if(output) {
     auto start_iter=buffer->begin();

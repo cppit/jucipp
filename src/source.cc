@@ -85,11 +85,11 @@ AspellConfig* Source::View::spellcheck_config=NULL;
 Source::View::View(const boost::filesystem::path &file_path, const boost::filesystem::path &project_path, Glib::RefPtr<Gsv::Language> language): file_path(file_path), project_path(project_path), language(language) {
   get_source_buffer()->begin_not_undoable_action();
   if(language) {
-    if(juci::filesystem::read_non_utf8(file_path, get_buffer())==-1)
+    if(filesystem::read_non_utf8(file_path, get_buffer())==-1)
       Singleton::terminal()->print("Warning: "+file_path.string()+" is not a valid UTF-8 file. Saving might corrupt the file.\n");
   }
   else {
-    if(juci::filesystem::read(file_path, get_buffer())==-1)
+    if(filesystem::read(file_path, get_buffer())==-1)
       Singleton::terminal()->print("Error: "+file_path.string()+" is not a valid UTF-8 file.\n");
   }
   get_source_buffer()->end_not_undoable_action();

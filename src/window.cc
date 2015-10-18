@@ -177,7 +177,7 @@ void Window::create_menu() {
           Singleton::terminal()->print("Error: "+path.string()+" already exists.\n");
         }
         else {
-          if(juci::filesystem::write(path)) {
+          if(filesystem::write(path)) {
             if(Singleton::directories()->current_path!="")
               Singleton::directories()->update();
             notebook.open(path.string());
@@ -226,7 +226,7 @@ void Window::create_menu() {
       }
       std::string cmakelists="cmake_minimum_required(VERSION 2.8)\n\nproject("+project_name+")\n\nset(CMAKE_CXX_FLAGS \"${CMAKE_CXX_FLAGS} -std=c++1y -Wall\")\n\nadd_executable("+project_name+" main.cpp)\n";
       std::string cpp_main="#include <iostream>\n\nusing namespace std;\n\nint main() {\n  cout << \"Hello World!\" << endl;\n\n  return 0;\n}\n";
-      if(juci::filesystem::write(cmakelists_path, cmakelists) && juci::filesystem::write(cpp_main_path, cpp_main)) {
+      if(filesystem::write(cmakelists_path, cmakelists) && filesystem::write(cpp_main_path, cpp_main)) {
         Singleton::directories()->open(project_path);
         notebook.open(cpp_main_path);
         Singleton::terminal()->print("C++ project "+project_name+" created.\n");

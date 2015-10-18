@@ -41,10 +41,10 @@ Gtk::Label *Singleton::info() {
 
 std::string Singleton::create_config_path(const std::string &subfolder) {
   boost::filesystem::path home;
-  home = juci::filesystem::get_home_folder();
+  home = filesystem::get_home_folder();
   if(home.empty()) {
     Singleton::terminal()->print("Could not find/write to home directory. Using defaults, no settings will be saved.");
-    home = juci::filesystem::get_tmp_folder();
+    home = filesystem::get_tmp_folder();
     if(home.empty()) {
       std::string message("Please fix permissions of your home folder");
       std::cerr << message << std::endl;
