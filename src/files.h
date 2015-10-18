@@ -70,7 +70,7 @@ const std::string configjson =
 "        \"source_spellcheck_clear\": \"\",\n"
 "        \"source_spellcheck_next_error\": \"<primary><shift>e\",\n"
 "        \"source_indentation_set_buffer_tab\": \"\",\n"
-"        \"source_indentation_auto_indent_buffer\": \"\",\n"
+"        \"source_indentation_auto_indent_buffer\": \"<primary><shift>i\",\n"
 "        \"source_goto_line\": \"<primary>g\",\n"
 "        \"source_center_cursor\": \"<primary>l\",\n"
 "        \"source_goto_declaration\": \"<primary>d\",\n"

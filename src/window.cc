@@ -200,14 +200,13 @@ void Window::create_menu() {
         }
         else
           Singleton::terminal()->print("Error: "+path.string()+" already exists.\n");
+        Singleton::directories()->select(path);
       }
-      Singleton::directories()->select(path);
   });
   menu.action_group->add(Gtk::Action::create("FileNewProject", "New Project"));
   menu.action_group->add(Gtk::Action::create("FileNewProjectCpp", "C++"), [this]() {
-      boost::filesystem::path project_path = Dialog::new_folder();
-      if(project_path=="")
-        return;
+    boost::filesystem::path project_path = Dialog::new_folder();
+    if(project_path!="") {
       auto project_name=project_path.filename().string();
       for(size_t c=0;c<project_name.size();c++) {
         if(project_name[c]==' ')
@@ -234,9 +233,12 @@ void Window::create_menu() {
       }
       else
         Singleton::terminal()->print("Error: Could not create project "+project_path.string()+"\n");
+    }
   });
   menu.action_group->add(Gtk::Action::create("FileOpenFile", "Open File"), Gtk::AccelKey(menu.key_map["open_file"]), [this]() {
-      notebook.open(Dialog::select_file());
+    auto path=Dialog::select_file();
+    if(path!="")
+      notebook.open(path);
   });
   menu.action_group->add(Gtk::Action::create("FileOpenFolder", "Open Folder"), Gtk::AccelKey(menu.key_map["open_folder"]), [this]() {
     auto path = Dialog::select_folder();
