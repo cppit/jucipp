@@ -39,9 +39,8 @@ Gtk::Label *Singleton::info() {
   return info_.get();
 }
 
-std::string Singleton::create_config_path(const std::string &subfolder) {
-  boost::filesystem::path home;
-  home = filesystem::get_home_folder();
+boost::filesystem::path Singleton::create_config_path(const std::string &subfolder) {
+  auto home = filesystem::get_home_folder();
   if(home.empty()) {
     Singleton::terminal()->print("Could not find/write to home directory. Using defaults, no settings will be saved.");
     home = filesystem::get_tmp_folder();
@@ -53,11 +52,15 @@ std::string Singleton::create_config_path(const std::string &subfolder) {
     }
   }
   home /= subfolder;
-  return home.string();
+  return home;
 }
 
-std::string Singleton::config_dir() { return create_config_path(".juci/config"); }
-std::string Singleton::log_dir() { return create_config_path(".juci/log"); }
-std::string Singleton::style_dir() { return create_config_path(".juci/styles"); }
-
+boost::filesystem::path Singleton::config_dir() { return create_config_path(".juci/config"); }
+boost::filesystem::path Singleton::log_dir() { return create_config_path(".juci/log"); }
+boost::filesystem::path Singleton::style_dir() { return create_config_path(".juci/styles"); }
+std::string Singleton::config_json() {
+  auto conf_dir = Singleton::config_dir();
+  conf_dir /= "config.json"; // to ensure correct paths on windows
+  return conf_dir.string();
+}
 

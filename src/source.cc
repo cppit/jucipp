@@ -295,7 +295,7 @@ void Source::View::set_tab_char_and_size(char tab_char, unsigned tab_size) {
 void Source::View::configure() {
   //TODO: Move this to notebook? Might take up too much memory doing this for every tab.
   auto style_scheme_manager=Gsv::StyleSchemeManager::get_default();
-  style_scheme_manager->prepend_search_path(Singleton::style_dir());
+  style_scheme_manager->prepend_search_path(Singleton::style_dir().string());
   
   if(Singleton::Config::source()->style.size()>0) {
     auto scheme = style_scheme_manager->get_scheme(Singleton::Config::source()->style);

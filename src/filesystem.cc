@@ -26,7 +26,7 @@ std::string safe_get_env(const std::string &env) {
 /**
  * Returns home folder, empty on error
  */
-std::string filesystem::get_home_folder() {
+boost::filesystem::path filesystem::get_home_folder() {
   auto home=safe_get_env("HOME");
   if(home.empty())
     home=safe_get_env("AppData");
@@ -43,13 +43,13 @@ std::string filesystem::get_home_folder() {
 /**
  * Returns tmp folder, empty on error.
  */
-std::string filesystem::get_tmp_folder() {
+boost::filesystem::path filesystem::get_tmp_folder() {
   boost::system::error_code code;
   auto path = boost::filesystem::temp_directory_path(code);
   if (code.value()!=0) {
     return "";
   }
-  return path.string();
+  return path;
 }
 
 int filesystem::read(const std::string &path, Glib::RefPtr<Gtk::TextBuffer> text_buffer) {

@@ -5,7 +5,9 @@ using namespace std; //TODO: remove
 
 void app::init_logging() {
   boost::log::add_common_attributes();
-  boost::log::add_file_log(boost::log::keywords::file_name = Singleton::log_dir() + "juci.log",
+  auto log_dir = Singleton::log_dir();
+  log_dir /= "juci.log";
+  boost::log::add_file_log(boost::log::keywords::file_name = log_dir,
                boost::log::keywords::auto_flush = true);
   JINFO("Logging initalized");
 }

@@ -259,13 +259,13 @@ void Window::create_menu() {
     }
 });
   menu.action_group->add(Gtk::Action::create("Preferences", "Preferences..."), Gtk::AccelKey(menu.key_map["preferences"]), [this]() {
-    notebook.open(Singleton::config_dir()+"config.json");
+    notebook.open(Singleton::config_json());
   });
 
   menu.action_group->add(Gtk::Action::create("FileSave", "Save"), Gtk::AccelKey(menu.key_map["save"]), [this]() {
     if(notebook.save_current()) {
       if(notebook.get_current_page()!=-1) {
-        if(notebook.get_current_view()->file_path==Singleton::config_dir()+"config.json") {
+        if(notebook.get_current_view()->file_path==Singleton::config_json()) {
           configure();
           for(int c=0;c<notebook.size();c++) {
             notebook.get_view(c)->configure();

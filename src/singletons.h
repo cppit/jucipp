@@ -27,10 +27,11 @@ public:
     static std::unique_ptr<Directories::Config> directories_;
     static std::unique_ptr<Terminal::Config> terminal_;
   };
-  static std::string create_config_path(const std::string &subfolder);
-  static std::string config_dir();
-  static std::string log_dir();
-  static std::string style_dir();
+  static boost::filesystem::path create_config_path(const std::string &subfolder);
+  static boost::filesystem::path config_dir();
+  static boost::filesystem::path log_dir();
+  static boost::filesystem::path style_dir();
+  static std::string config_json();
   static Terminal *terminal();
   static Directories *directories();
   static Gtk::Label *status();
