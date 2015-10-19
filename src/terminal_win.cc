@@ -8,7 +8,7 @@
 #include <iostream> //TODO: remove
 using namespace std; //TODO: remove
 
-#define BUFSIZE 1024
+const size_t buffer_size=131072;
 
 HANDLE popen3(const std::string &command, const std::string &path, HANDLE *stdin_h, HANDLE *stdout_h, HANDLE *stderr_h) {
   HANDLE g_hChildStd_IN_Rd = NULL;
@@ -192,13 +192,14 @@ int Terminal::execute(const std::string &command, const boost::filesystem::path 
   }
   std::thread stderr_thread([this, stderr_h](){
     DWORD n;
-    CHAR buffer[BUFSIZE];
+    CHAR buffer[buffer_size];
     for (;;) {
-      BOOL bSuccess = ReadFile(stderr_h, buffer, BUFSIZE, &n, NULL);
+      BOOL bSuccess = ReadFile(stderr_h, buffer, static_cast<DWORD>(buffer_size), &n, NULL);
       if(!bSuccess || n == 0)
 	break;
 
       std::string message;
+      message.reserve(n);
       for(DWORD c=0;c<n;c++)
 	message+=buffer[c];
       async_print(message, true);
@@ -208,16 +209,75 @@ int Terminal::execute(const std::string &command, const boost::filesystem::path 
 
   std::thread stdout_thread([this, stdout_h](){
     DWORD n;
-    CHAR buffer[BUFSIZE];
+    CHAR buffer[buffer_size];
     for (;;) {
-      BOOL bSuccess = ReadFile(stdout_h, buffer, BUFSIZE, &n, NULL);
+      BOOL bSuccess = ReadFile(stdout_h, buffer, static_cast<DWORD>(buffer_size), &n, NULL);
       if(!bSuccess || n == 0)
 	break;
 
       std::string message;
+      message.reserve(n);
       for(DWORD c=0;c<n;c++)
 	message+=buffer[c];
       async_print(message);
+    }
+  });
+  stdout_thread.detach();
+
+  unsigned long exit_code;
+  WaitForSingleObject(process, INFINITE);
+  GetExitCodeProcess(process, &exit_code);
+  
+  CloseHandle(process);
+  CloseHandle(stdin_h);
+  CloseHandle(stdout_h);
+  CloseHandle(stderr_h);
+  return exit_code;
+}
+
+int Terminal::execute(std::iostream &stdout_stream, const std::string &command, const boost::filesystem::path &path) {
+  HANDLE stdin_h, stdout_h, stderr_h;
+
+  auto process=popen3(command, path.string(), &stdin_h, &stdout_h, &stderr_h);
+  if(process==NULL) {
+    async_print("Error: Failed to run command: " + command + "\n");
+    return -1;
+  }
+  std::thread stderr_thread([this, stderr_h](){
+    DWORD n;
+    CHAR buffer[buffer_size];
+    for (;;) {
+      BOOL bSuccess = ReadFile(stderr_h, buffer, static_cast<DWORD>(buffer_size), &n, NULL);
+      if(!bSuccess || n == 0)
+	break;
+
+      std::string message;
+      message.reserve(n);
+      for(DWORD c=0;c<n;c++)
+	message+=buffer[c];
+      async_print(message, true);
+    }
+  });
+  stderr_thread.detach();
+
+  std::thread stdout_thread([this, &stdout_stream, stdout_h](){
+    DWORD n;
+    CHAR buffer[buffer_size];
+    for (;;) {
+      BOOL bSuccess = ReadFile(stdout_h, buffer, static_cast<DWORD>(buffer_size), &n, NULL);
+      if(!bSuccess || n == 0)
+        break;
+      Glib::ustring umessage;
+      umessage.reserve(n);
+      for(DWORD c=0;c<n;c++)
+        umessage+=buffer[c];
+      Glib::ustring::iterator iter;
+      while(!umessage.validate(iter)) {
+        auto next_char_iter=iter;
+        next_char_iter++;
+        umessage.replace(iter, next_char_iter, "?");
+      }
+      stdout_stream << umessage;
     }
   });
   stdout_thread.detach();
@@ -252,13 +312,14 @@ void Terminal::async_execute(const std::string &command, const boost::filesystem
     
     std::thread stderr_thread([this, stderr_h](){
       DWORD n;
-      CHAR buffer[BUFSIZE];
+      CHAR buffer[buffer_size];
       for (;;) {
-	BOOL bSuccess = ReadFile(stderr_h, buffer, BUFSIZE, &n, NULL);
+	BOOL bSuccess = ReadFile(stderr_h, buffer, static_cast<DWORD>(buffer_size), &n, NULL);
 	if(!bSuccess || n == 0)
 	  break;
 
 	std::string message;
+	message.reserve(n);
 	for(DWORD c=0;c<n;c++)
 	  message+=buffer[c];
 	async_print(message, true);
@@ -268,13 +329,14 @@ void Terminal::async_execute(const std::string &command, const boost::filesystem
 
     std::thread stdout_thread([this, stdout_h](){
       DWORD n;
-      CHAR buffer[BUFSIZE];
+      CHAR buffer[buffer_size];
       for (;;) {
-	BOOL bSuccess = ReadFile(stdout_h, buffer, BUFSIZE, &n, NULL);
+	BOOL bSuccess = ReadFile(stdout_h, buffer, static_cast<DWORD>(buffer_size), &n, NULL);
 	if(!bSuccess || n == 0)
 	  break;
 	
 	std::string message;
+	message.reserve(n);
 	for(DWORD c=0;c<n;c++)
 	  message+=buffer[c];
 	async_print(message);

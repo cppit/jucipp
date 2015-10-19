@@ -34,6 +34,7 @@ public:
   
   Terminal();
   int execute(const std::string &command, const boost::filesystem::path &path="");
+  int execute(std::iostream &stdout_stream, const std::string &command, const boost::filesystem::path &path="");
   void async_execute(const std::string &command, const boost::filesystem::path &path="", std::function<void(int exit_code)> callback=nullptr);
   void kill_last_async_execute(bool force=false);
   void kill_async_executes(bool force=false);

@@ -105,6 +105,9 @@ Window::Window() : box(Gtk::ORIENTATION_VERTICAL), compiling(false) {
         notebook.get_current_view()->search_highlight(last_search, case_sensitive_search, regex_search);
       }
 
+      if(auto menu_item=dynamic_cast<Gtk::MenuItem*>(menu.ui_manager->get_widget("/MenuBar/SourceMenu/SourceIndentationAutoIndentBuffer")))
+        menu_item->set_sensitive((bool)notebook.get_current_view()->auto_indent);
+
       if(auto menu_item=dynamic_cast<Gtk::MenuItem*>(menu.ui_manager->get_widget("/MenuBar/SourceMenu/SourceGotoDeclaration")))
         menu_item->set_sensitive((bool)notebook.get_current_view()->get_declaration_location);
 
@@ -340,7 +343,8 @@ void Window::create_menu() {
     set_tab_entry();
   });
   menu.action_group->add(Gtk::Action::create("SourceIndentationAutoIndentBuffer", "Auto-Indent Current Buffer"), Gtk::AccelKey(menu.key_map["source_indentation_auto_indent_buffer"]), [this]() {
-    Singleton::terminal()->print("Auto-Indent Current Buffer will soon be implemented.\n");
+    if(notebook.get_current_page()!=-1 && notebook.get_current_view()->auto_indent)
+      notebook.get_current_view()->auto_indent();
   });
   menu.action_group->add(Gtk::Action::create("SourceGotoLine", "Go to Line"), Gtk::AccelKey(menu.key_map["source_goto_line"]), [this]() {
     goto_line_entry();

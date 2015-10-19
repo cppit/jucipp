@@ -1,5 +1,6 @@
 #include "source_clang.h"
 #include "singletons.h"
+#include "sourcefile.h"
 
 #include <iostream> //TODO: remove
 using namespace std; //TODO: remove
@@ -927,6 +928,27 @@ Source::ClangViewAutocomplete(file_path, project_path, language) {
       last_tagged_token=Token();
     }
   });
+  
+  auto_indent=[this]() {
+    boost::filesystem::path temp_file_path = boost::filesystem::unique_path();
+    juci::filesystem::write(temp_file_path, get_buffer());
+    std::string command="clang-format \""+temp_file_path.string()+"\"";
+    command+=" -style=\"{IndentWidth: "+std::to_string(tab_size);
+    command+="}\"";
+    std::stringstream stdout_stream;
+    auto exit_code=Singleton::terminal()->execute(stdout_stream, command);
+    
+    if(exit_code==0) {
+      get_source_buffer()->begin_user_action();
+      auto cursor_line_nr=get_buffer()->get_insert()->get_iter().get_line();
+      get_buffer()->erase(get_buffer()->begin(), get_buffer()->end());
+      get_buffer()->insert(get_buffer()->begin(), stdout_stream.str());
+      if(cursor_line_nr<get_buffer()->get_line_count())
+        get_buffer()->place_cursor(get_buffer()->get_iter_at_line(cursor_line_nr));
+      get_source_buffer()->end_user_action();
+      set_tab_char_and_size(' ', tab_size); //clang-format only does basic indentation with spaces as I understand it
+    }
+  };
   
   get_token=[this]() -> Token {
     if(source_readable) {
