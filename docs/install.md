@@ -37,7 +37,7 @@ sudo make install
 ## OS X with Homebrew (http://brew.sh/)
 Install dependencies (installing llvm may take some time):
 ```sh
-brew install cmake --with-clang llvm pkg-config boost gtkmm3 homebrew/x11/gtksourceviewmm3 aspell
+brew install cmake --with-clang llvm pkg-config boost gtkmm3 homebrew/x11/gtksourceviewmm3 aspell clang-format
 ```
 
 Get juCi++ source, compile and install:
