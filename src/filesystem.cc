@@ -169,38 +169,3 @@ bool filesystem::write(const std::string &path, Glib::RefPtr<Gtk::TextBuffer> bu
   }
   return false;
 }
-
-std::vector<boost::filesystem::path> filesystem::get_directory_content(const boost::filesystem::path &path, int filter) {
-  std::vector<boost::filesystem::path> dirs;
-  if (boost::filesystem::is_directory(path)) {
-    for (boost::filesystem::directory_iterator it(path); it != boost::filesystem::directory_iterator(); it++) {
-      if (filter & DIRS && boost::filesystem::is_directory(it->path()))
-        dirs.emplace_back(it->path());
-      if (filter & FILES && boost::filesystem::is_regular_file(it->path()))
-        dirs.emplace_back(it->path());
-    }
-  }
-  if (filter & SORTED)
-    std::sort(dirs.begin(), dirs.end());
-  return dirs;
-};
-
-std::vector<boost::filesystem::path> filesystem::dirs(const boost::filesystem::path &path) {
-  return filesystem::get_directory_content(path, DIRS | SORTED);
-}
-  
-std::vector<boost::filesystem::path> filesystem::files(const boost::filesystem::path &path) {
-  return filesystem::get_directory_content(path, FILES | SORTED);
-}
-  
-std::vector<boost::filesystem::path> filesystem::contents(const boost::filesystem::path &path) {
-  return filesystem::get_directory_content(path, ALL | SORTED);
-}
-  
-std::vector<boost::filesystem::path> filesystem::seperate_contents(const boost::filesystem::path &path) {
-  auto a = dirs(path);
-  auto b = files(path);
-  a.insert(a.end(), b.begin(), b.end());
-  return a;
-}
-
