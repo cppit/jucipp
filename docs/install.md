@@ -15,6 +15,12 @@ make
 sudo make install
 ```
 
+To use clang-format for auto-indentation of C++ files (replace \[version\] with an available clang-format version):
+```sh
+sudo apt-get install clang-format-[version]
+sudo ln -s /usr/bin/clang-format-[version] /usr/local/bin/clang-format
+```
+
 ## Ubuntu 14/Linux Mint 17
 Install dependencies:
 ```sh
@@ -32,6 +38,12 @@ cd jucipp
 cmake .
 make
 sudo make install
+```
+
+To use clang-format for auto-indentation of C++ files (replace \[version\] with an available clang-format version):
+```sh
+sudo apt-get install clang-format-[version]
+sudo ln -s /usr/bin/clang-format-[version] /usr/local/bin/clang-format
 ```
 
 ## OS X with Homebrew (http://brew.sh/)
