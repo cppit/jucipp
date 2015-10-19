@@ -36,6 +36,7 @@ namespace Source {
     bool highlight_current_line;
     bool show_line_numbers;
     std::unordered_map<std::string, std::string> clang_types;
+    std::string clang_format_style;
     
     std::unordered_map<std::string, DocumentationSearch> documentation_searches;
   };

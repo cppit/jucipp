@@ -936,6 +936,8 @@ Source::ClangViewAutocomplete(file_path, project_path, language) {
     juci::filesystem::write(temp_file_path, get_buffer());
     std::string command="clang-format \""+temp_file_path.string()+"\"";
     command+=" -style=\"{IndentWidth: "+std::to_string(tab_size);
+    if(Singleton::Config::source()->clang_format_style!="")
+      command+=", "+Singleton::Config::source()->clang_format_style;
     command+="}\"";
     std::stringstream stdout_stream;
     

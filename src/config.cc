@@ -135,6 +135,8 @@ void MainConfig::GenerateSource() {
   for (auto &i : source_json.get_child("clang_types"))
     source_cfg->clang_types[i.first] = i.second.get_value<std::string>();
   
+  source_cfg->clang_format_style = source_json.get<std::string>("clang_format_style");
+  
   auto pt_doc_search=cfg.get_child("documentation_searches");
   for(auto &pt_doc_search_lang: pt_doc_search) {
     source_cfg->documentation_searches[pt_doc_search_lang.first].separator=pt_doc_search_lang.second.get<std::string>("separator");
