@@ -1,6 +1,6 @@
 #include <string>
 
-#define JUCI_VERSION "0.9.3"
+#define JUCI_VERSION "0.9.4"
 
 const std::string configjson =
 "{\n"
