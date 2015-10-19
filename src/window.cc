@@ -105,7 +105,7 @@ Window::Window() : box(Gtk::ORIENTATION_VERTICAL), compiling(false) {
         notebook.get_current_view()->search_highlight(last_search, case_sensitive_search, regex_search);
       }
 
-      if(auto menu_item=dynamic_cast<Gtk::MenuItem*>(menu.ui_manager->get_widget("/MenuBar/SourceMenu/SourceIndentationAutoIndentBuffer")))
+      if(auto menu_item=dynamic_cast<Gtk::MenuItem*>(menu.ui_manager->get_widget("/MenuBar/SourceMenu/SourceIndentation/SourceIndentationAutoIndentBuffer")))
         menu_item->set_sensitive((bool)notebook.get_current_view()->auto_indent);
 
       if(auto menu_item=dynamic_cast<Gtk::MenuItem*>(menu.ui_manager->get_widget("/MenuBar/SourceMenu/SourceGotoDeclaration")))
