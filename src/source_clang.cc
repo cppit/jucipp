@@ -944,11 +944,26 @@ Source::ClangViewAutocomplete(file_path, project_path, language) {
     auto exit_code=Singleton::terminal()->execute(stdout_stream, command);
     if(exit_code==0) {
       get_source_buffer()->begin_user_action();
-      auto cursor_line_nr=get_buffer()->get_insert()->get_iter().get_line();
+      auto iter=get_buffer()->get_insert()->get_iter();
+      auto cursor_line_nr=iter.get_line();
+      auto cursor_line_offset=iter.get_line_offset();
+      
       get_buffer()->erase(get_buffer()->begin(), get_buffer()->end());
       get_buffer()->insert(get_buffer()->begin(), stdout_stream.str());
-      if(cursor_line_nr<get_buffer()->get_line_count())
-        get_buffer()->place_cursor(get_buffer()->get_iter_at_line(cursor_line_nr));
+      
+      cursor_line_nr=std::min(cursor_line_nr, get_buffer()->get_line_count()-1);
+      if(cursor_line_nr>=0) {
+        iter=get_buffer()->get_iter_at_line(cursor_line_nr);
+        for(int c=0;c<cursor_line_offset;c++) {
+          if(iter.ends_line())
+            break;
+          iter.forward_char();
+        }
+        get_buffer()->place_cursor(iter);
+        while(gtk_events_pending())
+          gtk_main_iteration();
+        scroll_to(get_buffer()->get_insert(), 0.0, 1.0, 0.5);
+      }
       get_source_buffer()->end_user_action();
       set_tab_char_and_size(' ', tab_size); //clang-format only does basic indentation with spaces as I understand it
     }

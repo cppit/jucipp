@@ -225,7 +225,7 @@ int Terminal::execute(std::iostream &stdout_stream, const std::string &command, 
           next_char_iter++;
           umessage.replace(iter, next_char_iter, "?");
         }
-        stdout_stream << umessage;
+        stdout_stream.write(umessage.data(), n);
       }
     });
     stdout_thread.detach();
