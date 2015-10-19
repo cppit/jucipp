@@ -1,14 +1,26 @@
 #ifdef _WIN32
 #include "dialogs.h"
+#include "singletons.h"
 
-// { WIN_STRING
+#ifndef check
+HRESULT __hr__;
+#define check(__fun__, error_message)            \
+  __hr__ = __fun__;                              \
+  if (FAILED(__hr__)) {                          \
+    Singleton::terminal()->print(error_message); \
+    throw std::runtime_error(error_message);	 \
+}                                                
+#endif  // CHECK
+
+
+// { WINSTRING
 WinString::WinString(const std::string &string) {
   std::wstringstream ss;
     ss << s2ws(string);
     ss >> str;
 }
 
-WinString::operator()() {
+std::string WinString::operator()() {
   std::string res;
   if (str != nullptr) {
     std::wstring ss(str);
@@ -16,7 +28,21 @@ WinString::operator()() {
   }
   return res;
 }
-// WIN_STRING }
+
+// http://stackoverflow.com/questions/4804298/how-to-convert-wstring-into-string
+std::wstring WinString::s2ws(const std::string& str) {
+  typedef std::codecvt_utf8<wchar_t> convert_typeX;
+  std::wstring_convert<convert_typeX, wchar_t> converterX;
+  return converterX.from_bytes(str);
+}
+
+std::string WinString::ws2s(const std::wstring& wstr) {
+  typedef std::codecvt_utf8<wchar_t> convert_typeX;
+  std::wstring_convert<convert_typeX, wchar_t> converterX;
+  return converterX.to_bytes(wstr);
+}
+
+// WINSTRING }
 
 // { COMMON_DIALOG
 CommonDialog::CommonDialog(CLSID type) : dialog(nullptr) {
@@ -39,7 +65,7 @@ std::string CommonDialog::show() {
     check(dialog->Show(nullptr), "Failed to show dialog");
     IShellItem *result = nullptr;
     check(dialog->GetResult(&result), "Failed to get result from dialog");
-    win_string str;
+    WinString str;
     check(result->GetDisplayName(SIGDN_FILESYSPATH, &str), "Failed to get display name from dialog");
     result->Release();
     return str();
