@@ -235,7 +235,7 @@ int Terminal::execute(const std::string &command, const boost::filesystem::path 
   return exit_code;
 }
 
-int Terminal::execute(std::iostream &stdout_stream, const std::string &command, const boost::filesystem::path &path) {
+int Terminal::execute(std::istream &stdin_stream, std::ostream &stdout_stream, const std::string &command, const boost::filesystem::path &path) {
   HANDLE stdin_h, stdout_h, stderr_h;
 
   auto process=popen3(command, path.string(), &stdin_h, &stdout_h, &stderr_h);
@@ -281,13 +281,25 @@ int Terminal::execute(std::iostream &stdout_stream, const std::string &command, 
     }
   });
   stdout_thread.detach();
-
+    
+  CHAR buffer[buffer_size];
+  for(;;) {
+    stdin_stream.readsome(buffer, buffer_size);
+    auto read_n=stdin_stream.gcount();
+    if(read_n==0)
+      break;
+    DWORD write_n;
+    BOOL bSuccess = WriteFile(stdin_h, buffer, static_cast<DWORD>(read_n), &write_n, NULL);
+    if(!bSuccess || write_n==0)
+      break;
+  }
+  CloseHandle(stdin_h);
+  
   unsigned long exit_code;
   WaitForSingleObject(process, INFINITE);
   GetExitCodeProcess(process, &exit_code);
   
   CloseHandle(process);
-  CloseHandle(stdin_h);
   CloseHandle(stdout_h);
   CloseHandle(stderr_h);
   return exit_code;

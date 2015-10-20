@@ -8,7 +8,7 @@
 #include <iostream> //TODO: remove
 using namespace std; //TODO: remove
 
-const size_t buffer_size=131072;
+const ssize_t buffer_size=131072;
 
 //A working implementation of popen3, with all pipes getting closed properly. 
 //TODO: Eidheim is going to publish this one on his github, along with example uses
@@ -190,7 +190,7 @@ int Terminal::execute(const std::string &command, const boost::filesystem::path 
   }
 }
 
-int Terminal::execute(std::iostream &stdout_stream, const std::string &command, const boost::filesystem::path &path) {
+int Terminal::execute(std::istream &stdin_stream, std::ostream &stdout_stream, const std::string &command, const boost::filesystem::path &path) {
   int stdin_fd, stdout_fd, stderr_fd;
   auto pid=popen3(command, path.string(), &stdin_fd, &stdout_fd, &stderr_fd);
   
@@ -230,9 +230,20 @@ int Terminal::execute(std::iostream &stdout_stream, const std::string &command, 
     });
     stdout_thread.detach();
     
+    char buffer[buffer_size];
+    for(;;) {
+      stdin_stream.readsome(buffer, buffer_size);
+      auto read_n=stdin_stream.gcount();
+      if(read_n==0)
+        break;
+      auto write_n=write(stdin_fd, buffer, read_n);
+      if(write_n==0)
+        break;
+    }
+    close(stdin_fd);
+    
     int exit_code;
     waitpid(pid, &exit_code, 0);
-    close(stdin_fd);
     close(stdout_fd);
     close(stderr_fd);
     

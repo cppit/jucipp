@@ -930,18 +930,15 @@ Source::ClangViewAutocomplete(file_path, project_path, language) {
   });
   
   auto_indent=[this]() {
-    boost::filesystem::path temp_file = "jucipp_auto_indent_tmp_file";
-    auto temp_directory=boost::filesystem::temp_directory_path();
-    boost::filesystem::path temp_file_path=temp_directory.string()+'/'+temp_file.string();
-    juci::filesystem::write(temp_file_path, get_buffer());
-    std::string command="clang-format \""+temp_file_path.string()+"\"";
+    std::string command="clang-format";
     command+=" -style=\"{IndentWidth: "+std::to_string(tab_size);
     if(Singleton::Config::source()->clang_format_style!="")
       command+=", "+Singleton::Config::source()->clang_format_style;
     command+="}\"";
-    std::stringstream stdout_stream;
     
-    auto exit_code=Singleton::terminal()->execute(stdout_stream, command);
+    std::stringstream stdin_stream(get_buffer()->get_text()), stdout_stream;
+    
+    auto exit_code=Singleton::terminal()->execute(stdin_stream, stdout_stream, command);
     if(exit_code==0) {
       get_source_buffer()->begin_user_action();
       auto iter=get_buffer()->get_insert()->get_iter();
@@ -967,8 +964,6 @@ Source::ClangViewAutocomplete(file_path, project_path, language) {
       get_source_buffer()->end_user_action();
       set_tab_char_and_size(' ', tab_size); //clang-format only does basic indentation with spaces as I understand it
     }
-    
-    boost::filesystem::remove(temp_file_path);
   };
   
   get_token=[this]() -> Token {
