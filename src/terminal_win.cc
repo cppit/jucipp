@@ -27,9 +27,7 @@ HANDLE popen3(const std::string &command, const std::string &path, HANDLE *stdin
   saAttr.bInheritHandle = TRUE;
   saAttr.lpSecurityDescriptor = NULL;
 
-  bool use_pipes=(stdin_h!=nullptr || stdout_h!=nullptr || stderr_h!=nullptr);
-
-  if(use_pipes) {
+  if(stdin_h!=nullptr) {
     if (!CreatePipe(&g_hChildStd_IN_Rd, &g_hChildStd_IN_Wr, &saAttr, 0)) 
       return NULL;
     if(!SetHandleInformation(g_hChildStd_IN_Wr, HANDLE_FLAG_INHERIT, 0)) {
@@ -37,32 +35,34 @@ HANDLE popen3(const std::string &command, const std::string &path, HANDLE *stdin
       CloseHandle(g_hChildStd_IN_Wr);
       return NULL;
     }
-  
+  }
+  if(stdout_h!=nullptr) {
     if (!CreatePipe(&g_hChildStd_OUT_Rd, &g_hChildStd_OUT_Wr, &saAttr, 0)) {
-      CloseHandle(g_hChildStd_IN_Rd);
-      CloseHandle(g_hChildStd_IN_Wr);
+      if(stdin_h!=nullptr) CloseHandle(g_hChildStd_IN_Rd);
+      if(stdin_h!=nullptr) CloseHandle(g_hChildStd_IN_Wr);
       return NULL;
     }
     if(!SetHandleInformation(g_hChildStd_OUT_Rd, HANDLE_FLAG_INHERIT, 0)) {
-      CloseHandle(g_hChildStd_IN_Rd);
-      CloseHandle(g_hChildStd_IN_Wr);
+      if(stdin_h!=nullptr) CloseHandle(g_hChildStd_IN_Rd);
+      if(stdin_h!=nullptr) CloseHandle(g_hChildStd_IN_Wr);
       CloseHandle(g_hChildStd_OUT_Rd);
       CloseHandle(g_hChildStd_OUT_Wr);
       return NULL;
     }
-    
+  }
+  if(stderr_h!=nullptr) {
     if (!CreatePipe(&g_hChildStd_ERR_Rd, &g_hChildStd_ERR_Wr, &saAttr, 0)) {
-      CloseHandle(g_hChildStd_IN_Rd);
-      CloseHandle(g_hChildStd_IN_Wr);
-      CloseHandle(g_hChildStd_OUT_Rd);
-      CloseHandle(g_hChildStd_OUT_Wr);
+      if(stdin_h!=nullptr) CloseHandle(g_hChildStd_IN_Rd);
+      if(stdin_h!=nullptr) CloseHandle(g_hChildStd_IN_Wr);
+      if(stdout_h!=nullptr) CloseHandle(g_hChildStd_OUT_Rd);
+      if(stdout_h!=nullptr) CloseHandle(g_hChildStd_OUT_Wr);
       return NULL;
     }
     if(!SetHandleInformation(g_hChildStd_ERR_Rd, HANDLE_FLAG_INHERIT, 0)) {
-      CloseHandle(g_hChildStd_IN_Rd);
-      CloseHandle(g_hChildStd_IN_Wr);
-      CloseHandle(g_hChildStd_OUT_Rd);
-      CloseHandle(g_hChildStd_OUT_Wr);
+      if(stdin_h!=nullptr) CloseHandle(g_hChildStd_IN_Rd);
+      if(stdin_h!=nullptr) CloseHandle(g_hChildStd_IN_Wr);
+      if(stdout_h!=nullptr) CloseHandle(g_hChildStd_OUT_Rd);
+      if(stdout_h!=nullptr) CloseHandle(g_hChildStd_OUT_Wr);
       CloseHandle(g_hChildStd_ERR_Rd);
       CloseHandle(g_hChildStd_ERR_Wr);
       return NULL;
@@ -76,12 +76,11 @@ HANDLE popen3(const std::string &command, const std::string &path, HANDLE *stdin
 
   ZeroMemory(&siStartInfo, sizeof(STARTUPINFO));
   siStartInfo.cb = sizeof(STARTUPINFO);
-  if(use_pipes) {
-    siStartInfo.hStdInput = g_hChildStd_IN_Rd;
-    siStartInfo.hStdOutput = g_hChildStd_OUT_Wr;
-    siStartInfo.hStdError = g_hChildStd_ERR_Wr;
+  if(stdin_h!=nullptr) siStartInfo.hStdInput = g_hChildStd_IN_Rd;
+  if(stdout_h!=nullptr) siStartInfo.hStdOutput = g_hChildStd_OUT_Wr;
+  if(stderr_h!=nullptr) siStartInfo.hStdError = g_hChildStd_ERR_Wr;
+  if(stdin_h!=nullptr || stdout_h!=nullptr || stderr_h!=nullptr)
     siStartInfo.dwFlags |= STARTF_USESTDHANDLES;
-  }
 
   char* path_ptr;
   if(path=="")
@@ -106,11 +105,9 @@ HANDLE popen3(const std::string &command, const std::string &path, HANDLE *stdin
   if(!bSuccess) {
     CloseHandle(process_info.hProcess);
     CloseHandle(process_info.hThread);
-    if(use_pipes) {
-      CloseHandle(g_hChildStd_IN_Rd);
-      CloseHandle(g_hChildStd_OUT_Wr);
-      CloseHandle(g_hChildStd_ERR_Wr);
-    }
+    if(stdin_h!=nullptr) CloseHandle(g_hChildStd_IN_Rd);
+    if(stdout_h!=nullptr) CloseHandle(g_hChildStd_OUT_Wr);
+    if(stderr_h!=nullptr) CloseHandle(g_hChildStd_ERR_Wr);
     return NULL;
   }
   else {
@@ -119,11 +116,9 @@ HANDLE popen3(const std::string &command, const std::string &path, HANDLE *stdin
     // of the child process, for example. 
     
     CloseHandle(process_info.hThread);
-    if(use_pipes) {
-      CloseHandle(g_hChildStd_IN_Rd);
-      CloseHandle(g_hChildStd_OUT_Wr);
-      CloseHandle(g_hChildStd_ERR_Wr);
-    }
+    if(stdin_h!=nullptr) CloseHandle(g_hChildStd_IN_Rd);
+    if(stdout_h!=nullptr) CloseHandle(g_hChildStd_OUT_Wr);
+    if(stderr_h!=nullptr) CloseHandle(g_hChildStd_ERR_Wr);
   }
 
   if(stdin_h!=NULL) *stdin_h=g_hChildStd_IN_Wr;
