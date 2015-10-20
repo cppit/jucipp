@@ -146,45 +146,53 @@ Terminal::Terminal() {
   });
 }
 
-int Terminal::execute(const std::string &command, const boost::filesystem::path &path) {
+int Terminal::execute(const std::string &command, const boost::filesystem::path &path, bool use_pipes) {
   int stdin_fd, stdout_fd, stderr_fd;
-  auto pid=popen3(command, path.string(), &stdin_fd, &stdout_fd, &stderr_fd);
+  pid_t pid;
+  if(use_pipes)
+    pid=popen3(command, path.string(), &stdin_fd, &stdout_fd, &stderr_fd);
+  else
+    pid=popen3(command, path.string(), nullptr, nullptr, nullptr);
   
   if (pid<=0) {
     async_print("Error: Failed to run command: " + command + "\n");
     return -1;
   }
   else {
-    std::thread stderr_thread([this, stderr_fd](){
-      char buffer[buffer_size];
-      ssize_t n;
-      while ((n=read(stderr_fd, buffer, buffer_size)) > 0) {
-        std::string message;
-        message.reserve(n);
-        for(ssize_t c=0;c<n;c++)
-          message+=buffer[c];
-        async_print(message, true);
-      }
-    });
-    stderr_thread.detach();
-    std::thread stdout_thread([this, stdout_fd](){
-      char buffer[buffer_size];
-      ssize_t n;
-      while ((n=read(stdout_fd, buffer, buffer_size)) > 0) {
-        std::string message;
-        message.reserve(n);
-        for(ssize_t c=0;c<n;c++)
-          message+=buffer[c];
-        async_print(message);
-      }
-    });
-    stdout_thread.detach();
+    if(use_pipes) {
+      std::thread stderr_thread([this, stderr_fd](){
+        char buffer[buffer_size];
+        ssize_t n;
+        while ((n=read(stderr_fd, buffer, buffer_size)) > 0) {
+          std::string message;
+          message.reserve(n);
+          for(ssize_t c=0;c<n;c++)
+            message+=buffer[c];
+          async_print(message, true);
+        }
+      });
+      stderr_thread.detach();
+      std::thread stdout_thread([this, stdout_fd](){
+        char buffer[buffer_size];
+        ssize_t n;
+        while ((n=read(stdout_fd, buffer, buffer_size)) > 0) {
+          std::string message;
+          message.reserve(n);
+          for(ssize_t c=0;c<n;c++)
+            message+=buffer[c];
+          async_print(message);
+        }
+      });
+      stdout_thread.detach();
+    }
     
     int exit_code;
     waitpid(pid, &exit_code, 0);
-    close(stdin_fd);
-    close(stdout_fd);
-    close(stderr_fd);
+    if(use_pipes) {
+      close(stdin_fd);
+      close(stdout_fd);
+      close(stderr_fd);
+    }
     
     return exit_code;
   }

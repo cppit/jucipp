@@ -10,6 +10,9 @@ using namespace std; //TODO: remove
 
 const size_t buffer_size=131072;
 
+//Based on the example at https://msdn.microsoft.com/en-us/library/windows/desktop/ms682499(v=vs.85).aspx
+//Note: on Windows it seems impossible to specify which pipes to use
+//Thus, if stdin_h, stdout_h and stderr all are NULL, the out,err,in is sent to the parent process instead
 HANDLE popen3(const std::string &command, const std::string &path, HANDLE *stdin_h, HANDLE *stdout_h, HANDLE *stderr_h) {
   HANDLE g_hChildStd_IN_Rd = NULL;
   HANDLE g_hChildStd_IN_Wr = NULL;
@@ -21,43 +24,49 @@ HANDLE popen3(const std::string &command, const std::string &path, HANDLE *stdin
   SECURITY_ATTRIBUTES saAttr;
 
   saAttr.nLength = sizeof(SECURITY_ATTRIBUTES); 
-  saAttr.bInheritHandle = TRUE; 
-  saAttr.lpSecurityDescriptor = NULL; 
+  saAttr.bInheritHandle = TRUE;
+  saAttr.lpSecurityDescriptor = NULL;
 
-  if (!CreatePipe(&g_hChildStd_IN_Rd, &g_hChildStd_IN_Wr, &saAttr, 0)) 
-    return NULL;
-  if(!SetHandleInformation(g_hChildStd_IN_Wr, HANDLE_FLAG_INHERIT, 0)) {
-    CloseHandle(g_hChildStd_IN_Rd);
-    CloseHandle(g_hChildStd_IN_Wr);
-    return NULL;
-  }
-  if (!CreatePipe(&g_hChildStd_OUT_Rd, &g_hChildStd_OUT_Wr, &saAttr, 0)) {
-    CloseHandle(g_hChildStd_IN_Rd);
-    CloseHandle(g_hChildStd_IN_Wr);
-    return NULL;
-  }
-  if(!SetHandleInformation(g_hChildStd_OUT_Rd, HANDLE_FLAG_INHERIT, 0)) {
-    CloseHandle(g_hChildStd_IN_Rd);
-    CloseHandle(g_hChildStd_IN_Wr);
-    CloseHandle(g_hChildStd_OUT_Rd);
-    CloseHandle(g_hChildStd_OUT_Wr);
-    return NULL;
-  }
-  if (!CreatePipe(&g_hChildStd_ERR_Rd, &g_hChildStd_ERR_Wr, &saAttr, 0)) {
-    CloseHandle(g_hChildStd_IN_Rd);
-    CloseHandle(g_hChildStd_IN_Wr);
-    CloseHandle(g_hChildStd_OUT_Rd);
-    CloseHandle(g_hChildStd_OUT_Wr);
-    return NULL;
-  }
-  if(!SetHandleInformation(g_hChildStd_ERR_Rd, HANDLE_FLAG_INHERIT, 0)) {
-    CloseHandle(g_hChildStd_IN_Rd);
-    CloseHandle(g_hChildStd_IN_Wr);
-    CloseHandle(g_hChildStd_OUT_Rd);
-    CloseHandle(g_hChildStd_OUT_Wr);
-    CloseHandle(g_hChildStd_ERR_Rd);
-    CloseHandle(g_hChildStd_ERR_Wr);
-    return NULL;
+  bool use_pipes=(stdin_h!=nullptr || stdout_h!=nullptr || stderr_h!=nullptr);
+
+  if(use_pipes) {
+    if (!CreatePipe(&g_hChildStd_IN_Rd, &g_hChildStd_IN_Wr, &saAttr, 0)) 
+      return NULL;
+    if(!SetHandleInformation(g_hChildStd_IN_Wr, HANDLE_FLAG_INHERIT, 0)) {
+      CloseHandle(g_hChildStd_IN_Rd);
+      CloseHandle(g_hChildStd_IN_Wr);
+      return NULL;
+    }
+  
+    if (!CreatePipe(&g_hChildStd_OUT_Rd, &g_hChildStd_OUT_Wr, &saAttr, 0)) {
+      CloseHandle(g_hChildStd_IN_Rd);
+      CloseHandle(g_hChildStd_IN_Wr);
+      return NULL;
+    }
+    if(!SetHandleInformation(g_hChildStd_OUT_Rd, HANDLE_FLAG_INHERIT, 0)) {
+      CloseHandle(g_hChildStd_IN_Rd);
+      CloseHandle(g_hChildStd_IN_Wr);
+      CloseHandle(g_hChildStd_OUT_Rd);
+      CloseHandle(g_hChildStd_OUT_Wr);
+      return NULL;
+    }
+    
+    if (!CreatePipe(&g_hChildStd_ERR_Rd, &g_hChildStd_ERR_Wr, &saAttr, 0)) {
+      CloseHandle(g_hChildStd_IN_Rd);
+      CloseHandle(g_hChildStd_IN_Wr);
+      CloseHandle(g_hChildStd_OUT_Rd);
+      CloseHandle(g_hChildStd_OUT_Wr);
+      return NULL;
+    }
+    if(!SetHandleInformation(g_hChildStd_ERR_Rd, HANDLE_FLAG_INHERIT, 0)) {
+      CloseHandle(g_hChildStd_IN_Rd);
+      CloseHandle(g_hChildStd_IN_Wr);
+      CloseHandle(g_hChildStd_OUT_Rd);
+      CloseHandle(g_hChildStd_OUT_Wr);
+      CloseHandle(g_hChildStd_ERR_Rd);
+      CloseHandle(g_hChildStd_ERR_Wr);
+      return NULL;
+    }
   }
 
   PROCESS_INFORMATION process_info; 
@@ -66,11 +75,13 @@ HANDLE popen3(const std::string &command, const std::string &path, HANDLE *stdin
   ZeroMemory(&process_info, sizeof(PROCESS_INFORMATION));
 
   ZeroMemory(&siStartInfo, sizeof(STARTUPINFO));
-  siStartInfo.cb = sizeof(STARTUPINFO); 
-  siStartInfo.hStdError = g_hChildStd_ERR_Wr;
-  siStartInfo.hStdOutput = g_hChildStd_OUT_Wr;
-  siStartInfo.hStdInput = g_hChildStd_IN_Rd;
-  siStartInfo.dwFlags |= STARTF_USESTDHANDLES;
+  siStartInfo.cb = sizeof(STARTUPINFO);
+  if(use_pipes) {
+    siStartInfo.hStdInput = g_hChildStd_IN_Rd;
+    siStartInfo.hStdOutput = g_hChildStd_OUT_Wr;
+    siStartInfo.hStdError = g_hChildStd_ERR_Wr;
+    siStartInfo.dwFlags |= STARTF_USESTDHANDLES;
+  }
 
   char* path_ptr;
   if(path=="")
@@ -95,9 +106,11 @@ HANDLE popen3(const std::string &command, const std::string &path, HANDLE *stdin
   if(!bSuccess) {
     CloseHandle(process_info.hProcess);
     CloseHandle(process_info.hThread);
-    CloseHandle(g_hChildStd_IN_Rd);
-    CloseHandle(g_hChildStd_OUT_Wr);
-    CloseHandle(g_hChildStd_ERR_Wr);
+    if(use_pipes) {
+      CloseHandle(g_hChildStd_IN_Rd);
+      CloseHandle(g_hChildStd_OUT_Wr);
+      CloseHandle(g_hChildStd_ERR_Wr);
+    }
     return NULL;
   }
   else {
@@ -106,14 +119,16 @@ HANDLE popen3(const std::string &command, const std::string &path, HANDLE *stdin
     // of the child process, for example. 
     
     CloseHandle(process_info.hThread);
-    CloseHandle(g_hChildStd_IN_Rd);
-    CloseHandle(g_hChildStd_OUT_Wr);
-    CloseHandle(g_hChildStd_ERR_Wr);
+    if(use_pipes) {
+      CloseHandle(g_hChildStd_IN_Rd);
+      CloseHandle(g_hChildStd_OUT_Wr);
+      CloseHandle(g_hChildStd_ERR_Wr);
+    }
   }
 
-  *stdin_h=g_hChildStd_IN_Wr;
-  *stdout_h=g_hChildStd_OUT_Rd;
-  *stderr_h=g_hChildStd_ERR_Rd;
+  if(stdin_h!=NULL) *stdin_h=g_hChildStd_IN_Wr;
+  if(stdout_h!=NULL) *stdout_h=g_hChildStd_OUT_Rd;
+  if(stderr_h!=NULL) *stderr_h=g_hChildStd_ERR_Rd;
   return process_info.hProcess;
 }
 
@@ -181,57 +196,64 @@ Terminal::Terminal() {
   });
 }
 
-//Based on the example at https://msdn.microsoft.com/en-us/library/windows/desktop/ms682499(v=vs.85).aspx
-int Terminal::execute(const std::string &command, const boost::filesystem::path &path) {
+int Terminal::execute(const std::string &command, const boost::filesystem::path &path, bool use_pipes) {
   HANDLE stdin_h, stdout_h, stderr_h;
-
-  auto process=popen3(command, path.string(), &stdin_h, &stdout_h, &stderr_h);
+  
+  HANDLE process;
+  if(use_pipes)
+    process=popen3(command, path.string(), &stdin_h, &stdout_h, &stderr_h);
+  else
+    process=popen3(command, path.string(), nullptr, nullptr, nullptr);
   if(process==NULL) {
     async_print("Error: Failed to run command: " + command + "\n");
     return -1;
   }
-  std::thread stderr_thread([this, stderr_h](){
-    DWORD n;
-    CHAR buffer[buffer_size];
-    for (;;) {
-      BOOL bSuccess = ReadFile(stderr_h, buffer, static_cast<DWORD>(buffer_size), &n, NULL);
-      if(!bSuccess || n == 0)
-	break;
-
-      std::string message;
-      message.reserve(n);
-      for(DWORD c=0;c<n;c++)
-	message+=buffer[c];
-      async_print(message, true);
-    }
-  });
-  stderr_thread.detach();
-
-  std::thread stdout_thread([this, stdout_h](){
-    DWORD n;
-    CHAR buffer[buffer_size];
-    for (;;) {
-      BOOL bSuccess = ReadFile(stdout_h, buffer, static_cast<DWORD>(buffer_size), &n, NULL);
-      if(!bSuccess || n == 0)
-	break;
-
-      std::string message;
-      message.reserve(n);
-      for(DWORD c=0;c<n;c++)
-	message+=buffer[c];
-      async_print(message);
-    }
-  });
-  stdout_thread.detach();
+  if(use_pipes) {
+    std::thread stderr_thread([this, stderr_h](){
+      DWORD n;
+      CHAR buffer[buffer_size];
+      for (;;) {
+        BOOL bSuccess = ReadFile(stderr_h, buffer, static_cast<DWORD>(buffer_size), &n, NULL);
+        if(!bSuccess || n == 0)
+  	break;
+  
+        std::string message;
+        message.reserve(n);
+        for(DWORD c=0;c<n;c++)
+  	message+=buffer[c];
+        async_print(message, true);
+      }
+    });
+    stderr_thread.detach();
+  
+    std::thread stdout_thread([this, stdout_h](){
+      DWORD n;
+      CHAR buffer[buffer_size];
+      for (;;) {
+        BOOL bSuccess = ReadFile(stdout_h, buffer, static_cast<DWORD>(buffer_size), &n, NULL);
+        if(!bSuccess || n == 0)
+  	break;
+  
+        std::string message;
+        message.reserve(n);
+        for(DWORD c=0;c<n;c++)
+  	message+=buffer[c];
+        async_print(message);
+      }
+    });
+    stdout_thread.detach();
+  }
 
   unsigned long exit_code;
   WaitForSingleObject(process, INFINITE);
   GetExitCodeProcess(process, &exit_code);
   
   CloseHandle(process);
-  CloseHandle(stdin_h);
-  CloseHandle(stdout_h);
-  CloseHandle(stderr_h);
+  if(use_pipes) {
+    CloseHandle(stdin_h);
+    CloseHandle(stdout_h);
+    CloseHandle(stderr_h);
+  }
   return exit_code;
 }
 

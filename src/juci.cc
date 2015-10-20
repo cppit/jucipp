@@ -59,7 +59,7 @@ void app::on_activate() {
       }
       std::thread another_juci_app([this, directory, files_in_directory](){
         Singleton::terminal()->async_print("Executing: juci "+directory.string()+files_in_directory);
-        Singleton::terminal()->execute("juci "+directory.string()+files_in_directory, ""); //TODO: do not open pipes here, doing this after Juci compiles on Windows
+        Singleton::terminal()->execute("juci "+directory.string()+files_in_directory, "", false);
       });
       another_juci_app.detach();
     }
