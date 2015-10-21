@@ -36,7 +36,7 @@ Source::View(file_path, project_path, language), parse_error(false) {
   parsing_in_progress=Singleton::terminal()->print_in_progress("Parsing "+file_path.string());
   //GTK-calls must happen in main thread, so the parse_thread
   //sends signals to the main thread that it is to call the following functions:
-  parse_start.connect([this]{
+  parse_start_connection=parse_start.connect([this]{
     if(parse_thread_buffer_map_mutex.try_lock()) {
       parse_thread_buffer_map=get_buffer_map();
       parse_thread_mapped=true;
@@ -44,7 +44,7 @@ Source::View(file_path, project_path, language), parse_error(false) {
     }
     parse_thread_go=true;
   });
-  parse_done.connect([this](){
+  parse_done_connection=parse_done.connect([this](){
     if(parse_thread_mapped) {
       if(parsing_mutex.try_lock()) {
         update_syntax();
@@ -59,7 +59,7 @@ Source::View(file_path, project_path, language), parse_error(false) {
       parse_thread_go=true;
     }
   });
-  parse_fail.connect([this](){
+  parse_fail_connection=parse_fail.connect([this](){
     Singleton::terminal()->print("Error: failed to reparse "+this->file_path.string()+".\n");
     set_status("");
     set_info("");
@@ -104,10 +104,6 @@ void Source::ClangViewParse::configure() {
   bracket_regex=std::regex("^([ \\t]*).*\\{ *$");
   no_bracket_statement_regex=std::regex("^([ \\t]*)(if|for|else if|catch|while) *\\(.*[^;}] *$");
   no_bracket_no_para_statement_regex=std::regex("^([ \\t]*)(else|try|do) *$");
-}
-
-Source::ClangViewParse::~ClangViewParse() {
-  delayed_reparse_connection.disconnect();
 }
 
 void Source::ClangViewParse::init_parse() {
@@ -660,9 +656,10 @@ Source::ClangViewParse(file_path, project_path, language), autocomplete_cancel_s
     autocomplete_cancel_starting=false;
   });
   
-  do_delete_object.connect([this](){
+  do_delete_object_connection=do_delete_object.connect([this](){
     if(delete_thread.joinable())
       delete_thread.join();
+    do_delete_object_connection.disconnect();
     delete this;
   });
   do_restart_parse.connect([this](){
@@ -875,8 +872,6 @@ std::vector<Source::ClangViewAutocomplete::AutoCompleteData> Source::ClangViewAu
 
 void Source::ClangViewAutocomplete::async_delete() {
   parsing_in_progress->cancel("canceled, freeing resources in the background");
-  autocomplete_done_connection.disconnect();
-  autocomplete_fail_connection.disconnect();
   parse_thread_stop=true;
   delete_thread=std::thread([this](){
     //TODO: Is it possible to stop the clang-process in progress?
@@ -1262,13 +1257,22 @@ void Source::ClangViewRefactor::tag_similar_tokens(const Token &token) {
   }
 }
 
-Source::ClangViewRefactor::~ClangViewRefactor() {
-  delayed_tag_similar_tokens_connection.disconnect();
-}
-
 Source::ClangView::ClangView(const boost::filesystem::path &file_path, const boost::filesystem::path& project_path, Glib::RefPtr<Gsv::Language> language): ClangViewRefactor(file_path, project_path, language) {
   if(language) {
     get_source_buffer()->set_highlight_syntax(true);
     get_source_buffer()->set_language(language);
   }
 }
+
+void Source::ClangView::async_delete() {
+  delayed_reparse_connection.disconnect();
+  parse_done_connection.disconnect();
+  parse_start_connection.disconnect();
+  parse_fail_connection.disconnect();
+  autocomplete_done_connection.disconnect();
+  autocomplete_fail_connection.disconnect();
+  do_restart_parse_connection.disconnect();
+  delayed_tag_similar_tokens_connection.disconnect();
+  ClangViewAutocomplete::async_delete();
+}
+
