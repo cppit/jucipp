@@ -27,8 +27,12 @@ namespace sigc {
 #endif
 }
 
-Notebook::Notebook() : Gtk::Notebook() {
+Notebook::Notebook() : Gtk::Notebook(), last_index(-1) {
   Gsv::init();
+  
+  signal_switch_page().connect([this](Gtk::Widget* page, guint page_num) {
+    last_index=-1;
+  });
 }
 
 int Notebook::size() {
@@ -114,7 +118,13 @@ void Notebook::open(const boost::filesystem::path &file_path) {
   
   set_tab_reorderable(*hboxes.back(), true);
   show_all_children();
+  
+  size_t last_index_tmp=-1;
+  if(get_current_page()!=-1)
+    last_index_tmp=get_index(get_current_page());
   set_current_page(size()-1);
+  last_index=last_index_tmp;
+  
   set_focus_child(*source_views.back());
   get_current_view()->get_buffer()->set_modified(false);
   get_current_view()->grab_focus();
@@ -229,6 +239,11 @@ bool Notebook::close_current_page() {
     }
     int page = get_current_page();
     int index=get_index(page);
+    
+    if(last_index!=-1) {
+      set_current_page(page_num(*hboxes.at(last_index)));
+      last_index=-1;
+    }
     remove_page(page);
 #if GTK_VERSION_GE(3, 18)
     source_maps.erase(source_maps.begin()+index);
