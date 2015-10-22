@@ -240,7 +240,7 @@ bool Notebook::close_current_page() {
     int page = get_current_page();
     int index=get_index(page);
     
-    if(last_index!=-1) {
+    if(last_index!=static_cast<size_t>(-1)) {
       set_current_page(page_num(*hboxes.at(last_index)));
       last_index=-1;
     }
