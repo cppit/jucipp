@@ -315,6 +315,9 @@ void Source::View::configure() {
   property_show_line_numbers() = Singleton::Config::source()->show_line_numbers;
   if(Singleton::Config::source()->font.size()>0)
     override_font(Pango::FontDescription(Singleton::Config::source()->font));
+#if GTK_VERSION_GE(3, 16)
+  gtk_source_view_set_background_pattern(this->gobj(), GTK_SOURCE_BACKGROUND_PATTERN_TYPE_GRID);
+#endif
   
   //Create tags for diagnostic warnings and errors:
   auto scheme = get_source_buffer()->get_style_scheme();
