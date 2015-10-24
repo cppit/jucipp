@@ -49,7 +49,7 @@ const std::string configjson =
 "            \"702\": \"def:statement\",\n"
 "            \"705\": \"def:comment\"\n"
 "        },\n"
-"        \"clang_format_style\": \"UseTab: Never, ColumnLimit: 0\" //See http://clang.llvm.org/docs/ClangFormatStyleOptions.html\n"
+"        \"clang_format_style\": \"ColumnLimit: 0\" //IndentWidth and UseTab is set automatically. See http://clang.llvm.org/docs/ClangFormatStyleOptions.html\n"
 "    },\n"
 "    \"keybindings\": {\n"
 "        \"new_file\": \"<primary>n\",\n"

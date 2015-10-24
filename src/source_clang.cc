@@ -926,7 +926,19 @@ Source::ClangViewAutocomplete(file_path, project_path, language) {
   
   auto_indent=[this]() {
     std::string command="clang-format";
-    command+=" -style=\"{IndentWidth: "+std::to_string(tab_size);
+    unsigned indent_width;
+    std::string tab_style;
+    if(tab_char=='\t') {
+      indent_width=tab_size*8;
+      tab_style="UseTab: Always";
+    }
+    else {
+      indent_width=tab_size;
+      tab_style="UseTab: Never";
+    }
+    command+=" -style=\"{IndentWidth: "+std::to_string(indent_width);
+    if(tab_style.size()>0)
+      command+=", "+tab_style;
     if(Singleton::Config::source()->clang_format_style!="")
       command+=", "+Singleton::Config::source()->clang_format_style;
     command+="}\"";
@@ -957,7 +969,6 @@ Source::ClangViewAutocomplete(file_path, project_path, language) {
         scroll_to(get_buffer()->get_insert(), 0.0, 1.0, 0.5);
       }
       get_source_buffer()->end_user_action();
-      set_tab_char_and_size(' ', tab_size); //clang-format only does basic indentation with spaces as I understand it
     }
   };
   
