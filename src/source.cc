@@ -1025,21 +1025,19 @@ bool Source::View::on_key_press_event(GdkEventKey* key) {
       auto line_it = get_source_buffer()->get_iter_at_line(line_nr);
       if(!get_buffer()->get_has_selection() || line_it!=selection_end) {        
         auto tabs_end_iter=get_tabs_end_iter(line_nr);
-        auto line_tabs=get_line_before(tabs_end_iter);
-        
-        if(line_tabs.size()>0 || tabs_end_iter.ends_line()) {
-          if(!tabs_end_iter.ends_line()) {
+        if(tabs_end_iter.starts_line() && tabs_end_iter.ends_line())
+          ignore_line.push_back(true);
+        else {
+          auto line_tabs=get_line_before(tabs_end_iter);
+          
+          if(line_tabs.size()>0) {
             indent_left_steps=std::min(indent_left_steps, static_cast<unsigned>(line_tabs.size()));
             ignore_line.push_back(false);
           }
-          else if(static_cast<unsigned>(line_tabs.size())<indent_left_steps)
-            ignore_line.push_back(true);
-          else
-            ignore_line.push_back(false);
-        }
-        else {
-          get_source_buffer()->end_user_action();
-          return true;
+          else {
+            get_source_buffer()->end_user_action();
+            return true;
+          }
         }
       }
     }
