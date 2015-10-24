@@ -937,8 +937,8 @@ Source::ClangViewAutocomplete(file_path, project_path, language) {
       tab_style="UseTab: Never";
     }
     command+=" -style=\"{IndentWidth: "+std::to_string(indent_width);
-    if(tab_style.size()>0)
-      command+=", "+tab_style;
+    command+=", "+tab_style;
+    command+=", "+std::string("AccessModifierOffset: -")+std::to_string(indent_width);
     if(Singleton::Config::source()->clang_format_style!="")
       command+=", "+Singleton::Config::source()->clang_format_style;
     command+="}\"";
