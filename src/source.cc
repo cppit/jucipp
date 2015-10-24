@@ -315,7 +315,7 @@ void Source::View::configure() {
   property_show_line_numbers() = Singleton::Config::source()->show_line_numbers;
   if(Singleton::Config::source()->font.size()>0)
     override_font(Pango::FontDescription(Singleton::Config::source()->font));
-#if GTK_VERSION_GE(3, 16)
+#if GTKSOURCEVIEWMM_MAJOR_VERSION > 2 & GTKSOURCEVIEWMM_MINOR_VERSION > 15
   gtk_source_view_set_background_pattern(this->gobj(), GTK_SOURCE_BACKGROUND_PATTERN_TYPE_GRID);
 #endif
   
@@ -354,11 +354,9 @@ void Source::View::configure() {
       error_property=style->property_background().get_value();
     
     diagnostic_tag_underline->property_underline()=Pango::Underline::UNDERLINE_ERROR;
-    auto tag_class=G_OBJECT_GET_CLASS(diagnostic_tag_underline->gobj()); //For older GTK+ 3 versions:
-    auto param_spec=g_object_class_find_property(tag_class, "underline-rgba");
-    if(param_spec!=NULL) {
-      diagnostic_tag_underline->set_property("underline-rgba", Gdk::RGBA(error_property));
-    }
+#if GTK_VERSION_GE(3, 16)
+    diagnostic_tag_underline->set_property("underline-rgba", Gdk::RGBA(error_property));
+#endif
   }
   //TODO: clear tag_class and param_spec?
 

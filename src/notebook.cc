@@ -6,7 +6,7 @@
 #include <regex>
 #include "cmake.h"
 
-#if GTK_VERSION_GE(3, 18)
+#if GTKSOURCEVIEWMM_MAJOR_VERSION > 2 & GTKSOURCEVIEWMM_MINOR_VERSION > 17
 #include "gtksourceview-3.0/gtksourceview/gtksourcemap.h"
 #endif
 
@@ -107,7 +107,7 @@ void Notebook::open(const boost::filesystem::path &file_path) {
   scrolled_windows.back()->add(*source_views.back());
   hboxes.back()->pack_start(*scrolled_windows.back());
 
-#if GTK_VERSION_GE(3, 18)
+#if GTKSOURCEVIEWMM_MAJOR_VERSION > 2 & GTKSOURCEVIEWMM_MINOR_VERSION > 17
   source_maps.emplace_back(Glib::wrap(gtk_source_map_new()));
   gtk_source_map_set_view(GTK_SOURCE_MAP(source_maps.back()->gobj()), source_views.back()->gobj());
 #endif
@@ -149,7 +149,7 @@ void Notebook::open(const boost::filesystem::path &file_path) {
 }
 
 void Notebook::configure(int view_nr) {
-#if GTK_VERSION_GE(3, 18)
+#if GTKSOURCEVIEWMM_MAJOR_VERSION > 2 & GTKSOURCEVIEWMM_MINOR_VERSION > 17
   auto source_font_description=Pango::FontDescription(Singleton::Config::source()->font);
   auto source_map_font_desc=Pango::FontDescription(static_cast<std::string>(source_font_description.get_family())+" "+Singleton::Config::source()->map_font_size); 
   source_maps.at(view_nr)->override_font(source_map_font_desc);
@@ -245,7 +245,7 @@ bool Notebook::close_current_page() {
       last_index=-1;
     }
     remove_page(page);
-#if GTK_VERSION_GE(3, 18)
+#if GTKSOURCEVIEWMM_MAJOR_VERSION > 2 & GTKSOURCEVIEWMM_MINOR_VERSION > 17
     source_maps.erase(source_maps.begin()+index);
 #endif
     auto source_view=source_views.at(index);
