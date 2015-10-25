@@ -7,13 +7,16 @@
 
 class Menu {
 public:
+  class Config {
+  public:
+    std::unordered_map<std::string, std::string> keys;
+  };
+  
   Menu();
   Gtk::Widget& get_widget();
   void build();
   
-  std::unordered_map<std::string, std::string> key_map;
   std::string ui_xml;
-  Glib::RefPtr<Gtk::UIManager> ui_manager;
-  Glib::RefPtr<Gtk::ActionGroup> action_group;
+  Glib::RefPtr<Gtk::Builder> builder;
 };
 #endif  // JUCI_MENU_H_

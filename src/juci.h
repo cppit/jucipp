@@ -9,6 +9,7 @@ class app : public Gtk::Application {
   app();
   int on_command_line(const Glib::RefPtr<Gio::ApplicationCommandLine> &cmd);
   void on_activate();
+  void on_startup();
 
  private:
   std::unique_ptr<Window> window;

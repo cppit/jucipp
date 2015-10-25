@@ -1,8 +1,65 @@
 #include "menu.h"
+#include "singletons.h"
+#include <string>
 #include <iostream>
 
+using namespace std; //TODO: remove
+
 Menu::Menu() {
-  action_group = Gtk::ActionGroup::create();
+  auto &keys=Singleton::Config::menu()->keys;
+  
+  ui_xml =
+  "<interface>"
+  "  <menu id='juci-menu'>"
+  "    <section>"
+  "      <item>"
+  "        <attribute name='label' translatable='yes'>_About</attribute>"
+  "        <attribute name='action'>win.about</attribute>"
+  "      </item>"
+  "    </section>"
+  "    <section>"
+  "      <item>"
+  "        <attribute name='label' translatable='yes'>_Preferences</attribute>"
+  "        <attribute name='action'>win.preferences</attribute>"
+  "      </item>"  
+  "    </section>"
+  "    <section>"
+  "      <item>"
+  "        <attribute name='label' translatable='yes'>_Quit</attribute>"
+  "        <attribute name='action'>win.quit</attribute>"
+  "        <attribute name='accel'>"+keys["quit"]+"</attribute>"
+  "      </item>"  
+  "    </section>"
+  "  </menu>"
+  ""
+  "  <menu id='window-menu'>"
+  "    <submenu>"
+  "      <attribute name='label' translatable='yes'>_File</attribute>"
+  "      <section>"
+  "        <item>"
+  "          <attribute name='label' translatable='yes'>_New _File</attribute>"
+  "          <attribute name='action'>win.new_file</attribute>"
+  "        </item>"
+  "        <item>"
+  "          <attribute name='label' translatable='yes'>_New _Directory</attribute>"
+  "          <attribute name='action'>win.new_directory</attribute>"
+  "        </item>"
+  "      </section>"
+  "      <section>"
+  "        <item>"
+  "          <attribute name='label' translatable='yes'>_Open _File</attribute>"
+  "          <attribute name='action'>win.open_file</attribute>"
+  "        </item>"
+  "        <item>"
+  "          <attribute name='label' translatable='yes'>_Open _Directory</attribute>"
+  "          <attribute name='action'>win.open_directory</attribute>"
+  "        </item>"
+  "      </section>"
+  "    </submenu>"
+  "  </menu>"
+  "</interface>";
+  
+  /*action_group = Gtk::ActionGroup::create();
   ui_manager = Gtk::UIManager::create();
   ui_manager->insert_action_group(action_group);
   
@@ -89,18 +146,20 @@ Menu::Menu() {
   "      <menuitem action=\"HelpAbout\"/>\n"
   "    </menu>\n"
   "  </menubar>\n"
-  "</ui>\n";
+  "</ui>\n";*/
 }
 
 Gtk::Widget& Menu::get_widget() {
-  return *ui_manager->get_widget("/MenuBar");
+  //return *ui_manager->get_widget("/MenuBar");
 }
 
 void Menu::build() {
+  builder = Gtk::Builder::create();
+  
   try {
-    ui_manager->add_ui_from_string(ui_xml);
+    builder->add_from_string(ui_xml);
   }
   catch (const Glib::Error &ex) {
-    std::cerr << "building menu failed" << ex.what();
+    std::cerr << "building menu failed: " << ex.what();
   }
 }

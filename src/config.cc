@@ -52,7 +52,21 @@ void MainConfig::find_or_create_config_files() {
 }
 
 void MainConfig::retrieve_config() {
-  Singleton::Config::window()->keybindings = cfg.get_child("keybindings");
+  auto keybindings_pt = cfg.get_child("keybindings");
+  for (auto &i : keybindings_pt) {
+    auto key = i.second.get_value<std::string>();
+    size_t pos=0;
+    while((pos=key.find('<', pos))!=std::string::npos) {
+      key.replace(pos, 1, "&lt;");
+      pos+=4;
+    }
+    pos=0;
+    while((pos=key.find('>', pos))!=std::string::npos) {
+      key.replace(pos, 1, "&gt;");
+      pos+=4;
+    }
+    Singleton::Config::menu()->keys[i.first] = key;
+  }
   GenerateSource();
   GenerateDirectoryFilter();
   

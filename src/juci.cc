@@ -38,7 +38,6 @@ int app::on_command_line(const Glib::RefPtr<Gio::ApplicationCommandLine> &cmd) {
 }
 
 void app::on_activate() {
-  window = std::unique_ptr<Window>(new Window());
   add_window(*window);
   window->show();
   bool first_directory=true;
@@ -68,8 +67,30 @@ void app::on_activate() {
     window->notebook.open(file);
 }
 
-app::app() : Gtk::Application("no.sout.juci", Gio::APPLICATION_NON_UNIQUE | Gio::APPLICATION_HANDLES_COMMAND_LINE) {
+void app::on_startup() {
+  Gtk::Application::on_startup();
   
+  Singleton::menu()->build();
+
+  auto object = Singleton::menu()->builder->get_object("juci-menu");
+  auto juci_menu = Glib::RefPtr<Gio::Menu>::cast_dynamic(object);
+  object = Singleton::menu()->builder->get_object("window-menu");
+  auto window_menu = Glib::RefPtr<Gio::Menu>::cast_dynamic(object);
+  if (!juci_menu || !window_menu) {
+    std::cerr << "Menu not found." << std::endl;
+  }
+  else {
+    set_app_menu(juci_menu);
+    set_menubar(window_menu);
+  }
+  
+  window->set_menu_actions();
+}
+
+app::app() : Gtk::Application("no.sout.juci", Gio::APPLICATION_NON_UNIQUE | Gio::APPLICATION_HANDLES_COMMAND_LINE) {
+  Glib::set_application_name("juCi++");
+  
+  window = std::unique_ptr<Window>(new Window());
 }
 
 int main(int argc, char *argv[]) {

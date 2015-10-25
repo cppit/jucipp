@@ -23,14 +23,7 @@ namespace sigc {
 #endif
 }
 
-void Window::generate_keybindings() {
-  for (auto &i : Singleton::Config::window()->keybindings) {
-    auto key = i.second.get_value<std::string>();
-    menu.key_map[i.first] = key;
-  }
-}
-
-Window::Window() : box(Gtk::ORIENTATION_VERTICAL), compiling(false) {
+Window::Window() : compiling(false) {
   JDEBUG("start");
   set_title("juCi++");
   set_events(Gdk::POINTER_MOTION_MASK|Gdk::FOCUS_CHANGE_MASK|Gdk::SCROLL_MASK);
@@ -39,15 +32,6 @@ Window::Window() : box(Gtk::ORIENTATION_VERTICAL), compiling(false) {
   
   //PluginApi(&this->notebook, &this->menu);
   
-  add(box);
-
-  //TODO: Do not use deprecated ui_manager? And make menu shortcuts update when config.json is saved (in configure())
-  generate_keybindings();
-  create_menu();
-  menu.build();
-  add_accel_group(menu.ui_manager->get_accel_group());
-  box.pack_start(menu.get_widget(), Gtk::PACK_SHRINK);
-
   directory_and_notebook_panes.pack1(*Singleton::directories(), Gtk::SHRINK);
   notebook_vbox.pack_start(notebook);
   notebook_vbox.pack_end(entry_box, Gtk::PACK_SHRINK);
@@ -64,7 +48,7 @@ Window::Window() : box(Gtk::ORIENTATION_VERTICAL), compiling(false) {
   terminal_vbox.pack_end(info_and_status_hbox, Gtk::PACK_SHRINK);
   vpaned.pack2(terminal_vbox, true, true);
   
-  box.pack_end(vpaned);
+  add(vpaned);
   show_all_children();
 
   Singleton::directories()->on_row_activated=[this](const std::string &file) {
@@ -79,13 +63,11 @@ Window::Window() : box(Gtk::ORIENTATION_VERTICAL), compiling(false) {
   });
 
   entry_box.signal_show().connect([this](){
-    box.set_focus_chain({&vpaned});
     vpaned.set_focus_chain({&directory_and_notebook_panes});
     directory_and_notebook_panes.set_focus_chain({&notebook_vbox});
     notebook_vbox.set_focus_chain({&entry_box});
   });
   entry_box.signal_hide().connect([this](){
-    box.unset_focus_chain();
     vpaned.unset_focus_chain();
     directory_and_notebook_panes.unset_focus_chain();
     notebook_vbox.unset_focus_chain();
@@ -105,7 +87,7 @@ Window::Window() : box(Gtk::ORIENTATION_VERTICAL), compiling(false) {
         notebook.get_current_view()->search_highlight(last_search, case_sensitive_search, regex_search);
       }
 
-      if(auto menu_item=dynamic_cast<Gtk::MenuItem*>(menu.ui_manager->get_widget("/MenuBar/SourceMenu/SourceIndentation/SourceIndentationAutoIndentBuffer")))
+      /*if(auto menu_item=dynamic_cast<Gtk::MenuItem*>(menu.ui_manager->get_widget("/MenuBar/SourceMenu/SourceIndentation/SourceIndentationAutoIndentBuffer")))
         menu_item->set_sensitive((bool)notebook.get_current_view()->auto_indent);
 
       if(auto menu_item=dynamic_cast<Gtk::MenuItem*>(menu.ui_manager->get_widget("/MenuBar/SourceMenu/SourceGotoDeclaration")))
@@ -124,7 +106,7 @@ Window::Window() : box(Gtk::ORIENTATION_VERTICAL), compiling(false) {
         menu_item->set_sensitive((bool)notebook.get_current_view()->apply_fix_its);
       
       if(auto menu_item=dynamic_cast<Gtk::MenuItem*>(menu.ui_manager->get_widget("/MenuBar/SourceMenu/SourceFindDocumentation")))
-        menu_item->set_sensitive((bool)notebook.get_current_view()->get_token_data);
+        menu_item->set_sensitive((bool)notebook.get_current_view()->get_token_data);*/
     
       Singleton::directories()->select(notebook.get_current_view()->file_path);
       
@@ -170,11 +152,39 @@ void Window::configure() {
   style_context->add_provider_for_screen(screen, css_provider, GTK_STYLE_PROVIDER_PRIORITY_SETTINGS);
 }
 
-void Window::create_menu() {
-  menu.action_group->add(Gtk::Action::create("FileQuit", "Quit juCi++"), Gtk::AccelKey(menu.key_map["quit"]), [this]() {
+  void Window::set_menu_actions() {
+  
+  add_action("quit", [this]() {
     hide();
   });
-  menu.action_group->add(Gtk::Action::create("FileNewFile", "New File"), Gtk::AccelKey(menu.key_map["new_file"]), [this]() {
+  
+  auto action=add_action("new_file", [this]() {
+    boost::filesystem::path path = Dialog::new_file();
+    if(path!="") {
+      if(boost::filesystem::exists(path)) {
+        Singleton::terminal()->print("Error: "+path.string()+" already exists.\n");
+      }
+      else {
+        if(juci::filesystem::write(path)) {
+          if(Singleton::directories()->current_path!="")
+            Singleton::directories()->update();
+          notebook.open(path.string());
+          Singleton::terminal()->print("New file "+path.string()+" created.\n");
+        }
+        else
+          Singleton::terminal()->print("Error: could not create new file "+path.string()+".\n");
+      }
+    }
+  });
+  auto accel_group=get_accel_group();
+  auto accel_grp=Gtk::AccelGroup::create();
+  
+  
+  
+  /*menu.action_group->add(Gtk::Action::create("FileQuit", "Quit juCi++"), Gtk::AccelKey(key_map["quit"]), [this]() {
+    hide();
+  });
+  menu.action_group->add(Gtk::Action::create("FileNewFile", "New File"), Gtk::AccelKey(key_map["new_file"]), [this]() {
       boost::filesystem::path path = Dialog::new_file();
       if(path!="") {
         if(boost::filesystem::exists(path)) {
@@ -192,7 +202,7 @@ void Window::create_menu() {
         }
       }
   });
-  menu.action_group->add(Gtk::Action::create("FileNewFolder", "New Folder"), Gtk::AccelKey(menu.key_map["new_folder"]), [this]() {
+  menu.action_group->add(Gtk::Action::create("FileNewFolder", "New Folder"), Gtk::AccelKey(key_map["new_folder"]), [this]() {
     auto time_now=std::chrono::system_clock::to_time_t(std::chrono::system_clock::now());
       boost::filesystem::path path = Dialog::new_folder();
       if(path!="" && boost::filesystem::exists(path)) {
@@ -238,17 +248,17 @@ void Window::create_menu() {
         Singleton::terminal()->print("Error: Could not create project "+project_path.string()+"\n");
     }
   });
-  menu.action_group->add(Gtk::Action::create("FileOpenFile", "Open File"), Gtk::AccelKey(menu.key_map["open_file"]), [this]() {
+  menu.action_group->add(Gtk::Action::create("FileOpenFile", "Open File"), Gtk::AccelKey(key_map["open_file"]), [this]() {
     auto path=Dialog::select_file();
     if(path!="")
       notebook.open(path);
   });
-  menu.action_group->add(Gtk::Action::create("FileOpenFolder", "Open Folder"), Gtk::AccelKey(menu.key_map["open_folder"]), [this]() {
+  menu.action_group->add(Gtk::Action::create("FileOpenFolder", "Open Folder"), Gtk::AccelKey(key_map["open_folder"]), [this]() {
     auto path = Dialog::select_folder();
     if (path!="" && boost::filesystem::exists(path))
       Singleton::directories()->open(path);
   });
-  menu.action_group->add(Gtk::Action::create("FileSaveAs", "Save As"), Gtk::AccelKey(menu.key_map["save_as"]), [this]() {
+  menu.action_group->add(Gtk::Action::create("FileSaveAs", "Save As"), Gtk::AccelKey(key_map["save_as"]), [this]() {
     auto path = Dialog::save_file();
     if(path!="") {
       std::ofstream file(path);
@@ -264,11 +274,11 @@ void Window::create_menu() {
         Singleton::terminal()->print("Error saving file\n");
     }
 });
-  menu.action_group->add(Gtk::Action::create("Preferences", "Preferences..."), Gtk::AccelKey(menu.key_map["preferences"]), [this]() {
+  menu.action_group->add(Gtk::Action::create("Preferences", "Preferences..."), Gtk::AccelKey(key_map["preferences"]), [this]() {
     notebook.open(Singleton::config_dir()+"config.json");
   });
 
-  menu.action_group->add(Gtk::Action::create("FileSave", "Save"), Gtk::AccelKey(menu.key_map["save"]), [this]() {
+  menu.action_group->add(Gtk::Action::create("FileSave", "Save"), Gtk::AccelKey(key_map["save"]), [this]() {
     if(notebook.save_current()) {
       if(notebook.get_current_page()!=-1) {
         if(notebook.get_current_view()->file_path==Singleton::config_dir()+"config.json") {
@@ -282,31 +292,31 @@ void Window::create_menu() {
     }
   });
 
-  menu.action_group->add(Gtk::Action::create("EditCopy", "Copy"), Gtk::AccelKey(menu.key_map["edit_copy"]), [this]() {
+  menu.action_group->add(Gtk::Action::create("EditCopy", "Copy"), Gtk::AccelKey(key_map["edit_copy"]), [this]() {
     auto widget=get_focus();
     if(auto entry=dynamic_cast<Gtk::Entry*>(widget))
       entry->copy_clipboard();
     else if(auto text_view=dynamic_cast<Gtk::TextView*>(widget))
       text_view->get_buffer()->copy_clipboard(Gtk::Clipboard::get());
   });
-  menu.action_group->add(Gtk::Action::create("EditCut", "Cut"), Gtk::AccelKey(menu.key_map["edit_cut"]), [this]() {
+  menu.action_group->add(Gtk::Action::create("EditCut", "Cut"), Gtk::AccelKey(key_map["edit_cut"]), [this]() {
     auto widget=get_focus();
     if(auto entry=dynamic_cast<Gtk::Entry*>(widget))
       entry->cut_clipboard();
     else if(notebook.get_current_page()!=-1)
       notebook.get_current_view()->get_buffer()->cut_clipboard(Gtk::Clipboard::get());
   });
-  menu.action_group->add(Gtk::Action::create("EditPaste", "Paste"), Gtk::AccelKey(menu.key_map["edit_paste"]), [this]() {
+  menu.action_group->add(Gtk::Action::create("EditPaste", "Paste"), Gtk::AccelKey(key_map["edit_paste"]), [this]() {
     auto widget=get_focus();
     if(auto entry=dynamic_cast<Gtk::Entry*>(widget))
       entry->paste_clipboard();
     else if(notebook.get_current_page()!=-1)
       notebook.get_current_view()->paste();
   });
-  menu.action_group->add(Gtk::Action::create("EditFind", "Find"), Gtk::AccelKey(menu.key_map["edit_find"]), [this]() {
+  menu.action_group->add(Gtk::Action::create("EditFind", "Find"), Gtk::AccelKey(key_map["edit_find"]), [this]() {
     search_and_replace_entry();
   });
-  menu.action_group->add(Gtk::Action::create("EditUndo", "Undo"), Gtk::AccelKey(menu.key_map["edit_undo"]), [this]() {
+  menu.action_group->add(Gtk::Action::create("EditUndo", "Undo"), Gtk::AccelKey(key_map["edit_undo"]), [this]() {
     if(notebook.get_current_page()!=-1) {
       auto undo_manager = notebook.get_current_view()->get_source_buffer()->get_undo_manager();
       if (undo_manager->can_undo()) {
@@ -315,7 +325,7 @@ void Window::create_menu() {
       }
     }
   });
-  menu.action_group->add(Gtk::Action::create("EditRedo", "Redo"), Gtk::AccelKey(menu.key_map["edit_redo"]), [this]() {
+  menu.action_group->add(Gtk::Action::create("EditRedo", "Redo"), Gtk::AccelKey(key_map["edit_redo"]), [this]() {
     if(notebook.get_current_page()!=-1) {
       auto undo_manager = notebook.get_current_view()->get_source_buffer()->get_undo_manager();
       if(undo_manager->can_redo()) {
@@ -326,30 +336,30 @@ void Window::create_menu() {
   });
 
   menu.action_group->add(Gtk::Action::create("SourceSpellCheck", "Spell Check"));
-  menu.action_group->add(Gtk::Action::create("SourceSpellCheckBuffer", "Spell Check Buffer"), Gtk::AccelKey(menu.key_map["source_spellcheck"]), [this]() {
+  menu.action_group->add(Gtk::Action::create("SourceSpellCheckBuffer", "Spell Check Buffer"), Gtk::AccelKey(key_map["source_spellcheck"]), [this]() {
     if(notebook.get_current_page()!=-1)
         notebook.get_current_view()->spellcheck();
   });
-  menu.action_group->add(Gtk::Action::create("SourceSpellCheckClear", "Clear Spelling Errors"), Gtk::AccelKey(menu.key_map["source_spellcheck_clear"]), [this]() {
+  menu.action_group->add(Gtk::Action::create("SourceSpellCheckClear", "Clear Spelling Errors"), Gtk::AccelKey(key_map["source_spellcheck_clear"]), [this]() {
     if(notebook.get_current_page()!=-1)
         notebook.get_current_view()->remove_spellcheck_errors();
   });
-  menu.action_group->add(Gtk::Action::create("SourceSpellCheckNextError", "Go to next Spelling Error"), Gtk::AccelKey(menu.key_map["source_spellcheck_next_error"]), [this]() {
+  menu.action_group->add(Gtk::Action::create("SourceSpellCheckNextError", "Go to next Spelling Error"), Gtk::AccelKey(key_map["source_spellcheck_next_error"]), [this]() {
     if(notebook.get_current_page()!=-1)
         notebook.get_current_view()->goto_next_spellcheck_error();
   });
   menu.action_group->add(Gtk::Action::create("SourceIndentation", "Indentation"));
-  menu.action_group->add(Gtk::Action::create("SourceIndentationSetBufferTab", "Set Current Buffer Tab"), Gtk::AccelKey(menu.key_map["source_indentation_set_buffer_tab"]), [this]() {
+  menu.action_group->add(Gtk::Action::create("SourceIndentationSetBufferTab", "Set Current Buffer Tab"), Gtk::AccelKey(key_map["source_indentation_set_buffer_tab"]), [this]() {
     set_tab_entry();
   });
-  menu.action_group->add(Gtk::Action::create("SourceIndentationAutoIndentBuffer", "Auto-Indent Current Buffer"), Gtk::AccelKey(menu.key_map["source_indentation_auto_indent_buffer"]), [this]() {
+  menu.action_group->add(Gtk::Action::create("SourceIndentationAutoIndentBuffer", "Auto-Indent Current Buffer"), Gtk::AccelKey(key_map["source_indentation_auto_indent_buffer"]), [this]() {
     if(notebook.get_current_page()!=-1 && notebook.get_current_view()->auto_indent)
       notebook.get_current_view()->auto_indent();
   });
-  menu.action_group->add(Gtk::Action::create("SourceGotoLine", "Go to Line"), Gtk::AccelKey(menu.key_map["source_goto_line"]), [this]() {
+  menu.action_group->add(Gtk::Action::create("SourceGotoLine", "Go to Line"), Gtk::AccelKey(key_map["source_goto_line"]), [this]() {
     goto_line_entry();
   });
-  menu.action_group->add(Gtk::Action::create("SourceCenterCursor", "Center Cursor"), Gtk::AccelKey(menu.key_map["source_center_cursor"]), [this]() {
+  menu.action_group->add(Gtk::Action::create("SourceCenterCursor", "Center Cursor"), Gtk::AccelKey(key_map["source_center_cursor"]), [this]() {
     if(notebook.get_current_page()!=-1) {
       while(gtk_events_pending())
         gtk_main_iteration();
@@ -357,7 +367,7 @@ void Window::create_menu() {
         notebook.get_current_view()->scroll_to(notebook.get_current_view()->get_buffer()->get_insert(), 0.0, 1.0, 0.5);
     }
   });
-  menu.action_group->add(Gtk::Action::create("SourceGotoDeclaration", "Go to Declaration"), Gtk::AccelKey(menu.key_map["source_goto_declaration"]), [this]() {
+  menu.action_group->add(Gtk::Action::create("SourceGotoDeclaration", "Go to Declaration"), Gtk::AccelKey(key_map["source_goto_declaration"]), [this]() {
     if(notebook.get_current_page()!=-1) {
       if(notebook.get_current_view()->get_declaration_location) {
         auto location=notebook.get_current_view()->get_declaration_location();
@@ -384,17 +394,17 @@ void Window::create_menu() {
       }
     }
   });
-  menu.action_group->add(Gtk::Action::create("SourceGotoMethod", "Go to Method"), Gtk::AccelKey(menu.key_map["source_goto_method"]), [this]() {
+  menu.action_group->add(Gtk::Action::create("SourceGotoMethod", "Go to Method"), Gtk::AccelKey(key_map["source_goto_method"]), [this]() {
     if(notebook.get_current_page()!=-1) {
       if(notebook.get_current_view()->goto_method) {
         notebook.get_current_view()->goto_method();
       }
     }
   });
-  menu.action_group->add(Gtk::Action::create("SourceRename", "Rename"), Gtk::AccelKey(menu.key_map["source_rename"]), [this]() {
+  menu.action_group->add(Gtk::Action::create("SourceRename", "Rename"), Gtk::AccelKey(key_map["source_rename"]), [this]() {
     rename_token_entry();
   });
-  menu.action_group->add(Gtk::Action::create("SourceFindDocumentation", "Find Documentation"), Gtk::AccelKey(menu.key_map["source_find_documentation"]), [this]() {
+  menu.action_group->add(Gtk::Action::create("SourceFindDocumentation", "Find Documentation"), Gtk::AccelKey(key_map["source_find_documentation"]), [this]() {
     if(notebook.get_current_page()!=-1) {
       if(notebook.get_current_view()->get_token_data) {
         auto data=notebook.get_current_view()->get_token_data();        
@@ -434,14 +444,14 @@ void Window::create_menu() {
       }
     }
   });
-  menu.action_group->add(Gtk::Action::create("SourceGotoNextDiagnostic", "Go to next Diagnostic"), Gtk::AccelKey(menu.key_map["source_goto_next_diagnostic"]), [this]() {
+  menu.action_group->add(Gtk::Action::create("SourceGotoNextDiagnostic", "Go to next Diagnostic"), Gtk::AccelKey(key_map["source_goto_next_diagnostic"]), [this]() {
     if(notebook.get_current_page()!=-1) {
       if(notebook.get_current_view()->goto_next_diagnostic) {
         notebook.get_current_view()->goto_next_diagnostic();
       }
     }
   });
-  menu.action_group->add(Gtk::Action::create("SourceApplyFixIts", "Apply Fix-Its"), Gtk::AccelKey(menu.key_map["source_apply_fix_its"]), [this]() {
+  menu.action_group->add(Gtk::Action::create("SourceApplyFixIts", "Apply Fix-Its"), Gtk::AccelKey(key_map["source_apply_fix_its"]), [this]() {
     if(notebook.get_current_page()!=-1) {
       if(notebook.get_current_view()->apply_fix_its) {
         notebook.get_current_view()->apply_fix_its();
@@ -449,7 +459,7 @@ void Window::create_menu() {
     }
   });
 
-  menu.action_group->add(Gtk::Action::create("ProjectCompileAndRun", "Compile and Run"), Gtk::AccelKey(menu.key_map["compile_and_run"]), [this]() {
+  menu.action_group->add(Gtk::Action::create("ProjectCompileAndRun", "Compile and Run"), Gtk::AccelKey(key_map["compile_and_run"]), [this]() {
     if(notebook.get_current_page()==-1 || compiling)
       return;
     CMake cmake(notebook.get_current_view()->file_path);
@@ -489,7 +499,7 @@ void Window::create_menu() {
       }
     }
   });
-  menu.action_group->add(Gtk::Action::create("ProjectCompile", "Compile"), Gtk::AccelKey(menu.key_map["compile"]), [this]() {
+  menu.action_group->add(Gtk::Action::create("ProjectCompile", "Compile"), Gtk::AccelKey(key_map["compile"]), [this]() {
     if(notebook.get_current_page()==-1 || compiling)
       return;
     CMake cmake(notebook.get_current_view()->file_path);
@@ -501,7 +511,7 @@ void Window::create_menu() {
       });
     }
   });
-  menu.action_group->add(Gtk::Action::create("ProjectRunCommand", "Run Command"), Gtk::AccelKey(menu.key_map["run_command"]), [this]() {
+  menu.action_group->add(Gtk::Action::create("ProjectRunCommand", "Run Command"), Gtk::AccelKey(key_map["run_command"]), [this]() {
     entry_box.clear();
     entry_box.labels.emplace_back();
     auto label_it=entry_box.labels.begin();
@@ -536,13 +546,13 @@ void Window::create_menu() {
     });
     entry_box.show();
   });
-  menu.action_group->add(Gtk::Action::create("ProjectKillLastRunning", "Kill Last Process"), Gtk::AccelKey(menu.key_map["kill_last_running"]), [this]() {
+  menu.action_group->add(Gtk::Action::create("ProjectKillLastRunning", "Kill Last Process"), Gtk::AccelKey(key_map["kill_last_running"]), [this]() {
     Singleton::terminal()->kill_last_async_execute();
   });
-  menu.action_group->add(Gtk::Action::create("ProjectForceKillLastRunning", "Force Kill Last Process"), Gtk::AccelKey(menu.key_map["force_kill_last_running"]), [this]() {
+  menu.action_group->add(Gtk::Action::create("ProjectForceKillLastRunning", "Force Kill Last Process"), Gtk::AccelKey(key_map["force_kill_last_running"]), [this]() {
     Singleton::terminal()->kill_last_async_execute(true);
   });
-  menu.action_group->add(Gtk::Action::create("WindowCloseTab", "Close Tab"), Gtk::AccelKey(menu.key_map["close_tab"]), [this]() {
+  menu.action_group->add(Gtk::Action::create("WindowCloseTab", "Close Tab"), Gtk::AccelKey(key_map["close_tab"]), [this]() {
     notebook.close_current_page();
     if(notebook.get_current_page()!=-1) {
       notebook.get_current_view()->set_status(notebook.get_current_view()->status);
@@ -553,12 +563,12 @@ void Window::create_menu() {
       Singleton::info()->set_text("");
     }
   });
-  menu.action_group->add(Gtk::Action::create("WindowNextTab", "Next Tab"), Gtk::AccelKey(menu.key_map["next_tab"]), [this]() {
+  menu.action_group->add(Gtk::Action::create("WindowNextTab", "Next Tab"), Gtk::AccelKey(key_map["next_tab"]), [this]() {
     if(notebook.get_current_page()!=-1) {
       notebook.open(notebook.get_view((notebook.get_current_page()+1)%notebook.size())->file_path);
     }
   });
-  menu.action_group->add(Gtk::Action::create("WindowPreviousTab", "Previous Tab"), Gtk::AccelKey(menu.key_map["previous_tab"]), [this]() {
+  menu.action_group->add(Gtk::Action::create("WindowPreviousTab", "Previous Tab"), Gtk::AccelKey(key_map["previous_tab"]), [this]() {
     if(notebook.get_current_page()!=-1) {
       int previous_page=notebook.get_current_page()-1;
       if(previous_page<0)
@@ -569,7 +579,7 @@ void Window::create_menu() {
   menu.action_group->add(Gtk::Action::create("HelpAbout", "About"), [this] () {
     about.show();
     about.present();
-  });
+  });*/
 }
 
 bool Window::on_key_press_event(GdkEventKey *event) {

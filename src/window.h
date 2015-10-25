@@ -5,10 +5,9 @@
 #include "directories.h"
 #include "entrybox.h"
 #include "notebook.h"
-#include "menu.h"
 #include <atomic>
 
-class Window : public Gtk::Window {
+class Window : public Gtk::ApplicationWindow {
 public:
   Window();
   Notebook notebook;
@@ -18,15 +17,14 @@ public:
     std::string theme_variant;
     std::string version;
     std::pair<int, int> default_size;
-    boost::property_tree::ptree keybindings;
   };
+  void set_menu_actions();
 
 protected:
   bool on_key_press_event(GdkEventKey *event);
   bool on_delete_event (GdkEventAny *event);
 
 private:
-  Gtk::Box box;
   Gtk::VPaned vpaned;
   Gtk::Paned directory_and_notebook_panes;
   Gtk::VBox notebook_vbox;
@@ -35,17 +33,14 @@ private:
   Gtk::HBox info_and_status_hbox;
   Gtk::AboutDialog about;
   EntryBox entry_box;
-  Menu menu;
   std::atomic<bool> compiling;
 
   void configure();
-  void create_menu();
   void hide();
   void search_and_replace_entry();
   void set_tab_entry();
   void goto_line_entry();
   void rename_token_entry();
-  void generate_keybindings();
   std::string last_search;
   std::string last_replace;
   std::string last_run_command;
