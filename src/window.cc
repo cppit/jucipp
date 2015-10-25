@@ -31,6 +31,7 @@ Window::Window() : compiling(false) {
   set_default_size(Singleton::Config::window()->default_size.first, Singleton::Config::window()->default_size.second);
   
   //PluginApi(&this->notebook, &this->menu);
+  add(vpaned);
   
   directory_and_notebook_panes.pack1(*Singleton::directories(), Gtk::SHRINK);
   notebook_vbox.pack_start(notebook);
@@ -48,7 +49,6 @@ Window::Window() : compiling(false) {
   terminal_vbox.pack_end(info_and_status_hbox, Gtk::PACK_SHRINK);
   vpaned.pack2(terminal_vbox, true, true);
   
-  add(vpaned);
   show_all_children();
 
   Singleton::directories()->on_row_activated=[this](const std::string &file) {
@@ -152,13 +152,22 @@ void Window::configure() {
   style_context->add_provider_for_screen(screen, css_provider, GTK_STYLE_PROVIDER_PRIORITY_SETTINGS);
 }
 
-  void Window::set_menu_actions() {
+void Window::set_menu_actions() {
+  auto menu = Singleton::menu();
   
-  add_action("quit", [this]() {
+  menu->add_action("about", [this]() {
+    about.show();
+    about.present();
+  });
+  menu->add_action("preferences", [this]() {
+    notebook.open(Singleton::config_dir()+"config.json");
+  });
+  menu->add_action("quit", [this]() {
     hide();
   });
   
-  auto action=add_action("new_file", [this]() {
+  
+  menu->add_action("new_file", [this]() {
     boost::filesystem::path path = Dialog::new_file();
     if(path!="") {
       if(boost::filesystem::exists(path)) {
@@ -176,33 +185,7 @@ void Window::configure() {
       }
     }
   });
-  auto accel_group=get_accel_group();
-  auto accel_grp=Gtk::AccelGroup::create();
-  
-  
-  
-  /*menu.action_group->add(Gtk::Action::create("FileQuit", "Quit juCi++"), Gtk::AccelKey(key_map["quit"]), [this]() {
-    hide();
-  });
-  menu.action_group->add(Gtk::Action::create("FileNewFile", "New File"), Gtk::AccelKey(key_map["new_file"]), [this]() {
-      boost::filesystem::path path = Dialog::new_file();
-      if(path!="") {
-        if(boost::filesystem::exists(path)) {
-          Singleton::terminal()->print("Error: "+path.string()+" already exists.\n");
-        }
-        else {
-          if(juci::filesystem::write(path)) {
-            if(Singleton::directories()->current_path!="")
-              Singleton::directories()->update();
-            notebook.open(path.string());
-            Singleton::terminal()->print("New file "+path.string()+" created.\n");
-          }
-          else
-            Singleton::terminal()->print("Error: could not create new file "+path.string()+".\n");
-        }
-      }
-  });
-  menu.action_group->add(Gtk::Action::create("FileNewFolder", "New Folder"), Gtk::AccelKey(key_map["new_folder"]), [this]() {
+  menu->add_action("new_folder", [this]() {
     auto time_now=std::chrono::system_clock::to_time_t(std::chrono::system_clock::now());
       boost::filesystem::path path = Dialog::new_folder();
       if(path!="" && boost::filesystem::exists(path)) {
@@ -216,8 +199,7 @@ void Window::configure() {
         Singleton::directories()->select(path);
       }
   });
-  menu.action_group->add(Gtk::Action::create("FileNewProject", "New Project"));
-  menu.action_group->add(Gtk::Action::create("FileNewProjectCpp", "C++"), [this]() {
+  menu->add_action("new_project_cpp", [this]() {
     boost::filesystem::path project_path = Dialog::new_folder();
     if(project_path!="") {
       auto project_name=project_path.filename().string();
@@ -248,49 +230,53 @@ void Window::configure() {
         Singleton::terminal()->print("Error: Could not create project "+project_path.string()+"\n");
     }
   });
-  menu.action_group->add(Gtk::Action::create("FileOpenFile", "Open File"), Gtk::AccelKey(key_map["open_file"]), [this]() {
+  
+  menu->add_action("open_file", [this]() {
     auto path=Dialog::select_file();
     if(path!="")
       notebook.open(path);
   });
-  menu.action_group->add(Gtk::Action::create("FileOpenFolder", "Open Folder"), Gtk::AccelKey(key_map["open_folder"]), [this]() {
+  menu->add_action("open_folder", [this]() {
     auto path = Dialog::select_folder();
     if (path!="" && boost::filesystem::exists(path))
       Singleton::directories()->open(path);
   });
-  menu.action_group->add(Gtk::Action::create("FileSaveAs", "Save As"), Gtk::AccelKey(key_map["save_as"]), [this]() {
-    auto path = Dialog::save_file();
-    if(path!="") {
-      std::ofstream file(path);
-      if(file) {
-        file << notebook.get_current_view()->get_buffer()->get_text();
-        file.close();
-        if(Singleton::directories()->current_path!="")
-          Singleton::directories()->update();
-        notebook.open(path);
-        Singleton::terminal()->print("File saved to: " + notebook.get_current_view()->file_path.string()+"\n");
-      }
-      else
-        Singleton::terminal()->print("Error saving file\n");
-    }
-});
-  menu.action_group->add(Gtk::Action::create("Preferences", "Preferences..."), Gtk::AccelKey(key_map["preferences"]), [this]() {
-    notebook.open(Singleton::config_dir()+"config.json");
-  });
-
-  menu.action_group->add(Gtk::Action::create("FileSave", "Save"), Gtk::AccelKey(key_map["save"]), [this]() {
-    if(notebook.save_current()) {
-      if(notebook.get_current_page()!=-1) {
-        if(notebook.get_current_view()->file_path==Singleton::config_dir()+"config.json") {
-          configure();
-          for(int c=0;c<notebook.size();c++) {
-            notebook.get_view(c)->configure();
-            notebook.configure(c);
+  
+  menu->add_action("save", [this]() {
+    if(notebook.get_current_page()!=-1) {
+      if(notebook.save_current()) {
+        if(notebook.get_current_page()!=-1) {
+          if(notebook.get_current_view()->file_path==Singleton::config_dir()+"config.json") {
+            configure();
+            for(int c=0;c<notebook.size();c++) {
+              notebook.get_view(c)->configure();
+              notebook.configure(c);
+            }
           }
         }
       }
     }
   });
+  menu->add_action("save_as", [this]() {
+    if(notebook.get_current_page()!=-1) {
+      auto path = Dialog::save_file();
+      if(path!="") {
+        std::ofstream file(path);
+        if(file) {
+          file << notebook.get_current_view()->get_buffer()->get_text();
+          file.close();
+          if(Singleton::directories()->current_path!="")
+            Singleton::directories()->update();
+          notebook.open(path);
+          Singleton::terminal()->print("File saved to: " + notebook.get_current_view()->file_path.string()+"\n");
+        }
+        else
+          Singleton::terminal()->print("Error saving file\n");
+      }
+    }
+  });
+  
+  /*
 
   menu.action_group->add(Gtk::Action::create("EditCopy", "Copy"), Gtk::AccelKey(key_map["edit_copy"]), [this]() {
     auto widget=get_focus();
@@ -576,10 +562,7 @@ void Window::configure() {
       notebook.open(notebook.get_view(previous_page)->file_path);
     }
   });
-  menu.action_group->add(Gtk::Action::create("HelpAbout", "About"), [this] () {
-    about.show();
-    about.present();
-  });*/
+  */
 }
 
 bool Window::on_key_press_event(GdkEventKey *event) {
