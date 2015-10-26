@@ -38,7 +38,6 @@ int app::on_command_line(const Glib::RefPtr<Gio::ApplicationCommandLine> &cmd) {
 }
 
 void app::on_activate() {
-  window = std::unique_ptr<Window>(new Window());
   add_window(*window);
   window->show();
   bool first_directory=true;
@@ -71,6 +70,7 @@ void app::on_activate() {
 void app::on_startup() {
   Gtk::Application::on_startup();
   
+  Singleton::menu()->init();
   Singleton::menu()->build();
 
   auto object = Singleton::menu()->builder->get_object("juci-menu");
@@ -88,6 +88,8 @@ void app::on_startup() {
 
 app::app() : Gtk::Application("no.sout.juci", Gio::APPLICATION_NON_UNIQUE | Gio::APPLICATION_HANDLES_COMMAND_LINE) {
   Glib::set_application_name("juCi++");
+  Singleton::menu()->application=static_cast<Gtk::Application*>(this); //For Ubuntu 14...
+  window = std::unique_ptr<Window>(new Window());
 }
 
 int main(int argc, char *argv[]) {

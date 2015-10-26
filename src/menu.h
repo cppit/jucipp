@@ -13,6 +13,8 @@ public:
   };
 
   Menu();
+  void init(); //For Ubuntu 14...
+  Gtk::Application* application; //For Ubuntu 14...
   
   void add_action(const std::string &name, std::function<void()> action);
   std::unordered_map<std::string, Glib::RefPtr<Gio::SimpleAction> > actions;
