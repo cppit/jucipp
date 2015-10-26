@@ -18,40 +18,6 @@ std::string filesystem::read(const std::string &path) {
   return ss.str();
 }
 
-std::string safe_get_env(const std::string &env) {
-  auto ptr = std::getenv(env.c_str());
-  return nullptr==ptr ? "" : std::string(ptr);
-}
-
-/**
- * Returns home folder, empty on error
- */
-boost::filesystem::path filesystem::get_home_folder() {
-  auto home=safe_get_env("HOME");
-  if(home.empty())
-    home=safe_get_env("AppData");
-  auto status = boost::filesystem::status(home);
-  if((status.permissions() & 0222)>=2) {
-    return home;
-  } else {
-    JERROR("No write permissions in home, var:");
-    DEBUG_VAR(home);
-    return "";
-  }
-}
-
-/**
- * Returns tmp folder, empty on error.
- */
-boost::filesystem::path filesystem::get_tmp_folder() {
-  boost::system::error_code code;
-  auto path = boost::filesystem::temp_directory_path(code);
-  if (code.value()!=0) {
-    return "";
-  }
-  return path;
-}
-
 int filesystem::read(const std::string &path, Glib::RefPtr<Gtk::TextBuffer> text_buffer) {
   std::ifstream input(path, std::ofstream::binary);
   

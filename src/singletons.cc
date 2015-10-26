@@ -39,24 +39,3 @@ Gtk::Label *Singleton::info() {
   return info_.get();
 }
 
-boost::filesystem::path Singleton::create_config_path(const std::string &subfolder) {
-  auto home = filesystem::get_home_folder();
-  if(home.empty()) {
-    Singleton::terminal()->print("Could not find/write to home directory. Using defaults, no settings will be saved.");
-    home = filesystem::get_tmp_folder();
-    if(home.empty()) {
-      std::string message("Please fix permissions of your home folder");
-      std::cerr << message << std::endl;
-      JFATAL(message);
-      throw new std::exception;
-    }
-  }
-  home /= subfolder;
-  return home;
-}
-
-boost::filesystem::path Singleton::config_dir() { return create_config_path({".juci", "config"}); }
-boost::filesystem::path Singleton::log_dir() { return create_config_path({".juci", "log"}); }
-boost::filesystem::path Singleton::style_dir() { return create_config_path({".juci", "styles"}); }
-std::string Singleton::config_json() { return (Singleton::config_dir()/"config.json").string(); }
-

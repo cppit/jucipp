@@ -25,7 +25,5 @@ public:
   static bool write(const std::string &path, Glib::RefPtr<Gtk::TextBuffer> text_buffer);
   static bool write(const boost::filesystem::path &path, Glib::RefPtr<Gtk::TextBuffer> text_buffer) { return write(path.string(), text_buffer); }
 
-  static boost::filesystem::path get_home_folder();
-  static boost::filesystem::path get_tmp_folder();
 };
 #endif  // JUCI_SOURCEFILE_H_

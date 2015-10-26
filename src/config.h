@@ -13,7 +13,11 @@ public:
   void PrintMenu();
   void GenerateSource();
   void GenerateDirectoryFilter();
+  const boost::filesystem::path& juci_home_path() { return home; } const;
+
 private:
+  std::vector<std::string> init_home_path();
   boost::property_tree::ptree cfg;
+  boost::filesystem::path home;
 };
 #endif

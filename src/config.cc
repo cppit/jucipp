@@ -8,14 +8,24 @@
 using namespace std; //TODO: remove
 
 MainConfig::MainConfig() {
-  find_or_create_config_files();
+  auto search_envs = init_home_path();
+  auto config_json = (home/"config"/"config.json").string(); // This causes some redundant copies, but assures windows support
   try {
-    boost::property_tree::json_parser::read_json(Singleton::config_json(), cfg);
+    find_or_create_config_files();
+    if(home.empty()) {
+      std::string searched_envs = "[";
+      for(auto &env : search_envs)
+        searched_envs+=env+", ";
+      searched_envs.erase(searched_envs.end()-2, searched_envs.end());
+      searched_envs+="]";
+      throw std::runtime_error("One of these environment variables needs to point to a writable directory to save configuration." + searched_envs);
+    }
+    boost::property_tree::json_parser::read_json(config_json, cfg);
     update_config_file();
     retrieve_config();
   }
   catch(const std::exception &e) {
-    Singleton::terminal()->print("Error reading "+ Singleton::config_json()+": "+e.what()+"\n");
+    Singleton::terminal()->print("Error reading "+ config_json + ": "+e.what()+"\n");
     std::stringstream ss;
     ss << configjson;
     boost::property_tree::read_json(ss, cfg);
@@ -24,27 +34,28 @@ MainConfig::MainConfig() {
 }
 
 void MainConfig::find_or_create_config_files() {
-  std::vector<std::string> files = {"config.json", "plugins.py"};
-  boost::filesystem::create_directories(boost::filesystem::path(Singleton::config_dir()));
-  for (auto &file : files) {
-    auto path = Singleton::config_dir();
-    path /= file;
-    if (!boost::filesystem::is_regular_file(path)) {
-      if (file == "config.json") filesystem::write(path, configjson);
-      if (file == "plugins.py") filesystem::write(path, pluginspy);
-    }
-  }
-  
-  boost::filesystem::create_directories(boost::filesystem::path(Singleton::style_dir()));
-  auto juci_style_path=Singleton::style_dir();
+  auto config_dir = home/"config";
+  auto config_json = config_dir/"config.json";
+  auto plugins_py = config_dir/"plugins.py";
+
+  boost::filesystem::create_directories(config_dir); // io exp captured by calling method
+
+  if (!boost::filesystem::exists(config_json))
+    filesystem::write(config_json, configjson); // vars configjson and pluginspy
+  if (!boost::filesystem::exists(plugins_py))   // live in files.h
+    filesystem::write(plugins_py, pluginspy);
+
+  auto juci_style_path = home/"styles";
+  boost::filesystem::create_directories(juci_style_path); // io exp captured by calling method
+
   juci_style_path/="juci-light.xml";
   if(!boost::filesystem::exists(juci_style_path))
     filesystem::write(juci_style_path, juci_light_style);
-  juci_style_path=Singleton::style_dir();
+  juci_style_path=juci_style_path.parent_path();
   juci_style_path/="juci-dark.xml";
   if(!boost::filesystem::exists(juci_style_path))
     filesystem::write(juci_style_path, juci_dark_style);
-  juci_style_path=Singleton::style_dir();
+  juci_style_path=juci_style_path.parent_path();
   juci_style_path/="juci-dark-blue.xml";
   if(!boost::filesystem::exists(juci_style_path))
     filesystem::write(juci_style_path, juci_dark_blue_style);
@@ -107,7 +118,7 @@ void MainConfig::update_config_file() {
   }
   cfg_ok&=check_config_file(default_cfg);
   if(!cfg_ok) {
-    boost::property_tree::write_json(Singleton::config_json(), cfg);
+    boost::property_tree::write_json((home/"config"/"config.json").string(), cfg);
   }
 }
 
@@ -156,4 +167,21 @@ void MainConfig::GenerateDirectoryFilter() {
   for ( auto &i : ignore_json )
     dir_cfg->ignored.emplace_back(i.second.get_value<std::string>());
   JDEBUG("Directory filter fetched");
+}
+std::vector<std::string> MainConfig::init_home_path(){
+  std::vector<std::string> locations = JUCI_ENV_SEARCH_LOCATIONS;
+  char *ptr = nullptr;
+  for (auto &env : locations) {
+    ptr=std::getenv(env.c_str());
+    if (ptr==nullptr)
+      break;
+    else
+      if (boost::filesystem::exists(ptr)) {
+        home /= ".juci";
+        home /= ptr;
+        return locations;
+      }
+  }
+  home="";
+  return locations;
 }
