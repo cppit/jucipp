@@ -18,18 +18,18 @@ MainConfig::MainConfig() {
         searched_envs+=env+", ";
       searched_envs.erase(searched_envs.end()-2, searched_envs.end());
       searched_envs+="]";
-      throw std::runtime_error("One of these environment variables needs to point to a writable directory to save configuration." + searched_envs);
+      throw std::runtime_error("One of these environment variables needs to point to a writable directory to save configuration: " + searched_envs);
     }
     boost::property_tree::json_parser::read_json(config_json, cfg);
     update_config_file();
     retrieve_config();
   }
   catch(const std::exception &e) {
-    Singleton::terminal()->print("Error reading "+ config_json + ": "+e.what()+"\n");
     std::stringstream ss;
     ss << configjson;
     boost::property_tree::read_json(ss, cfg);
     retrieve_config();
+    JERROR("Error reading "+ config_json + ": "+e.what()+"\n"); // logs will print to cerr when init_log haven't been run yet
   }
 }
 
@@ -65,7 +65,7 @@ void MainConfig::retrieve_config() {
   Singleton::Config::window()->keybindings = cfg.get_child("keybindings");
   GenerateSource();
   GenerateDirectoryFilter();
-  
+
   Singleton::Config::window()->theme_name=cfg.get<std::string>("gtk_theme.name");
   Singleton::Config::window()->theme_variant=cfg.get<std::string>("gtk_theme.variant");
   Singleton::Config::window()->version = cfg.get<std::string>("version");
@@ -174,11 +174,11 @@ std::vector<std::string> MainConfig::init_home_path(){
   for (auto &env : locations) {
     ptr=std::getenv(env.c_str());
     if (ptr==nullptr)
-      break;
+      continue;
     else
       if (boost::filesystem::exists(ptr)) {
-        home /= ".juci";
         home /= ptr;
+        home /= ".juci";
         return locations;
       }
   }
