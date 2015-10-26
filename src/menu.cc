@@ -10,27 +10,39 @@ Menu::Menu() {
 
 //TODO: if Ubuntu ever gets fixed, move to constructor, also cleanup the rest of the Ubuntu specific code
 void Menu::init() {
+  bool ubuntu_bugged_menu_system=false; //TODO: move to CMakeLists.txt and set -DUBUNTU_BUGGED_MENU
+#ifdef __linux
+  if(boost::filesystem::exists("/usr/bin/lsb_release")) {
+    std::stringstream stdin_stream, stdout_stream;
+    Singleton::terminal()->execute(stdin_stream, stdout_stream, "lsb_release -is");
+    if(stdout_stream.str()=="Ubuntu\n")
+      ubuntu_bugged_menu_system=true;
+  }
+#else
+  ubuntu_bugged_menu_system=false;
+#endif
+  
   auto accels=Singleton::Config::menu()->keys;
   for(auto &accel: accels) {
-#ifdef __linux //Ubuntu...
-    size_t pos=0;
-    std::string second=accel.second;
-    while((pos=second.find('<', pos))!=std::string::npos) {
-      second.replace(pos, 1, "&lt;");
-      pos+=4;
+    if(ubuntu_bugged_menu_system) {
+      size_t pos=0;
+      std::string second=accel.second;
+      while((pos=second.find('<', pos))!=std::string::npos) {
+        second.replace(pos, 1, "&lt;");
+        pos+=4;
+      }
+      pos=0;
+      while((pos=second.find('>', pos))!=std::string::npos) {
+        second.replace(pos, 1, "&gt;");
+        pos+=4;
+      }
+      if(second.size()>0)
+        accel.second="<attribute name='accel'>"+second+"</attribute>";
+      else
+        accel.second="";
     }
-    pos=0;
-    while((pos=second.find('>', pos))!=std::string::npos) {
-      second.replace(pos, 1, "&gt;");
-      pos+=4;
-    }
-    if(second.size()>0)
-      accel.second="<attribute name='accel'>"+second+"</attribute>";
     else
       accel.second="";
-#else
-      accel.second="";
-#endif
   }
   
   ui_xml =
