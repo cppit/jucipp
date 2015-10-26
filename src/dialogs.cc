@@ -8,10 +8,10 @@ std::string open_dialog(const std::string &title,
                         Gtk::FileChooserAction gtk_options,
                         const std::string &file_name = "") {
   Gtk::FileChooserDialog dialog(title, gtk_options);
-  if(Singleton::directories()->current_path!="")
-    gtk_file_chooser_set_current_folder((GtkFileChooser*)dialog.gobj(), Singleton::directories()->current_path.string().c_str());
+  if(!Singleton::directories()->current_path.empty())
+    gtk_file_chooser_set_current_folder((GtkFileChooser*)dialog.gobj(), Singleton::directories()->current_path.c_str());
   else
-    gtk_file_chooser_set_current_folder((GtkFileChooser*)dialog.gobj(), boost::filesystem::current_path().string().c_str());
+    gtk_file_chooser_set_current_folder((GtkFileChooser*)dialog.gobj(), boost::filesystem::current_path().c_str());
   if (!file_name.empty())
     gtk_file_chooser_set_filename((GtkFileChooser*)dialog.gobj(), file_name.c_str());
   dialog.set_position(Gtk::WindowPosition::WIN_POS_CENTER_ALWAYS);

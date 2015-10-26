@@ -17,9 +17,9 @@ CMake::CMake(const boost::filesystem::path &path) {
     return false;
   };
   
-  auto search_path=boost::filesystem::path(path);
+  auto search_path=path;
   auto search_cmake_path=search_path;
-  search_cmake_path+="/CMakeLists.txt";
+  search_cmake_path/="CMakeLists.txt";
   if(boost::filesystem::exists(search_cmake_path))
     paths.emplace(paths.begin(), search_cmake_path);
   if(find_cmake_project(search_cmake_path))
@@ -28,7 +28,7 @@ CMake::CMake(const boost::filesystem::path &path) {
     do {
       search_path=search_path.parent_path();
       search_cmake_path=search_path;
-      search_cmake_path+="/CMakeLists.txt";
+      search_cmake_path/="CMakeLists.txt";
       if(boost::filesystem::exists(search_cmake_path))
         paths.emplace(paths.begin(), search_cmake_path);
       if(find_cmake_project(search_cmake_path)) {
@@ -37,8 +37,8 @@ CMake::CMake(const boost::filesystem::path &path) {
       }
     } while(search_path!=search_path.root_directory());
   }
-  if(project_path!="") {
-    if(boost::filesystem::exists(project_path.string()+"/CMakeLists.txt") && !boost::filesystem::exists(project_path.string()+"/compile_commands.json"))
+  if(!project_path.empty()) {
+    if(boost::filesystem::exists(project_path/"CMakeLists.txt") && !boost::filesystem::exists(project_path/"compile_commands.json"))
       create_compile_commands(project_path);
   }
 }
@@ -48,7 +48,7 @@ bool CMake::create_compile_commands(const boost::filesystem::path &path) {
   if(Singleton::terminal()->execute(Singleton::Config::terminal()->cmake_command+" . -DCMAKE_EXPORT_COMPILE_COMMANDS=ON", path)==EXIT_SUCCESS) {
 #ifdef _WIN32 //Temporary fix to MSYS2's libclang
     auto compile_commands_path=path;
-    compile_commands_path+="/compile_commands.json";
+    compile_commands_path/="compile_commands.json";
     auto compile_commands_file=filesystem::read(compile_commands_path);
     size_t pos=0;
     while((pos=compile_commands_file.find("-I/", pos))!=std::string::npos) {
