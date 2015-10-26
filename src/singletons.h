@@ -11,6 +11,7 @@
 #include "notebook.h"
 #include "menu.h"
 #include "window.h"
+#include "config.h"
 
 class Singleton {
 public:
@@ -20,23 +21,21 @@ public:
     static Directories::Config *directories() {return directories_.get();}
     static Window::Config *window() { return window_.get(); }
     static Terminal::Config *terminal() {return terminal_.get();}
+    static MainConfig *main() { return main_.get(); }
 
   private:
     static std::unique_ptr<Source::Config> source_;
     static std::unique_ptr<Window::Config> window_;
     static std::unique_ptr<Directories::Config> directories_;
     static std::unique_ptr<Terminal::Config> terminal_;
+    static std::unique_ptr<MainConfig> main_;
   };
-  static boost::filesystem::path create_config_path(const std::string &subfolder);
-  static boost::filesystem::path config_dir();
-  static boost::filesystem::path log_dir();
-  static boost::filesystem::path style_dir();
-  static std::string config_json();
   static Terminal *terminal();
   static Directories *directories();
   static Gtk::Label *status();
   static Gtk::Label *info();
   static Window *window();
+
 private:
   static std::unique_ptr<Terminal> terminal_;
   static std::unique_ptr<Gtk::Label> status_;

@@ -7,6 +7,7 @@ std::unique_ptr<Window::Config> Singleton::Config::window_ = std::unique_ptr<Win
 std::unique_ptr<Terminal> Singleton::terminal_=std::unique_ptr<Terminal>();
 std::unique_ptr<Directories> Singleton::directories_=std::unique_ptr<Directories>();
 std::unique_ptr<Window> Singleton::window_=std::unique_ptr<Window>();
+std::unique_ptr<MainConfig> Singleton::Config::main_=std::unique_ptr<MainConfig>(new MainConfig());
 
 Terminal *Singleton::terminal() {
   if(!terminal_)

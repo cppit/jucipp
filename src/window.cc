@@ -158,7 +158,6 @@ Window::Window() : box(Gtk::ORIENTATION_VERTICAL), compiling(false) {
 } // Window constructor
 
 void Window::configure() {
-  MainConfig(); // Read the configs here
   auto style_context = Gtk::StyleContext::create();
   auto screen = Gdk::Screen::get_default();
   auto css_provider = Gtk::CssProvider::get_named(Singleton::Config::window()->theme_name, Singleton::Config::window()->theme_variant);
@@ -235,7 +234,7 @@ void Window::create_menu() {
         Singleton::terminal()->print("Error: Could not create project "+project_path.string()+"\n");
   });
   menu.action_group->add(Gtk::Action::create("FileOpenFile", "Open File"), Gtk::AccelKey(menu.key_map["open_file"]), [this]() {
-      notebook.open(Dialog::select_file());
+    notebook.open(Dialog::select_file());
   });
   menu.action_group->add(Gtk::Action::create("FileOpenFolder", "Open Folder"), Gtk::AccelKey(menu.key_map["open_folder"]), [this]() {
     auto path = Dialog::select_folder();
@@ -259,13 +258,13 @@ void Window::create_menu() {
     }
 });
   menu.action_group->add(Gtk::Action::create("Preferences", "Preferences..."), Gtk::AccelKey(menu.key_map["preferences"]), [this]() {
-    notebook.open(Singleton::config_json());
+    notebook.open(Singleton::Config::main()->juci_home_path()/"config"/"config.json");
   });
 
   menu.action_group->add(Gtk::Action::create("FileSave", "Save"), Gtk::AccelKey(menu.key_map["save"]), [this]() {
     if(notebook.save_current()) {
       if(notebook.get_current_page()!=-1) {
-        if(notebook.get_current_view()->file_path==Singleton::config_json()) {
+        if(notebook.get_current_view()->file_path==Singleton::Config::main()->juci_home_path()/"config"/"config.json") {
           configure();
           for(int c=0;c<notebook.size();c++) {
             notebook.get_view(c)->configure();
