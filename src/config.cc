@@ -31,6 +31,7 @@ MainConfig::MainConfig() {
     retrieve_config();
     JERROR("Error reading "+ config_json + ": "+e.what()+"\n"); // logs will print to cerr when init_log haven't been run yet
   }
+  cfg.clear();
 }
 
 void MainConfig::find_or_create_config_files() {
