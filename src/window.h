@@ -18,7 +18,6 @@ public:
     std::string version;
     std::pair<int, int> default_size;
   };
-  void set_menu_actions();
 
 protected:
   bool on_key_press_event(GdkEventKey *event);
@@ -36,6 +35,8 @@ private:
   std::atomic<bool> compiling;
 
   void configure();
+  void set_menu_actions();
+  void activate_menu_items(bool activate=true);
   void hide();
   void search_and_replace_entry();
   void set_tab_entry();

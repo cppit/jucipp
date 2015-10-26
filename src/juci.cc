@@ -38,6 +38,7 @@ int app::on_command_line(const Glib::RefPtr<Gio::ApplicationCommandLine> &cmd) {
 }
 
 void app::on_activate() {
+  window = std::unique_ptr<Window>(new Window());
   add_window(*window);
   window->show();
   bool first_directory=true;
@@ -83,13 +84,10 @@ void app::on_startup() {
     set_app_menu(juci_menu);
     set_menubar(window_menu);
   }
-  
-  window->set_menu_actions();
 }
 
 app::app() : Gtk::Application("no.sout.juci", Gio::APPLICATION_NON_UNIQUE | Gio::APPLICATION_HANDLES_COMMAND_LINE) {
   Glib::set_application_name("juCi++");
-  window = std::unique_ptr<Window>(new Window());
 }
 
 int main(int argc, char *argv[]) {

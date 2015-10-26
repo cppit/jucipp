@@ -13,12 +13,14 @@ public:
   };
 
   Menu();
+  
   void add_action(const std::string &name, std::function<void()> action);
   std::unordered_map<std::string, Glib::RefPtr<Gio::SimpleAction> > actions;
+  void set_keys();
   
   void build();
+  Glib::RefPtr<Gtk::Builder> builder;
   
   std::string ui_xml;
-  Glib::RefPtr<Gtk::Builder> builder;
 };
 #endif  // JUCI_MENU_H_
