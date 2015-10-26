@@ -75,12 +75,12 @@ bool MainConfig::check_config_file(const boost::property_tree::ptree &default_cf
     }
     catch(const std::exception &e) {
       cfg.add(path, node.second.data());
-      exists=false;        
+      exists=false;
     }
     try {
       exists&=check_config_file(node.second, path);
     }
-    catch(const std::exception &e) {        
+    catch(const std::exception &e) {
     }
   }
   return exists;
@@ -114,27 +114,27 @@ void MainConfig::update_config_file() {
 void MainConfig::GenerateSource() {
   auto source_cfg = Singleton::Config::source();
   auto source_json = cfg.get_child("source");
-  
+
   Singleton::Config::source()->style=source_json.get<std::string>("style");
   source_cfg->font=source_json.get<std::string>("font");
-  
+
   source_cfg->show_map = source_json.get<bool>("show_map");
   source_cfg->map_font_size = source_json.get<std::string>("map_font_size");
-  
+
   source_cfg->spellcheck_language = source_json.get<std::string>("spellcheck_language");
-  
+
   source_cfg->default_tab_char = source_json.get<char>("default_tab_char");
   source_cfg->default_tab_size = source_json.get<unsigned>("default_tab_size");
   source_cfg->auto_tab_char_and_size = source_json.get<bool>("auto_tab_char_and_size");
-  
+
   source_cfg->wrap_lines = source_json.get<bool>("wrap_lines");
-  
+
   source_cfg->highlight_current_line = source_json.get<bool>("highlight_current_line");
   source_cfg->show_line_numbers = source_json.get<bool>("show_line_numbers");
-  
+
   for (auto &i : source_json.get_child("clang_types"))
     source_cfg->clang_types[i.first] = i.second.get_value<std::string>();
-  
+
   auto pt_doc_search=cfg.get_child("documentation_searches");
   for(auto &pt_doc_search_lang: pt_doc_search) {
     source_cfg->documentation_searches[pt_doc_search_lang.first].separator=pt_doc_search_lang.second.get<std::string>("separator");
