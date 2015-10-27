@@ -21,8 +21,7 @@ namespace Source {
     };
     
     ClangViewParse(const boost::filesystem::path &file_path, const boost::filesystem::path& project_path, Glib::RefPtr<Gsv::Language> language);
-    ~ClangViewParse();
-    void configure();
+    virtual void configure();
     
     void start_reparse();
     bool reparse_needed=false;
@@ -39,8 +38,8 @@ namespace Source {
     std::atomic<bool> parse_thread_stop;
     std::atomic<bool> parse_error;
     
-    void show_diagnostic_tooltips(const Gdk::Rectangle &rectangle);
-    void show_type_tooltips(const Gdk::Rectangle &rectangle);
+    virtual void show_diagnostic_tooltips(const Gdk::Rectangle &rectangle);
+    virtual void show_type_tooltips(const Gdk::Rectangle &rectangle);
     
     std::regex bracket_regex;
     std::regex no_bracket_statement_regex;
@@ -48,6 +47,10 @@ namespace Source {
     
     std::set<int> diagnostic_offsets;
     std::vector<FixIt> fix_its;
+    
+    sigc::connection parse_done_connection;
+    sigc::connection parse_start_connection;
+    sigc::connection parse_fail_connection;
   private:
     std::map<std::string, std::string> get_buffer_map() const;
     void update_syntax();
@@ -77,11 +80,15 @@ namespace Source {
     };
     
     ClangViewAutocomplete(const boost::filesystem::path &file_path, const boost::filesystem::path& project_path, Glib::RefPtr<Gsv::Language> language);
-    void async_delete();
+    virtual void async_delete();
     bool restart_parse();
   protected:
     bool on_key_press_event(GdkEventKey* key);
     std::thread autocomplete_thread;
+    sigc::connection autocomplete_done_connection;
+    sigc::connection autocomplete_fail_connection;
+    sigc::connection do_delete_object_connection;
+    sigc::connection do_restart_parse_connection;
   private:
     void start_autocomplete();
     void autocomplete();
@@ -89,9 +96,7 @@ namespace Source {
     bool completion_dialog_shown=false;
     std::vector<AutoCompleteData> get_autocomplete_suggestions(int line_number, int column, std::map<std::string, std::string>& buffer_map);
     Glib::Dispatcher autocomplete_done;
-    sigc::connection autocomplete_done_connection;
     Glib::Dispatcher autocomplete_fail;
-    sigc::connection autocomplete_fail_connection;
     bool autocomplete_starting=false;
     std::atomic<bool> autocomplete_cancel_starting;
     guint last_keyval=0;
@@ -108,13 +113,13 @@ namespace Source {
   class ClangViewRefactor : public ClangViewAutocomplete {
   public:
     ClangViewRefactor(const boost::filesystem::path &file_path, const boost::filesystem::path& project_path, Glib::RefPtr<Gsv::Language> language);
-    ~ClangViewRefactor();
+  protected:
+    sigc::connection delayed_tag_similar_tokens_connection;
   private:
     std::list<std::pair<Glib::RefPtr<Gtk::TextMark>, Glib::RefPtr<Gtk::TextMark> > > similar_token_marks;
     void tag_similar_tokens(const Token &token);
     Glib::RefPtr<Gtk::TextTag> similar_tokens_tag;
     Token last_tagged_token;
-    sigc::connection delayed_tag_similar_tokens_connection;
     std::unique_ptr<SelectionDialog> selection_dialog;
     bool renaming=false;
   };
@@ -122,6 +127,7 @@ namespace Source {
   class ClangView : public ClangViewRefactor {
   public:
     ClangView(const boost::filesystem::path &file_path, const boost::filesystem::path& project_path, Glib::RefPtr<Gsv::Language> language);
+    virtual void async_delete();
   };
 }
 

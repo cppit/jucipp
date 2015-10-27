@@ -1,3 +1,4 @@
 [submodule "libclangmm"]
 	path = libclangmm
-	url = https://github.com/cppit/libclangmm/tree/v0.9.3
+	url = https://github.com/cppit/libclangmm.git
+	branch = v0.9.3

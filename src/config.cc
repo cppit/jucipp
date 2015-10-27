@@ -8,28 +8,23 @@
 using namespace std; //TODO: remove
 
 MainConfig::MainConfig() {
-  auto search_envs = init_home_path();
+  init_home_path();
+}
+
+void MainConfig::read() {
   auto config_json = (home/"config"/"config.json").string(); // This causes some redundant copies, but assures windows support
   try {
     find_or_create_config_files();
-    if(home.empty()) {
-      std::string searched_envs = "[";
-      for(auto &env : search_envs)
-        searched_envs+=env+", ";
-      searched_envs.erase(searched_envs.end()-2, searched_envs.end());
-      searched_envs+="]";
-      throw std::runtime_error("One of these environment variables needs to point to a writable directory to save configuration: " + searched_envs);
-    }
     boost::property_tree::json_parser::read_json(config_json, cfg);
     update_config_file();
     retrieve_config();
   }
   catch(const std::exception &e) {
+    Singleton::terminal()->print("Error reading "+config_json + "config.json: "+e.what()+"\n");
     std::stringstream ss;
     ss << configjson;
     boost::property_tree::read_json(ss, cfg);
     retrieve_config();
-    JERROR("Error reading "+ config_json + ": "+e.what()+"\n"); // logs will print to cerr when init_log haven't been run yet
   }
   cfg.clear();
 }
@@ -63,7 +58,10 @@ void MainConfig::find_or_create_config_files() {
 }
 
 void MainConfig::retrieve_config() {
-  Singleton::Config::window()->keybindings = cfg.get_child("keybindings");
+  auto keybindings_pt = cfg.get_child("keybindings");
+  for (auto &i : keybindings_pt) {
+    Singleton::Config::menu()->keys[i.first] = i.second.get_value<std::string>();
+  }
   GenerateSource();
   GenerateDirectoryFilter();
 
@@ -146,7 +144,9 @@ void MainConfig::GenerateSource() {
 
   for (auto &i : source_json.get_child("clang_types"))
     source_cfg->clang_types[i.first] = i.second.get_value<std::string>();
-
+  
+  source_cfg->clang_format_style = source_json.get<std::string>("clang_format_style");
+  
   auto pt_doc_search=cfg.get_child("documentation_searches");
   for(auto &pt_doc_search_lang: pt_doc_search) {
     source_cfg->documentation_searches[pt_doc_search_lang.first].separator=pt_doc_search_lang.second.get<std::string>("separator");
@@ -167,7 +167,8 @@ void MainConfig::GenerateDirectoryFilter() {
   for ( auto &i : ignore_json )
     dir_cfg->ignored.emplace_back(i.second.get_value<std::string>());
 }
-std::vector<std::string> MainConfig::init_home_path(){
+
+void MainConfig::init_home_path(){
   std::vector<std::string> locations = JUCI_ENV_SEARCH_LOCATIONS;
   char *ptr = nullptr;
   for (auto &env : locations) {
@@ -178,9 +179,17 @@ std::vector<std::string> MainConfig::init_home_path(){
       if (boost::filesystem::exists(ptr)) {
         home /= ptr;
         home /= ".juci";
-        return locations;
+        break;
       }
   }
-  home="";
-  return locations;
+  
+  if(home.empty()) {
+    std::string searched_envs = "[";
+    for(auto &env : locations)
+      searched_envs+=env+", ";
+    searched_envs.erase(searched_envs.end()-2, searched_envs.end());
+    searched_envs+="]";
+    throw std::runtime_error("One of these environment variables needs to point to a writable directory to save configuration: " + searched_envs);
+  }
+  return;
 }

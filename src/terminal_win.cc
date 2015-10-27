@@ -8,8 +8,11 @@
 #include <iostream> //TODO: remove
 using namespace std; //TODO: remove
 
-#define BUFSIZE 1024
+const size_t buffer_size=131072;
 
+//Based on the example at https://msdn.microsoft.com/en-us/library/windows/desktop/ms682499(v=vs.85).aspx
+//Note: on Windows it seems impossible to specify which pipes to use
+//Thus, if stdin_h, stdout_h and stderr all are NULL, the out,err,in is sent to the parent process instead
 HANDLE popen3(const std::string &command, const std::string &path, HANDLE *stdin_h, HANDLE *stdout_h, HANDLE *stderr_h) {
   HANDLE g_hChildStd_IN_Rd = NULL;
   HANDLE g_hChildStd_IN_Wr = NULL;
@@ -21,43 +24,49 @@ HANDLE popen3(const std::string &command, const std::string &path, HANDLE *stdin
   SECURITY_ATTRIBUTES saAttr;
 
   saAttr.nLength = sizeof(SECURITY_ATTRIBUTES); 
-  saAttr.bInheritHandle = TRUE; 
-  saAttr.lpSecurityDescriptor = NULL; 
+  saAttr.bInheritHandle = TRUE;
+  saAttr.lpSecurityDescriptor = NULL;
 
-  if (!CreatePipe(&g_hChildStd_IN_Rd, &g_hChildStd_IN_Wr, &saAttr, 0)) 
-    return NULL;
-  if(!SetHandleInformation(g_hChildStd_IN_Wr, HANDLE_FLAG_INHERIT, 0)) {
-    CloseHandle(g_hChildStd_IN_Rd);
-    CloseHandle(g_hChildStd_IN_Wr);
-    return NULL;
+  if(stdin_h!=nullptr) {
+    if (!CreatePipe(&g_hChildStd_IN_Rd, &g_hChildStd_IN_Wr, &saAttr, 0)) 
+      return NULL;
+    if(!SetHandleInformation(g_hChildStd_IN_Wr, HANDLE_FLAG_INHERIT, 0)) {
+      CloseHandle(g_hChildStd_IN_Rd);
+      CloseHandle(g_hChildStd_IN_Wr);
+      return NULL;
+    }
   }
-  if (!CreatePipe(&g_hChildStd_OUT_Rd, &g_hChildStd_OUT_Wr, &saAttr, 0)) {
-    CloseHandle(g_hChildStd_IN_Rd);
-    CloseHandle(g_hChildStd_IN_Wr);
-    return NULL;
+  if(stdout_h!=nullptr) {
+    if (!CreatePipe(&g_hChildStd_OUT_Rd, &g_hChildStd_OUT_Wr, &saAttr, 0)) {
+      if(stdin_h!=nullptr) CloseHandle(g_hChildStd_IN_Rd);
+      if(stdin_h!=nullptr) CloseHandle(g_hChildStd_IN_Wr);
+      return NULL;
+    }
+    if(!SetHandleInformation(g_hChildStd_OUT_Rd, HANDLE_FLAG_INHERIT, 0)) {
+      if(stdin_h!=nullptr) CloseHandle(g_hChildStd_IN_Rd);
+      if(stdin_h!=nullptr) CloseHandle(g_hChildStd_IN_Wr);
+      CloseHandle(g_hChildStd_OUT_Rd);
+      CloseHandle(g_hChildStd_OUT_Wr);
+      return NULL;
+    }
   }
-  if(!SetHandleInformation(g_hChildStd_OUT_Rd, HANDLE_FLAG_INHERIT, 0)) {
-    CloseHandle(g_hChildStd_IN_Rd);
-    CloseHandle(g_hChildStd_IN_Wr);
-    CloseHandle(g_hChildStd_OUT_Rd);
-    CloseHandle(g_hChildStd_OUT_Wr);
-    return NULL;
-  }
-  if (!CreatePipe(&g_hChildStd_ERR_Rd, &g_hChildStd_ERR_Wr, &saAttr, 0)) {
-    CloseHandle(g_hChildStd_IN_Rd);
-    CloseHandle(g_hChildStd_IN_Wr);
-    CloseHandle(g_hChildStd_OUT_Rd);
-    CloseHandle(g_hChildStd_OUT_Wr);
-    return NULL;
-  }
-  if(!SetHandleInformation(g_hChildStd_ERR_Rd, HANDLE_FLAG_INHERIT, 0)) {
-    CloseHandle(g_hChildStd_IN_Rd);
-    CloseHandle(g_hChildStd_IN_Wr);
-    CloseHandle(g_hChildStd_OUT_Rd);
-    CloseHandle(g_hChildStd_OUT_Wr);
-    CloseHandle(g_hChildStd_ERR_Rd);
-    CloseHandle(g_hChildStd_ERR_Wr);
-    return NULL;
+  if(stderr_h!=nullptr) {
+    if (!CreatePipe(&g_hChildStd_ERR_Rd, &g_hChildStd_ERR_Wr, &saAttr, 0)) {
+      if(stdin_h!=nullptr) CloseHandle(g_hChildStd_IN_Rd);
+      if(stdin_h!=nullptr) CloseHandle(g_hChildStd_IN_Wr);
+      if(stdout_h!=nullptr) CloseHandle(g_hChildStd_OUT_Rd);
+      if(stdout_h!=nullptr) CloseHandle(g_hChildStd_OUT_Wr);
+      return NULL;
+    }
+    if(!SetHandleInformation(g_hChildStd_ERR_Rd, HANDLE_FLAG_INHERIT, 0)) {
+      if(stdin_h!=nullptr) CloseHandle(g_hChildStd_IN_Rd);
+      if(stdin_h!=nullptr) CloseHandle(g_hChildStd_IN_Wr);
+      if(stdout_h!=nullptr) CloseHandle(g_hChildStd_OUT_Rd);
+      if(stdout_h!=nullptr) CloseHandle(g_hChildStd_OUT_Wr);
+      CloseHandle(g_hChildStd_ERR_Rd);
+      CloseHandle(g_hChildStd_ERR_Wr);
+      return NULL;
+    }
   }
 
   PROCESS_INFORMATION process_info; 
@@ -66,11 +75,12 @@ HANDLE popen3(const std::string &command, const std::string &path, HANDLE *stdin
   ZeroMemory(&process_info, sizeof(PROCESS_INFORMATION));
 
   ZeroMemory(&siStartInfo, sizeof(STARTUPINFO));
-  siStartInfo.cb = sizeof(STARTUPINFO); 
-  siStartInfo.hStdError = g_hChildStd_ERR_Wr;
-  siStartInfo.hStdOutput = g_hChildStd_OUT_Wr;
-  siStartInfo.hStdInput = g_hChildStd_IN_Rd;
-  siStartInfo.dwFlags |= STARTF_USESTDHANDLES;
+  siStartInfo.cb = sizeof(STARTUPINFO);
+  if(stdin_h!=nullptr) siStartInfo.hStdInput = g_hChildStd_IN_Rd;
+  if(stdout_h!=nullptr) siStartInfo.hStdOutput = g_hChildStd_OUT_Wr;
+  if(stderr_h!=nullptr) siStartInfo.hStdError = g_hChildStd_ERR_Wr;
+  if(stdin_h!=nullptr || stdout_h!=nullptr || stderr_h!=nullptr)
+    siStartInfo.dwFlags |= STARTF_USESTDHANDLES;
 
   char* path_ptr;
   if(path=="")
@@ -95,9 +105,9 @@ HANDLE popen3(const std::string &command, const std::string &path, HANDLE *stdin
   if(!bSuccess) {
     CloseHandle(process_info.hProcess);
     CloseHandle(process_info.hThread);
-    CloseHandle(g_hChildStd_IN_Rd);
-    CloseHandle(g_hChildStd_OUT_Wr);
-    CloseHandle(g_hChildStd_ERR_Wr);
+    if(stdin_h!=nullptr) CloseHandle(g_hChildStd_IN_Rd);
+    if(stdout_h!=nullptr) CloseHandle(g_hChildStd_OUT_Wr);
+    if(stderr_h!=nullptr) CloseHandle(g_hChildStd_ERR_Wr);
     return NULL;
   }
   else {
@@ -106,14 +116,14 @@ HANDLE popen3(const std::string &command, const std::string &path, HANDLE *stdin
     // of the child process, for example. 
     
     CloseHandle(process_info.hThread);
-    CloseHandle(g_hChildStd_IN_Rd);
-    CloseHandle(g_hChildStd_OUT_Wr);
-    CloseHandle(g_hChildStd_ERR_Wr);
+    if(stdin_h!=nullptr) CloseHandle(g_hChildStd_IN_Rd);
+    if(stdout_h!=nullptr) CloseHandle(g_hChildStd_OUT_Wr);
+    if(stderr_h!=nullptr) CloseHandle(g_hChildStd_ERR_Wr);
   }
 
-  *stdin_h=g_hChildStd_IN_Wr;
-  *stdout_h=g_hChildStd_OUT_Rd;
-  *stderr_h=g_hChildStd_ERR_Rd;
+  if(stdin_h!=NULL) *stdin_h=g_hChildStd_IN_Wr;
+  if(stdout_h!=NULL) *stdout_h=g_hChildStd_OUT_Rd;
+  if(stderr_h!=NULL) *stderr_h=g_hChildStd_ERR_Rd;
   return process_info.hProcess;
 }
 
@@ -181,8 +191,68 @@ Terminal::Terminal() {
   });
 }
 
-//Based on the example at https://msdn.microsoft.com/en-us/library/windows/desktop/ms682499(v=vs.85).aspx
-int Terminal::execute(const std::string &command, const boost::filesystem::path &path) {
+int Terminal::execute(const std::string &command, const boost::filesystem::path &path, bool use_pipes) {
+  HANDLE stdin_h, stdout_h, stderr_h;
+  
+  HANDLE process;
+  if(use_pipes)
+    process=popen3(command, path.string(), &stdin_h, &stdout_h, &stderr_h);
+  else
+    process=popen3(command, path.string(), nullptr, nullptr, nullptr);
+  if(process==NULL) {
+    async_print("Error: Failed to run command: " + command + "\n");
+    return -1;
+  }
+  if(use_pipes) {
+    std::thread stderr_thread([this, stderr_h](){
+      DWORD n;
+      CHAR buffer[buffer_size];
+      for (;;) {
+        BOOL bSuccess = ReadFile(stderr_h, buffer, static_cast<DWORD>(buffer_size), &n, NULL);
+        if(!bSuccess || n == 0)
+  	break;
+  
+        std::string message;
+        message.reserve(n);
+        for(DWORD c=0;c<n;c++)
+  	message+=buffer[c];
+        async_print(message, true);
+      }
+    });
+    stderr_thread.detach();
+  
+    std::thread stdout_thread([this, stdout_h](){
+      DWORD n;
+      CHAR buffer[buffer_size];
+      for (;;) {
+        BOOL bSuccess = ReadFile(stdout_h, buffer, static_cast<DWORD>(buffer_size), &n, NULL);
+        if(!bSuccess || n == 0)
+  	break;
+  
+        std::string message;
+        message.reserve(n);
+        for(DWORD c=0;c<n;c++)
+  	message+=buffer[c];
+        async_print(message);
+      }
+    });
+    stdout_thread.detach();
+  }
+
+  unsigned long exit_code;
+  WaitForSingleObject(process, INFINITE);
+  GetExitCodeProcess(process, &exit_code);
+  
+  CloseHandle(process);
+  if(use_pipes) {
+    CloseHandle(stdin_h);
+    CloseHandle(stdout_h);
+    CloseHandle(stderr_h);
+  }
+  return exit_code;
+}
+
+int Terminal::execute(std::istream &stdin_stream, std::ostream &stdout_stream, const std::string &command, const boost::filesystem::path &path) {
   HANDLE stdin_h, stdout_h, stderr_h;
 
   auto process=popen3(command, path.string(), &stdin_h, &stdout_h, &stderr_h);
@@ -192,13 +262,14 @@ int Terminal::execute(const std::string &command, const boost::filesystem::path 
   }
   std::thread stderr_thread([this, stderr_h](){
     DWORD n;
-    CHAR buffer[BUFSIZE];
+    CHAR buffer[buffer_size];
     for (;;) {
-      BOOL bSuccess = ReadFile(stderr_h, buffer, BUFSIZE, &n, NULL);
+      BOOL bSuccess = ReadFile(stderr_h, buffer, static_cast<DWORD>(buffer_size), &n, NULL);
       if(!bSuccess || n == 0)
 	break;
 
       std::string message;
+      message.reserve(n);
       for(DWORD c=0;c<n;c++)
 	message+=buffer[c];
       async_print(message, true);
@@ -206,28 +277,46 @@ int Terminal::execute(const std::string &command, const boost::filesystem::path 
   });
   stderr_thread.detach();
 
-  std::thread stdout_thread([this, stdout_h](){
+  std::thread stdout_thread([this, &stdout_stream, stdout_h](){
     DWORD n;
-    CHAR buffer[BUFSIZE];
+    CHAR buffer[buffer_size];
     for (;;) {
-      BOOL bSuccess = ReadFile(stdout_h, buffer, BUFSIZE, &n, NULL);
+      BOOL bSuccess = ReadFile(stdout_h, buffer, static_cast<DWORD>(buffer_size), &n, NULL);
       if(!bSuccess || n == 0)
-	break;
-
-      std::string message;
+        break;
+      Glib::ustring umessage;
+      umessage.reserve(n);
       for(DWORD c=0;c<n;c++)
-	message+=buffer[c];
-      async_print(message);
+        umessage+=buffer[c];
+      Glib::ustring::iterator iter;
+      while(!umessage.validate(iter)) {
+        auto next_char_iter=iter;
+        next_char_iter++;
+        umessage.replace(iter, next_char_iter, "?");
+      }
+      stdout_stream.write(umessage.data(), static_cast<ssize_t>(n));
     }
   });
   stdout_thread.detach();
-
+    
+  CHAR buffer[buffer_size];
+  for(;;) {
+    stdin_stream.readsome(buffer, buffer_size);
+    auto read_n=stdin_stream.gcount();
+    if(read_n==0)
+      break;
+    DWORD write_n;
+    BOOL bSuccess = WriteFile(stdin_h, buffer, static_cast<DWORD>(read_n), &write_n, NULL);
+    if(!bSuccess || write_n==0)
+      break;
+  }
+  CloseHandle(stdin_h);
+  
   unsigned long exit_code;
   WaitForSingleObject(process, INFINITE);
   GetExitCodeProcess(process, &exit_code);
   
   CloseHandle(process);
-  CloseHandle(stdin_h);
   CloseHandle(stdout_h);
   CloseHandle(stderr_h);
   return exit_code;
@@ -252,13 +341,14 @@ void Terminal::async_execute(const std::string &command, const boost::filesystem
     
     std::thread stderr_thread([this, stderr_h](){
       DWORD n;
-      CHAR buffer[BUFSIZE];
+      CHAR buffer[buffer_size];
       for (;;) {
-	BOOL bSuccess = ReadFile(stderr_h, buffer, BUFSIZE, &n, NULL);
+	BOOL bSuccess = ReadFile(stderr_h, buffer, static_cast<DWORD>(buffer_size), &n, NULL);
 	if(!bSuccess || n == 0)
 	  break;
 
 	std::string message;
+	message.reserve(n);
 	for(DWORD c=0;c<n;c++)
 	  message+=buffer[c];
 	async_print(message, true);
@@ -268,13 +358,14 @@ void Terminal::async_execute(const std::string &command, const boost::filesystem
 
     std::thread stdout_thread([this, stdout_h](){
       DWORD n;
-      CHAR buffer[BUFSIZE];
+      CHAR buffer[buffer_size];
       for (;;) {
-	BOOL bSuccess = ReadFile(stdout_h, buffer, BUFSIZE, &n, NULL);
+	BOOL bSuccess = ReadFile(stdout_h, buffer, static_cast<DWORD>(buffer_size), &n, NULL);
 	if(!bSuccess || n == 0)
 	  break;
 	
 	std::string message;
+	message.reserve(n);
 	for(DWORD c=0;c<n;c++)
 	  message+=buffer[c];
 	async_print(message);

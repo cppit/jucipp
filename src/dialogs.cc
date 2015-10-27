@@ -40,7 +40,7 @@ std::string Dialog::new_folder() {
 }
 
 std::string Dialog::select_file() {
-  return open_dialog("Please choose a folder",
+  return open_dialog("Please choose a file",
             {std::make_pair("Cancel", Gtk::RESPONSE_CANCEL),std::make_pair("Select", Gtk::RESPONSE_OK)},
             Gtk::FILE_CHOOSER_ACTION_OPEN);
 }

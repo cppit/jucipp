@@ -29,5 +29,7 @@ private:
   std::vector<std::unique_ptr<Gtk::Widget> > source_maps;
   std::vector<std::unique_ptr<Gtk::ScrolledWindow> > scrolled_windows;
   std::vector<std::unique_ptr<Gtk::HBox> > hboxes;
+  
+  size_t last_index;
 };
 #endif  // JUCI_NOTEBOOK_H_

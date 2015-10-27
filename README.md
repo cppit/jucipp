@@ -22,6 +22,7 @@ towards libclang with speed and ease of use in mind.
 * Run shell commands within JuCi++, even on Windows
 * Regex search and replace
 * Smart paste, keys and indentation
+* Auto-indentation of C++ file buffers through [clang-format](http://clang.llvm.org/docs/ClangFormat.html)
 * Source minimap
 * Full UTF-8 support
 

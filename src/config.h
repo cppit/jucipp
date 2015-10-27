@@ -7,6 +7,7 @@
 class MainConfig {
 public:
   MainConfig();
+  void read();
   const boost::filesystem::path& juci_home_path() const { return home; }
 
 private:
@@ -18,7 +19,7 @@ private:
   void GenerateSource();
   void GenerateDirectoryFilter();
 
-  std::vector<std::string> init_home_path();
+  void init_home_path();
   boost::property_tree::ptree cfg;
   boost::filesystem::path home;
 };

@@ -36,6 +36,7 @@ namespace Source {
     bool highlight_current_line;
     bool show_line_numbers;
     std::unordered_map<std::string, std::string> clang_types;
+    std::string clang_format_style;
     
     std::unordered_map<std::string, DocumentationSearch> documentation_searches;
   };
@@ -100,6 +101,7 @@ namespace Source {
     boost::filesystem::path project_path;
     Glib::RefPtr<Gsv::Language> language;
     
+    std::function<void()> auto_indent;
     std::function<std::pair<std::string, Offset>()> get_declaration_location;
     std::function<void()> goto_method;
     std::function<Token()> get_token;
