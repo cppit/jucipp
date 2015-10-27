@@ -4,7 +4,10 @@ std::unique_ptr<Source::Config> Singleton::Config::source_=std::unique_ptr<Sourc
 std::unique_ptr<Directories::Config> Singleton::Config::directories_=std::unique_ptr<Directories::Config>(new Directories::Config());
 std::unique_ptr<Terminal::Config> Singleton::Config::terminal_=std::unique_ptr<Terminal::Config>(new Terminal::Config());
 std::unique_ptr<Window::Config> Singleton::Config::window_ = std::unique_ptr<Window::Config>(new Window::Config());
+std::unique_ptr<MainConfig> Singleton::Config::main_=std::unique_ptr<MainConfig>(new MainConfig());
+
 std::unique_ptr<Menu::Config> Singleton::Config::menu_ = std::unique_ptr<Menu::Config>(new Menu::Config());
+
 
 std::unique_ptr<Terminal> Singleton::terminal_=std::unique_ptr<Terminal>();
 Terminal *Singleton::terminal() {
@@ -18,6 +21,13 @@ Directories *Singleton::directories() {
   if(!directories_)
     directories_=std::unique_ptr<Directories>(new Directories());
   return directories_.get();
+}
+
+std::unique_ptr<Window> Singleton::window_=std::unique_ptr<Window>();
+Window *Singleton::window() {
+  if(!window_)
+    window_=std::unique_ptr<Window>(new Window());
+  return window_.get();
 }
 
 std::unique_ptr<Gtk::Label> Singleton::status_=std::unique_ptr<Gtk::Label>();

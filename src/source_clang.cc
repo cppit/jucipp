@@ -1,6 +1,5 @@
 #include "source_clang.h"
 #include "singletons.h"
-#include "sourcefile.h"
 
 #include <iostream> //TODO: remove
 using namespace std; //TODO: remove

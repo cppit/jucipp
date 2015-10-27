@@ -1,15 +1,15 @@
 #ifndef JUCI_SOURCE_H_
 #define JUCI_SOURCE_H_
-#include <unordered_map>
-#include <vector>
-#include "gtkmm.h"
-#include <string>
-#include "gtksourceviewmm.h"
-#include "terminal.h"
-#include "tooltips.h"
-#include "selectiondialog.h"
 #include <aspell.h>
 #include <boost/property_tree/xml_parser.hpp>
+#include <gtksourceviewmm.h>
+#include <string>
+#include <unordered_map>
+#include <vector>
+
+#include "selectiondialog.h"
+#include "terminal.h"
+#include "tooltips.h"
 
 namespace Source {
   Glib::RefPtr<Gsv::Language> guess_language(const boost::filesystem::path &file_path);

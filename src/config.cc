@@ -3,52 +3,58 @@
 #include "logging.h"
 #include <exception>
 #include "files.h"
-#include "sourcefile.h"
-#include "singletons.h"
 #include <iostream>
 
 using namespace std; //TODO: remove
 
 MainConfig::MainConfig() {
-  find_or_create_config_files();
+  init_home_path();
+}
+
+void MainConfig::read() {
+  auto config_json = (home/"config"/"config.json").string(); // This causes some redundant copies, but assures windows support
   try {
-    boost::property_tree::json_parser::read_json(Singleton::config_dir() + "config.json", cfg);
+    find_or_create_config_files();
+    boost::property_tree::json_parser::read_json(config_json, cfg);
     update_config_file();
     retrieve_config();
   }
   catch(const std::exception &e) {
-    Singleton::terminal()->print("Error reading "+Singleton::config_dir() + "config.json: "+e.what()+"\n");
+    Singleton::terminal()->print("Error reading "+config_json + "config.json: "+e.what()+"\n");
     std::stringstream ss;
     ss << configjson;
     boost::property_tree::read_json(ss, cfg);
     retrieve_config();
   }
+  cfg.clear();
 }
 
 void MainConfig::find_or_create_config_files() {
-  std::vector<std::string> files = {"config.json", "plugins.py"};
-  boost::filesystem::create_directories(boost::filesystem::path(Singleton::config_dir()));
-  for (auto &file : files) {
-    auto path = boost::filesystem::path(Singleton::config_dir() + file);
-    if (!boost::filesystem::is_regular_file(path)) {
-      if (file == "config.json") juci::filesystem::write(path, configjson);
-      if (file == "plugins.py") juci::filesystem::write(path, pluginspy);
-    }
-  }
-  
-  boost::filesystem::create_directories(boost::filesystem::path(Singleton::style_dir()));
-  boost::filesystem::path juci_style_path=Singleton::style_dir();
-  juci_style_path+="juci-light.xml";
+  auto config_dir = home/"config";
+  auto config_json = config_dir/"config.json";
+  auto plugins_py = config_dir/"plugins.py";
+
+  boost::filesystem::create_directories(config_dir); // io exp captured by calling method
+
+  if (!boost::filesystem::exists(config_json))
+    filesystem::write(config_json, configjson); // vars configjson and pluginspy
+  if (!boost::filesystem::exists(plugins_py))   // live in files.h
+    filesystem::write(plugins_py, pluginspy);
+
+  auto juci_style_path = home/"styles";
+  boost::filesystem::create_directories(juci_style_path); // io exp captured by calling method
+
+  juci_style_path/="juci-light.xml";
   if(!boost::filesystem::exists(juci_style_path))
-    juci::filesystem::write(juci_style_path, juci_light_style);
-  juci_style_path=Singleton::style_dir();
-  juci_style_path+="juci-dark.xml";
+    filesystem::write(juci_style_path, juci_light_style);
+  juci_style_path=juci_style_path.parent_path();
+  juci_style_path/="juci-dark.xml";
   if(!boost::filesystem::exists(juci_style_path))
-    juci::filesystem::write(juci_style_path, juci_dark_style);
-  juci_style_path=Singleton::style_dir();
-  juci_style_path+="juci-dark-blue.xml";
+    filesystem::write(juci_style_path, juci_dark_style);
+  juci_style_path=juci_style_path.parent_path();
+  juci_style_path/="juci-dark-blue.xml";
   if(!boost::filesystem::exists(juci_style_path))
-    juci::filesystem::write(juci_style_path, juci_dark_blue_style);
+    filesystem::write(juci_style_path, juci_dark_blue_style);
 }
 
 void MainConfig::retrieve_config() {
@@ -58,7 +64,7 @@ void MainConfig::retrieve_config() {
   }
   GenerateSource();
   GenerateDirectoryFilter();
-  
+
   Singleton::Config::window()->theme_name=cfg.get<std::string>("gtk_theme.name");
   Singleton::Config::window()->theme_variant=cfg.get<std::string>("gtk_theme.variant");
   Singleton::Config::window()->version = cfg.get<std::string>("version");
@@ -79,12 +85,12 @@ bool MainConfig::check_config_file(const boost::property_tree::ptree &default_cf
     }
     catch(const std::exception &e) {
       cfg.add(path, node.second.data());
-      exists=false;        
+      exists=false;
     }
     try {
       exists&=check_config_file(node.second, path);
     }
-    catch(const std::exception &e) {        
+    catch(const std::exception &e) {
     }
   }
   return exists;
@@ -110,31 +116,32 @@ void MainConfig::update_config_file() {
     cfg_ok=false;
   }
   cfg_ok&=check_config_file(default_cfg);
-  if(!cfg_ok)
-    boost::property_tree::write_json(Singleton::config_dir()+"config.json", cfg);
+  if(!cfg_ok) {
+    boost::property_tree::write_json((home/"config"/"config.json").string(), cfg);
+  }
 }
 
 void MainConfig::GenerateSource() {
   auto source_cfg = Singleton::Config::source();
   auto source_json = cfg.get_child("source");
-  
+
   Singleton::Config::source()->style=source_json.get<std::string>("style");
   source_cfg->font=source_json.get<std::string>("font");
-  
+
   source_cfg->show_map = source_json.get<bool>("show_map");
   source_cfg->map_font_size = source_json.get<std::string>("map_font_size");
-  
+
   source_cfg->spellcheck_language = source_json.get<std::string>("spellcheck_language");
-  
+
   source_cfg->default_tab_char = source_json.get<char>("default_tab_char");
   source_cfg->default_tab_size = source_json.get<unsigned>("default_tab_size");
   source_cfg->auto_tab_char_and_size = source_json.get<bool>("auto_tab_char_and_size");
-  
+
   source_cfg->wrap_lines = source_json.get<bool>("wrap_lines");
-  
+
   source_cfg->highlight_current_line = source_json.get<bool>("highlight_current_line");
   source_cfg->show_line_numbers = source_json.get<bool>("show_line_numbers");
-  
+
   for (auto &i : source_json.get_child("clang_types"))
     source_cfg->clang_types[i.first] = i.second.get_value<std::string>();
   
@@ -152,7 +159,6 @@ void MainConfig::GenerateSource() {
 
 void MainConfig::GenerateDirectoryFilter() {
   auto dir_cfg=Singleton::Config::directories();
-  JDEBUG("Fetching directory filter");
   boost::property_tree::ptree dir_json = cfg.get_child("directoryfilter");
   boost::property_tree::ptree ignore_json = dir_json.get_child("ignore");
   boost::property_tree::ptree except_json = dir_json.get_child("exceptions");
@@ -160,5 +166,30 @@ void MainConfig::GenerateDirectoryFilter() {
     dir_cfg->exceptions.emplace_back(i.second.get_value<std::string>());
   for ( auto &i : ignore_json )
     dir_cfg->ignored.emplace_back(i.second.get_value<std::string>());
-  JDEBUG("Directory filter fetched");
+}
+
+void MainConfig::init_home_path(){
+  std::vector<std::string> locations = JUCI_ENV_SEARCH_LOCATIONS;
+  char *ptr = nullptr;
+  for (auto &env : locations) {
+    ptr=std::getenv(env.c_str());
+    if (ptr==nullptr)
+      continue;
+    else
+      if (boost::filesystem::exists(ptr)) {
+        home /= ptr;
+        home /= ".juci";
+        break;
+      }
+  }
+  
+  if(home.empty()) {
+    std::string searched_envs = "[";
+    for(auto &env : locations)
+      searched_envs+=env+", ";
+    searched_envs.erase(searched_envs.end()-2, searched_envs.end());
+    searched_envs+="]";
+    throw std::runtime_error("One of these environment variables needs to point to a writable directory to save configuration: " + searched_envs);
+  }
+  return;
 }

@@ -1,7 +1,6 @@
 #include "window.h"
 #include "logging.h"
 #include "singletons.h"
-#include "sourcefile.h"
 #include "config.h"
 //#include "api.h"
 #include "dialogs.h"
@@ -127,8 +126,7 @@ Window::Window() : compiling(false) {
 } // Window constructor
 
 void Window::configure() {
-  MainConfig(); // Read the configs here
-  
+  Singleton::Config::main()->read();
   auto style_context = Gtk::StyleContext::create();
   auto screen = Gdk::Screen::get_default();
   auto css_provider = Gtk::CssProvider::get_named(Singleton::Config::window()->theme_name, Singleton::Config::window()->theme_variant);
@@ -146,12 +144,11 @@ void Window::set_menu_actions() {
     about.present();
   });
   menu->add_action("preferences", [this]() {
-    notebook.open(Singleton::config_dir()+"config.json");
+    notebook.open(Singleton::Config::main()->juci_home_path()/"config"/"config.json");
   });
   menu->add_action("quit", [this]() {
     hide();
   });
-  
   
   menu->add_action("new_file", [this]() {
     boost::filesystem::path path = Dialog::new_file();
@@ -160,7 +157,7 @@ void Window::set_menu_actions() {
         Singleton::terminal()->print("Error: "+path.string()+" already exists.\n");
       }
       else {
-        if(juci::filesystem::write(path)) {
+        if(filesystem::write(path)) {
           if(Singleton::directories()->current_path!="")
             Singleton::directories()->update();
           notebook.open(path.string());
@@ -173,17 +170,17 @@ void Window::set_menu_actions() {
   });
   menu->add_action("new_folder", [this]() {
     auto time_now=std::chrono::system_clock::to_time_t(std::chrono::system_clock::now());
-      boost::filesystem::path path = Dialog::new_folder();
-      if(path!="" && boost::filesystem::exists(path)) {
-        if(boost::filesystem::last_write_time(path)>=time_now) {
-          if(Singleton::directories()->current_path!="")
-            Singleton::directories()->update();
-          Singleton::terminal()->print("New folder "+path.string()+" created.\n");
-        }
-        else
-          Singleton::terminal()->print("Error: "+path.string()+" already exists.\n");
-        Singleton::directories()->select(path);
+    boost::filesystem::path path = Dialog::new_folder();
+    if(path!="" && boost::filesystem::exists(path)) {
+      if(boost::filesystem::last_write_time(path)>=time_now) {
+        if(Singleton::directories()->current_path!="")
+          Singleton::directories()->update();
+        Singleton::terminal()->print("New folder "+path.string()+" created.\n");
       }
+      else
+        Singleton::terminal()->print("Error: "+path.string()+" already exists.\n");
+      Singleton::directories()->select(path);
+    }
   });
   menu->add_action("new_project_cpp", [this]() {
     boost::filesystem::path project_path = Dialog::new_folder();
@@ -207,7 +204,7 @@ void Window::set_menu_actions() {
       }
       std::string cmakelists="cmake_minimum_required(VERSION 2.8)\n\nproject("+project_name+")\n\nset(CMAKE_CXX_FLAGS \"${CMAKE_CXX_FLAGS} -std=c++1y -Wall\")\n\nadd_executable("+project_name+" main.cpp)\n";
       std::string cpp_main="#include <iostream>\n\nusing namespace std;\n\nint main() {\n  cout << \"Hello World!\" << endl;\n\n  return 0;\n}\n";
-      if(juci::filesystem::write(cmakelists_path, cmakelists) && juci::filesystem::write(cpp_main_path, cpp_main)) {
+      if(filesystem::write(cmakelists_path, cmakelists) && filesystem::write(cpp_main_path, cpp_main)) {
         Singleton::directories()->open(project_path);
         notebook.open(cpp_main_path);
         Singleton::terminal()->print("C++ project "+project_name+" created.\n");
@@ -232,7 +229,7 @@ void Window::set_menu_actions() {
     if(notebook.get_current_page()!=-1) {
       if(notebook.save_current()) {
         if(notebook.get_current_page()!=-1) {
-          if(notebook.get_current_view()->file_path==Singleton::config_dir()+"config.json") {
+          if(notebook.get_current_view()->file_path==Singleton::Config::main()->juci_home_path()/"config"/"config.json") {
             configure();
             for(int c=0;c<notebook.size();c++) {
               notebook.get_view(c)->configure();
@@ -261,7 +258,6 @@ void Window::set_menu_actions() {
       }
     }
   });
-  
   
   menu->add_action("edit_undo", [this]() {
     if(notebook.get_current_page()!=-1) {
@@ -307,7 +303,6 @@ void Window::set_menu_actions() {
   menu->add_action("edit_find", [this]() {
     search_and_replace_entry();
   });
-  
   
   menu->add_action("source_spellcheck", [this]() {
     if(notebook.get_current_page()!=-1)
@@ -436,7 +431,6 @@ void Window::set_menu_actions() {
     }
   });
   
-  
   menu->add_action("compile_and_run", [this]() {
     if(notebook.get_current_page()==-1 || compiling)
       return;
@@ -532,7 +526,6 @@ void Window::set_menu_actions() {
   menu->add_action("force_kill_last_running", [this]() {
     Singleton::terminal()->kill_last_async_execute(true);
   });
-  
   
   menu->add_action("next_tab", [this]() {
     if(notebook.get_current_page()!=-1) {

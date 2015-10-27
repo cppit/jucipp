@@ -48,8 +48,8 @@ set(source_files juci.h
     selectiondialog.cc
     config.h
     config.cc
-    sourcefile.h
-    sourcefile.cc
+    filesystem.h
+    filesystem.cc
     window.cc
     window.h
     dialogs.h
@@ -87,13 +87,6 @@ set(source_files juci.h
 if(MSYS)
   list(APPEND source_files terminal_win.cc)
   list(APPEND source_files dialogs_win.cc)
-  set(DIALOGS_INCLUDE_DIRS "${CMAKE_SOURCE_DIR}/WIN-packages/")
-  # if (64 bit) 
-  set(DIALOGS_LIBRARIES "${CMAKE_SOURCE_DIR}/WIN-packages/x64/libdialogs.dll")
-  message(${DIALOGS_LIBRARIES})
-  # else
-  # set(DIALOGS_LIBRARIES "${CMAKE_SOURCE_DIR}/WIN-packages/x32/libdialogs.dll")
-  #TODO figure out how to do this....
 else()
   list(APPEND source_files terminal.cc)
   list(APPEND source_files dialogs.cc)
@@ -112,7 +105,6 @@ include_directories(
   ${GTKSVMM_INCLUDE_DIRS}
   ${LIBCLANG_INCLUDE_DIRS}
   ${ASPELL_INCLUDE_DIR}
-  ${DIALOGS_INCLUDE_DIRS}
   ../libclangmm/src
 )
 
@@ -137,8 +129,7 @@ target_link_libraries(${project_name}
   ${GTKSVMM_LIBRARIES}
   ${Boost_LIBRARIES}
   ${ASPELL_LIBRARIES}
-  ${DIALOGS_LIBRARIES}
-#    ${PYTHON_LIBRARIES}
+  #${PYTHON_LIBRARIES}
 )
 
 #  install(TARGETS ${project_name} ${module}
