@@ -2,6 +2,8 @@
 
 #define JUCI_VERSION "0.9.3"
 
+#define JUCI_ENV_SEARCH_LOCATIONS {"AppData", "HOME", "JUCI_HOME"}
+
 const std::string configjson =
 "{\n"
 "    \"version\": \""+std::string(JUCI_VERSION)+"\",\n"

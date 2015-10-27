@@ -1,12 +1,12 @@
 #include "juci.h"
 #include "singletons.h"
-#include <iostream>
 
 using namespace std; //TODO: remove
 
-void init_logging() {
+void app::init_logging() {
   boost::log::add_common_attributes();
-  boost::log::add_file_log(boost::log::keywords::file_name = Singleton::log_dir() + "juci.log",
+  auto log_dir = Singleton::Config::main()->juci_home_path()/"log"/"juci.log";
+  boost::log::add_file_log(boost::log::keywords::file_name = log_dir,
                boost::log::keywords::auto_flush = true);
   JINFO("Logging initalized");
 }
@@ -38,9 +38,8 @@ int app::on_command_line(const Glib::RefPtr<Gio::ApplicationCommandLine> &cmd) {
 }
 
 void app::on_activate() {
-  window = std::unique_ptr<Window>(new Window());
-  add_window(*window);
-  window->show();
+  add_window(*Singleton::window());
+  Singleton::window()->show();
   bool first_directory=true;
   for(auto &directory: directories) {
     if(first_directory) {
@@ -65,14 +64,13 @@ void app::on_activate() {
     }
   }
   for(auto &file: files)
-    window->notebook.open(file);
+    Singleton::window()->notebook.open(file);
 }
 
 app::app() : Gtk::Application("no.sout.juci", Gio::APPLICATION_NON_UNIQUE | Gio::APPLICATION_HANDLES_COMMAND_LINE) {
-  
+  init_logging();
 }
 
 int main(int argc, char *argv[]) {
-  init_logging();
   return app().run(argc, argv);
 }

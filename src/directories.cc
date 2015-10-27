@@ -1,7 +1,6 @@
-#include "directories.h"
-#include "sourcefile.h"
-#include "logging.h"
 #include "singletons.h"
+#include "directories.h"
+#include "logging.h"
 #include <algorithm>
 #include <unordered_set>
 
@@ -121,8 +120,8 @@ Directories::~Directories() {
 
 void Directories::open(const boost::filesystem::path& dir_path) {
  JDEBUG("start");
-  if(dir_path=="")
-    return;
+ if(dir_path.empty())
+   return;
   
   tree_store->clear();
   update_mutex.lock();

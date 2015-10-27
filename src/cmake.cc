@@ -1,14 +1,13 @@
 #include "cmake.h"
-#include "sourcefile.h"
-#include <regex>
 #include "singletons.h"
+#include <regex>
 
 #include <iostream> //TODO: remove
 using namespace std; //TODO: remove
 
 CMake::CMake(const boost::filesystem::path &path) {
   const auto find_cmake_project=[this](const boost::filesystem::path &cmake_path) {
-    for(auto &line: juci::filesystem::read_lines(cmake_path)) {
+    for(auto &line: filesystem::read_lines(cmake_path)) {
       const std::regex project_regex("^ *project *\\(.*$");
       std::smatch sm;
       if(std::regex_match(line, sm, project_regex)) {
@@ -18,9 +17,9 @@ CMake::CMake(const boost::filesystem::path &path) {
     return false;
   };
   
-  auto search_path=boost::filesystem::path(path);
+  auto search_path=path;
   auto search_cmake_path=search_path;
-  search_cmake_path+="/CMakeLists.txt";
+  search_cmake_path/="CMakeLists.txt";
   if(boost::filesystem::exists(search_cmake_path))
     paths.emplace(paths.begin(), search_cmake_path);
   if(find_cmake_project(search_cmake_path))
@@ -29,7 +28,7 @@ CMake::CMake(const boost::filesystem::path &path) {
     do {
       search_path=search_path.parent_path();
       search_cmake_path=search_path;
-      search_cmake_path+="/CMakeLists.txt";
+      search_cmake_path/="CMakeLists.txt";
       if(boost::filesystem::exists(search_cmake_path))
         paths.emplace(paths.begin(), search_cmake_path);
       if(find_cmake_project(search_cmake_path)) {
@@ -38,8 +37,8 @@ CMake::CMake(const boost::filesystem::path &path) {
       }
     } while(search_path!=search_path.root_directory());
   }
-  if(project_path!="") {
-    if(boost::filesystem::exists(project_path.string()+"/CMakeLists.txt") && !boost::filesystem::exists(project_path.string()+"/compile_commands.json"))
+  if(!project_path.empty()) {
+    if(boost::filesystem::exists(project_path/"CMakeLists.txt") && !boost::filesystem::exists(project_path/"compile_commands.json"))
       create_compile_commands(project_path);
   }
 }
@@ -49,8 +48,8 @@ bool CMake::create_compile_commands(const boost::filesystem::path &path) {
   if(Singleton::terminal()->execute(Singleton::Config::terminal()->cmake_command+" . -DCMAKE_EXPORT_COMPILE_COMMANDS=ON", path)==EXIT_SUCCESS) {
 #ifdef _WIN32 //Temporary fix to MSYS2's libclang
     auto compile_commands_path=path;
-    compile_commands_path+="/compile_commands.json";
-    auto compile_commands_file=juci::filesystem::read(compile_commands_path);
+    compile_commands_path/="compile_commands.json";
+    auto compile_commands_file=filesystem::read(compile_commands_path);
     size_t pos=0;
     while((pos=compile_commands_file.find("-I/", pos))!=std::string::npos) {
       if(pos+3<compile_commands_file.size()) {
@@ -61,7 +60,7 @@ bool CMake::create_compile_commands(const boost::filesystem::path &path) {
       else
         break;
     }
-    juci::filesystem::write(compile_commands_path, compile_commands_file);
+    filesystem::write(compile_commands_path, compile_commands_file);
 #endif
     return true;
   }
@@ -70,7 +69,7 @@ bool CMake::create_compile_commands(const boost::filesystem::path &path) {
 
 void CMake::read_files() {
   for(auto &path: paths)
-    files.emplace_back(juci::filesystem::read(path));
+    files.emplace_back(filesystem::read(path));
 }
 
 void CMake::remove_tabs() {

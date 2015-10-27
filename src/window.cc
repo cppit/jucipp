@@ -1,7 +1,6 @@
 #include "window.h"
 #include "logging.h"
 #include "singletons.h"
-#include "sourcefile.h"
 #include "config.h"
 //#include "api.h"
 #include "dialogs.h"
@@ -159,7 +158,6 @@ Window::Window() : box(Gtk::ORIENTATION_VERTICAL), compiling(false) {
 } // Window constructor
 
 void Window::configure() {
-  MainConfig(); // Read the configs here
   auto style_context = Gtk::StyleContext::create();
   auto screen = Gdk::Screen::get_default();
   auto css_provider = Gtk::CssProvider::get_named(Singleton::Config::window()->theme_name, Singleton::Config::window()->theme_variant);
@@ -178,7 +176,7 @@ void Window::create_menu() {
           Singleton::terminal()->print("Error: "+path.string()+" already exists.\n");
         }
         else {
-          if(juci::filesystem::write(path)) {
+          if(filesystem::write(path)) {
             if(Singleton::directories()->current_path!="")
               Singleton::directories()->update();
             notebook.open(path.string());
@@ -227,7 +225,7 @@ void Window::create_menu() {
       }
       std::string cmakelists="cmake_minimum_required(VERSION 2.8)\n\nproject("+project_name+")\n\nset(CMAKE_CXX_FLAGS \"${CMAKE_CXX_FLAGS} -std=c++1y -Wall\")\n\nadd_executable("+project_name+" main.cpp)\n";
       std::string cpp_main="#include <iostream>\n\nusing namespace std;\n\nint main() {\n  cout << \"Hello World!\" << endl;\n\n  return 0;\n}\n";
-      if(juci::filesystem::write(cmakelists_path, cmakelists) && juci::filesystem::write(cpp_main_path, cpp_main)) {
+      if(filesystem::write(cmakelists_path, cmakelists) && filesystem::write(cpp_main_path, cpp_main)) {
         Singleton::directories()->open(project_path);
         notebook.open(cpp_main_path);
         Singleton::terminal()->print("C++ project "+project_name+" created.\n");
@@ -236,7 +234,7 @@ void Window::create_menu() {
         Singleton::terminal()->print("Error: Could not create project "+project_path.string()+"\n");
   });
   menu.action_group->add(Gtk::Action::create("FileOpenFile", "Open File"), Gtk::AccelKey(menu.key_map["open_file"]), [this]() {
-      notebook.open(Dialog::select_file());
+    notebook.open(Dialog::select_file());
   });
   menu.action_group->add(Gtk::Action::create("FileOpenFolder", "Open Folder"), Gtk::AccelKey(menu.key_map["open_folder"]), [this]() {
     auto path = Dialog::select_folder();
@@ -260,13 +258,13 @@ void Window::create_menu() {
     }
 });
   menu.action_group->add(Gtk::Action::create("Preferences", "Preferences..."), Gtk::AccelKey(menu.key_map["preferences"]), [this]() {
-    notebook.open(Singleton::config_dir()+"config.json");
+    notebook.open(Singleton::Config::main()->juci_home_path()/"config"/"config.json");
   });
 
   menu.action_group->add(Gtk::Action::create("FileSave", "Save"), Gtk::AccelKey(menu.key_map["save"]), [this]() {
     if(notebook.save_current()) {
       if(notebook.get_current_page()!=-1) {
-        if(notebook.get_current_view()->file_path==Singleton::config_dir()+"config.json") {
+        if(notebook.get_current_view()->file_path==Singleton::Config::main()->juci_home_path()/"config"/"config.json") {
           configure();
           for(int c=0;c<notebook.size();c++) {
             notebook.get_view(c)->configure();

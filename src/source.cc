@@ -1,9 +1,8 @@
+#include "singletons.h"
 #include "source.h"
-#include "sourcefile.h"
 #include <boost/property_tree/json_parser.hpp>
 #include "logging.h"
 #include <algorithm>
-#include "singletons.h"
 #include <gtksourceview/gtksource.h>
 #include <iostream>
 
@@ -86,11 +85,11 @@ AspellConfig* Source::View::spellcheck_config=NULL;
 Source::View::View(const boost::filesystem::path &file_path, const boost::filesystem::path &project_path, Glib::RefPtr<Gsv::Language> language): file_path(file_path), project_path(project_path), language(language) {
   get_source_buffer()->begin_not_undoable_action();
   if(language) {
-    if(juci::filesystem::read_non_utf8(file_path, get_buffer())==-1)
+    if(filesystem::read_non_utf8(file_path, get_buffer())==-1)
       Singleton::terminal()->print("Warning: "+file_path.string()+" is not a valid UTF-8 file. Saving might corrupt the file.\n");
   }
   else {
-    if(juci::filesystem::read(file_path, get_buffer())==-1)
+    if(filesystem::read(file_path, get_buffer())==-1)
       Singleton::terminal()->print("Error: "+file_path.string()+" is not a valid UTF-8 file.\n");
   }
   get_source_buffer()->end_not_undoable_action();
@@ -296,7 +295,7 @@ void Source::View::set_tab_char_and_size(char tab_char, unsigned tab_size) {
 void Source::View::configure() {
   //TODO: Move this to notebook? Might take up too much memory doing this for every tab.
   auto style_scheme_manager=Gsv::StyleSchemeManager::get_default();
-  style_scheme_manager->prepend_search_path(Singleton::style_dir());
+  style_scheme_manager->prepend_search_path((Singleton::Config::main()->juci_home_path()/"styles").string());
   
   if(Singleton::Config::source()->style.size()>0) {
     auto scheme = style_scheme_manager->get_scheme(Singleton::Config::source()->style);
