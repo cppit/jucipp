@@ -5,7 +5,7 @@
 #include <regex>
 #include "cmake.h"
 
-#if GTK_VERSION_GE(3, 18)
+#if GTKSOURCEVIEWMM_MAJOR_VERSION > 2 & GTKSOURCEVIEWMM_MINOR_VERSION > 17
 #include "gtksourceview-3.0/gtksourceview/gtksourcemap.h"
 #endif
 
@@ -26,8 +26,12 @@ namespace sigc {
 #endif
 }
 
-Notebook::Notebook() : Gtk::Notebook() {
+Notebook::Notebook() : Gtk::Notebook(), last_index(-1) {
   Gsv::init();
+  
+  signal_switch_page().connect([this](Gtk::Widget* page, guint page_num) {
+    last_index=-1;
+  });
 }
 
 int Notebook::size() {
@@ -102,7 +106,7 @@ void Notebook::open(const boost::filesystem::path &file_path) {
   scrolled_windows.back()->add(*source_views.back());
   hboxes.back()->pack_start(*scrolled_windows.back());
 
-#if GTK_VERSION_GE(3, 18)
+#if GTKSOURCEVIEWMM_MAJOR_VERSION > 2 & GTKSOURCEVIEWMM_MINOR_VERSION > 17
   source_maps.emplace_back(Glib::wrap(gtk_source_map_new()));
   gtk_source_map_set_view(GTK_SOURCE_MAP(source_maps.back()->gobj()), source_views.back()->gobj());
 #endif
@@ -113,7 +117,13 @@ void Notebook::open(const boost::filesystem::path &file_path) {
   
   set_tab_reorderable(*hboxes.back(), true);
   show_all_children();
+  
+  size_t last_index_tmp=-1;
+  if(get_current_page()!=-1)
+    last_index_tmp=get_index(get_current_page());
   set_current_page(size()-1);
+  last_index=last_index_tmp;
+  
   set_focus_child(*source_views.back());
   get_current_view()->get_buffer()->set_modified(false);
   get_current_view()->grab_focus();
@@ -138,7 +148,7 @@ void Notebook::open(const boost::filesystem::path &file_path) {
 }
 
 void Notebook::configure(int view_nr) {
-#if GTK_VERSION_GE(3, 18)
+#if GTKSOURCEVIEWMM_MAJOR_VERSION > 2 & GTKSOURCEVIEWMM_MINOR_VERSION > 17
   auto source_font_description=Pango::FontDescription(Singleton::Config::source()->font);
   auto source_map_font_desc=Pango::FontDescription(static_cast<std::string>(source_font_description.get_family())+" "+Singleton::Config::source()->map_font_size); 
   source_maps.at(view_nr)->override_font(source_map_font_desc);
@@ -228,8 +238,13 @@ bool Notebook::close_current_page() {
     }
     int page = get_current_page();
     int index=get_index(page);
+    
+    if(last_index!=static_cast<size_t>(-1)) {
+      set_current_page(page_num(*hboxes.at(last_index)));
+      last_index=-1;
+    }
     remove_page(page);
-#if GTK_VERSION_GE(3, 18)
+#if GTKSOURCEVIEWMM_MAJOR_VERSION > 2 & GTKSOURCEVIEWMM_MINOR_VERSION > 17
     source_maps.erase(source_maps.begin()+index);
 #endif
     auto source_view=source_views.at(index);

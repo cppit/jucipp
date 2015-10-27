@@ -58,7 +58,7 @@ void app::on_activate() {
       }
       std::thread another_juci_app([this, directory, files_in_directory](){
         Singleton::terminal()->async_print("Executing: juci "+directory.string()+files_in_directory);
-        Singleton::terminal()->execute("juci "+directory.string()+files_in_directory, ""); //TODO: do not open pipes here, doing this after Juci compiles on Windows
+        Singleton::terminal()->execute("juci "+directory.string()+files_in_directory, "", false);
       });
       another_juci_app.detach();
     }
@@ -67,8 +67,30 @@ void app::on_activate() {
     Singleton::window()->notebook.open(file);
 }
 
+void app::on_startup() {
+  Gtk::Application::on_startup();
+  
+  Singleton::menu()->init();
+  Singleton::menu()->build();
+
+  auto object = Singleton::menu()->builder->get_object("juci-menu");
+  auto juci_menu = Glib::RefPtr<Gio::Menu>::cast_dynamic(object);
+  object = Singleton::menu()->builder->get_object("window-menu");
+  auto window_menu = Glib::RefPtr<Gio::Menu>::cast_dynamic(object);
+  if (!juci_menu || !window_menu) {
+    std::cerr << "Menu not found." << std::endl;
+  }
+  else {
+    set_app_menu(juci_menu);
+    set_menubar(window_menu);
+  }
+}
+
 app::app() : Gtk::Application("no.sout.juci", Gio::APPLICATION_NON_UNIQUE | Gio::APPLICATION_HANDLES_COMMAND_LINE) {
   init_logging();
+  Glib::set_application_name("juCi++");
+  Singleton::menu()->application=static_cast<Gtk::Application*>(this); //For Ubuntu 14...
+  Singleton::window();
 }
 
 int main(int argc, char *argv[]) {

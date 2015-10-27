@@ -10,6 +10,17 @@ if(APPLE)
   set(ENV{PKG_CONFIG_PATH} "$ENV{PKG_CONFIG_PATH}:/usr/local/lib/pkgconfig:/opt/X11/lib/pkgconfig")
 endif()
 
+if(UNIX) #Checking if compiling on Ubuntu that has a buggy menu system
+  find_program(LSB_RELEASE_BIN lsb_release)
+  if(LSB_RELEASE_BIN)
+    execute_process(COMMAND ${LSB_RELEASE_BIN} -is
+      OUTPUT_VARIABLE DISTRIBUTION OUTPUT_STRIP_TRAILING_WHITESPACE)
+    if(DISTRIBUTION STREQUAL Ubuntu)
+      set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -DUBUNTU_BUGGED_MENU")
+    endif()
+  endif()
+endif()
+
 INCLUDE(FindPkgConfig)
 
 find_package(LibClang REQUIRED)

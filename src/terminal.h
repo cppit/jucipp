@@ -8,6 +8,7 @@
 #include <thread>
 #include <atomic>
 #include <list>
+#include <iostream>
 
 class Terminal : public Gtk::TextView {
 public:  
@@ -33,7 +34,8 @@ public:
   };
   
   Terminal();
-  int execute(const std::string &command, const boost::filesystem::path &path="");
+  int execute(const std::string &command, const boost::filesystem::path &path="", bool use_pipes=true);
+  int execute(std::istream &stdin_stream, std::ostream &stdout_stream, const std::string &command, const boost::filesystem::path &path="");
   void async_execute(const std::string &command, const boost::filesystem::path &path="", std::function<void(int exit_code)> callback=nullptr);
   void kill_last_async_execute(bool force=false);
   void kill_async_executes(bool force=false);
