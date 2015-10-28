@@ -162,10 +162,15 @@ void MainConfig::GenerateDirectoryFilter() {
   boost::property_tree::ptree dir_json = cfg.get_child("directoryfilter");
   boost::property_tree::ptree ignore_json = dir_json.get_child("ignore");
   boost::property_tree::ptree except_json = dir_json.get_child("exceptions");
+  dir_cfg->exceptions.clear();
+  dir_cfg->ignored.clear();
   for ( auto &i : except_json )
     dir_cfg->exceptions.emplace_back(i.second.get_value<std::string>());
   for ( auto &i : ignore_json )
     dir_cfg->ignored.emplace_back(i.second.get_value<std::string>());
+  if(Singleton::directories() != nullptr) {
+    Singleton::directories()->update();
+  }
 }
 
 void MainConfig::init_home_path(){
