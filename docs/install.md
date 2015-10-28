@@ -8,7 +8,7 @@ sudo apt-get install git cmake make g++ libclang-dev pkg-config libboost-system-
 
 Get juCi++ source, compile and install:
 ```sh
-git clone --recursive http://github.com/cppit/jucipp
+git clone --recursive https://github.com/cppit/jucipp
 cd jucipp
 cmake .
 make
@@ -33,7 +33,7 @@ sudo apt-get install git cmake make g++ libclang-3.6-dev pkg-config libboost-sys
 
 Get juCi++ source, compile and install:
 ```sh
-git clone --recursive http://github.com/cppit/jucipp
+git clone --recursive https://github.com/cppit/jucipp
 cd jucipp
 cmake .
 make
