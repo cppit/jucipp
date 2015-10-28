@@ -20,7 +20,7 @@ void MainConfig::read() {
     retrieve_config();
   }
   catch(const std::exception &e) {
-    Singleton::terminal()->print("Error reading "+config_json + "config.json: "+e.what()+"\n");
+    Singleton::terminal()->print("Error reading "+config_json+": "+e.what()+"\n");
     std::stringstream ss;
     ss << configjson;
     boost::property_tree::read_json(ss, cfg);
