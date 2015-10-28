@@ -105,6 +105,7 @@ const std::string configjson =
 "        \"cmake_command\": \"cmake\",\n"
 #endif
 "        \"make_command\": \"make\"\n"
+"        \"clang_format_command\": \"clang-format\"\n"
 "    },\n"
 "    \"documentation_searches\": {\n"
 "        \"clang\": {\n"
