@@ -16,6 +16,7 @@ public:
   public:
     std::string cmake_command;
     std::string make_command;
+    std::string clang_format_command;
     int history_size;
   };
   

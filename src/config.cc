@@ -20,7 +20,7 @@ void MainConfig::read() {
     retrieve_config();
   }
   catch(const std::exception &e) {
-    Singleton::terminal()->print("Error reading "+config_json + "config.json: "+e.what()+"\n");
+    Singleton::terminal()->print("Error reading "+config_json+": "+e.what()+"\n");
     std::stringstream ss;
     ss << configjson;
     boost::property_tree::read_json(ss, cfg);
@@ -71,6 +71,7 @@ void MainConfig::retrieve_config() {
   Singleton::Config::window()->default_size = {cfg.get<int>("default_window_size.width"), cfg.get<int>("default_window_size.height")};
   Singleton::Config::terminal()->make_command=cfg.get<std::string>("project.make_command");
   Singleton::Config::terminal()->cmake_command=cfg.get<std::string>("project.cmake_command");
+  Singleton::Config::terminal()->clang_format_command=cfg.get<std::string>("project.clang_format_command", "clang-format");
   Singleton::Config::terminal()->history_size=cfg.get<int>("terminal_history_size");
 }
 
@@ -162,6 +163,8 @@ void MainConfig::GenerateDirectoryFilter() {
   boost::property_tree::ptree dir_json = cfg.get_child("directoryfilter");
   boost::property_tree::ptree ignore_json = dir_json.get_child("ignore");
   boost::property_tree::ptree except_json = dir_json.get_child("exceptions");
+  dir_cfg->exceptions.clear();
+  dir_cfg->ignored.clear();
   for ( auto &i : except_json )
     dir_cfg->exceptions.emplace_back(i.second.get_value<std::string>());
   for ( auto &i : ignore_json )
