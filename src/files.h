@@ -1,6 +1,6 @@
 #include <string>
 
-#define JUCI_VERSION "0.9.41"
+#define JUCI_VERSION "0.9.4"
 
 #define JUCI_ENV_SEARCH_LOCATIONS {"AppData", "HOME", "JUCI_HOME"}
 

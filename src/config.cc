@@ -169,9 +169,6 @@ void MainConfig::GenerateDirectoryFilter() {
     dir_cfg->exceptions.emplace_back(i.second.get_value<std::string>());
   for ( auto &i : ignore_json )
     dir_cfg->ignored.emplace_back(i.second.get_value<std::string>());
-  if(Singleton::directories() != nullptr) {
-    Singleton::directories()->update();
-  }
 }
 
 void MainConfig::init_home_path(){
