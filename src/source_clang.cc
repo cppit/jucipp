@@ -924,7 +924,7 @@ Source::ClangViewAutocomplete(file_path, project_path, language) {
   });
   
   auto_indent=[this]() {
-    std::string command="clang-format";
+    auto command=Singleton::Config::terminal()->clang_format_command;
     unsigned indent_width;
     std::string tab_style;
     if(tab_char=='\t') {
