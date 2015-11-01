@@ -531,13 +531,11 @@ void Source::View::replace_all(const std::string &replacement) {
 
 void Source::View::paste() {
   auto text=Gtk::Clipboard::get()->wait_for_text();
-  //replace stand-alone carriage returns (which makes clang return wrong line index) with newlines
+  
+  //remove carriage returns (which leads to crash)
   for(auto it=text.begin();it!=text.end();it++) {
     if(*it=='\r') {
-      auto it2=it;
-      it2++;
-      if(it2==text.end() || *it2!='\n')
-        text.replace(it, it2, "\n");
+      it=text.erase(it);
     }
   }
 
