@@ -60,6 +60,19 @@ void CommonDialog::add_option(unsigned option) {
   check(dialog->SetOptions(options | option), "Failed to set options");
 }
 
+void CommonDialog::set_file_extensions(const std::vector<std::string> &file_extensions) {
+  return;
+}
+
+void CommonDialog::set_default_folder(const std::string &directory_path) {
+  IShellItem * folder = nullptr;
+  WinString str;
+  &str = (str.s2ws(directory_path)).data();
+  check(SHCreateItemFromParsingName(&str, NULL, IID_PPV_ARGS(&folder)), "Failed to create string");
+  check(dialog->SetDefaultFolder(folder), "Failed to set default folder");
+  folder->Release();
+}
+
 std::string CommonDialog::show() {
   try {
     check(dialog->Show(nullptr), "Failed to show dialog");
@@ -73,7 +86,22 @@ std::string CommonDialog::show() {
     return "";
   }
 }
-// COMMON_DIALOG }}
+
+OpenDialog::OpenDialog(const std::string &title, unsigned option) : CommonDialog(CLSID_FileOpenDialog); {
+  set_title(title);
+  add_option(option);
+  auto dirs = Singleton::directories()->current_path;
+  set_default_folder(dirs.empty() ? boost::filesystem::current_path() : dirs);
+}
+
+SaveDialog::SaveDialog(const std::string &title, unsigned option) : CommonDialog(CLSID_FileSaveDialog) {
+  set_title(title);
+  add_option(option);
+  auto dirs = Singleton::directories()->current_path;
+  set_default_folder(dirs.empty() ? boost::filesystem::current_path() : dirs);
+}
+
+// DIALOGS }}
 std::string Dialog::select_folder() {
   return (OpenDialog("Select folder", FOS_PICKFOLDERS)).show();
 }

@@ -106,6 +106,7 @@ include_directories(
   ${LIBCLANG_INCLUDE_DIRS}
   ${ASPELL_INCLUDE_DIR}
   ../libclangmm/src
+  "/usr/x86_64-w64-mingw32/include"
 )
 
 link_directories(
@@ -114,6 +115,7 @@ link_directories(
   ${Boost_LIBRARY_DIRS}
 #    ${PYTHON_INCLUDE_DIRS}
   ${LIBCLANG_LIBRARY_DIRS}
+  "/usr/x86_64-w64-mingw32/lib"
 )
 
 #  set_target_properties(${module}

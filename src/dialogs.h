@@ -38,8 +38,14 @@ private:
 class CommonDialog {
 public:
   CommonDialog(CLSID type);
+  /** available options are listed https://msdn.microsoft.com/en-gb/library/windows/desktop/dn457282(v=vs.85).aspx */
   void add_option(unsigned option);
   void set_title(const std::string &title);
+  /** Sets the extensions the browser can find */
+  void set_file_extensions(const std::vector<std::string> file_extensions);
+  /** Sets the directory to start browsing */
+  void set_default_folder(const std::string &directory_path);
+  /** Returns the selected item's path as a string */
   std::string show();
 
 private:
@@ -49,18 +55,12 @@ private:
 
 class OpenDialog : public CommonDialog {
 public:
-  OpenDialog(const std::string &title, unsigned option) : CommonDialog(CLSID_FileOpenDialog) {
-    set_title(title);
-    add_option(option);
-  }
+  OpenDialog(const std::string &title, unsigned option) : CommonDialog(CLSID_FileOpenDialog);
 };
-
 class SaveDialog : public CommonDialog {
 public:
-  SaveDialog(const std::string &title, unsigned option) : CommonDialog(CLSID_FileSaveDialog) {
-    set_title(title);
-    add_option(option);
-  }
+  SaveDialog(const std::string &title, unsigned option) : CommonDialog(CLSID_FileSaveDialog);
 };
+
 #endif  // __WIN32
 #endif  // JUCI_DIALOG_H_
