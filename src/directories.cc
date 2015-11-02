@@ -22,7 +22,6 @@ namespace sigc {
 }
 
 Directories::Directories() : stop_update_thread(false) {
-  JDEBUG("start");
   add(tree_view);
   set_policy(Gtk::POLICY_AUTOMATIC, Gtk::POLICY_AUTOMATIC);
   tree_store = Gtk::TreeStore::create(column_record);
