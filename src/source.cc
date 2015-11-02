@@ -530,7 +530,7 @@ void Source::View::replace_all(const std::string &replacement) {
 }
 
 void Source::View::paste() {
-  auto text=Gtk::Clipboard::get()->wait_for_text();
+  std::string text=Gtk::Clipboard::get()->wait_for_text();
   
   //remove carriage returns (which leads to crash)
   for(auto it=text.begin();it!=text.end();it++) {
@@ -545,13 +545,13 @@ void Source::View::paste() {
   if(!get_buffer()->get_has_selection() && tabs_end_iter.ends_line()) {
     prefix_tabs=get_line_before(tabs_end_iter);
 
-    Glib::ustring::size_type start_line=0;
-    Glib::ustring::size_type end_line=0;
+    size_t start_line=0;
+    size_t end_line=0;
     bool paste_line=false;
     bool first_paste_line=true;
     size_t paste_line_tabs=-1;
     bool first_paste_line_has_tabs=false;
-    for(Glib::ustring::size_type c=0;c<text.size();c++) {;
+    for(size_t c=0;c<text.size();c++) {;
       if(text[c]=='\n') {
         end_line=c;
         paste_line=true;
@@ -593,7 +593,7 @@ void Source::View::paste() {
     paste_line=false;
     first_paste_line=true;
     get_source_buffer()->begin_user_action();
-    for(Glib::ustring::size_type c=0;c<text.size();c++) {
+    for(size_t c=0;c<text.size();c++) {
       if(text[c]=='\n') {
         end_line=c;
         paste_line=true;
