@@ -1,7 +1,7 @@
 #ifdef _WIN32
 #include "dialogs.h"
 #include "singletons.h"
-
+#include <boost/locale.hpp>
 #ifndef check
 HRESULT __hr__;
 #define check(__fun__, error_message)            \
@@ -29,17 +29,12 @@ std::string WinString::operator()() {
   return res;
 }
 
-// http://stackoverflow.com/questions/4804298/how-to-convert-wstring-into-string
 std::wstring WinString::s2ws(const std::string& str) {
-  typedef std::codecvt_utf8<wchar_t> convert_typeX;
-  std::wstring_convert<convert_typeX, wchar_t> converterX;
-  return converterX.from_bytes(str);
+  return boost::locale::conv::utf_to_utf<wchar_t>(str);
 }
 
 std::string WinString::ws2s(const std::wstring& wstr) {
-  typedef std::codecvt_utf8<wchar_t> convert_typeX;
-  std::wstring_convert<convert_typeX, wchar_t> converterX;
-  return converterX.to_bytes(wstr);
+  return boost::locale::conv::utf_to_utf<char>(wstr);
 }
 
 // WINSTRING }
@@ -51,9 +46,7 @@ CommonDialog::CommonDialog(CLSID type) : dialog(nullptr) {
 }
 
 void CommonDialog::set_title(const std::string &title) {
-    auto tmp = std::wstring(title.begin(), title.end());
-    auto t = tmp.data();
-    check(dialog->SetTitle(t), "Failed to set dialog title");
+  check(dialog->SetTitle(), "Failed to set dialog title");
 }
 
 void CommonDialog::add_option(unsigned option) {
@@ -65,10 +58,11 @@ void CommonDialog::set_file_extensions(const std::vector<std::string> &file_exte
 }
 
 void CommonDialog::set_default_folder(const std::string &directory_path) {
+  std::cout << directory_path << std::endl;
   IShellItem * folder = nullptr;
-  WinString str;
-  &str = (str.s2ws(directory_path)).data();
-  check(SHCreateItemFromParsingName(&str, NULL, IID_PPV_ARGS(&folder)), "Failed to create string");
+  auto dir = WinString::s2ws(directory_path);
+  std::wcout << dir << std::endl;
+  check(SHCreateItemFromParsingName(dir.data(), nullptr, IID_PPV_ARGS(&folder)), "Failed to create string");
   check(dialog->SetDefaultFolder(folder), "Failed to set default folder");
   folder->Release();
 }
@@ -87,18 +81,18 @@ std::string CommonDialog::show() {
   }
 }
 
-OpenDialog::OpenDialog(const std::string &title, unsigned option) : CommonDialog(CLSID_FileOpenDialog); {
+OpenDialog::OpenDialog(const std::string &title, unsigned option) : CommonDialog(CLSID_FileOpenDialog) {
   set_title(title);
   add_option(option);
   auto dirs = Singleton::directories()->current_path;
-  set_default_folder(dirs.empty() ? boost::filesystem::current_path() : dirs);
+  set_default_folder(dirs.empty() ? boost::filesystem::current_path().string() : dirs.string());
 }
 
 SaveDialog::SaveDialog(const std::string &title, unsigned option) : CommonDialog(CLSID_FileSaveDialog) {
   set_title(title);
   add_option(option);
   auto dirs = Singleton::directories()->current_path;
-  set_default_folder(dirs.empty() ? boost::filesystem::current_path() : dirs);
+  set_default_folder(dirs.empty() ? boost::filesystem::current_path().string() : dirs.string());
 }
 
 // DIALOGS }}

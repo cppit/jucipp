@@ -21,6 +21,7 @@ class Dialog {
 #include <memory>
 #include <sstream>
 #include <codecvt>
+#include <vector>
 
 class WinString {
 public:
@@ -29,10 +30,11 @@ public:
   ~WinString() { CoTaskMemFree(static_cast<void*>(str)); }
   std::string operator()();
   wchar_t** operator&() { return &str; }
+  static std::wstring s2ws(const std::string& str);
+  static std::string ws2s(const std::wstring& wstr);
+
 private:
   wchar_t* str;
-  std::wstring s2ws(const std::string& str);
-  std::string ws2s(const std::wstring& wstr);
 };
 
 class CommonDialog {
@@ -42,7 +44,7 @@ public:
   void add_option(unsigned option);
   void set_title(const std::string &title);
   /** Sets the extensions the browser can find */
-  void set_file_extensions(const std::vector<std::string> file_extensions);
+  void set_file_extensions(const std::vector<std::string> &file_extensions);
   /** Sets the directory to start browsing */
   void set_default_folder(const std::string &directory_path);
   /** Returns the selected item's path as a string */
@@ -55,11 +57,11 @@ private:
 
 class OpenDialog : public CommonDialog {
 public:
-  OpenDialog(const std::string &title, unsigned option) : CommonDialog(CLSID_FileOpenDialog);
+  OpenDialog(const std::string &title, unsigned option);
 };
 class SaveDialog : public CommonDialog {
 public:
-  SaveDialog(const std::string &title, unsigned option) : CommonDialog(CLSID_FileSaveDialog);
+  SaveDialog(const std::string &title, unsigned option);
 };
 
 #endif  // __WIN32
