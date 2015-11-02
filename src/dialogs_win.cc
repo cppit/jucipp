@@ -24,8 +24,9 @@ void CommonDialog::set_title(std::string &&title) {
 void CommonDialog::add_option(unsigned option) {
   check(dialog->SetOptions(options | option), "Failed to set options");
 }
-void CommonDialog::set_default_file_extension(std::string &&file_extensions) {
-  
+void CommonDialog::set_default_file_extension(std::string &&file_extension) {
+  auto ptr = boost::locale::conv::utf_to_utf<wchar_t>(file_extension).data();
+  check(dialog->SetDefaultExtension(ptr), "Failed to set file extension");
 }
 void CommonDialog::set_default_folder(const std::string &directory_path) {
   IShellItem * folder = nullptr;
@@ -62,6 +63,12 @@ SaveDialog::SaveDialog(std::string &&title, unsigned option) : CommonDialog(CLSI
   add_option(option);
   auto dirs = Singleton::directories()->current_path;
   set_default_folder(dirs.empty() ? boost::filesystem::current_path().string() : dirs.string());
+  extensions.emplace_back(COMDLG_FILTERSPEC{L"Default", L"*.h;*.cpp"});
+  extensions.emplace_back(COMDLG_FILTERSPEC{L"GoogleStyle", L"*.cc;*.h"});
+  extensions.emplace_back(COMDLG_FILTERSPEC{L"BoostStyle", L"*.hpp;*.cpp"});
+  extensions.emplace_back(COMDLG_FILTERSPEC{L"Other", L"*.cxx;*.c"});
+  check(dialog->SetFileTypes(extensions.size(), extensions.data()), "Failed to set extensions");
+  set_default_file_extension("Default");
 }
 
 // DIALOGS }}

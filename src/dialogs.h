@@ -36,11 +36,9 @@ public:
   /** Returns the selected item's path as a string */
   std::string show();
 
-private:
+protected:
   IFileDialog * dialog;
   DWORD options;
-  const std::vector<std::wstring> text_files = {L"Text files", L"*.txt;*.c"};
-  const std::vector<std::wstring> all_files = {L"", L""};
 };
 
 class OpenDialog : public CommonDialog {
@@ -50,6 +48,8 @@ public:
 class SaveDialog : public CommonDialog {
 public:
   SaveDialog(std::string &&title, unsigned option);
+private:
+  std::vector<COMDLG_FILTERSPEC> extensions;
 };
 
 #endif  // __WIN32
