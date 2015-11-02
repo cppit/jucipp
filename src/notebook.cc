@@ -184,7 +184,6 @@ bool Notebook::save(int page, bool reparse_needed) {
       }
       
       view->get_buffer()->set_modified(false);
-      Singleton::terminal()->print("File saved to: " +view->file_path.string()+"\n");
       
       //If CMakeLists.txt have been modified:
       boost::filesystem::path project_path;
