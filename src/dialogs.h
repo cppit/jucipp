@@ -17,10 +17,6 @@ class Dialog {
 
 #include <windows.h>
 #include <shobjidl.h>
-
-#include <memory>
-#include <sstream>
-#include <codecvt>
 #include <vector>
 
 class CommonDialog {
