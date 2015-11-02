@@ -7,7 +7,7 @@ HRESULT __hr__;
 #define check(__fun__, error_message)            \
   __hr__ = __fun__;                              \
   if (FAILED(__hr__)) {                          \
-    Singleton::terminal()->print(error_message); \
+    Singleton::terminal->print(error_message); \
     throw std::runtime_error(error_message);	 \
 }                                                
 #endif  // CHECK
@@ -90,7 +90,8 @@ std::string Dialog::select_file() {
   return (OpenDialog("Open file", 0)).show();
 }
 
-std::string Dialog::save_file() {
+std::string Dialog::save_file(const boost::filesystem::path file_path) {
+  //TODO: use file_path
   return (SaveDialog("Please choose your destination", 0)).show();
 }
 #endif

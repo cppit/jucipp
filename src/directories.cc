@@ -1,8 +1,8 @@
 #include "singletons.h"
-#include "directories.h"
 #include "logging.h"
 #include <algorithm>
 #include <unordered_set>
+#include "source.h"
 
 #include <iostream> //TODO: remove
 using namespace std; //TODO: remove
@@ -201,11 +201,11 @@ void Directories::select(const boost::filesystem::path &path) {
 bool Directories::ignored(std::string path) {
   std::transform(path.begin(), path.end(), path.begin(), ::tolower);
   
-  for(std::string &i : Singleton::Config::directories()->exceptions) {
+  for(std::string &i : Singleton::config->directories.exceptions) {
     if(i == path)
       return false;
   }
-  for(auto &i : Singleton::Config::directories()->ignored) {
+  for(auto &i : Singleton::config->directories.ignored) {
     if(path.find(i, 0) != std::string::npos)
       return true;
   }

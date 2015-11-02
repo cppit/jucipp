@@ -10,7 +10,7 @@ Menu::Menu() {
 
 //TODO: if Ubuntu ever gets fixed, move to constructor, also cleanup the rest of the Ubuntu specific code
 void Menu::init() {
-  auto accels=Singleton::Config::menu()->keys;
+  auto accels=Singleton::config->menu.keys;
   for(auto &accel: accels) {
 #ifdef UBUNTU_BUGGED_MENU
     size_t pos=0;
@@ -295,11 +295,15 @@ void Menu::init() {
 }
 
 void Menu::add_action(const std::string &name, std::function<void()> action) {
+  auto application=Glib::RefPtr<Gtk::Application>::cast_static(Gio::Application::get_default()).release();
+  
   actions[name]=application->add_action(name, action);
 }
 
 void Menu::set_keys() {
-  for(auto &key: Singleton::Config::menu()->keys) {
+  auto application=Glib::RefPtr<Gtk::Application>::cast_static(Gio::Application::get_default()).release();
+           
+  for(auto &key: Singleton::config->menu.keys) {
     if(key.second.size()>0 && actions.find(key.first)!=actions.end()) {
 #if GTK_VERSION_GE(3, 12)
       application->set_accel_for_action("app."+key.first, key.second); 

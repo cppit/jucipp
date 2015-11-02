@@ -1,17 +1,18 @@
 #ifndef JUCI_JUCI_H_
 #define JUCI_JUCI_H_
 
-#include "window.h"
+#include <gtkmm.h>
 #include "logging.h"
+#include "window.h"
 
-class app : public Gtk::Application {
- public:
-  app();
+class Application : public Gtk::Application {
+public:
+  Application();
   int on_command_line(const Glib::RefPtr<Gio::ApplicationCommandLine> &cmd);
   void on_activate();
   void on_startup();
-
- private:
+  std::unique_ptr<Window> window;
+private:
   std::vector<boost::filesystem::path> directories;
   std::vector<boost::filesystem::path> files;
   void init_logging();

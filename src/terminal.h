@@ -11,15 +11,7 @@
 #include <iostream>
 
 class Terminal : public Gtk::TextView {
-public:  
-  class Config {
-  public:
-    std::string cmake_command;
-    std::string make_command;
-    std::string clang_format_command;
-    int history_size;
-  };
-  
+public:
   class InProgress {
   public:
     InProgress(const std::string& start_msg);

@@ -8,6 +8,7 @@
 #include <regex>
 #include "clangmm.h"
 #include "source.h"
+#include "terminal.h"
 
 namespace Source {
   class ClangViewParse : public View {

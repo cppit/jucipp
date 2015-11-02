@@ -129,7 +129,7 @@ HANDLE popen3(const std::string &command, const std::string &path, HANDLE *stdin
 
 Terminal::InProgress::InProgress(const std::string& start_msg): stop(false) {
   waiting_print.connect([this](){
-    Singleton::terminal()->async_print(line_nr-1, ".");
+    Singleton::terminal->async_print(line_nr-1, ".");
   });
   start(start_msg);
 }
@@ -141,7 +141,7 @@ Terminal::InProgress::~InProgress() {
 }
 
 void Terminal::InProgress::start(const std::string& msg) {
-  line_nr=Singleton::terminal()->print(msg+"...\n");
+  line_nr=Singleton::terminal->print(msg+"...\n");
   wait_thread=std::thread([this](){
     size_t c=0;
     while(!stop) {
@@ -156,14 +156,14 @@ void Terminal::InProgress::start(const std::string& msg) {
 void Terminal::InProgress::done(const std::string& msg) {
   if(!stop) {
     stop=true;
-    Singleton::terminal()->async_print(line_nr-1, msg);
+    Singleton::terminal->async_print(line_nr-1, msg);
   }
 }
 
 void Terminal::InProgress::cancel(const std::string& msg) {
   if(!stop) {
     stop=true;
-    Singleton::terminal()->async_print(line_nr-1, msg);
+    Singleton::terminal->async_print(line_nr-1, msg);
   }
 }
 
@@ -427,8 +427,8 @@ size_t Terminal::print(const std::string &message, bool bold){
   else
     get_buffer()->insert(get_buffer()->end(), umessage);
   
-  if(get_buffer()->get_line_count()>Singleton::Config::terminal()->history_size) {
-    int lines=get_buffer()->get_line_count()-Singleton::Config::terminal()->history_size;
+  if(get_buffer()->get_line_count()>Singleton::config->terminal.history_size) {
+    int lines=get_buffer()->get_line_count()-Singleton::config->terminal.history_size;
     get_buffer()->erase(get_buffer()->begin(), get_buffer()->get_iter_at_line(lines));
     deleted_lines+=static_cast<size_t>(lines);
   }

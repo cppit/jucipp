@@ -8,38 +8,10 @@
 #include <vector>
 
 #include "selectiondialog.h"
-#include "terminal.h"
 #include "tooltips.h"
 
 namespace Source {
   Glib::RefPtr<Gsv::Language> guess_language(const boost::filesystem::path &file_path);
-  
-  class Config {
-  public:
-    class DocumentationSearch {
-    public:
-      std::string separator;
-      std::unordered_map<std::string, std::string> queries;
-    };
-    
-    std::string style;
-    std::string font;
-    std::string spellcheck_language;
-    
-    bool show_map;
-    std::string map_font_size;
-    
-    bool auto_tab_char_and_size;
-    char default_tab_char;
-    unsigned default_tab_size;
-    bool wrap_lines;
-    bool highlight_current_line;
-    bool show_line_numbers;
-    std::unordered_map<std::string, std::string> clang_types;
-    std::string clang_format_style;
-    
-    std::unordered_map<std::string, DocumentationSearch> documentation_searches;
-  };
   
   class Token {
   public:

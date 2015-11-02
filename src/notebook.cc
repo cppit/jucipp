@@ -4,6 +4,7 @@
 #include <fstream>
 #include <regex>
 #include "cmake.h"
+#include "filesystem.h"
 
 #if GTKSOURCEVIEWMM_MAJOR_VERSION > 2 & GTKSOURCEVIEWMM_MINOR_VERSION > 17
 #include "gtksourceview-3.0/gtksourceview/gtksourcemap.h"
@@ -66,14 +67,14 @@ void Notebook::open(const boost::filesystem::path &file_path) {
   
   std::ifstream can_read(file_path.string());
   if(!can_read) {
-    Singleton::terminal()->print("Error: could not open "+file_path.string()+"\n");
+    Singleton::terminal->print("Error: could not open "+file_path.string()+"\n");
     return;
   }
   can_read.close();
   
   auto language=Source::guess_language(file_path);
   boost::filesystem::path project_path;
-  auto directories=Singleton::directories();
+  auto &directories=Singleton::directories;
   if(directories->cmake && directories->cmake->project_path!="" && file_path.generic_string().substr(0, directories->cmake->project_path.generic_string().size()+1)==directories->cmake->project_path.generic_string()+'/')
     project_path=directories->cmake->project_path;
   else {
@@ -81,7 +82,7 @@ void Notebook::open(const boost::filesystem::path &file_path) {
     CMake cmake(project_path);
     if(cmake.project_path!="") {
       project_path=cmake.project_path;
-      Singleton::terminal()->print("Project path for "+file_path.string()+" set to "+project_path.string()+"\n");
+      Singleton::terminal->print("Project path for "+file_path.string()+" set to "+project_path.string()+"\n");
     }
   }
   if(language && (language->get_id()=="chdr" || language->get_id()=="cpphdr" || language->get_id()=="c" || language->get_id()=="cpp" || language->get_id()=="objc")) {
@@ -94,11 +95,11 @@ void Notebook::open(const boost::filesystem::path &file_path) {
   
   source_views.back()->on_update_status=[this](Source::View* view, const std::string &status) {
     if(get_current_page()!=-1 && get_current_view()==view)
-      Singleton::status()->set_text(status+" ");
+      Singleton::status->set_text(status+" ");
   };
   source_views.back()->on_update_info=[this](Source::View* view, const std::string &info) {
     if(get_current_page()!=-1 && get_current_view()==view)
-      Singleton::info()->set_text(" "+info);
+      Singleton::info->set_text(" "+info);
   };
   
   scrolled_windows.emplace_back(new Gtk::ScrolledWindow());
@@ -149,10 +150,10 @@ void Notebook::open(const boost::filesystem::path &file_path) {
 
 void Notebook::configure(int view_nr) {
 #if GTKSOURCEVIEWMM_MAJOR_VERSION > 2 & GTKSOURCEVIEWMM_MINOR_VERSION > 17
-  auto source_font_description=Pango::FontDescription(Singleton::Config::source()->font);
-  auto source_map_font_desc=Pango::FontDescription(static_cast<std::string>(source_font_description.get_family())+" "+Singleton::Config::source()->map_font_size); 
+  auto source_font_description=Pango::FontDescription(Singleton::config->source.font);
+  auto source_map_font_desc=Pango::FontDescription(static_cast<std::string>(source_font_description.get_family())+" "+Singleton::config->source.map_font_size); 
   source_maps.at(view_nr)->override_font(source_map_font_desc);
-  if(Singleton::Config::source()->show_map) {
+  if(Singleton::config->source.show_map) {
     if(hboxes.at(view_nr)->get_children().size()==1)
       hboxes.at(view_nr)->pack_end(*source_maps.at(view_nr), Gtk::PACK_SHRINK);
   }
@@ -188,7 +189,7 @@ bool Notebook::save(int page, bool reparse_needed) {
       //If CMakeLists.txt have been modified:
       boost::filesystem::path project_path;
       if(view->file_path.filename()=="CMakeLists.txt") {
-        auto directories=Singleton::directories();
+        auto &directories=Singleton::directories;
         if(directories->cmake && directories->cmake->project_path!="" && view->file_path.generic_string().substr(0, directories->cmake->project_path.generic_string().size()+1)==directories->cmake->project_path.generic_string()+'/' && CMake::create_compile_commands(directories->cmake->project_path)) {
           project_path=directories->cmake->project_path;
         }
@@ -203,9 +204,9 @@ bool Notebook::save(int page, bool reparse_needed) {
             if(auto source_clang_view=dynamic_cast<Source::ClangView*>(source_view)) {
               if(project_path==source_clang_view->project_path) {
                 if(source_clang_view->restart_parse())
-                  Singleton::terminal()->async_print("Reparsing "+source_clang_view->file_path.string()+"\n");
+                  Singleton::terminal->async_print("Reparsing "+source_clang_view->file_path.string()+"\n");
                 else
-                  Singleton::terminal()->async_print("Error: failed to reparse "+source_clang_view->file_path.string()+". Please reopen the file manually.\n");
+                  Singleton::terminal->async_print("Error: failed to reparse "+source_clang_view->file_path.string()+". Please reopen the file manually.\n");
               }
             }
           }
@@ -214,7 +215,7 @@ bool Notebook::save(int page, bool reparse_needed) {
       JDEBUG("end true");
       return true;
     }
-    Singleton::terminal()->print("Error: could not save file " +view->file_path.string()+"\n");
+    Singleton::terminal->print("Error: could not save file " +view->file_path.string()+"\n");
   }
   JDEBUG("end false");
   return false;

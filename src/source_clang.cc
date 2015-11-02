@@ -25,14 +25,14 @@ Source::View(file_path, project_path, language), parse_error(false) {
   JDEBUG("start");
   
   auto tag_table=get_buffer()->get_tag_table();
-  for (auto &item : Singleton::Config::source()->clang_types) {
+  for (auto &item : Singleton::config->source.clang_types) {
     if(!tag_table->lookup(item.second)) {
       get_buffer()->create_tag(item.second);
     }
   }
   configure();
   
-  parsing_in_progress=Singleton::terminal()->print_in_progress("Parsing "+file_path.string());
+  parsing_in_progress=Singleton::terminal->print_in_progress("Parsing "+file_path.string());
   //GTK-calls must happen in main thread, so the parse_thread
   //sends signals to the main thread that it is to call the following functions:
   parse_start_connection=parse_start.connect([this]{
@@ -59,7 +59,7 @@ Source::View(file_path, project_path, language), parse_error(false) {
     }
   });
   parse_fail_connection=parse_fail.connect([this](){
-    Singleton::terminal()->print("Error: failed to reparse "+this->file_path.string()+".\n");
+    Singleton::terminal->print("Error: failed to reparse "+this->file_path.string()+".\n");
     set_status("");
     set_info("");
     parsing_in_progress->cancel("failed");
@@ -80,7 +80,7 @@ void Source::ClangViewParse::configure() {
   
   auto scheme = get_source_buffer()->get_style_scheme();
   auto tag_table=get_buffer()->get_tag_table();
-  for (auto &item : Singleton::Config::source()->clang_types) {
+  for (auto &item : Singleton::config->source.clang_types) {
     auto tag = get_buffer()->get_tag_table()->lookup(item.second);
     if(tag) {
       auto style = scheme->get_style(item.second);
@@ -240,8 +240,8 @@ void Source::ClangViewParse::update_syntax() {
     buffer->remove_tag_by_name(tag, buffer->begin(), buffer->end());
   last_syntax_tags.clear();
   for (auto &range : ranges) {
-    auto type_it=Singleton::Config::source()->clang_types.find(std::to_string(range.kind));
-    if(type_it!=Singleton::Config::source()->clang_types.end()) {
+    auto type_it=Singleton::config->source.clang_types.find(std::to_string(range.kind));
+    if(type_it!=Singleton::config->source.clang_types.end()) {
       last_syntax_tags.emplace(type_it->second);
       Gtk::TextIter begin_iter = buffer->get_iter_at_line_index(range.offsets.first.line-1, range.offsets.first.index-1);
       Gtk::TextIter end_iter  = buffer->get_iter_at_line_index(range.offsets.second.line-1, range.offsets.second.index-1);
@@ -649,7 +649,7 @@ Source::ClangViewParse(file_path, project_path, language), autocomplete_cancel_s
   });
   
   autocomplete_fail_connection=autocomplete_fail.connect([this]() {
-    Singleton::terminal()->print("Error: autocomplete failed, reparsing "+this->file_path.string()+"\n");
+    Singleton::terminal->print("Error: autocomplete failed, reparsing "+this->file_path.string()+"\n");
     restart_parse();
     autocomplete_starting=false;
     autocomplete_cancel_starting=false;
@@ -924,7 +924,7 @@ Source::ClangViewAutocomplete(file_path, project_path, language) {
   });
   
   auto_indent=[this]() {
-    auto command=Singleton::Config::terminal()->clang_format_command;
+    auto command=Singleton::config->terminal.clang_format_command;
     unsigned indent_width;
     std::string tab_style;
     if(tab_char=='\t') {
@@ -938,13 +938,13 @@ Source::ClangViewAutocomplete(file_path, project_path, language) {
     command+=" -style=\"{IndentWidth: "+std::to_string(indent_width);
     command+=", "+tab_style;
     command+=", "+std::string("AccessModifierOffset: -")+std::to_string(indent_width);
-    if(Singleton::Config::source()->clang_format_style!="")
-      command+=", "+Singleton::Config::source()->clang_format_style;
+    if(Singleton::config->source.clang_format_style!="")
+      command+=", "+Singleton::config->source.clang_format_style;
     command+="}\"";
     
     std::stringstream stdin_stream(get_buffer()->get_text()), stdout_stream;
     
-    auto exit_code=Singleton::terminal()->execute(stdin_stream, stdout_stream, command);
+    auto exit_code=Singleton::terminal->execute(stdin_stream, stdout_stream, command);
     if(exit_code==0) {
       get_source_buffer()->begin_user_action();
       auto iter=get_buffer()->get_insert()->get_iter();
@@ -1107,7 +1107,7 @@ Source::ClangViewAutocomplete(file_path, project_path, language) {
               auto usr=referenced.get_usr();
               boost::filesystem::path referenced_path=referenced.get_source_location().get_path();
               
-              //Singleton::terminal()->print(usr+'\n', true); //TODO: remove
+              //Singleton::terminal->print(usr+'\n', true); //TODO: remove
               
               //Return empty if referenced is within project
               if(referenced_path.generic_string().substr(0, this->project_path.generic_string().size()+1)==this->project_path.generic_string()+'/')

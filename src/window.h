@@ -2,7 +2,6 @@
 #define JUCI_WINDOW_H_
 
 #include "gtkmm.h"
-#include "directories.h"
 #include "entrybox.h"
 #include "notebook.h"
 #include <atomic>
@@ -11,13 +10,6 @@ class Window : public Gtk::ApplicationWindow {
 public:
   Window();
   Notebook notebook;
-  class Config {
-  public:
-    std::string theme_name;
-    std::string theme_variant;
-    std::string version;
-    std::pair<int, int> default_size;
-  };
 
 protected:
   bool on_key_press_event(GdkEventKey *event);

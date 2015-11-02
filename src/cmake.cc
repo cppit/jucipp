@@ -1,5 +1,6 @@
 #include "cmake.h"
 #include "singletons.h"
+#include "filesystem.h"
 #include <regex>
 
 #include <iostream> //TODO: remove
@@ -44,8 +45,8 @@ CMake::CMake(const boost::filesystem::path &path) {
 }
 
 bool CMake::create_compile_commands(const boost::filesystem::path &path) {
-  Singleton::terminal()->print("Creating "+path.string()+"/compile_commands.json\n");
-  if(Singleton::terminal()->execute(Singleton::Config::terminal()->cmake_command+" . -DCMAKE_EXPORT_COMPILE_COMMANDS=ON", path)==EXIT_SUCCESS) {
+  Singleton::terminal->print("Creating "+path.string()+"/compile_commands.json\n");
+  if(Singleton::terminal->execute(Singleton::config->terminal.cmake_command+" . -DCMAKE_EXPORT_COMPILE_COMMANDS=ON", path)==EXIT_SUCCESS) {
 #ifdef _WIN32 //Temporary fix to MSYS2's libclang
     auto compile_commands_path=path;
     compile_commands_path/="compile_commands.json";

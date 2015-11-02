@@ -4,14 +4,15 @@
 #include <exception>
 #include "files.h"
 #include <iostream>
+#include "filesystem.h"
 
 using namespace std; //TODO: remove
 
-MainConfig::MainConfig() {
+Config::Config() {
   init_home_path();
 }
 
-void MainConfig::read() {
+void Config::load() {
   auto config_json = (home/"config"/"config.json").string(); // This causes some redundant copies, but assures windows support
   try {
     find_or_create_config_files();
@@ -20,7 +21,7 @@ void MainConfig::read() {
     retrieve_config();
   }
   catch(const std::exception &e) {
-    Singleton::terminal()->print("Error reading "+config_json+": "+e.what()+"\n");
+    Singleton::terminal->print("Error reading "+config_json+": "+e.what()+"\n");
     std::stringstream ss;
     ss << configjson;
     boost::property_tree::read_json(ss, cfg);
@@ -29,7 +30,7 @@ void MainConfig::read() {
   cfg.clear();
 }
 
-void MainConfig::find_or_create_config_files() {
+void Config::find_or_create_config_files() {
   auto config_dir = home/"config";
   auto config_json = config_dir/"config.json";
   auto plugins_py = config_dir/"plugins.py";
@@ -57,25 +58,25 @@ void MainConfig::find_or_create_config_files() {
     filesystem::write(juci_style_path, juci_dark_blue_style);
 }
 
-void MainConfig::retrieve_config() {
+void Config::retrieve_config() {
   auto keybindings_pt = cfg.get_child("keybindings");
   for (auto &i : keybindings_pt) {
-    Singleton::Config::menu()->keys[i.first] = i.second.get_value<std::string>();
+    menu.keys[i.first] = i.second.get_value<std::string>();
   }
   GenerateSource();
   GenerateDirectoryFilter();
 
-  Singleton::Config::window()->theme_name=cfg.get<std::string>("gtk_theme.name");
-  Singleton::Config::window()->theme_variant=cfg.get<std::string>("gtk_theme.variant");
-  Singleton::Config::window()->version = cfg.get<std::string>("version");
-  Singleton::Config::window()->default_size = {cfg.get<int>("default_window_size.width"), cfg.get<int>("default_window_size.height")};
-  Singleton::Config::terminal()->make_command=cfg.get<std::string>("project.make_command");
-  Singleton::Config::terminal()->cmake_command=cfg.get<std::string>("project.cmake_command");
-  Singleton::Config::terminal()->clang_format_command=cfg.get<std::string>("project.clang_format_command", "clang-format");
-  Singleton::Config::terminal()->history_size=cfg.get<int>("terminal_history_size");
+  window.theme_name=cfg.get<std::string>("gtk_theme.name");
+  window.theme_variant=cfg.get<std::string>("gtk_theme.variant");
+  window.version = cfg.get<std::string>("version");
+  window.default_size = {cfg.get<int>("default_window_size.width"), cfg.get<int>("default_window_size.height")};
+  terminal.make_command=cfg.get<std::string>("project.make_command");
+  terminal.cmake_command=cfg.get<std::string>("project.cmake_command");
+  terminal.clang_format_command=cfg.get<std::string>("project.clang_format_command", "clang-format");
+  terminal.history_size=cfg.get<int>("terminal_history_size");
 }
 
-bool MainConfig::check_config_file(const boost::property_tree::ptree &default_cfg, std::string parent_path) {
+bool Config::check_config_file(const boost::property_tree::ptree &default_cfg, std::string parent_path) {
   if(parent_path.size()>0)
     parent_path+=".";
   bool exists=true;
@@ -97,7 +98,7 @@ bool MainConfig::check_config_file(const boost::property_tree::ptree &default_cf
   return exists;
 }
 
-void MainConfig::update_config_file() {
+void Config::update_config_file() {
   boost::property_tree::ptree default_cfg;
   bool cfg_ok=true;
   try {
@@ -122,56 +123,54 @@ void MainConfig::update_config_file() {
   }
 }
 
-void MainConfig::GenerateSource() {
-  auto source_cfg = Singleton::Config::source();
+void Config::GenerateSource() {
   auto source_json = cfg.get_child("source");
 
-  Singleton::Config::source()->style=source_json.get<std::string>("style");
-  source_cfg->font=source_json.get<std::string>("font");
+  source.style=source_json.get<std::string>("style");
+  source.font=source_json.get<std::string>("font");
 
-  source_cfg->show_map = source_json.get<bool>("show_map");
-  source_cfg->map_font_size = source_json.get<std::string>("map_font_size");
+  source.show_map = source_json.get<bool>("show_map");
+  source.map_font_size = source_json.get<std::string>("map_font_size");
 
-  source_cfg->spellcheck_language = source_json.get<std::string>("spellcheck_language");
+  source.spellcheck_language = source_json.get<std::string>("spellcheck_language");
 
-  source_cfg->default_tab_char = source_json.get<char>("default_tab_char");
-  source_cfg->default_tab_size = source_json.get<unsigned>("default_tab_size");
-  source_cfg->auto_tab_char_and_size = source_json.get<bool>("auto_tab_char_and_size");
+  source.default_tab_char = source_json.get<char>("default_tab_char");
+  source.default_tab_size = source_json.get<unsigned>("default_tab_size");
+  source.auto_tab_char_and_size = source_json.get<bool>("auto_tab_char_and_size");
 
-  source_cfg->wrap_lines = source_json.get<bool>("wrap_lines");
+  source.wrap_lines = source_json.get<bool>("wrap_lines");
 
-  source_cfg->highlight_current_line = source_json.get<bool>("highlight_current_line");
-  source_cfg->show_line_numbers = source_json.get<bool>("show_line_numbers");
+  source.highlight_current_line = source_json.get<bool>("highlight_current_line");
+  source.show_line_numbers = source_json.get<bool>("show_line_numbers");
 
   for (auto &i : source_json.get_child("clang_types"))
-    source_cfg->clang_types[i.first] = i.second.get_value<std::string>();
+    source.clang_types[i.first] = i.second.get_value<std::string>();
   
-  source_cfg->clang_format_style = source_json.get<std::string>("clang_format_style");
+  source.clang_format_style = source_json.get<std::string>("clang_format_style");
   
   auto pt_doc_search=cfg.get_child("documentation_searches");
   for(auto &pt_doc_search_lang: pt_doc_search) {
-    source_cfg->documentation_searches[pt_doc_search_lang.first].separator=pt_doc_search_lang.second.get<std::string>("separator");
-    auto &queries=source_cfg->documentation_searches.find(pt_doc_search_lang.first)->second.queries;
+    source.documentation_searches[pt_doc_search_lang.first].separator=pt_doc_search_lang.second.get<std::string>("separator");
+    auto &queries=source.documentation_searches.find(pt_doc_search_lang.first)->second.queries;
     for(auto &i: pt_doc_search_lang.second.get_child("queries")) {
       queries[i.first]=i.second.get_value<std::string>();
     }
   }
 }
 
-void MainConfig::GenerateDirectoryFilter() {
-  auto dir_cfg=Singleton::Config::directories();
+void Config::GenerateDirectoryFilter() {
   boost::property_tree::ptree dir_json = cfg.get_child("directoryfilter");
   boost::property_tree::ptree ignore_json = dir_json.get_child("ignore");
   boost::property_tree::ptree except_json = dir_json.get_child("exceptions");
-  dir_cfg->exceptions.clear();
-  dir_cfg->ignored.clear();
+  directories.exceptions.clear();
+  directories.ignored.clear();
   for ( auto &i : except_json )
-    dir_cfg->exceptions.emplace_back(i.second.get_value<std::string>());
+    directories.exceptions.emplace_back(i.second.get_value<std::string>());
   for ( auto &i : ignore_json )
-    dir_cfg->ignored.emplace_back(i.second.get_value<std::string>());
+    directories.ignored.emplace_back(i.second.get_value<std::string>());
 }
 
-void MainConfig::init_home_path(){
+void Config::init_home_path(){
   std::vector<std::string> locations = JUCI_ENV_SEARCH_LOCATIONS;
   char *ptr = nullptr;
   for (auto &env : locations) {
