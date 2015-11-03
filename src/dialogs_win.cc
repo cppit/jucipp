@@ -1,6 +1,8 @@
-#ifdef _WIN32
 #include "dialogs.h"
 #include "singletons.h"
+
+#include <iostream> //TODO: remove
+using namespace std; //TODO: remove
 
 #ifndef check
 HRESULT __hr__;
@@ -12,6 +14,58 @@ HRESULT __hr__;
 }                                                
 #endif  // CHECK
 
+#undef NTDDI_VERSION
+#define NTDDI_VERSION NTDDI_VISTA
+#undef _WIN32_WINNT
+#define _WIN32_WINNT _WIN32_WINNT_VISTA
+
+#include <windows.h>
+#include <shobjidl.h>
+
+#include <memory>
+#include <sstream>
+#include <codecvt>
+
+class WinString {
+public:
+  WinString() : str(nullptr) { }
+  WinString(const std::string &string);
+  ~WinString() { CoTaskMemFree(static_cast<void*>(str)); }
+  std::string operator()();
+  wchar_t** operator&() { return &str; }
+private:
+  wchar_t* str;
+  std::wstring s2ws(const std::string& str);
+  std::string ws2s(const std::wstring& wstr);
+};
+
+class CommonDialog {
+public:
+  CommonDialog(CLSID type);
+  void add_option(unsigned option);
+  void set_title(const std::string &title);
+  std::string show();
+
+private:
+  IFileDialog * dialog;
+  DWORD options;
+};
+
+class OpenDialog : public CommonDialog {
+public:
+  OpenDialog(const std::string &title, unsigned option) : CommonDialog(CLSID_FileOpenDialog) {
+    set_title(title);
+    add_option(option);
+  }
+};
+
+class SaveDialog : public CommonDialog {
+public:
+  SaveDialog(const std::string &title, unsigned option) : CommonDialog(CLSID_FileSaveDialog) {
+    set_title(title);
+    add_option(option);
+  }
+};
 
 // { WINSTRING
 WinString::WinString(const std::string &string) {
@@ -61,17 +115,21 @@ void CommonDialog::add_option(unsigned option) {
 }
 
 std::string CommonDialog::show() {
-  try {
-    check(dialog->Show(nullptr), "Failed to show dialog");
-    IShellItem *result = nullptr;
-    check(dialog->GetResult(&result), "Failed to get result from dialog");
-    WinString str;
-    check(result->GetDisplayName(SIGDN_FILESYSPATH, &str), "Failed to get display name from dialog");
-    result->Release();
-    return str();
-  } catch (std::exception e) {
+  if(dialog->Show(nullptr)!=S_OK) {
+    dialog->Release();
     return "";
   }
+  IShellItem *result = nullptr;
+  if(dialog->GetResult(&result)!=S_OK) {
+    result->Release();
+    return "";
+  }
+  WinString str;
+  if(result->GetDisplayName(SIGDN_FILESYSPATH, &str)!=S_OK)
+    return "";
+  result->Release();
+  dialog->Release();
+  return str();
 }
 // COMMON_DIALOG }}
 std::string Dialog::select_folder() {
@@ -94,4 +152,3 @@ std::string Dialog::save_file(const boost::filesystem::path file_path) {
   //TODO: use file_path
   return (SaveDialog("Please choose your destination", 0)).show();
 }
-#endif
