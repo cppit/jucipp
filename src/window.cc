@@ -215,12 +215,12 @@ void Window::set_menu_actions() {
   });
   
   menu->add_action("open_file", [this]() {
-    auto path=Dialog::select_file();
+    auto path=Dialog::open_file();
     if(path!="")
       notebook.open(path);
   });
   menu->add_action("open_folder", [this]() {
-    auto path = Dialog::select_folder();
+    auto path = Dialog::open_folder();
     if (path!="" && boost::filesystem::exists(path))
       Singleton::directories->open(path);
   });
@@ -242,7 +242,7 @@ void Window::set_menu_actions() {
   });
   menu->add_action("save_as", [this]() {
     if(notebook.get_current_page()!=-1) {
-      auto path = Dialog::save_file(notebook.get_current_view()->file_path);
+      auto path = Dialog::save_file_as(notebook.get_current_view()->file_path);
       if(path!="") {
         std::ofstream file(path);
         if(file) {

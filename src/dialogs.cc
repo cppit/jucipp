@@ -25,7 +25,7 @@ std::string open_dialog(const std::string &title,
   return dialog.run() == Gtk::RESPONSE_OK ? dialog.get_filename() : "";
 }
 
-std::string Dialog::select_folder() {
+std::string Dialog::open_folder() {
   return open_dialog("Please choose a folder",
             {std::make_pair("Cancel", Gtk::RESPONSE_CANCEL),std::make_pair("Open", Gtk::RESPONSE_OK)},
             Gtk::FILE_CHOOSER_ACTION_SELECT_FOLDER);
@@ -43,13 +43,13 @@ std::string Dialog::new_folder() {
             Gtk::FILE_CHOOSER_ACTION_CREATE_FOLDER);
 }
 
-std::string Dialog::select_file() {
+std::string Dialog::open_file() {
   return open_dialog("Please choose a file",
             {std::make_pair("Cancel", Gtk::RESPONSE_CANCEL),std::make_pair("Select", Gtk::RESPONSE_OK)},
             Gtk::FILE_CHOOSER_ACTION_OPEN);
 }
 
-std::string Dialog::save_file(const boost::filesystem::path file_path) {
+std::string Dialog::save_file_as(const boost::filesystem::path &file_path) {
   return open_dialog("Please choose a file",
             {std::make_pair("Cancel", Gtk::RESPONSE_CANCEL),std::make_pair("Save", Gtk::RESPONSE_OK)},
                      Gtk::FILE_CHOOSER_ACTION_SAVE, file_path.string());

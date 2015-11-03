@@ -118,9 +118,9 @@ Directories::~Directories() {
 }
 
 void Directories::open(const boost::filesystem::path& dir_path) {
- JDEBUG("start");
- if(dir_path.empty())
-   return;
+  JDEBUG("start");
+  if(dir_path.empty())
+    return;
   
   tree_store->clear();
   update_mutex.lock();

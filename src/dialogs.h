@@ -5,11 +5,11 @@
 
 class Dialog {
 public:
-  static std::string select_folder();
-  static std::string select_file();
+  static std::string open_folder();
+  static std::string open_file();
   static std::string new_file();
   static std::string new_folder();
-  static std::string save_file(const boost::filesystem::path file_path);
+  static std::string save_file_as(const boost::filesystem::path &file_path);
 };
 
 #endif //JUCI_DIALOG_H_
