@@ -3,6 +3,7 @@
 #include <gtkmm.h>
 #include <vector>
 #include "juci.h"
+#include <iostream>
 
 std::string open_dialog(const std::string &title,
                         const std::vector<std::pair<std::string, Gtk::ResponseType>> &buttons,
@@ -17,7 +18,9 @@ std::string open_dialog(const std::string &title,
     gtk_file_chooser_set_filename((GtkFileChooser*)dialog.gobj(), file_name.c_str());
   dialog.set_position(Gtk::WindowPosition::WIN_POS_CENTER_ALWAYS);
   
-  auto application=Glib::RefPtr<Application>::cast_static(Gio::Application::get_default()).release();
+  auto g_application=g_application_get_default(); //TODO: Post issue that Gio::Application::get_default should return pointer and not Glib::RefPtr
+  auto gio_application=Glib::wrap(g_application, true);
+  auto application=Glib::RefPtr<Application>::cast_static(gio_application);
   dialog.set_transient_for(*application->window);
   
   for (auto &button : buttons) 

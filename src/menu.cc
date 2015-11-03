@@ -295,13 +295,17 @@ void Menu::init() {
 }
 
 void Menu::add_action(const std::string &name, std::function<void()> action) {
-  auto application=Glib::RefPtr<Gtk::Application>::cast_static(Gio::Application::get_default()).release();
+  auto g_application=g_application_get_default();
+  auto gio_application=Glib::wrap(g_application, true);
+  auto application=Glib::RefPtr<Gtk::Application>::cast_static(gio_application);
   
   actions[name]=application->add_action(name, action);
 }
 
 void Menu::set_keys() {
-  auto application=Glib::RefPtr<Gtk::Application>::cast_static(Gio::Application::get_default()).release();
+  auto g_application=g_application_get_default();
+  auto gio_application=Glib::wrap(g_application, true);
+  auto application=Glib::RefPtr<Gtk::Application>::cast_static(gio_application);
            
   for(auto &key: Singleton::config->menu.keys) {
     if(key.second.size()>0 && actions.find(key.first)!=actions.end()) {
