@@ -3,7 +3,6 @@
 #include <gtkmm.h>
 #include <vector>
 #include "juci.h"
-#include <iostream>
 
 std::string open_dialog(const std::string &title,
                         const std::vector<std::pair<std::string, Gtk::ResponseType>> &buttons,
