@@ -9,10 +9,10 @@
 using namespace std; //TODO: remove
 
 Config::Config() {
-  std::vector<std::string> locations = {"JUCI_HOME", "HOME", "AppData"};
+  std::vector<std::string> environment_variables = {"JUCI_HOME", "HOME", "AppData"};
   char *ptr = nullptr;
-  for (auto &location : locations) {
-    ptr=std::getenv(location.c_str());
+  for (auto &variable : environment_variables) {
+    ptr=std::getenv(variable.c_str());
     if (ptr!=nullptr && boost::filesystem::exists(ptr)) {
         home /= ptr;
         home /= ".juci";
@@ -21,8 +21,8 @@ Config::Config() {
   }
   if(home.empty()) {
     std::string searched_envs = "[";
-    for(auto &location : locations)
-      searched_envs+=location+", ";
+    for(auto &variable : environment_variables)
+      searched_envs+=variable+", ";
     searched_envs.erase(searched_envs.end()-2, searched_envs.end());
     searched_envs+="]";
     throw std::runtime_error("One of these environment variables needs to point to a writable directory to save configuration: " + searched_envs);
