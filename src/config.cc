@@ -80,8 +80,8 @@ void Config::retrieve_config() {
   for (auto &i : keybindings_pt) {
     menu.keys[i.first] = i.second.get_value<std::string>();
   }
-  GenerateSource();
-  GenerateDirectoryFilter();
+  get_source();
+  get_directory_filter();
 
   window.theme_name=cfg.get<std::string>("gtk_theme.name");
   window.theme_variant=cfg.get<std::string>("gtk_theme.variant");
@@ -140,7 +140,7 @@ void Config::update_config_file() {
   }
 }
 
-void Config::GenerateSource() {
+void Config::get_source() {
   auto source_json = cfg.get_child("source");
 
   source.style=source_json.get<std::string>("style");
@@ -175,7 +175,7 @@ void Config::GenerateSource() {
   }
 }
 
-void Config::GenerateDirectoryFilter() {
+void Config::get_directory_filter() {
   boost::property_tree::ptree dir_json = cfg.get_child("directoryfilter");
   boost::property_tree::ptree ignore_json = dir_json.get_child("ignore");
   boost::property_tree::ptree except_json = dir_json.get_child("exceptions");

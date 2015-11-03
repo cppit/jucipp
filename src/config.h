@@ -80,8 +80,8 @@ private:
   void retrieve_config();
   bool check_config_file(const boost::property_tree::ptree &default_cfg, std::string parent_path="");
   void update_config_file();
-  void GenerateSource();
-  void GenerateDirectoryFilter();
+  void get_source();
+  void get_directory_filter();
 
   boost::property_tree::ptree cfg;
   boost::filesystem::path home;

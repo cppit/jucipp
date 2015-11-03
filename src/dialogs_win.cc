@@ -17,54 +17,9 @@ class Win32Dialog {
 public:
   Win32Dialog() {};
   
-  bool init(CLSID type) {
-    if(CoCreateInstance(type, nullptr, CLSCTX_INPROC_SERVER, IID_PPV_ARGS(&dialog))!=S_OK)
-      return false;
-    if(dialog->GetOptions(&options)!=S_OK)
-      return false;
-    return true;
-  }
-  
   ~Win32Dialog() {
     if(dialog!=nullptr)
       dialog->Release();
-  }
-  
-  /** available options are listed at https://msdn.microsoft.com/en-gb/library/windows/desktop/dn457282(v=vs.85).aspx */
-  bool add_option(unsigned option) {
-    if(dialog->SetOptions(options | option)!=S_OK)
-      return false;
-    return true;
-  }
-  
-  bool set_title(const std::wstring &title) {
-    if(dialog->SetTitle(title.c_str())!=S_OK)
-      return false;
-    return true;
-  }
-  
-  /** Sets the extensions the browser can find */
-  bool set_default_file_extension(const std::wstring &file_extension) {
-    if(dialog->SetDefaultExtension(file_extension.c_str())!=S_OK)
-      return false;
-    return true;
-  }
-  /** Sets the directory to start browsing */
-  bool set_folder(const std::wstring &directory_path) {
-    std::wstring path=directory_path;
-    size_t pos=0;
-    while((pos=path.find(L'/', pos))!=std::wstring::npos) {//TODO: issue bug report on boost::filesystem::path::native on MSYS2
-      path.replace(pos, 1, L"\\");
-      pos++;
-    }
-    
-    IShellItem *folder = nullptr;
-    if(SHCreateItemFromParsingName(path.c_str(), nullptr, IID_PPV_ARGS(&folder))!=S_OK)
-      return false;
-    if(dialog->SetFolder(folder)!=S_OK)
-      return false;
-    folder->Release();
-    return true;
   }
   
   /** Returns the selected item's path as a string */
@@ -111,6 +66,55 @@ public:
   }
 
 private:
+  IFileDialog *dialog=nullptr;
+  DWORD options;
+  
+  bool init(CLSID type) {
+    if(CoCreateInstance(type, nullptr, CLSCTX_INPROC_SERVER, IID_PPV_ARGS(&dialog))!=S_OK)
+      return false;
+    if(dialog->GetOptions(&options)!=S_OK)
+      return false;
+    return true;
+  }
+  
+  /** available options are listed at https://msdn.microsoft.com/en-gb/library/windows/desktop/dn457282(v=vs.85).aspx */
+  bool add_option(unsigned option) {
+    if(dialog->SetOptions(options | option)!=S_OK)
+      return false;
+    return true;
+  }
+  
+  bool set_title(const std::wstring &title) {
+    if(dialog->SetTitle(title.c_str())!=S_OK)
+      return false;
+    return true;
+  }
+  
+  /** Sets the extensions the browser can find */
+  bool set_default_file_extension(const std::wstring &file_extension) {
+    if(dialog->SetDefaultExtension(file_extension.c_str())!=S_OK)
+      return false;
+    return true;
+  }
+  
+  /** Sets the directory to start browsing */
+  bool set_folder(const std::wstring &directory_path) {
+    std::wstring path=directory_path;
+    size_t pos=0;
+    while((pos=path.find(L'/', pos))!=std::wstring::npos) {//TODO: issue bug report on boost::filesystem::path::native on MSYS2
+      path.replace(pos, 1, L"\\");
+      pos++;
+    }
+    
+    IShellItem *folder = nullptr;
+    if(SHCreateItemFromParsingName(path.c_str(), nullptr, IID_PPV_ARGS(&folder))!=S_OK)
+      return false;
+    if(dialog->SetFolder(folder)!=S_OK)
+      return false;
+    folder->Release();
+    return true;
+  }
+  
   std::string show() {
     if(dialog->Show(nullptr)!=S_OK)
       return "";
@@ -127,9 +131,6 @@ private:
     CoTaskMemFree(file_path);
     return file_path_string;
   }
-  
-  IFileDialog *dialog=nullptr;
-  DWORD options;
 };
 
 std::string Dialog::open_folder() {
