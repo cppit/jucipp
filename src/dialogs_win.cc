@@ -16,18 +16,22 @@ using namespace std; //TODO: remove
 class CommonDialog {
 public:
   CommonDialog(CLSID type);
+  ~CommonDialog() {
+    if(dialog!=nullptr)
+      dialog->Release();
+  }
   /** available options are listed at https://msdn.microsoft.com/en-gb/library/windows/desktop/dn457282(v=vs.85).aspx */
   void add_option(unsigned option);
   void set_title(const std::wstring &title);
   /** Sets the extensions the browser can find */
   void set_default_file_extension(const std::wstring &file_extension);
   /** Sets the directory to start browsing */
-  void set_default_folder(const std::wstring &directory_path);
+  void set_folder(const std::wstring &directory_path);
   /** Returns the selected item's path as a string */
   std::string show();
 
 protected:
-  IFileDialog * dialog;
+  IFileDialog *dialog=nullptr;
   DWORD options;
   bool error=false;
 };
@@ -44,7 +48,7 @@ private:
   std::vector<COMDLG_FILTERSPEC> extensions;
 };
 
-CommonDialog::CommonDialog(CLSID type) : dialog(nullptr) {
+CommonDialog::CommonDialog(CLSID type) {
   if(CoCreateInstance(type, nullptr, CLSCTX_INPROC_SERVER, IID_PPV_ARGS(&dialog))!=S_OK) {
     error=true;
     return;
@@ -71,7 +75,7 @@ void CommonDialog::set_default_file_extension(const std::wstring &file_extension
     error=true;
 }
 
-void CommonDialog::set_default_folder(const std::wstring &directory_path) {
+void CommonDialog::set_folder(const std::wstring &directory_path) {
   if(error) return;
   
   std::wstring path=directory_path;
@@ -86,7 +90,7 @@ void CommonDialog::set_default_folder(const std::wstring &directory_path) {
     error=true;
     return;
   }
-  auto hresult=dialog->SetDefaultFolder(folder);
+  auto hresult=dialog->SetFolder(folder);
   folder->Release();
   if(hresult!=S_OK)
     error=true;
@@ -95,19 +99,16 @@ void CommonDialog::set_default_folder(const std::wstring &directory_path) {
 std::string CommonDialog::show() {
   if(error) return "";
   if(dialog->Show(nullptr)!=S_OK) {
-    dialog->Release();
     return "";
   }
   IShellItem *result = nullptr;
   if(dialog->GetResult(&result)!=S_OK) {
     result->Release();
-    dialog->Release();
     return "";
   }
   LPWSTR str = nullptr; 
   auto hresult=result->GetDisplayName(SIGDN_FILESYSPATH, &str);
   result->Release();
-  dialog->Release();
   if(hresult!=S_OK)
     return "";
   std::wstring wstr(str);
@@ -120,15 +121,15 @@ OpenDialog::OpenDialog(const std::wstring &title, unsigned option) : CommonDialo
   set_title(title);
   add_option(option);
   auto dirs = Singleton::directories->current_path;
-  set_default_folder(dirs.empty() ? boost::filesystem::current_path().native() : dirs.native());
+  set_folder(dirs.empty() ? boost::filesystem::current_path().native() : dirs.native());
 }
 
 SaveDialog::SaveDialog(const std::wstring &title, const boost::filesystem::path &file_path, unsigned option) : CommonDialog(CLSID_FileSaveDialog) {
   set_title(title);
   add_option(option);
   if(!file_path.empty()) {
-    set_default_folder(file_path.parent_path().native());
-    if(file_path.has_extension()) {
+    set_folder(file_path.parent_path().native());
+    if(file_path.has_extension() && file_path.filename()!=file_path.extension()) {
       auto extension=(L"*"+file_path.extension().native()).c_str();
       extensions.emplace_back(COMDLG_FILTERSPEC{extension, extension});
       set_default_file_extension(extension);
@@ -136,7 +137,7 @@ SaveDialog::SaveDialog(const std::wstring &title, const boost::filesystem::path 
   }
   else {
     auto dirs = Singleton::directories->current_path;
-    set_default_folder(dirs.empty() ? boost::filesystem::current_path().native() : dirs.native());
+    set_folder(dirs.empty() ? boost::filesystem::current_path().native() : dirs.native());
   }
   extensions.emplace_back(COMDLG_FILTERSPEC{L"All files", L"*.*"});
   if(dialog->SetFileTypes(extensions.size(), extensions.data())!=S_OK) {
