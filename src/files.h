@@ -2,8 +2,6 @@
 
 #define JUCI_VERSION "0.9.4"
 
-#define JUCI_ENV_SEARCH_LOCATIONS {"AppData", "HOME", "JUCI_HOME"}
-
 const std::string configjson =
 "{\n"
 "    \"version\": \""+std::string(JUCI_VERSION)+"\",\n"
@@ -100,7 +98,7 @@ const std::string configjson =
 "    },\n"
 "    \"project\": {\n"
 #ifdef _WIN32
-"        \"cmake_command\": \"cmake -G\\\"MSYS Makefiles\\\"\",\n"
+"        \"cmake_command\": \"cmake -G\\\"MSYS Makefiles\\\" -DCMAKE_INSTALL_PREFIX="+JUCI_CMAKE_INSTALL_PREFIX+"\",\n"
 #else
 "        \"cmake_command\": \"cmake\",\n"
 #endif

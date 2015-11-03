@@ -9,7 +9,24 @@
 using namespace std; //TODO: remove
 
 Config::Config() {
-  init_home_path();
+  std::vector<std::string> locations = {"JUCI_HOME", "HOME", "AppData"};
+  char *ptr = nullptr;
+  for (auto &location : locations) {
+    ptr=std::getenv(location.c_str());
+    if (ptr!=nullptr && boost::filesystem::exists(ptr)) {
+        home /= ptr;
+        home /= ".juci";
+        break;
+      }
+  }
+  if(home.empty()) {
+    std::string searched_envs = "[";
+    for(auto &location : locations)
+      searched_envs+=location+", ";
+    searched_envs.erase(searched_envs.end()-2, searched_envs.end());
+    searched_envs+="]";
+    throw std::runtime_error("One of these environment variables needs to point to a writable directory to save configuration: " + searched_envs);
+  }
 }
 
 void Config::load() {
@@ -168,30 +185,4 @@ void Config::GenerateDirectoryFilter() {
     directories.exceptions.emplace_back(i.second.get_value<std::string>());
   for ( auto &i : ignore_json )
     directories.ignored.emplace_back(i.second.get_value<std::string>());
-}
-
-void Config::init_home_path(){
-  std::vector<std::string> locations = JUCI_ENV_SEARCH_LOCATIONS;
-  char *ptr = nullptr;
-  for (auto &env : locations) {
-    ptr=std::getenv(env.c_str());
-    if (ptr==nullptr)
-      continue;
-    else
-      if (boost::filesystem::exists(ptr)) {
-        home /= ptr;
-        home /= ".juci";
-        break;
-      }
-  }
-  
-  if(home.empty()) {
-    std::string searched_envs = "[";
-    for(auto &env : locations)
-      searched_envs+=env+", ";
-    searched_envs.erase(searched_envs.end()-2, searched_envs.end());
-    searched_envs+="]";
-    throw std::runtime_error("One of these environment variables needs to point to a writable directory to save configuration: " + searched_envs);
-  }
-  return;
 }

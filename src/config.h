@@ -83,7 +83,6 @@ private:
   void GenerateSource();
   void GenerateDirectoryFilter();
 
-  void init_home_path();
   boost::property_tree::ptree cfg;
   boost::filesystem::path home;
 };

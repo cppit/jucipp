@@ -16,9 +16,13 @@ if(UNIX) #Checking if compiling on Ubuntu that has a buggy menu system
     execute_process(COMMAND ${LSB_RELEASE_BIN} -is
       OUTPUT_VARIABLE DISTRIBUTION OUTPUT_STRIP_TRAILING_WHITESPACE)
     if((DISTRIBUTION STREQUAL Ubuntu) OR (DISTRIBUTION STREQUAL LinuxMint))
-      set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -DUBUNTU_BUGGED_MENU")
+      set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -DJUCI_UBUNTU_BUGGED_MENU")
     endif()
   endif()
+endif()
+
+if(MSYS)
+  set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -DJUCI_CMAKE_INSTALL_PREFIX=\\\"${CMAKE_INSTALL_PREFIX}\\\"")
 endif()
 
 INCLUDE(FindPkgConfig)

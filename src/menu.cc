@@ -12,7 +12,7 @@ Menu::Menu() {
 void Menu::init() {
   auto accels=Singleton::config->menu.keys;
   for(auto &accel: accels) {
-#ifdef UBUNTU_BUGGED_MENU
+#ifdef JUCI_UBUNTU_BUGGED_MENU
     size_t pos=0;
     std::string second=accel.second;
     while((pos=second.find('<', pos))!=std::string::npos) {
@@ -69,7 +69,7 @@ void Menu::init() {
              +accels["new_file"]+ //For Ubuntu...
   "        </item>"
   "        <item>"
-  "          <attribute name='label' translatable='yes'>_New _Directory</attribute>"
+  "          <attribute name='label' translatable='yes'>_New _Folder</attribute>"
   "          <attribute name='action'>app.new_folder</attribute>"
              +accels["new_folder"]+ //For Ubuntu...
   "        </item>"
