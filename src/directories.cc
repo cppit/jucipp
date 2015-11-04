@@ -1,8 +1,8 @@
 #include "singletons.h"
-#include "directories.h"
 #include "logging.h"
 #include <algorithm>
 #include <unordered_set>
+#include "source.h"
 
 #include <iostream> //TODO: remove
 using namespace std; //TODO: remove
@@ -22,7 +22,6 @@ namespace sigc {
 }
 
 Directories::Directories() : stop_update_thread(false) {
-  JDEBUG("start");
   add(tree_view);
   set_policy(Gtk::POLICY_AUTOMATIC, Gtk::POLICY_AUTOMATIC);
   tree_store = Gtk::TreeStore::create(column_record);
@@ -119,9 +118,9 @@ Directories::~Directories() {
 }
 
 void Directories::open(const boost::filesystem::path& dir_path) {
- JDEBUG("start");
- if(dir_path.empty())
-   return;
+  JDEBUG("start");
+  if(dir_path.empty())
+    return;
   
   tree_store->clear();
   update_mutex.lock();
@@ -201,11 +200,11 @@ void Directories::select(const boost::filesystem::path &path) {
 bool Directories::ignored(std::string path) {
   std::transform(path.begin(), path.end(), path.begin(), ::tolower);
   
-  for(std::string &i : Singleton::Config::directories()->exceptions) {
+  for(std::string &i : Singleton::config->directories.exceptions) {
     if(i == path)
       return false;
   }
-  for(auto &i : Singleton::Config::directories()->ignored) {
+  for(auto &i : Singleton::config->directories.ignored) {
     if(path.find(i, 0) != std::string::npos)
       return true;
   }

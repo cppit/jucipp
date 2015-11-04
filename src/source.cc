@@ -5,6 +5,7 @@
 #include <algorithm>
 #include <gtksourceview/gtksource.h>
 #include <iostream>
+#include "filesystem.h"
 
 using namespace std; //TODO: remove
 
@@ -86,11 +87,11 @@ Source::View::View(const boost::filesystem::path &file_path, const boost::filesy
   get_source_buffer()->begin_not_undoable_action();
   if(language) {
     if(filesystem::read_non_utf8(file_path, get_buffer())==-1)
-      Singleton::terminal()->print("Warning: "+file_path.string()+" is not a valid UTF-8 file. Saving might corrupt the file.\n");
+      Singleton::terminal->print("Warning: "+file_path.string()+" is not a valid UTF-8 file. Saving might corrupt the file.\n");
   }
   else {
     if(filesystem::read(file_path, get_buffer())==-1)
-      Singleton::terminal()->print("Error: "+file_path.string()+" is not a valid UTF-8 file.\n");
+      Singleton::terminal->print("Error: "+file_path.string()+" is not a valid UTF-8 file.\n");
   }
   get_source_buffer()->end_not_undoable_action();
   
@@ -262,9 +263,9 @@ Source::View::View(const boost::filesystem::path &file_path, const boost::filesy
   
   set_tooltip_events();
   
-  tab_char=Singleton::Config::source()->default_tab_char;
-  tab_size=Singleton::Config::source()->default_tab_size;
-  if(Singleton::Config::source()->auto_tab_char_and_size) {
+  tab_char=Singleton::config->source.default_tab_char;
+  tab_size=Singleton::config->source.default_tab_size;
+  if(Singleton::config->source.auto_tab_char_and_size) {
     auto tab_char_and_size=find_tab_char_and_size();
     if(tab_char_and_size.first!=0) {
       if(tab_char!=tab_char_and_size.first || tab_size!=tab_char_and_size.second) {
@@ -273,7 +274,7 @@ Source::View::View(const boost::filesystem::path &file_path, const boost::filesy
           tab_str="<space>";
         else
           tab_str="<tab>";
-        Singleton::terminal()->print("Tab char and size for file "+file_path.string()+" set to: "+tab_str+", "+std::to_string(tab_char_and_size.second)+".\n");
+        Singleton::terminal->print("Tab char and size for file "+file_path.string()+" set to: "+tab_str+", "+std::to_string(tab_char_and_size.second)+".\n");
       }
       
       tab_char=tab_char_and_size.first;
@@ -295,25 +296,25 @@ void Source::View::set_tab_char_and_size(char tab_char, unsigned tab_size) {
 void Source::View::configure() {
   //TODO: Move this to notebook? Might take up too much memory doing this for every tab.
   auto style_scheme_manager=Gsv::StyleSchemeManager::get_default();
-  style_scheme_manager->prepend_search_path((Singleton::Config::main()->juci_home_path()/"styles").string());
+  style_scheme_manager->prepend_search_path((Singleton::config->juci_home_path()/"styles").string());
   
-  if(Singleton::Config::source()->style.size()>0) {
-    auto scheme = style_scheme_manager->get_scheme(Singleton::Config::source()->style);
+  if(Singleton::config->source.style.size()>0) {
+    auto scheme = style_scheme_manager->get_scheme(Singleton::config->source.style);
   
     if(scheme)
       get_source_buffer()->set_style_scheme(scheme);
     else
-      Singleton::terminal()->print("Error: Could not find gtksourceview style: "+Singleton::Config::source()->style+'\n');
+      Singleton::terminal->print("Error: Could not find gtksourceview style: "+Singleton::config->source.style+'\n');
   }
   
-  if(Singleton::Config::source()->wrap_lines)
+  if(Singleton::config->source.wrap_lines)
     set_wrap_mode(Gtk::WrapMode::WRAP_CHAR);
   else
     set_wrap_mode(Gtk::WrapMode::WRAP_NONE);
-  property_highlight_current_line() = Singleton::Config::source()->highlight_current_line;
-  property_show_line_numbers() = Singleton::Config::source()->show_line_numbers;
-  if(Singleton::Config::source()->font.size()>0)
-    override_font(Pango::FontDescription(Singleton::Config::source()->font));
+  property_highlight_current_line() = Singleton::config->source.highlight_current_line;
+  property_show_line_numbers() = Singleton::config->source.show_line_numbers;
+  if(Singleton::config->source.font.size()>0)
+    override_font(Pango::FontDescription(Singleton::config->source.font));
 #if GTKSOURCEVIEWMM_MAJOR_VERSION > 2 & GTKSOURCEVIEWMM_MINOR_VERSION > 15
   gtk_source_view_set_background_pattern(this->gobj(), GTK_SOURCE_BACKGROUND_PATTERN_TYPE_GRID);
 #endif
@@ -370,8 +371,8 @@ void Source::View::configure() {
     note_tag->property_foreground()=style->property_foreground();
   }
     
-  if(Singleton::Config::source()->spellcheck_language.size()>0)
-    aspell_config_replace(spellcheck_config, "lang", Singleton::Config::source()->spellcheck_language.c_str());
+  if(Singleton::config->source.spellcheck_language.size()>0)
+    aspell_config_replace(spellcheck_config, "lang", Singleton::config->source.spellcheck_language.c_str());
   spellcheck_possible_err=new_aspell_speller(spellcheck_config);
   if(spellcheck_checker!=NULL)
     delete_aspell_speller(spellcheck_checker);
@@ -530,7 +531,7 @@ void Source::View::replace_all(const std::string &replacement) {
 }
 
 void Source::View::paste() {
-  auto text=Gtk::Clipboard::get()->wait_for_text();
+  std::string text=Gtk::Clipboard::get()->wait_for_text();
   
   //remove carriage returns (which leads to crash)
   for(auto it=text.begin();it!=text.end();it++) {
@@ -545,13 +546,13 @@ void Source::View::paste() {
   if(!get_buffer()->get_has_selection() && tabs_end_iter.ends_line()) {
     prefix_tabs=get_line_before(tabs_end_iter);
 
-    Glib::ustring::size_type start_line=0;
-    Glib::ustring::size_type end_line=0;
+    size_t start_line=0;
+    size_t end_line=0;
     bool paste_line=false;
     bool first_paste_line=true;
     size_t paste_line_tabs=-1;
     bool first_paste_line_has_tabs=false;
-    for(Glib::ustring::size_type c=0;c<text.size();c++) {;
+    for(size_t c=0;c<text.size();c++) {;
       if(text[c]=='\n') {
         end_line=c;
         paste_line=true;
@@ -593,7 +594,7 @@ void Source::View::paste() {
     paste_line=false;
     first_paste_line=true;
     get_source_buffer()->begin_user_action();
-    for(Glib::ustring::size_type c=0;c<text.size();c++) {
+    for(size_t c=0;c<text.size();c++) {
       if(text[c]=='\n') {
         end_line=c;
         paste_line=true;
@@ -1273,7 +1274,7 @@ Source::GenericView::GenericView(const boost::filesystem::path &file_path, const
   
   if(language) {
     get_source_buffer()->set_language(language);
-    Singleton::terminal()->print("Language for file "+file_path.string()+" set to "+language->get_name()+".\n");
+    Singleton::terminal->print("Language for file "+file_path.string()+" set to "+language->get_name()+".\n");
   }
   
   auto completion=get_completion();
@@ -1305,7 +1306,7 @@ Source::GenericView::GenericView(const boost::filesystem::path &file_path, const
         boost::property_tree::xml_parser::read_xml(language_file.string(), pt);
       }
       catch(const std::exception &e) {
-        Singleton::terminal()->print("Error: error parsing language file "+language_file.string()+": "+e.what()+'\n');
+        Singleton::terminal->print("Error: error parsing language file "+language_file.string()+": "+e.what()+'\n');
       }
       bool has_context_class=false;
       parse_language_file(completion_buffer_keywords, has_context_class, pt);

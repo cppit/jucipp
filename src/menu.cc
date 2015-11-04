@@ -10,9 +10,9 @@ Menu::Menu() {
 
 //TODO: if Ubuntu ever gets fixed, move to constructor, also cleanup the rest of the Ubuntu specific code
 void Menu::init() {
-  auto accels=Singleton::Config::menu()->keys;
+  auto accels=Singleton::config->menu.keys;
   for(auto &accel: accels) {
-#ifdef UBUNTU_BUGGED_MENU
+#ifdef JUCI_UBUNTU_BUGGED_MENU
     size_t pos=0;
     std::string second=accel.second;
     while((pos=second.find('<', pos))!=std::string::npos) {
@@ -69,7 +69,7 @@ void Menu::init() {
              +accels["new_file"]+ //For Ubuntu...
   "        </item>"
   "        <item>"
-  "          <attribute name='label' translatable='yes'>_New _Directory</attribute>"
+  "          <attribute name='label' translatable='yes'>_New _Folder</attribute>"
   "          <attribute name='action'>app.new_folder</attribute>"
              +accels["new_folder"]+ //For Ubuntu...
   "        </item>"
@@ -295,11 +295,19 @@ void Menu::init() {
 }
 
 void Menu::add_action(const std::string &name, std::function<void()> action) {
+  auto g_application=g_application_get_default();
+  auto gio_application=Glib::wrap(g_application, true);
+  auto application=Glib::RefPtr<Gtk::Application>::cast_static(gio_application);
+  
   actions[name]=application->add_action(name, action);
 }
 
 void Menu::set_keys() {
-  for(auto &key: Singleton::Config::menu()->keys) {
+  auto g_application=g_application_get_default();
+  auto gio_application=Glib::wrap(g_application, true);
+  auto application=Glib::RefPtr<Gtk::Application>::cast_static(gio_application);
+           
+  for(auto &key: Singleton::config->menu.keys) {
     if(key.second.size()>0 && actions.find(key.first)!=actions.end()) {
 #if GTK_VERSION_GE(3, 12)
       application->set_accel_for_action("app."+key.first, key.second); 

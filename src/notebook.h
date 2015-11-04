@@ -8,7 +8,6 @@
 #include <type_traits>
 #include <map>
 #include <sigc++/sigc++.h>
-#include "directories.h"
 
 class Notebook : public Gtk::Notebook {
 public:

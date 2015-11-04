@@ -12,12 +12,6 @@
 
 class Directories : public Gtk::ScrolledWindow {
 public:
-  class Config {
-  public:
-    std::vector<std::string> ignored;
-    std::vector<std::string> exceptions;
-  };
-  
   class ColumnRecord : public Gtk::TreeModel::ColumnRecord {
   public:
     ColumnRecord() {

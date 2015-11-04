@@ -1,5 +1,4 @@
 #include "tooltips.h"
-#include "singletons.h"
 
 #include <iostream> //TODO: remove
 using namespace std; //TODO: remove

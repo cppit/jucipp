@@ -3,11 +3,76 @@
 #include <boost/property_tree/json_parser.hpp>
 #include <boost/filesystem.hpp>
 #include "menu.h"
+#include <unordered_map>
+#include <string>
+#include <utility>
+#include <vector>
 
-class MainConfig {
+class Config {
 public:
-  MainConfig();
-  void read();
+  class Menu {
+  public:
+    std::unordered_map<std::string, std::string> keys;
+  };
+  
+  class Window {
+  public:
+    std::string theme_name;
+    std::string theme_variant;
+    std::string version;
+    std::pair<int, int> default_size;
+  };
+  
+  class Terminal {
+  public:
+    std::string cmake_command;
+    std::string make_command;
+    std::string clang_format_command;
+    int history_size;
+  };
+  
+  class Directories {
+  public:
+    std::vector<std::string> ignored;
+    std::vector<std::string> exceptions;
+  };
+  
+  class Source {
+  public:
+    class DocumentationSearch {
+    public:
+      std::string separator;
+      std::unordered_map<std::string, std::string> queries;
+    };
+    
+    std::string style;
+    std::string font;
+    std::string spellcheck_language;
+    
+    bool show_map;
+    std::string map_font_size;
+    
+    bool auto_tab_char_and_size;
+    char default_tab_char;
+    unsigned default_tab_size;
+    bool wrap_lines;
+    bool highlight_current_line;
+    bool show_line_numbers;
+    std::unordered_map<std::string, std::string> clang_types;
+    std::string clang_format_style;
+    
+    std::unordered_map<std::string, DocumentationSearch> documentation_searches;
+  };
+  
+  Config();
+  void load();
+  
+  Menu menu;
+  Window window;
+  Terminal terminal;
+  Directories directories;
+  Source source;
+  
   const boost::filesystem::path& juci_home_path() const { return home; }
 
 private:
@@ -15,11 +80,9 @@ private:
   void retrieve_config();
   bool check_config_file(const boost::property_tree::ptree &default_cfg, std::string parent_path="");
   void update_config_file();
-  void PrintMenu();
-  void GenerateSource();
-  void GenerateDirectoryFilter();
+  void get_source();
+  void get_directory_filter();
 
-  void init_home_path();
   boost::property_tree::ptree cfg;
   boost::filesystem::path home;
 };
