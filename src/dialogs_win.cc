@@ -142,7 +142,10 @@ std::string Dialog::new_file() {
 }
 
 std::string Dialog::new_folder() {
-  return  Win32Dialog().open(L"New Folder", FOS_PICKFOLDERS); //TODO: this is not working correctly yet
+  //Win32 (IFileDialog) does not support create folder...
+  return gtk_dialog("New Folder",
+                     {std::make_pair("Cancel", Gtk::RESPONSE_CANCEL),std::make_pair("Create", Gtk::RESPONSE_OK)},
+                     Gtk::FILE_CHOOSER_ACTION_CREATE_FOLDER);
 }
 
 std::string Dialog::open_file() {
