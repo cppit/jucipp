@@ -21,18 +21,20 @@ private:
                           Gtk::FileChooserAction gtk_options,
                           const std::string &file_name = "") {
     Gtk::FileChooserDialog dialog(title, gtk_options);
-    if(!Singleton::directories->current_path.empty())
-      gtk_file_chooser_set_current_folder((GtkFileChooser*)dialog.gobj(), Singleton::directories->current_path.string().c_str());
-    else
-      gtk_file_chooser_set_current_folder((GtkFileChooser*)dialog.gobj(), boost::filesystem::current_path().string().c_str());
-    if (!file_name.empty())
-      gtk_file_chooser_set_filename((GtkFileChooser*)dialog.gobj(), file_name.c_str());
-    dialog.set_position(Gtk::WindowPosition::WIN_POS_CENTER_ALWAYS);
     
     auto g_application=g_application_get_default(); //TODO: Post issue that Gio::Application::get_default should return pointer and not Glib::RefPtr
     auto gio_application=Glib::wrap(g_application, true);
     auto application=Glib::RefPtr<Application>::cast_static(gio_application);
     dialog.set_transient_for(*application->window);
+    
+    auto current_path=application->window->notebook.get_current_path();
+    if(current_path.empty())
+      current_path=boost::filesystem::current_path();
+    gtk_file_chooser_set_current_folder((GtkFileChooser*)dialog.gobj(), current_path.string().c_str());
+
+    if (!file_name.empty())
+      gtk_file_chooser_set_filename((GtkFileChooser*)dialog.gobj(), file_name.c_str());
+    dialog.set_position(Gtk::WindowPosition::WIN_POS_CENTER_ALWAYS);
     
     for (auto &button : buttons) 
       dialog.add_button(button.first, button.second);

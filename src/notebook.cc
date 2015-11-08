@@ -262,6 +262,17 @@ bool Notebook::close_current_page() {
   return true;
 }
 
+boost::filesystem::path Notebook::get_current_path() {
+  boost::filesystem::path current_path;
+  
+  if(get_current_page()!=-1)
+    current_path=get_current_view()->project_path;
+  else
+    current_path=Singleton::directories->current_path;
+  
+  return current_path;
+}
+
 bool Notebook::save_modified_dialog() {
   Gtk::MessageDialog dialog((Gtk::Window&)(*get_toplevel()), "Save file!", false, Gtk::MESSAGE_QUESTION, Gtk::BUTTONS_YES_NO);
   dialog.set_default_response(Gtk::RESPONSE_YES);
