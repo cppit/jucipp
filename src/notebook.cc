@@ -172,8 +172,8 @@ bool Notebook::save(int page, bool reparse_needed) {
   }
   auto view=get_view(page);
   if (view->file_path != "" && view->get_buffer()->get_modified()) {
-    //strip trailing whitespaces and add trailing newline if missing
-    if(Singleton::config->source.strip_trailing_whitespaces) {
+    //Remove trailing whitespace characters on save, and add trailing newline if missing
+    if(Singleton::config->source.cleanup_whitespace_characters) {
       auto buffer=view->get_buffer();
       buffer->begin_user_action();
       for(int line=0;line<buffer->get_line_count();line++) {

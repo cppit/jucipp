@@ -49,7 +49,7 @@ public:
     std::string font;
     std::string spellcheck_language;
     
-    bool strip_trailing_whitespaces;
+    bool cleanup_whitespace_characters;
     
     bool show_map;
     std::string map_font_size;

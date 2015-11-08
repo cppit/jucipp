@@ -29,8 +29,8 @@ const std::string configjson =
 "        \"font\": \"Monospace\",\n"
 #endif
 #endif
-"        \"strip_trailing_whitespaces_comment\": \"Remove trailing whitespace characters on save, and add trailing newline if missing\",\n"
-"        \"strip_trailing_whitespaces\": false,\n"
+"        \"cleanup_whitespace_characters_comment\": \"Remove trailing whitespace characters on save, and add trailing newline if missing\",\n"
+"        \"cleanup_whitespace_characters\": false,\n"
 "        \"show_map\": true,\n"
 "        \"map_font_size\": \"1\",\n"
 "        \"spellcheck_language_comment\": \"Use \\\"\\\" to set language from your locale settings\",\n"
