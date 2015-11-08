@@ -97,7 +97,7 @@ private:
     auto gio_application=Glib::wrap(g_application, true);
     auto application=Glib::RefPtr<Application>::cast_static(gio_application);
     
-    auto current_path=application->window->notebook.get_current_path();
+    auto current_path=application->window->notebook.get_current_folder();
     if(current_path.empty())
       current_path=boost::filesystem::current_path();
     

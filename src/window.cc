@@ -495,7 +495,7 @@ void Window::set_menu_actions() {
     entry_box.entries.emplace_back(last_run_command, [this](const std::string& content){
       if(content!="") {
         last_run_command=content;
-        auto run_path=notebook.get_current_path();
+        auto run_path=notebook.get_current_folder();
         Singleton::terminal->async_print("Running: "+content+'\n');
   
         Singleton::terminal->async_execute(content, run_path, [this, content](int exit_code){

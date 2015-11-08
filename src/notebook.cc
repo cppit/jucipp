@@ -288,7 +288,7 @@ bool Notebook::close_current_page() {
   return true;
 }
 
-boost::filesystem::path Notebook::get_current_path() {
+boost::filesystem::path Notebook::get_current_folder() {
   boost::filesystem::path current_path;
   
   if(get_current_page()!=-1)

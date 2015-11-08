@@ -27,7 +27,7 @@ private:
     auto application=Glib::RefPtr<Application>::cast_static(gio_application);
     dialog.set_transient_for(*application->window);
     
-    auto current_path=application->window->notebook.get_current_path();
+    auto current_path=application->window->notebook.get_current_folder();
     if(current_path.empty())
       current_path=boost::filesystem::current_path();
     gtk_file_chooser_set_current_folder((GtkFileChooser*)dialog.gobj(), current_path.string().c_str());
