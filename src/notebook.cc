@@ -185,7 +185,7 @@ bool Notebook::save(int page, bool reparse_needed) {
         iter=end_iter;
         while(!iter.starts_line() && (*iter==' ' || *iter=='\t' || iter.ends_line()))
           iter.backward_char();
-        if(!iter.starts_line())
+        if(*iter!=' ' && *iter!='\t')
           iter.forward_char();
         if(iter==end_iter)
           continue;
