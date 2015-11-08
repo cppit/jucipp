@@ -175,6 +175,7 @@ bool Notebook::save(int page, bool reparse_needed) {
     //strip trailing whitespaces and add trailing newline if missing
     if(Singleton::config->source.strip_trailing_whitespaces) {
       auto buffer=view->get_buffer();
+      buffer->begin_user_action();
       for(int line=0;line<buffer->get_line_count();line++) {
         auto iter=buffer->get_iter_at_line(line);
         auto end_iter=iter;
@@ -194,6 +195,7 @@ bool Notebook::save(int page, bool reparse_needed) {
       auto iter=buffer->end();
       if(!iter.starts_line())
         buffer->insert(buffer->end(), "\n");
+      buffer->end_user_action();
     }
     
     if(filesystem::write(view->file_path, view->get_buffer())) {
