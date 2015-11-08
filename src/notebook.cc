@@ -65,12 +65,14 @@ void Notebook::open(const boost::filesystem::path &file_path) {
     }
   }
   
-  std::ifstream can_read(file_path.string());
-  if(!can_read) {
-    Singleton::terminal->print("Error: could not open "+file_path.string()+"\n");
-    return;
+  if(boost::filesystem::exists(file_path)) {
+    std::ifstream can_read(file_path.string());
+    if(!can_read) {
+      Singleton::terminal->print("Error: could not open "+file_path.string()+"\n", true);
+      return;
+    }
+    can_read.close();
   }
-  can_read.close();
   
   auto language=Source::guess_language(file_path);
   boost::filesystem::path project_path;
@@ -206,7 +208,7 @@ bool Notebook::save(int page, bool reparse_needed) {
                 if(source_clang_view->restart_parse())
                   Singleton::terminal->async_print("Reparsing "+source_clang_view->file_path.string()+"\n");
                 else
-                  Singleton::terminal->async_print("Error: failed to reparse "+source_clang_view->file_path.string()+". Please reopen the file manually.\n");
+                  Singleton::terminal->async_print("Error: failed to reparse "+source_clang_view->file_path.string()+". Please reopen the file manually.\n", true);
               }
             }
           }
@@ -215,7 +217,7 @@ bool Notebook::save(int page, bool reparse_needed) {
       JDEBUG("end true");
       return true;
     }
-    Singleton::terminal->print("Error: could not save file " +view->file_path.string()+"\n");
+    Singleton::terminal->print("Error: could not save file " +view->file_path.string()+"\n", true);
   }
   JDEBUG("end false");
   return false;

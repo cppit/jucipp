@@ -154,7 +154,7 @@ void Window::set_menu_actions() {
     boost::filesystem::path path = Dialog::new_file();
     if(path!="") {
       if(boost::filesystem::exists(path)) {
-        Singleton::terminal->print("Error: "+path.string()+" already exists.\n");
+        Singleton::terminal->print("Error: "+path.string()+" already exists.\n", true);
       }
       else {
         if(filesystem::write(path)) {
@@ -164,7 +164,7 @@ void Window::set_menu_actions() {
           Singleton::terminal->print("New file "+path.string()+" created.\n");
         }
         else
-          Singleton::terminal->print("Error: could not create new file "+path.string()+".\n");
+          Singleton::terminal->print("Error: could not create new file "+path.string()+".\n", true);
       }
     }
   });
@@ -178,7 +178,7 @@ void Window::set_menu_actions() {
         Singleton::terminal->print("New folder "+path.string()+" created.\n");
       }
       else
-        Singleton::terminal->print("Error: "+path.string()+" already exists.\n");
+        Singleton::terminal->print("Error: "+path.string()+" already exists.\n", true);
       Singleton::directories->select(path);
     }
   });
@@ -195,11 +195,11 @@ void Window::set_menu_actions() {
       auto cpp_main_path=project_path;
       cpp_main_path+="/main.cpp";
       if(boost::filesystem::exists(cmakelists_path)) {
-        Singleton::terminal->print("Error: "+cmakelists_path.string()+" already exists.\n");
+        Singleton::terminal->print("Error: "+cmakelists_path.string()+" already exists.\n", true);
         return;
       }
       if(boost::filesystem::exists(cpp_main_path)) {
-        Singleton::terminal->print("Error: "+cpp_main_path.string()+" already exists.\n");
+        Singleton::terminal->print("Error: "+cpp_main_path.string()+" already exists.\n", true);
         return;
       }
       std::string cmakelists="cmake_minimum_required(VERSION 2.8)\n\nproject("+project_name+")\n\nset(CMAKE_CXX_FLAGS \"${CMAKE_CXX_FLAGS} -std=c++1y -Wall\")\n\nadd_executable("+project_name+" main.cpp)\n";
@@ -210,7 +210,7 @@ void Window::set_menu_actions() {
         Singleton::terminal->print("C++ project "+project_name+" created.\n");
       }
       else
-        Singleton::terminal->print("Error: Could not create project "+project_path.string()+"\n");
+        Singleton::terminal->print("Error: Could not create project "+project_path.string()+"\n", true);
     }
   });
   

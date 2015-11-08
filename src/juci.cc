@@ -29,8 +29,18 @@ int Application::on_command_line(const Glib::RefPtr<Gio::ApplicationCommandLine>
         else if(boost::filesystem::is_directory(p))
           directories.emplace_back(p);
       }
-      else
-        std::cerr << "Path " << p << " does not exist." << std::endl;
+      else { //Open new file if parent path exists
+        auto parent_p=p.parent_path();
+        boost::system::error_code ec;
+        auto new_p=boost::filesystem::canonical(parent_p, ec);
+        if(!ec && boost::filesystem::is_directory(new_p)) {
+          new_p+="/";
+          new_p+=p.filename();
+          files.emplace_back(new_p);
+        }
+        else
+          Singleton::terminal->print("Error: folder path "+parent_p.string()+" does not exist.\n", true);
+      }
     }
   }
   activate();

@@ -59,7 +59,7 @@ Source::View(file_path, project_path, language), parse_error(false) {
     }
   });
   parse_fail_connection=parse_fail.connect([this](){
-    Singleton::terminal->print("Error: failed to reparse "+this->file_path.string()+".\n");
+    Singleton::terminal->print("Error: failed to reparse "+this->file_path.string()+".\n", true);
     set_status("");
     set_info("");
     parsing_in_progress->cancel("failed");
@@ -649,7 +649,7 @@ Source::ClangViewParse(file_path, project_path, language), autocomplete_cancel_s
   });
   
   autocomplete_fail_connection=autocomplete_fail.connect([this]() {
-    Singleton::terminal->print("Error: autocomplete failed, reparsing "+this->file_path.string()+"\n");
+    Singleton::terminal->print("Error: autocomplete failed, reparsing "+this->file_path.string()+"\n", true);
     restart_parse();
     autocomplete_starting=false;
     autocomplete_cancel_starting=false;
