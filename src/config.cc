@@ -146,6 +146,8 @@ void Config::get_source() {
   source.style=source_json.get<std::string>("style");
   source.font=source_json.get<std::string>("font");
 
+  source.strip_trailing_whitespaces=source_json.get<bool>("strip_trailing_whitespaces");
+
   source.show_map = source_json.get<bool>("show_map");
   source.map_font_size = source_json.get<std::string>("map_font_size");
 

@@ -172,6 +172,30 @@ bool Notebook::save(int page, bool reparse_needed) {
   }
   auto view=get_view(page);
   if (view->file_path != "" && view->get_buffer()->get_modified()) {
+    //strip trailing whitespaces and add trailing newline if missing
+    if(Singleton::config->source.strip_trailing_whitespaces) {
+      auto buffer=view->get_buffer();
+      for(int line=0;line<buffer->get_line_count();line++) {
+        auto iter=buffer->get_iter_at_line(line);
+        auto end_iter=iter;
+        while(!end_iter.ends_line())
+          end_iter.forward_char();
+        if(iter==end_iter)
+          continue;
+        iter=end_iter;
+        while(!iter.starts_line() && (*iter==' ' || *iter=='\t' || iter.ends_line()))
+          iter.backward_char();
+        if(!iter.starts_line())
+          iter.forward_char();
+        if(iter==end_iter)
+          continue;
+        buffer->erase(iter, end_iter);
+      }
+      auto iter=buffer->end();
+      if(!iter.starts_line())
+        buffer->insert(buffer->end(), "\n");
+    }
+    
     if(filesystem::write(view->file_path, view->get_buffer())) {
       if(reparse_needed) {
         if(auto clang_view=dynamic_cast<Source::ClangView*>(view)) {
