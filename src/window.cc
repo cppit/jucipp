@@ -432,9 +432,16 @@ void Window::set_menu_actions() {
   });
   
   menu->add_action("compile_and_run", [this]() {
-    if(notebook.get_current_page()==-1 || compiling)
+    if(compiling)
       return;
-    CMake cmake(notebook.get_current_view()->file_path);
+    boost::filesystem::path cmake_path;
+    if(notebook.get_current_page()!=-1)
+      cmake_path=notebook.get_current_view()->file_path.parent_path();
+    else
+      cmake_path=Singleton::directories->current_path;
+    if(cmake_path.empty())
+      return;
+    CMake cmake(cmake_path);
     auto executables = cmake.get_functions_parameters("add_executable");
     boost::filesystem::path executable_path;
     if(executables.size()>0 && executables[0].second.size()>0) {
@@ -472,9 +479,16 @@ void Window::set_menu_actions() {
     }
   });
   menu->add_action("compile", [this]() {
-    if(notebook.get_current_page()==-1 || compiling)
+    if(compiling)
       return;
-    CMake cmake(notebook.get_current_view()->file_path);
+    boost::filesystem::path cmake_path;
+    if(notebook.get_current_page()!=-1)
+      cmake_path=notebook.get_current_view()->file_path.parent_path();
+    else
+      cmake_path=Singleton::directories->current_path;
+    if(cmake_path.empty())
+      return;
+    CMake cmake(cmake_path);
     if(cmake.project_path!="") {
       compiling=true;
       Singleton::terminal->print("Compiling project "+cmake.project_path.string()+"\n");
