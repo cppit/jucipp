@@ -21,7 +21,7 @@ namespace sigc {
 clang::Index Source::ClangViewParse::clang_index(0, 0);
 
 Source::ClangViewParse::ClangViewParse(const boost::filesystem::path &file_path, const boost::filesystem::path& project_path, Glib::RefPtr<Gsv::Language> language):
-Source::View(file_path, project_path, language), parse_error(false) {
+Source::View(file_path, project_path, language), parse_error(false), first_time_reparse_status(0) {
   JDEBUG("start");
   
   auto tag_table=get_buffer()->get_tag_table();
@@ -127,9 +127,13 @@ void Source::ClangViewParse::init_parse() {
         parse_start();
       }
       else if (parse_thread_mapped && parsing_mutex.try_lock() && parse_thread_buffer_map_mutex.try_lock()) {
+        int status=0;
         if(!clang_tu)
           clang_tu = std::unique_ptr<clang::TranslationUnit>(new clang::TranslationUnit(clang_index, file_path.string(), get_compilation_commands(), parse_thread_buffer_map));
-        int status=clang_tu->ReparseTranslationUnit(parse_thread_buffer_map);
+        else {
+          status=clang_tu->ReparseTranslationUnit(parse_thread_buffer_map);
+          first_time_reparse_status=2;
+        }
         if(status==0)
           clang_tokens=clang_tu->get_tokens(0, parse_thread_buffer_map.find(file_path.string())->second.size()-1);
         else
@@ -157,13 +161,20 @@ std::map<std::string, std::string> Source::ClangViewParse::get_buffer_map() cons
 void Source::ClangViewParse::start_reparse() {
   parse_thread_mapped=false;
   source_readable=false;
+  int delay;
+  if(first_time_reparse_status==0) {
+    first_time_reparse_status=1;
+    delay=0;
+  }
+  else
+    delay=1000;
   delayed_reparse_connection.disconnect();
   delayed_reparse_connection=Glib::signal_timeout().connect([this]() {
     source_readable=false;
     parse_thread_go=true;
     set_status("parsing...");
     return false;
-  }, 1000);
+  }, delay);
 }
 
 std::vector<std::string> Source::ClangViewParse::get_compilation_commands() {
@@ -807,6 +818,8 @@ void Source::ClangViewAutocomplete::autocomplete() {
     if(autocomplete_thread.joinable())
       autocomplete_thread.join();
     autocomplete_thread=std::thread([this, ac_data, line_nr, column_nr, buffer_map](){
+      while(first_time_reparse_status!=2)
+        std::this_thread::sleep_for(std::chrono::milliseconds(10));
       parsing_mutex.lock();
       if(!parse_thread_stop)
         *ac_data=get_autocomplete_suggestions(line_nr, column_nr, *buffer_map);
