@@ -113,24 +113,6 @@ void Source::ClangViewParse::init_parse() {
   parse_thread_mapped=false;
   parse_thread_stop=false;
   
-  auto buffer_map=get_buffer_map();
-  //Remove includes for first parse for initial syntax highlighting
-  auto& str=buffer_map[file_path.string()];
-  std::size_t pos=0;
-  while((pos=str.find("#include", pos))!=std::string::npos) {
-    auto start_pos=pos;
-    pos=str.find('\n', pos+8);
-    if(pos==std::string::npos)
-      break;
-    if(start_pos==0 || str[start_pos-1]=='\n') {
-      str.replace(start_pos, pos-start_pos, pos-start_pos, ' ');
-    }
-    pos++;
-  }
-  clang_tu = std::unique_ptr<clang::TranslationUnit>(new clang::TranslationUnit(clang_index, file_path.string(), get_compilation_commands(), buffer_map));
-  clang_tokens=clang_tu->get_tokens(0, buffer_map.find(file_path.string())->second.size()-1);
-  update_syntax();
-  
   set_status("parsing...");
   if(parse_thread.joinable())
     parse_thread.join();
@@ -145,7 +127,11 @@ void Source::ClangViewParse::init_parse() {
         parse_start();
       }
       else if (parse_thread_mapped && parsing_mutex.try_lock() && parse_thread_buffer_map_mutex.try_lock()) {
-        int status=clang_tu->ReparseTranslationUnit(parse_thread_buffer_map);
+        int status=0;
+        if(!clang_tu)
+          clang_tu = std::unique_ptr<clang::TranslationUnit>(new clang::TranslationUnit(clang_index, file_path.string(), get_compilation_commands(), parse_thread_buffer_map));
+        else
+          status=clang_tu->ReparseTranslationUnit(parse_thread_buffer_map);
         if(status==0)
           clang_tokens=clang_tu->get_tokens(0, parse_thread_buffer_map.find(file_path.string())->second.size()-1);
         else
