@@ -159,13 +159,20 @@ std::map<std::string, std::string> Source::ClangViewParse::get_buffer_map() cons
 void Source::ClangViewParse::start_reparse() {
   parse_thread_mapped=false;
   source_readable=false;
+  int delay;
+  if(!is_reparsed) {
+    delay=0;
+    is_reparsed=true;
+  }
+  else
+    delay=1000;
   delayed_reparse_connection.disconnect();
   delayed_reparse_connection=Glib::signal_timeout().connect([this]() {
     source_readable=false;
     parse_thread_go=true;
     set_status("parsing...");
     return false;
-  }, 1000);
+  }, delay);
 }
 
 std::vector<std::string> Source::ClangViewParse::get_compilation_commands() {
