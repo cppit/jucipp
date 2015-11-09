@@ -61,7 +61,6 @@ namespace Source {
     static clang::Index clang_index;
     std::vector<std::string> get_compilation_commands();
     
-    bool is_reparsed=false;
     Glib::Dispatcher parse_done;
     Glib::Dispatcher parse_start;
     Glib::Dispatcher parse_fail;

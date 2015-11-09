@@ -127,11 +127,9 @@ void Source::ClangViewParse::init_parse() {
         parse_start();
       }
       else if (parse_thread_mapped && parsing_mutex.try_lock() && parse_thread_buffer_map_mutex.try_lock()) {
-        int status=0;
         if(!clang_tu)
           clang_tu = std::unique_ptr<clang::TranslationUnit>(new clang::TranslationUnit(clang_index, file_path.string(), get_compilation_commands(), parse_thread_buffer_map));
-        else
-          status=clang_tu->ReparseTranslationUnit(parse_thread_buffer_map);
+        int status=clang_tu->ReparseTranslationUnit(parse_thread_buffer_map);
         if(status==0)
           clang_tokens=clang_tu->get_tokens(0, parse_thread_buffer_map.find(file_path.string())->second.size()-1);
         else
@@ -159,20 +157,13 @@ std::map<std::string, std::string> Source::ClangViewParse::get_buffer_map() cons
 void Source::ClangViewParse::start_reparse() {
   parse_thread_mapped=false;
   source_readable=false;
-  int delay;
-  if(!is_reparsed) {
-    delay=0;
-    is_reparsed=true;
-  }
-  else
-    delay=1000;
   delayed_reparse_connection.disconnect();
   delayed_reparse_connection=Glib::signal_timeout().connect([this]() {
     source_readable=false;
     parse_thread_go=true;
     set_status("parsing...");
     return false;
-  }, delay);
+  }, 1000);
 }
 
 std::vector<std::string> Source::ClangViewParse::get_compilation_commands() {
