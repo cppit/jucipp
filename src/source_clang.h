@@ -38,7 +38,6 @@ namespace Source {
     std::thread parse_thread;
     std::atomic<bool> parse_thread_stop;
     std::atomic<bool> parse_error;
-    std::atomic<unsigned short> first_time_reparse_status; ///0: not reparsed, 1: will be reparsed, 2: reparsed
     
     virtual void show_diagnostic_tooltips(const Gdk::Rectangle &rectangle);
     virtual void show_type_tooltips(const Gdk::Rectangle &rectangle);
