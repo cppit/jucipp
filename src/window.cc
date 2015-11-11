@@ -330,8 +330,8 @@ void Window::set_menu_actions() {
   });
   menu->add_action("source_center_cursor", [this]() {
     if(notebook.get_current_page()!=-1) {
-      while(gtk_events_pending())
-        gtk_main_iteration();
+      while(g_main_context_pending(NULL))
+        g_main_context_iteration(NULL, false);
       if(notebook.get_current_page()!=-1)
         notebook.get_current_view()->scroll_to(notebook.get_current_view()->get_buffer()->get_insert(), 0.0, 1.0, 0.5);
     }
@@ -396,8 +396,8 @@ void Window::set_menu_actions() {
             index=std::min(index, end_line_index);
             buffer->place_cursor(buffer->get_iter_at_line_index(line, index));
             
-            while(gtk_events_pending())
-              gtk_main_iteration();
+            while(g_main_context_pending(NULL))
+              g_main_context_iteration(NULL, false);
             if(notebook.get_current_page()!=-1)
               notebook.get_current_view()->scroll_to(notebook.get_current_view()->get_buffer()->get_insert(), 0.0, 1.0, 0.5);
           }
@@ -782,8 +782,8 @@ void Window::goto_line_entry() {
           if(line>0 && line<=buffer->get_line_count()) {
             line--;
             buffer->place_cursor(buffer->get_iter_at_line(line));
-            while(gtk_events_pending())
-              gtk_main_iteration();
+            while(g_main_context_pending(NULL))
+              g_main_context_iteration(NULL, false);
             if(notebook.get_current_page()!=-1)
               notebook.get_current_view()->scroll_to(buffer->get_insert(), 0.0, 1.0, 0.5);
           }

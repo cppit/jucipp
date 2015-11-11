@@ -963,8 +963,8 @@ Source::ClangViewAutocomplete(file_path, project_path, language) {
           iter.forward_char();
         }
         get_buffer()->place_cursor(iter);
-        while(gtk_events_pending())
-          gtk_main_iteration();
+        while(g_main_context_pending(NULL))
+          g_main_context_iteration(NULL, false);
         scroll_to(get_buffer()->get_insert(), 0.0, 1.0, 0.5);
       }
       get_source_buffer()->end_user_action();
