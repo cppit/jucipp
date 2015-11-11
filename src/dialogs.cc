@@ -62,7 +62,7 @@ std::string Dialog::gtk_dialog(const std::string &title,
 
   if (!file_name.empty())
     gtk_file_chooser_set_filename((GtkFileChooser*)dialog.gobj(), file_name.c_str());
-  dialog.set_position(Gtk::WindowPosition::WIN_POS_CENTER_ALWAYS);
+  dialog.set_position(Gtk::WindowPosition::WIN_POS_CENTER_ON_PARENT);
   
   for (auto &button : buttons) 
     dialog.add_button(button.first, button.second);
