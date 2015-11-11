@@ -72,6 +72,7 @@ set(source_files juci.h
     singletons.cc
     cmake.h
     cmake.cc
+    dialogs.cc
     
     ../libclangmm/src/CodeCompleteResults.cc
     ../libclangmm/src/CompilationDatabase.cc
@@ -92,8 +93,8 @@ if(MSYS)
   list(APPEND source_files terminal_win.cc)
   list(APPEND source_files dialogs_win.cc)
 else()
-  list(APPEND source_files terminal.cc)
-  list(APPEND source_files dialogs.cc)
+  list(APPEND source_files terminal_unix.cc)
+  list(APPEND source_files dialogs_unix.cc)
 endif()
 
 add_executable(${project_name} ${source_files})
