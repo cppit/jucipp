@@ -1,5 +1,6 @@
 #include "dialogs.h"
 #include "singletons.h"
+#include "juci.h"
 
 #undef NTDDI_VERSION
 #define NTDDI_VERSION NTDDI_VISTA
