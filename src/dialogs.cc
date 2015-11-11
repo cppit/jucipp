@@ -1,6 +1,7 @@
 #include "dialogs.h"
 #include "juci.h"
 #include "singletons.h"
+#include <cmath>
 
 namespace sigc {
 #ifndef SIGC_FUNCTORS_DEDUCE_RESULT_TYPE_WITH_DECLTYPE
@@ -18,9 +19,8 @@ namespace sigc {
 
 Dialog::Message::Message(const std::string &text): Gtk::Window(Gtk::WindowType::WINDOW_POPUP), label(text) {
   auto font_desc=label.get_pango_context()->get_font_description();
-  font_desc.set_size(font_desc.get_size()*2);
-  label.create_pango_context();
-  label.get_pango_context()->set_font_description(font_desc);
+  font_desc.set_size(static_cast<int>(round(static_cast<double>(font_desc.get_size())*1.25)));
+  label.override_font(font_desc);
   add(label);
   
   property_decorated()=false;
