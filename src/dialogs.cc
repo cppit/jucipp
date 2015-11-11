@@ -40,8 +40,8 @@ Dialog::Message::Message(const std::string &text): Gtk::Window(Gtk::WindowType::
 }
 
 void Dialog::Message::wait_until_drawn() {
-  while(gtk_events_pending() || !label_drawn)
-    gtk_main_iteration();
+  while(!label_drawn)
+    g_main_context_iteration(NULL, false);
 }
 
 std::string Dialog::gtk_dialog(const std::string &title,
