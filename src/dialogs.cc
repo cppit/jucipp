@@ -20,7 +20,7 @@ namespace sigc {
 Dialog::Message::Message(const std::string &text): Gtk::Window(Gtk::WindowType::WINDOW_POPUP), label(text) {
   auto font_desc=label.get_pango_context()->get_font_description();
   font_desc.set_size(static_cast<int>(round(static_cast<double>(font_desc.get_size())*1.25)));
-  label.override_font(font_desc);
+  label.get_pango_context()->set_font_description(font_desc);
   add(label);
   
   property_decorated()=false;
