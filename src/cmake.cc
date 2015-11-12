@@ -47,7 +47,6 @@ CMake::CMake(const boost::filesystem::path &path) {
 
 bool CMake::create_compile_commands(const boost::filesystem::path &path) {
   Dialog::Message message("Creating "+path.string()+"/compile_commands.json");
-  message.wait_until_drawn();
   auto exit_code=Singleton::terminal->execute(Singleton::config->terminal.cmake_command+" . -DCMAKE_EXPORT_COMPILE_COMMANDS=ON", path);
   message.hide();
   if(exit_code==EXIT_SUCCESS) {

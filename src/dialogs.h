@@ -13,14 +13,9 @@ public:
   static std::string new_folder();
   static std::string save_file_as(const boost::filesystem::path &file_path);
   
-  class Message : public Gtk::Window {
+  class Message : public Gtk::MessageDialog {
   public:
     Message(const std::string &text);
-    
-    void wait_until_drawn();
-  private:
-    Gtk::Label label;
-    bool label_drawn=false;
   };
   
 private:

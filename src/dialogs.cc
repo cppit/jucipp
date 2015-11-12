@@ -17,31 +17,14 @@ namespace sigc {
 #endif
 }
 
-Dialog::Message::Message(const std::string &text): Gtk::Window(Gtk::WindowType::WINDOW_POPUP), label(text) {
-  auto font_desc=label.get_pango_context()->get_font_description();
-  font_desc.set_size(static_cast<int>(round(static_cast<double>(font_desc.get_size())*1.25)));
-  label.get_pango_context()->set_font_description(font_desc);
-  add(label);
-  
-  property_decorated()=false;
-  set_accept_focus(false);
-  set_skip_taskbar_hint(true);
-  
+Dialog::Message::Message(const std::string &text): Gtk::MessageDialog(text, false, Gtk::MessageType::MESSAGE_INFO, Gtk::ButtonsType::BUTTONS_NONE, true) {
   auto g_application=g_application_get_default();
   auto gio_application=Glib::wrap(g_application, true);
   auto application=Glib::RefPtr<Application>::cast_static(gio_application);
   set_transient_for(*application->window);
   set_position(Gtk::WindowPosition::WIN_POS_CENTER_ON_PARENT);
-  label.signal_draw().connect([this](const Cairo::RefPtr<Cairo::Context>& cr) {
-    label_drawn=true;
-    return false;
-  });
-  show_all();
-}
-
-void Dialog::Message::wait_until_drawn() {
-  while(!label_drawn)
-    g_main_context_iteration(NULL, false);
+  
+  show_now();
 }
 
 std::string Dialog::gtk_dialog(const std::string &title,
