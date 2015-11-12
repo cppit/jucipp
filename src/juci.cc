@@ -103,12 +103,7 @@ Application::Application() : Gtk::Application("no.sout.juci", Gio::APPLICATION_N
   Glib::set_application_name("juCi++");
   
   //Gtk::MessageDialog without buttons caused text to be selected, this prevents that
-  //Copied from https://mail.gnome.org/archives/gtk-app-devel-list/2007-October/msg00144.html
-  GtkSettings* settings = gtk_settings_get_default();
-  if(settings) {
-    g_object_set(settings, "gtk-label-select-on-focus", false, NULL);
-  }
-  //End copy
+  Gtk::Settings::get_default()->property_gtk_label_select_on_focus()=false;
   
   window=std::unique_ptr<Window>(new Window());
 }
