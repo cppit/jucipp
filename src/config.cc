@@ -89,8 +89,20 @@ void Config::retrieve_config() {
   window.default_size = {cfg.get<int>("default_window_size.width"), cfg.get<int>("default_window_size.height")};
   terminal.make_command=cfg.get<std::string>("project.make_command");
   terminal.cmake_command=cfg.get<std::string>("project.cmake_command");
-  terminal.clang_format_command=cfg.get<std::string>("project.clang_format_command", "clang-format");
   terminal.history_size=cfg.get<int>("terminal_history_size");
+  
+  terminal.clang_format_command=cfg.get<std::string>("project.clang_format_command", "clang-format");
+#ifdef __linux
+  if(terminal.clang_format_command=="clang-format" &&
+     !boost::filesystem::exists("/usr/bin/clang-format") && !boost::filesystem::exists("/usr/local/bin/clang-format")) {
+    if(boost::filesystem::exists("/usr/bin/clang-format-3.7"))
+      terminal.clang_format_command="/usr/bin/clang-format-3.7";
+    else if(boost::filesystem::exists("/usr/bin/clang-format-3.6"))
+      terminal.clang_format_command="/usr/bin/clang-format-3.6";
+    else if(boost::filesystem::exists("/usr/bin/clang-format-3.5"))
+      terminal.clang_format_command="/usr/bin/clang-format-3.5";
+  }
+#endif
 }
 
 bool Config::check_config_file(const boost::property_tree::ptree &default_cfg, std::string parent_path) {
