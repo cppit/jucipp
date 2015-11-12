@@ -25,6 +25,9 @@ Dialog::Message::Message(const std::string &text): Gtk::MessageDialog(text, fals
   set_position(Gtk::WindowPosition::WIN_POS_CENTER_ON_PARENT);
   
   show_now();
+  
+  while(g_main_context_pending(NULL))
+    g_main_context_iteration(NULL, false);
 }
 
 std::string Dialog::gtk_dialog(const std::string &title,
