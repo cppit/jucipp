@@ -200,7 +200,7 @@ int Terminal::execute(const std::string &command, const boost::filesystem::path 
   else
     process=popen3(command, path.string(), nullptr, nullptr, nullptr);
   if(process==NULL) {
-    async_print("Error: Failed to run command: " + command + "\n");
+    async_print("Error: Failed to run command: " + command + "\n", true);
     return -1;
   }
   if(use_pipes) {
@@ -257,7 +257,7 @@ int Terminal::execute(std::istream &stdin_stream, std::ostream &stdout_stream, c
 
   auto process=popen3(command, path.string(), &stdin_h, &stdout_h, &stderr_h);
   if(process==NULL) {
-    async_print("Error: Failed to run command: " + command + "\n");
+    async_print("Error: Failed to run command: " + command + "\n", true);
     return -1;
   }
   std::thread stderr_thread([this, stderr_h](){
@@ -331,7 +331,7 @@ void Terminal::async_execute(const std::string &command, const boost::filesystem
     auto process=popen3(command, path.string(), &stdin_h, &stdout_h, &stderr_h);
     if(process==NULL) {
       async_executes_mutex.unlock();
-      async_print("Error: Failed to run command: " + command + "\n");
+      async_print("Error: Failed to run command: " + command + "\n", true);
       if(callback)
 	callback(-1);
       return;

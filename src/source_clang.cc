@@ -59,7 +59,7 @@ Source::View(file_path, project_path, language), parse_error(false) {
     }
   });
   parse_fail_connection=parse_fail.connect([this](){
-    Singleton::terminal->print("Error: failed to reparse "+this->file_path.string()+".\n");
+    Singleton::terminal->print("Error: failed to reparse "+this->file_path.string()+".\n", true);
     set_status("");
     set_info("");
     parsing_in_progress->cancel("failed");
@@ -145,7 +145,7 @@ void Source::ClangViewParse::init_parse() {
         parse_start();
       }
       else if (parse_thread_mapped && parsing_mutex.try_lock() && parse_thread_buffer_map_mutex.try_lock()) {
-        int status=clang_tu->ReparseTranslationUnit(parse_thread_buffer_map);
+        auto status=clang_tu->ReparseTranslationUnit(parse_thread_buffer_map);
         if(status==0)
           clang_tokens=clang_tu->get_tokens(0, parse_thread_buffer_map.find(file_path.string())->second.size()-1);
         else
@@ -649,7 +649,7 @@ Source::ClangViewParse(file_path, project_path, language), autocomplete_cancel_s
   });
   
   autocomplete_fail_connection=autocomplete_fail.connect([this]() {
-    Singleton::terminal->print("Error: autocomplete failed, reparsing "+this->file_path.string()+"\n");
+    Singleton::terminal->print("Error: autocomplete failed, reparsing "+this->file_path.string()+"\n", true);
     restart_parse();
     autocomplete_starting=false;
     autocomplete_cancel_starting=false;
@@ -963,8 +963,8 @@ Source::ClangViewAutocomplete(file_path, project_path, language) {
           iter.forward_char();
         }
         get_buffer()->place_cursor(iter);
-        while(gtk_events_pending())
-          gtk_main_iteration();
+        while(g_main_context_pending(NULL))
+          g_main_context_iteration(NULL, false);
         scroll_to(get_buffer()->get_insert(), 0.0, 1.0, 0.5);
       }
       get_source_buffer()->end_user_action();

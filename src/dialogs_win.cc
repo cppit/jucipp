@@ -1,5 +1,6 @@
 #include "dialogs.h"
 #include "singletons.h"
+#include "juci.h"
 
 #undef NTDDI_VERSION
 #define NTDDI_VERSION NTDDI_VISTA
@@ -29,8 +30,7 @@ public:
     
     if(!set_title(title) || !add_option(option))
       return "";
-    auto dirs = Singleton::directories->current_path;
-    if(!set_folder(dirs.empty() ? boost::filesystem::current_path().native() : dirs.native()))
+    if(!set_folder())
       return "";
     
     return show();
@@ -42,21 +42,16 @@ public:
     
     if(!set_title(title) || !add_option(option))
       return "";
+    if(!set_folder())
+      return "";
     std::vector<COMDLG_FILTERSPEC> extensions;
     if(!file_path.empty()) {
-      if(!set_folder(file_path.parent_path().native()))
-        return "";
       if(file_path.has_extension() && file_path.filename()!=file_path.extension()) {
         auto extension=(L"*"+file_path.extension().native()).c_str();
         extensions.emplace_back(COMDLG_FILTERSPEC{extension, extension});
         if(!set_default_file_extension(extension))
           return "";
       }
-    }
-    else {
-      auto dirs = Singleton::directories->current_path;
-      if(!set_folder(dirs.empty() ? boost::filesystem::current_path().native() : dirs.native()))
-        return "";
     }
     extensions.emplace_back(COMDLG_FILTERSPEC{L"All files", L"*.*"});
     if(dialog->SetFileTypes(extensions.size(), extensions.data())!=S_OK)
@@ -98,8 +93,16 @@ private:
   }
   
   /** Sets the directory to start browsing */
-  bool set_folder(const std::wstring &directory_path) {
-    std::wstring path=directory_path;
+  bool set_folder() {
+    auto g_application=g_application_get_default(); //TODO: Post issue that Gio::Application::get_default should return pointer and not Glib::RefPtr
+    auto gio_application=Glib::wrap(g_application, true);
+    auto application=Glib::RefPtr<Application>::cast_static(gio_application);
+    
+    auto current_path=application->window->notebook.get_current_folder();
+    if(current_path.empty())
+      current_path=boost::filesystem::current_path();
+    
+    std::wstring path=current_path.native();
     size_t pos=0;
     while((pos=path.find(L'/', pos))!=std::wstring::npos) {//TODO: issue bug report on boost::filesystem::path::native on MSYS2
       path.replace(pos, 1, L"\\");
@@ -142,7 +145,10 @@ std::string Dialog::new_file() {
 }
 
 std::string Dialog::new_folder() {
-  return  Win32Dialog().open(L"New Folder", FOS_PICKFOLDERS); //TODO: this is not working correctly yet
+  //Win32 (IFileDialog) does not support create folder...
+  return gtk_dialog("New Folder",
+                     {std::make_pair("Cancel", Gtk::RESPONSE_CANCEL),std::make_pair("Create", Gtk::RESPONSE_OK)},
+                     Gtk::FILE_CHOOSER_ACTION_CREATE_FOLDER);
 }
 
 std::string Dialog::open_file() {

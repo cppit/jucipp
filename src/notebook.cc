@@ -65,12 +65,14 @@ void Notebook::open(const boost::filesystem::path &file_path) {
     }
   }
   
-  std::ifstream can_read(file_path.string());
-  if(!can_read) {
-    Singleton::terminal->print("Error: could not open "+file_path.string()+"\n");
-    return;
+  if(boost::filesystem::exists(file_path)) {
+    std::ifstream can_read(file_path.string());
+    if(!can_read) {
+      Singleton::terminal->print("Error: could not open "+file_path.string()+"\n", true);
+      return;
+    }
+    can_read.close();
   }
-  can_read.close();
   
   auto language=Source::guess_language(file_path);
   boost::filesystem::path project_path;
@@ -170,6 +172,32 @@ bool Notebook::save(int page, bool reparse_needed) {
   }
   auto view=get_view(page);
   if (view->file_path != "" && view->get_buffer()->get_modified()) {
+    //Remove trailing whitespace characters on save, and add trailing newline if missing
+    if(Singleton::config->source.cleanup_whitespace_characters) {
+      auto buffer=view->get_buffer();
+      buffer->begin_user_action();
+      for(int line=0;line<buffer->get_line_count();line++) {
+        auto iter=buffer->get_iter_at_line(line);
+        auto end_iter=iter;
+        while(!end_iter.ends_line())
+          end_iter.forward_char();
+        if(iter==end_iter)
+          continue;
+        iter=end_iter;
+        while(!iter.starts_line() && (*iter==' ' || *iter=='\t' || iter.ends_line()))
+          iter.backward_char();
+        if(*iter!=' ' && *iter!='\t')
+          iter.forward_char();
+        if(iter==end_iter)
+          continue;
+        buffer->erase(iter, end_iter);
+      }
+      auto iter=buffer->end();
+      if(!iter.starts_line())
+        buffer->insert(buffer->end(), "\n");
+      buffer->end_user_action();
+    }
+    
     if(filesystem::write(view->file_path, view->get_buffer())) {
       if(reparse_needed) {
         if(auto clang_view=dynamic_cast<Source::ClangView*>(view)) {
@@ -206,7 +234,7 @@ bool Notebook::save(int page, bool reparse_needed) {
                 if(source_clang_view->restart_parse())
                   Singleton::terminal->async_print("Reparsing "+source_clang_view->file_path.string()+"\n");
                 else
-                  Singleton::terminal->async_print("Error: failed to reparse "+source_clang_view->file_path.string()+". Please reopen the file manually.\n");
+                  Singleton::terminal->async_print("Error: failed to reparse "+source_clang_view->file_path.string()+". Please reopen the file manually.\n", true);
               }
             }
           }
@@ -215,7 +243,7 @@ bool Notebook::save(int page, bool reparse_needed) {
       JDEBUG("end true");
       return true;
     }
-    Singleton::terminal->print("Error: could not save file " +view->file_path.string()+"\n");
+    Singleton::terminal->print("Error: could not save file " +view->file_path.string()+"\n", true);
   }
   JDEBUG("end false");
   return false;
@@ -258,6 +286,17 @@ bool Notebook::close_current_page() {
   }
   JDEBUG("end true");
   return true;
+}
+
+boost::filesystem::path Notebook::get_current_folder() {
+  boost::filesystem::path current_path;
+  
+  if(get_current_page()!=-1)
+    current_path=get_current_view()->project_path;
+  else
+    current_path=Singleton::directories->current_path;
+  
+  return current_path;
 }
 
 bool Notebook::save_modified_dialog() {

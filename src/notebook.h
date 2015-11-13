@@ -21,6 +21,7 @@ public:
   bool save(int page, bool reparse_needed=false);
   bool save_current();
   void configure(int view_nr);
+  boost::filesystem::path get_current_folder();
       
 private:
   bool save_modified_dialog();

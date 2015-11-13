@@ -91,7 +91,7 @@ Source::View::View(const boost::filesystem::path &file_path, const boost::filesy
   }
   else {
     if(filesystem::read(file_path, get_buffer())==-1)
-      Singleton::terminal->print("Error: "+file_path.string()+" is not a valid UTF-8 file.\n");
+      Singleton::terminal->print("Error: "+file_path.string()+" is not a valid UTF-8 file.\n", true);
   }
   get_source_buffer()->end_not_undoable_action();
   
@@ -304,7 +304,7 @@ void Source::View::configure() {
     if(scheme)
       get_source_buffer()->set_style_scheme(scheme);
     else
-      Singleton::terminal->print("Error: Could not find gtksourceview style: "+Singleton::config->source.style+'\n');
+      Singleton::terminal->print("Error: Could not find gtksourceview style: "+Singleton::config->source.style+'\n', true);
   }
   
   if(Singleton::config->source.wrap_lines)
@@ -1306,7 +1306,7 @@ Source::GenericView::GenericView(const boost::filesystem::path &file_path, const
         boost::property_tree::xml_parser::read_xml(language_file.string(), pt);
       }
       catch(const std::exception &e) {
-        Singleton::terminal->print("Error: error parsing language file "+language_file.string()+": "+e.what()+'\n');
+        Singleton::terminal->print("Error: error parsing language file "+language_file.string()+": "+e.what()+'\n', true);
       }
       bool has_context_class=false;
       parse_language_file(completion_buffer_keywords, has_context_class, pt);

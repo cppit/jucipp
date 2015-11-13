@@ -154,7 +154,7 @@ void Window::set_menu_actions() {
     boost::filesystem::path path = Dialog::new_file();
     if(path!="") {
       if(boost::filesystem::exists(path)) {
-        Singleton::terminal->print("Error: "+path.string()+" already exists.\n");
+        Singleton::terminal->print("Error: "+path.string()+" already exists.\n", true);
       }
       else {
         if(filesystem::write(path)) {
@@ -164,7 +164,7 @@ void Window::set_menu_actions() {
           Singleton::terminal->print("New file "+path.string()+" created.\n");
         }
         else
-          Singleton::terminal->print("Error: could not create new file "+path.string()+".\n");
+          Singleton::terminal->print("Error: could not create new file "+path.string()+".\n", true);
       }
     }
   });
@@ -178,7 +178,7 @@ void Window::set_menu_actions() {
         Singleton::terminal->print("New folder "+path.string()+" created.\n");
       }
       else
-        Singleton::terminal->print("Error: "+path.string()+" already exists.\n");
+        Singleton::terminal->print("Error: "+path.string()+" already exists.\n", true);
       Singleton::directories->select(path);
     }
   });
@@ -195,11 +195,11 @@ void Window::set_menu_actions() {
       auto cpp_main_path=project_path;
       cpp_main_path+="/main.cpp";
       if(boost::filesystem::exists(cmakelists_path)) {
-        Singleton::terminal->print("Error: "+cmakelists_path.string()+" already exists.\n");
+        Singleton::terminal->print("Error: "+cmakelists_path.string()+" already exists.\n", true);
         return;
       }
       if(boost::filesystem::exists(cpp_main_path)) {
-        Singleton::terminal->print("Error: "+cpp_main_path.string()+" already exists.\n");
+        Singleton::terminal->print("Error: "+cpp_main_path.string()+" already exists.\n", true);
         return;
       }
       std::string cmakelists="cmake_minimum_required(VERSION 2.8)\n\nproject("+project_name+")\n\nset(CMAKE_CXX_FLAGS \"${CMAKE_CXX_FLAGS} -std=c++1y -Wall\")\n\nadd_executable("+project_name+" main.cpp)\n";
@@ -210,7 +210,7 @@ void Window::set_menu_actions() {
         Singleton::terminal->print("C++ project "+project_name+" created.\n");
       }
       else
-        Singleton::terminal->print("Error: Could not create project "+project_path.string()+"\n");
+        Singleton::terminal->print("Error: Could not create project "+project_path.string()+"\n", true);
     }
   });
   
@@ -330,8 +330,8 @@ void Window::set_menu_actions() {
   });
   menu->add_action("source_center_cursor", [this]() {
     if(notebook.get_current_page()!=-1) {
-      while(gtk_events_pending())
-        gtk_main_iteration();
+      while(g_main_context_pending(NULL))
+        g_main_context_iteration(NULL, false);
       if(notebook.get_current_page()!=-1)
         notebook.get_current_view()->scroll_to(notebook.get_current_view()->get_buffer()->get_insert(), 0.0, 1.0, 0.5);
     }
@@ -396,8 +396,8 @@ void Window::set_menu_actions() {
             index=std::min(index, end_line_index);
             buffer->place_cursor(buffer->get_iter_at_line_index(line, index));
             
-            while(gtk_events_pending())
-              gtk_main_iteration();
+            while(g_main_context_pending(NULL))
+              g_main_context_iteration(NULL, false);
             if(notebook.get_current_page()!=-1)
               notebook.get_current_view()->scroll_to(notebook.get_current_view()->get_buffer()->get_insert(), 0.0, 1.0, 0.5);
           }
@@ -432,9 +432,16 @@ void Window::set_menu_actions() {
   });
   
   menu->add_action("compile_and_run", [this]() {
-    if(notebook.get_current_page()==-1 || compiling)
+    if(compiling)
       return;
-    CMake cmake(notebook.get_current_view()->file_path);
+    boost::filesystem::path cmake_path;
+    if(notebook.get_current_page()!=-1)
+      cmake_path=notebook.get_current_view()->file_path.parent_path();
+    else
+      cmake_path=Singleton::directories->current_path;
+    if(cmake_path.empty())
+      return;
+    CMake cmake(cmake_path);
     auto executables = cmake.get_functions_parameters("add_executable");
     boost::filesystem::path executable_path;
     if(executables.size()>0 && executables[0].second.size()>0) {
@@ -472,9 +479,16 @@ void Window::set_menu_actions() {
     }
   });
   menu->add_action("compile", [this]() {
-    if(notebook.get_current_page()==-1 || compiling)
+    if(compiling)
       return;
-    CMake cmake(notebook.get_current_view()->file_path);
+    boost::filesystem::path cmake_path;
+    if(notebook.get_current_page()!=-1)
+      cmake_path=notebook.get_current_view()->file_path.parent_path();
+    else
+      cmake_path=Singleton::directories->current_path;
+    if(cmake_path.empty())
+      return;
+    CMake cmake(cmake_path);
     if(cmake.project_path!="") {
       compiling=true;
       Singleton::terminal->print("Compiling project "+cmake.project_path.string()+"\n");
@@ -489,21 +503,13 @@ void Window::set_menu_actions() {
     entry_box.labels.emplace_back();
     auto label_it=entry_box.labels.begin();
     label_it->update=[label_it](int state, const std::string& message){
-      label_it->set_text("Run Command directory order: file project path, file directory, opened directory, current directory");
+      label_it->set_text("Run Command directory order: file project path, opened directory, current directory");
     };
     label_it->update(0, "");
     entry_box.entries.emplace_back(last_run_command, [this](const std::string& content){
       if(content!="") {
         last_run_command=content;
-        boost::filesystem::path run_path;
-        if(notebook.get_current_page()!=-1) {
-          if(notebook.get_current_view()->project_path!="")
-            run_path=notebook.get_current_view()->project_path;
-          else
-            run_path=notebook.get_current_view()->file_path.parent_path();
-        }
-        else
-          run_path=Singleton::directories->current_path;
+        auto run_path=notebook.get_current_folder();
         Singleton::terminal->async_print("Running: "+content+'\n');
   
         Singleton::terminal->async_execute(content, run_path, [this, content](int exit_code){
@@ -776,8 +782,8 @@ void Window::goto_line_entry() {
           if(line>0 && line<=buffer->get_line_count()) {
             line--;
             buffer->place_cursor(buffer->get_iter_at_line(line));
-            while(gtk_events_pending())
-              gtk_main_iteration();
+            while(g_main_context_pending(NULL))
+              g_main_context_iteration(NULL, false);
             if(notebook.get_current_page()!=-1)
               notebook.get_current_view()->scroll_to(buffer->get_insert(), 0.0, 1.0, 0.5);
           }

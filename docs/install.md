@@ -4,6 +4,7 @@
 Install dependencies:
 ```sh
 sudo apt-get install git cmake make g++ libclang-dev pkg-config libboost-system-dev libboost-thread-dev libboost-filesystem-dev libboost-log-dev libgtkmm-3.0-dev libgtksourceviewmm-3.0-dev aspell-en libaspell-dev
+sudo apt-get install clang-format-3.6 || sudo apt-get install clang-format-3.5
 ```
 
 Get juCi++ source, compile and install:
@@ -13,12 +14,6 @@ cd jucipp
 cmake .
 make
 sudo make install
-```
-
-To use clang-format for auto-indentation of C++ files (replace \[version\] with an available clang-format version):
-```sh
-sudo apt-get install clang-format-[version]
-sudo ln -s /usr/bin/clang-format-[version] /usr/local/bin/clang-format
 ```
 
 ## Ubuntu 14/Linux Mint 17
@@ -28,7 +23,7 @@ sudo add-apt-repository ppa:ubuntu-toolchain-r/test
 sudo apt-get update
 sudo apt-get install g++-4.9
 sudo apt-get remove g++-4.8
-sudo apt-get install git cmake make g++ libclang-3.6-dev pkg-config libboost-system1.55-dev libboost-thread1.55-dev libboost-filesystem1.55-dev libboost-log1.55-dev libgtkmm-3.0-dev libgtksourceviewmm-3.0-dev aspell-en libaspell-dev
+sudo apt-get install git cmake make g++ libclang-3.6-dev clang-format-3.6 pkg-config libboost-system1.55-dev libboost-thread1.55-dev libboost-filesystem1.55-dev libboost-log1.55-dev libgtkmm-3.0-dev libgtksourceviewmm-3.0-dev aspell-en libaspell-dev
 ```
 
 Get juCi++ source, compile and install:
@@ -38,12 +33,6 @@ cd jucipp
 cmake .
 make
 sudo make install
-```
-
-To use clang-format for auto-indentation of C++ files (replace \[version\] with an available clang-format version):
-```sh
-sudo apt-get install clang-format-[version]
-sudo ln -s /usr/bin/clang-format-[version] /usr/local/bin/clang-format
 ```
 
 ## OS X with Homebrew (http://brew.sh/)
