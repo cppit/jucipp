@@ -8,3 +8,8 @@ set(project_name juci)
 project (${project_name})
 
 add_subdirectory("src")
+
+find_program(XDG_DESKTOP_MENU_EXECUTABLE xdg-desktop-menu)
+if(XDG_DESKTOP_MENU_EXECUTABLE)
+  install(CODE "execute_process(COMMAND ${XDG_DESKTOP_MENU_EXECUTABLE} install --novendor share/juci.desktop)")
+endif()
