@@ -1,0 +1,8 @@
+[Desktop Entry]
+Name=juCi++
+Comment=A lightweight IDE
+Exec=juci %F
+Terminal=false
+Type=Application
+StartupNotify=true
+MimeType=text/plain;
