@@ -637,6 +637,7 @@ void Window::activate_menu_items(bool activate) {
   menu->actions["source_indentation_auto_indent_buffer"]->set_enabled(activate ? static_cast<bool>(notebook.get_current_view()->auto_indent) : false);
   menu->actions["source_find_documentation"]->set_enabled(activate ? static_cast<bool>(notebook.get_current_view()->get_token_data) : false);
   menu->actions["source_goto_declaration"]->set_enabled(activate ? static_cast<bool>(notebook.get_current_view()->get_declaration_location) : false);
+  menu->actions["source_goto_usage"]->set_enabled(activate ? static_cast<bool>(notebook.get_current_view()->get_usages) : false);
   menu->actions["source_goto_method"]->set_enabled(activate ? static_cast<bool>(notebook.get_current_view()->goto_method) : false);
   menu->actions["source_rename"]->set_enabled(activate ? static_cast<bool>(notebook.get_current_view()->rename_similar_tokens) : false);
   menu->actions["source_goto_next_diagnostic"]->set_enabled(activate ? static_cast<bool>(notebook.get_current_view()->goto_next_diagnostic) : false);
