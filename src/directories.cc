@@ -197,21 +197,6 @@ void Directories::select(const boost::filesystem::path &path) {
  JDEBUG("end");
 }
 
-bool Directories::ignored(std::string path) {
-  std::transform(path.begin(), path.end(), path.begin(), ::tolower);
-  
-  for(std::string &i : Singleton::config->directories.exceptions) {
-    if(i == path)
-      return false;
-  }
-  for(auto &i : Singleton::config->directories.ignored) {
-    if(path.find(i, 0) != std::string::npos)
-      return true;
-  }
-  
-  return false;
-}
-
 void Directories::add_path(const boost::filesystem::path& dir_path, const Gtk::TreeModel::Row &parent) {
   last_write_times[dir_path.string()]={parent, boost::filesystem::last_write_time(dir_path)};
   std::unique_ptr<Gtk::TreeNodeChildren> children; //Gtk::TreeNodeChildren is missing default constructor...
@@ -227,39 +212,37 @@ void Directories::add_path(const boost::filesystem::path& dir_path, const Gtk::T
   boost::filesystem::directory_iterator end_it;
   for(boost::filesystem::directory_iterator it(dir_path);it!=end_it;it++) {
     auto filename=it->path().filename().string();
-    if (!ignored(filename)) {
-      bool already_added=false;
-      if(*children) {
-        for(auto &child: *children) {
-          if(child.get_value(column_record.name)==filename) {
-            not_deleted.emplace(filename);
-            already_added=true;
-            break;
-          }
+    bool already_added=false;
+    if(*children) {
+      for(auto &child: *children) {
+        if(child.get_value(column_record.name)==filename) {
+          not_deleted.emplace(filename);
+          already_added=true;
+          break;
         }
       }
-      if(!already_added) {
-        auto child = tree_store->append(*children);
-        not_deleted.emplace(filename);
-        child->set_value(column_record.name, filename);
-        child->set_value(column_record.path, it->path().string());
-        if (boost::filesystem::is_directory(*it)) {
-          child->set_value(column_record.id, "a"+filename);
-          auto grandchild=tree_store->append(child->children());
-          grandchild->set_value(column_record.name, std::string("(empty)"));
+    }
+    if(!already_added) {
+      auto child = tree_store->append(*children);
+      not_deleted.emplace(filename);
+      child->set_value(column_record.name, filename);
+      child->set_value(column_record.path, it->path().string());
+      if (boost::filesystem::is_directory(*it)) {
+        child->set_value(column_record.id, "a"+filename);
+        auto grandchild=tree_store->append(child->children());
+        grandchild->set_value(column_record.name, std::string("(empty)"));
+        Gdk::RGBA rgba;
+        rgba.set_rgba(0.5, 0.5, 0.5);
+        grandchild->set_value(column_record.color, rgba);
+      }
+      else {
+        child->set_value(column_record.id, "b"+filename);
+        
+        auto language=Source::guess_language(it->path().filename());
+        if(!language) {
           Gdk::RGBA rgba;
           rgba.set_rgba(0.5, 0.5, 0.5);
-          grandchild->set_value(column_record.color, rgba);
-        }
-        else {
-          child->set_value(column_record.id, "b"+filename);
-          
-          auto language=Source::guess_language(it->path().filename());
-          if(!language) {
-            Gdk::RGBA rgba;
-            rgba.set_rgba(0.5, 0.5, 0.5);
-            child->set_value(column_record.color, rgba);
-          }
+          child->set_value(column_record.color, rgba);
         }
       }
     }

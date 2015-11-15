@@ -19,6 +19,10 @@ namespace Source {
     Token(Glib::RefPtr<Gsv::Language> language, int type, const std::string &spelling, const std::string &usr): 
       language(language), type(type), spelling(spelling), usr(usr) {}
     operator bool() const {return (type>=0 && spelling.size()>0 && usr.size()>0);}
+    bool operator==(const Token &o) const {return (type==o.type &&
+                                                   spelling==o.spelling &&
+                                                   usr==o.usr);}
+    bool operator!=(const Token &o) const {return !(*this==o);}
     
     Glib::RefPtr<Gsv::Language> language;
     int type;
@@ -29,11 +33,12 @@ namespace Source {
   class Offset {
   public:
     Offset() {}
-    Offset(unsigned line, unsigned index): line(line), index(index) {}
+    Offset(unsigned line, unsigned index, const boost::filesystem::path &file_path=""): line(line), index(index), file_path(file_path) {}
     bool operator==(const Offset &o) {return (line==o.line && index==o.index);}
     
     unsigned line;
     unsigned index;
+    boost::filesystem::path file_path;
   };
   
   class FixIt {
@@ -71,13 +76,16 @@ namespace Source {
     Glib::RefPtr<Gsv::Language> language;
     
     std::function<void()> auto_indent;
-    std::function<std::pair<std::string, Offset>()> get_declaration_location;
+    std::function<Offset()> get_declaration_location;
+    std::function<std::vector<std::pair<Offset, std::string> >(const Token &token)> get_usages;
     std::function<void()> goto_method;
     std::function<Token()> get_token;
     std::function<std::vector<std::string>()> get_token_data;
     std::function<size_t(const Token &token, const std::string &text)> rename_similar_tokens;
     std::function<void()> goto_next_diagnostic;
     std::function<void()> apply_fix_its;
+    
+    std::unique_ptr<SelectionDialog> selection_dialog;
     
     std::function<void(View* view, const std::string &status)> on_update_status;
     std::function<void(View* view, const std::string &info)> on_update_info;

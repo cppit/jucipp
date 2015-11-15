@@ -1028,7 +1028,7 @@ Source::ClangViewAutocomplete(file_path, project_path, language) {
   });
   
   get_declaration_location=[this](){
-    std::pair<std::string, Offset> location;
+    Offset location;
     if(source_readable) {
       auto iter=get_buffer()->get_insert()->get_iter();
       auto line=(unsigned)iter.get_line();
@@ -1039,10 +1039,10 @@ Source::ClangViewAutocomplete(file_path, project_path, language) {
           if(line==token.offsets.first.line-1 && index>=token.offsets.first.index-1 && index <=token.offsets.second.index-1) {
             auto referenced=cursor.get_referenced();
             if(referenced) {
-              location.first=referenced.get_source_location().get_path();
+              location.file_path=referenced.get_source_location().get_path();
               auto clang_offset=referenced.get_source_location().get_offset();
-              location.second.line=clang_offset.line;
-              location.second.index=clang_offset.index;
+              location.line=clang_offset.line;
+              location.index=clang_offset.index;
               break;
             }
           }
@@ -1050,6 +1050,26 @@ Source::ClangViewAutocomplete(file_path, project_path, language) {
       }
     }
     return location;
+  };
+  
+  get_usages=[this](const Token &token) {
+    std::vector<std::pair<Offset, std::string> > usages;
+    
+    if(source_readable && token.language &&
+     (token.language->get_id()=="chdr" || token.language->get_id()=="cpphdr" || token.language->get_id()=="c" || token.language->get_id()=="cpp" || token.language->get_id()=="objc")) {
+      auto offsets=clang_tokens->get_similar_token_offsets(static_cast<clang::CursorKind>(token.type), token.spelling, token.usr);
+      for(auto &offset: offsets) {
+        auto start_iter=get_buffer()->get_iter_at_line(offset.first.line-1);
+        while(!start_iter.ends_line() && (*start_iter==' ' || *start_iter=='\t'))
+          start_iter.forward_char();
+        auto end_iter=start_iter;
+        while(!end_iter.ends_line())
+          end_iter.forward_char();
+        usages.emplace_back(Offset(offset.first.line-1, offset.first.index-1, this->file_path), get_buffer()->get_text(start_iter, end_iter));
+      }
+    }
+    
+    return usages;
   };
   
   goto_method=[this](){    

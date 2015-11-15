@@ -121,7 +121,6 @@ namespace Source {
     void tag_similar_tokens(const Token &token);
     Glib::RefPtr<Gtk::TextTag> similar_tokens_tag;
     Token last_tagged_token;
-    std::unique_ptr<SelectionDialog> selection_dialog;
     bool renaming=false;
   };
   
