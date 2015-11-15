@@ -16,14 +16,11 @@ namespace Source {
   class Token {
   public:
     Token(): type(-1) {}
-    Token(int type, const std::string &spelling, const std::string &usr): 
-      type(type), spelling(spelling), usr(usr) {}
+    Token(Glib::RefPtr<Gsv::Language> language, int type, const std::string &spelling, const std::string &usr): 
+      language(language), type(type), spelling(spelling), usr(usr) {}
     operator bool() const {return (type>=0 && spelling.size()>0 && usr.size()>0);}
-    bool operator==(const Token &o) const {return (type==o.type &&
-                                                   spelling==o.spelling &&
-                                                   usr==o.usr);}
-    bool operator!=(const Token &o) const {return !(*this==o);}
     
+    Glib::RefPtr<Gsv::Language> language;
     int type;
     std::string spelling;
     std::string usr;

@@ -984,7 +984,7 @@ Source::ClangViewAutocomplete(file_path, project_path, language) {
               continue;
             auto referenced=cursor.get_referenced();
             if(referenced)
-              return Token(static_cast<int>(referenced.get_kind()), token.get_spelling(), referenced.get_usr());
+              return Token(this->language, static_cast<int>(referenced.get_kind()), token.get_spelling(), referenced.get_usr());
           }
         }
       }
@@ -994,7 +994,8 @@ Source::ClangViewAutocomplete(file_path, project_path, language) {
   
   rename_similar_tokens=[this](const Token &token, const std::string &text) {
     size_t number=0;
-    if(source_readable) {
+    if(source_readable && token.language &&
+       (token.language->get_id()=="chdr" || token.language->get_id()=="cpphdr" || token.language->get_id()=="c" || token.language->get_id()=="cpp" || token.language->get_id()=="objc")) {
       auto offsets=clang_tokens->get_similar_token_offsets(static_cast<clang::CursorKind>(token.type), token.spelling, token.usr);
       std::vector<std::pair<Glib::RefPtr<Gtk::TextMark>, Glib::RefPtr<Gtk::TextMark> > > marks;
       for(auto &offset: offsets) {
