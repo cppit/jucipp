@@ -468,7 +468,7 @@ void Window::set_menu_actions() {
               g_main_context_iteration(NULL, false);
             if(notebook.get_current_page()!=-1)
               view->scroll_to(view->get_buffer()->get_insert(), 0.0, 1.0, 0.5);
-            //delayed_tooltips_connection.disconnect();
+            view->delayed_tooltips_connection.disconnect();
           };
           current_view->selection_dialog->show();
         }

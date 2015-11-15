@@ -86,6 +86,7 @@ namespace Source {
     std::function<void()> apply_fix_its;
     
     std::unique_ptr<SelectionDialog> selection_dialog;
+    sigc::connection delayed_tooltips_connection;
     
     std::function<void(View* view, const std::string &status)> on_update_status;
     std::function<void(View* view, const std::string &info)> on_update_info;
@@ -108,7 +109,6 @@ namespace Source {
     virtual void show_type_tooltips(const Gdk::Rectangle &rectangle) {}
     gdouble on_motion_last_x;
     gdouble on_motion_last_y;
-    sigc::connection delayed_tooltips_connection;
     void set_tooltip_events();
         
     std::string get_line(const Gtk::TextIter &iter);
