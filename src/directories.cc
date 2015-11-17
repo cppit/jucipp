@@ -227,7 +227,7 @@ void Directories::add_path(const boost::filesystem::path& dir_path, const Gtk::T
       not_deleted.emplace(filename);
       child->set_value(column_record.name, filename);
       child->set_value(column_record.path, it->path().string());
-      if (boost::filesystem::is_directory(*it)) {
+      if (boost::filesystem::is_directory(it->path())) {
         child->set_value(column_record.id, "a"+filename);
         auto grandchild=tree_store->append(child->children());
         grandchild->set_value(column_record.name, std::string("(empty)"));
