@@ -6,3 +6,4 @@ Terminal=false
 Type=Application
 StartupNotify=true
 MimeType=text/plain;
+Categories=Utility;Development;TextEditor;
