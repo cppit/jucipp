@@ -1,7 +1,7 @@
 #include "cmake.h"
 #include "singletons.h"
 #include "filesystem.h"
-#include <regex>
+#include <boost/regex.hpp>
 #include "dialogs.h"
 
 #include <iostream> //TODO: remove
@@ -10,9 +10,9 @@ using namespace std; //TODO: remove
 CMake::CMake(const boost::filesystem::path &path) {
   const auto find_cmake_project=[this](const boost::filesystem::path &cmake_path) {
     for(auto &line: filesystem::read_lines(cmake_path)) {
-      const std::regex project_regex("^ *project *\\(.*$");
-      std::smatch sm;
-      if(std::regex_match(line, sm, project_regex)) {
+      const boost::regex project_regex("^ *project *\\(.*$");
+      boost::smatch sm;
+      if(boost::regex_match(line, sm, project_regex)) {
         return true;
       }
     }
@@ -142,9 +142,9 @@ void CMake::find_variables() {
         end_line=file.size();
       if(end_line>start_line) {
         auto line=file.substr(start_line, end_line-start_line);
-        const std::regex set_regex("^ *set *\\( *([A-Za-z_][A-Za-z_0-9]*) +(.*)\\) *$");
-        std::smatch sm;
-        if(std::regex_match(line, sm, set_regex)) {
+        const boost::regex set_regex("^ *set *\\( *([A-Za-z_][A-Za-z_0-9]*) +(.*)\\) *$");
+        boost::smatch sm;
+        if(boost::regex_match(line, sm, set_regex)) {
           auto data=sm[2].str();
           while(data.size()>0 && data.back()==' ')
             data.pop_back();
@@ -264,9 +264,9 @@ std::vector<std::pair<boost::filesystem::path, std::vector<std::string> > > CMak
         end_line=file.size();
       if(end_line>start_line) {
         auto line=file.substr(start_line, end_line-start_line);
-        const std::regex function_regex("^ *"+name+" *\\( *(.*)\\) *$");
-        std::smatch sm;
-        if(std::regex_match(line, sm, function_regex)) {
+        const boost::regex function_regex("^ *"+name+" *\\( *(.*)\\) *$");
+        boost::smatch sm;
+        if(boost::regex_match(line, sm, function_regex)) {
           auto data=sm[1].str();
           while(data.size()>0 && data.back()==' ')
             data.pop_back();

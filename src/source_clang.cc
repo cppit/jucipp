@@ -100,9 +100,9 @@ void Source::ClangViewParse::configure() {
     }
   }
   
-  bracket_regex=std::regex("^([ \\t]*).*\\{ *$");
-  no_bracket_statement_regex=std::regex("^([ \\t]*)(if|for|else if|catch|while) *\\(.*[^;}] *$");
-  no_bracket_no_para_statement_regex=std::regex("^([ \\t]*)(else|try|do) *$");
+  bracket_regex=boost::regex("^([ \\t]*).*\\{ *$");
+  no_bracket_statement_regex=boost::regex("^([ \\t]*)(if|for|else if|catch|while) *\\(.*[^;}] *$");
+  no_bracket_no_para_statement_regex=boost::regex("^([ \\t]*)(else|try|do) *$");
 }
 
 void Source::ClangViewParse::init_parse() {
@@ -194,9 +194,9 @@ std::vector<std::string> Source::ClangViewParse::get_compilation_commands() {
     }
   }
   auto clang_version_string=clang::to_string(clang_getClangVersion());
-  const std::regex clang_version_regex("^[A-Za-z ]+([0-9.]+).*$");
-  std::smatch sm;
-  if(std::regex_match(clang_version_string, sm, clang_version_regex)) {
+  const boost::regex clang_version_regex("^[A-Za-z ]+([0-9.]+).*$");
+  boost::smatch sm;
+  if(boost::regex_match(clang_version_string, sm, clang_version_regex)) {
     auto clang_version=sm[1].str();
     arguments.emplace_back("-I/usr/lib/clang/"+clang_version+"/include");
     arguments.emplace_back("-I/usr/local/Cellar/llvm/"+clang_version+"/lib/clang/"+clang_version+"/include");
@@ -464,7 +464,7 @@ bool Source::ClangViewParse::on_key_press_event(GdkEventKey* key) {
       auto start_sentence_tabs_end_iter=get_tabs_end_iter(start_of_sentence_iter);
       auto tabs=get_line_before(start_sentence_tabs_end_iter);
       
-      std::smatch sm;
+      boost::smatch sm;
       if(iter.backward_char() && *iter=='{') {
         auto found_iter=iter;
         bool found_right_bracket=find_right_bracket_forward(iter, found_iter);
@@ -516,13 +516,13 @@ bool Source::ClangViewParse::on_key_press_event(GdkEventKey* key) {
           iter.forward_char();
         }
       }
-      else if(std::regex_match(line, sm, no_bracket_statement_regex)) {
+      else if(boost::regex_match(line, sm, no_bracket_statement_regex)) {
         get_source_buffer()->insert_at_cursor("\n"+tabs+tab);
         scroll_to(get_source_buffer()->get_insert());
         get_source_buffer()->end_user_action();
         return true;
       }
-      else if(std::regex_match(line, sm, no_bracket_no_para_statement_regex)) {
+      else if(boost::regex_match(line, sm, no_bracket_no_para_statement_regex)) {
         get_source_buffer()->insert_at_cursor("\n"+tabs+tab);
         scroll_to(get_source_buffer()->get_insert());
         get_source_buffer()->end_user_action();
@@ -530,18 +530,18 @@ bool Source::ClangViewParse::on_key_press_event(GdkEventKey* key) {
       }
       //Indenting after for instance if(...)\n...;\n
       else if(iter.backward_char() && *iter==';') {
-        std::smatch sm2;
+        boost::smatch sm2;
         size_t line_nr=get_source_buffer()->get_insert()->get_iter().get_line();
         if(line_nr>0 && tabs.size()>=tab_size) {
           std::string previous_line=get_line(line_nr-1);
-          if(!std::regex_match(previous_line, sm2, bracket_regex)) {
-            if(std::regex_match(previous_line, sm2, no_bracket_statement_regex)) {
+          if(!boost::regex_match(previous_line, sm2, bracket_regex)) {
+            if(boost::regex_match(previous_line, sm2, no_bracket_statement_regex)) {
               get_source_buffer()->insert_at_cursor("\n"+sm2[1].str());
               scroll_to(get_source_buffer()->get_insert());
               get_source_buffer()->end_user_action();
               return true;
             }
-            else if(std::regex_match(previous_line, sm2, no_bracket_no_para_statement_regex)) {
+            else if(boost::regex_match(previous_line, sm2, no_bracket_no_para_statement_regex)) {
               get_source_buffer()->insert_at_cursor("\n"+sm2[1].str());
               scroll_to(get_source_buffer()->get_insert());
               get_source_buffer()->end_user_action();
@@ -558,7 +558,7 @@ bool Source::ClangViewParse::on_key_press_event(GdkEventKey* key) {
             left_bracket_iter.forward_char();
           Gtk::TextIter start_of_left_bracket_sentence_iter;
           if(find_start_of_closed_expression(left_bracket_iter, start_of_left_bracket_sentence_iter)) {
-            std::smatch sm;
+            boost::smatch sm;
             auto tabs_end_iter=get_tabs_end_iter(start_of_left_bracket_sentence_iter);
             auto tabs_start_of_sentence=get_line_before(tabs_end_iter);
             if(tabs.size()==(tabs_start_of_sentence.size()+tab_size)) {
@@ -689,10 +689,10 @@ void Source::ClangViewAutocomplete::start_autocomplete() {
   }
   std::string line=" "+get_line_before();
   if((std::count(line.begin(), line.end(), '\"')%2)!=1 && line.find("//")==std::string::npos) {
-    const std::regex in_specified_namespace("^(.*[a-zA-Z0-9_\\)\\]\\>])(->|\\.|::)([a-zA-Z0-9_]*)$");
-    const std::regex within_namespace("^(.*)([^a-zA-Z0-9_]+)([a-zA-Z0-9_]{3,})$");
-    std::smatch sm;
-    if(std::regex_match(line, sm, in_specified_namespace)) {
+    const boost::regex in_specified_namespace("^(.*[a-zA-Z0-9_\\)\\]\\>])(->|\\.|::)([a-zA-Z0-9_]*)$");
+    const boost::regex within_namespace("^(.*)([^a-zA-Z0-9_]+)([a-zA-Z0-9_]{3,})$");
+    boost::smatch sm;
+    if(boost::regex_match(line, sm, in_specified_namespace)) {
       prefix_mutex.lock();
       prefix=sm[3].str();
       prefix_mutex.unlock();
@@ -702,7 +702,7 @@ void Source::ClangViewAutocomplete::start_autocomplete() {
       else if(last_keyval=='.' && autocomplete_starting)
         autocomplete_cancel_starting=true;
     }
-    else if(std::regex_match(line, sm, within_namespace)) {
+    else if(boost::regex_match(line, sm, within_namespace)) {
       prefix_mutex.lock();
       prefix=sm[3].str();
       prefix_mutex.unlock();

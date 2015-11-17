@@ -32,7 +32,7 @@ find_package(LibClang REQUIRED)
 #find_package(PythonLibs 2.7)
 
 #find_package(Boost 1.55 COMPONENTS python thread log system filesystem REQUIRED)
-find_package(Boost 1.55 COMPONENTS thread log system filesystem REQUIRED)
+find_package(Boost 1.54 COMPONENTS thread log system filesystem regex REQUIRED)
 
 pkg_check_modules(GTKMM gtkmm-3.0 REQUIRED) # The name GTKMM is set here for the variables abouve
 
