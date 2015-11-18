@@ -2,9 +2,9 @@
 Version=1.0
 Name=juCi++
 Comment=A lightweight IDE
-Exec=/usr/local/bin/juci %F
+Exec=juci %F
 Terminal=false
 Type=Application
 StartupNotify=true
-MimeType=text/plain;text/x-c++hdr;text/x-c++src;text/x-chdr;text/x-csrc;text/x-c;text/x-c++;
+MimeType=text/plain;text/x-c++hdr;text/x-c++src;text/x-chdr;text/x-csrc;text/x-cmake;
 Categories=Utility;Development;TextEditor;
