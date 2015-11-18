@@ -3,9 +3,6 @@
 #include "singletons.h"
 #include <cmath>
 
-#include <iostream>
-using namespace std;
-
 namespace sigc {
 #ifndef SIGC_FUNCTORS_DEDUCE_RESULT_TYPE_WITH_DECLTYPE
   template <typename Functor>
