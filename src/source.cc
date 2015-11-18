@@ -535,11 +535,10 @@ void Source::View::replace_all(const std::string &replacement) {
 void Source::View::paste() {
   std::string text=Gtk::Clipboard::get()->wait_for_text();
   
-  //remove carriage returns (which leads to crash)
+  //replace carriage returns (which leads to crash) with newlines
   for(auto it=text.begin();it!=text.end();it++) {
-    if(*it=='\r') {
-      it=text.erase(it);
-    }
+    if(*it=='\r')
+      text.replace(it, it+1, "\n");
   }
 
   auto line=get_line_before();
