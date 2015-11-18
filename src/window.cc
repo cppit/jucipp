@@ -172,7 +172,9 @@ void Window::set_menu_actions() {
     auto time_now=std::chrono::system_clock::to_time_t(std::chrono::system_clock::now());
     boost::filesystem::path path = Dialog::new_folder();
     if(path!="" && boost::filesystem::exists(path)) {
-      if(boost::filesystem::last_write_time(path)>=time_now) {
+      boost::system::error_code ec;
+      auto last_write_time=boost::filesystem::last_write_time(path, ec);
+      if(!ec && last_write_time>=time_now) {
         if(Singleton::directories->current_path!="")
           Singleton::directories->update();
         Singleton::terminal->print("New folder "+path.string()+" created.\n");
