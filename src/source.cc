@@ -655,6 +655,8 @@ void Source::View::set_info(const std::string &info) {
 }
 
 void Source::View::spellcheck(const Gtk::TextIter& start, const Gtk::TextIter& end) {
+  if(spellcheck_checker==NULL)
+    return;
   auto iter=start;
   while(iter && iter<end) {
     if(is_word_iter(iter)) {
