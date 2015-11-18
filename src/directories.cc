@@ -91,10 +91,7 @@ Directories::Directories() : stop_update_thread(false) {
       if(update_paths.size()==0) {
         for(auto it=last_write_times.begin();it!=last_write_times.end();) {
           boost::system::error_code ec;
-          auto exists=boost::filesystem::exists(it->first, ec);
-          std::time_t last_write_time;
-          if(!ec && exists)
-            last_write_time=boost::filesystem::last_write_time(it->first, ec);
+          auto last_write_time=boost::filesystem::last_write_time(it->first, ec);
           if(!ec) {
             if(it->second.second<last_write_time) {
               update_paths.emplace_back(it->first);
@@ -199,9 +196,6 @@ void Directories::select(const boost::filesystem::path &path) {
 
 void Directories::add_path(const boost::filesystem::path& dir_path, const Gtk::TreeModel::Row &parent) {
   boost::system::error_code ec;
-  auto exists=boost::filesystem::exists(dir_path, ec);
-  if(ec || !exists)
-    return;
   auto last_write_time=boost::filesystem::last_write_time(dir_path, ec);
   if(ec)
     return;
