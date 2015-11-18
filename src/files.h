@@ -1,6 +1,6 @@
 #include <string>
 
-#define JUCI_VERSION "0.9.5"
+#define JUCI_VERSION "0.9.6"
 
 const std::string configjson =
 "{\n"
@@ -85,6 +85,7 @@ const std::string configjson =
 "        \"source_center_cursor\": \"<primary>l\",\n"
 "        \"source_find_documentation\": \"<primary><shift>d\",\n"
 "        \"source_goto_declaration\": \"<primary>d\",\n"
+"        \"source_goto_usage\": \"<primary>u\",\n"
 "        \"source_goto_method\": \"<primary>m\",\n"
 "        \"source_rename\": \"<primary>r\",\n"
 "        \"source_goto_next_diagnostic\": \"<primary>e\",\n"
@@ -117,12 +118,6 @@ const std::string configjson =
 "                \"@any\": \"https://www.google.com/search?btnI&q=\"\n"
 "            }\n"
 "        }\n"
-"    },\n"
-"    \"directoryfilter\": {\n"
-"        \"ignore\": [\n"
-"        ],\n"
-"        \"exceptions\": [\n"
-"        ]\n"
 "    }\n"
 "}\n";
 
