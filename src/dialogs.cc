@@ -3,6 +3,9 @@
 #include "singletons.h"
 #include <cmath>
 
+#include <iostream>
+using namespace std;
+
 namespace sigc {
 #ifndef SIGC_FUNCTORS_DEDUCE_RESULT_TYPE_WITH_DECLTYPE
   template <typename Functor>
@@ -42,9 +45,11 @@ std::string Dialog::gtk_dialog(const std::string &title,
   dialog.set_transient_for(*application->window);
   
   auto current_path=application->window->notebook.get_current_folder();
+  boost::system::error_code ec;
   if(current_path.empty())
-    current_path=boost::filesystem::current_path();
-  gtk_file_chooser_set_current_folder((GtkFileChooser*)dialog.gobj(), current_path.string().c_str());
+    current_path=boost::filesystem::current_path(ec);
+  if(!ec)
+    gtk_file_chooser_set_current_folder((GtkFileChooser*)dialog.gobj(), current_path.string().c_str());
 
   if (!file_name.empty())
     gtk_file_chooser_set_filename((GtkFileChooser*)dialog.gobj(), file_name.c_str());

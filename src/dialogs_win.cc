@@ -99,8 +99,11 @@ private:
     auto application=Glib::RefPtr<Application>::cast_static(gio_application);
     
     auto current_path=application->window->notebook.get_current_folder();
+    boost::system::error_code ec;
     if(current_path.empty())
-      current_path=boost::filesystem::current_path();
+      current_path=boost::filesystem::current_path(ec);
+    if(ec)
+      return false;
     
     std::wstring path=current_path.native();
     size_t pos=0;
