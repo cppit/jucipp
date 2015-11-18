@@ -371,8 +371,10 @@ void Source::View::configure() {
     note_tag->property_foreground()=style->property_foreground();
   }
     
-  if(Singleton::config->source.spellcheck_language.size()>0)
+  if(Singleton::config->source.spellcheck_language.size()>0) {
     aspell_config_replace(spellcheck_config, "lang", Singleton::config->source.spellcheck_language.c_str());
+    aspell_config_replace(spellcheck_config, "encoding", "utf-8");
+  }
   spellcheck_possible_err=new_aspell_speller(spellcheck_config);
   if(spellcheck_checker!=NULL)
     delete_aspell_speller(spellcheck_checker);
