@@ -65,6 +65,22 @@ make
 make install
 ```
 
+##Arch
+Install dependencies:
+```sh
+pacman -S git cmake make clang gtkmm3 gtksourceviewmm3 boost aspell aspell-en
+```
+
+Get juCi++ source, compile and install
+```sh
+git clone --recursive https://github.com/cppit/jucipp
+cd jucipp
+cmake .
+make
+# as root
+make install
+```
+
 <!--
 ## Windows with Cygwin (https://www.cygwin.com/)
 **Make sure the PATH environment variable does not include paths to non-Cygwin cmake, make and g++.**
