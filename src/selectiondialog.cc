@@ -38,6 +38,11 @@ void ListViewText::ListViewText::append(const std::string& value) {
   new_row->set_value(column_record.text, value);
 }
 
+void ListViewText::ListViewText::hide() {
+  Gtk::TreeView::hide();
+  list_store->clear();
+}
+
 SelectionDialogBase::SelectionDialogBase(Gtk::TextView& text_view, Glib::RefPtr<Gtk::TextBuffer::Mark> start_mark, bool show_search_entry, bool use_markup): text_view(text_view), 
 list_view_text(use_markup), start_mark(start_mark), show_search_entry(show_search_entry) {
   if(!show_search_entry)
@@ -99,6 +104,7 @@ void SelectionDialogBase::hide() {
   window->hide();
   if(tooltips)
     tooltips->hide();
+  list_view_text.hide();
   if(on_hide && shown)
     on_hide();
   shown=false;
