@@ -104,7 +104,6 @@ void SelectionDialogBase::hide() {
   window->hide();
   if(tooltips)
     tooltips->hide();
-  list_view_text.hide();
   if(on_hide && shown)
     on_hide();
   shown=false;
