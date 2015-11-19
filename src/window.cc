@@ -427,7 +427,7 @@ void Window::set_menu_actions() {
           if(!visible_rect.intersects(iter_rect)) {
             current_view->get_iter_at_location(iter, 0, visible_rect.get_y()+visible_rect.get_height()/3);
           }
-          current_view->selection_dialog=std::unique_ptr<SelectionDialog>(new SelectionDialog(*current_view, current_view->get_buffer()->create_mark(iter)));
+          current_view->selection_dialog=std::unique_ptr<SelectionDialog>(new SelectionDialog(*current_view, current_view->get_buffer()->create_mark(iter), true, true));
           auto rows=std::make_shared<std::unordered_map<std::string, Source::Offset> >();
           
           //First add usages in current file

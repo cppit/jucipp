@@ -1059,13 +1059,36 @@ Source::ClangViewAutocomplete(file_path, project_path, language) {
      (token.language->get_id()=="chdr" || token.language->get_id()=="cpphdr" || token.language->get_id()=="c" || token.language->get_id()=="cpp" || token.language->get_id()=="objc")) {
       auto offsets=clang_tokens->get_similar_token_offsets(static_cast<clang::CursorKind>(token.type), token.spelling, token.usr);
       for(auto &offset: offsets) {
+        size_t whitespaces_removed=0;
         auto start_iter=get_buffer()->get_iter_at_line(offset.first.line-1);
-        while(!start_iter.ends_line() && (*start_iter==' ' || *start_iter=='\t'))
+        while(!start_iter.ends_line() && (*start_iter==' ' || *start_iter=='\t')) {
           start_iter.forward_char();
+          whitespaces_removed++;
+        }
         auto end_iter=start_iter;
         while(!end_iter.ends_line())
           end_iter.forward_char();
-        usages.emplace_back(Offset(offset.first.line-1, offset.first.index-1, this->file_path), get_buffer()->get_text(start_iter, end_iter));
+        std::string line=Glib::Markup::escape_text(get_buffer()->get_text(start_iter, end_iter));
+        
+        //markup token as bold
+        size_t token_start_pos=offset.first.index-1-whitespaces_removed;
+        size_t token_end_pos=offset.second.index-1-whitespaces_removed;
+        size_t pos=0;
+        while((pos=line.find('&', pos))!=std::string::npos) {
+          size_t pos2=line.find(';', pos+2);
+          if(token_start_pos>pos) {
+            token_start_pos+=pos2-pos;
+            token_end_pos+=pos2-pos;
+          }
+          else if(token_end_pos>pos)
+            token_end_pos+=pos2-pos;
+          else
+            break;
+          pos=pos2+1;
+        }
+        line.insert(token_end_pos, "</b>");
+        line.insert(token_start_pos, "<b>");
+        usages.emplace_back(Offset(offset.first.line-1, offset.first.index-1, this->file_path), line);
       }
     }
     
@@ -1083,14 +1106,28 @@ Source::ClangViewAutocomplete(file_path, project_path, language) {
       if(!visible_rect.intersects(iter_rect)) {
         get_iter_at_location(iter, 0, visible_rect.get_y()+visible_rect.get_height()/3);
       }
-      selection_dialog=std::unique_ptr<SelectionDialog>(new SelectionDialog(*this, get_buffer()->create_mark(iter)));
+      selection_dialog=std::unique_ptr<SelectionDialog>(new SelectionDialog(*this, get_buffer()->create_mark(iter), true, true));
       auto rows=std::make_shared<std::unordered_map<std::string, clang::Offset> >();
       auto methods=clang_tokens->get_cxx_methods();
       if(methods.size()==0)
         return;
       for(auto &method: methods) {
-        (*rows)[method.first]=method.second;
-        selection_dialog->add_row(method.first);
+        std::string row=Glib::Markup::escape_text(method.first);
+        
+        //Add bold method token
+        size_t token_end_pos=row.find('(');
+        if(token_end_pos==0 || token_end_pos==std::string::npos)
+          continue;
+        auto pos=token_end_pos-1;
+        while(((row[pos]>='a' && row[pos]<='z') ||
+               (row[pos]>='A' && row[pos]<='Z') ||
+               (row[pos]>='0' && row[pos]<='9') || row[pos]=='_') && pos>0)
+          pos--;
+        row.insert(token_end_pos, "</b>");
+        row.insert(pos+1, "<b>");
+        
+        (*rows)[row]=method.second;
+        selection_dialog->add_row(row);
       }
       selection_dialog->on_select=[this, rows](const std::string& selected, bool hide_window) {
         auto offset=rows->at(selected);
