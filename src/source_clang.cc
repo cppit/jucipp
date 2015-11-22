@@ -1113,19 +1113,34 @@ Source::ClangViewAutocomplete(file_path, project_path, language) {
         return;
       for(auto &method: methods) {
         std::string row=Glib::Markup::escape_text(method.first);
-        
         //Add bold method token
         size_t token_end_pos=row.find('(');
         if(token_end_pos==0 || token_end_pos==std::string::npos)
           continue;
-        auto pos=token_end_pos-1;
-        while(((row[pos]>='a' && row[pos]<='z') ||
-               (row[pos]>='A' && row[pos]<='Z') ||
-               (row[pos]>='0' && row[pos]<='9') || row[pos]=='_') && pos>0)
+        if(token_end_pos>8 && row.substr(token_end_pos-4, 4)=="&gt;") {
+          token_end_pos-=8;
+          size_t angle_bracket_count=1;
+          do {
+            if(row.substr(token_end_pos-4, 4)=="&gt;") {
+              angle_bracket_count++;
+              token_end_pos-=4;
+            }
+            else if(row.substr(token_end_pos-4, 4)=="&lt;") {
+              angle_bracket_count--;
+              token_end_pos-=4;
+            }
+            else
+              token_end_pos--;
+          } while(angle_bracket_count>0 && token_end_pos>4);
+        }
+        auto pos=token_end_pos;
+        do {
           pos--;
+        } while(((row[pos]>='a' && row[pos]<='z') ||
+               (row[pos]>='A' && row[pos]<='Z') ||
+               (row[pos]>='0' && row[pos]<='9') || row[pos]=='_' || row[pos]=='~') && pos>0);
         row.insert(token_end_pos, "</b>");
         row.insert(pos+1, "<b>");
-        
         (*rows)[row]=method.second;
         selection_dialog->add_row(row);
       }
