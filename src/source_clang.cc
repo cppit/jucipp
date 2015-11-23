@@ -1112,7 +1112,7 @@ Source::ClangViewAutocomplete(file_path, project_path, language) {
       if(methods.size()==0)
         return;
       for(auto &method: methods) {
-        std::string row=Glib::Markup::escape_text(method.first);
+        std::string row=std::to_string(method.second.line)+": "+Glib::Markup::escape_text(method.first);
         //Add bold method token
         size_t token_end_pos=row.find('(');
         if(token_end_pos==0 || token_end_pos==std::string::npos)
