@@ -68,7 +68,8 @@ make install
 ##Arch
 Install dependencies:
 ```sh
-pacman -S git cmake make clang gtksourceviewmm3 boost aspell aspell-en
+#as root
+pacman -S git cmake make clang gtksourceviewmm boost aspell aspell-en
 ```
 
 Get juCi++ source, compile and install
