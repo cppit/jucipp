@@ -172,7 +172,9 @@ void Window::set_menu_actions() {
     auto time_now=std::chrono::system_clock::to_time_t(std::chrono::system_clock::now());
     boost::filesystem::path path = Dialog::new_folder();
     if(path!="" && boost::filesystem::exists(path)) {
-      if(boost::filesystem::last_write_time(path)>=time_now) {
+      boost::system::error_code ec;
+      auto last_write_time=boost::filesystem::last_write_time(path, ec);
+      if(!ec && last_write_time>=time_now) {
         if(Singleton::directories->current_path!="")
           Singleton::directories->update();
         Singleton::terminal->print("New folder "+path.string()+" created.\n");
@@ -425,7 +427,7 @@ void Window::set_menu_actions() {
           if(!visible_rect.intersects(iter_rect)) {
             current_view->get_iter_at_location(iter, 0, visible_rect.get_y()+visible_rect.get_height()/3);
           }
-          current_view->selection_dialog=std::unique_ptr<SelectionDialog>(new SelectionDialog(*current_view, current_view->get_buffer()->create_mark(iter)));
+          current_view->selection_dialog=std::unique_ptr<SelectionDialog>(new SelectionDialog(*current_view, current_view->get_buffer()->create_mark(iter), true, true));
           auto rows=std::make_shared<std::unordered_map<std::string, Source::Offset> >();
           
           //First add usages in current file
@@ -464,10 +466,7 @@ void Window::set_menu_actions() {
             notebook.open(declaration_file);
             auto view=notebook.get_current_view();
             view->get_buffer()->place_cursor(view->get_buffer()->get_iter_at_line_index(offset.line, offset.index));
-            while(g_main_context_pending(NULL))
-              g_main_context_iteration(NULL, false);
-            if(notebook.get_current_page()!=-1)
-              view->scroll_to(view->get_buffer()->get_insert(), 0.0, 1.0, 0.5);
+            view->scroll_to(view->get_buffer()->get_insert(), 0.0, 1.0, 0.5);
             view->delayed_tooltips_connection.disconnect();
           };
           current_view->selection_dialog->show();
@@ -877,7 +876,7 @@ void Window::rename_token_entry() {
   if(notebook.get_current_page()!=-1) {
     if(notebook.get_current_view()->get_token) {
       auto token=std::make_shared<Source::Token>(notebook.get_current_view()->get_token());
-      if(token) {
+      if(*token) {
         entry_box.labels.emplace_back();
         auto label_it=entry_box.labels.begin();
         label_it->update=[label_it](int state, const std::string& message){
