@@ -6,9 +6,28 @@
 #include "tooltips.h"
 #include <unordered_map>
 
+class ListViewText : public Gtk::TreeView {
+  class ColumnRecord : public Gtk::TreeModel::ColumnRecord {
+  public:
+    ColumnRecord() {
+      add(text);
+    }
+    Gtk::TreeModelColumn<std::string> text;
+  };
+public:
+  bool use_markup;
+  ListViewText(bool use_markup);
+  void append(const std::string& value);
+  void hide();
+private:
+  Glib::RefPtr<Gtk::ListStore> list_store;
+  ColumnRecord column_record;
+  Gtk::CellRendererText cell_renderer;
+};
+
 class SelectionDialogBase {
 public:
-  SelectionDialogBase(Gtk::TextView& text_view, Glib::RefPtr<Gtk::TextBuffer::Mark> start_mark, bool show_search_entry);
+  SelectionDialogBase(Gtk::TextView& text_view, Glib::RefPtr<Gtk::TextBuffer::Mark> start_mark, bool show_search_entry, bool use_markup);
   ~SelectionDialogBase();
   virtual void add_row(const std::string& row, const std::string& tooltip="");
   virtual void show();
@@ -25,7 +44,7 @@ protected:
   
   std::unique_ptr<Gtk::Window> window;
   Gtk::ScrolledWindow scrolled_window;
-  Gtk::ListViewText list_view_text;
+  ListViewText list_view_text;
   Gtk::Entry search_entry;
   bool show_search_entry;
   std::unique_ptr<Tooltips> tooltips;
@@ -37,7 +56,7 @@ private:
 
 class SelectionDialog : public SelectionDialogBase {
 public:
-  SelectionDialog(Gtk::TextView& text_view, Glib::RefPtr<Gtk::TextBuffer::Mark> start_mark, bool show_search_entry=true);
+  SelectionDialog(Gtk::TextView& text_view, Glib::RefPtr<Gtk::TextBuffer::Mark> start_mark, bool show_search_entry=true, bool use_markup=false);
   bool on_key_press(GdkEventKey* key);
   void show();
 };

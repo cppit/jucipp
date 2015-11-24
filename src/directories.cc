@@ -90,19 +90,16 @@ Directories::Directories() : stop_update_thread(false) {
       update_mutex.lock();
       if(update_paths.size()==0) {
         for(auto it=last_write_times.begin();it!=last_write_times.end();) {
-          try {
-            if(boost::filesystem::exists(it->first)) { //Added for older boost versions (no exception thrown)
-              if(it->second.second<boost::filesystem::last_write_time(it->first)) {
-                update_paths.emplace_back(it->first);
-              }
-              it++;
+          boost::system::error_code ec;
+          auto last_write_time=boost::filesystem::last_write_time(it->first, ec);
+          if(!ec) {
+            if(it->second.second<last_write_time) {
+              update_paths.emplace_back(it->first);
             }
-            else
-              it=last_write_times.erase(it);
+            it++;
           }
-          catch(const std::exception &e) {
+          else
             it=last_write_times.erase(it);
-          }
         }
         if(update_paths.size()>0)
           update_dispatcher();
@@ -198,7 +195,11 @@ void Directories::select(const boost::filesystem::path &path) {
 }
 
 void Directories::add_path(const boost::filesystem::path& dir_path, const Gtk::TreeModel::Row &parent) {
-  last_write_times[dir_path.string()]={parent, boost::filesystem::last_write_time(dir_path)};
+  boost::system::error_code ec;
+  auto last_write_time=boost::filesystem::last_write_time(dir_path, ec);
+  if(ec)
+    return;
+  last_write_times[dir_path.string()]={parent, last_write_time};
   std::unique_ptr<Gtk::TreeNodeChildren> children; //Gtk::TreeNodeChildren is missing default constructor...
   if(parent)
     children=std::unique_ptr<Gtk::TreeNodeChildren>(new Gtk::TreeNodeChildren(parent.children()));

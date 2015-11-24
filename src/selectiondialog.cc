@@ -15,8 +15,36 @@ namespace sigc {
 #endif
 }
 
-SelectionDialogBase::SelectionDialogBase(Gtk::TextView& text_view, Glib::RefPtr<Gtk::TextBuffer::Mark> start_mark, bool show_search_entry): text_view(text_view), 
-start_mark(start_mark), show_search_entry(show_search_entry), list_view_text(1, false, Gtk::SelectionMode::SELECTION_BROWSE) {
+ListViewText::ListViewText(bool use_markup) : Gtk::TreeView(), use_markup(use_markup) {
+  list_store = Gtk::ListStore::create(column_record);
+  set_model(list_store);
+  append_column("", cell_renderer);
+  if(use_markup)
+    get_column(0)->add_attribute(cell_renderer.property_markup(), column_record.text);
+  else
+    get_column(0)->add_attribute(cell_renderer.property_text(), column_record.text);
+  
+  get_selection()->set_mode(Gtk::SelectionMode::SELECTION_BROWSE);
+  set_enable_search(true);
+  set_headers_visible(false);
+  set_hscroll_policy(Gtk::ScrollablePolicy::SCROLL_NATURAL);
+  set_activate_on_single_click(true);
+  set_hover_selection(false);
+  set_rules_hint(true);
+}
+
+void ListViewText::ListViewText::append(const std::string& value) {
+  auto new_row=list_store->append();
+  new_row->set_value(column_record.text, value);
+}
+
+void ListViewText::ListViewText::hide() {
+  Gtk::TreeView::hide();
+  list_store->clear();
+}
+
+SelectionDialogBase::SelectionDialogBase(Gtk::TextView& text_view, Glib::RefPtr<Gtk::TextBuffer::Mark> start_mark, bool show_search_entry, bool use_markup): text_view(text_view), 
+list_view_text(use_markup), start_mark(start_mark), show_search_entry(show_search_entry) {
   if(!show_search_entry)
     window=std::unique_ptr<Gtk::Window>(new Gtk::Window(Gtk::WindowType::WINDOW_POPUP));
   else
@@ -27,13 +55,6 @@ start_mark(start_mark), show_search_entry(show_search_entry), list_view_text(1, 
   window->property_decorated()=false;
   window->set_skip_taskbar_hint(true);
   scrolled_window.set_policy(Gtk::PolicyType::POLICY_AUTOMATIC, Gtk::PolicyType::POLICY_AUTOMATIC);
-  list_view_text.set_enable_search(true);
-  list_view_text.set_headers_visible(false);
-  list_view_text.set_hscroll_policy(Gtk::ScrollablePolicy::SCROLL_NATURAL);
-  list_view_text.set_activate_on_single_click(true);
-  list_view_text.set_hover_selection(false);
-  list_view_text.set_rules_hint(true);
-  //list_view_text.set_fixed_height_mode(true); //TODO: This is buggy on OS X, remember to post an issue on GTK+ 3
 
   list_view_text.signal_realize().connect([this](){
     resize();
@@ -89,8 +110,8 @@ void SelectionDialogBase::hide() {
 }
 
 void SelectionDialogBase::update_tooltips() {
-  if(list_view_text.get_selected().size()>0) {
-    auto it=list_view_text.get_selection()->get_selected();
+  auto it=list_view_text.get_selection()->get_selected();
+  if(it) {
     std::string row;
     it->get_value(0, row);
     if(row!=last_row || last_row.size()==0) {
@@ -155,7 +176,7 @@ void SelectionDialogBase::resize() {
   }
 }
 
-SelectionDialog::SelectionDialog(Gtk::TextView& text_view, Glib::RefPtr<Gtk::TextBuffer::Mark> start_mark, bool show_search_entry) : SelectionDialogBase(text_view, start_mark, show_search_entry) {}
+SelectionDialog::SelectionDialog(Gtk::TextView& text_view, Glib::RefPtr<Gtk::TextBuffer::Mark> start_mark, bool show_search_entry, bool use_markup) : SelectionDialogBase(text_view, start_mark, show_search_entry, use_markup) {}
 
 void SelectionDialog::show() {
   SelectionDialogBase::show();
@@ -168,6 +189,14 @@ void SelectionDialog::show() {
     auto search_key_lc=*search_key;
     std::transform(row_lc.begin(), row_lc.end(), row_lc.begin(), ::tolower);
     std::transform(search_key_lc.begin(), search_key_lc.end(), search_key_lc.begin(), ::tolower);
+    if(list_view_text.use_markup) {
+      size_t pos=0;
+      while((pos=row_lc.find('<', pos))!=std::string::npos) {
+        auto pos2=row_lc.find('>', pos+1);
+        row_lc.erase(pos, pos2-pos+1);
+      }
+      search_key_lc=Glib::Markup::escape_text(search_key_lc);
+    }
     if(row_lc.find(search_key_lc)!=std::string::npos)
       return true;
     return false;
@@ -221,8 +250,8 @@ void SelectionDialog::show() {
   });
   
   auto activate=[this](){
-    if(on_select && list_view_text.get_selected().size()>0) {
-      auto it=list_view_text.get_selection()->get_selected();
+    auto it=list_view_text.get_selection()->get_selected();
+    if(on_select && it) {
       std::string row;
       it->get_value(0, row);
       on_select(row, true);
@@ -288,7 +317,7 @@ bool SelectionDialog::on_key_press(GdkEventKey* key) {
   return false;
 }
 
-CompletionDialog::CompletionDialog(Gtk::TextView& text_view, Glib::RefPtr<Gtk::TextBuffer::Mark> start_mark) : SelectionDialogBase(text_view, start_mark, false) {}
+CompletionDialog::CompletionDialog(Gtk::TextView& text_view, Glib::RefPtr<Gtk::TextBuffer::Mark> start_mark) : SelectionDialogBase(text_view, start_mark, false, false) {}
 
 void CompletionDialog::show() {
   SelectionDialogBase::show();
@@ -344,8 +373,8 @@ void CompletionDialog::show() {
 void CompletionDialog::select(bool hide_window) {
   row_in_entry=true;
   
-  if(list_view_text.get_selected().size()>0) {
-    auto it=list_view_text.get_selection()->get_selected();
+  auto it=list_view_text.get_selection()->get_selected();
+  if(it) {
     std::string row;
     it->get_value(0, row);
     if(on_select)
