@@ -682,7 +682,7 @@ bool Window::on_delete_event (GdkEventAny *event) {
   return true;
 }
 
-void Window::on_hide() {
+void Window::hide() {
   auto size=notebook.size();
   for(int c=0;c<size;c++) {
     if(!notebook.close_current_page())

@@ -29,7 +29,7 @@ private:
   void configure();
   void set_menu_actions();
   void activate_menu_items(bool activate=true);
-  void on_hide() override;
+  void hide();
   void search_and_replace_entry();
   void set_tab_entry();
   void goto_line_entry();
