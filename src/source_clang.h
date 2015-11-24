@@ -5,7 +5,7 @@
 #include <atomic>
 #include <mutex>
 #include <set>
-#include <regex>
+#include <boost/regex.hpp>
 #include "clangmm.h"
 #include "source.h"
 #include "terminal.h"
@@ -42,9 +42,9 @@ namespace Source {
     virtual void show_diagnostic_tooltips(const Gdk::Rectangle &rectangle);
     virtual void show_type_tooltips(const Gdk::Rectangle &rectangle);
     
-    std::regex bracket_regex;
-    std::regex no_bracket_statement_regex;
-    std::regex no_bracket_no_para_statement_regex;
+    boost::regex bracket_regex;
+    boost::regex no_bracket_statement_regex;
+    boost::regex no_bracket_no_para_statement_regex;
     
     std::set<int> diagnostic_offsets;
     std::vector<FixIt> fix_its;
@@ -121,7 +121,6 @@ namespace Source {
     void tag_similar_tokens(const Token &token);
     Glib::RefPtr<Gtk::TextTag> similar_tokens_tag;
     Token last_tagged_token;
-    std::unique_ptr<SelectionDialog> selection_dialog;
     bool renaming=false;
   };
   

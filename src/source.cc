@@ -371,8 +371,10 @@ void Source::View::configure() {
     note_tag->property_foreground()=style->property_foreground();
   }
     
-  if(Singleton::config->source.spellcheck_language.size()>0)
+  if(Singleton::config->source.spellcheck_language.size()>0) {
     aspell_config_replace(spellcheck_config, "lang", Singleton::config->source.spellcheck_language.c_str());
+    aspell_config_replace(spellcheck_config, "encoding", "utf-8");
+  }
   spellcheck_possible_err=new_aspell_speller(spellcheck_config);
   if(spellcheck_checker!=NULL)
     delete_aspell_speller(spellcheck_checker);
@@ -533,10 +535,13 @@ void Source::View::replace_all(const std::string &replacement) {
 void Source::View::paste() {
   std::string text=Gtk::Clipboard::get()->wait_for_text();
   
-  //remove carriage returns (which leads to crash)
-  for(auto it=text.begin();it!=text.end();it++) {
-    if(*it=='\r') {
-      it=text.erase(it);
+  //Replace carriage returns (which leads to crash) with newlines
+  for(size_t c=0;c<text.size();c++) {
+    if(text[c]=='\r') {
+      if((c+1)<text.size() && text[c+1]=='\n')
+        text.replace(c, 2, "\n");
+      else
+        text.replace(c, 1, "\n");
     }
   }
 
@@ -655,6 +660,8 @@ void Source::View::set_info(const std::string &info) {
 }
 
 void Source::View::spellcheck(const Gtk::TextIter& start, const Gtk::TextIter& end) {
+  if(spellcheck_checker==NULL)
+    return;
   auto iter=start;
   while(iter && iter<end) {
     if(is_word_iter(iter)) {

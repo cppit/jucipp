@@ -1,8 +1,10 @@
 [Desktop Entry]
+Version=1.0
 Name=juCi++
 Comment=A lightweight IDE
 Exec=juci %F
 Terminal=false
 Type=Application
 StartupNotify=true
-MimeType=text/plain;
+MimeType=text/plain;text/x-c++hdr;text/x-c++src;text/x-chdr;text/x-csrc;text/x-cmake;
+Categories=Utility;Development;TextEditor;

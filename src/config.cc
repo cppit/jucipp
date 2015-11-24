@@ -81,7 +81,6 @@ void Config::retrieve_config() {
     menu.keys[i.first] = i.second.get_value<std::string>();
   }
   get_source();
-  get_directory_filter();
 
   window.theme_name=cfg.get<std::string>("gtk_theme.name");
   window.theme_variant=cfg.get<std::string>("gtk_theme.variant");
@@ -187,16 +186,4 @@ void Config::get_source() {
       queries[i.first]=i.second.get_value<std::string>();
     }
   }
-}
-
-void Config::get_directory_filter() {
-  boost::property_tree::ptree dir_json = cfg.get_child("directoryfilter");
-  boost::property_tree::ptree ignore_json = dir_json.get_child("ignore");
-  boost::property_tree::ptree except_json = dir_json.get_child("exceptions");
-  directories.exceptions.clear();
-  directories.ignored.clear();
-  for ( auto &i : except_json )
-    directories.exceptions.emplace_back(i.second.get_value<std::string>());
-  for ( auto &i : ignore_json )
-    directories.ignored.emplace_back(i.second.get_value<std::string>());
 }

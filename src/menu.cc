@@ -211,6 +211,11 @@ void Menu::init() {
              +accels["source_goto_declaration"]+ //For Ubuntu...
   "        </item>"
   "        <item>"
+  "          <attribute name='label' translatable='yes'>_Go to Usage</attribute>"
+  "          <attribute name='action'>app.source_goto_usage</attribute>"
+             +accels["source_goto_usage"]+ //For Ubuntu...
+  "        </item>"
+  "        <item>"
   "          <attribute name='label' translatable='yes'>_Go to Method</attribute>"
   "          <attribute name='action'>app.source_goto_method</attribute>"
              +accels["source_goto_method"]+ //For Ubuntu...

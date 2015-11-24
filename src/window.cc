@@ -172,7 +172,9 @@ void Window::set_menu_actions() {
     auto time_now=std::chrono::system_clock::to_time_t(std::chrono::system_clock::now());
     boost::filesystem::path path = Dialog::new_folder();
     if(path!="" && boost::filesystem::exists(path)) {
-      if(boost::filesystem::last_write_time(path)>=time_now) {
+      boost::system::error_code ec;
+      auto last_write_time=boost::filesystem::last_write_time(path, ec);
+      if(!ec && last_write_time>=time_now) {
         if(Singleton::directories->current_path!="")
           Singleton::directories->update();
         Singleton::terminal->print("New folder "+path.string()+" created.\n");
@@ -382,10 +384,15 @@ void Window::set_menu_actions() {
     if(notebook.get_current_page()!=-1) {
       if(notebook.get_current_view()->get_declaration_location) {
         auto location=notebook.get_current_view()->get_declaration_location();
-        if(location.first.size()>0) {
-          notebook.open(location.first);
-          auto line=static_cast<int>(location.second.line)-1;
-          auto index=static_cast<int>(location.second.index)-1;
+        if(!location.file_path.empty()) {
+          boost::filesystem::path declaration_file;
+          boost::system::error_code ec;
+          declaration_file=boost::filesystem::canonical(location.file_path, ec);
+          if(ec)
+            declaration_file=location.file_path;
+          notebook.open(declaration_file);
+          auto line=static_cast<int>(location.line)-1;
+          auto index=static_cast<int>(location.index)-1;
           auto buffer=notebook.get_current_view()->get_buffer();
           line=std::min(line, buffer->get_line_count()-1);
           if(line>=0) {
@@ -401,6 +408,68 @@ void Window::set_menu_actions() {
             if(notebook.get_current_page()!=-1)
               notebook.get_current_view()->scroll_to(notebook.get_current_view()->get_buffer()->get_insert(), 0.0, 1.0, 0.5);
           }
+        }
+      }
+    }
+  });
+  menu->add_action("source_goto_usage", [this]() {
+    if(notebook.get_current_page()!=-1) {
+      auto current_view=notebook.get_current_view();
+      if(current_view->get_token && current_view->get_usages) {
+        auto token=current_view->get_token();
+        if(token) {
+          auto iter=current_view->get_buffer()->get_insert()->get_iter();
+          Gdk::Rectangle visible_rect;
+          current_view->get_visible_rect(visible_rect);
+          Gdk::Rectangle iter_rect;
+          current_view->get_iter_location(iter, iter_rect);
+          iter_rect.set_width(1);
+          if(!visible_rect.intersects(iter_rect)) {
+            current_view->get_iter_at_location(iter, 0, visible_rect.get_y()+visible_rect.get_height()/3);
+          }
+          current_view->selection_dialog=std::unique_ptr<SelectionDialog>(new SelectionDialog(*current_view, current_view->get_buffer()->create_mark(iter), true, true));
+          auto rows=std::make_shared<std::unordered_map<std::string, Source::Offset> >();
+          
+          //First add usages in current file
+          auto usages=current_view->get_usages(token);
+          for(auto &usage: usages) {
+            auto iter=current_view->get_buffer()->get_iter_at_line_index(usage.first.line, usage.first.index);
+            auto row=std::to_string(iter.get_line()+1)+':'+std::to_string(iter.get_line_offset()+1)+' '+usage.second;
+            (*rows)[row]=usage.first;
+            current_view->selection_dialog->add_row(row);
+          }
+          //Then the remaining opened files
+          for(int page=0;page<notebook.size();page++) {
+            auto view=notebook.get_view(page);
+            if(view!=current_view) {
+              if(view->get_usages) {
+                auto usages=view->get_usages(token);
+                for(auto &usage: usages) {
+                  auto iter=view->get_buffer()->get_iter_at_line_index(usage.first.line, usage.first.index);
+                  auto row=usage.first.file_path.filename().string()+":"+std::to_string(iter.get_line()+1)+':'+std::to_string(iter.get_line_offset()+1)+' '+usage.second;
+                  (*rows)[row]=usage.first;
+                  current_view->selection_dialog->add_row(row);
+                }
+              }
+            }
+          }
+          
+          if(rows->size()==0)
+            return;
+          current_view->selection_dialog->on_select=[this, rows](const std::string& selected, bool hide_window) {
+            auto offset=rows->at(selected);
+            boost::filesystem::path declaration_file;
+            boost::system::error_code ec;
+            declaration_file=boost::filesystem::canonical(offset.file_path, ec);
+            if(ec)
+              declaration_file=offset.file_path;
+            notebook.open(declaration_file);
+            auto view=notebook.get_current_view();
+            view->get_buffer()->place_cursor(view->get_buffer()->get_iter_at_line_index(offset.line, offset.index));
+            view->scroll_to(view->get_buffer()->get_insert(), 0.0, 1.0, 0.5);
+            view->delayed_tooltips_connection.disconnect();
+          };
+          current_view->selection_dialog->show();
         }
       }
     }
@@ -567,6 +636,7 @@ void Window::activate_menu_items(bool activate) {
   menu->actions["source_indentation_auto_indent_buffer"]->set_enabled(activate ? static_cast<bool>(notebook.get_current_view()->auto_indent) : false);
   menu->actions["source_find_documentation"]->set_enabled(activate ? static_cast<bool>(notebook.get_current_view()->get_token_data) : false);
   menu->actions["source_goto_declaration"]->set_enabled(activate ? static_cast<bool>(notebook.get_current_view()->get_declaration_location) : false);
+  menu->actions["source_goto_usage"]->set_enabled(activate ? static_cast<bool>(notebook.get_current_view()->get_usages) : false);
   menu->actions["source_goto_method"]->set_enabled(activate ? static_cast<bool>(notebook.get_current_view()->goto_method) : false);
   menu->actions["source_rename"]->set_enabled(activate ? static_cast<bool>(notebook.get_current_view()->rename_similar_tokens) : false);
   menu->actions["source_goto_next_diagnostic"]->set_enabled(activate ? static_cast<bool>(notebook.get_current_view()->goto_next_diagnostic) : false);
@@ -806,7 +876,7 @@ void Window::rename_token_entry() {
   if(notebook.get_current_page()!=-1) {
     if(notebook.get_current_view()->get_token) {
       auto token=std::make_shared<Source::Token>(notebook.get_current_view()->get_token());
-      if(token) {
+      if(*token) {
         entry_box.labels.emplace_back();
         auto label_it=entry_box.labels.begin();
         label_it->update=[label_it](int state, const std::string& message){

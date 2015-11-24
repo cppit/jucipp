@@ -31,12 +31,6 @@ public:
     int history_size;
   };
   
-  class Directories {
-  public:
-    std::vector<std::string> ignored;
-    std::vector<std::string> exceptions;
-  };
-  
   class Source {
   public:
     class DocumentationSearch {
@@ -72,7 +66,6 @@ public:
   Menu menu;
   Window window;
   Terminal terminal;
-  Directories directories;
   Source source;
   
   const boost::filesystem::path& juci_home_path() const { return home; }
@@ -83,7 +76,6 @@ private:
   bool check_config_file(const boost::property_tree::ptree &default_cfg, std::string parent_path="");
   void update_config_file();
   void get_source();
-  void get_directory_filter();
 
   boost::property_tree::ptree cfg;
   boost::filesystem::path home;
