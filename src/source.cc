@@ -1245,7 +1245,18 @@ std::pair<Gtk::TextIter, Gtk::TextIter> Source::View::spellcheck_get_word(Gtk::T
 }
 
 void Source::View::spellcheck_word(const Gtk::TextIter& start, const Gtk::TextIter& end) {
-  auto word=get_buffer()->get_text(start, end);
+  auto spellcheck_start=start;
+  auto spellcheck_end=end;
+  if((spellcheck_end.get_offset()-spellcheck_start.get_offset())>=2) {
+    auto last_char=spellcheck_end;
+    last_char.backward_char();
+    if(*spellcheck_start=='\'' && *last_char=='\'') {
+      spellcheck_start.forward_char();
+      spellcheck_end.backward_char();
+    }
+  }
+  
+  auto word=get_buffer()->get_text(spellcheck_start, spellcheck_end);
   if(word.size()>0) {
     auto correct = aspell_speller_check(spellcheck_checker, word.data(), word.bytes());
     if(correct==0)
