@@ -93,9 +93,14 @@ Window::Window() : compiling(false) {
       Singleton::directories->select(notebook.get_current_view()->file_path);
       
       if(auto source_view=dynamic_cast<Source::ClangView*>(notebook.get_current_view())) {
-        if(source_view->reparse_needed) {
-          source_view->start_reparse();
-          source_view->reparse_needed=false;
+        if(source_view->full_reparse_needed) {
+          if(!source_view->full_reparse())
+            Singleton::terminal->async_print("Error: failed to reparse "+source_view->file_path.string()+". Please reopen the file manually.\n", true);
+          source_view->full_reparse_needed=false;
+        }
+        else if(source_view->soft_reparse_needed) {
+          source_view->soft_reparse();
+          source_view->soft_reparse_needed=false;
         }
       }
       

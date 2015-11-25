@@ -396,7 +396,7 @@ void Source::View::set_tooltip_events() {
         delayed_tooltips_connection=Glib::signal_timeout().connect([this, x, y]() {
           Tooltips::init();
           Gdk::Rectangle rectangle(x, y, 1, 1);
-          if(source_readable) {
+          if(parsed) {
             show_type_tooltips(rectangle);
             show_diagnostic_tooltips(rectangle);
           }
@@ -426,7 +426,7 @@ void Source::View::set_tooltip_events() {
         rectangle.set_x(location_window_x-2);
         rectangle.set_y(location_window_y);
         rectangle.set_width(5);
-        if(source_readable) {
+        if(parsed) {
           show_type_tooltips(rectangle);
           show_diagnostic_tooltips(rectangle);
         }
