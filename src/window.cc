@@ -81,31 +81,30 @@ Window::Window() : compiling(false) {
 
   notebook.signal_switch_page().connect([this](Gtk::Widget* page, guint page_num) {
     if(notebook.get_current_page()!=-1) {
+      auto view=notebook.get_current_view();
       if(search_entry_shown && entry_box.labels.size()>0) {
-        notebook.get_current_view()->update_search_occurrences=[this](int number){
+        view->update_search_occurrences=[this](int number){
           entry_box.labels.begin()->update(0, std::to_string(number));
         };
-        notebook.get_current_view()->search_highlight(last_search, case_sensitive_search, regex_search);
+        view->search_highlight(last_search, case_sensitive_search, regex_search);
       }
 
       activate_menu_items();
       
-      Singleton::directories->select(notebook.get_current_view()->file_path);
+      Singleton::directories->select(view->file_path);
       
-      if(auto source_view=dynamic_cast<Source::ClangView*>(notebook.get_current_view())) {
-        if(source_view->full_reparse_needed) {
-          if(!source_view->full_reparse())
-            Singleton::terminal->async_print("Error: failed to reparse "+source_view->file_path.string()+". Please reopen the file manually.\n", true);
-          source_view->full_reparse_needed=false;
-        }
-        else if(source_view->soft_reparse_needed) {
-          source_view->soft_reparse();
-          source_view->soft_reparse_needed=false;
-        }
+      if(view->full_reparse_needed) {
+        if(!view->full_reparse())
+          Singleton::terminal->async_print("Error: failed to reparse "+view->file_path.string()+". Please reopen the file manually.\n", true);
+        view->full_reparse_needed=false;
+      }
+      else if(view->soft_reparse_needed) {
+        view->soft_reparse();
+        view->soft_reparse_needed=false;
       }
       
-      notebook.get_current_view()->set_status(notebook.get_current_view()->status);
-      notebook.get_current_view()->set_info(notebook.get_current_view()->info);
+      view->set_status(view->status);
+      view->set_info(view->info);
     }
   });
   notebook.signal_page_removed().connect([this](Gtk::Widget* page, guint page_num) {
@@ -679,7 +678,7 @@ bool Window::on_key_press_event(GdkEventKey *event) {
   }
 #endif
 
-  return Gtk::Window::on_key_press_event(event);
+  return Gtk::ApplicationWindow::on_key_press_event(event);
 }
 
 bool Window::on_delete_event(GdkEventAny *event) {
