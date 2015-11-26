@@ -396,7 +396,7 @@ void Source::View::set_tooltip_events() {
         delayed_tooltips_connection=Glib::signal_timeout().connect([this, x, y]() {
           Tooltips::init();
           Gdk::Rectangle rectangle(x, y, 1, 1);
-          if(source_readable) {
+          if(parsed) {
             show_type_tooltips(rectangle);
             show_diagnostic_tooltips(rectangle);
           }
@@ -426,7 +426,7 @@ void Source::View::set_tooltip_events() {
         rectangle.set_x(location_window_x-2);
         rectangle.set_y(location_window_y);
         rectangle.set_width(5);
-        if(source_readable) {
+        if(parsed) {
           show_type_tooltips(rectangle);
           show_diagnostic_tooltips(rectangle);
         }
@@ -1245,7 +1245,18 @@ std::pair<Gtk::TextIter, Gtk::TextIter> Source::View::spellcheck_get_word(Gtk::T
 }
 
 void Source::View::spellcheck_word(const Gtk::TextIter& start, const Gtk::TextIter& end) {
-  auto word=get_buffer()->get_text(start, end);
+  auto spellcheck_start=start;
+  auto spellcheck_end=end;
+  if((spellcheck_end.get_offset()-spellcheck_start.get_offset())>=2) {
+    auto last_char=spellcheck_end;
+    last_char.backward_char();
+    if(*spellcheck_start=='\'' && *last_char=='\'') {
+      spellcheck_start.forward_char();
+      spellcheck_end.backward_char();
+    }
+  }
+  
+  auto word=get_buffer()->get_text(spellcheck_start, spellcheck_end);
   if(word.size()>0) {
     auto correct = aspell_speller_check(spellcheck_checker, word.data(), word.bytes());
     if(correct==0)

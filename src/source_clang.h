@@ -22,13 +22,13 @@ namespace Source {
     };
     
     ClangViewParse(const boost::filesystem::path &file_path, const boost::filesystem::path& project_path, Glib::RefPtr<Gsv::Language> language);
-    virtual void configure();
+    bool on_key_press_event(GdkEventKey* key) override;
     
-    void start_reparse();
-    bool reparse_needed=false;
+    void configure() override;
+    
+    void soft_reparse() override;
   protected:
     void init_parse();
-    bool on_key_press_event(GdkEventKey* key);
     std::unique_ptr<clang::TranslationUnit> clang_tu;
     std::mutex parsing_mutex;
     std::unique_ptr<clang::Tokens> clang_tokens;
@@ -39,8 +39,8 @@ namespace Source {
     std::atomic<bool> parse_thread_stop;
     std::atomic<bool> parse_error;
     
-    virtual void show_diagnostic_tooltips(const Gdk::Rectangle &rectangle);
-    virtual void show_type_tooltips(const Gdk::Rectangle &rectangle);
+    void show_diagnostic_tooltips(const Gdk::Rectangle &rectangle) override;
+    void show_type_tooltips(const Gdk::Rectangle &rectangle) override;
     
     boost::regex bracket_regex;
     boost::regex no_bracket_statement_regex;
@@ -81,10 +81,11 @@ namespace Source {
     };
     
     ClangViewAutocomplete(const boost::filesystem::path &file_path, const boost::filesystem::path& project_path, Glib::RefPtr<Gsv::Language> language);
+    bool on_key_press_event(GdkEventKey* key) override;
+    
     virtual void async_delete();
-    bool restart_parse();
+    bool full_reparse() override;
   protected:
-    bool on_key_press_event(GdkEventKey* key);
     std::thread autocomplete_thread;
     sigc::connection autocomplete_done_connection;
     sigc::connection autocomplete_fail_connection;
@@ -105,10 +106,10 @@ namespace Source {
     std::mutex prefix_mutex;
     
     Glib::Dispatcher do_delete_object;
-    Glib::Dispatcher do_restart_parse;
+    Glib::Dispatcher do_full_reparse;
     std::thread delete_thread;
-    std::thread restart_parse_thread;
-    bool restart_parse_running=false;
+    std::thread full_reparse_thread;
+    bool full_reparse_running=false;
   };
 
   class ClangViewRefactor : public ClangViewAutocomplete {
@@ -127,7 +128,7 @@ namespace Source {
   class ClangView : public ClangViewRefactor {
   public:
     ClangView(const boost::filesystem::path &file_path, const boost::filesystem::path& project_path, Glib::RefPtr<Gsv::Language> language);
-    virtual void async_delete();
+    void async_delete() override;
   };
 }
 

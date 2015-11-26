@@ -205,7 +205,7 @@ bool Notebook::save(int page, bool reparse_needed) {
             for(auto a_view: source_views) {
               if(auto a_clang_view=dynamic_cast<Source::ClangView*>(a_view)) {
                   if(clang_view!=a_clang_view)
-                    a_clang_view->reparse_needed=true;
+                    a_clang_view->soft_reparse_needed=true;
               }
             }
           }
@@ -230,12 +230,8 @@ bool Notebook::save(int page, bool reparse_needed) {
         if(project_path!="") {
           for(auto source_view: source_views) {
             if(auto source_clang_view=dynamic_cast<Source::ClangView*>(source_view)) {
-              if(project_path==source_clang_view->project_path) {
-                if(source_clang_view->restart_parse())
-                  Singleton::terminal->async_print("Reparsing "+source_clang_view->file_path.string()+"\n");
-                else
-                  Singleton::terminal->async_print("Error: failed to reparse "+source_clang_view->file_path.string()+". Please reopen the file manually.\n", true);
-              }
+              if(project_path==source_clang_view->project_path)
+                source_clang_view->full_reparse_needed=true;
             }
           }
         }

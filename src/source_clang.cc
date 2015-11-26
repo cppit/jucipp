@@ -48,7 +48,7 @@ Source::View(file_path, project_path, language), parse_error(false) {
       if(parsing_mutex.try_lock()) {
         update_syntax();
         update_diagnostics();
-        source_readable=true;
+        parsed=true;
         set_status("");
         parsing_mutex.unlock();
       }
@@ -67,7 +67,7 @@ Source::View(file_path, project_path, language), parse_error(false) {
   init_parse();
   
   get_buffer()->signal_changed().connect([this]() {
-    start_reparse();
+    soft_reparse();
     type_tooltips.hide();
     diagnostic_tooltips.hide();
   });
@@ -108,7 +108,7 @@ void Source::ClangViewParse::configure() {
 void Source::ClangViewParse::init_parse() {
   type_tooltips.hide();
   diagnostic_tooltips.hide();
-  source_readable=false;
+  parsed=false;
   parse_thread_go=true;
   parse_thread_mapped=false;
   parse_thread_stop=false;
@@ -170,12 +170,12 @@ std::map<std::string, std::string> Source::ClangViewParse::get_buffer_map() cons
   return buffer_map;
 }
 
-void Source::ClangViewParse::start_reparse() {
+void Source::ClangViewParse::soft_reparse() {
   parse_thread_mapped=false;
-  source_readable=false;
+  parsed=false;
   delayed_reparse_connection.disconnect();
   delayed_reparse_connection=Glib::signal_timeout().connect([this]() {
-    source_readable=false;
+    parsed=false;
     parse_thread_go=true;
     set_status("parsing...");
     return false;
@@ -367,7 +367,7 @@ void Source::ClangViewParse::show_diagnostic_tooltips(const Gdk::Rectangle &rect
 }
 
 void Source::ClangViewParse::show_type_tooltips(const Gdk::Rectangle &rectangle) {
-  if(source_readable) {
+  if(parsed) {
     Gtk::TextIter iter;
     int location_x, location_y;
     window_to_buffer_coords(Gtk::TextWindowType::TEXT_WINDOW_TEXT, rectangle.get_x(), rectangle.get_y(), location_x, location_y);
@@ -650,7 +650,7 @@ Source::ClangViewParse(file_path, project_path, language), autocomplete_cancel_s
   
   autocomplete_fail_connection=autocomplete_fail.connect([this]() {
     Singleton::terminal->print("Error: autocomplete failed, reparsing "+this->file_path.string()+"\n", true);
-    restart_parse();
+    full_reparse();
     autocomplete_starting=false;
     autocomplete_cancel_starting=false;
   });
@@ -661,9 +661,9 @@ Source::ClangViewParse(file_path, project_path, language), autocomplete_cancel_s
     do_delete_object_connection.disconnect();
     delete this;
   });
-  do_restart_parse.connect([this](){
+  do_full_reparse.connect([this](){
     init_parse();
-    restart_parse_running=false;
+    full_reparse_running=false;
   });
 }
 
@@ -738,8 +738,8 @@ void Source::ClangViewAutocomplete::autocomplete() {
         completion_dialog->on_hide=[this](){
           get_source_buffer()->end_user_action();
           completion_dialog_shown=false;
-          source_readable=false;
-          start_reparse();
+          parsed=false;
+          soft_reparse();
         };
         completion_dialog->on_select=[this, rows](const std::string& selected, bool hide_window) {
           auto row = rows->at(selected);
@@ -798,11 +798,11 @@ void Source::ClangViewAutocomplete::autocomplete() {
           completion_dialog->show();
         }
         else
-          start_reparse();
+          soft_reparse();
       }
       else {
         set_status("");
-        start_reparse();
+        soft_reparse();
         start_autocomplete();
       }
     });
@@ -874,8 +874,8 @@ void Source::ClangViewAutocomplete::async_delete() {
   parse_thread_stop=true;
   delete_thread=std::thread([this](){
     //TODO: Is it possible to stop the clang-process in progress?
-    if(restart_parse_thread.joinable())
-      restart_parse_thread.join();
+    if(full_reparse_thread.joinable())
+      full_reparse_thread.join();
     if(parse_thread.joinable())
       parse_thread.join();
     if(autocomplete_thread.joinable())
@@ -884,19 +884,19 @@ void Source::ClangViewAutocomplete::async_delete() {
   });
 }
 
-bool Source::ClangViewAutocomplete::restart_parse() {
-  if(!restart_parse_running && !parse_error) {
-    reparse_needed=false;
-    restart_parse_running=true;
+bool Source::ClangViewAutocomplete::full_reparse() {
+  if(!full_reparse_running && !parse_error) {
+    soft_reparse_needed=false;
+    full_reparse_running=true;
     parse_thread_stop=true;
-    if(restart_parse_thread.joinable())
-      restart_parse_thread.join();
-    restart_parse_thread=std::thread([this](){
+    if(full_reparse_thread.joinable())
+      full_reparse_thread.join();
+    full_reparse_thread=std::thread([this](){
       if(parse_thread.joinable())
         parse_thread.join();
       if(autocomplete_thread.joinable())
         autocomplete_thread.join();
-      do_restart_parse();
+      do_full_reparse();
     });
     return true;
   }
@@ -972,7 +972,7 @@ Source::ClangViewAutocomplete(file_path, project_path, language) {
   };
   
   get_token=[this]() -> Token {
-    if(source_readable) {
+    if(parsed) {
       auto iter=get_buffer()->get_insert()->get_iter();
       auto line=(unsigned)iter.get_line();
       auto index=(unsigned)iter.get_line_index();
@@ -994,7 +994,7 @@ Source::ClangViewAutocomplete(file_path, project_path, language) {
   
   rename_similar_tokens=[this](const Token &token, const std::string &text) {
     size_t number=0;
-    if(source_readable && token.language &&
+    if(parsed && token.language &&
        (token.language->get_id()=="chdr" || token.language->get_id()=="cpphdr" || token.language->get_id()=="c" || token.language->get_id()=="cpp" || token.language->get_id()=="objc")) {
       auto offsets=clang_tokens->get_similar_token_offsets(static_cast<clang::CursorKind>(token.type), token.spelling, token.usr);
       std::vector<std::pair<Glib::RefPtr<Gtk::TextMark>, Glib::RefPtr<Gtk::TextMark> > > marks;
@@ -1029,7 +1029,7 @@ Source::ClangViewAutocomplete(file_path, project_path, language) {
   
   get_declaration_location=[this](){
     Offset location;
-    if(source_readable) {
+    if(parsed) {
       auto iter=get_buffer()->get_insert()->get_iter();
       auto line=(unsigned)iter.get_line();
       auto index=(unsigned)iter.get_line_index();
@@ -1055,7 +1055,7 @@ Source::ClangViewAutocomplete(file_path, project_path, language) {
   get_usages=[this](const Token &token) {
     std::vector<std::pair<Offset, std::string> > usages;
     
-    if(source_readable && token.language &&
+    if(parsed && token.language &&
      (token.language->get_id()=="chdr" || token.language->get_id()=="cpphdr" || token.language->get_id()=="c" || token.language->get_id()=="cpp" || token.language->get_id()=="objc")) {
       auto offsets=clang_tokens->get_similar_token_offsets(static_cast<clang::CursorKind>(token.type), token.spelling, token.usr);
       for(auto &offset: offsets) {
@@ -1096,7 +1096,7 @@ Source::ClangViewAutocomplete(file_path, project_path, language) {
   };
   
   goto_method=[this](){    
-    if(source_readable) {
+    if(parsed) {
       auto iter=get_buffer()->get_insert()->get_iter();
       Gdk::Rectangle visible_rect;
       get_visible_rect(visible_rect);
@@ -1167,7 +1167,7 @@ Source::ClangViewAutocomplete(file_path, project_path, language) {
     };
     
     std::vector<std::string> data;
-    if(source_readable) {
+    if(parsed) {
       auto iter=get_buffer()->get_insert()->get_iter();
       auto line=(unsigned)iter.get_line();
       auto index=(unsigned)iter.get_line_index();
@@ -1261,7 +1261,7 @@ Source::ClangViewAutocomplete(file_path, project_path, language) {
   };
   
   goto_next_diagnostic=[this]() {
-    if(source_readable) {
+    if(parsed) {
       auto insert_offset=get_buffer()->get_insert()->get_iter().get_offset();
       for(auto offset: diagnostic_offsets) {
         if(offset>insert_offset) {
@@ -1280,7 +1280,7 @@ Source::ClangViewAutocomplete(file_path, project_path, language) {
   
   apply_fix_its=[this]() {
     std::vector<std::pair<Glib::RefPtr<Gtk::TextMark>, Glib::RefPtr<Gtk::TextMark> > > fix_it_marks;
-    if(source_readable) {
+    if(parsed) {
       for(auto &fix_it: fix_its) {
         auto start_iter=get_buffer()->get_iter_at_line_index(fix_it.offsets.first.line-1, fix_it.offsets.first.index-1);
         auto end_iter=get_buffer()->get_iter_at_line_index(fix_it.offsets.second.line-1, fix_it.offsets.second.index-1);
@@ -1311,7 +1311,7 @@ Source::ClangViewAutocomplete(file_path, project_path, language) {
 }
 
 void Source::ClangViewRefactor::tag_similar_tokens(const Token &token) {
-  if(source_readable) {
+  if(parsed) {
     if(token && last_tagged_token!=token) {
       for(auto &mark: similar_token_marks) {
         get_buffer()->remove_tag(similar_tokens_tag, mark.first->get_iter(), mark.second->get_iter());

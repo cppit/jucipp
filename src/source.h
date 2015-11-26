@@ -101,8 +101,13 @@ namespace Source {
     
     void set_tab_char_and_size(char tab_char, unsigned tab_size);
     std::pair<char, unsigned> get_tab_char_and_size() {return {tab_char, tab_size};}
+    
+    bool soft_reparse_needed=false;
+    bool full_reparse_needed=false;
+    virtual void soft_reparse() {}
+    virtual bool full_reparse() {return true;}
   protected:
-    bool source_readable;
+    bool parsed=false;
     Tooltips diagnostic_tooltips;
     Tooltips type_tooltips;
     virtual void show_diagnostic_tooltips(const Gdk::Rectangle &rectangle) {}
