@@ -1,8 +1,8 @@
 #include "cmake.h"
 #include "singletons.h"
 #include "filesystem.h"
-#include <boost/regex.hpp>
 #include "dialogs.h"
+#include <boost/regex.hpp>
 
 #include <iostream> //TODO: remove
 using namespace std; //TODO: remove

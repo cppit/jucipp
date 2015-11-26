@@ -152,7 +152,7 @@ void Window::set_menu_actions() {
     notebook.open(Singleton::config->juci_home_path()/"config"/"config.json");
   });
   menu->add_action("quit", [this]() {
-    hide();
+    close();
   });
   
   menu->add_action("new_file", [this]() {
@@ -682,19 +682,14 @@ bool Window::on_key_press_event(GdkEventKey *event) {
   return Gtk::Window::on_key_press_event(event);
 }
 
-bool Window::on_delete_event (GdkEventAny *event) {
-  hide();
-  return true;
-}
-
-void Window::hide() {
+bool Window::on_delete_event(GdkEventAny *event) {
   auto size=notebook.size();
   for(int c=0;c<size;c++) {
     if(!notebook.close_current_page())
-      return;
+      return true;
   }
   Singleton::terminal->kill_async_executes();
-  Gtk::Window::hide();
+  return false;
 }
 
 void Window::search_and_replace_entry() {

@@ -11,9 +11,8 @@ public:
   Window();
   Notebook notebook;
 
-protected:
-  bool on_key_press_event(GdkEventKey *event);
-  bool on_delete_event (GdkEventAny *event);
+  bool on_key_press_event(GdkEventKey *event) override;
+  bool on_delete_event(GdkEventAny *event) override;
 
 private:
   Gtk::VPaned vpaned;
@@ -29,7 +28,6 @@ private:
   void configure();
   void set_menu_actions();
   void activate_menu_items(bool activate=true);
-  void hide();
   void search_and_replace_entry();
   void set_tab_entry();
   void goto_line_entry();

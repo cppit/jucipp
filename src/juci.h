@@ -8,9 +8,9 @@
 class Application : public Gtk::Application {
 public:
   Application();
-  int on_command_line(const Glib::RefPtr<Gio::ApplicationCommandLine> &cmd);
-  void on_activate();
-  void on_startup();
+  int on_command_line(const Glib::RefPtr<Gio::ApplicationCommandLine> &cmd) override;
+  void on_activate() override;
+  void on_startup() override;
   std::unique_ptr<Window> window;
 private:
   std::vector<boost::filesystem::path> directories;

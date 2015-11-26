@@ -1,5 +1,5 @@
-#ifndef JUCI_SOURCEFILE_H_
-#define JUCI_SOURCEFILE_H_
+#ifndef JUCI_FILESYSTEM_H_
+#define JUCI_FILESYSTEM_H_
 #include <vector>
 #include <string>
 #include <boost/filesystem.hpp>
@@ -26,4 +26,4 @@ public:
   static bool write(const boost::filesystem::path &path, Glib::RefPtr<Gtk::TextBuffer> text_buffer) { return write(path.string(), text_buffer); }
 
 };
-#endif  // JUCI_SOURCEFILE_H_
+#endif  // JUCI_FILESYSTEM_H_
