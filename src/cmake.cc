@@ -1,8 +1,9 @@
 #include "cmake.h"
 #include "singletons.h"
 #include "filesystem.h"
-#include <boost/regex.hpp>
 #include "dialogs.h"
+
+#include <boost/regex.hpp>
 
 #include <iostream> //TODO: remove
 using namespace std; //TODO: remove
@@ -267,7 +268,7 @@ std::vector<std::pair<boost::filesystem::path, std::vector<std::string> > > CMak
         const boost::regex function_regex("^ *"+name+" *\\( *(.*)\\) *$");
         boost::smatch sm;
         if(boost::regex_match(line, sm, function_regex)) {
-          auto data=sm[1].str();
+          auto data=sm[1].str();         
           while(data.size()>0 && data.back()==' ')
             data.pop_back();
           auto parameters=get_function_parameters(data);
