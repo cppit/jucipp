@@ -1,3 +1,5 @@
+#ifndef JUCI_FILES_H_
+#define JUCI_FILES_H_
 #include <string>
 
 #define JUCI_VERSION "0.9.6"
@@ -373,4 +375,4 @@ const std::string snippetpy =
 "    output=getSnippet(theWord) \n"
 "    juci.replaceWord(output) \n";
 
-
+#endif  // JUCI_FILES_H_

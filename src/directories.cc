@@ -216,7 +216,7 @@ void Directories::add_path(const boost::filesystem::path& dir_path, const Gtk::T
     bool already_added=false;
     if(*children) {
       for(auto &child: *children) {
-        if(child.get_value(column_record.name)==filename) {
+        if(child->get_value(column_record.name)==filename) {
           not_deleted.emplace(filename);
           already_added=true;
           break;
