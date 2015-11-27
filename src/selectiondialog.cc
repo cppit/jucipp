@@ -33,12 +33,12 @@ ListViewText::ListViewText(bool use_markup) : Gtk::TreeView(), use_markup(use_ma
   set_rules_hint(true);
 }
 
-void ListViewText::ListViewText::append(const std::string& value) {
+void ListViewText::append(const std::string& value) {
   auto new_row=list_store->append();
   new_row->set_value(column_record.text, value);
 }
 
-void ListViewText::ListViewText::hide() {
+void ListViewText::hide() {
   Gtk::TreeView::hide();
   list_store->clear();
 }
