@@ -36,10 +36,10 @@ Source::View(file_path, project_path, language), parse_error(false) {
   //GTK-calls must happen in main thread, so the parse_thread
   //sends signals to the main thread that it is to call the following functions:
   parse_start_connection=parse_start.connect([this]{
-    if(parse_thread_buffer_map_mutex.try_lock()) {
-      parse_thread_buffer_map=get_buffer_map();
+    if(parse_thread_buffer_mutex.try_lock()) {
+      parse_thread_buffer=get_buffer()->get_text();
       parse_thread_mapped=true;
-      parse_thread_buffer_map_mutex.unlock();
+      parse_thread_buffer_mutex.unlock();
     }
     parse_thread_go=true;
   });
@@ -113,22 +113,21 @@ void Source::ClangViewParse::init_parse() {
   parse_thread_mapped=false;
   parse_thread_stop=false;
   
-  auto buffer_map=get_buffer_map();
+  auto buffer=get_buffer()->get_text();
   //Remove includes for first parse for initial syntax highlighting
-  auto& str=buffer_map[file_path.string()];
   std::size_t pos=0;
-  while((pos=str.find("#include", pos))!=std::string::npos) {
+  while((pos=buffer.find("#include", pos))!=std::string::npos) {
     auto start_pos=pos;
-    pos=str.find('\n', pos+8);
+    pos=buffer.find('\n', pos+8);
     if(pos==std::string::npos)
       break;
-    if(start_pos==0 || str[start_pos-1]=='\n') {
-      str.replace(start_pos, pos-start_pos, pos-start_pos, ' ');
+    if(start_pos==0 || buffer[start_pos-1]=='\n') {
+      buffer.replace(start_pos, pos-start_pos, pos-start_pos, ' ');
     }
     pos++;
   }
-  clang_tu = std::unique_ptr<clang::TranslationUnit>(new clang::TranslationUnit(clang_index, file_path.string(), get_compilation_commands(), buffer_map));
-  clang_tokens=clang_tu->get_tokens(0, buffer_map.find(file_path.string())->second.size()-1);
+  clang_tu = std::unique_ptr<clang::TranslationUnit>(new clang::TranslationUnit(clang_index, file_path.string(), get_compilation_commands(), buffer.raw()));
+  clang_tokens=clang_tu->get_tokens(0, buffer.bytes()-1);
   update_syntax();
   
   set_status("parsing...");
@@ -144,15 +143,15 @@ void Source::ClangViewParse::init_parse() {
         parse_thread_go=false;
         parse_start();
       }
-      else if (parse_thread_mapped && parsing_mutex.try_lock() && parse_thread_buffer_map_mutex.try_lock()) {
-        auto status=clang_tu->ReparseTranslationUnit(parse_thread_buffer_map);
+      else if (parse_thread_mapped && parsing_mutex.try_lock() && parse_thread_buffer_mutex.try_lock()) {
+        auto status=clang_tu->ReparseTranslationUnit(parse_thread_buffer.raw());
         if(status==0)
-          clang_tokens=clang_tu->get_tokens(0, parse_thread_buffer_map.find(file_path.string())->second.size()-1);
+          clang_tokens=clang_tu->get_tokens(0, parse_thread_buffer.bytes()-1);
         else
           parse_error=true;
         parse_thread_go=false;
         parsing_mutex.unlock();
-        parse_thread_buffer_map_mutex.unlock();
+        parse_thread_buffer_mutex.unlock();
         if(status!=0) {
           parse_fail();
           parse_thread_stop=true;
@@ -162,12 +161,6 @@ void Source::ClangViewParse::init_parse() {
       }
     }
   });
-}
-
-std::map<std::string, std::string> Source::ClangViewParse::get_buffer_map() const {
-  std::map<std::string, std::string> buffer_map;
-  buffer_map[file_path.string()]=get_source_buffer()->get_text();
-  return buffer_map;
 }
 
 void Source::ClangViewParse::soft_reparse() {
@@ -807,25 +800,24 @@ void Source::ClangViewAutocomplete::autocomplete() {
       }
     });
     
-    std::shared_ptr<std::map<std::string, std::string> > buffer_map=std::make_shared<std::map<std::string, std::string> >();
-    auto ustr=get_buffer()->get_text();
+    set_status("autocomplete...");
+    if(autocomplete_thread.joinable())
+      autocomplete_thread.join();
+    auto buffer=std::make_shared<Glib::ustring>(get_buffer()->get_text());
     auto iter=get_buffer()->get_insert()->get_iter();
     auto line_nr=iter.get_line()+1;
     auto column_nr=iter.get_line_offset()+1;
     auto pos=iter.get_offset()-1;
-    while(pos>=0 && ((ustr[pos]>='a' && ustr[pos]<='z') || (ustr[pos]>='A' && ustr[pos]<='Z') || (ustr[pos]>='0' && ustr[pos]<='9') || ustr[pos]=='_')) {
-      ustr.replace(pos, 1, " ");
+    while(pos>=0 && (((*buffer)[pos]>='a' && (*buffer)[pos]<='z') || ((*buffer)[pos]>='A' && (*buffer)[pos]<='Z') ||
+                     ((*buffer)[pos]>='0' && (*buffer)[pos]<='9') || (*buffer)[pos]=='_')) {
+      buffer->replace(pos, 1, " ");
       column_nr--;
       pos--;
     }
-    (*buffer_map)[this->file_path.string()]=std::move(ustr); //TODO: does this work?
-    set_status("autocomplete...");
-    if(autocomplete_thread.joinable())
-      autocomplete_thread.join();
-    autocomplete_thread=std::thread([this, ac_data, line_nr, column_nr, buffer_map](){
+    autocomplete_thread=std::thread([this, ac_data, line_nr, column_nr, buffer](){
       parsing_mutex.lock();
       if(!parse_thread_stop)
-        *ac_data=get_autocomplete_suggestions(line_nr, column_nr, *buffer_map);
+        *ac_data=get_autocomplete_suggestions(buffer->raw(), line_nr, column_nr);
       if(!parse_thread_stop)
         autocomplete_done();
       else
@@ -835,9 +827,9 @@ void Source::ClangViewAutocomplete::autocomplete() {
   }
 }
 
-std::vector<Source::ClangViewAutocomplete::AutoCompleteData> Source::ClangViewAutocomplete::get_autocomplete_suggestions(int line_number, int column, std::map<std::string, std::string>& buffer_map) {
+std::vector<Source::ClangViewAutocomplete::AutoCompleteData> Source::ClangViewAutocomplete::get_autocomplete_suggestions(const std::string &buffer, int line_number, int column) {
   std::vector<AutoCompleteData> suggestions;
-  auto results=clang_tu->get_code_completions(buffer_map, line_number, column);
+  auto results=clang_tu->get_code_completions(buffer, line_number, column);
   if(results.cx_results==NULL) {
     parse_thread_stop=true;
     return suggestions;

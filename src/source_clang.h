@@ -53,7 +53,6 @@ namespace Source {
     sigc::connection parse_start_connection;
     sigc::connection parse_fail_connection;
   private:
-    std::map<std::string, std::string> get_buffer_map() const;
     void update_syntax();
     std::set<std::string> last_syntax_tags;
     void update_diagnostics();
@@ -64,8 +63,8 @@ namespace Source {
     Glib::Dispatcher parse_done;
     Glib::Dispatcher parse_start;
     Glib::Dispatcher parse_fail;
-    std::map<std::string, std::string> parse_thread_buffer_map;
-    std::mutex parse_thread_buffer_map_mutex;
+    Glib::ustring parse_thread_buffer;
+    std::mutex parse_thread_buffer_mutex;
     std::atomic<bool> parse_thread_go;
     std::atomic<bool> parse_thread_mapped;
   };
@@ -96,7 +95,7 @@ namespace Source {
     void autocomplete();
     std::unique_ptr<CompletionDialog> completion_dialog;
     bool completion_dialog_shown=false;
-    std::vector<AutoCompleteData> get_autocomplete_suggestions(int line_number, int column, std::map<std::string, std::string>& buffer_map);
+    std::vector<AutoCompleteData> get_autocomplete_suggestions(const std::string &buffer, int line_number, int column);
     Glib::Dispatcher autocomplete_done;
     Glib::Dispatcher autocomplete_fail;
     bool autocomplete_starting=false;
