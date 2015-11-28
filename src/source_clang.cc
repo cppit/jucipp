@@ -110,8 +110,8 @@ void Source::ClangViewParse::parse_initialize() {
   parsed=false;
   if(parse_thread.joinable())
     parse_thread.join();
-  parse_process_state=ParseProcessState::STARTING;
   parse_state=ParseState::PROCESSING;
+  parse_process_state=ParseProcessState::STARTING;
   
   auto buffer=get_buffer()->get_text();
   //Remove includes for first parse for initial syntax highlighting
@@ -141,27 +141,23 @@ void Source::ClangViewParse::parse_initialize() {
       if(parse_process_state.compare_exchange_strong(expected, ParseProcessState::PREPROCESSING))
         parse_preprocess();
       else if (parse_process_state==ParseProcessState::PROCESSING && parse_mutex.try_lock()) {
-        if(parse_process_state==ParseProcessState::PROCESSING) {
-          auto status=clang_tu->ReparseTranslationUnit(parse_thread_buffer.raw());
-          parsing_in_progress->done("done");
-          if(status==0) {
-            auto expected=ParseProcessState::PROCESSING;
-            if(parse_process_state.compare_exchange_strong(expected, ParseProcessState::POSTPROCESSING)) {
-              clang_tokens=clang_tu->get_tokens(0, parse_thread_buffer.bytes()-1);
-              parse_mutex.unlock();
-              parse_postprocess();
-            }
-            else
-              parse_mutex.unlock();
-          }
-          else {
-            parse_state=ParseState::STOP;
+        auto status=clang_tu->ReparseTranslationUnit(parse_thread_buffer.raw());
+        parsing_in_progress->done("done");
+        if(status==0) {
+          auto expected=ParseProcessState::PROCESSING;
+          if(parse_process_state.compare_exchange_strong(expected, ParseProcessState::POSTPROCESSING)) {
+            clang_tokens=clang_tu->get_tokens(0, parse_thread_buffer.bytes()-1);
             parse_mutex.unlock();
-            parse_error();
+            parse_postprocess();
           }
+          else
+            parse_mutex.unlock();
         }
-        else
+        else {
+          parse_state=ParseState::STOP;
           parse_mutex.unlock();
+          parse_error();
+        }
       }
     }
   });
