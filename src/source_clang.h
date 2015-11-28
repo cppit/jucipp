@@ -13,8 +13,8 @@
 namespace Source {
   class ClangViewParse : public View {
   protected:
+    enum class ParseState {PROCESSING, RESTARTING, STOP};
     enum class ParseProcessState {IDLE, STARTING, PREPROCESSING, PROCESSING, POSTPROCESSING};
-    enum class ParseState {WORKING, RESTARTING, STOP};
   public:
     class TokenRange {
     public:
@@ -50,8 +50,8 @@ namespace Source {
     
     std::thread parse_thread;
     std::mutex parse_mutex;
-    std::atomic<ParseProcessState> parse_process_state;
     std::atomic<ParseState> parse_state;
+    std::atomic<ParseProcessState> parse_process_state;
     sigc::connection parse_done_connection;
     sigc::connection parse_start_connection;
     sigc::connection parse_fail_connection;
