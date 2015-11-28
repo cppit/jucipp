@@ -12,6 +12,9 @@
 
 namespace Source {
   class ClangViewParse : public View {
+  protected:
+    enum class ParseProcessState {IDLE, STARTING, PREPROCESSING, PROCESSING, POSTPROCESSING};
+    enum class ParseState {WORKING, RESTARTING, STOP};
   public:
     class TokenRange {
     public:
@@ -28,16 +31,12 @@ namespace Source {
     
     void soft_reparse() override;
   protected:
-    void init_parse();
+    void parse_initialize();
     std::unique_ptr<clang::TranslationUnit> clang_tu;
-    std::mutex parsing_mutex;
     std::unique_ptr<clang::Tokens> clang_tokens;
     sigc::connection delayed_reparse_connection;
     
     std::shared_ptr<Terminal::InProgress> parsing_in_progress;
-    std::thread parse_thread;
-    std::atomic<bool> parse_thread_stop;
-    std::atomic<bool> parse_error;
     
     void show_diagnostic_tooltips(const Gdk::Rectangle &rectangle) override;
     void show_type_tooltips(const Gdk::Rectangle &rectangle) override;
@@ -49,24 +48,25 @@ namespace Source {
     std::set<int> diagnostic_offsets;
     std::vector<FixIt> fix_its;
     
+    std::thread parse_thread;
+    std::mutex parse_mutex;
+    std::atomic<ParseProcessState> parse_process_state;
+    std::atomic<ParseState> parse_state;
     sigc::connection parse_done_connection;
     sigc::connection parse_start_connection;
     sigc::connection parse_fail_connection;
   private:
+    Glib::Dispatcher parse_preprocess;
+    Glib::Dispatcher parse_postprocess;
+    Glib::Dispatcher parse_error;
+    Glib::ustring parse_thread_buffer;
+    
     void update_syntax();
     std::set<std::string> last_syntax_tags;
     void update_diagnostics();
     
     static clang::Index clang_index;
     std::vector<std::string> get_compilation_commands();
-    
-    Glib::Dispatcher parse_done;
-    Glib::Dispatcher parse_start;
-    Glib::Dispatcher parse_fail;
-    Glib::ustring parse_thread_buffer;
-    std::mutex parse_thread_buffer_mutex;
-    std::atomic<bool> parse_thread_go;
-    std::atomic<bool> parse_thread_mapped;
   };
     
   class ClangViewAutocomplete : public ClangViewParse {

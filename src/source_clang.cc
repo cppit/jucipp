@@ -21,7 +21,7 @@ namespace sigc {
 clang::Index Source::ClangViewParse::clang_index(0, 0);
 
 Source::ClangViewParse::ClangViewParse(const boost::filesystem::path &file_path, const boost::filesystem::path& project_path, Glib::RefPtr<Gsv::Language> language):
-Source::View(file_path, project_path, language), parse_error(false) {
+Source::View(file_path, project_path, language) {
   JDEBUG("start");
   
   auto tag_table=get_buffer()->get_tag_table();
@@ -35,36 +35,35 @@ Source::View(file_path, project_path, language), parse_error(false) {
   parsing_in_progress=Singleton::terminal->print_in_progress("Parsing "+file_path.string());
   //GTK-calls must happen in main thread, so the parse_thread
   //sends signals to the main thread that it is to call the following functions:
-  parse_start_connection=parse_start.connect([this]{
-    if(parse_thread_buffer_mutex.try_lock()) {
-      parse_thread_buffer=get_buffer()->get_text();
-      parse_thread_mapped=true;
-      parse_thread_buffer_mutex.unlock();
+  parse_start_connection=parse_preprocess.connect([this]{
+    auto expected=ParseProcessState::PREPROCESSING;
+    if(parse_mutex.try_lock()) {
+      if(parse_process_state.compare_exchange_strong(expected, ParseProcessState::PROCESSING))
+        parse_thread_buffer=get_buffer()->get_text();
+      parse_mutex.unlock();
     }
-    parse_thread_go=true;
+    else
+      parse_process_state.compare_exchange_strong(expected, ParseProcessState::STARTING);
   });
-  parse_done_connection=parse_done.connect([this](){
-    if(parse_thread_mapped) {
-      if(parsing_mutex.try_lock()) {
+  parse_done_connection=parse_postprocess.connect([this](){
+    if(parse_mutex.try_lock()) {
+      auto expected=ParseProcessState::POSTPROCESSING;
+      if(parse_process_state.compare_exchange_strong(expected, ParseProcessState::IDLE)) {
         update_syntax();
         update_diagnostics();
         parsed=true;
         set_status("");
-        parsing_mutex.unlock();
       }
-      parsing_in_progress->done("done");
-    }
-    else {
-      parse_thread_go=true;
+      parse_mutex.unlock();
     }
   });
-  parse_fail_connection=parse_fail.connect([this](){
+  parse_fail_connection=parse_error.connect([this](){
     Singleton::terminal->print("Error: failed to reparse "+this->file_path.string()+".\n", true);
     set_status("");
     set_info("");
     parsing_in_progress->cancel("failed");
   });
-  init_parse();
+  parse_initialize();
   
   get_buffer()->signal_changed().connect([this]() {
     soft_reparse();
@@ -105,13 +104,14 @@ void Source::ClangViewParse::configure() {
   no_bracket_no_para_statement_regex=boost::regex("^([ \\t]*)(else|try|do) *$");
 }
 
-void Source::ClangViewParse::init_parse() {
+void Source::ClangViewParse::parse_initialize() {
   type_tooltips.hide();
   diagnostic_tooltips.hide();
   parsed=false;
-  parse_thread_go=true;
-  parse_thread_mapped=false;
-  parse_thread_stop=false;
+  if(parse_thread.joinable())
+    parse_thread.join();
+  parse_process_state=ParseProcessState::STARTING;
+  parse_state=ParseState::WORKING;
   
   auto buffer=get_buffer()->get_text();
   //Remove includes for first parse for initial syntax highlighting
@@ -131,46 +131,53 @@ void Source::ClangViewParse::init_parse() {
   update_syntax();
   
   set_status("parsing...");
-  if(parse_thread.joinable())
-    parse_thread.join();
   parse_thread=std::thread([this]() {
     while(true) {
-      while(!parse_thread_go && !parse_thread_stop)
+      while(parse_state==ParseState::WORKING && (parse_process_state==ParseProcessState::IDLE || parse_process_state==ParseProcessState::PREPROCESSING || parse_process_state==ParseProcessState::POSTPROCESSING))
         std::this_thread::sleep_for(std::chrono::milliseconds(10));
-      if(parse_thread_stop)
+      if(parse_state!=ParseState::WORKING)
         break;
-      if(!parse_thread_mapped) {
-        parse_thread_go=false;
-        parse_start();
-      }
-      else if (parse_thread_mapped && parsing_mutex.try_lock() && parse_thread_buffer_mutex.try_lock()) {
-        auto status=clang_tu->ReparseTranslationUnit(parse_thread_buffer.raw());
-        if(status==0)
-          clang_tokens=clang_tu->get_tokens(0, parse_thread_buffer.bytes()-1);
-        else
-          parse_error=true;
-        parse_thread_go=false;
-        parsing_mutex.unlock();
-        parse_thread_buffer_mutex.unlock();
-        if(status!=0) {
-          parse_fail();
-          parse_thread_stop=true;
+      auto expected=ParseProcessState::STARTING;
+      if(parse_process_state.compare_exchange_strong(expected, ParseProcessState::PREPROCESSING))
+        parse_preprocess();
+      else if (parse_process_state==ParseProcessState::PROCESSING && parse_mutex.try_lock()) {
+        if(parse_process_state==ParseProcessState::PROCESSING) {
+          auto status=clang_tu->ReparseTranslationUnit(parse_thread_buffer.raw());
+          parsing_in_progress->done("done");
+          if(status==0) {
+            auto expected=ParseProcessState::PROCESSING;
+            if(parse_process_state.compare_exchange_strong(expected, ParseProcessState::POSTPROCESSING)) {
+              clang_tokens=clang_tu->get_tokens(0, parse_thread_buffer.bytes()-1);
+              parse_mutex.unlock();
+              parse_postprocess();
+            }
+            else
+              parse_mutex.unlock();
+          }
+          else {
+            parse_state=ParseState::STOP;
+            parse_mutex.unlock();
+            parse_error();
+          }
         }
         else
-          parse_done();
+          parse_mutex.unlock();
       }
     }
   });
 }
 
 void Source::ClangViewParse::soft_reparse() {
-  parse_thread_mapped=false;
   parsed=false;
+  if(parse_state!=ParseState::WORKING)
+    return;
+  parse_process_state=ParseProcessState::IDLE;
   delayed_reparse_connection.disconnect();
   delayed_reparse_connection=Glib::signal_timeout().connect([this]() {
     parsed=false;
-    parse_thread_go=true;
-    set_status("parsing...");
+    auto expected=ParseProcessState::IDLE;
+    if(parse_process_state.compare_exchange_strong(expected, ParseProcessState::STARTING))
+      set_status("parsing...");
     return false;
   }, 1000);
 }
@@ -655,7 +662,7 @@ Source::ClangViewParse(file_path, project_path, language), autocomplete_cancel_s
     delete this;
   });
   do_full_reparse.connect([this](){
-    init_parse();
+    parse_initialize();
     full_reparse_running=false;
   });
 }
@@ -711,9 +718,8 @@ void Source::ClangViewAutocomplete::start_autocomplete() {
 }
 
 void Source::ClangViewAutocomplete::autocomplete() {
-  if(parse_thread_stop) {
+  if(parse_state!=ParseState::WORKING)
     return;
-  }
     
   if(!autocomplete_starting) {
     autocomplete_starting=true;
@@ -815,14 +821,16 @@ void Source::ClangViewAutocomplete::autocomplete() {
       pos--;
     }
     autocomplete_thread=std::thread([this, ac_data, line_nr, column_nr, buffer](){
-      parsing_mutex.lock();
-      if(!parse_thread_stop)
+      parse_mutex.lock();
+      if(parse_state==ParseState::WORKING) {
+        parse_process_state=ParseProcessState::IDLE;
         *ac_data=get_autocomplete_suggestions(buffer->raw(), line_nr, column_nr);
-      if(!parse_thread_stop)
+      }
+      if(parse_state==ParseState::WORKING)
         autocomplete_done();
       else
         autocomplete_fail();
-      parsing_mutex.unlock();
+      parse_mutex.unlock();
     });
   }
 }
@@ -831,7 +839,8 @@ std::vector<Source::ClangViewAutocomplete::AutoCompleteData> Source::ClangViewAu
   std::vector<AutoCompleteData> suggestions;
   auto results=clang_tu->get_code_completions(buffer, line_number, column);
   if(results.cx_results==NULL) {
-    parse_thread_stop=true;
+    auto expected=ParseState::WORKING;
+    parse_state.compare_exchange_strong(expected, ParseState::RESTARTING);
     return suggestions;
   }
     
@@ -863,7 +872,7 @@ std::vector<Source::ClangViewAutocomplete::AutoCompleteData> Source::ClangViewAu
 
 void Source::ClangViewAutocomplete::async_delete() {
   parsing_in_progress->cancel("canceled, freeing resources in the background");
-  parse_thread_stop=true;
+  parse_state=ParseState::STOP;
   delete_thread=std::thread([this](){
     //TODO: Is it possible to stop the clang-process in progress?
     if(full_reparse_thread.joinable())
@@ -877,10 +886,15 @@ void Source::ClangViewAutocomplete::async_delete() {
 }
 
 bool Source::ClangViewAutocomplete::full_reparse() {
-  if(!full_reparse_running && !parse_error) {
+  if(!full_reparse_running) {
+    auto expected=ParseState::WORKING;
+    if(!parse_state.compare_exchange_strong(expected, ParseState::RESTARTING)) {
+      expected=ParseState::RESTARTING;
+      if(!parse_state.compare_exchange_strong(expected, ParseState::RESTARTING))
+        return false;
+    }
     soft_reparse_needed=false;
     full_reparse_running=true;
-    parse_thread_stop=true;
     if(full_reparse_thread.joinable())
       full_reparse_thread.join();
     full_reparse_thread=std::thread([this](){
