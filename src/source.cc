@@ -1104,7 +1104,7 @@ bool Source::View::on_key_press_event(GdkEventKey* key) {
     while(!end_sentence_iter.starts_line() && 
           (*end_sentence_iter==' ' || *end_sentence_iter=='\t' || end_sentence_iter.ends_line()) &&
           end_sentence_iter.backward_char()) {}
-    if(!end_sentence_iter.ends_line() && *end_sentence_iter!=' ' && *end_sentence_iter!='\t')
+    if(!end_sentence_iter.ends_line() && !end_sentence_iter.starts_line())
       end_sentence_iter.forward_char();
     if(iter==end_line_iter) {
       if((key->state&GDK_SHIFT_MASK)>0)
