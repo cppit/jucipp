@@ -70,6 +70,8 @@ namespace Source {
   };
     
   class ClangViewAutocomplete : public ClangViewParse {
+  protected:
+    enum class AutocompleteState {IDLE, STARTING, CANCELED, SHOWN};
   public:
     class AutoCompleteData {
     public:
@@ -87,19 +89,22 @@ namespace Source {
   protected:
     std::thread autocomplete_thread;
     sigc::connection autocomplete_done_connection;
+    sigc::connection autocomplete_restart_connection;
     sigc::connection autocomplete_fail_connection;
     sigc::connection do_delete_object_connection;
     sigc::connection do_restart_parse_connection;
   private:
-    void start_autocomplete();
+    std::atomic<AutocompleteState> autocomplete_state;
+    void autocomplete_dialog_setup();
+    void autocomplete_check();
     void autocomplete();
-    std::unique_ptr<CompletionDialog> completion_dialog;
-    bool completion_dialog_shown=false;
-    std::vector<AutoCompleteData> get_autocomplete_suggestions(const std::string &buffer, int line_number, int column);
+    std::vector<AutoCompleteData> autocomplete_data;
+    std::unique_ptr<CompletionDialog> autocomplete_dialog;
+    std::unordered_map<std::string, std::string> autocomplete_dialog_rows;
+    std::vector<AutoCompleteData> autocomplete_get_suggestions(const std::string &buffer, int line_number, int column);
     Glib::Dispatcher autocomplete_done;
+    Glib::Dispatcher autocomplete_restart;
     Glib::Dispatcher autocomplete_fail;
-    bool autocomplete_starting=false;
-    std::atomic<bool> autocomplete_cancel_starting;
     guint last_keyval=0;
     std::string prefix;
     std::mutex prefix_mutex;
