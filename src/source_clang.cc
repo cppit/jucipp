@@ -164,6 +164,7 @@ void Source::ClangViewParse::parse_initialize() {
 }
 
 void Source::ClangViewParse::soft_reparse() {
+  soft_reparse_needed=false;
   parsed=false;
   if(parse_state!=ParseState::PROCESSING)
     return;
@@ -922,6 +923,7 @@ void Source::ClangViewAutocomplete::async_delete() {
 }
 
 bool Source::ClangViewAutocomplete::full_reparse() {
+  full_reparse_needed=false;
   if(!full_reparse_running) {
     auto expected=ParseState::PROCESSING;
     if(!parse_state.compare_exchange_strong(expected, ParseState::RESTARTING)) {

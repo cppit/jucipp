@@ -96,12 +96,9 @@ Window::Window() : compiling(false) {
       if(view->full_reparse_needed) {
         if(!view->full_reparse())
           Singleton::terminal->async_print("Error: failed to reparse "+view->file_path.string()+". Please reopen the file manually.\n", true);
-        view->full_reparse_needed=false;
       }
-      else if(view->soft_reparse_needed) {
+      else if(view->soft_reparse_needed)
         view->soft_reparse();
-        view->soft_reparse_needed=false;
-      }
       
       view->set_status(view->status);
       view->set_info(view->info);
@@ -884,6 +881,7 @@ void Window::rename_token_entry() {
         label_it->update(0, "");
         entry_box.entries.emplace_back(token->spelling, [this, token](const std::string& content){
           if(notebook.get_current_page()!=-1 && content!=token->spelling) {
+            std::vector<int> modified_pages;
             for(int c=0;c<notebook.size();c++) {
               auto view=notebook.get_view(c);
               if(view->rename_similar_tokens) {
@@ -891,9 +889,12 @@ void Window::rename_token_entry() {
                 if(number>0) {
                   Singleton::terminal->print("Replaced "+std::to_string(number)+" occurrences in file "+view->file_path.string()+"\n");
                   notebook.save(c);
+                  modified_pages.emplace_back(c);
                 }
               }
             }
+            for(auto &page: modified_pages)
+              notebook.get_view(page)->soft_reparse_needed=false;
             entry_box.hide();
           }
         });

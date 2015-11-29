@@ -104,8 +104,8 @@ namespace Source {
     
     bool soft_reparse_needed=false;
     bool full_reparse_needed=false;
-    virtual void soft_reparse() {}
-    virtual bool full_reparse() {return true;}
+    virtual void soft_reparse() {soft_reparse_needed=false;}
+    virtual bool full_reparse() {full_reparse_needed=false; return true;}
   protected:
     bool parsed=false;
     Tooltips diagnostic_tooltips;

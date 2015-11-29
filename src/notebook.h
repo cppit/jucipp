@@ -18,7 +18,7 @@ public:
   Source::View* get_current_view();
   bool close_current_page();
   void open(const boost::filesystem::path &file_path);
-  bool save(int page, bool reparse_needed=false);
+  bool save(int page);
   bool save_current();
   void configure(int view_nr);
   boost::filesystem::path get_current_folder();
