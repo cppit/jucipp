@@ -25,7 +25,6 @@ namespace Source {
     };
     
     ClangViewParse(const boost::filesystem::path &file_path, const boost::filesystem::path& project_path, Glib::RefPtr<Gsv::Language> language);
-    bool on_key_press_event(GdkEventKey* key) override;
     
     void configure() override;
     
@@ -40,6 +39,8 @@ namespace Source {
     
     void show_diagnostic_tooltips(const Gdk::Rectangle &rectangle) override;
     void show_type_tooltips(const Gdk::Rectangle &rectangle) override;
+    
+    bool on_key_press_event(GdkEventKey* key) override;
     
     boost::regex bracket_regex;
     boost::regex no_bracket_statement_regex;
@@ -82,11 +83,12 @@ namespace Source {
     };
     
     ClangViewAutocomplete(const boost::filesystem::path &file_path, const boost::filesystem::path& project_path, Glib::RefPtr<Gsv::Language> language);
-    bool on_key_press_event(GdkEventKey* key) override;
     
     virtual void async_delete();
     bool full_reparse() override;
   protected:
+    bool on_key_press_event(GdkEventKey* key) override;
+    
     std::thread autocomplete_thread;
     sigc::connection autocomplete_done_connection;
     sigc::connection autocomplete_restart_connection;

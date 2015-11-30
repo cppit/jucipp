@@ -11,6 +11,7 @@ public:
   Window();
   Notebook notebook;
 
+protected:
   bool on_key_press_event(GdkEventKey *event) override;
   bool on_delete_event(GdkEventAny *event) override;
 

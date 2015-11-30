@@ -102,9 +102,6 @@ namespace Source {
     void set_tab_char_and_size(char tab_char, unsigned tab_size);
     std::pair<char, unsigned> get_tab_char_and_size() {return {tab_char, tab_size};}
     
-    bool on_key_press_event(GdkEventKey* key) override;
-    bool on_button_press_event(GdkEventButton *event) override;
-    
     bool soft_reparse_needed=false;
     bool full_reparse_needed=false;
     virtual void soft_reparse() {soft_reparse_needed=false;}
@@ -135,6 +132,9 @@ namespace Source {
     bool find_open_expression_symbol(Gtk::TextIter iter, const Gtk::TextIter &until_iter, Gtk::TextIter &found_iter);
     bool find_right_bracket_forward(Gtk::TextIter iter, Gtk::TextIter &found_iter);
     bool find_left_bracket_backward(Gtk::TextIter iter, Gtk::TextIter &found_iter);
+    
+    bool on_key_press_event(GdkEventKey* key) override;
+    bool on_button_press_event(GdkEventButton *event) override;
     
     std::pair<char, unsigned> find_tab_char_and_size();
     unsigned tab_size;
