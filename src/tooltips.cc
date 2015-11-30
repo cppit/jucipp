@@ -138,7 +138,7 @@ void Tooltip::wrap_lines(Glib::RefPtr<Gtk::TextBuffer> text_buffer) {
 }
 
 void Tooltips::show(const Gdk::Rectangle& rectangle, bool disregard_drawn) {
-  for(auto& tooltip: *this) {
+  for(auto &tooltip : tooltip_list) {
     tooltip.update();
     if(rectangle.intersects(tooltip.activation_rectangle)) {
       tooltip.adjust(disregard_drawn);
@@ -150,7 +150,7 @@ void Tooltips::show(const Gdk::Rectangle& rectangle, bool disregard_drawn) {
 }
 
 void Tooltips::show(bool disregard_drawn) {
-  for(auto& tooltip: *this) {
+  for(auto &tooltip : tooltip_list) {
     tooltip.update();
     tooltip.adjust(disregard_drawn);
     tooltip.window->show_all();
@@ -158,7 +158,7 @@ void Tooltips::show(bool disregard_drawn) {
 }
 
 void Tooltips::hide() {
-  for(auto& tooltip: *this) {
+  for(auto &tooltip : tooltip_list) {
     if(tooltip.window)
       tooltip.window->hide();
   }
