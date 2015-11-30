@@ -15,9 +15,10 @@ towards libclang with speed and ease of use in mind.
 * Fast C++ autocompletion (including external libraries)
 * Keyword and buffer autocompletion for other file types
 * Tooltips showing type information and doxygen documentation
-* Refactoring across files
+* Rename refactoring across files
 * Highlighting of similar types
-* Documentation search
+* Automated documentation search
+* Go to methods and usages
 * Spell checking depending on file context
 * Run shell commands within JuCi++, even on Windows
 * Regex search and replace
