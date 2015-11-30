@@ -19,6 +19,7 @@ private:
   Gtk::Paned directory_and_notebook_panes;
   Gtk::VBox notebook_vbox;
   Gtk::VBox terminal_vbox;
+  Gtk::ScrolledWindow directories_scrolled_window;
   Gtk::ScrolledWindow terminal_scrolled_window;
   Gtk::HBox info_and_status_hbox;
   Gtk::AboutDialog about;

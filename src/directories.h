@@ -10,7 +10,7 @@
 #include <mutex>
 #include <atomic>
 
-class Directories : public Gtk::ScrolledWindow {
+class Directories : public Gtk::TreeView {
 public:
   class ColumnRecord : public Gtk::TreeModel::ColumnRecord {
   public:
@@ -38,7 +38,6 @@ public:
   
 private:
   void add_path(const boost::filesystem::path& dir_path, const Gtk::TreeModel::Row &row);
-  Gtk::TreeView tree_view;
   Glib::RefPtr<Gtk::TreeStore> tree_store;
   ColumnRecord column_record;
   

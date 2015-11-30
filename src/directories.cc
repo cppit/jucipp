@@ -21,26 +21,24 @@ namespace sigc {
 #endif
 }
 
-Directories::Directories() : stop_update_thread(false) {
-  add(tree_view);
-  set_policy(Gtk::POLICY_AUTOMATIC, Gtk::POLICY_AUTOMATIC);
+Directories::Directories() : Gtk::TreeView(), stop_update_thread(false) {
   tree_store = Gtk::TreeStore::create(column_record);
-  tree_view.set_model(tree_store);
-  tree_view.append_column("", column_record.name);
-  auto renderer=dynamic_cast<Gtk::CellRendererText*>(tree_view.get_column(0)->get_first_cell());
-  tree_view.get_column(0)->add_attribute(renderer->property_foreground_rgba(), column_record.color);
+  set_model(tree_store);
+  append_column("", column_record.name);
+  auto renderer=dynamic_cast<Gtk::CellRendererText*>(get_column(0)->get_first_cell());
+  get_column(0)->add_attribute(renderer->property_foreground_rgba(), column_record.color);
   
   tree_store->set_sort_column(column_record.id, Gtk::SortType::SORT_ASCENDING);
-  tree_view.set_enable_search(true); //TODO: why does this not work in OS X?
-  tree_view.set_search_column(column_record.name);
+  set_enable_search(true); //TODO: why does this not work in OS X?
+  set_search_column(column_record.name);
   
-  tree_view.signal_row_activated().connect([this](const Gtk::TreeModel::Path& path, Gtk::TreeViewColumn* column){
+  signal_row_activated().connect([this](const Gtk::TreeModel::Path& path, Gtk::TreeViewColumn* column){
     auto iter = tree_store->get_iter(path);
     if (iter) {
       auto path_str=iter->get_value(column_record.path);
       if(path_str!="") {
         if (boost::filesystem::is_directory(boost::filesystem::path(path_str))) {
-          tree_view.row_expanded(path) ? tree_view.collapse_row(path) : tree_view.expand_row(path, false);
+          row_expanded(path) ? collapse_row(path) : expand_row(path, false);
         } else {
           if(on_row_activated)
             on_row_activated(path_str);
@@ -49,7 +47,7 @@ Directories::Directories() : stop_update_thread(false) {
     }
   });
   
-  tree_view.signal_test_expand_row().connect([this](const Gtk::TreeModel::iterator& iter, const Gtk::TreeModel::Path& path){
+  signal_test_expand_row().connect([this](const Gtk::TreeModel::iterator& iter, const Gtk::TreeModel::Path& path){
     if(iter->children().begin()->get_value(column_record.path)=="") {
       update_mutex.lock();
       add_path(iter->get_value(column_record.path), *iter);
@@ -57,7 +55,7 @@ Directories::Directories() : stop_update_thread(false) {
     }
     return false;
   });
-  tree_view.signal_row_collapsed().connect([this](const Gtk::TreeModel::iterator& iter, const Gtk::TreeModel::Path& path){
+  signal_row_collapsed().connect([this](const Gtk::TreeModel::iterator& iter, const Gtk::TreeModel::Path& path){
     update_mutex.lock();
     last_write_times.erase(iter->get_value(column_record.path));
     update_mutex.unlock();
@@ -128,9 +126,9 @@ void Directories::open(const boost::filesystem::path& dir_path) {
   cmake=std::unique_ptr<CMake>(new CMake(dir_path));
   auto project=cmake->get_functions_parameters("project");
   if(project.size()>0 && project[0].second.size()>0)
-    tree_view.get_column(0)->set_title(project[0].second[0]);
+    get_column(0)->set_title(project[0].second[0]);
   else
-    tree_view.get_column(0)->set_title("");
+    get_column(0)->set_title("");
   update_mutex.lock();
   add_path(dir_path, Gtk::TreeModel::Row());
   update_mutex.unlock();
@@ -185,8 +183,8 @@ void Directories::select(const boost::filesystem::path &path) {
   tree_store->foreach_iter([this, &path](const Gtk::TreeModel::iterator& iter){
     if(iter->get_value(column_record.path)==path.string()) {
       auto tree_path=Gtk::TreePath(iter);
-      tree_view.expand_to_path(tree_path);
-      tree_view.set_cursor(tree_path);
+      expand_to_path(tree_path);
+      set_cursor(tree_path);
       return true;
     }
     return false;

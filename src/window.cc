@@ -34,7 +34,8 @@ Window::Window() : compiling(false) {
   
   add(vpaned);
   
-  directory_and_notebook_panes.pack1(*Singleton::directories, Gtk::SHRINK);
+  directories_scrolled_window.add(*Singleton::directories);
+  directory_and_notebook_panes.pack1(directories_scrolled_window, Gtk::SHRINK);
   notebook_vbox.pack_start(notebook);
   notebook_vbox.pack_end(entry_box, Gtk::PACK_SHRINK);
   directory_and_notebook_panes.pack2(notebook_vbox, Gtk::SHRINK);
