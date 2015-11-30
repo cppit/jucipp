@@ -27,8 +27,6 @@ private:
 
 class Tooltips {
 public:
-  using iterator = typename std::list<Tooltip>::iterator;
-  
   static void init() {drawn_tooltips_rectangle=Gdk::Rectangle();}
   void show(const Gdk::Rectangle& rectangle, bool disregard_drawn=false);
   void show(bool disregard_drawn=false);
