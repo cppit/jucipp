@@ -12,8 +12,8 @@ towards libclang with speed and ease of use in mind.
 * C++ warnings and errors on the fly
 * C++ Fix-its
 * Automated CMake processing
-* Fast C++ autocomletion (including external libraries)
-* Keyword and buffer autocomletion for other file types
+* Fast C++ autocompletion (including external libraries)
+* Keyword and buffer autocompletion for other file types
 * Tooltips showing type information and doxygen documentation
 * Refactoring across files
 * Highlighting of similar types
