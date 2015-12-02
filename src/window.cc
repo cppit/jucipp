@@ -395,20 +395,21 @@ void Window::set_menu_actions() {
           notebook.open(declaration_file);
           auto line=static_cast<int>(location.line)-1;
           auto index=static_cast<int>(location.index)-1;
-          auto buffer=notebook.get_current_view()->get_buffer();
-          line=std::min(line, buffer->get_line_count()-1);
+          auto view=notebook.get_current_view();
+          line=std::min(line, view->get_buffer()->get_line_count()-1);
           if(line>=0) {
-            auto iter=buffer->get_iter_at_line(line);
+            auto iter=view->get_buffer()->get_iter_at_line(line);
             while(!iter.ends_line())
               iter.forward_char();
             auto end_line_index=iter.get_line_index();
             index=std::min(index, end_line_index);
-            buffer->place_cursor(buffer->get_iter_at_line_index(line, index));
             
             while(g_main_context_pending(NULL))
               g_main_context_iteration(NULL, false);
-            if(notebook.get_current_page()!=-1)
+            if(notebook.get_current_page()!=-1 && notebook.get_current_view()==view) {
+              view->get_buffer()->place_cursor(view->get_buffer()->get_iter_at_line_index(line, index));
               notebook.get_current_view()->scroll_to(notebook.get_current_view()->get_buffer()->get_insert(), 0.0, 1.0, 0.5);
+            }
           }
         }
       }
