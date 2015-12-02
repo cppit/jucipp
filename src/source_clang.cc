@@ -35,7 +35,7 @@ Source::View(file_path, project_path, language) {
   parsing_in_progress=Singleton::terminal->print_in_progress("Parsing "+file_path.string());
   //GTK-calls must happen in main thread, so the parse_thread
   //sends signals to the main thread that it is to call the following functions:
-  parse_start_connection=parse_preprocess.connect([this]{
+  parse_preprocess_connection=parse_preprocess.connect([this]{
     auto expected=ParseProcessState::PREPROCESSING;
     if(parse_mutex.try_lock()) {
       if(parse_process_state.compare_exchange_strong(expected, ParseProcessState::PROCESSING))
@@ -45,7 +45,7 @@ Source::View(file_path, project_path, language) {
     else
       parse_process_state.compare_exchange_strong(expected, ParseProcessState::STARTING);
   });
-  parse_done_connection=parse_postprocess.connect([this](){
+  parse_postprocess_connection=parse_postprocess.connect([this](){
     if(parse_mutex.try_lock()) {
       auto expected=ParseProcessState::POSTPROCESSING;
       if(parse_process_state.compare_exchange_strong(expected, ParseProcessState::IDLE)) {
@@ -57,7 +57,7 @@ Source::View(file_path, project_path, language) {
       parse_mutex.unlock();
     }
   });
-  parse_fail_connection=parse_error.connect([this](){
+  parse_error_connection=parse_error.connect([this](){
     Singleton::terminal->print("Error: failed to reparse "+this->file_path.string()+".\n", true);
     set_status("");
     set_info("");
@@ -663,7 +663,7 @@ Source::ClangViewParse(file_path, project_path, language), autocomplete_state(Au
     return false;
   });
   
-  autocomplete_done_connection=autocomplete_done.connect([this](){
+  autocomplete_error_connection=autocomplete_done.connect([this](){
     if(autocomplete_state==AutocompleteState::CANCELED) {
       set_status("");
       soft_reparse();
@@ -710,7 +710,7 @@ Source::ClangViewParse(file_path, project_path, language), autocomplete_state(Au
   autocomplete_restart_connection=autocomplete_restart.connect([this]() {
     autocomplete_check();
   });
-  autocomplete_fail_connection=autocomplete_fail.connect([this]() {
+  autocomplete_error_connection=autocomplete_error.connect([this]() {
     Singleton::terminal->print("Error: autocomplete failed, reparsing "+this->file_path.string()+"\n", true);
     autocomplete_state=AutocompleteState::CANCELED;
     full_reparse();
@@ -867,7 +867,7 @@ void Source::ClangViewAutocomplete::autocomplete() {
     if(parse_state==ParseState::PROCESSING)
       autocomplete_done();
     else
-      autocomplete_fail();
+      autocomplete_error();
     parse_mutex.unlock();
   });
 }
@@ -1393,12 +1393,12 @@ Source::ClangView::ClangView(const boost::filesystem::path &file_path, const boo
 
 void Source::ClangView::async_delete() {
   delayed_reparse_connection.disconnect();
-  parse_done_connection.disconnect();
-  parse_start_connection.disconnect();
-  parse_fail_connection.disconnect();
-  autocomplete_done_connection.disconnect();
+  parse_postprocess_connection.disconnect();
+  parse_preprocess_connection.disconnect();
+  parse_error_connection.disconnect();
+  autocomplete_error_connection.disconnect();
   autocomplete_restart_connection.disconnect();
-  autocomplete_fail_connection.disconnect();
+  autocomplete_error_connection.disconnect();
   do_restart_parse_connection.disconnect();
   delayed_tag_similar_tokens_connection.disconnect();
   ClangViewAutocomplete::async_delete();

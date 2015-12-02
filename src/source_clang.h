@@ -53,9 +53,9 @@ namespace Source {
     std::mutex parse_mutex;
     std::atomic<ParseState> parse_state;
     std::atomic<ParseProcessState> parse_process_state;
-    sigc::connection parse_done_connection;
-    sigc::connection parse_start_connection;
-    sigc::connection parse_fail_connection;
+    sigc::connection parse_preprocess_connection;
+    sigc::connection parse_postprocess_connection;
+    sigc::connection parse_error_connection;
   private:
     Glib::Dispatcher parse_preprocess;
     Glib::Dispatcher parse_postprocess;
@@ -92,7 +92,7 @@ namespace Source {
     std::thread autocomplete_thread;
     sigc::connection autocomplete_done_connection;
     sigc::connection autocomplete_restart_connection;
-    sigc::connection autocomplete_fail_connection;
+    sigc::connection autocomplete_error_connection;
     sigc::connection do_delete_object_connection;
     sigc::connection do_restart_parse_connection;
   private:
@@ -106,7 +106,7 @@ namespace Source {
     std::vector<AutoCompleteData> autocomplete_get_suggestions(const std::string &buffer, int line_number, int column);
     Glib::Dispatcher autocomplete_done;
     Glib::Dispatcher autocomplete_restart;
-    Glib::Dispatcher autocomplete_fail;
+    Glib::Dispatcher autocomplete_error;
     guint last_keyval=0;
     std::string prefix;
     std::mutex prefix_mutex;
