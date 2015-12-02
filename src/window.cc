@@ -334,10 +334,12 @@ void Window::set_menu_actions() {
   });
   menu->add_action("source_center_cursor", [this]() {
     if(notebook.get_current_page()!=-1) {
+      auto view=notebook.get_current_view();
+      
       while(g_main_context_pending(NULL))
         g_main_context_iteration(NULL, false);
-      if(notebook.get_current_page()!=-1)
-        notebook.get_current_view()->scroll_to(notebook.get_current_view()->get_buffer()->get_insert(), 0.0, 1.0, 0.5);
+      if(notebook.get_current_page()!=-1 && notebook.get_current_view()==view)
+        view->scroll_to(view->get_buffer()->get_insert(), 0.0, 1.0, 0.5);
     }
   });
   
@@ -408,7 +410,7 @@ void Window::set_menu_actions() {
               g_main_context_iteration(NULL, false);
             if(notebook.get_current_page()!=-1 && notebook.get_current_view()==view) {
               view->get_buffer()->place_cursor(view->get_buffer()->get_iter_at_line_index(line, index));
-              notebook.get_current_view()->scroll_to(notebook.get_current_view()->get_buffer()->get_insert(), 0.0, 1.0, 0.5);
+              view->scroll_to(view->get_buffer()->get_insert(), 0.0, 1.0, 0.5);
             }
           }
         }
@@ -844,16 +846,18 @@ void Window::goto_line_entry() {
   if(notebook.get_current_page()!=-1) {
     entry_box.entries.emplace_back("", [this](const std::string& content){
       if(notebook.get_current_page()!=-1) {
-        auto buffer=notebook.get_current_view()->get_buffer();
+        auto view=notebook.get_current_view();
         try {
           auto line = stoi(content);
-          if(line>0 && line<=buffer->get_line_count()) {
+          if(line>0 && line<=view->get_buffer()->get_line_count()) {
             line--;
-            buffer->place_cursor(buffer->get_iter_at_line(line));
+            
             while(g_main_context_pending(NULL))
               g_main_context_iteration(NULL, false);
-            if(notebook.get_current_page()!=-1)
-              notebook.get_current_view()->scroll_to(buffer->get_insert(), 0.0, 1.0, 0.5);
+            if(notebook.get_current_page()!=-1 && notebook.get_current_view()==view) {
+              view->get_buffer()->place_cursor(view->get_buffer()->get_iter_at_line(line));
+              view->scroll_to(view->get_buffer()->get_insert(), 0.0, 1.0, 0.5);
+            }
           }
         }
         catch(const std::exception &e) {}  

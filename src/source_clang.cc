@@ -1007,7 +1007,7 @@ Source::ClangViewAutocomplete(file_path, project_path, language) {
           iter.forward_char();
         }
         get_buffer()->place_cursor(iter);
-        while(g_main_context_pending(NULL))
+        while(g_main_context_pending(NULL)) //TODO: minor: might crash if the buffer is saved and closed really fast right after doing auto indent
           g_main_context_iteration(NULL, false);
         scroll_to(get_buffer()->get_insert(), 0.0, 1.0, 0.5);
       }
