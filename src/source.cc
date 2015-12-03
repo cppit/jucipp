@@ -143,8 +143,7 @@ Source::View::View(const boost::filesystem::path &file_path, const boost::filesy
             auto first=iter;
             auto second=iter;
             if(last_keyval_is_return) {
-              while(first && !first.ends_line())
-                first.backward_char();
+              while(first && !first.ends_line() && first.backward_char()) {}
               if(first.backward_char() && second.forward_char()) {
                 get_buffer()->remove_tag_by_name("spellcheck_error", first, second);
                 auto word=spellcheck_get_word(first);
@@ -947,35 +946,34 @@ bool Source::View::on_key_press_event(GdkEventKey* key) {
     while((*end_blank_iter==' ' || *end_blank_iter=='\t') &&
           !end_blank_iter.ends_line() && end_blank_iter.forward_char()) {}
     start_blank_iter.backward_char();
-    while((*start_blank_iter==' ' || *start_blank_iter=='\t' || start_blank_iter.ends_line()) &&
+    while((*start_blank_iter==' ' || *start_blank_iter=='\t') &&
           !start_blank_iter.starts_line() && start_blank_iter.backward_char()) {}
-    if(!start_blank_iter.starts_line()) {
+    
+    if(start_blank_iter.starts_line() && (*start_blank_iter==' ' || *start_blank_iter=='\t'))
+      get_buffer()->erase(iter, end_blank_iter);
+    else {
       start_blank_iter.forward_char();
       get_buffer()->erase(start_blank_iter, end_blank_iter);
     }
-    else
-      get_buffer()->erase(iter, end_blank_iter);
-    iter=get_buffer()->get_insert()->get_iter();
     
+    iter=get_buffer()->get_insert()->get_iter();
     int line_nr=iter.get_line();
     auto tabs_end_iter=get_tabs_end_iter();
     auto line_tabs=get_line_before(tabs_end_iter);
     if((line_nr+1)<get_buffer()->get_line_count()) {
       auto next_line_tabs_end_iter=get_tabs_end_iter(line_nr+1);
       auto next_line_tabs=get_line_before(next_line_tabs_end_iter);
-      if(iter.ends_line()) {
-        if(next_line_tabs.size()>line_tabs.size()) {
-          get_source_buffer()->insert_at_cursor("\n"+next_line_tabs);
-          scroll_to(get_source_buffer()->get_insert());
-          get_source_buffer()->end_user_action();
-          return true;
-        }
+      if(iter.ends_line() && next_line_tabs.size()>line_tabs.size()) {
+        get_source_buffer()->insert_at_cursor("\n"+next_line_tabs);
+        scroll_to(get_source_buffer()->get_insert());
+        get_source_buffer()->end_user_action();
+        return true;
       }
-      get_source_buffer()->insert_at_cursor("\n"+line_tabs);
-      scroll_to(get_source_buffer()->get_insert());
-      get_source_buffer()->end_user_action();
-      return true;
     }
+    get_source_buffer()->insert_at_cursor("\n"+line_tabs);
+    scroll_to(get_source_buffer()->get_insert());
+    get_source_buffer()->end_user_action();
+    return true;
   }
   //Indent right when clicking tab, no matter where in the line the cursor is. Also works on selected text.
   else if(key->keyval==GDK_KEY_Tab) {
@@ -1104,9 +1102,8 @@ bool Source::View::on_key_press_event(GdkEventKey* key) {
     while(!end_sentence_iter.starts_line() && 
           (*end_sentence_iter==' ' || *end_sentence_iter=='\t' || end_sentence_iter.ends_line()) &&
           end_sentence_iter.backward_char()) {}
-    if(!end_sentence_iter.ends_line())
+    if(!end_sentence_iter.ends_line() && !end_sentence_iter.starts_line())
       end_sentence_iter.forward_char();
-    
     if(iter==end_line_iter) {
       if((key->state&GDK_SHIFT_MASK)>0)
         get_buffer()->move_mark_by_name("insert", end_sentence_iter);

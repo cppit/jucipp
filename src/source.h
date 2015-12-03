@@ -104,8 +104,8 @@ namespace Source {
     
     bool soft_reparse_needed=false;
     bool full_reparse_needed=false;
-    virtual void soft_reparse() {}
-    virtual bool full_reparse() {return true;}
+    virtual void soft_reparse() {soft_reparse_needed=false;}
+    virtual bool full_reparse() {full_reparse_needed=false; return true;}
   protected:
     bool parsed=false;
     Tooltips diagnostic_tooltips;
@@ -133,8 +133,8 @@ namespace Source {
     bool find_right_bracket_forward(Gtk::TextIter iter, Gtk::TextIter &found_iter);
     bool find_left_bracket_backward(Gtk::TextIter iter, Gtk::TextIter &found_iter);
     
-    bool on_key_press_event(GdkEventKey* key);
-    bool on_button_press_event(GdkEventButton *event);
+    bool on_key_press_event(GdkEventKey* key) override;
+    bool on_button_press_event(GdkEventButton *event) override;
     
     std::pair<char, unsigned> find_tab_char_and_size();
     unsigned tab_size;

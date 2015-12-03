@@ -34,7 +34,8 @@ Window::Window() : compiling(false) {
   
   add(vpaned);
   
-  directory_and_notebook_panes.pack1(*Singleton::directories, Gtk::SHRINK);
+  directories_scrolled_window.add(*Singleton::directories);
+  directory_and_notebook_panes.pack1(directories_scrolled_window, Gtk::SHRINK);
   notebook_vbox.pack_start(notebook);
   notebook_vbox.pack_end(entry_box, Gtk::PACK_SHRINK);
   directory_and_notebook_panes.pack2(notebook_vbox, Gtk::SHRINK);
@@ -96,12 +97,9 @@ Window::Window() : compiling(false) {
       if(view->full_reparse_needed) {
         if(!view->full_reparse())
           Singleton::terminal->async_print("Error: failed to reparse "+view->file_path.string()+". Please reopen the file manually.\n", true);
-        view->full_reparse_needed=false;
       }
-      else if(view->soft_reparse_needed) {
+      else if(view->soft_reparse_needed)
         view->soft_reparse();
-        view->soft_reparse_needed=false;
-      }
       
       view->set_status(view->status);
       view->set_info(view->info);
@@ -336,10 +334,12 @@ void Window::set_menu_actions() {
   });
   menu->add_action("source_center_cursor", [this]() {
     if(notebook.get_current_page()!=-1) {
+      auto view=notebook.get_current_view();
+      
       while(g_main_context_pending(NULL))
         g_main_context_iteration(NULL, false);
-      if(notebook.get_current_page()!=-1)
-        notebook.get_current_view()->scroll_to(notebook.get_current_view()->get_buffer()->get_insert(), 0.0, 1.0, 0.5);
+      if(notebook.get_current_page()!=-1 && notebook.get_current_view()==view)
+        view->scroll_to(view->get_buffer()->get_insert(), 0.0, 1.0, 0.5);
     }
   });
   
@@ -397,20 +397,21 @@ void Window::set_menu_actions() {
           notebook.open(declaration_file);
           auto line=static_cast<int>(location.line)-1;
           auto index=static_cast<int>(location.index)-1;
-          auto buffer=notebook.get_current_view()->get_buffer();
-          line=std::min(line, buffer->get_line_count()-1);
+          auto view=notebook.get_current_view();
+          line=std::min(line, view->get_buffer()->get_line_count()-1);
           if(line>=0) {
-            auto iter=buffer->get_iter_at_line(line);
+            auto iter=view->get_buffer()->get_iter_at_line(line);
             while(!iter.ends_line())
               iter.forward_char();
             auto end_line_index=iter.get_line_index();
             index=std::min(index, end_line_index);
-            buffer->place_cursor(buffer->get_iter_at_line_index(line, index));
             
             while(g_main_context_pending(NULL))
               g_main_context_iteration(NULL, false);
-            if(notebook.get_current_page()!=-1)
-              notebook.get_current_view()->scroll_to(notebook.get_current_view()->get_buffer()->get_insert(), 0.0, 1.0, 0.5);
+            if(notebook.get_current_page()!=-1 && notebook.get_current_view()==view) {
+              view->get_buffer()->place_cursor(view->get_buffer()->get_iter_at_line_index(line, index));
+              view->scroll_to(view->get_buffer()->get_insert(), 0.0, 1.0, 0.5);
+            }
           }
         }
       }
@@ -845,16 +846,18 @@ void Window::goto_line_entry() {
   if(notebook.get_current_page()!=-1) {
     entry_box.entries.emplace_back("", [this](const std::string& content){
       if(notebook.get_current_page()!=-1) {
-        auto buffer=notebook.get_current_view()->get_buffer();
+        auto view=notebook.get_current_view();
         try {
           auto line = stoi(content);
-          if(line>0 && line<=buffer->get_line_count()) {
+          if(line>0 && line<=view->get_buffer()->get_line_count()) {
             line--;
-            buffer->place_cursor(buffer->get_iter_at_line(line));
+            
             while(g_main_context_pending(NULL))
               g_main_context_iteration(NULL, false);
-            if(notebook.get_current_page()!=-1)
-              notebook.get_current_view()->scroll_to(buffer->get_insert(), 0.0, 1.0, 0.5);
+            if(notebook.get_current_page()!=-1 && notebook.get_current_view()==view) {
+              view->get_buffer()->place_cursor(view->get_buffer()->get_iter_at_line(line));
+              view->scroll_to(view->get_buffer()->get_insert(), 0.0, 1.0, 0.5);
+            }
           }
         }
         catch(const std::exception &e) {}  
@@ -884,6 +887,7 @@ void Window::rename_token_entry() {
         label_it->update(0, "");
         entry_box.entries.emplace_back(token->spelling, [this, token](const std::string& content){
           if(notebook.get_current_page()!=-1 && content!=token->spelling) {
+            std::vector<int> modified_pages;
             for(int c=0;c<notebook.size();c++) {
               auto view=notebook.get_view(c);
               if(view->rename_similar_tokens) {
@@ -891,9 +895,12 @@ void Window::rename_token_entry() {
                 if(number>0) {
                   Singleton::terminal->print("Replaced "+std::to_string(number)+" occurrences in file "+view->file_path.string()+"\n");
                   notebook.save(c);
+                  modified_pages.emplace_back(c);
                 }
               }
             }
+            for(auto &page: modified_pages)
+              notebook.get_view(page)->soft_reparse_needed=false;
             entry_box.hide();
           }
         });

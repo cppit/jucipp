@@ -27,6 +27,17 @@ namespace sigc {
 #endif
 }
 
+Notebook::TabLabel::TabLabel(const std::string &title) : Gtk::Box(Gtk::ORIENTATION_HORIZONTAL) {
+  label.set_text(title);
+  button.set_image_from_icon_name("window-close-symbolic", Gtk::ICON_SIZE_MENU);
+  button.set_border_width(0.0);
+  button.set_use_underline(false);
+  button.set_relief(Gtk::ReliefStyle::RELIEF_NONE);
+  pack_start(label, Gtk::PACK_SHRINK);
+  pack_end(button, Gtk::PACK_SHRINK);
+  show_all();
+}
+
 Notebook::Notebook() : Gtk::Notebook(), last_index(-1) {
   Gsv::init();
   
@@ -115,8 +126,19 @@ void Notebook::open(const boost::filesystem::path &file_path) {
 #endif
   configure(source_views.size()-1);
   
+  //Set up tab label
   std::string title=file_path.filename().string();
-  append_page(*hboxes.back(), title);
+  tab_labels.emplace_back(new TabLabel(title));
+  auto source_view=source_views.back();
+  tab_labels.back()->button.signal_clicked().connect([this, source_view](){
+    for(int c=0;c<size();c++) {
+      if(get_view(c)==source_view) {
+        close(c);
+        break;
+      }
+    }
+  });
+  append_page(*hboxes.back(), *tab_labels.back());
   
   set_tab_reorderable(*hboxes.back(), true);
   show_all_children();
@@ -131,7 +153,6 @@ void Notebook::open(const boost::filesystem::path &file_path) {
   get_current_view()->get_buffer()->set_modified(false);
   get_current_view()->grab_focus();
   //Add star on tab label when the page is not saved:
-  auto source_view=get_current_view();
   get_current_view()->get_buffer()->signal_modified_changed().connect([this, source_view]() {
     std::string title=source_view->file_path.filename().string();
     if(source_view->get_buffer()->get_modified())
@@ -144,7 +165,7 @@ void Notebook::open(const boost::filesystem::path &file_path) {
       }
     }
     if(page!=-1)
-      set_tab_label_text(*(get_nth_page(page)), title);
+      tab_labels.at(page)->label.set_text(title);
   });
   
   JDEBUG("end");
@@ -164,7 +185,7 @@ void Notebook::configure(int view_nr) {
 #endif
 }
 
-bool Notebook::save(int page, bool reparse_needed) {
+bool Notebook::save(int page) {
   JDEBUG("start");
   if(page>=size()) {
     JDEBUG("end false");
@@ -199,14 +220,12 @@ bool Notebook::save(int page, bool reparse_needed) {
     }
     
     if(filesystem::write(view->file_path, view->get_buffer())) {
-      if(reparse_needed) {
-        if(auto clang_view=dynamic_cast<Source::ClangView*>(view)) {
-          if(clang_view->language->get_id()=="chdr" || clang_view->language->get_id()=="cpphdr") {
-            for(auto a_view: source_views) {
-              if(auto a_clang_view=dynamic_cast<Source::ClangView*>(a_view)) {
-                  if(clang_view!=a_clang_view)
-                    a_clang_view->soft_reparse_needed=true;
-              }
+      if(auto clang_view=dynamic_cast<Source::ClangView*>(view)) {
+        if(clang_view->language->get_id()=="chdr" || clang_view->language->get_id()=="cpphdr") {
+          for(auto a_view: source_views) {
+            if(auto a_clang_view=dynamic_cast<Source::ClangView*>(a_view)) {
+                if(clang_view!=a_clang_view)
+                  a_clang_view->soft_reparse_needed=true;
             }
           }
         }
@@ -248,25 +267,31 @@ bool Notebook::save(int page, bool reparse_needed) {
 bool Notebook::save_current() {
   if(get_current_page()==-1)
     return false;
-  return save(get_current_page(), true);
+  return save(get_current_page());
 }
 
-bool Notebook::close_current_page() {
+bool Notebook::close(int page) {
   JDEBUG("start");
-  if (get_current_page()!=-1) {
-    if(get_current_view()->get_buffer()->get_modified()){
-      if(!save_modified_dialog()) {
+  if (page!=-1) {
+    auto view=get_view(page);
+    if(view->get_buffer()->get_modified()){
+      if(!save_modified_dialog(page)) {
         JDEBUG("end false");
         return false;
       }
     }
-    int page = get_current_page();
-    int index=get_index(page);
-    
-    if(last_index!=static_cast<size_t>(-1)) {
-      set_current_page(page_num(*hboxes.at(last_index)));
-      last_index=-1;
+    auto index=get_index(page);
+    if(page==get_current_page()) {
+      if(last_index!=static_cast<size_t>(-1)) {
+        set_current_page(page_num(*hboxes.at(last_index)));
+        last_index=-1;
+      }
     }
+    else if(index==last_index)
+      last_index=-1;
+    else if(index<last_index && last_index!=static_cast<size_t>(-1))
+      last_index--;
+    
     remove_page(page);
 #if GTKSOURCEVIEWMM_MAJOR_VERSION > 2 & GTKSOURCEVIEWMM_MINOR_VERSION > 17
     source_maps.erase(source_maps.begin()+index);
@@ -279,9 +304,16 @@ bool Notebook::close_current_page() {
     source_views.erase(source_views.begin()+index);
     scrolled_windows.erase(scrolled_windows.begin()+index);
     hboxes.erase(hboxes.begin()+index);
+    tab_labels.erase(tab_labels.begin()+index);
   }
   JDEBUG("end true");
   return true;
+}
+
+bool Notebook::close_current_page() {
+  if(get_current_page()==-1)
+    return false;
+  return close(get_current_page());
 }
 
 boost::filesystem::path Notebook::get_current_folder() {
@@ -295,13 +327,13 @@ boost::filesystem::path Notebook::get_current_folder() {
   return current_path;
 }
 
-bool Notebook::save_modified_dialog() {
+bool Notebook::save_modified_dialog(int page) {
   Gtk::MessageDialog dialog((Gtk::Window&)(*get_toplevel()), "Save file!", false, Gtk::MESSAGE_QUESTION, Gtk::BUTTONS_YES_NO);
   dialog.set_default_response(Gtk::RESPONSE_YES);
-  dialog.set_secondary_text("Do you want to save: " + get_current_view()->file_path.string()+" ?");
+  dialog.set_secondary_text("Do you want to save: " + get_view(page)->file_path.string()+" ?");
   int result = dialog.run();
   if(result==Gtk::RESPONSE_YES) {
-    save_current();
+    save(page);
     return true;
   }
   else if(result==Gtk::RESPONSE_NO) {
