@@ -1,6 +1,7 @@
 #include "process.h"
 #include <cstdlib>
 #include <thread>
+#include <unistd.h>
 #include <signal.h>
 
 #include <iostream> //TODO: remove
