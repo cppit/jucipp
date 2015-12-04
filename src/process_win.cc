@@ -1,5 +1,6 @@
 #include "process.h"
 #include <cstring>
+#include "TlHelp32.h"
 
 #include <iostream> //TODO: remove
 using namespace std; //TODO: remove
@@ -30,25 +31,25 @@ process_id_type Process::open(const std::string &command, const std::string &pat
 
   if(stdin_fd) {
     if (!CreatePipe(&g_hChildStd_IN_Rd, &g_hChildStd_IN_Wr, &saAttr, 0))
-      return NULL;
+      return 0;
     if(!SetHandleInformation(g_hChildStd_IN_Wr, HANDLE_FLAG_INHERIT, 0)) {
       CloseHandle(g_hChildStd_IN_Rd);
       CloseHandle(g_hChildStd_IN_Wr);
-      return NULL;
+      return 0;
     }
   }
   if(stdout_fd) {
     if (!CreatePipe(&g_hChildStd_OUT_Rd, &g_hChildStd_OUT_Wr, &saAttr, 0)) {
       if(stdin_fd) CloseHandle(g_hChildStd_IN_Rd);
       if(stdin_fd) CloseHandle(g_hChildStd_IN_Wr);
-      return NULL;
+      return 0;
     }
     if(!SetHandleInformation(g_hChildStd_OUT_Rd, HANDLE_FLAG_INHERIT, 0)) {
       if(stdin_fd) CloseHandle(g_hChildStd_IN_Rd);
       if(stdin_fd) CloseHandle(g_hChildStd_IN_Wr);
       CloseHandle(g_hChildStd_OUT_Rd);
       CloseHandle(g_hChildStd_OUT_Wr);
-      return NULL;
+      return 0;
     }
   }
   if(stderr_fd) {
@@ -57,7 +58,7 @@ process_id_type Process::open(const std::string &command, const std::string &pat
       if(stdin_fd) CloseHandle(g_hChildStd_IN_Wr);
       if(stdout_fd) CloseHandle(g_hChildStd_OUT_Rd);
       if(stdout_fd) CloseHandle(g_hChildStd_OUT_Wr);
-      return NULL;
+      return 0;
     }
     if(!SetHandleInformation(g_hChildStd_ERR_Rd, HANDLE_FLAG_INHERIT, 0)) {
       if(stdin_fd) CloseHandle(g_hChildStd_IN_Rd);
@@ -66,7 +67,7 @@ process_id_type Process::open(const std::string &command, const std::string &pat
       if(stdout_fd) CloseHandle(g_hChildStd_OUT_Wr);
       CloseHandle(g_hChildStd_ERR_Rd);
       CloseHandle(g_hChildStd_ERR_Wr);
-      return NULL;
+      return 0;
     }
   }
   
@@ -90,8 +91,27 @@ process_id_type Process::open(const std::string &command, const std::string &pat
     path_ptr=new char[path.size()+1];
     std::strcpy(path_ptr, path.c_str());
   }
-  char* command_cstr=new char[command.size()+1];
+
+  char* command_cstr;
+#ifdef MSYS2_PROCESS_USE_SH
+  size_t pos=0;
+  std::string sh_command=command;
+  while((pos=sh_command.find('\"', pos))!=std::string::npos) {
+    if(pos>0 && sh_command[pos-1]!='\\') {
+      sh_command.replace(pos, 1, "\\\"");
+      pos++;
+    }
+    pos++;
+  }
+  sh_command.insert(0, "sh -c \"");
+  sh_command+="\"";
+  command_cstr=new char[sh_command.size()+1];
+  std::strcpy(command_cstr, sh_command.c_str());
+#else
+  command_cstr=new char[command.size()+1];
   std::strcpy(command_cstr, command.c_str());
+#endif
+
   BOOL bSuccess = CreateProcess(NULL,
                                 command_cstr,  // command line
                                 NULL,          // process security attributes
@@ -109,13 +129,9 @@ process_id_type Process::open(const std::string &command, const std::string &pat
     if(stdin_fd) CloseHandle(g_hChildStd_IN_Rd);
     if(stdout_fd) CloseHandle(g_hChildStd_OUT_Wr);
     if(stderr_fd) CloseHandle(g_hChildStd_ERR_Wr);
-    return NULL;
+    return 0;
   }
   else {
-    // Close handles to the child process and its primary thread.
-    // Some applications might keep these handles to monitor the status
-    // of the child process, for example.
-
     CloseHandle(process_info.hThread);
     if(stdin_fd) CloseHandle(g_hChildStd_IN_Rd);
     if(stdout_fd) CloseHandle(g_hChildStd_OUT_Wr);
@@ -125,7 +141,8 @@ process_id_type Process::open(const std::string &command, const std::string &pat
   if(stdin_fd) *stdin_fd=g_hChildStd_IN_Wr;
   if(stdout_fd) *stdout_fd=g_hChildStd_OUT_Rd;
   if(stderr_fd) *stderr_fd=g_hChildStd_ERR_Rd;
-  return process_info.hProcess;
+  
+  return process_info.dwProcessId;
 }
 
 void Process::async_read() {
@@ -157,9 +174,10 @@ void Process::async_read() {
 
 int Process::get_exit_code() {
   DWORD exit_code;
-  WaitForSingleObject(id, INFINITE);
-  GetExitCodeProcess(id, &exit_code);
-  CloseHandle(id);
+  HANDLE process_info = OpenProcess(PROCESS_ALL_ACCESS, FALSE, id);
+  WaitForSingleObject(process_info, INFINITE);
+  GetExitCodeProcess(process_info, &exit_code);
+  CloseHandle(process_info);
   
   if(stdout_thread.joinable())
     stdout_thread.join();
@@ -188,7 +206,7 @@ bool Process::write(const char *bytes, size_t n) {
   stdin_mutex.lock();
   if(stdin_fd) {
     DWORD written;
-    BOOL bSuccess=WriteFile(id, bytes, static_cast<DWORD>(n), &written, NULL);
+    BOOL bSuccess=WriteFile(*stdin_fd, bytes, static_cast<DWORD>(n), &written, NULL);
     if(!bSuccess || written==0) {
       stdin_mutex.unlock();
       return false;
@@ -203,5 +221,20 @@ bool Process::write(const char *bytes, size_t n) {
 }
 
 void Process::kill(process_id_type id, bool force) {
-  TerminateProcess(id, 2);
+  HANDLE snapshot = CreateToolhelp32Snapshot(TH32CS_SNAPPROCESS, 0);
+  if(snapshot) {
+    PROCESSENTRY32 process;
+    ZeroMemory(&process, sizeof(process));
+    process.dwSize = sizeof(process);
+    if(Process32First(snapshot, &process)) {
+      do {
+        if(process.th32ParentProcessID==id) {
+          HANDLE process_info = OpenProcess(PROCESS_ALL_ACCESS, FALSE, process.th32ProcessID);
+          if(process_info) TerminateProcess(process_info, 2);
+        }
+      } while (Process32Next(snapshot, &process));
+    }
+  }
+  HANDLE process_info = OpenProcess(PROCESS_ALL_ACCESS, FALSE, id);
+  if(process_info) TerminateProcess(process_info, 2);
 }

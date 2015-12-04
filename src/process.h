@@ -8,7 +8,7 @@
 #include <thread>
 #ifdef _WIN32
 #include <windows.h>
-  typedef HANDLE process_id_type;
+  typedef DWORD process_id_type;
   typedef HANDLE file_descriptor_type;
 #else
 #include <sys/wait.h>

@@ -22,7 +22,7 @@ if(UNIX) #Checking if compiling on Ubuntu that has a buggy menu system
 endif()
 
 if(MSYS)
-  set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -DJUCI_CMAKE_INSTALL_PREFIX=\\\"${CMAKE_INSTALL_PREFIX}\\\"")
+  set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -DMSYS2_PROCESS_USE_SH -DJUCI_CMAKE_INSTALL_PREFIX=\\\"${CMAKE_INSTALL_PREFIX}\\\"")
 endif()
 
 INCLUDE(FindPkgConfig)
