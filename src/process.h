@@ -14,7 +14,7 @@
 
 ///Create a new process given command and run path.
 ///Note: on Windows it seems impossible to specify which pipes to use.
-///Thus, if read_stdout=nullptr, read_stderr=nullptr and open_std=false,
+///Thus, if read_stdout=nullptr, read_stderr=nullptr and open_stdin=false,
 ///the stdout, stderr and stdin are sent to the parent process instead.
 ///Compile with -DMSYS_PROCESS_USE_SH to run command using "sh -c [command]" on Windows as well.
 class Process {
