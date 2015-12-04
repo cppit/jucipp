@@ -9,7 +9,7 @@ using namespace std; //TODO: remove
 //Note: on Windows it seems impossible to specify which pipes to use
 //Thus, if stdin_h, stdout_h and stderr all are NULL, the out,err,in is sent to the parent process instead
 process_id_type Process::open(const std::string &command, const std::string &path) {
-  if(use_stdin)
+  if(open_stdin)
     stdin_fd=std::unique_ptr<file_descriptor_type>(new file_descriptor_type);
   if(read_stdout)
     stdout_fd=std::unique_ptr<file_descriptor_type>(new file_descriptor_type);
@@ -184,12 +184,7 @@ int Process::get_exit_code() {
   if(stderr_thread.joinable())
     stderr_thread.join();
   
-  stdin_mutex.lock();
-  if(stdin_fd) {
-    CloseHandle(*stdin_fd);
-    stdin_fd.reset();
-  }
-  stdin_mutex.unlock();
+  close_stdin();
   if(stdout_fd) {
     CloseHandle(*stdout_fd);
     stdout_fd.reset();
@@ -202,7 +197,7 @@ int Process::get_exit_code() {
   return static_cast<int>(exit_code);
 }
 
-bool Process::write(const char *bytes, size_t n) {
+bool Process::write_stdin(const char *bytes, size_t n) {
   stdin_mutex.lock();
   if(stdin_fd) {
     DWORD written;
@@ -218,6 +213,15 @@ bool Process::write(const char *bytes, size_t n) {
   }
   stdin_mutex.unlock();
   return false;
+}
+
+void Process::close_stdin() {
+  stdin_mutex.lock();
+  if(stdin_fd) {
+    CloseHandle(*stdin_fd);
+    stdin_fd.reset();
+  }
+  stdin_mutex.unlock();
 }
 
 void Process::kill(process_id_type id, bool force) {

@@ -7,7 +7,7 @@
 using namespace std; //TODO: remove
 
 process_id_type Process::open(const std::string &command, const std::string &path) {
-  if(use_stdin)
+  if(open_stdin)
     stdin_fd=std::unique_ptr<file_descriptor_type>(new file_descriptor_type);
   if(read_stdout)
     stdout_fd=std::unique_ptr<file_descriptor_type>(new file_descriptor_type);
@@ -109,12 +109,7 @@ int Process::get_exit_code() {
   if(stderr_thread.joinable())
     stderr_thread.join();
   
-  stdin_mutex.lock();
-  if(stdin_fd) {
-    close(*stdin_fd);
-    stdin_fd.reset();
-  }
-  stdin_mutex.unlock();
+  close_stdin();
   if(stdout_fd) {
     close(*stdout_fd);
     stdout_fd.reset();
@@ -127,7 +122,7 @@ int Process::get_exit_code() {
   return exit_code;
 }
 
-bool Process::write(const char *bytes, size_t n) {
+bool Process::write_stdin(const char *bytes, size_t n) {
   stdin_mutex.lock();
   if(stdin_fd) {
     if(::write(*stdin_fd, bytes, n)>=0) {
@@ -141,6 +136,15 @@ bool Process::write(const char *bytes, size_t n) {
   }
   stdin_mutex.unlock();
   return false;
+}
+
+void Process::close_stdin() {
+  stdin_mutex.lock();
+  if(stdin_fd) {
+    close(*stdin_fd);
+    stdin_fd.reset();
+  }
+  stdin_mutex.unlock();
 }
 
 void Process::kill(process_id_type id, bool force) {

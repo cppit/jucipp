@@ -92,7 +92,7 @@ int Terminal::process(const std::string &command, const boost::filesystem::path 
 
 int Terminal::process(std::istream &stdin_stream, std::ostream &stdout_stream, const std::string &command, const boost::filesystem::path &path) {
   Process process(command, path.string(), [this, &stdout_stream](const char* bytes, size_t n) {
-    Glib::ustring umessage(bytes, n);
+    Glib::ustring umessage(std::string(bytes, n));
     Glib::ustring::iterator iter;
     while(!umessage.validate(iter)) {
       auto next_char_iter=iter;
@@ -102,7 +102,7 @@ int Terminal::process(std::istream &stdin_stream, std::ostream &stdout_stream, c
     stdout_stream.write(umessage.data(), n);
   }, [this](const char* bytes, size_t n) {
     async_print(std::string(bytes, n), true);
-  });
+  }, true);
   
   if(process.get_id()<=0) {
     async_print("Error: Failed to run command: " + command + "\n", true);
@@ -115,9 +115,11 @@ int Terminal::process(std::istream &stdin_stream, std::ostream &stdout_stream, c
     auto read_n=stdin_stream.gcount();
     if(read_n==0)
       break;
-    if(!process.write(buffer, read_n))
+    if(!process.write_stdin(buffer, read_n)) {
       break;
+    }
   }
+  process.close_stdin();
   
   return process.get_exit_code();
 }
@@ -263,7 +265,7 @@ bool Terminal::on_key_press_event(GdkEventKey *event) {
     }
     else if(event->keyval==GDK_KEY_Return) {
       stdin_buffer+='\n';
-      processes.back()->write(stdin_buffer.c_str(), stdin_buffer.size());
+      processes.back()->write_stdin(stdin_buffer.c_str(), stdin_buffer.size());
       get_buffer()->insert_at_cursor(stdin_buffer.substr(stdin_buffer.size()-1));
       stdin_buffer.clear();
     }
