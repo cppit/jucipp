@@ -68,7 +68,7 @@ void Application::on_activate() {
       }
       std::thread another_juci_app([this, directory, files_in_directory](){
         Singleton::terminal->async_print("Executing: juci "+directory.string()+files_in_directory);
-        Singleton::terminal->execute("juci "+directory.string()+files_in_directory, "", false);
+        Singleton::terminal->process("juci "+directory.string()+files_in_directory, "", false);
       });
       another_juci_app.detach();
     }

@@ -7,8 +7,8 @@
 #include <boost/filesystem.hpp>
 #include <thread>
 #include <atomic>
-#include <list>
 #include <iostream>
+#include "process.h"
 
 class Terminal : public Gtk::TextView {
 public:
@@ -27,11 +27,11 @@ public:
   };
   
   Terminal();
-  int execute(const std::string &command, const boost::filesystem::path &path="", bool use_pipes=true);
-  int execute(std::istream &stdin_stream, std::ostream &stdout_stream, const std::string &command, const boost::filesystem::path &path="");
-  void async_execute(const std::string &command, const boost::filesystem::path &path="", std::function<void(int exit_code)> callback=nullptr);
-  void kill_last_async_execute(bool force=false);
-  void kill_async_executes(bool force=false);
+  int process(const std::string &command, const boost::filesystem::path &path="", bool use_pipes=true);
+  int process(std::istream &stdin_stream, std::ostream &stdout_stream, const std::string &command, const boost::filesystem::path &path="");
+  void async_process(const std::string &command, const boost::filesystem::path &path="", std::function<void(exit_code_type exit_code)> callback=nullptr);
+  void kill_last_async_process(bool force=false);
+  void kill_async_processes(bool force=false);
   
   size_t print(const std::string &message, bool bold=false);
   void print(size_t line_nr, const std::string &message);
@@ -49,12 +49,8 @@ private:
   std::mutex async_print_on_line_strings_mutex;
   Glib::RefPtr<Gtk::TextTag> bold_tag;
 
-  std::mutex async_executes_mutex;
-#ifdef _WIN32
-  std::list<std::pair<void*, void*> > async_executes;
-#else  
-  std::list<std::pair<pid_t, int> > async_executes;
-#endif
+  std::vector<std::shared_ptr<Process> > processes;
+  std::mutex processes_mutex;
   std::string stdin_buffer;
   
   size_t deleted_lines=0;
