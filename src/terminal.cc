@@ -144,7 +144,7 @@ void Terminal::async_process(const std::string &command, const boost::filesystem
       processes_mutex.unlock();
     }
       
-    exit_code_type exit_code=process->get_exit_code();
+    auto exit_code=process->get_exit_code();
     
     processes_mutex.lock();
     for(auto it=processes.begin();it!=processes.end();it++) {

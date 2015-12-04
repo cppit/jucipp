@@ -1,19 +1,19 @@
 #ifndef JUCI_PROCESS_H_
 #define JUCI_PROCESS_H_
 
-#include <sys/wait.h>
 #include <string>
 #include <functional>
 #include <vector>
 #include <mutex>
 #include <thread>
-
 #ifdef _WIN32
-  
-#else  
+#include <windows.h>
+  typedef HANDLE process_id_type;
+  typedef HANDLE file_descriptor_type;
+#else
+#include <sys/wait.h>
   typedef pid_t process_id_type;
   typedef int file_descriptor_type;
-  typedef int exit_code_type;
 #endif
 
 class Process {
@@ -28,7 +28,7 @@ public:
   ///Get the process id of the started process.
   process_id_type get_id() {return id;}
   ///Wait until process is finished, and return exit_code.
-  exit_code_type get_exit_code();
+  int get_exit_code();
   bool write(const char *bytes, size_t n);
   
   ///Kill a given process id.

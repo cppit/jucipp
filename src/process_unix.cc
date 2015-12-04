@@ -1,19 +1,18 @@
 #include "process.h"
 #include <cstdlib>
-#include <thread>
 #include <unistd.h>
 #include <signal.h>
 
 #include <iostream> //TODO: remove
 using namespace std; //TODO: remove
 
-pid_t Process::open(const std::string &command, const std::string &path) {
+process_id_type Process::open(const std::string &command, const std::string &path) {
   if(use_stdin)
-    stdin_fd=std::unique_ptr<file_descriptor_type>(new int);
+    stdin_fd=std::unique_ptr<file_descriptor_type>(new file_descriptor_type);
   if(read_stdout)
-    stdout_fd=std::unique_ptr<file_descriptor_type>(new int);
+    stdout_fd=std::unique_ptr<file_descriptor_type>(new file_descriptor_type);
   if(read_stderr)
-    stderr_fd=std::unique_ptr<file_descriptor_type>(new int);
+    stderr_fd=std::unique_ptr<file_descriptor_type>(new file_descriptor_type);
   
   int stdin_p[2], stdout_p[2], stderr_p[2];
 
@@ -39,7 +38,7 @@ pid_t Process::open(const std::string &command, const std::string &path) {
     return -1;
   }
   
-  pid_t pid = fork();
+  process_id_type pid = fork();
 
   if (pid < 0) {
     if(stdin_fd) close(stdin_p[0]);

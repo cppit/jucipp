@@ -94,7 +94,7 @@ set(source_files juci.h
 
 if(MSYS)
   list(APPEND source_files process_win.cc)
-  list(APPEND source_files dialogs_win.cc)
+  list(APPEND source_files dialogs_unix.cc) #dialogs_win.cc does not work any more because of missing SHCreateItemFromParsingName
 else()
   list(APPEND source_files process_unix.cc)
   list(APPEND source_files dialogs_unix.cc)
