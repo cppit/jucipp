@@ -165,7 +165,7 @@ void Notebook::open(const boost::filesystem::path &file_path) {
       }
     }
     if(page!=-1)
-      tab_labels.at(page)->label.set_text(title);
+      tab_labels.at(get_index(page))->label.set_text(title);
   });
   
   JDEBUG("end");
