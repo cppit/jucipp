@@ -6,13 +6,13 @@
 #include <iostream> //TODO: remove
 using namespace std; //TODO: remove
 
-process_id_type Process::open(const std::string &command, const std::string &path) {
+Process::id_type Process::open(const std::string &command, const std::string &path) {
   if(open_stdin)
-    stdin_fd=std::unique_ptr<file_descriptor_type>(new file_descriptor_type);
+    stdin_fd=std::unique_ptr<fd_type>(new fd_type);
   if(read_stdout)
-    stdout_fd=std::unique_ptr<file_descriptor_type>(new file_descriptor_type);
+    stdout_fd=std::unique_ptr<fd_type>(new fd_type);
   if(read_stderr)
-    stderr_fd=std::unique_ptr<file_descriptor_type>(new file_descriptor_type);
+    stderr_fd=std::unique_ptr<fd_type>(new fd_type);
   
   int stdin_p[2], stdout_p[2], stderr_p[2];
 
@@ -38,7 +38,7 @@ process_id_type Process::open(const std::string &command, const std::string &pat
     return -1;
   }
   
-  process_id_type pid = fork();
+  id_type pid = fork();
 
   if (pid < 0) {
     if(stdin_fd) close(stdin_p[0]);
@@ -101,6 +101,8 @@ void Process::async_read() {
 }
 
 int Process::get_exit_code() {
+  if(id<=0)
+    return -1;
   int exit_code;
   waitpid(id, &exit_code, 0);
   
@@ -147,7 +149,9 @@ void Process::close_stdin() {
   stdin_mutex.unlock();
 }
 
-void Process::kill(process_id_type id, bool force) {
+void Process::kill(id_type id, bool force) {
+  if(id<=0)
+    return;
   if(force)
     ::kill(-id, SIGTERM);
   else

@@ -9,7 +9,7 @@ Process::Process(const std::string &command, const std::string &path,
                  bool open_stdin, size_t buffer_size):
                  read_stdout(read_stdout), read_stderr(read_stderr), open_stdin(open_stdin), buffer_size(buffer_size) {
   id=open(command, path);
-  if(id!=0)
+  if(id>0)
     async_read();
 }
 

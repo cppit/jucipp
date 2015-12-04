@@ -5,16 +5,16 @@
 #include <iostream> //TODO: remove
 using namespace std; //TODO: remove
 
-//Based on the example at https://msdn.microsoft.com/en-us/library/windows/desktop/ms682499(v=vs.85).aspx
-//Note: on Windows it seems impossible to specify which pipes to use
-//Thus, if stdin_h, stdout_h and stderr all are NULL, the out,err,in is sent to the parent process instead
-process_id_type Process::open(const std::string &command, const std::string &path) {
+//Based on the example at https://msdn.microsoft.com/en-us/library/windows/desktop/ms682499(v=vs.85).aspx.
+//Note: on Windows it seems impossible to specify which pipes to use.
+//Thus, if read_stdout=nullptr, read_stderr=nullptr and open_std=false, the stdout, stderr and stdin are sent to the parent process instead.
+Process::id_type Process::open(const std::string &command, const std::string &path) {
   if(open_stdin)
-    stdin_fd=std::unique_ptr<file_descriptor_type>(new file_descriptor_type);
+    stdin_fd=std::unique_ptr<fd_type>(new fd_type);
   if(read_stdout)
-    stdout_fd=std::unique_ptr<file_descriptor_type>(new file_descriptor_type);
+    stdout_fd=std::unique_ptr<fd_type>(new fd_type);
   if(read_stderr)
-    stderr_fd=std::unique_ptr<file_descriptor_type>(new file_descriptor_type);
+    stderr_fd=std::unique_ptr<fd_type>(new fd_type);
 
   HANDLE g_hChildStd_IN_Rd = NULL;
   HANDLE g_hChildStd_IN_Wr = NULL;
@@ -112,16 +112,8 @@ process_id_type Process::open(const std::string &command, const std::string &pat
   std::strcpy(command_cstr, command.c_str());
 #endif
 
-  BOOL bSuccess = CreateProcess(NULL,
-                                command_cstr,  // command line
-                                NULL,          // process security attributes
-                                NULL,          // primary thread security attributes
-                                TRUE,          // handles are inherited
-                                0,             // creation flags
-                                NULL,          // use parent's environment
-                                path_ptr,      // use parent's current directory
-                                &siStartInfo,  // STARTUPINFO pointer
-                                &process_info);  // receives PROCESS_INFORMATION
+  BOOL bSuccess = CreateProcess(NULL, command_cstr, NULL, NULL, TRUE, 0,
+                                NULL, path_ptr, &siStartInfo, &process_info);
 
   if(!bSuccess) {
     CloseHandle(process_info.hProcess);
@@ -173,11 +165,17 @@ void Process::async_read() {
 }
 
 int Process::get_exit_code() {
+  if(id==0)
+    return -1;
   DWORD exit_code;
-  HANDLE process_info = OpenProcess(PROCESS_ALL_ACCESS, FALSE, id);
-  WaitForSingleObject(process_info, INFINITE);
-  GetExitCodeProcess(process_info, &exit_code);
-  CloseHandle(process_info);
+  HANDLE process_handle = OpenProcess(PROCESS_ALL_ACCESS, FALSE, id);
+  if(process_handle) {
+    WaitForSingleObject(process_handle, INFINITE);
+    GetExitCodeProcess(process_handle, &exit_code);
+    CloseHandle(process_handle);
+  }
+  else
+    exit_code=-1;
   
   if(stdout_thread.joinable())
     stdout_thread.join();
@@ -224,7 +222,10 @@ void Process::close_stdin() {
   stdin_mutex.unlock();
 }
 
-void Process::kill(process_id_type id, bool force) {
+//Based on http://stackoverflow.com/a/1173396
+void Process::kill(id_type id, bool force) {
+  if(id==0)
+    return;
   HANDLE snapshot = CreateToolhelp32Snapshot(TH32CS_SNAPPROCESS, 0);
   if(snapshot) {
     PROCESSENTRY32 process;
@@ -233,12 +234,12 @@ void Process::kill(process_id_type id, bool force) {
     if(Process32First(snapshot, &process)) {
       do {
         if(process.th32ParentProcessID==id) {
-          HANDLE process_info = OpenProcess(PROCESS_ALL_ACCESS, FALSE, process.th32ProcessID);
-          if(process_info) TerminateProcess(process_info, 2);
+          HANDLE process_handle = OpenProcess(PROCESS_ALL_ACCESS, FALSE, process.th32ProcessID);
+          if(process_handle) TerminateProcess(process_handle, 2);
         }
       } while (Process32Next(snapshot, &process));
     }
   }
-  HANDLE process_info = OpenProcess(PROCESS_ALL_ACCESS, FALSE, id);
-  if(process_info) TerminateProcess(process_info, 2);
+  HANDLE process_handle = OpenProcess(PROCESS_ALL_ACCESS, FALSE, id);
+  if(process_handle) TerminateProcess(process_handle, 2);
 }

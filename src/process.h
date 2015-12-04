@@ -8,16 +8,24 @@
 #include <thread>
 #ifdef _WIN32
 #include <windows.h>
-  typedef DWORD process_id_type;
-  typedef HANDLE file_descriptor_type;
 #else
 #include <sys/wait.h>
-  typedef pid_t process_id_type;
-  typedef int file_descriptor_type;
 #endif
 
+///Create a new process given command and run path.
+///Note: on Windows it seems impossible to specify which pipes to use.
+///Thus, if read_stdout=nullptr, read_stderr=nullptr and open_std=false,
+///the stdout, stderr and stdin are sent to the parent process instead.
+///Compile with -DMSYS_PROCESS_USE_SH to run command using "sh -c [command]" on Windows as well.
 class Process {
 public:
+#ifdef _WIN32
+  typedef DWORD id_type; //Process id type
+  typedef HANDLE fd_type; //File descriptor type
+#else
+  typedef pid_t id_type;
+  typedef int fd_type;
+#endif
   Process(const std::string &command, const std::string &path=std::string(),
           std::function<void(const char *bytes, size_t n)> read_stdout=nullptr,
           std::function<void(const char *bytes, size_t n)> read_stderr=nullptr,
@@ -26,7 +34,7 @@ public:
   ~Process();
   
   ///Get the process id of the started process.
-  process_id_type get_id() {return id;}
+  id_type get_id() {return id;}
   ///Wait until process is finished, and return exit_code.
   int get_exit_code();
   ///Write to stdin.
@@ -35,7 +43,7 @@ public:
   void close_stdin();
   
   ///Kill a given process id.
-  static void kill(process_id_type id, bool force=false);
+  static void kill(id_type id, bool force=false);
   
 private:
   std::function<void(const char* bytes, size_t n)> read_stdout;
@@ -45,10 +53,10 @@ private:
   std::mutex stdin_mutex;
   const size_t buffer_size;
   
-  std::unique_ptr<file_descriptor_type> stdout_fd, stderr_fd, stdin_fd;
+  std::unique_ptr<fd_type> stdout_fd, stderr_fd, stdin_fd;
   
-  process_id_type open(const std::string &command, const std::string &path);
-  process_id_type id;
+  id_type open(const std::string &command, const std::string &path);
+  id_type id;
   void async_read();
 };
 
