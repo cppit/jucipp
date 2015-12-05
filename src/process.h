@@ -38,7 +38,9 @@ public:
   ///Wait until process is finished, and return exit_code.
   int get_exit_code();
   ///Write to stdin.
-  bool write_stdin(const char *bytes, size_t n);
+  bool write(const char *bytes, size_t n);
+  ///Write to stdin. Convenience function using write(const char *, size_t).
+  bool write(const std::string &data);
   ///Close stdin. If the process takes parameters from stdin, use this to notify that all parameters have been sent.
   void close_stdin();
   

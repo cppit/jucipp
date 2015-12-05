@@ -124,7 +124,7 @@ int Process::get_exit_code() {
   return exit_code;
 }
 
-bool Process::write_stdin(const char *bytes, size_t n) {
+bool Process::write(const char *bytes, size_t n) {
   stdin_mutex.lock();
   if(stdin_fd) {
     if(::write(*stdin_fd, bytes, n)>=0) {

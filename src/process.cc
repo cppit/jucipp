@@ -19,3 +19,7 @@ Process::~Process() {
   if(stderr_thread.joinable())
     stderr_thread.join();
 }
+
+bool Process::write(const std::string &data) {
+  return write(data.c_str(), data.size());
+}

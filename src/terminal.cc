@@ -115,7 +115,7 @@ int Terminal::process(std::istream &stdin_stream, std::ostream &stdout_stream, c
     auto read_n=stdin_stream.gcount();
     if(read_n==0)
       break;
-    if(!process.write_stdin(buffer, read_n)) {
+    if(!process.write(buffer, read_n)) {
       break;
     }
   }
@@ -265,7 +265,7 @@ bool Terminal::on_key_press_event(GdkEventKey *event) {
     }
     else if(event->keyval==GDK_KEY_Return) {
       stdin_buffer+='\n';
-      processes.back()->write_stdin(stdin_buffer.c_str(), stdin_buffer.size());
+      processes.back()->write(stdin_buffer);
       get_buffer()->insert_at_cursor(stdin_buffer.substr(stdin_buffer.size()-1));
       stdin_buffer.clear();
     }
