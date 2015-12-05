@@ -370,7 +370,7 @@ void Window::set_menu_actions() {
               if(query!=documentation_search->second.queries.end()) {
                 std::string uri=query->second+token_query;
 #ifdef __APPLE__
-                Singleton::terminal->execute("open \""+uri+"\"");
+                Singleton::terminal->process("open \""+uri+"\"");
 #else
                 GError* error=NULL;
                 gtk_show_uri(NULL, uri.c_str(), GDK_CURRENT_TIME, &error);
@@ -527,7 +527,7 @@ void Window::set_menu_actions() {
         compiling=true;
         Singleton::terminal->print("Compiling and running "+executable_path.string()+"\n");
         auto project_path=cmake.project_path;
-        Singleton::terminal->async_execute(Singleton::config->terminal.make_command, cmake.project_path, [this, executable_path, project_path](int exit_code){
+        Singleton::terminal->async_process(Singleton::config->terminal.make_command, cmake.project_path, [this, executable_path, project_path](int exit_code){
           compiling=false;
           if(exit_code==EXIT_SUCCESS) {
             auto executable_path_spaces_fixed=executable_path.string();
@@ -539,7 +539,7 @@ void Window::set_menu_actions() {
               }
               last_char=executable_path_spaces_fixed[c];
             }
-            Singleton::terminal->async_execute(executable_path_spaces_fixed, project_path, [this, executable_path](int exit_code){
+            Singleton::terminal->async_process(executable_path_spaces_fixed, project_path, [this, executable_path](int exit_code){
               Singleton::terminal->async_print(executable_path.string()+" returned: "+std::to_string(exit_code)+'\n');
             });
           }
@@ -566,7 +566,7 @@ void Window::set_menu_actions() {
     if(cmake.project_path!="") {
       compiling=true;
       Singleton::terminal->print("Compiling project "+cmake.project_path.string()+"\n");
-      Singleton::terminal->async_execute(Singleton::config->terminal.make_command, cmake.project_path, [this](int exit_code){
+      Singleton::terminal->async_process(Singleton::config->terminal.make_command, cmake.project_path, [this](int exit_code){
         compiling=false;
       });
     }
@@ -586,7 +586,7 @@ void Window::set_menu_actions() {
         auto run_path=notebook.get_current_folder();
         Singleton::terminal->async_print("Running: "+content+'\n');
   
-        Singleton::terminal->async_execute(content, run_path, [this, content](int exit_code){
+        Singleton::terminal->async_process(content, run_path, [this, content](int exit_code){
           Singleton::terminal->async_print(content+" returned: "+std::to_string(exit_code)+'\n');
         });
       }
@@ -601,10 +601,10 @@ void Window::set_menu_actions() {
   });
   
   menu->add_action("kill_last_running", [this]() {
-    Singleton::terminal->kill_last_async_execute();
+    Singleton::terminal->kill_last_async_process();
   });
   menu->add_action("force_kill_last_running", [this]() {
-    Singleton::terminal->kill_last_async_execute(true);
+    Singleton::terminal->kill_last_async_process(true);
   });
   
   menu->add_action("next_tab", [this]() {
@@ -688,7 +688,7 @@ bool Window::on_delete_event(GdkEventAny *event) {
     if(!notebook.close_current_page())
       return true;
   }
-  Singleton::terminal->kill_async_executes();
+  Singleton::terminal->kill_async_processes();
   return false;
 }
 

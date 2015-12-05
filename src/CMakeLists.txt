@@ -22,7 +22,7 @@ if(UNIX) #Checking if compiling on Ubuntu that has a buggy menu system
 endif()
 
 if(MSYS)
-  set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -DJUCI_CMAKE_INSTALL_PREFIX=\\\"${CMAKE_INSTALL_PREFIX}\\\"")
+  set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -DMSYS_PROCESS_USE_SH -DJUCI_CMAKE_INSTALL_PREFIX=\\\"${CMAKE_INSTALL_PREFIX}\\\"")
 endif()
 
 INCLUDE(FindPkgConfig)
@@ -66,6 +66,7 @@ set(source_files juci.h
     directories.h
     directories.cc
     terminal.h
+    terminal.cc
     tooltips.h
     tooltips.cc
     singletons.h
@@ -73,6 +74,8 @@ set(source_files juci.h
     cmake.h
     cmake.cc
     dialogs.cc
+    process.h
+    process.cc
     
     ../libclangmm/src/CodeCompleteResults.cc
     ../libclangmm/src/CompilationDatabase.cc
@@ -90,10 +93,10 @@ set(source_files juci.h
     ../libclangmm/src/Utility.cc)
 
 if(MSYS)
-  list(APPEND source_files terminal_win.cc)
-  list(APPEND source_files dialogs_win.cc)
+  list(APPEND source_files process_win.cc)
+  list(APPEND source_files dialogs_unix.cc) #dialogs_win.cc does not work any more because of missing SHCreateItemFromParsingName
 else()
-  list(APPEND source_files terminal_unix.cc)
+  list(APPEND source_files process_unix.cc)
   list(APPEND source_files dialogs_unix.cc)
 endif()
 
