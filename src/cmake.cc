@@ -47,9 +47,9 @@ CMake::CMake(const boost::filesystem::path &path) {
 
 bool CMake::create_compile_commands(const boost::filesystem::path &path) {
   Dialog::Message message("Creating "+path.string()+"/compile_commands.json");
-  auto exit_code=Singleton::terminal->process(Singleton::config->terminal.cmake_command+" . -DCMAKE_EXPORT_COMPILE_COMMANDS=ON", path);
+  auto exit_status=Singleton::terminal->process(Singleton::config->terminal.cmake_command+" . -DCMAKE_EXPORT_COMPILE_COMMANDS=ON", path);
   message.hide();
-  if(exit_code==EXIT_SUCCESS) {
+  if(exit_status==EXIT_SUCCESS) {
 #ifdef _WIN32 //Temporary fix to MSYS2's libclang
     auto compile_commands_path=path;
     compile_commands_path+="/compile_commands.json";

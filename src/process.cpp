@@ -1,4 +1,4 @@
-#include "process.h"
+#include "process.hpp"
 
 #include <iostream> //TODO: remove
 using namespace std; //TODO: remove
@@ -14,10 +14,7 @@ Process::Process(const std::string &command, const std::string &path,
 }
 
 Process::~Process() {
-  if(stdout_thread.joinable())
-    stdout_thread.join();
-  if(stderr_thread.joinable())
-    stderr_thread.join();
+  close_all();
 }
 
 bool Process::write(const std::string &data) {

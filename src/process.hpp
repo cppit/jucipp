@@ -14,7 +14,7 @@
 
 ///Create a new process given command and run path.
 ///Note: on Windows it seems impossible to specify which pipes to use.
-///Thus, if read_stdout=nullptr, read_stderr=nullptr and open_stdin=false,
+///Thus, if read_stdout==nullptr, read_stderr==nullptr and open_stdin==false,
 ///the stdout, stderr and stdin are sent to the parent process instead.
 ///Compile with -DMSYS_PROCESS_USE_SH to run command using "sh -c [command]" on Windows as well.
 class Process {
@@ -35,8 +35,8 @@ public:
   
   ///Get the process id of the started process.
   id_type get_id() {return id;}
-  ///Wait until process is finished, and return exit_code.
-  int get_exit_code();
+  ///Wait until process is finished, and return exit status.
+  int get_exit_status();
   ///Write to stdin.
   bool write(const char *bytes, size_t n);
   ///Write to stdin. Convenience function using write(const char *, size_t).
@@ -60,6 +60,7 @@ private:
   id_type open(const std::string &command, const std::string &path);
   id_type id;
   void async_read();
+  void close_all();
 };
 
 #endif  // JUCI_PROCESS_H_

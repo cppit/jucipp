@@ -74,8 +74,8 @@ set(source_files juci.h
     cmake.h
     cmake.cc
     dialogs.cc
-    process.h
-    process.cc
+    process.hpp
+    process.cpp
     
     ../libclangmm/src/CodeCompleteResults.cc
     ../libclangmm/src/CompilationDatabase.cc
@@ -93,10 +93,10 @@ set(source_files juci.h
     ../libclangmm/src/Utility.cc)
 
 if(MSYS)
-  list(APPEND source_files process_win.cc)
+  list(APPEND source_files process_win.cpp)
   list(APPEND source_files dialogs_unix.cc) #dialogs_win.cc does not work any more because of missing SHCreateItemFromParsingName
 else()
-  list(APPEND source_files process_unix.cc)
+  list(APPEND source_files process_unix.cpp)
   list(APPEND source_files dialogs_unix.cc)
 endif()
 

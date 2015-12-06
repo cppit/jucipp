@@ -2,7 +2,6 @@
 #include <iostream>
 #include "logging.h"
 #include "singletons.h"
-#include "process.h"
 
 #include <iostream> //TODO: remove
 using namespace std; //TODO: remove
@@ -87,7 +86,7 @@ int Terminal::process(const std::string &command, const boost::filesystem::path 
     return -1;
   }
   
-  return process->get_exit_code();
+  return process->get_exit_status();
 }
 
 int Terminal::process(std::istream &stdin_stream, std::ostream &stdout_stream, const std::string &command, const boost::filesystem::path &path) {
@@ -121,10 +120,10 @@ int Terminal::process(std::istream &stdin_stream, std::ostream &stdout_stream, c
   }
   process.close_stdin();
   
-  return process.get_exit_code();
+  return process.get_exit_status();
 }
 
-void Terminal::async_process(const std::string &command, const boost::filesystem::path &path, std::function<void(int exit_code)> callback) {
+void Terminal::async_process(const std::string &command, const boost::filesystem::path &path, std::function<void(int exit_status)> callback) {
   std::thread async_execute_thread([this, command, path, callback](){    
     processes_mutex.lock();
     stdin_buffer.clear();
@@ -146,7 +145,7 @@ void Terminal::async_process(const std::string &command, const boost::filesystem
       processes_mutex.unlock();
     }
       
-    auto exit_code=process->get_exit_code();
+    auto exit_status=process->get_exit_status();
     
     processes_mutex.lock();
     for(auto it=processes.begin();it!=processes.end();it++) {
@@ -159,7 +158,7 @@ void Terminal::async_process(const std::string &command, const boost::filesystem
     processes_mutex.unlock();
       
     if(callback)
-      callback(exit_code);
+      callback(exit_status);
   });
   async_execute_thread.detach();
 }

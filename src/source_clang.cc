@@ -988,8 +988,8 @@ Source::ClangViewAutocomplete(file_path, project_path, language) {
     
     std::stringstream stdin_stream(get_buffer()->get_text()), stdout_stream;
     
-    auto exit_code=Singleton::terminal->process(stdin_stream, stdout_stream, command);
-    if(exit_code==0) {
+    auto exit_status=Singleton::terminal->process(stdin_stream, stdout_stream, command);
+    if(exit_status==0) {
       get_source_buffer()->begin_user_action();
       auto iter=get_buffer()->get_insert()->get_iter();
       auto cursor_line_nr=iter.get_line();

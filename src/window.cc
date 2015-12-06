@@ -527,9 +527,9 @@ void Window::set_menu_actions() {
         compiling=true;
         Singleton::terminal->print("Compiling and running "+executable_path.string()+"\n");
         auto project_path=cmake.project_path;
-        Singleton::terminal->async_process(Singleton::config->terminal.make_command, cmake.project_path, [this, executable_path, project_path](int exit_code){
+        Singleton::terminal->async_process(Singleton::config->terminal.make_command, cmake.project_path, [this, executable_path, project_path](int exit_status){
           compiling=false;
-          if(exit_code==EXIT_SUCCESS) {
+          if(exit_status==EXIT_SUCCESS) {
             auto executable_path_spaces_fixed=executable_path.string();
             char last_char=0;
             for(size_t c=0;c<executable_path_spaces_fixed.size();c++) {
@@ -539,8 +539,8 @@ void Window::set_menu_actions() {
               }
               last_char=executable_path_spaces_fixed[c];
             }
-            Singleton::terminal->async_process(executable_path_spaces_fixed, project_path, [this, executable_path](int exit_code){
-              Singleton::terminal->async_print(executable_path.string()+" returned: "+std::to_string(exit_code)+'\n');
+            Singleton::terminal->async_process(executable_path_spaces_fixed, project_path, [this, executable_path](int exit_status){
+              Singleton::terminal->async_print(executable_path.string()+" returned: "+std::to_string(exit_status)+'\n');
             });
           }
         });
@@ -566,7 +566,7 @@ void Window::set_menu_actions() {
     if(cmake.project_path!="") {
       compiling=true;
       Singleton::terminal->print("Compiling project "+cmake.project_path.string()+"\n");
-      Singleton::terminal->async_process(Singleton::config->terminal.make_command, cmake.project_path, [this](int exit_code){
+      Singleton::terminal->async_process(Singleton::config->terminal.make_command, cmake.project_path, [this](int exit_status){
         compiling=false;
       });
     }
@@ -586,8 +586,8 @@ void Window::set_menu_actions() {
         auto run_path=notebook.get_current_folder();
         Singleton::terminal->async_print("Running: "+content+'\n');
   
-        Singleton::terminal->async_process(content, run_path, [this, content](int exit_code){
-          Singleton::terminal->async_print(content+" returned: "+std::to_string(exit_code)+'\n');
+        Singleton::terminal->async_process(content, run_path, [this, content](int exit_status){
+          Singleton::terminal->async_print(content+" returned: "+std::to_string(exit_status)+'\n');
         });
       }
       entry_box.hide();

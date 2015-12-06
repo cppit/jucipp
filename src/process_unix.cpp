@@ -1,4 +1,4 @@
-#include "process.h"
+#include "process.hpp"
 #include <cstdlib>
 #include <unistd.h>
 #include <signal.h>
@@ -100,18 +100,25 @@ void Process::async_read() {
   }
 }
 
-int Process::get_exit_code() {
+int Process::get_exit_status() {
   if(id<=0)
     return -1;
-  int exit_code;
-  waitpid(id, &exit_code, 0);
+  int exit_status;
+  waitpid(id, &exit_status, 0);
   
+  close_all();
+  
+  return exit_status;
+}
+
+void Process::close_all() {
   if(stdout_thread.joinable())
     stdout_thread.join();
   if(stderr_thread.joinable())
     stderr_thread.join();
   
-  close_stdin();
+  if(stdin_fd)
+    close_stdin();
   if(stdout_fd) {
     close(*stdout_fd);
     stdout_fd.reset();
@@ -120,8 +127,6 @@ int Process::get_exit_code() {
     close(*stderr_fd);
     stderr_fd.reset();
   }
-  
-  return exit_code;
 }
 
 bool Process::write(const char *bytes, size_t n) {
