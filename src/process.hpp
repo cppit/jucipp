@@ -1,5 +1,5 @@
-#ifndef JUCI_PROCESS_H_
-#define JUCI_PROCESS_H_
+#ifndef TINY_PROCESS_LIBRARY_HPP_
+#define TINY_PROCESS_LIBRARY_HPP_
 
 #include <string>
 #include <functional>
@@ -63,4 +63,4 @@ private:
   void close_all();
 };
 
-#endif  // JUCI_PROCESS_H_
+#endif  // TINY_PROCESS_LIBRARY_HPP_
