@@ -124,7 +124,9 @@ Process::id_type Process::open(const std::string &command, const std::string &pa
 
   BOOL bSuccess = CreateProcess(NULL, command_cstr, NULL, NULL, TRUE, 0,
                                 NULL, path_ptr, &siStartInfo, &process_info);
-
+  delete[] path_ptr;
+  delete[] command_cstr;
+  
   if(!bSuccess) {
     CloseHandle(process_info.hProcess);
     CloseHandle(process_info.hThread);

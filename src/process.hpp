@@ -57,7 +57,7 @@ public:
   
   ///Kill the process.
   void kill(bool force=false);
-  ///Kill a given process id.
+  ///Kill a given process id. Use kill(bool force) instead if possible.
   static void kill(id_type id, bool force=false);
   
 private:
