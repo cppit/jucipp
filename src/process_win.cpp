@@ -5,6 +5,8 @@
 #include <iostream> //TODO: remove
 using namespace std; //TODO: remove
 
+Process::Data::Data(): id(0), handle(NULL) {}
+
 //Based on the example at https://msdn.microsoft.com/en-us/library/windows/desktop/ms682499(v=vs.85).aspx.
 //Note: on Windows it seems impossible to specify which pipes to use.
 //Thus, if read_stdout==nullptr, read_stderr==nullptr and open_stdin==false, the stdout, stderr and stdin are sent to the parent process instead.
@@ -138,10 +140,15 @@ Process::id_type Process::open(const std::string &command, const std::string &pa
   if(stdout_fd) *stdout_fd=g_hChildStd_OUT_Rd;
   if(stderr_fd) *stderr_fd=g_hChildStd_ERR_Rd;
   
+  closed=false;
+  data.id=process_info.dwProcessId;
+  data.handle=process_info.hProcess;
   return process_info.dwProcessId;
 }
 
 void Process::async_read() {
+  if(data.id==0)
+    return;
   if(stdout_fd) {
     stdout_thread=std::thread([this](){
       DWORD n;
@@ -169,24 +176,23 @@ void Process::async_read() {
 }
 
 int Process::get_exit_status() {
-  if(id==0)
+  if(data.id==0)
     return -1;
   DWORD exit_status;
-  HANDLE process_handle = OpenProcess(PROCESS_ALL_ACCESS, FALSE, id);
-  if(process_handle) {
-    WaitForSingleObject(process_handle, INFINITE);
-    GetExitCodeProcess(process_handle, &exit_status);
-    CloseHandle(process_handle);
-  }
-  else
+  WaitForSingleObject(data.handle, INFINITE);
+  if(!GetExitCodeProcess(data.handle, &exit_status))
     exit_status=-1;
+  close_mutex.lock();
+  CloseHandle(data.handle);
+  closed=true;
+  close_mutex.unlock();
   
-  close_all();
+  close_fds();
   
   return static_cast<int>(exit_status);
 }
 
-void Process::close_all() {
+void Process::close_fds() {
   if(stdout_thread.joinable())
     stdout_thread.join();
   if(stderr_thread.joinable())
@@ -229,6 +235,29 @@ void Process::close_stdin() {
     stdin_fd.reset();
   }
   stdin_mutex.unlock();
+}
+
+//Based on http://stackoverflow.com/a/1173396
+void Process::kill(bool force) {
+  close_mutex.lock();
+  if(data.id>0 && !closed) {
+    HANDLE snapshot = CreateToolhelp32Snapshot(TH32CS_SNAPPROCESS, 0);
+    if(snapshot) {
+      PROCESSENTRY32 process;
+      ZeroMemory(&process, sizeof(process));
+      process.dwSize = sizeof(process);
+      if(Process32First(snapshot, &process)) {
+        do {
+          if(process.th32ParentProcessID==data.id) {
+            HANDLE process_handle = OpenProcess(PROCESS_ALL_ACCESS, FALSE, process.th32ProcessID);
+            if(process_handle) TerminateProcess(process_handle, 2);
+          }
+        } while (Process32Next(snapshot, &process));
+      }
+    }
+    TerminateProcess(data.handle, 2);
+  }
+  close_mutex.unlock();
 }
 
 //Based on http://stackoverflow.com/a/1173396

@@ -166,14 +166,14 @@ void Terminal::async_process(const std::string &command, const boost::filesystem
 void Terminal::kill_last_async_process(bool force) {
   processes_mutex.lock();
   if(processes.size()>0)
-    Process::kill(processes.back()->get_id(), force);
+    processes.back()->kill(force);
   processes_mutex.unlock();
 }
 
 void Terminal::kill_async_processes(bool force) {
   processes_mutex.lock();
   for(auto &process: processes)
-    Process::kill(process->get_id(), force);
+    process->kill(force);
   processes_mutex.unlock();
 }
 

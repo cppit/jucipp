@@ -7,14 +7,17 @@ Process::Process(const std::string &command, const std::string &path,
                  std::function<void(const char* bytes, size_t n)> read_stdout,
                  std::function<void(const char* bytes, size_t n)> read_stderr,
                  bool open_stdin, size_t buffer_size):
-                 read_stdout(read_stdout), read_stderr(read_stderr), open_stdin(open_stdin), buffer_size(buffer_size) {
-  id=open(command, path);
-  if(id>0)
-    async_read();
+                 closed(true), read_stdout(read_stdout), read_stderr(read_stderr), open_stdin(open_stdin), buffer_size(buffer_size) {
+  open(command, path);
+  async_read();
 }
 
 Process::~Process() {
-  close_all();
+  close_fds();
+}
+
+Process::id_type Process::get_id() {
+  return data.id;
 }
 
 bool Process::write(const std::string &data) {

@@ -6,6 +6,8 @@
 #include <iostream> //TODO: remove
 using namespace std; //TODO: remove
 
+Process::Data::Data(): id(-1) {}
+
 Process::id_type Process::open(const std::string &command, const std::string &path) {
   if(open_stdin)
     stdin_fd=std::unique_ptr<fd_type>(new fd_type);
@@ -78,10 +80,14 @@ Process::id_type Process::open(const std::string &command, const std::string &pa
   if(stdout_fd) *stdout_fd = stdout_p[0];
   if(stderr_fd) *stderr_fd = stderr_p[0];
 
+  closed=false;
+  data.id=pid;
   return pid;
 }
 
 void Process::async_read() {
+  if(data.id<=0)
+    return;
   if(stdout_fd) {
     stdout_thread=std::thread([this](){
       char buffer[buffer_size];
@@ -101,17 +107,20 @@ void Process::async_read() {
 }
 
 int Process::get_exit_status() {
-  if(id<=0)
+  if(data.id<=0)
     return -1;
   int exit_status;
-  waitpid(id, &exit_status, 0);
+  waitpid(data.id, &exit_status, 0);
+  close_mutex.lock();
+  closed=true;
+  close_mutex.unlock();
   
-  close_all();
+  close_fds();
   
   return exit_status;
 }
 
-void Process::close_all() {
+void Process::close_fds() {
   if(stdout_thread.joinable())
     stdout_thread.join();
   if(stderr_thread.joinable())
@@ -152,6 +161,17 @@ void Process::close_stdin() {
     stdin_fd.reset();
   }
   stdin_mutex.unlock();
+}
+
+void Process::kill(bool force) {
+  close_mutex.lock();
+  if(data.id>0 && !closed) {
+    if(force)
+      ::kill(-data.id, SIGTERM);
+    else
+      ::kill(-data.id, SIGINT);
+  }
+  close_mutex.unlock();
 }
 
 void Process::kill(id_type id, bool force) {

@@ -6,6 +6,7 @@
 #include <vector>
 #include <mutex>
 #include <thread>
+#include <mutex>
 #ifdef _WIN32
 #include <windows.h>
 #else
@@ -26,6 +27,16 @@ public:
   typedef pid_t id_type;
   typedef int fd_type;
 #endif
+private:
+  class Data {
+  public:
+    Data();
+    id_type id;
+#ifdef _WIN32
+    HANDLE handle;
+#endif
+  };
+public:
   Process(const std::string &command, const std::string &path=std::string(),
           std::function<void(const char *bytes, size_t n)> read_stdout=nullptr,
           std::function<void(const char *bytes, size_t n)> read_stderr=nullptr,
@@ -34,7 +45,7 @@ public:
   ~Process();
   
   ///Get the process id of the started process.
-  id_type get_id() {return id;}
+  id_type get_id();
   ///Wait until process is finished, and return exit status.
   int get_exit_status();
   ///Write to stdin.
@@ -44,10 +55,15 @@ public:
   ///Close stdin. If the process takes parameters from stdin, use this to notify that all parameters have been sent.
   void close_stdin();
   
+  ///Kill the process.
+  void kill(bool force=false);
   ///Kill a given process id.
   static void kill(id_type id, bool force=false);
   
 private:
+  Data data;
+  bool closed;
+  std::mutex close_mutex;
   std::function<void(const char* bytes, size_t n)> read_stdout;
   std::function<void(const char* bytes, size_t n)> read_stderr;
   std::thread stdout_thread, stderr_thread;
@@ -58,9 +74,8 @@ private:
   std::unique_ptr<fd_type> stdout_fd, stderr_fd, stdin_fd;
   
   id_type open(const std::string &command, const std::string &path);
-  id_type id;
   void async_read();
-  void close_all();
+  void close_fds();
 };
 
 #endif  // TINY_PROCESS_LIBRARY_HPP_
