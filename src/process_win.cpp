@@ -86,12 +86,12 @@ Process::id_type Process::open(const std::string &command, const std::string &pa
   if(stdin_fd || stdout_fd || stderr_fd)
     siStartInfo.dwFlags |= STARTF_USESTDHANDLES;
   
-  char* path_ptr;
+  char* path_cstr;
   if(path=="")
-    path_ptr=NULL;
+    path_cstr=NULL;
   else {
-    path_ptr=new char[path.size()+1];
-    std::strcpy(path_ptr, path.c_str());
+    path_cstr=new char[path.size()+1];
+    std::strcpy(path_cstr, path.c_str());
   }
 
   char* command_cstr;
@@ -123,8 +123,8 @@ Process::id_type Process::open(const std::string &command, const std::string &pa
 #endif
 
   BOOL bSuccess = CreateProcess(NULL, command_cstr, NULL, NULL, TRUE, 0,
-                                NULL, path_ptr, &siStartInfo, &process_info);
-  delete[] path_ptr;
+                                NULL, path_cstr, &siStartInfo, &process_info);
+  delete[] path_cstr;
   delete[] command_cstr;
   
   if(!bSuccess) {
