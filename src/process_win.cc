@@ -93,7 +93,7 @@ Process::id_type Process::open(const std::string &command, const std::string &pa
   }
 
   char* command_cstr;
-#ifdef MSYS_PROCESS_USE_SH
+#ifdef MSYS_PROCESS_USE_SH_2
   size_t pos=0;
   std::string sh_command=command;
   while((pos=sh_command.find('\"', pos))!=std::string::npos) {
