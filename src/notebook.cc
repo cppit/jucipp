@@ -28,10 +28,11 @@ namespace sigc {
 }
 
 Notebook::TabLabel::TabLabel(const std::string &title) : Gtk::Box(Gtk::ORIENTATION_HORIZONTAL) {
+  set_can_focus(false);
   label.set_text(title);
+  label.set_can_focus(false);
   button.set_image_from_icon_name("window-close-symbolic", Gtk::ICON_SIZE_MENU);
-  button.set_border_width(0.0);
-  button.set_use_underline(false);
+  button.set_can_focus(false);
   button.set_relief(Gtk::ReliefStyle::RELIEF_NONE);
   pack_start(label, Gtk::PACK_SHRINK);
   pack_end(button, Gtk::PACK_SHRINK);
