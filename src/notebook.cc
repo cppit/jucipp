@@ -34,6 +34,18 @@ Notebook::TabLabel::TabLabel(const std::string &title) : Gtk::Box(Gtk::ORIENTATI
   button.set_image_from_icon_name("window-close-symbolic", Gtk::ICON_SIZE_MENU);
   button.set_can_focus(false);
   button.set_relief(Gtk::ReliefStyle::RELIEF_NONE);
+  //Based on http://www.micahcarrick.com/gtk-notebook-tabs-with-close-button.html
+  std::string data =  ".button {\n"
+                      "-GtkButton-default-border : 0px;\n"
+                      "-GtkButton-default-outside-border : 0px;\n"
+                      "-GtkButton-inner-border: 0px;\n"
+                      "-GtkWidget-focus-line-width : 0px;\n"
+                      "-GtkWidget-focus-padding : 0px;\n"
+                      "padding: 0px;\n"
+                      "}";
+  auto provider = Gtk::CssProvider::create();
+  provider->load_from_data(data);
+  button.get_style_context()->add_provider(provider, GTK_STYLE_PROVIDER_PRIORITY_APPLICATION);
   pack_start(label, Gtk::PACK_SHRINK);
   pack_end(button, Gtk::PACK_SHRINK);
   show_all();
