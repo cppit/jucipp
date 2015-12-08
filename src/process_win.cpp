@@ -8,8 +8,6 @@ using namespace std; //TODO: remove
 Process::Data::Data(): id(0), handle(NULL) {}
 
 //Based on the example at https://msdn.microsoft.com/en-us/library/windows/desktop/ms682499(v=vs.85).aspx.
-//Note: on Windows it seems impossible to specify which pipes to use.
-//Thus, if read_stdout==nullptr, read_stderr==nullptr and open_stdin==false, the stdout, stderr and stdin are sent to the parent process instead.
 Process::id_type Process::open(const std::string &command, const std::string &path) {
   if(open_stdin)
     stdin_fd=std::unique_ptr<fd_type>(new fd_type);
