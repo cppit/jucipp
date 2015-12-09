@@ -1,7 +1,6 @@
 #include "process.hpp"
 #include <cstring>
 #include "TlHelp32.h"
-#include <algorithm>
 
 #include <iostream> //TODO: remove
 using namespace std; //TODO: remove
