@@ -38,8 +38,8 @@ See [enhancements](https://github.com/cppit/jucipp/labels/enhancement) for plann
 * gtksourceviewmm-3.0
 * aspell
 * libclang
-* [libclangmm](http://github.com/cppit/libclangmm/) (compiled directly from git submodule, no need to install)
-* [tiny-process-library](http://github.com/eidheim/tiny-process-library/) (compiled directly from git submodule, no need to install)
+* [libclangmm](http://github.com/cppit/libclangmm/) (downloaded directly with git --recursive, no need to install)
+* [tiny-process-library](http://github.com/eidheim/tiny-process-library/) (downloaded directly with git --recursive, no need to install)
 
 ## Installation ##
 See [installation guide](http://github.com/cppit/jucipp/blob/master/docs/install.md).
