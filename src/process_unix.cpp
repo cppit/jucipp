@@ -68,8 +68,7 @@ Process::id_type Process::open(const std::string &command, const std::string &pa
     else
       execl("/bin/sh", "sh", "-c", command.c_str(), NULL);
     
-    perror("execl");
-    exit(EXIT_FAILURE);
+    _exit(EXIT_FAILURE);
   }
 
   if(stdin_fd) close(stdin_p[0]);

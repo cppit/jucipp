@@ -1,6 +1,7 @@
 #include "process.hpp"
 #include <cstring>
 #include "TlHelp32.h"
+#include <algorithm>
 
 #include <iostream> //TODO: remove
 using namespace std; //TODO: remove
@@ -96,19 +97,13 @@ Process::id_type Process::open(const std::string &command, const std::string &pa
 #ifdef MSYS_PROCESS_USE_SH
   size_t pos=0;
   std::string sh_command=command;
-  while((pos=sh_command.find('\"', pos))!=std::string::npos) {
-    if(pos>0 && sh_command[pos-1]!='\\') {
-      sh_command.replace(pos, 1, "\\\"");
-      pos++;
-    }
-    pos++;
+  while((pos=sh_command.find('\\', pos))!=std::string::npos) {
+    sh_command.replace(pos, 1, "\\\\\\\\");
+    pos+=4;
   }
   pos=0;
-  while((pos=sh_command.find('\\', pos))!=std::string::npos) {
-    if((pos+1)==sh_command.size() || sh_command[pos+1]!='\"') {
-      sh_command.replace(pos, 1, "\\\\\\");
-      pos++;
-    }
+  while((pos=sh_command.find('\"', pos))!=std::string::npos) {
+    sh_command.replace(pos, 1, "\\\"");
     pos+=2;
   }
   sh_command.insert(0, "sh -c \"");
