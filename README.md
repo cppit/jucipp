@@ -39,6 +39,7 @@ See [enhancements](https://github.com/cppit/jucipp/labels/enhancement) for plann
 * aspell
 * libclang
 * [libclangmm](http://github.com/cppit/libclangmm/)
+* [tiny-process-library](http://github.com/eidheim/tiny-process-library/)
 
 ## Installation ##
 See [installation guide](http://github.com/cppit/jucipp/blob/master/docs/install.md).

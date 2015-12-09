@@ -74,8 +74,6 @@ set(source_files juci.h
     cmake.h
     cmake.cc
     dialogs.cc
-    process.hpp
-    process.cpp
     
     ../libclangmm/src/CodeCompleteResults.cc
     ../libclangmm/src/CompilationDatabase.cc
@@ -90,14 +88,16 @@ set(source_files juci.h
     ../libclangmm/src/Tokens.cc
     ../libclangmm/src/TranslationUnit.cc
     ../libclangmm/src/Diagnostic.cc
-    ../libclangmm/src/Utility.cc)
+    ../libclangmm/src/Utility.cc
+    
+    ../tiny-process-library/process.cpp)
 
 if(MSYS)
-  list(APPEND source_files process_win.cpp)
   list(APPEND source_files dialogs_unix.cc) #dialogs_win.cc does not work any more because of missing SHCreateItemFromParsingName
+  list(APPEND source_files ../tiny-process-library/process_win.cpp)
 else()
-  list(APPEND source_files process_unix.cpp)
   list(APPEND source_files dialogs_unix.cc)
+  list(APPEND source_files ../tiny-process-library/process_unix.cpp)
 endif()
 
 add_executable(${project_name} ${source_files})
@@ -114,6 +114,7 @@ include_directories(
   ${LIBCLANG_INCLUDE_DIRS}
   ${ASPELL_INCLUDE_DIR}
   ../libclangmm/src
+  ../tiny-process-library
 )
 
 link_directories(
