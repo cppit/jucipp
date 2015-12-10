@@ -29,7 +29,9 @@ public:
   bool save_current();
   void configure(int view_nr);
   boost::filesystem::path get_current_folder();
-      
+
+  Gtk::Label info;
+  Gtk::Label status;
 private:
   bool save_modified_dialog(int page);
   std::vector<Source::View*> source_views; //Is NOT freed in destructor, this is intended for quick program exit.

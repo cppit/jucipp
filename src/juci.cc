@@ -1,15 +1,11 @@
 #include "juci.h"
-#include "singletons.h"
+#include "window.h"
+#include "directories.h"
+#include "menu.h"
+#include "config.h"
+#include "logging.h"
 
 using namespace std; //TODO: remove
-
-void Application::init_logging() {
-  boost::log::add_common_attributes();
-  auto log_dir = Singleton::config->juci_home_path()/"log"/"juci.log";
-  boost::log::add_file_log(boost::log::keywords::file_name = log_dir,
-               boost::log::keywords::auto_flush = true);
-  JINFO("Logging initalized");
-}
 
 int Application::on_command_line(const Glib::RefPtr<Gio::ApplicationCommandLine> &cmd) {
   Glib::set_prgname("juci");
@@ -39,7 +35,7 @@ int Application::on_command_line(const Glib::RefPtr<Gio::ApplicationCommandLine>
           files.emplace_back(new_p);
         }
         else
-          Singleton::terminal->print("Error: folder path "+parent_p.string()+" does not exist.\n", true);
+          Terminal::get().print("Error: folder path "+parent_p.string()+" does not exist.\n", true);
       }
     }
   }
@@ -48,12 +44,12 @@ int Application::on_command_line(const Glib::RefPtr<Gio::ApplicationCommandLine>
 }
 
 void Application::on_activate() {
-  add_window(*window);
-  window->show();
+  add_window(Window::get());
+  Window::get().show();
   bool first_directory=true;
   for(auto &directory: directories) {
     if(first_directory) {
-      Singleton::directories->open(directory);
+      Directories::get().open(directory);
       first_directory=false;
     }
     else {
@@ -67,25 +63,24 @@ void Application::on_activate() {
           it++;
       }
       std::thread another_juci_app([this, directory, files_in_directory](){
-        Singleton::terminal->async_print("Executing: juci "+directory.string()+files_in_directory+"\n");
-        Singleton::terminal->process("juci "+directory.string()+files_in_directory, "", false);
+        Terminal::get().async_print("Executing: juci "+directory.string()+files_in_directory+"\n");
+        Terminal::get().process("juci "+directory.string()+files_in_directory, "", false);
       });
       another_juci_app.detach();
     }
   }
   for(auto &file: files)
-    window->notebook.open(file);
+    Window::get().notebook.open(file);
 }
 
 void Application::on_startup() {
   Gtk::Application::on_startup();
   
-  Singleton::menu->init();
-  Singleton::menu->build();
+  Menu::get().build();
 
-  auto object = Singleton::menu->builder->get_object("juci-menu");
+  auto object = Menu::get().builder->get_object("juci-menu");
   auto juci_menu = Glib::RefPtr<Gio::Menu>::cast_dynamic(object);
-  object = Singleton::menu->builder->get_object("window-menu");
+  object = Menu::get().builder->get_object("window-menu");
   auto window_menu = Glib::RefPtr<Gio::Menu>::cast_dynamic(object);
   if (!juci_menu || !window_menu) {
     std::cerr << "Menu not found." << std::endl;
@@ -97,15 +92,15 @@ void Application::on_startup() {
 }
 
 Application::Application() : Gtk::Application("no.sout.juci", Gio::APPLICATION_NON_UNIQUE | Gio::APPLICATION_HANDLES_COMMAND_LINE) {
-  Singleton::init();
-  init_logging();
+  boost::log::add_common_attributes();
+  auto log_dir = Config::get().juci_home_path()/"log"/"juci.log";
+  boost::log::add_file_log(boost::log::keywords::file_name = log_dir, boost::log::keywords::auto_flush = true);
+  JINFO("Logging initalized");
   
   Glib::set_application_name("juCi++");
   
   //Gtk::MessageDialog without buttons caused text to be selected, this prevents that
   Gtk::Settings::get_default()->property_gtk_label_select_on_focus()=false;
-  
-  window=std::unique_ptr<Window>(new Window());
 }
 
 int main(int argc, char *argv[]) {

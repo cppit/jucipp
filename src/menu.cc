@@ -1,16 +1,13 @@
 #include "menu.h"
-#include "singletons.h"
+#include "config.h"
 #include <string>
 #include <iostream>
 
 using namespace std; //TODO: remove
 
+//TODO: if Ubuntu ever gets fixed, cleanup the Ubuntu specific code
 Menu::Menu() {
-}
-
-//TODO: if Ubuntu ever gets fixed, move to constructor, also cleanup the rest of the Ubuntu specific code
-void Menu::init() {
-  auto accels=Singleton::config->menu.keys;
+  auto accels=Config::get().menu.keys;
   for(auto &accel: accels) {
 #ifdef JUCI_UBUNTU_BUGGED_MENU
     size_t pos=0;
@@ -312,7 +309,7 @@ void Menu::set_keys() {
   auto gio_application=Glib::wrap(g_application, true);
   auto application=Glib::RefPtr<Gtk::Application>::cast_static(gio_application);
            
-  for(auto &key: Singleton::config->menu.keys) {
+  for(auto &key: Config::get().menu.keys) {
     if(key.second.size()>0 && actions.find(key.first)!=actions.end()) {
 #if GTK_VERSION_GE(3, 12)
       application->set_accel_for_action("app."+key.first, key.second); 

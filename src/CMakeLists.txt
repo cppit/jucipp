@@ -69,8 +69,6 @@ set(source_files juci.h
     terminal.cc
     tooltips.h
     tooltips.cc
-    singletons.h
-    singletons.cc
     cmake.h
     cmake.cc
     dialogs.cc

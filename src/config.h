@@ -2,7 +2,6 @@
 #define JUCI_CONFIG_H_
 #include <boost/property_tree/json_parser.hpp>
 #include <boost/filesystem.hpp>
-#include "menu.h"
 #include <unordered_map>
 #include <string>
 #include <utility>
@@ -59,8 +58,14 @@ public:
     
     std::unordered_map<std::string, DocumentationSearch> documentation_searches;
   };
-  
+private:
   Config();
+public:
+  static Config &get() {
+    static Config singleton;
+    return singleton;
+  }
+  
   void load();
   
   Menu menu;

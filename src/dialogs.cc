@@ -1,6 +1,5 @@
 #include "dialogs.h"
-#include "juci.h"
-#include "singletons.h"
+#include "window.h"
 #include <cmath>
 
 namespace sigc {
@@ -18,10 +17,7 @@ namespace sigc {
 }
 
 Dialog::Message::Message(const std::string &text): Gtk::MessageDialog(text, false, Gtk::MessageType::MESSAGE_INFO, Gtk::ButtonsType::BUTTONS_NONE, true) {
-  auto g_application=g_application_get_default();
-  auto gio_application=Glib::wrap(g_application, true);
-  auto application=Glib::RefPtr<Application>::cast_static(gio_application);
-  set_transient_for(*application->window);
+  set_transient_for(::Window::get());
   set_position(Gtk::WindowPosition::WIN_POS_CENTER_ON_PARENT);
   
   show_now();
@@ -36,12 +32,9 @@ std::string Dialog::gtk_dialog(const std::string &title,
                         const std::string &file_name) {
   Gtk::FileChooserDialog dialog(title, gtk_options);
   
-  auto g_application=g_application_get_default(); //TODO: Post issue that Gio::Application::get_default should return pointer and not Glib::RefPtr
-  auto gio_application=Glib::wrap(g_application, true);
-  auto application=Glib::RefPtr<Application>::cast_static(gio_application);
-  dialog.set_transient_for(*application->window);
+  dialog.set_transient_for(Window::get());
   
-  auto current_path=application->window->notebook.get_current_folder();
+  auto current_path=Window::get().notebook.get_current_folder();
   boost::system::error_code ec;
   if(current_path.empty())
     current_path=boost::filesystem::current_path(ec);

@@ -1,5 +1,6 @@
-#include "singletons.h"
 #include "notebook.h"
+#include "config.h"
+#include "directories.h"
 #include "logging.h"
 #include <fstream>
 #include <regex>
@@ -92,7 +93,7 @@ void Notebook::open(const boost::filesystem::path &file_path) {
   if(boost::filesystem::exists(file_path)) {
     std::ifstream can_read(file_path.string());
     if(!can_read) {
-      Singleton::terminal->print("Error: could not open "+file_path.string()+"\n", true);
+      Terminal::get().print("Error: could not open "+file_path.string()+"\n", true);
       return;
     }
     can_read.close();
@@ -100,15 +101,15 @@ void Notebook::open(const boost::filesystem::path &file_path) {
   
   auto language=Source::guess_language(file_path);
   boost::filesystem::path project_path;
-  auto &directories=Singleton::directories;
-  if(directories->cmake && directories->cmake->project_path!="" && file_path.generic_string().substr(0, directories->cmake->project_path.generic_string().size()+1)==directories->cmake->project_path.generic_string()+'/')
-    project_path=directories->cmake->project_path;
+  auto &directories=Directories::get();
+  if(directories.cmake && directories.cmake->project_path!="" && file_path.generic_string().substr(0, directories.cmake->project_path.generic_string().size()+1)==directories.cmake->project_path.generic_string()+'/')
+    project_path=directories.cmake->project_path;
   else {
     project_path=file_path.parent_path();
     CMake cmake(project_path);
     if(cmake.project_path!="") {
       project_path=cmake.project_path;
-      Singleton::terminal->print("Project path for "+file_path.string()+" set to "+project_path.string()+"\n");
+      Terminal::get().print("Project path for "+file_path.string()+" set to "+project_path.string()+"\n");
     }
   }
   if(language && (language->get_id()=="chdr" || language->get_id()=="cpphdr" || language->get_id()=="c" || language->get_id()=="cpp" || language->get_id()=="objc")) {
@@ -119,13 +120,13 @@ void Notebook::open(const boost::filesystem::path &file_path) {
   else
     source_views.emplace_back(new Source::GenericView(file_path, project_path, language));
   
-  source_views.back()->on_update_status=[this](Source::View* view, const std::string &status) {
+  source_views.back()->on_update_status=[this](Source::View* view, const std::string &status_text) {
     if(get_current_page()!=-1 && get_current_view()==view)
-      Singleton::status->set_text(status+" ");
+      status.set_text(status_text+" ");
   };
-  source_views.back()->on_update_info=[this](Source::View* view, const std::string &info) {
+  source_views.back()->on_update_info=[this](Source::View* view, const std::string &info_text) {
     if(get_current_page()!=-1 && get_current_view()==view)
-      Singleton::info->set_text(" "+info);
+      info.set_text(" "+info_text);
   };
   
   scrolled_windows.emplace_back(new Gtk::ScrolledWindow());
@@ -186,10 +187,10 @@ void Notebook::open(const boost::filesystem::path &file_path) {
 
 void Notebook::configure(int view_nr) {
 #if GTKSOURCEVIEWMM_MAJOR_VERSION > 2 & GTKSOURCEVIEWMM_MINOR_VERSION > 17
-  auto source_font_description=Pango::FontDescription(Singleton::config->source.font);
-  auto source_map_font_desc=Pango::FontDescription(static_cast<std::string>(source_font_description.get_family())+" "+Singleton::config->source.map_font_size); 
+  auto source_font_description=Pango::FontDescription(Config::get().source.font);
+  auto source_map_font_desc=Pango::FontDescription(static_cast<std::string>(source_font_description.get_family())+" "+Config::get().source.map_font_size); 
   source_maps.at(view_nr)->override_font(source_map_font_desc);
-  if(Singleton::config->source.show_map) {
+  if(Config::get().source.show_map) {
     if(hboxes.at(view_nr)->get_children().size()==1)
       hboxes.at(view_nr)->pack_end(*source_maps.at(view_nr), Gtk::PACK_SHRINK);
   }
@@ -207,7 +208,7 @@ bool Notebook::save(int page) {
   auto view=get_view(page);
   if (view->file_path != "" && view->get_buffer()->get_modified()) {
     //Remove trailing whitespace characters on save, and add trailing newline if missing
-    if(Singleton::config->source.cleanup_whitespace_characters) {
+    if(Config::get().source.cleanup_whitespace_characters) {
       auto buffer=view->get_buffer();
       buffer->begin_user_action();
       for(int line=0;line<buffer->get_line_count();line++) {
@@ -249,9 +250,9 @@ bool Notebook::save(int page) {
       //If CMakeLists.txt have been modified:
       boost::filesystem::path project_path;
       if(view->file_path.filename()=="CMakeLists.txt") {
-        auto &directories=Singleton::directories;
-        if(directories->cmake && directories->cmake->project_path!="" && view->file_path.generic_string().substr(0, directories->cmake->project_path.generic_string().size()+1)==directories->cmake->project_path.generic_string()+'/' && CMake::create_compile_commands(directories->cmake->project_path)) {
-          project_path=directories->cmake->project_path;
+        auto &directories=Directories::get();
+        if(directories.cmake && directories.cmake->project_path!="" && view->file_path.generic_string().substr(0, directories.cmake->project_path.generic_string().size()+1)==directories.cmake->project_path.generic_string()+'/' && CMake::create_compile_commands(directories.cmake->project_path)) {
+          project_path=directories.cmake->project_path;
         }
         else {
           CMake cmake(view->file_path.parent_path());
@@ -271,7 +272,7 @@ bool Notebook::save(int page) {
       JDEBUG("end true");
       return true;
     }
-    Singleton::terminal->print("Error: could not save file " +view->file_path.string()+"\n", true);
+    Terminal::get().print("Error: could not save file " +view->file_path.string()+"\n", true);
   }
   JDEBUG("end false");
   return false;
@@ -335,7 +336,7 @@ boost::filesystem::path Notebook::get_current_folder() {
   if(get_current_page()!=-1)
     current_path=get_current_view()->project_path;
   else
-    current_path=Singleton::directories->current_path;
+    current_path=Directories::get().current_path;
   
   return current_path;
 }

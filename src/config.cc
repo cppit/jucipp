@@ -1,10 +1,10 @@
-#include "singletons.h"
 #include "config.h"
 #include "logging.h"
 #include <exception>
 #include "files.h"
 #include <iostream>
 #include "filesystem.h"
+#include "terminal.h"
 
 using namespace std; //TODO: remove
 
@@ -38,7 +38,7 @@ void Config::load() {
     retrieve_config();
   }
   catch(const std::exception &e) {
-    Singleton::terminal->print("Error reading "+config_json+": "+e.what()+"\n");
+    ::Terminal::get().print("Error reading "+config_json+": "+e.what()+"\n");
     std::stringstream ss;
     ss << configjson;
     boost::property_tree::read_json(ss, cfg);

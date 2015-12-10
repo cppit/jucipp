@@ -1,7 +1,8 @@
 #include "cmake.h"
-#include "singletons.h"
 #include "filesystem.h"
 #include "dialogs.h"
+#include "config.h"
+#include "terminal.h"
 #include <boost/regex.hpp>
 
 #include <iostream> //TODO: remove
@@ -47,7 +48,7 @@ CMake::CMake(const boost::filesystem::path &path) {
 
 bool CMake::create_compile_commands(const boost::filesystem::path &path) {
   Dialog::Message message("Creating "+path.string()+"/compile_commands.json");
-  auto exit_status=Singleton::terminal->process(Singleton::config->terminal.cmake_command+" . -DCMAKE_EXPORT_COMPILE_COMMANDS=ON", path);
+  auto exit_status=Terminal::get().process(Config::get().terminal.cmake_command+" . -DCMAKE_EXPORT_COMPILE_COMMANDS=ON", path);
   message.hide();
   if(exit_status==EXIT_SUCCESS) {
 #ifdef _WIN32 //Temporary fix to MSYS2's libclang

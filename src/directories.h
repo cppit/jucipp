@@ -26,7 +26,13 @@ public:
     Gtk::TreeModelColumn<Gdk::RGBA> color;
   };
 
+private:
   Directories();
+public:
+  static Directories &get() {
+    static Directories singleton;
+    return singleton;
+  }
   ~Directories();
   void open(const boost::filesystem::path& dir_path="");
   void update();

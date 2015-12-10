@@ -88,8 +88,8 @@ namespace Source {
     std::unique_ptr<SelectionDialog> selection_dialog;
     sigc::connection delayed_tooltips_connection;
     
-    std::function<void(View* view, const std::string &status)> on_update_status;
-    std::function<void(View* view, const std::string &info)> on_update_info;
+    std::function<void(View* view, const std::string &status_text)> on_update_status;
+    std::function<void(View* view, const std::string &info_text)> on_update_info;
     void set_status(const std::string &status);
     void set_info(const std::string &info);
     std::string status;

@@ -7,8 +7,14 @@
 #include <atomic>
 
 class Window : public Gtk::ApplicationWindow {
-public:
+private:
   Window();
+public:
+  static Window &get() {
+    static Window singleton;
+    return singleton;
+  }
+  
   Notebook notebook;
 
 protected:
