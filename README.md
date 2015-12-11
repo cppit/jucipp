@@ -30,7 +30,8 @@ towards libclang with speed and ease of use in mind.
 See [enhancements](https://github.com/cppit/jucipp/labels/enhancement) for planned features.
 
 ## Screenshots
-![](https://github.com/github/eidheim/blob/master/docs/images/screenshot1.png) ![](https://github.com/github/eidheim/blob/master/docs/images/screenshot1.png)
+<img src="https://github.com/eidheim/jucipp/blob/master/docs/images/screenshot1.png" width="350"/>
+<img src="https://github.com/eidheim/jucipp/blob/master/docs/images/screenshot2.png" width="350"/>
 
 ## Dependencies
 * boost-filesystem
