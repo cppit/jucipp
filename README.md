@@ -29,7 +29,10 @@ towards libclang with speed and ease of use in mind.
 
 See [enhancements](https://github.com/cppit/jucipp/labels/enhancement) for planned features.
 
-## Dependencies ##
+## Screenshots
+![](https://github.com/github/eidheim/blob/master/docs/images/screenshot1.png) ![](https://github.com/github/eidheim/blob/master/docs/images/screenshot1.png)
+
+## Dependencies
 * boost-filesystem
 * boost-log
 * boost-thread
@@ -41,5 +44,5 @@ See [enhancements](https://github.com/cppit/jucipp/labels/enhancement) for plann
 * [libclangmm](http://github.com/cppit/libclangmm/) (downloaded directly with git --recursive, no need to install)
 * [tiny-process-library](http://github.com/eidheim/tiny-process-library/) (downloaded directly with git --recursive, no need to install)
 
-## Installation ##
+## Installation
 See [installation guide](http://github.com/cppit/jucipp/blob/master/docs/install.md).
