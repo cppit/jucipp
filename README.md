@@ -1,5 +1,8 @@
 # juCi++
 ###### a lightweight platform independent C++-IDE with support for C++11 and C++14.
+==
+<img src="https://github.com/eidheim/jucipp/blob/master/docs/images/screenshot3.png"/>
+==
 ## About
 Current IDEs struggle with C++ support due to the complexity of
 the programming language. juCI++, however, is designed especially 
