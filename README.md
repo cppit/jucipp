@@ -1,6 +1,6 @@
 # juCi++
 ###### a lightweight platform independent C++-IDE with support for C++11 and C++14.
-<!--<img src="https://github.com/cppit/jucipp/blob/screenshot_eidheim/docs/images/screenshot3.png"/>-->
+<!--<img src="https://github.com/cppit/jucipp/blob/master/docs/images/screenshot3.png"/>-->
 ## About
 Current IDEs struggle with C++ support due to the complexity of
 the programming language. juCI++, however, is designed especially 
@@ -31,8 +31,8 @@ towards libclang with speed and ease of use in mind.
 See [enhancements](https://github.com/cppit/jucipp/labels/enhancement) for planned features.
 
 ## Screenshots
-<img src="https://github.com/cppit/jucipp/blob/screenshot_eidheim/docs/images/screenshot1.png" width="350"/>
-<img src="https://github.com/cppit/jucipp/blob/screenshot_eidheim/docs/images/screenshot2.png" width="350"/>
+<img src="https://github.com/cppit/jucipp/blob/master/docs/images/screenshot1.png" width="350"/>
+<img src="https://github.com/cppit/jucipp/blob/master/docs/images/screenshot2.png" width="350"/>
 
 ## Dependencies
 * boost-filesystem
