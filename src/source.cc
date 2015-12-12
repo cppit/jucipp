@@ -520,7 +520,7 @@ void Source::View::replace_backward(const std::string &replacement) {
   auto &start=selection_bound;
   Gtk::TextIter match_start, match_end;
   if(gtk_source_search_context_backward(search_context, start.gobj(), match_start.gobj(), match_end.gobj())) {
-  auto offset=match_start.get_offset();
+    auto offset=match_start.get_offset();
     gtk_source_search_context_replace(search_context, match_start.gobj(), match_end.gobj(), replacement.c_str(), replacement.size(), NULL);
 
     get_buffer()->select_range(get_buffer()->get_iter_at_offset(offset), get_buffer()->get_iter_at_offset(offset+replacement.size()));
@@ -557,7 +557,7 @@ void Source::View::paste() {
     bool first_paste_line=true;
     size_t paste_line_tabs=-1;
     bool first_paste_line_has_tabs=false;
-    for(size_t c=0;c<text.size();c++) {;
+    for(size_t c=0;c<text.size();c++) {
       if(text[c]=='\n') {
         end_line=c;
         paste_line=true;
@@ -1172,36 +1172,141 @@ bool Source::View::on_button_press_event(GdkEventButton *event) {
 }
 
 std::pair<char, unsigned> Source::View::find_tab_char_and_size() {
-  auto size=get_buffer()->get_line_count();
   std::unordered_map<char, size_t> tab_chars;
   std::unordered_map<unsigned, size_t> tab_sizes;
-  unsigned last_tab_size=0;
-  for(int c=0;c<size;c++) {
-    auto tabs_end_iter=get_tabs_end_iter(c);
-    if(tabs_end_iter.starts_line() && tabs_end_iter.ends_line())
-      continue;
-    std::string str=get_line_before(tabs_end_iter);
-    
-    long tab_diff=abs(static_cast<long>(str.size()-last_tab_size));
-    if(tab_diff>0) {
-      unsigned tab_diff_unsigned=static_cast<unsigned>(tab_diff);
-      auto it_size=tab_sizes.find(tab_diff_unsigned);
-      if(it_size!=tab_sizes.end())
-        it_size->second++;
-      else
-        tab_sizes[tab_diff_unsigned]=1;
-    }
-    
-    last_tab_size=str.size();
-    
-    if(str.size()>0) {
-      auto it_char=tab_chars.find(str[0]);
-      if(it_char!=tab_chars.end())
-        it_char->second++;
-      else
-        tab_chars[str[0]]=1;
+  auto iter=get_buffer()->begin();
+  long tab_count=-1;
+  long last_tab_count=0;
+  bool single_quoted=false;
+  bool double_quoted=false;
+  //For bracket languages, TODO: add more language ids
+  if(language && (language->get_id()=="chdr" || language->get_id()=="cpphdr" || language->get_id()=="c" ||
+                     language->get_id()=="cpp" || language->get_id()=="objc" || language->get_id()=="java" ||
+                     language->get_id()=="javascript")) {
+    bool line_comment=false;
+    bool comment=false;
+    bool bracket_last_line=false;
+    char last_char=0;
+    long last_tab_diff=-1;
+    while(iter) {
+      if(iter.starts_line()) {
+        line_comment=false;
+        single_quoted=false;
+        double_quoted=false;
+        tab_count=0;
+        if(last_char=='{')
+          bracket_last_line=true;
+        else
+          bracket_last_line=false;
+      }
+      if(bracket_last_line && tab_count!=-1) {
+        if(*iter==' ') {
+          tab_chars[' ']++;
+          tab_count++;
+        }
+        else if(*iter=='\t') {
+          tab_chars['\t']++;
+          tab_count++;
+        }
+        else {
+          auto line_iter=iter;
+          char last_line_char=0;
+          while(line_iter && !line_iter.ends_line()) {
+            if(*line_iter!=' ' && *line_iter!='\t')
+              last_line_char=*line_iter;
+            if(*line_iter=='(')
+              break;
+            line_iter.forward_char();
+          }
+          if(last_line_char==':' || *iter=='#') {
+            tab_count=0;
+            if((iter.get_line()+1) < get_buffer()->get_line_count()) {
+              iter=get_buffer()->get_iter_at_line(iter.get_line()+1);
+              continue;
+            }
+          }
+          else if(!iter.ends_line()) {
+            if(tab_count!=last_tab_count)
+              tab_sizes[abs(tab_count-last_tab_count)]++;
+            last_tab_diff=abs(tab_count-last_tab_count);
+            last_tab_count=tab_count;
+            last_char=0;
+          }
+        }
+      }
+
+      auto prev_iter=iter;
+      prev_iter.backward_char();
+      auto prev_prev_iter=prev_iter;
+      prev_prev_iter.backward_char();
+      if(!double_quoted && *iter=='\'' && !(*prev_iter=='\\' && *prev_prev_iter!='\\'))
+        single_quoted=!single_quoted;
+      else if(!single_quoted && *iter=='\"' && !(*prev_iter=='\\' && *prev_prev_iter!='\\'))
+        double_quoted=!double_quoted;
+      else if(!single_quoted && !double_quoted) {
+        auto next_iter=iter;
+        next_iter.forward_char();
+        if(*iter=='/' && *next_iter=='/')
+          line_comment=true;
+        else if(*iter=='/' && *next_iter=='*')
+          comment=true;
+        else if(*iter=='*' && *next_iter=='/') {
+          iter.forward_char();
+          iter.forward_char();
+          comment=false;
+        }
+      }
+      if(!single_quoted && !double_quoted && !comment && !line_comment && *iter!=' ' && *iter!='\t' && !iter.ends_line())
+        last_char=*iter;
+      if(!single_quoted && !double_quoted && !comment && !line_comment && *iter=='}' && tab_count!=-1 && last_tab_diff!=-1)
+        last_tab_count-=last_tab_diff;
+      if(*iter!=' ' && *iter!='\t')
+        tab_count=-1;
+
+      iter.forward_char();
     }
   }
+  else {
+    long para_count=0;
+    while(iter) {
+      if(iter.starts_line())
+        tab_count=0;
+      if(tab_count!=-1 && para_count==0 && single_quoted==false && double_quoted==false) {
+        if(*iter==' ') {
+          tab_chars[' ']++;
+          tab_count++;
+        }
+        else if(*iter=='\t') {
+          tab_chars['\t']++;
+          tab_count++;
+        }
+        else if(!iter.ends_line()) {
+          if(tab_count!=last_tab_count)
+            tab_sizes[abs(tab_count-last_tab_count)]++;
+          last_tab_count=tab_count;
+        }
+      }
+      auto prev_iter=iter;
+      prev_iter.backward_char();
+      auto prev_prev_iter=prev_iter;
+      prev_prev_iter.backward_char();
+      if(!double_quoted && *iter=='\'' && !(*prev_iter=='\\' && *prev_prev_iter!='\\'))
+        single_quoted=!single_quoted;
+      else if(!single_quoted && *iter=='\"' && !(*prev_iter=='\\' && *prev_prev_iter!='\\'))
+        double_quoted=!double_quoted;
+      else if(!single_quoted && !double_quoted) {
+        if(*iter=='(')
+          para_count++;
+        else if(*iter==')')
+          para_count--;
+      }
+      if(*iter!=' ' && *iter!='\t')
+        tab_count=-1;
+
+      iter.forward_char();
+    }
+  }
+
   char found_tab_char=0;
   size_t occurences=0;
   for(auto &tab_char: tab_chars) {
