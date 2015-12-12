@@ -148,7 +148,7 @@ void Window::set_menu_actions() {
     about.present();
   });
   menu.add_action("preferences", [this]() {
-    notebook.open(Config::get().juci_home_path()/"config"/"config.json");
+    notebook.open(boost::filesystem::canonical(Config::get().juci_home_path()/"config"/"config.json"));
   });
   menu.add_action("quit", [this]() {
     close();
@@ -197,9 +197,9 @@ void Window::set_menu_actions() {
           project_name[c]='_';
       }
       auto cmakelists_path=project_path;
-      cmakelists_path+="/CMakeLists.txt";
+      cmakelists_path/="CMakeLists.txt";
       auto cpp_main_path=project_path;
-      cpp_main_path+="/main.cpp";
+      cpp_main_path/="main.cpp";
       if(boost::filesystem::exists(cmakelists_path)) {
         Terminal::get().print("Error: "+cmakelists_path.string()+" already exists.\n", true);
         return;
@@ -256,7 +256,7 @@ void Window::set_menu_actions() {
           file.close();
           if(Directories::get().current_path!="")
             Directories::get().update();
-          notebook.open(path);
+          notebook.open(boost::filesystem::canonical(path));
           Terminal::get().print("File saved to: " + notebook.get_current_view()->file_path.string()+"\n");
         }
         else
