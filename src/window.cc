@@ -164,7 +164,7 @@ void Window::set_menu_actions() {
         if(filesystem::write(path)) {
           if(Directories::get().current_path!="")
             Directories::get().update();
-          notebook.open(path.string());
+          notebook.open(boost::filesystem::canonical(path));
           Terminal::get().print("New file "+path.string()+" created.\n");
         }
         else
@@ -223,7 +223,7 @@ void Window::set_menu_actions() {
   menu.add_action("open_file", [this]() {
     auto path=Dialog::open_file();
     if(path!="")
-      notebook.open(path);
+      notebook.open(boost::filesystem::canonical(path));
   });
   menu.add_action("open_folder", [this]() {
     auto path = Dialog::open_folder();
