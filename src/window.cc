@@ -1,3 +1,4 @@
+
 #include "window.h"
 #include "logging.h"
 #include "config.h"
@@ -55,8 +56,8 @@ Window::Window() : compiling(false) {
   
   show_all_children();
 
-  Directories::get().on_row_activated=[this](const std::string &file) {
-    notebook.open(file);
+  Directories::get().on_row_activated=[this](const boost::filesystem::path &path) {
+    notebook.open(path);
   };
 
   //Scroll to end of terminal whenever info is printed
@@ -148,7 +149,7 @@ void Window::set_menu_actions() {
     about.present();
   });
   menu.add_action("preferences", [this]() {
-    notebook.open(boost::filesystem::canonical(Config::get().juci_home_path()/"config"/"config.json"));
+    notebook.open(Config::get().juci_home_path()/"config"/"config.json");
   });
   menu.add_action("quit", [this]() {
     close();
@@ -164,7 +165,7 @@ void Window::set_menu_actions() {
         if(filesystem::write(path)) {
           if(Directories::get().current_path!="")
             Directories::get().update();
-          notebook.open(boost::filesystem::canonical(path));
+          notebook.open(path);
           Terminal::get().print("New file "+path.string()+" created.\n");
         }
         else
@@ -223,7 +224,7 @@ void Window::set_menu_actions() {
   menu.add_action("open_file", [this]() {
     auto path=Dialog::open_file();
     if(path!="")
-      notebook.open(boost::filesystem::canonical(path));
+      notebook.open(path);
   });
   menu.add_action("open_folder", [this]() {
     auto path = Dialog::open_folder();
@@ -256,7 +257,7 @@ void Window::set_menu_actions() {
           file.close();
           if(Directories::get().current_path!="")
             Directories::get().update();
-          notebook.open(boost::filesystem::canonical(path));
+          notebook.open(path);
           Terminal::get().print("File saved to: " + notebook.get_current_view()->file_path.string()+"\n");
         }
         else
