@@ -35,13 +35,13 @@ Directories::Directories() : Gtk::TreeView(), stop_update_thread(false) {
   signal_row_activated().connect([this](const Gtk::TreeModel::Path& path, Gtk::TreeViewColumn* column){
     auto iter = tree_store->get_iter(path);
     if (iter) {
-      auto path_str=iter->get_value(column_record.path);
-      if(path_str!="") {
-        if (boost::filesystem::is_directory(boost::filesystem::path(path_str))) {
+      auto filesystem_path=iter->get_value(column_record.path);
+      if(filesystem_path!="") {
+        if (boost::filesystem::is_directory(boost::filesystem::path(filesystem_path))) {
           row_expanded(path) ? collapse_row(path) : expand_row(path, false);
         } else {
           if(on_row_activated)
-            on_row_activated(path_str);
+            on_row_activated(filesystem_path);
         }
       }
     }
@@ -57,7 +57,7 @@ Directories::Directories() : Gtk::TreeView(), stop_update_thread(false) {
   });
   signal_row_collapsed().connect([this](const Gtk::TreeModel::iterator& iter, const Gtk::TreeModel::Path& path){
     update_mutex.lock();
-    last_write_times.erase(iter->get_value(column_record.path));
+    last_write_times.erase(iter->get_value(column_record.path).string());
     update_mutex.unlock();
     auto children=iter->children();
     if(children) {
@@ -170,7 +170,7 @@ void Directories::select(const boost::filesystem::path &path) {
 
   for(auto &a_path: paths) {
     tree_store->foreach_iter([this, &a_path](const Gtk::TreeModel::iterator& iter){
-      if(iter->get_value(column_record.path)==a_path.string()) {
+      if(iter->get_value(column_record.path)==a_path) {
         update_mutex.lock();
         add_path(a_path, *iter);
         update_mutex.unlock();
@@ -181,7 +181,7 @@ void Directories::select(const boost::filesystem::path &path) {
   }
   
   tree_store->foreach_iter([this, &path](const Gtk::TreeModel::iterator& iter){
-    if(iter->get_value(column_record.path)==path.string()) {
+    if(iter->get_value(column_record.path)==path) {
       auto tree_path=Gtk::TreePath(iter);
       expand_to_path(tree_path);
       set_cursor(tree_path);
@@ -225,7 +225,7 @@ void Directories::add_path(const boost::filesystem::path& dir_path, const Gtk::T
       auto child = tree_store->append(*children);
       not_deleted.emplace(filename);
       child->set_value(column_record.name, filename);
-      child->set_value(column_record.path, it->path().string());
+      child->set_value(column_record.path, it->path());
       if (boost::filesystem::is_directory(it->path())) {
         child->set_value(column_record.id, "a"+filename);
         auto grandchild=tree_store->append(child->children());
