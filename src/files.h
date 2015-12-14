@@ -98,8 +98,8 @@ const std::string configjson =
 "        \"kill_last_running\": \"<primary>Escape\",\n"
 "        \"force_kill_last_running\": \"<primary><shift>Escape\",\n"
 #ifdef __linux
-"        \"next_tab\": \"<primary>Page_Down\",\n"
-"        \"previous_tab\": \"<primary>Page_Up\",\n"
+"        \"next_tab\": \"<primary>Tab\",\n"
+"        \"previous_tab\": \"<primary><shift>Tab\",\n"
 #else
 "        \"next_tab\": \"<primary><alt>Right\",\n"
 "        \"previous_tab\": \"<primary><alt>Left\",\n"
