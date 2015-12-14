@@ -1,3 +1,4 @@
+
 #include "window.h"
 #include "logging.h"
 #include "config.h"
@@ -55,8 +56,8 @@ Window::Window() : compiling(false) {
   
   show_all_children();
 
-  Directories::get().on_row_activated=[this](const std::string &file) {
-    notebook.open(file);
+  Directories::get().on_row_activated=[this](const boost::filesystem::path &path) {
+    notebook.open(path);
   };
 
   //Scroll to end of terminal whenever info is printed
@@ -164,7 +165,7 @@ void Window::set_menu_actions() {
         if(filesystem::write(path)) {
           if(Directories::get().current_path!="")
             Directories::get().update();
-          notebook.open(path.string());
+          notebook.open(path);
           Terminal::get().print("New file "+path.string()+" created.\n");
         }
         else
@@ -197,9 +198,9 @@ void Window::set_menu_actions() {
           project_name[c]='_';
       }
       auto cmakelists_path=project_path;
-      cmakelists_path+="/CMakeLists.txt";
+      cmakelists_path/="CMakeLists.txt";
       auto cpp_main_path=project_path;
-      cpp_main_path+="/main.cpp";
+      cpp_main_path/="main.cpp";
       if(boost::filesystem::exists(cmakelists_path)) {
         Terminal::get().print("Error: "+cmakelists_path.string()+" already exists.\n", true);
         return;

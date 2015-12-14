@@ -14,10 +14,10 @@ Config::Config() {
   for (auto &variable : environment_variables) {
     ptr=std::getenv(variable.c_str());
     if (ptr!=nullptr && boost::filesystem::exists(ptr)) {
-        home /= ptr;
-        home /= ".juci";
-        break;
-      }
+      home /= ptr;
+      home /= ".juci";
+      break;
+    }
   }
   if(home.empty()) {
     std::string searched_envs = "[";

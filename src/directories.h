@@ -22,7 +22,7 @@ public:
     }
     Gtk::TreeModelColumn<std::string> id;
     Gtk::TreeModelColumn<std::string> name;
-    Gtk::TreeModelColumn<std::string> path;
+    Gtk::TreeModelColumn<boost::filesystem::path> path;
     Gtk::TreeModelColumn<Gdk::RGBA> color;
   };
 
@@ -38,7 +38,7 @@ public:
   void update();
   void select(const boost::filesystem::path &path);
   
-  std::function<void(const std::string &file)> on_row_activated;
+  std::function<void(const boost::filesystem::path &path)> on_row_activated;
   std::unique_ptr<CMake> cmake;
   boost::filesystem::path current_path;
   
