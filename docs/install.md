@@ -31,6 +31,23 @@ make
 sudo make install
 ```
 
+##Arch Linux
+Install dependencies:
+```sh
+#as root
+pacman -S git cmake make clang gtksourceviewmm boost aspell aspell-en
+```
+
+Get juCi++ source, compile and install
+```sh
+git clone --recursive https://github.com/cppit/jucipp
+cd jucipp
+cmake .
+make
+# as root
+make install
+```
+
 ## OS X with Homebrew (http://brew.sh/)
 Install dependencies (installing llvm may take some time):
 ```sh
@@ -58,23 +75,6 @@ git clone --recursive https://github.com/cppit/jucipp
 cd jucipp
 cmake -G"MSYS Makefiles" -DCMAKE_INSTALL_PREFIX=/mingw64 .
 make
-make install
-```
-
-##Arch
-Install dependencies:
-```sh
-#as root
-pacman -S git cmake make clang gtksourceviewmm boost aspell aspell-en
-```
-
-Get juCi++ source, compile and install
-```sh
-git clone --recursive https://github.com/cppit/jucipp
-cd jucipp
-cmake .
-make
-# as root
 make install
 ```
 
