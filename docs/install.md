@@ -38,7 +38,7 @@ Install dependencies:
 pacman -S git cmake make clang gtksourceviewmm boost aspell aspell-en
 ```
 
-Get juCi++ source, compile and install
+Get juCi++ source, compile and install:
 ```sh
 git clone --recursive https://github.com/cppit/jucipp
 cd jucipp
