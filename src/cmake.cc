@@ -5,9 +5,6 @@
 #include "terminal.h"
 #include <boost/regex.hpp>
 
-#include <iostream> //TODO: remove
-using namespace std; //TODO: remove
-
 CMake::CMake(const boost::filesystem::path &path) {
   const auto find_cmake_project=[this](const boost::filesystem::path &cmake_path) {
     for(auto &line: filesystem::read_lines(cmake_path)) {
