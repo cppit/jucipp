@@ -3,9 +3,6 @@
 #include "logging.h"
 #include "config.h"
 
-#include <iostream> //TODO: remove
-using namespace std; //TODO: remove
-
 Terminal::InProgress::InProgress(const std::string& start_msg): stop(false) {
   waiting_print.connect([this](){
     Terminal::get().async_print(line_nr-1, ".");

@@ -3,8 +3,6 @@
 #include <string>
 #include <iostream>
 
-using namespace std; //TODO: remove
-
 //TODO: if Ubuntu ever gets fixed, cleanup the Ubuntu specific code
 Menu::Menu() {
   auto accels=Config::get().menu.keys;

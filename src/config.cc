@@ -6,8 +6,6 @@
 #include "filesystem.h"
 #include "terminal.h"
 
-using namespace std; //TODO: remove
-
 Config::Config() {
   std::vector<std::string> environment_variables = {"JUCI_HOME", "HOME", "AppData"};
   char *ptr = nullptr;

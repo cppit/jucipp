@@ -11,9 +11,6 @@
 #include "gtksourceview-3.0/gtksourceview/gtksourcemap.h"
 #endif
 
-#include <iostream> //TODO: remove
-using namespace std; //TODO: remove
-
 namespace sigc {
 #ifndef SIGC_FUNCTORS_DEDUCE_RESULT_TYPE_WITH_DECLTYPE
   template <typename Functor>
