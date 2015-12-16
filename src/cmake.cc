@@ -8,13 +8,10 @@
 CMake::CMake(const boost::filesystem::path &path) {
   const auto find_cmake_project=[this](const boost::filesystem::path &cmake_path) {
     for(auto &line: filesystem::read_lines(cmake_path)) {
-      const boost::regex project_regex("^ *project *\\( *([^ ]+).*\\) *$");
+      const boost::regex project_regex("^ *project *\\(.*$");
       boost::smatch sm;
-      if(boost::regex_match(line, sm, project_regex)) {
-        variables["CMAKE_PROJECT_NAME"]=sm[1].str(); //TODO: is this variable deprecated/non-standard?
-        variables["PROJECT_NAME"]=sm[1].str();
+      if(boost::regex_match(line, sm, project_regex))
         return true;
-      }
     }
     return false;
   };
@@ -142,14 +139,23 @@ void CMake::find_variables() {
         end_line=file.size();
       if(end_line>start_line) {
         auto line=file.substr(start_line, end_line-start_line);
-        const boost::regex set_regex("^ *set *\\( *([A-Za-z_][A-Za-z_0-9]*) +(.*)\\) *$");
         boost::smatch sm;
+        const boost::regex set_regex("^ *set *\\( *([A-Za-z_][A-Za-z_0-9]*) +(.*)\\) *$");
         if(boost::regex_match(line, sm, set_regex)) {
           auto data=sm[2].str();
           while(data.size()>0 && data.back()==' ')
             data.pop_back();
           parse_variable_parameters(data);
           variables[sm[1].str()]=data;
+        }
+        else {
+          const boost::regex project_regex("^ *project *\\( *([^ ]+).*\\) *$");
+          if(boost::regex_match(line, sm, project_regex)) {
+            auto data=sm[1].str();
+            parse_variable_parameters(data);
+            variables["CMAKE_PROJECT_NAME"]=data; //TODO: is this variable deprecated/non-standard?
+            variables["PROJECT_NAME"]=data;
+          }
         }
       }
       pos=end_line+1;
