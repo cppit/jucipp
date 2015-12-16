@@ -8,9 +8,6 @@
 #include "dialogs.h"
 #include "filesystem.h"
 
-#include <iostream> //TODO: remove
-using namespace std; //TODO: remove
-
 namespace sigc {
 #ifndef SIGC_FUNCTORS_DEDUCE_RESULT_TYPE_WITH_DECLTYPE
   template <typename Functor>
@@ -813,7 +810,7 @@ void Window::set_tab_entry() {
         char tab_char=0;
         unsigned tab_size=0;
         try {
-          tab_size = static_cast<unsigned>(stoul(entry_tab_size_it->get_text()));
+          tab_size = static_cast<unsigned>(std::stoul(entry_tab_size_it->get_text()));
           std::string tab_char_string=entry_tab_char_it->get_text();
           std::transform(tab_char_string.begin(), tab_char_string.end(), tab_char_string.begin(), ::tolower);
           if(tab_char_string=="space")

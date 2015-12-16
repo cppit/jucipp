@@ -5,8 +5,6 @@
 #include "config.h"
 #include "logging.h"
 
-using namespace std; //TODO: remove
-
 int Application::on_command_line(const Glib::RefPtr<Gio::ApplicationCommandLine> &cmd) {
   Glib::set_prgname("juci");
   Glib::OptionContext ctx("[PATH ...]");
