@@ -8,9 +8,11 @@
 CMake::CMake(const boost::filesystem::path &path) {
   const auto find_cmake_project=[this](const boost::filesystem::path &cmake_path) {
     for(auto &line: filesystem::read_lines(cmake_path)) {
-      const boost::regex project_regex("^ *project *\\(.*$");
+      const boost::regex project_regex("^ *project *\\( *([^ ]+).*\\) *$");
       boost::smatch sm;
       if(boost::regex_match(line, sm, project_regex)) {
+        variables["CMAKE_PROJECT_NAME"]=sm[1].str(); //TODO: is this variable deprecated/non-standard?
+        variables["PROJECT_NAME"]=sm[1].str();
         return true;
       }
     }
