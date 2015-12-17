@@ -422,7 +422,7 @@ void Source::ClangViewParse::show_type_tooltips(const Gdk::Rectangle &rectangle)
 
 //Clang indentation.
 bool Source::ClangViewParse::on_key_press_event(GdkEventKey* key) {
-  if(spellcheck_suggestions_dialog_shown) {
+  if(spellcheck_suggestions_dialog && spellcheck_suggestions_dialog->shown) {
     if(spellcheck_suggestions_dialog->on_key_press(key))
       return true;
   }
@@ -622,7 +622,7 @@ Source::ClangViewParse(file_path, project_path, language), autocomplete_state(Au
       }
       else {
         if(autocomplete_state==AutocompleteState::STARTING)
-          autocomplete_state=AutocompleteState::CANCELED;
+          autocomplete_state=AutocompleteState::RESTARTING;
         else {
           auto iter=get_buffer()->get_insert()->get_iter();
           if(last_keyval=='.' || last_keyval==':' || (last_keyval=='>' && iter.backward_char() && iter.backward_char() && *iter=='-'))
@@ -633,17 +633,10 @@ Source::ClangViewParse(file_path, project_path, language), autocomplete_state(Au
   });
   get_buffer()->signal_mark_set().connect([this](const Gtk::TextBuffer::iterator& iterator, const Glib::RefPtr<Gtk::TextBuffer::Mark>& mark){
     if(mark->get_name()=="insert") {
-      if(autocomplete_state==AutocompleteState::SHOWN)
-        autocomplete_dialog->hide();
       if(autocomplete_state==AutocompleteState::STARTING)
         autocomplete_state=AutocompleteState::CANCELED;
     }
   });
-  signal_scroll_event().connect([this](GdkEventScroll* event){
-    if(autocomplete_state==AutocompleteState::SHOWN)
-        autocomplete_dialog->hide();
-    return false;
-  }, false);
   signal_key_release_event().connect([this](GdkEventKey* key){
     if(autocomplete_state==AutocompleteState::SHOWN) {
       if(autocomplete_dialog->on_key_release(key))
@@ -654,8 +647,6 @@ Source::ClangViewParse(file_path, project_path, language), autocomplete_state(Au
   }, false);
 
   signal_focus_out_event().connect([this](GdkEventFocus* event) {
-    if(autocomplete_state==AutocompleteState::SHOWN)
-      autocomplete_dialog->hide();
     if(autocomplete_state==AutocompleteState::STARTING)
       autocomplete_state=AutocompleteState::CANCELED;
     return false;
@@ -663,6 +654,11 @@ Source::ClangViewParse(file_path, project_path, language), autocomplete_state(Au
   
   autocomplete_done_connection=autocomplete_done.connect([this](){
     if(autocomplete_state==AutocompleteState::CANCELED) {
+      set_status("");
+      soft_reparse();
+      autocomplete_state=AutocompleteState::IDLE;
+    }
+    else if(autocomplete_state==AutocompleteState::RESTARTING) {
       set_status("");
       soft_reparse();
       autocomplete_state=AutocompleteState::IDLE;
@@ -815,14 +811,14 @@ void Source::ClangViewAutocomplete::autocomplete_check() {
     prefix_mutex.lock();
     prefix=sm[3].str();
     prefix_mutex.unlock();
-    if(autocomplete_state==AutocompleteState::IDLE && (prefix.size()==0 || prefix[0]<'0' || prefix[0]>'9'))
+    if(prefix.size()==0 || prefix[0]<'0' || prefix[0]>'9')
       autocomplete();
   }
   else if(boost::regex_match(line, sm, within_namespace)) {
     prefix_mutex.lock();
     prefix=sm[3].str();
     prefix_mutex.unlock();
-    if(autocomplete_state==AutocompleteState::IDLE && (prefix.size()==0 || prefix[0]<'0' || prefix[0]>'9'))
+    if(prefix.size()==0 || prefix[0]<'0' || prefix[0]>'9')
       autocomplete();
   }
   if(autocomplete_state!=AutocompleteState::IDLE)
@@ -832,12 +828,13 @@ void Source::ClangViewAutocomplete::autocomplete_check() {
 void Source::ClangViewAutocomplete::autocomplete() {
   if(parse_state!=ParseState::PROCESSING)
     return;
-  if(autocomplete_state==AutocompleteState::STARTING) {
-    autocomplete_state=AutocompleteState::CANCELED;
-    return;
-  }
+  
   if(autocomplete_state==AutocompleteState::CANCELED)
+    autocomplete_state=AutocompleteState::RESTARTING;
+  
+  if(autocomplete_state!=AutocompleteState::IDLE)
     return;
+
   autocomplete_state=AutocompleteState::STARTING;
   
   autocomplete_data.clear();
