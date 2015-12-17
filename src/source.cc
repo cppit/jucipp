@@ -451,6 +451,13 @@ void Source::View::set_tooltip_events() {
     diagnostic_tooltips.hide();
     return false;
   });
+  
+  signal_leave_notify_event().connect([this](GdkEventCrossing*) {
+    delayed_tooltips_connection.disconnect();
+    type_tooltips.hide();
+    diagnostic_tooltips.hide();
+    return false;
+  });
 }
 
 void Source::View::search_occurrences_updated(GtkWidget* widget, GParamSpec* property, gpointer data) {

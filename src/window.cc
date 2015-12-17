@@ -25,7 +25,7 @@ namespace sigc {
 Window::Window() : compiling(false) {
   JDEBUG("start");
   set_title("juCi++");
-  set_events(Gdk::POINTER_MOTION_MASK|Gdk::FOCUS_CHANGE_MASK|Gdk::SCROLL_MASK);
+  set_events(Gdk::POINTER_MOTION_MASK|Gdk::FOCUS_CHANGE_MASK|Gdk::SCROLL_MASK|Gdk::LEAVE_NOTIFY_MASK);
   set_menu_actions();
   configure();
   set_default_size(Config::get().window.default_size.first, Config::get().window.default_size.second);
