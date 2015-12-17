@@ -509,7 +509,8 @@ void Source::View::replace_forward(const std::string &replacement) {
     auto offset=match_start.get_offset();
     gtk_source_search_context_replace(search_context, match_start.gobj(), match_end.gobj(), replacement.c_str(), replacement.size(), NULL);
     
-    get_buffer()->select_range(get_buffer()->get_iter_at_offset(offset), get_buffer()->get_iter_at_offset(offset+replacement.size()));
+    Glib::ustring replacement_ustring=replacement;
+    get_buffer()->select_range(get_buffer()->get_iter_at_offset(offset), get_buffer()->get_iter_at_offset(offset+replacement_ustring.size()));
     scroll_to(get_buffer()->get_insert());
   }
 }
