@@ -437,11 +437,11 @@ void Source::View::set_tooltip_and_dialog_events() {
     type_tooltips.hide();
     diagnostic_tooltips.hide();
     delayed_spellcheck_suggestions_connection.disconnect();
-    if(spellcheck_suggestions_dialog)
+    if(spellcheck_suggestions_dialog && spellcheck_suggestions_dialog->shown)
       spellcheck_suggestions_dialog->hide();
-    if(autocomplete_dialog)
+    if(autocomplete_dialog && autocomplete_dialog->shown)
       autocomplete_dialog->hide();
-    if(selection_dialog)
+    if(selection_dialog && selection_dialog->shown)
       selection_dialog->hide();
     return false;
   });
