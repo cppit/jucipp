@@ -610,7 +610,7 @@ bool Source::ClangViewParse::on_key_press_event(GdkEventKey* key) {
 Source::ClangViewAutocomplete::ClangViewAutocomplete(const boost::filesystem::path &file_path, const boost::filesystem::path& project_path, Glib::RefPtr<Gsv::Language> language):
 Source::ClangViewParse(file_path, project_path, language), autocomplete_state(AutocompleteState::IDLE) {
   get_buffer()->signal_changed().connect([this](){
-    if(autocomplete_state==AutocompleteState::SHOWN)
+    if(autocomplete_dialog && autocomplete_dialog->shown)
       delayed_reparse_connection.disconnect();
     else {
       if(!has_focus())
@@ -621,7 +621,7 @@ Source::ClangViewParse(file_path, project_path, language), autocomplete_state(Au
         autocomplete_check();
       }
       else {
-        if(autocomplete_state==AutocompleteState::STARTING)
+        if(autocomplete_state==AutocompleteState::STARTING || autocomplete_state==AutocompleteState::RESTARTING)
           autocomplete_state=AutocompleteState::CANCELED;
         else {
           auto iter=get_buffer()->get_insert()->get_iter();
@@ -633,12 +633,12 @@ Source::ClangViewParse(file_path, project_path, language), autocomplete_state(Au
   });
   get_buffer()->signal_mark_set().connect([this](const Gtk::TextBuffer::iterator& iterator, const Glib::RefPtr<Gtk::TextBuffer::Mark>& mark){
     if(mark->get_name()=="insert") {
-      if(autocomplete_state==AutocompleteState::STARTING)
+      if(autocomplete_state==AutocompleteState::STARTING || autocomplete_state==AutocompleteState::RESTARTING)
         autocomplete_state=AutocompleteState::CANCELED;
     }
   });
   signal_key_release_event().connect([this](GdkEventKey* key){
-    if(autocomplete_state==AutocompleteState::SHOWN) {
+    if(autocomplete_dialog && autocomplete_dialog->shown) {
       if(autocomplete_dialog->on_key_release(key))
         return true;
     }
@@ -647,7 +647,7 @@ Source::ClangViewParse(file_path, project_path, language), autocomplete_state(Au
   }, false);
 
   signal_focus_out_event().connect([this](GdkEventFocus* event) {
-    if(autocomplete_state==AutocompleteState::STARTING)
+    if(autocomplete_state==AutocompleteState::STARTING || autocomplete_state==AutocompleteState::RESTARTING)
       autocomplete_state=AutocompleteState::CANCELED;
     return false;
   });
@@ -689,15 +689,13 @@ Source::ClangViewParse(file_path, project_path, language), autocomplete_state(Au
         }
       }
       set_status("");
+      autocomplete_state=AutocompleteState::IDLE;
       if (!autocomplete_dialog_rows.empty()) {
-        autocomplete_state=AutocompleteState::SHOWN;
         get_source_buffer()->begin_user_action();
         autocomplete_dialog->show();
       }
-      else {
-        autocomplete_state=AutocompleteState::IDLE;
+      else
         soft_reparse();
-      }
     }
   });
   
@@ -724,7 +722,7 @@ Source::ClangViewParse(file_path, project_path, language), autocomplete_state(Au
 
 bool Source::ClangViewAutocomplete::on_key_press_event(GdkEventKey *key) {
   last_keyval=key->keyval;
-  if(autocomplete_state==AutocompleteState::SHOWN) {
+  if(autocomplete_dialog && autocomplete_dialog->shown) {
     if(autocomplete_dialog->on_key_press(key))
       return true;
   }
@@ -739,7 +737,6 @@ void Source::ClangViewAutocomplete::autocomplete_dialog_setup() {
   autocomplete_dialog_rows.clear();
   autocomplete_dialog->on_hide=[this](){
     get_source_buffer()->end_user_action();
-    autocomplete_state=AutocompleteState::IDLE;
     parsed=false;
     soft_reparse();
   };
@@ -755,7 +752,6 @@ void Source::ClangViewAutocomplete::autocomplete_dialog_setup() {
     }
     get_buffer()->insert(autocomplete_dialog->start_mark->get_iter(), row);
     if(hide_window) {
-      autocomplete_state=AutocompleteState::IDLE;
       auto para_pos=row.find('(');
       auto angle_pos=row.find('<');
       size_t start_pos=std::string::npos;
@@ -789,10 +785,8 @@ void Source::ClangViewAutocomplete::autocomplete_dialog_setup() {
       else {
         //new autocomplete after for instance when selecting "std::"
         auto iter=get_buffer()->get_insert()->get_iter();
-        if(iter.backward_char() && *iter==':') {
-          autocomplete_state=AutocompleteState::IDLE;
+        if(iter.backward_char() && *iter==':')
           autocomplete_restart();
-        }
       }
     }
   };

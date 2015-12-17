@@ -72,7 +72,7 @@ namespace Source {
     
   class ClangViewAutocomplete : public ClangViewParse {
   protected:
-    enum class AutocompleteState {IDLE, STARTING, RESTARTING, CANCELED, SHOWN};
+    enum class AutocompleteState {IDLE, STARTING, RESTARTING, CANCELED};
   public:
     class AutoCompleteData {
     public:
