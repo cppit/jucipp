@@ -411,6 +411,7 @@ void Window::set_menu_actions() {
             if(notebook.get_current_page()!=-1 && notebook.get_current_view()==view) {
               view->get_buffer()->place_cursor(view->get_buffer()->get_iter_at_line_index(line, index));
               view->scroll_to(view->get_buffer()->get_insert(), 0.0, 1.0, 0.5);
+              view->delayed_tooltips_connection.disconnect();
             }
           }
         }
