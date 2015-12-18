@@ -1,4 +1,3 @@
-
 #include "window.h"
 #include "logging.h"
 #include "config.h"
@@ -7,6 +6,9 @@
 //#include "api.h"
 #include "dialogs.h"
 #include "filesystem.h"
+
+#include <iostream> //TODO: remove
+using namespace std; //TODO: remove
 
 namespace sigc {
 #ifndef SIGC_FUNCTORS_DEDUCE_RESULT_TYPE_WITH_DECLTYPE
@@ -518,11 +520,26 @@ void Window::set_menu_actions() {
       return;
     CMake cmake(cmake_path);
     auto executables = cmake.get_functions_parameters("add_executable");
+    
+    //Attempt to find executable based add_executable files and opened tab
     boost::filesystem::path executable_path;
-    if(executables.size()>0 && executables[0].second.size()>0) {
-      executable_path=executables[0].first.parent_path();
-      executable_path+="/"+executables[0].second[0];
+    if(notebook.get_current_page()!=-1) {
+      for(auto &executable: executables) {
+        if(executable.second.size()>1) {
+          for(size_t c=1;c<executable.second.size();c++) {
+            if(executable.second[c]==notebook.get_current_view()->file_path.filename()) {
+              executable_path=executable.first.parent_path()/executable.second[0];
+              break;
+            }
+          }
+        }
+        if(!executable_path.empty())
+          break;
+      }
     }
+    if(executable_path.empty() && executables.size()>0 && executables[0].second.size()>0)
+      executable_path=executables[0].first.parent_path()/executables[0].second[0];
+    
     if(cmake.project_path!="") {
       if(executable_path!="") {
         compiling=true;
