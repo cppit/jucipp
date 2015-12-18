@@ -592,7 +592,7 @@ void Window::set_menu_actions() {
         });
       }
       entry_box.hide();
-    });
+    }, 30);
     auto entry_it=entry_box.entries.begin();
     entry_it->set_placeholder_text("Command");
     entry_box.buttons.emplace_back("Run command", [this, entry_it](){
