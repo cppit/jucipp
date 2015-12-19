@@ -33,14 +33,47 @@ CMake::CMake(const boost::filesystem::path &path) {
   }
   
   if(!project_path.empty()) {
-    if(boost::filesystem::exists(project_path/"CMakeLists.txt") && !boost::filesystem::exists(project_path/"compile_commands.json"))
+    if(!boost::filesystem::exists(get_default_build_path(project_path)/"compile_commands.json"))
       create_compile_commands(project_path);
   }
 }
 
+boost::filesystem::path CMake::get_default_build_path(const boost::filesystem::path &path) {
+  boost::filesystem::path default_build_path=Config::get().terminal.default_build_path;
+  
+  const std::string path_variable_project_directory_name="<project_directory_name>";
+  size_t pos=0;
+  auto default_build_path_string=default_build_path.string();
+  auto path_filename_string=path.filename().string();
+  while((pos=default_build_path_string.find(path_variable_project_directory_name, pos))!=std::string::npos) {
+    default_build_path_string.replace(pos, path_variable_project_directory_name.size(), path_filename_string);
+    pos+=path_filename_string.size();
+  }
+  if(pos!=0)
+    default_build_path=default_build_path_string;
+  
+  if(default_build_path.is_relative())
+    default_build_path=path/default_build_path;
+    
+  if(!boost::filesystem::exists(default_build_path)) {
+    boost::system::error_code ec;
+    boost::filesystem::create_directories(default_build_path, ec);
+    if(ec) {
+      Terminal::get().print("Could not create "+default_build_path.string()+": "+ec.message(), true);
+      return boost::filesystem::path();
+    }
+  }
+  
+  return default_build_path;
+}
+
 bool CMake::create_compile_commands(const boost::filesystem::path &path) {
-  Dialog::Message message("Creating "+path.string()+"/compile_commands.json");
-  auto exit_status=Terminal::get().process(Config::get().terminal.cmake_command+" . -DCMAKE_EXPORT_COMPILE_COMMANDS=ON", path);
+  auto default_build_path=get_default_build_path(path);
+  if(default_build_path.empty())
+    return false;
+  Dialog::Message message("Creating "+default_build_path.string()+"/compile_commands.json");
+  auto exit_status=Terminal::get().process(Config::get().terminal.cmake_command+" "+
+                                           path.string()+" -DCMAKE_EXPORT_COMPILE_COMMANDS=ON", default_build_path);
   message.hide();
   if(exit_status==EXIT_SUCCESS) {
 #ifdef _WIN32 //Temporary fix to MSYS2's libclang

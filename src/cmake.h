@@ -8,6 +8,7 @@ class CMake {
 public:
   CMake(const boost::filesystem::path &path);
   std::vector<std::pair<boost::filesystem::path, std::vector<std::string> > > get_functions_parameters(const std::string &name);
+  static boost::filesystem::path get_default_build_path(const boost::filesystem::path &path);
   static bool create_compile_commands(const boost::filesystem::path &path);
   
   std::vector<boost::filesystem::path> paths;
@@ -15,6 +16,7 @@ public:
   boost::filesystem::path project_path;
   std::unordered_map<std::string, std::string> variables;
 private:
+  
   void read_files();
   void remove_tabs();
   void remove_comments();

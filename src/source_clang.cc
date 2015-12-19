@@ -1,6 +1,7 @@
 #include "source_clang.h"
 #include "config.h"
 #include "terminal.h"
+#include "cmake.h"
 
 namespace sigc {
 #ifndef SIGC_FUNCTORS_DEDUCE_RESULT_TYPE_WITH_DECLTYPE
@@ -178,7 +179,7 @@ void Source::ClangViewParse::soft_reparse() {
 }
 
 std::vector<std::string> Source::ClangViewParse::get_compilation_commands() {
-  clang::CompilationDatabase db(project_path.string());
+  clang::CompilationDatabase db(CMake::get_default_build_path(project_path).string());
   clang::CompileCommands commands(file_path.string(), db);
   std::vector<clang::CompileCommand> cmds = commands.get_commands();
   std::vector<std::string> arguments;

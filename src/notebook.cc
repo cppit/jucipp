@@ -110,7 +110,7 @@ void Notebook::open(const boost::filesystem::path &file_path) {
     }
   }
   if(language && (language->get_id()=="chdr" || language->get_id()=="cpphdr" || language->get_id()=="c" || language->get_id()=="cpp" || language->get_id()=="objc")) {
-    if(boost::filesystem::exists(project_path.string()+"/CMakeLists.txt") && !boost::filesystem::exists(project_path.string()+"/compile_commands.json"))
+    if(boost::filesystem::exists(project_path.string()+"/CMakeLists.txt") && !boost::filesystem::exists(CMake::get_default_build_path(project_path)/"compile_commands.json"))
       CMake::create_compile_commands(project_path);
     source_views.emplace_back(new Source::ClangView(file_path, project_path, language));
   }
