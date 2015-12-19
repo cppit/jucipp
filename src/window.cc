@@ -1,4 +1,3 @@
-
 #include "window.h"
 #include "logging.h"
 #include "config.h"
@@ -25,7 +24,7 @@ namespace sigc {
 Window::Window() : compiling(false) {
   JDEBUG("start");
   set_title("juCi++");
-  set_events(Gdk::POINTER_MOTION_MASK|Gdk::FOCUS_CHANGE_MASK|Gdk::SCROLL_MASK);
+  set_events(Gdk::POINTER_MOTION_MASK|Gdk::FOCUS_CHANGE_MASK|Gdk::SCROLL_MASK|Gdk::LEAVE_NOTIFY_MASK);
   set_menu_actions();
   configure();
   set_default_size(Config::get().window.default_size.first, Config::get().window.default_size.second);
@@ -411,6 +410,7 @@ void Window::set_menu_actions() {
             if(notebook.get_current_page()!=-1 && notebook.get_current_view()==view) {
               view->get_buffer()->place_cursor(view->get_buffer()->get_iter_at_line_index(line, index));
               view->scroll_to(view->get_buffer()->get_insert(), 0.0, 1.0, 0.5);
+              view->delayed_tooltips_connection.disconnect();
             }
           }
         }
@@ -517,11 +517,26 @@ void Window::set_menu_actions() {
       return;
     CMake cmake(cmake_path);
     auto executables = cmake.get_functions_parameters("add_executable");
+    
+    //Attempt to find executable based add_executable files and opened tab
     boost::filesystem::path executable_path;
-    if(executables.size()>0 && executables[0].second.size()>0) {
-      executable_path=executables[0].first.parent_path();
-      executable_path+="/"+executables[0].second[0];
+    if(notebook.get_current_page()!=-1) {
+      for(auto &executable: executables) {
+        if(executable.second.size()>1) {
+          for(size_t c=1;c<executable.second.size();c++) {
+            if(executable.second[c]==notebook.get_current_view()->file_path.filename()) {
+              executable_path=executable.first.parent_path()/executable.second[0];
+              break;
+            }
+          }
+        }
+        if(!executable_path.empty())
+          break;
+      }
     }
+    if(executable_path.empty() && executables.size()>0 && executables[0].second.size()>0)
+      executable_path=executables[0].first.parent_path()/executables[0].second[0];
+    
     if(cmake.project_path!="") {
       if(executable_path!="") {
         compiling=true;
@@ -591,7 +606,7 @@ void Window::set_menu_actions() {
         });
       }
       entry_box.hide();
-    });
+    }, 30);
     auto entry_it=entry_box.entries.begin();
     entry_it->set_placeholder_text("Command");
     entry_box.buttons.emplace_back("Run command", [this, entry_it](){

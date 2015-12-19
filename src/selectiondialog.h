@@ -37,6 +37,8 @@ public:
   std::function<void()> on_hide;
   std::function<void(const std::string& selected, bool hide_window)> on_select;
   Glib::RefPtr<Gtk::TextBuffer::Mark> start_mark;
+  
+  bool shown=false;
 protected:
   virtual void resize();
   virtual void update_tooltips();
@@ -50,8 +52,6 @@ protected:
   std::unique_ptr<Tooltips> tooltips;
   std::unordered_map<std::string, std::string> tooltip_texts;
   std::string last_row;
-private:
-  bool shown=false;
 };
 
 class SelectionDialog : public SelectionDialogBase {

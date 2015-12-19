@@ -10,33 +10,28 @@ CMake::CMake(const boost::filesystem::path &path) {
     for(auto &line: filesystem::read_lines(cmake_path)) {
       const boost::regex project_regex("^ *project *\\(.*$");
       boost::smatch sm;
-      if(boost::regex_match(line, sm, project_regex)) {
+      if(boost::regex_match(line, sm, project_regex))
         return true;
-      }
     }
     return false;
   };
   
   auto search_path=path;
-  auto search_cmake_path=search_path;
-  search_cmake_path+="/CMakeLists.txt";
-  if(boost::filesystem::exists(search_cmake_path))
-    paths.emplace(paths.begin(), search_cmake_path);
-  if(find_cmake_project(search_cmake_path))
-    project_path=search_path;
-  else {
-    do {
-      search_path=search_path.parent_path();
-      search_cmake_path=search_path;
-      search_cmake_path+="/CMakeLists.txt";
-      if(boost::filesystem::exists(search_cmake_path))
-        paths.emplace(paths.begin(), search_cmake_path);
-      if(find_cmake_project(search_cmake_path)) {
-        project_path=search_path;
-        break;
-      }
-    } while(search_path!=search_path.root_directory());
+  while(true) {
+    auto search_cmake_path=search_path/"CMakeLists.txt";
+    if(boost::filesystem::exists(search_cmake_path))
+      paths.emplace(paths.begin(), search_cmake_path);
+    else
+      break;
+    if(find_cmake_project(search_cmake_path)) {
+      project_path=search_path;
+      break;
+    }
+    if(search_path==search_path.root_directory())
+      break;
+    search_path=search_path.parent_path();
   }
+  
   if(!project_path.empty()) {
     if(boost::filesystem::exists(project_path/"CMakeLists.txt") && !boost::filesystem::exists(project_path/"compile_commands.json"))
       create_compile_commands(project_path);
@@ -140,14 +135,23 @@ void CMake::find_variables() {
         end_line=file.size();
       if(end_line>start_line) {
         auto line=file.substr(start_line, end_line-start_line);
-        const boost::regex set_regex("^ *set *\\( *([A-Za-z_][A-Za-z_0-9]*) +(.*)\\) *$");
         boost::smatch sm;
+        const boost::regex set_regex("^ *set *\\( *([A-Za-z_][A-Za-z_0-9]*) +(.*)\\) *$");
         if(boost::regex_match(line, sm, set_regex)) {
           auto data=sm[2].str();
           while(data.size()>0 && data.back()==' ')
             data.pop_back();
           parse_variable_parameters(data);
           variables[sm[1].str()]=data;
+        }
+        else {
+          const boost::regex project_regex("^ *project *\\( *([^ ]+).*\\) *$");
+          if(boost::regex_match(line, sm, project_regex)) {
+            auto data=sm[1].str();
+            parse_variable_parameters(data);
+            variables["CMAKE_PROJECT_NAME"]=data; //TODO: is this variable deprecated/non-standard?
+            variables["PROJECT_NAME"]=data;
+          }
         }
       }
       pos=end_line+1;

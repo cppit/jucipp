@@ -85,6 +85,7 @@ namespace Source {
     std::function<void()> goto_next_diagnostic;
     std::function<void()> apply_fix_its;
     
+    std::unique_ptr<CompletionDialog> autocomplete_dialog;
     std::unique_ptr<SelectionDialog> selection_dialog;
     sigc::connection delayed_tooltips_connection;
     
@@ -114,7 +115,7 @@ namespace Source {
     virtual void show_type_tooltips(const Gdk::Rectangle &rectangle) {}
     gdouble on_motion_last_x;
     gdouble on_motion_last_y;
-    void set_tooltip_events();
+    void set_tooltip_and_dialog_events();
         
     std::string get_line(const Gtk::TextIter &iter);
     std::string get_line(Glib::RefPtr<Gtk::TextBuffer::Mark> mark);
@@ -143,7 +144,6 @@ namespace Source {
     
     bool spellcheck_all=false;
     std::unique_ptr<SelectionDialog> spellcheck_suggestions_dialog;
-    bool spellcheck_suggestions_dialog_shown=false;
     bool last_keyval_is_backspace=false;
     bool last_keyval_is_return=false;
   private:

@@ -72,7 +72,7 @@ namespace Source {
     
   class ClangViewAutocomplete : public ClangViewParse {
   protected:
-    enum class AutocompleteState {IDLE, STARTING, CANCELED, SHOWN};
+    enum class AutocompleteState {IDLE, STARTING, RESTARTING, CANCELED};
   public:
     class AutoCompleteData {
     public:
@@ -101,7 +101,6 @@ namespace Source {
     void autocomplete_check();
     void autocomplete();
     std::vector<AutoCompleteData> autocomplete_data;
-    std::unique_ptr<CompletionDialog> autocomplete_dialog;
     std::unordered_map<std::string, std::string> autocomplete_dialog_rows;
     std::vector<AutoCompleteData> autocomplete_get_suggestions(const std::string &buffer, int line_number, int column);
     Glib::Dispatcher autocomplete_done;

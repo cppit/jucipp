@@ -8,8 +8,6 @@
 #include "filesystem.h"
 #include "terminal.h"
 
-using namespace std; //TODO: remove
-
 namespace sigc {
 #ifndef SIGC_FUNCTORS_DEDUCE_RESULT_TYPE_WITH_DECLTYPE
   template <typename Functor>
@@ -219,7 +217,7 @@ Source::View::View(const boost::filesystem::path &file_path, const boost::filesy
       return;
     
     if(mark->get_name()=="insert") {
-      if(spellcheck_suggestions_dialog_shown)
+      if(spellcheck_suggestions_dialog && spellcheck_suggestions_dialog->shown)
         spellcheck_suggestions_dialog->hide();
       delayed_spellcheck_suggestions_connection.disconnect();
       delayed_spellcheck_suggestions_connection=Glib::signal_timeout().connect([this]() {
@@ -233,9 +231,6 @@ Source::View::View(const boost::filesystem::path &file_path, const boost::filesy
         }
         if(need_suggestions) {
           spellcheck_suggestions_dialog=std::unique_ptr<SelectionDialog>(new SelectionDialog(*this, get_buffer()->create_mark(get_buffer()->get_insert()->get_iter()), false));
-          spellcheck_suggestions_dialog->on_hide=[this](){
-            spellcheck_suggestions_dialog_shown=false;
-          };
           auto word=spellcheck_get_word(get_buffer()->get_insert()->get_iter());
           auto suggestions=spellcheck_get_suggestions(word.first, word.second);
           if(suggestions.size()==0)
@@ -250,7 +245,6 @@ Source::View::View(const boost::filesystem::path &file_path, const boost::filesy
             delayed_tooltips_connection.disconnect();
           };
           spellcheck_suggestions_dialog->show();
-          spellcheck_suggestions_dialog_shown=true;
         }
         return false;
       }, 500);
@@ -261,7 +255,7 @@ Source::View::View(const boost::filesystem::path &file_path, const boost::filesy
     set_info(info);
   });
   
-  set_tooltip_events();
+  set_tooltip_and_dialog_events();
   
   tab_char=Config::get().source.default_tab_char;
   tab_size=Config::get().source.default_tab_size;
@@ -386,7 +380,7 @@ void Source::View::configure() {
   get_buffer()->remove_tag_by_name("spellcheck_error", get_buffer()->begin(), get_buffer()->end());
 }
 
-void Source::View::set_tooltip_events() {
+void Source::View::set_tooltip_and_dialog_events() {
   signal_motion_notify_event().connect([this](GdkEventMotion* event) {
     if(on_motion_last_x!=event->x || on_motion_last_y!=event->y) {
       delayed_tooltips_connection.disconnect();
@@ -434,14 +428,29 @@ void Source::View::set_tooltip_events() {
       }, 500);
       type_tooltips.hide();
       diagnostic_tooltips.hide();
+      
+      if(spellcheck_suggestions_dialog && spellcheck_suggestions_dialog->shown)
+        spellcheck_suggestions_dialog->hide();
+      if(autocomplete_dialog && autocomplete_dialog->shown)
+        autocomplete_dialog->hide();
+      if(selection_dialog && selection_dialog->shown)
+        selection_dialog->hide();
+      
       set_info(info);
     }
   });
-  
+
   signal_scroll_event().connect([this](GdkEventScroll* event) {
     delayed_tooltips_connection.disconnect();
     type_tooltips.hide();
     diagnostic_tooltips.hide();
+    delayed_spellcheck_suggestions_connection.disconnect();
+    if(spellcheck_suggestions_dialog && spellcheck_suggestions_dialog->shown)
+      spellcheck_suggestions_dialog->hide();
+    if(autocomplete_dialog && autocomplete_dialog->shown)
+      autocomplete_dialog->hide();
+    if(selection_dialog && selection_dialog->shown)
+      selection_dialog->hide();
     return false;
   });
   
@@ -449,6 +458,19 @@ void Source::View::set_tooltip_events() {
     delayed_tooltips_connection.disconnect();
     type_tooltips.hide();
     diagnostic_tooltips.hide();
+    delayed_spellcheck_suggestions_connection.disconnect();
+    if(spellcheck_suggestions_dialog && spellcheck_suggestions_dialog->shown)
+      spellcheck_suggestions_dialog->hide();
+    if(autocomplete_dialog && autocomplete_dialog->shown)
+      autocomplete_dialog->hide();
+    return false;
+  });
+  
+  signal_leave_notify_event().connect([this](GdkEventCrossing*) {
+    delayed_tooltips_connection.disconnect();
+    type_tooltips.hide();
+    diagnostic_tooltips.hide();
+    delayed_spellcheck_suggestions_connection.disconnect();
     return false;
   });
 }
@@ -509,7 +531,8 @@ void Source::View::replace_forward(const std::string &replacement) {
     auto offset=match_start.get_offset();
     gtk_source_search_context_replace(search_context, match_start.gobj(), match_end.gobj(), replacement.c_str(), replacement.size(), NULL);
     
-    get_buffer()->select_range(get_buffer()->get_iter_at_offset(offset), get_buffer()->get_iter_at_offset(offset+replacement.size()));
+    Glib::ustring replacement_ustring=replacement;
+    get_buffer()->select_range(get_buffer()->get_iter_at_offset(offset), get_buffer()->get_iter_at_offset(offset+replacement_ustring.size()));
     scroll_to(get_buffer()->get_insert());
   }
 }
@@ -923,7 +946,7 @@ bool Source::View::find_left_bracket_backward(Gtk::TextIter iter, Gtk::TextIter 
 
 //Basic indentation
 bool Source::View::on_key_press_event(GdkEventKey* key) {
-  if(spellcheck_suggestions_dialog_shown) {
+  if(spellcheck_suggestions_dialog && spellcheck_suggestions_dialog->shown) {
     if(spellcheck_suggestions_dialog->on_key_press(key))
       return true;
   }
@@ -1227,8 +1250,8 @@ std::pair<char, unsigned> Source::View::find_tab_char_and_size() {
           }
           else if(!iter.ends_line()) {
             if(tab_count!=last_tab_count)
-              tab_sizes[abs(tab_count-last_tab_count)]++;
-            last_tab_diff=abs(tab_count-last_tab_count);
+              tab_sizes[std::abs(tab_count-last_tab_count)]++;
+            last_tab_diff=std::abs(tab_count-last_tab_count);
             last_tab_count=tab_count;
             last_char=0;
           }
@@ -1282,7 +1305,7 @@ std::pair<char, unsigned> Source::View::find_tab_char_and_size() {
         }
         else if(!iter.ends_line()) {
           if(tab_count!=last_tab_count)
-            tab_sizes[abs(tab_count-last_tab_count)]++;
+            tab_sizes[std::abs(tab_count-last_tab_count)]++;
           last_tab_count=tab_count;
         }
       }
