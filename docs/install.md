@@ -98,6 +98,11 @@ make install
 Note that we are currently working on a Windows-version without the need of an X-server.
 -->
 
+## Cleanup CMake cache files (in case you want to try out juCi++ on its source files)
+```sh
+rm -r CMakeFiles CMakeCache.txt
+```
+
 ## Run
 ```sh
 juci
