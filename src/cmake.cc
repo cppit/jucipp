@@ -71,14 +71,13 @@ bool CMake::create_compile_commands(const boost::filesystem::path &path) {
   auto default_build_path=get_default_build_path(path);
   if(default_build_path.empty())
     return false;
-  Dialog::Message message("Creating "+default_build_path.string()+"/compile_commands.json");
+  auto compile_commands_path=default_build_path/"compile_commands.json";
+  Dialog::Message message("Creating "+compile_commands_path.string());
   auto exit_status=Terminal::get().process(Config::get().terminal.cmake_command+" "+
                                            path.string()+" -DCMAKE_EXPORT_COMPILE_COMMANDS=ON", default_build_path);
   message.hide();
   if(exit_status==EXIT_SUCCESS) {
 #ifdef _WIN32 //Temporary fix to MSYS2's libclang
-    auto compile_commands_path=path;
-    compile_commands_path+="/compile_commands.json";
     auto compile_commands_file=filesystem::read(compile_commands_path);
     size_t pos=0;
     while((pos=compile_commands_file.find("-I/", pos))!=std::string::npos) {
