@@ -468,8 +468,6 @@ void Source::View::set_tooltip_and_dialog_events() {
   
   signal_leave_notify_event().connect([this](GdkEventCrossing*) {
     delayed_tooltips_connection.disconnect();
-    type_tooltips.hide();
-    diagnostic_tooltips.hide();
     delayed_spellcheck_suggestions_connection.disconnect();
     return false;
   });
