@@ -9,8 +9,7 @@ project (${project_name})
 
 add_subdirectory("src")
 
-find_program(XDG_DESKTOP_MENU_EXECUTABLE xdg-desktop-menu)
-if(XDG_DESKTOP_MENU_EXECUTABLE)
-  file(MAKE_DIRECTORY "/usr/share/desktop-directories") #Workaround for https://bugs.debian.org/cgi-bin/bugreport.cgi?bug=730621
-  install(CODE "execute_process(COMMAND ${XDG_DESKTOP_MENU_EXECUTABLE} install --novendor share/juci.desktop)")
+if(${CMAKE_SYSTEM_NAME} MATCHES "Linux|FreeBSD|OpenBSD|NetBSD")
+    install(FILES "${CMAKE_SOURCE_DIR}/share/juci.desktop"
+        DESTINATION "${CMAKE_INSTALL_PREFIX}/share/applications")
 endif()
