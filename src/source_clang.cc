@@ -960,26 +960,44 @@ Source::ClangViewAutocomplete(file_path, project_path, language) {
   
   auto_indent=[this]() {
     auto command=Config::get().terminal.clang_format_command;
-    unsigned indent_width;
-    std::string tab_style;
-    if(tab_char=='\t') {
-      indent_width=tab_size*8;
-      tab_style="UseTab: Always";
+    bool use_style_file=false;
+    
+    auto style_file_search_path=this->file_path.parent_path();
+    while(true) {
+      auto style_file=style_file_search_path/"CMakeLists.txt";
+      if(boost::filesystem::exists(style_file_search_path/".clang-format") || boost::filesystem::exists(style_file_search_path/"_clang-format")) {
+        use_style_file=true;
+        break;
+      }
+      if(style_file_search_path==style_file_search_path.root_directory())
+        break;
+      style_file_search_path=style_file_search_path.parent_path();
     }
+    
+    if(use_style_file)
+      command+=" -style=file";
     else {
-      indent_width=tab_size;
-      tab_style="UseTab: Never";
+      unsigned indent_width;
+      std::string tab_style;
+      if(tab_char=='\t') {
+        indent_width=tab_size*8;
+        tab_style="UseTab: Always";
+      }
+      else {
+        indent_width=tab_size;
+        tab_style="UseTab: Never";
+      }
+      command+=" -style=\"{IndentWidth: "+std::to_string(indent_width);
+      command+=", "+tab_style;
+      command+=", "+std::string("AccessModifierOffset: -")+std::to_string(indent_width);
+      if(Config::get().source.clang_format_style!="")
+        command+=", "+Config::get().source.clang_format_style;
+      command+="}\"";
     }
-    command+=" -style=\"{IndentWidth: "+std::to_string(indent_width);
-    command+=", "+tab_style;
-    command+=", "+std::string("AccessModifierOffset: -")+std::to_string(indent_width);
-    if(Config::get().source.clang_format_style!="")
-      command+=", "+Config::get().source.clang_format_style;
-    command+="}\"";
     
     std::stringstream stdin_stream(get_buffer()->get_text()), stdout_stream;
     
-    auto exit_status=Terminal::get().process(stdin_stream, stdout_stream, command);
+    auto exit_status=Terminal::get().process(stdin_stream, stdout_stream, command, this->file_path.parent_path());
     if(exit_status==0) {
       get_source_buffer()->begin_user_action();
       auto iter=get_buffer()->get_insert()->get_iter();

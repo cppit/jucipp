@@ -79,7 +79,7 @@ int Terminal::process(const std::string &command, const boost::filesystem::path 
     process=std::unique_ptr<Process>(new Process(command, path.string()));
     
   if(process->get_id()<=0) {
-    async_print("Error: Failed to run command: " + command + "\n", true);
+    async_print("Error: failed to run command: " + command + "\n", true);
     return -1;
   }
   
@@ -101,7 +101,7 @@ int Terminal::process(std::istream &stdin_stream, std::ostream &stdout_stream, c
   }, true);
   
   if(process.get_id()<=0) {
-    async_print("Error: Failed to run command: " + command + "\n", true);
+    async_print("Error: failed to run command: " + command + "\n", true);
     return -1;
   }
   
@@ -132,7 +132,7 @@ void Terminal::async_process(const std::string &command, const boost::filesystem
     auto pid=process->get_id();
     if (pid<=0) {
       processes_mutex.unlock();
-      async_print("Error: Failed to run command: " + command + "\n", true);
+      async_print("Error: failed to run command: " + command + "\n", true);
       if(callback)
         callback(-1);
       return;
