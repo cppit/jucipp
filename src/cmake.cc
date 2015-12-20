@@ -59,7 +59,7 @@ boost::filesystem::path CMake::get_default_build_path(const boost::filesystem::p
     boost::system::error_code ec;
     boost::filesystem::create_directories(default_build_path, ec);
     if(ec) {
-      Terminal::get().print("Could not create "+default_build_path.string()+": "+ec.message(), true);
+      Terminal::get().print("Error: could not create "+default_build_path.string()+": "+ec.message(), true);
       return boost::filesystem::path();
     }
   }

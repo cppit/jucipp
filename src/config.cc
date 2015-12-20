@@ -36,7 +36,7 @@ void Config::load() {
     retrieve_config();
   }
   catch(const std::exception &e) {
-    ::Terminal::get().print("Error reading "+config_json+": "+e.what()+"\n");
+    ::Terminal::get().print("Error: could not parse "+config_json+": "+e.what()+"\n", true);
     std::stringstream ss;
     ss << configjson;
     boost::property_tree::read_json(ss, cfg);
