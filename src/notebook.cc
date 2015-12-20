@@ -248,14 +248,14 @@ bool Notebook::save(int page) {
       boost::filesystem::path project_path;
       if(view->file_path.filename()=="CMakeLists.txt") {
         auto &directories=Directories::get();
-        if(directories.cmake && directories.cmake->project_path!="" && view->file_path.generic_string().substr(0, directories.cmake->project_path.generic_string().size()+1)==directories.cmake->project_path.generic_string()+'/' && CMake::create_compile_commands(directories.cmake->project_path)) {
-          project_path=directories.cmake->project_path;
+        if(directories.cmake && directories.cmake->project_path!="" && view->file_path.generic_string().substr(0, directories.cmake->project_path.generic_string().size()+1)==directories.cmake->project_path.generic_string()+'/') {
+          if(CMake::create_compile_commands(directories.cmake->project_path))
+            project_path=directories.cmake->project_path;
         }
         else {
           CMake cmake(view->file_path.parent_path());
-          if(cmake.project_path!="" && CMake::create_compile_commands(cmake.project_path)) {
+          if(cmake.project_path!="" && CMake::create_compile_commands(cmake.project_path))
             project_path=cmake.project_path;
-          }
         }
         if(project_path!="") {
           for(auto source_view: source_views) {
