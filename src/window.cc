@@ -539,9 +539,11 @@ void Window::set_menu_actions() {
     
     if(cmake.project_path!="") {
       if(executable_path!="") {
-        compiling=true;
         auto project_path=cmake.project_path;
         auto default_build_path=CMake::get_default_build_path(project_path);
+        if(default_build_path.empty())
+          return;
+        compiling=true;
         auto executable_path_string=executable_path.string();
         size_t pos=executable_path_string.find(project_path.string());
         if(pos!=std::string::npos) {
@@ -586,9 +588,12 @@ void Window::set_menu_actions() {
       return;
     CMake cmake(cmake_path);
     if(cmake.project_path!="") {
+      auto default_build_path=CMake::get_default_build_path(cmake.project_path);
+      if(default_build_path.empty())
+        return;
       compiling=true;
       Terminal::get().print("Compiling project "+cmake.project_path.string()+"\n");
-      Terminal::get().async_process(Config::get().terminal.make_command, CMake::get_default_build_path(cmake.project_path), [this](int exit_status){
+      Terminal::get().async_process(Config::get().terminal.make_command, default_build_path, [this](int exit_status){
         compiling=false;
       });
     }
