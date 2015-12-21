@@ -33,7 +33,8 @@ CMake::CMake(const boost::filesystem::path &path) {
   }
   
   if(!project_path.empty()) {
-    if(!boost::filesystem::exists(get_default_build_path(project_path)/"compile_commands.json"))
+    auto default_build_path=get_default_build_path(project_path);
+    if(!default_build_path.empty() && !boost::filesystem::exists(default_build_path/"compile_commands.json"))
       create_compile_commands(project_path);
   }
 }
