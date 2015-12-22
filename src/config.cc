@@ -36,7 +36,7 @@ void Config::load() {
     retrieve_config();
   }
   catch(const std::exception &e) {
-    ::Terminal::get().print("Error reading "+config_json+": "+e.what()+"\n");
+    ::Terminal::get().print("Error: could not parse "+config_json+": "+e.what()+"\n", true);
     std::stringstream ss;
     ss << configjson;
     boost::property_tree::read_json(ss, cfg);
@@ -84,6 +84,8 @@ void Config::retrieve_config() {
   window.theme_variant=cfg.get<std::string>("gtk_theme.variant");
   window.version = cfg.get<std::string>("version");
   window.default_size = {cfg.get<int>("default_window_size.width"), cfg.get<int>("default_window_size.height")};
+  
+  terminal.default_build_path=cfg.get<std::string>("project.default_build_path");
   terminal.make_command=cfg.get<std::string>("project.make_command");
   terminal.cmake_command=cfg.get<std::string>("project.cmake_command");
   terminal.history_size=cfg.get<int>("terminal_history_size");

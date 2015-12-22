@@ -24,6 +24,7 @@ public:
   
   class Terminal {
   public:
+    std::string default_build_path;
     std::string cmake_command;
     std::string make_command;
     std::string clang_format_command;

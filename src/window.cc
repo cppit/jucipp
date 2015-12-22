@@ -539,10 +539,19 @@ void Window::set_menu_actions() {
     
     if(cmake.project_path!="") {
       if(executable_path!="") {
-        compiling=true;
-        Terminal::get().print("Compiling and running "+executable_path.string()+"\n");
         auto project_path=cmake.project_path;
-        Terminal::get().async_process(Config::get().terminal.make_command, cmake.project_path, [this, executable_path, project_path](int exit_status){
+        auto default_build_path=CMake::get_default_build_path(project_path);
+        if(default_build_path.empty())
+          return;
+        compiling=true;
+        auto executable_path_string=executable_path.string();
+        size_t pos=executable_path_string.find(project_path.string());
+        if(pos!=std::string::npos) {
+          executable_path_string.replace(pos, project_path.string().size(), default_build_path.string());
+          executable_path=executable_path_string;
+        }
+        Terminal::get().print("Compiling and running "+executable_path.string()+"\n");
+        Terminal::get().async_process(Config::get().terminal.make_command, default_build_path, [this, executable_path, default_build_path](int exit_status){
           compiling=false;
           if(exit_status==EXIT_SUCCESS) {
             auto executable_path_spaces_fixed=executable_path.string();
@@ -554,7 +563,7 @@ void Window::set_menu_actions() {
               }
               last_char=executable_path_spaces_fixed[c];
             }
-            Terminal::get().async_process(executable_path_spaces_fixed, project_path, [this, executable_path](int exit_status){
+            Terminal::get().async_process(executable_path_spaces_fixed, default_build_path, [this, executable_path](int exit_status){
               Terminal::get().async_print(executable_path.string()+" returned: "+std::to_string(exit_status)+'\n');
             });
           }
@@ -579,9 +588,12 @@ void Window::set_menu_actions() {
       return;
     CMake cmake(cmake_path);
     if(cmake.project_path!="") {
+      auto default_build_path=CMake::get_default_build_path(cmake.project_path);
+      if(default_build_path.empty())
+        return;
       compiling=true;
       Terminal::get().print("Compiling project "+cmake.project_path.string()+"\n");
-      Terminal::get().async_process(Config::get().terminal.make_command, cmake.project_path, [this](int exit_status){
+      Terminal::get().async_process(Config::get().terminal.make_command, default_build_path, [this](int exit_status){
         compiling=false;
       });
     }
