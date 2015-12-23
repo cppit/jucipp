@@ -38,8 +38,7 @@ void ListViewText::append(const std::string& value) {
   new_row->set_value(column_record.text, value);
 }
 
-void ListViewText::hide() {
-  Gtk::TreeView::hide();
+void ListViewText::clear() {
   list_store->clear();
 }
 
@@ -101,11 +100,14 @@ void SelectionDialogBase::show() {
 }
 
 void SelectionDialogBase::hide() {
+  if(!shown)
+    return;
   window->hide();
   if(tooltips)
     tooltips->hide();
-  if(on_hide && shown)
+  if(on_hide)
     on_hide();
+  list_view_text.clear();
   shown=false;
 }
 

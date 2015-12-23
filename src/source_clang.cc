@@ -99,8 +99,8 @@ void Source::ClangViewParse::configure() {
   }
   
   bracket_regex=boost::regex("^([ \\t]*).*\\{ *$");
-  no_bracket_statement_regex=boost::regex("^([ \\t]*)(if|for|else if|catch|while) *\\(.*[^;}] *$");
-  no_bracket_no_para_statement_regex=boost::regex("^([ \\t]*)(else|try|do) *$");
+  no_bracket_statement_regex=boost::regex("^([ \\t]*)(if|for|else if|while) *\\(.*[^;}] *$");
+  no_bracket_no_para_statement_regex=boost::regex("^([ \\t]*)(else) *$");
 }
 
 void Source::ClangViewParse::parse_initialize() {
@@ -604,6 +604,29 @@ bool Source::ClangViewParse::on_key_press_event(GdkEventKey* key) {
     get_source_buffer()->insert_at_cursor("}");
     get_source_buffer()->end_user_action();
     return true;
+  }
+  //Indent left when writing { on a new line after for instance if(...)\n...
+  else if(key->keyval==GDK_KEY_braceleft) {
+    auto iter=get_buffer()->get_insert()->get_iter();
+    auto tabs_end_iter=get_tabs_end_iter();
+    auto tabs=get_line_before(tabs_end_iter);
+    size_t line_nr=iter.get_line();
+    if(line_nr>0 && tabs.size()>=tab_size && iter==tabs_end_iter) {
+      std::string previous_line=get_line(line_nr-1);
+      boost::smatch sm;
+      if(!boost::regex_match(previous_line, sm, bracket_regex)) {
+        auto start_iter=iter;
+        start_iter.backward_chars(tab_size);
+        if(boost::regex_match(previous_line, sm, no_bracket_statement_regex) ||
+           boost::regex_match(previous_line, sm, no_bracket_no_para_statement_regex)) {
+          get_buffer()->erase(start_iter, iter);
+          get_buffer()->insert_at_cursor("{");
+          scroll_to(get_buffer()->get_insert());
+          get_buffer()->end_user_action();
+          return true;
+        }
+      }
+    }
   }
   
   get_source_buffer()->end_user_action();
