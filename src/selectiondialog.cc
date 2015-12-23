@@ -31,15 +31,15 @@ ListViewText::ListViewText(bool use_markup) : Gtk::TreeView(), use_markup(use_ma
   set_activate_on_single_click(true);
   set_hover_selection(false);
   set_rules_hint(true);
-  
-  signal_hide().connect([this]() {
-    list_store->clear();
-  });
 }
 
 void ListViewText::append(const std::string& value) {
   auto new_row=list_store->append();
   new_row->set_value(column_record.text, value);
+}
+
+void ListViewText::clear() {
+  list_store->clear();
 }
 
 SelectionDialogBase::SelectionDialogBase(Gtk::TextView& text_view, Glib::RefPtr<Gtk::TextBuffer::Mark> start_mark, bool show_search_entry, bool use_markup): text_view(text_view), 
@@ -107,6 +107,7 @@ void SelectionDialogBase::hide() {
     tooltips->hide();
   if(on_hide)
     on_hide();
+  list_view_text.clear();
   shown=false;
 }
 
