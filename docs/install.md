@@ -34,6 +34,11 @@ sudo make install
 ```
 
 ##Arch Linux
+Package available in the Arch User Repository:
+https://aur.archlinux.org/packages/jucipp-git/
+
+Alternatively, follow the instructions below.
+
 Install dependencies:
 ```sh
 #as root
