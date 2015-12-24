@@ -7,7 +7,7 @@
 - OS X
   - [Homebrew](#os-x-with-homebrew-httpbrewsh)
 - Windows
-  - [MSYS 2](windows-with-msys2-httpsmsys2githubio)
+  - [MSYS 2](#windows-with-msys2-httpsmsys2githubio)
 
 ## Debian/Ubuntu 15
 Install dependencies:
