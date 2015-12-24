@@ -1,5 +1,14 @@
 # juCi++ Installation Guide
 
+- Linux
+  - [Debian/Ubuntu 15](#debianubuntu-15)
+  - [Ubuntu 14/Linux Mint 17](#ubuntu-14linux-mint-17)
+  - [Arch Linux](#arch-linux)
+- OS X
+  - [Homebrew](#os-x-with-homebrew-httpbrewsh)
+- Windows
+  - [MSYS 2](#windows-with-msys2-httpsmsys2githubio)
+
 ## Debian/Ubuntu 15
 Install dependencies:
 ```sh
@@ -34,6 +43,11 @@ sudo make install
 ```
 
 ##Arch Linux
+Package available in the Arch User Repository:
+https://aur.archlinux.org/packages/jucipp-git/
+
+Alternatively, follow the instructions below.
+
 Install dependencies:
 ```sh
 #as root

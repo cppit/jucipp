@@ -619,11 +619,13 @@ bool Source::ClangViewParse::on_key_press_event(GdkEventKey* key) {
         start_iter.backward_chars(tab_size);
         if(boost::regex_match(previous_line, sm, no_bracket_statement_regex) ||
            boost::regex_match(previous_line, sm, no_bracket_no_para_statement_regex)) {
-          get_buffer()->erase(start_iter, iter);
-          get_buffer()->insert_at_cursor("{");
-          scroll_to(get_buffer()->get_insert());
-          get_buffer()->end_user_action();
-          return true;
+          if((tabs.size()-tab_size)==sm[1].str().size()) {
+            get_buffer()->erase(start_iter, iter);
+            get_buffer()->insert_at_cursor("{");
+            scroll_to(get_buffer()->get_insert());
+            get_buffer()->end_user_action();
+            return true;
+          }
         }
       }
     }

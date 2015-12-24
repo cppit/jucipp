@@ -57,7 +57,13 @@ Directories::Directories() : Gtk::TreeView(), stop_update_thread(false) {
   });
   signal_row_collapsed().connect([this](const Gtk::TreeModel::iterator& iter, const Gtk::TreeModel::Path& path){
     update_mutex.lock();
-    last_write_times.erase(iter->get_value(column_record.path).string());
+    auto directory_str=iter->get_value(column_record.path).string();
+    for(auto it=last_write_times.begin();it!=last_write_times.end();) {
+      if(directory_str==it->first.substr(0, directory_str.size()))
+        it=last_write_times.erase(it);
+      else
+        it++;
+    }
     update_mutex.unlock();
     auto children=iter->children();
     if(children) {
