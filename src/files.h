@@ -2,7 +2,7 @@
 #define JUCI_FILES_H_
 #include <string>
 
-#define JUCI_VERSION "1.0.1"
+#define JUCI_VERSION "1.0.2"
 
 const std::string configjson =
 "{\n"
@@ -94,9 +94,12 @@ const std::string configjson =
 "        \"source_apply_fix_its\": \"<control>space\",\n"
 "        \"compile_and_run\": \"<primary>Return\",\n"
 "        \"compile\": \"<primary><shift>Return\",\n"
+"        \"compile_and_run\": \"<primary>Return\",\n"
 "        \"run_command\": \"<alt>Return\",\n"
 "        \"kill_last_running\": \"<primary>Escape\",\n"
 "        \"force_kill_last_running\": \"<primary><shift>Escape\",\n"
+"        \"debug_start\": \"<primary>y\",\n"
+"        \"debug_toggle_breakpoint\": \"<primary>b\",\n"
 #ifdef __linux
 "        \"next_tab\": \"<primary>Tab\",\n"
 "        \"previous_tab\": \"<primary><shift>Tab\",\n"
@@ -109,6 +112,8 @@ const std::string configjson =
 "    \"project\": {\n"
 "        \"default_build_path_comment\": \"Use <project_directory_name> to insert the project top level directory name\",\n"
 "        \"default_build_path\": \"./build\",\n"
+"        \"debug_build_path_comment\": \"Use <project_directory_name> to insert the project top level directory name, and <default_build_path> to insert your default_build_path setting.\",\n"
+"        \"debug_build_path\": \"<default_build_path>/debug\",\n"
 #ifdef _WIN32
 "        \"cmake_command\": \"cmake -G\\\"MSYS Makefiles\\\" -DCMAKE_INSTALL_PREFIX="+JUCI_CMAKE_INSTALL_PREFIX+"\",\n"
 #else

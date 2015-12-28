@@ -28,6 +28,7 @@ endif()
 INCLUDE(FindPkgConfig)
 
 find_package(LibClang REQUIRED)
+string(REPLACE libclang liblldb LLDB_LIBRARIES "${LIBCLANG_LIBRARIES}")
 
 #find_package(PythonLibs 2.7)
 
@@ -72,6 +73,8 @@ set(source_files juci.h
     cmake.h
     cmake.cc
     dialogs.cc
+    debug.h
+    debug.cc
     
     ../libclangmm/src/CodeCompleteResults.cc
     ../libclangmm/src/CompilationDatabase.cc
@@ -136,6 +139,7 @@ target_link_libraries(${project_name}
   ${GTKSVMM_LIBRARIES}
   ${Boost_LIBRARIES}
   ${ASPELL_LIBRARIES}
+  ${LLDB_LIBRARIES}
   #${PYTHON_LIBRARIES}
 )
 

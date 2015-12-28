@@ -6,6 +6,7 @@
 #include <regex>
 #include "cmake.h"
 #include "filesystem.h"
+#include "debug.h"
 
 #if GTKSOURCEVIEWMM_MAJOR_VERSION > 2 & GTKSOURCEVIEWMM_MINOR_VERSION > 17
 #include "gtksourceview-3.0/gtksourceview/gtksourcemap.h"
@@ -307,7 +308,21 @@ bool Notebook::close(int page) {
 #if GTKSOURCEVIEWMM_MAJOR_VERSION > 2 & GTKSOURCEVIEWMM_MINOR_VERSION > 17
     source_maps.erase(source_maps.begin()+index);
 #endif
+
     auto source_view=source_views.at(index);
+
+    //Remove breakpoints
+    auto it=Debug::get().breakpoints.find(source_view->project_path.string());
+    if(it!=Debug::get().breakpoints.end()) {
+      auto filename=source_view->file_path.filename().string();
+      for(auto it_bp=it->second.begin();it_bp!=it->second.end();) {
+        if(it_bp->first==filename)
+          it_bp=it->second.erase(it_bp);
+        else
+          it_bp++;
+      }
+    }
+
     if(auto source_clang_view=dynamic_cast<Source::ClangView*>(source_view))
       source_clang_view->async_delete();
     else

@@ -86,6 +86,7 @@ void Config::retrieve_config() {
   window.default_size = {cfg.get<int>("default_window_size.width"), cfg.get<int>("default_window_size.height")};
   
   terminal.default_build_path=cfg.get<std::string>("project.default_build_path");
+  terminal.debug_build_path=cfg.get<std::string>("project.debug_build_path");
   terminal.make_command=cfg.get<std::string>("project.make_command");
   terminal.cmake_command=cfg.get<std::string>("project.cmake_command");
   terminal.history_size=cfg.get<int>("terminal_history_size");

@@ -121,7 +121,14 @@ Source::View::View(const boost::filesystem::path &file_path, const boost::filesy
   spellcheck_checker=NULL;
   auto tag=get_buffer()->create_tag("spellcheck_error");
   tag->property_underline()=Pango::Underline::UNDERLINE_ERROR;
-    
+  
+  auto mark_attr=Gsv::MarkAttributes::create();
+  Gdk::RGBA rgba;
+  rgba.set_red(1.0);
+  rgba.set_alpha(0.1);
+  mark_attr->set_background(rgba);
+  set_mark_attributes("breakpoint", mark_attr, 100);
+  
   get_buffer()->signal_changed().connect([this](){
     if(spellcheck_checker==NULL)
       return;

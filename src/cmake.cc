@@ -39,13 +39,13 @@ CMake::CMake(const boost::filesystem::path &path) {
   }
 }
 
-boost::filesystem::path CMake::get_default_build_path(const boost::filesystem::path &path) {
+boost::filesystem::path CMake::get_default_build_path(const boost::filesystem::path &project_path) {
   boost::filesystem::path default_build_path=Config::get().terminal.default_build_path;
   
   const std::string path_variable_project_directory_name="<project_directory_name>";
   size_t pos=0;
   auto default_build_path_string=default_build_path.string();
-  auto path_filename_string=path.filename().string();
+  auto path_filename_string=project_path.filename().string();
   while((pos=default_build_path_string.find(path_variable_project_directory_name, pos))!=std::string::npos) {
     default_build_path_string.replace(pos, path_variable_project_directory_name.size(), path_filename_string);
     pos+=path_filename_string.size();
@@ -54,7 +54,7 @@ boost::filesystem::path CMake::get_default_build_path(const boost::filesystem::p
     default_build_path=default_build_path_string;
   
   if(default_build_path.is_relative())
-    default_build_path=path/default_build_path;
+    default_build_path=project_path/default_build_path;
     
   if(!boost::filesystem::exists(default_build_path)) {
     boost::system::error_code ec;
@@ -68,14 +68,55 @@ boost::filesystem::path CMake::get_default_build_path(const boost::filesystem::p
   return default_build_path;
 }
 
-bool CMake::create_compile_commands(const boost::filesystem::path &path) {
-  auto default_build_path=get_default_build_path(path);
+boost::filesystem::path CMake::get_debug_build_path(const boost::filesystem::path &project_path) {
+  boost::filesystem::path debug_build_path=Config::get().terminal.debug_build_path;
+  
+  const std::string path_variable_project_directory_name="<project_directory_name>";
+  size_t pos=0;
+  auto debug_build_path_string=debug_build_path.string();
+  auto path_filename_string=project_path.filename().string();
+  while((pos=debug_build_path_string.find(path_variable_project_directory_name, pos))!=std::string::npos) {
+    debug_build_path_string.replace(pos, path_variable_project_directory_name.size(), path_filename_string);
+    pos+=path_filename_string.size();
+  }
+  if(pos!=0)
+    debug_build_path=debug_build_path_string;
+  
+  const std::string path_variable_default_build_path="<default_build_path>";
+  pos=0;
+  debug_build_path_string=debug_build_path.string();
+  auto default_build_path=Config::get().terminal.default_build_path;
+  while((pos=debug_build_path_string.find(path_variable_default_build_path, pos))!=std::string::npos) {
+    debug_build_path_string.replace(pos, path_variable_default_build_path.size(), default_build_path);
+    pos+=default_build_path.size();
+  }
+  if(pos!=0)
+    debug_build_path=debug_build_path_string;
+  
+  
+  if(debug_build_path.is_relative())
+    debug_build_path=project_path/debug_build_path;
+    
+  if(!boost::filesystem::exists(debug_build_path)) {
+    boost::system::error_code ec;
+    boost::filesystem::create_directories(debug_build_path, ec);
+    if(ec) {
+      Terminal::get().print("Error: could not create "+debug_build_path.string()+": "+ec.message()+"\n", true);
+      return boost::filesystem::path();
+    }
+  }
+  
+  return debug_build_path;
+}
+
+bool CMake::create_compile_commands(const boost::filesystem::path &project_path) {
+  auto default_build_path=get_default_build_path(project_path);
   if(default_build_path.empty())
     return false;
   auto compile_commands_path=default_build_path/"compile_commands.json";
   Dialog::Message message("Creating "+compile_commands_path.string());
   auto exit_status=Terminal::get().process(Config::get().terminal.cmake_command+" "+
-                                           path.string()+" -DCMAKE_EXPORT_COMPILE_COMMANDS=ON", default_build_path);
+                                           project_path.string()+" -DCMAKE_EXPORT_COMPILE_COMMANDS=ON", default_build_path);
   message.hide();
   if(exit_status==EXIT_SUCCESS) {
 #ifdef _WIN32 //Temporary fix to MSYS2's libclang
@@ -95,6 +136,47 @@ bool CMake::create_compile_commands(const boost::filesystem::path &path) {
     return true;
   }
   return false;
+}
+
+bool CMake::create_debug_build(const boost::filesystem::path &project_path) {
+  auto debug_build_path=get_debug_build_path(project_path);
+  if(debug_build_path.empty())
+    return false;
+  std::unique_ptr<Dialog::Message> message;
+  if(!boost::filesystem::exists(debug_build_path/"CMakeCache.txt"))
+    message=std::unique_ptr<Dialog::Message>(new Dialog::Message("Creating debug build"));
+  auto exit_status=Terminal::get().process(Config::get().terminal.cmake_command+" "+
+                                           project_path.string()+" -DCMAKE_BUILD_TYPE=Debug", debug_build_path);
+  if(message)
+    message->hide();
+  if(exit_status==EXIT_SUCCESS)
+    return true;
+  return false;
+}
+
+boost::filesystem::path CMake::get_executable(const boost::filesystem::path &file_path) {
+  auto executables = get_functions_parameters("add_executable");
+  
+  //Attempt to find executable based add_executable files and opened tab
+  boost::filesystem::path executable_path;
+  if(!file_path.empty()) {
+    for(auto &executable: executables) {
+      if(executable.second.size()>1) {
+        for(size_t c=1;c<executable.second.size();c++) {
+          if(executable.second[c]==file_path.filename()) {
+            executable_path=executable.first.parent_path()/executable.second[0];
+            break;
+          }
+        }
+      }
+      if(!executable_path.empty())
+        break;
+    }
+  }
+  if(executable_path.empty() && executables.size()>0 && executables[0].second.size()>0)
+    executable_path=executables[0].first.parent_path()/executables[0].second[0];
+  
+  return executable_path;
 }
 
 void CMake::read_files() {
