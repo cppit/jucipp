@@ -99,6 +99,7 @@ const std::string configjson =
 "        \"kill_last_running\": \"<primary>Escape\",\n"
 "        \"force_kill_last_running\": \"<primary><shift>Escape\",\n"
 "        \"debug_start\": \"<primary>y\",\n"
+"        \"debug_stop\": \"\",\n"
 "        \"debug_continue\": \"<primary><shift>y\",\n"
 "        \"debug_toggle_breakpoint\": \"<primary>b\",\n"
 #ifdef __linux

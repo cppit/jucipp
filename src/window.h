@@ -32,6 +32,7 @@ private:
   Gtk::AboutDialog about;
   EntryBox entry_box;
   std::atomic<bool> compiling;
+  std::atomic<bool> debugging;
 
   void configure();
   void set_menu_actions();

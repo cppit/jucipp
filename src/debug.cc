@@ -9,6 +9,7 @@
 #include "lldb/API/SBBreakpoint.h"
 #include "lldb/API/SBThread.h"
 #include "lldb/API/SBStream.h"
+#include "lldb/API/SBDeclaration.h"
 
 #include <iostream> //TODO: remove
 using namespace std;
@@ -57,19 +58,28 @@ void Debug::start(const boost::filesystem::path &project_path, const boost::file
         auto state=process->GetStateFromEvent(event);
         bool expected=false;
         if(state==lldb::StateType::eStateStopped && stopped.compare_exchange_strong(expected, true)) {
-          cout << "NumThreads: " << process->GetNumThreads() << endl;
-          for(uint32_t thread_index_id=0;thread_index_id<process->GetNumThreads();thread_index_id++) {
-            auto thread=process->GetThreadAtIndex(thread_index_id);
-            cout << "NumFrames: " << thread.GetNumFrames() << endl;
+          for(uint32_t thread_index=0;thread_index<process->GetNumThreads();thread_index++) {
+            auto thread=process->GetThreadAtIndex(thread_index);
             for(uint32_t frame_index=0;frame_index<thread.GetNumFrames();frame_index++) {
               auto frame=thread.GetFrameAtIndex(frame_index);
-              auto values=frame.GetVariables(true, true, true, true);
-              cout << "variables.GetSize(): " << values.GetSize() << endl;
+              auto values=frame.GetVariables(false, true, true, false);
               for(uint32_t value_index=0;value_index<values.GetSize();value_index++) {
-                auto value=values.GetValueAtIndex(value_index);
+                cout << thread_index << ", " << frame_index << endl;
                 lldb::SBStream stream;
+                auto value=values.GetValueAtIndex(value_index);
+                
+                cout << value.GetFrame().GetSymbol().GetName() << endl;
+                
+                auto declaration = value.GetDeclaration();
+                if(declaration.IsValid())
+                  cout << declaration.GetFileSpec().GetFilename() << ":" << declaration.GetLine() << ":" << declaration.GetColumn() << endl;
+                
                 value.GetDescription(stream);
-                cout << stream.GetData();
+                cout << "  " << stream.GetData() << endl;
+                stream.Clear();
+                
+                value.GetData().GetDescription(stream);
+                cout << "  " << stream.GetData() << endl;
               }
             }
           }
@@ -98,8 +108,38 @@ void Debug::start(const boost::filesystem::path &project_path, const boost::file
   debug_thread.detach();
 }
 
+void Debug::stop() {
+  auto error=process->Kill();
+  if(error.Fail()) {
+    cerr << "Error (debug): " << error.GetCString() << endl; //TODO: output to terminal instead
+    return;
+  }
+}
+
 void Debug::continue_debug() {
   bool expected=true;
   if(stopped.compare_exchange_strong(expected, false))
     process->Continue();
+}
+
+std::string Debug::get_value(const std::string &variable) {
+  if(stopped) {
+    for(uint32_t thread_index=0;thread_index<process->GetNumThreads();thread_index++) {
+      auto thread=process->GetThreadAtIndex(thread_index);
+      for(uint32_t frame_index=0;frame_index<thread.GetNumFrames();frame_index++) {
+        auto frame=thread.GetFrameAtIndex(frame_index);
+        auto values=frame.GetVariables(false, true, false, false);
+        for(uint32_t value_index=0;value_index<values.GetSize();value_index++) {
+          lldb::SBStream stream;
+          auto value=values.GetValueAtIndex(value_index);
+  
+          if(value.GetName()==variable) {
+            value.GetDescription(stream);
+            return stream.GetData();
+          }
+        }
+      }
+    }
+  }
+  return std::string();
 }

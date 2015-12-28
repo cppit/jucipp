@@ -2,6 +2,7 @@
 #include "config.h"
 #include "terminal.h"
 #include "cmake.h"
+#include "debug.h"
 
 namespace sigc {
 #ifndef SIGC_FUNCTORS_DEDUCE_RESULT_TYPE_WITH_DECLTYPE
@@ -412,6 +413,14 @@ void Source::ClangViewParse::show_type_tooltips(const Gdk::Rectangle &rectangle)
             auto brief_comment=token.get_cursor().get_brief_comments();
             if(brief_comment!="")
               tooltip_buffer->insert_with_tag(tooltip_buffer->get_insert()->get_iter(), "\n\n"+brief_comment, "def:note");
+            auto debug_value=Debug::get().get_value(token.get_spelling());
+            if(!debug_value.empty()) {
+              debug_value.pop_back();
+              size_t pos=debug_value.find(" = ");
+              if(pos!=std::string::npos)
+                tooltip_buffer->insert_with_tag(tooltip_buffer->get_insert()->get_iter(), "\n\nDebug: "+debug_value.substr(pos+3), "def:note");
+            }
+            
             return tooltip_buffer;
           };
           

@@ -276,6 +276,11 @@ Menu::Menu() {
   "          <attribute name='action'>app.debug_start</attribute>"
              +accels["debug_start"]+ //For Ubuntu...
   "        </item>"
+  "        <item>"
+  "          <attribute name='label' translatable='yes'>_Stop</attribute>"
+  "          <attribute name='action'>app.debug_stop</attribute>"
+             +accels["debug_stop"]+ //For Ubuntu...
+  "        </item>"
   "      </section>"
   "      <section>"
   "        <item>"

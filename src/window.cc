@@ -22,7 +22,7 @@ namespace sigc {
 #endif
 }
 
-Window::Window() : compiling(false) {
+Window::Window() : compiling(false), debugging(false) {
   JDEBUG("start");
   set_title("juCi++");
   set_events(Gdk::POINTER_MOTION_MASK|Gdk::FOCUS_CHANGE_MASK|Gdk::SCROLL_MASK|Gdk::LEAVE_NOTIFY_MASK);
@@ -617,7 +617,7 @@ void Window::set_menu_actions() {
   });
   
   menu.add_action("debug_start", [this](){
-    if(compiling)
+    if(debugging)
       return;
     boost::filesystem::path cmake_path;
     if(notebook.get_current_page()!=-1)
@@ -638,7 +638,7 @@ void Window::set_menu_actions() {
         return;
       if(!CMake::create_debug_build(project_path))
         return;
-      compiling=true;
+      debugging=true;
       auto executable_path_string=executable_path.string();
       size_t pos=executable_path_string.find(project_path.string());
       if(pos!=std::string::npos) {
@@ -647,7 +647,6 @@ void Window::set_menu_actions() {
       }
       Terminal::get().print("Compiling and running "+executable_path.string()+"\n");
       Terminal::get().async_process(Config::get().terminal.make_command, debug_build_path, [this, project_path, executable_path, debug_build_path](int exit_status){
-        compiling=false;
         if(exit_status==EXIT_SUCCESS) {
           auto executable_path_spaces_fixed=executable_path.string();
           char last_char=0;
@@ -659,6 +658,7 @@ void Window::set_menu_actions() {
             last_char=executable_path_spaces_fixed[c];
           }
           Debug::get().start(project_path, executable_path_spaces_fixed, debug_build_path, [this, executable_path](int exit_status){
+            debugging=false;
             Terminal::get().async_print(executable_path.string()+" returned: "+std::to_string(exit_status)+'\n');
           });
         }
@@ -668,6 +668,16 @@ void Window::set_menu_actions() {
       Terminal::get().print("Could not find add_executable in the following paths:\n");
       for(auto &path: cmake.paths)
         Terminal::get().print("  "+path.string()+"\n");
+    }
+  });
+  menu.add_action("debug_stop", [this]() {
+    if(debugging) {
+      Debug::get().stop();
+    }
+  });
+  menu.add_action("debug_continue", [this]() {
+    if(notebook.get_current_page()!=-1 && debugging) {
+      Debug::get().continue_debug();
     }
   });
   menu.add_action("debug_toggle_breakpoint", [this](){
@@ -693,11 +703,6 @@ void Window::set_menu_actions() {
       }
       Debug::get().breakpoints[project_path_string].emplace_back(filename, line_nr);
       auto mark=view->get_source_buffer()->create_source_mark("breakpoint", view->get_buffer()->get_insert()->get_iter());
-    }
-  });
-  menu.add_action("debug_continue", [this]() {
-    if(notebook.get_current_page()!=-1) {
-      Debug::get().continue_debug();
     }
   });
   
