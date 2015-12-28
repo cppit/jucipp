@@ -6,7 +6,7 @@
 //#include "api.h"
 #include "dialogs.h"
 #include "filesystem.h"
-#include "debug.h" //TODO: remove
+#include "debug.h"
 
 namespace sigc {
 #ifndef SIGC_FUNCTORS_DEDUCE_RESULT_TYPE_WITH_DECLTYPE
@@ -693,6 +693,11 @@ void Window::set_menu_actions() {
       }
       Debug::get().breakpoints[project_path_string].emplace_back(filename, line_nr);
       auto mark=view->get_source_buffer()->create_source_mark("breakpoint", view->get_buffer()->get_insert()->get_iter());
+    }
+  });
+  menu.add_action("debug_continue", [this]() {
+    if(notebook.get_current_page()!=-1) {
+      Debug::get().continue_debug();
     }
   });
   

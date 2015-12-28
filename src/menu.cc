@@ -276,6 +276,15 @@ Menu::Menu() {
   "          <attribute name='action'>app.debug_start</attribute>"
              +accels["debug_start"]+ //For Ubuntu...
   "        </item>"
+  "      </section>"
+  "      <section>"
+  "        <item>"
+  "          <attribute name='label' translatable='yes'>_Continue</attribute>"
+  "          <attribute name='action'>app.debug_continue</attribute>"
+             +accels["debug_continue"]+ //For Ubuntu...
+  "        </item>"
+  "      </section>"
+  "      <section>"
   "        <item>"
   "          <attribute name='label' translatable='yes'>_Toggle _Breakpoint</attribute>"
   "          <attribute name='action'>app.debug_toggle_breakpoint</attribute>"

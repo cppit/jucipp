@@ -4,6 +4,7 @@
 #include <boost/filesystem.hpp>
 #include <unordered_map>
 #include "lldb/API/SBDebugger.h"
+#include "lldb/API/SBProcess.h"
 
 class Debug {
 private:
@@ -15,11 +16,14 @@ public:
   }
   
   void start(const boost::filesystem::path &project_path, const boost::filesystem::path &executable, const boost::filesystem::path &path="", std::function<void(int exit_status)> callback=nullptr);
+  void continue_debug(); //can't use continue as function name
   
   std::unordered_map<std::string, std::vector<std::pair<std::string, int> > > breakpoints;
   
 private:
   lldb::SBDebugger debugger;
+  std::unique_ptr<lldb::SBProcess> process;
+  std::atomic<bool> stopped;
 };
 
 #endif
