@@ -24,9 +24,9 @@ Debug::Debug(): stopped(false) {
   debugger=lldb::SBDebugger::Create(true, log, nullptr);
 }
 
-void Debug::start(const boost::filesystem::path &project_path, const boost::filesystem::path &executable,
+void Debug::start(std::shared_ptr<std::vector<std::pair<boost::filesystem::path, int> > > breakpoints, const boost::filesystem::path &executable,
                   const boost::filesystem::path &path, std::function<void(int exit_status)> callback) {
-  std::thread debug_thread([this, project_path, executable, path, callback]() {
+  std::thread debug_thread([this, breakpoints, executable, path, callback]() {
     auto target=debugger.CreateTarget(executable.string().c_str());
     auto listener=lldb::SBListener("juCi++ lldb listener");
     
@@ -35,8 +35,8 @@ void Debug::start(const boost::filesystem::path &project_path, const boost::file
       return;
     }
     
-    for(auto &breakpoint: breakpoints[project_path.string()]) {
-      if(!(target.BreakpointCreateByLocation(breakpoint.first.c_str(), breakpoint.second)).IsValid()) {
+    for(auto &breakpoint: *breakpoints) {
+      if(!(target.BreakpointCreateByLocation(breakpoint.first.string().c_str(), breakpoint.second)).IsValid()) {
         cerr << "Error: Could not create breakpoint at: " << breakpoint.first << ":" << breakpoint.second << endl; //TODO: output to terminal instead
         return;
       }

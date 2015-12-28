@@ -310,19 +310,6 @@ bool Notebook::close(int page) {
 #endif
 
     auto source_view=source_views.at(index);
-
-    //Remove breakpoints
-    auto it=Debug::get().breakpoints.find(source_view->project_path.string());
-    if(it!=Debug::get().breakpoints.end()) {
-      auto filename=source_view->file_path.filename().string();
-      for(auto it_bp=it->second.begin();it_bp!=it->second.end();) {
-        if(it_bp->first==filename)
-          it_bp=it->second.erase(it_bp);
-        else
-          it_bp++;
-      }
-    }
-
     if(auto source_clang_view=dynamic_cast<Source::ClangView*>(source_view))
       source_clang_view->async_delete();
     else

@@ -645,8 +645,29 @@ void Window::set_menu_actions() {
         executable_path_string.replace(pos, project_path.string().size(), debug_build_path.string());
         executable_path=executable_path_string;
       }
+      
+      auto breakpoints=std::make_shared<std::vector<std::pair<boost::filesystem::path, int> > >();
+      for(int c=0;c<notebook.size();c++) {
+        auto view=notebook.get_view(c);
+        if(project_path==view->project_path) {
+          auto iter=view->get_buffer()->begin();
+          if(view->get_source_buffer()->get_source_marks_at_iter(iter, "breakpoint").size()>0)
+            breakpoints->emplace_back(view->file_path.filename(), iter.get_line()+1);
+          while(view->get_source_buffer()->forward_iter_to_source_mark(iter, "breakpoint"))
+            breakpoints->emplace_back(view->file_path.filename(), iter.get_line()+1);
+        }
+      }
+      /*for(int c=0;c<notebook.size();c++) {
+        auto view=notebook.get_view(c);
+        if(project_path==view->project_path) {
+          for(int line_nr=0;line_nr<view->get_buffer()->get_line_count();line_nr++) {
+            //if(view->get_source_buffer()->get_source_marks_at_line(line_nr, "breakpoint").size()>0)
+            //  breakpoints->emplace_back(view->file_path.filename(), line_nr+1);
+          }
+        }
+      }*/
       Terminal::get().print("Compiling and running "+executable_path.string()+"\n");
-      Terminal::get().async_process(Config::get().terminal.make_command, debug_build_path, [this, project_path, executable_path, debug_build_path](int exit_status){
+      Terminal::get().async_process(Config::get().terminal.make_command, debug_build_path, [this, breakpoints, executable_path, debug_build_path](int exit_status){
         if(exit_status==EXIT_SUCCESS) {
           auto executable_path_spaces_fixed=executable_path.string();
           char last_char=0;
@@ -657,7 +678,8 @@ void Window::set_menu_actions() {
             }
             last_char=executable_path_spaces_fixed[c];
           }
-          Debug::get().start(project_path, executable_path_spaces_fixed, debug_build_path, [this, executable_path](int exit_status){
+          
+          Debug::get().start(breakpoints, executable_path_spaces_fixed, debug_build_path, [this, executable_path](int exit_status){
             debugging=false;
             Terminal::get().async_print(executable_path.string()+" returned: "+std::to_string(exit_status)+'\n');
           });
@@ -683,26 +705,16 @@ void Window::set_menu_actions() {
   menu.add_action("debug_toggle_breakpoint", [this](){
     if(notebook.get_current_page()!=-1) {
       auto view=notebook.get_current_view();
-      auto &project_path_string=view->project_path.string();
-      auto filename=view->file_path.filename().string();
       auto line_nr=view->get_buffer()->get_insert()->get_iter().get_line()+1;
       
-      auto it=Debug::get().breakpoints.find(project_path_string);
-      if(it!=Debug::get().breakpoints.end()) {
-        for(auto it_bp=it->second.begin();it_bp!=it->second.end();it_bp++) {
-          if(it_bp->first==filename && it_bp->second==line_nr) {
-            //Remove breakpoint
-            it->second.erase(it_bp);
-            auto start_iter=view->get_buffer()->get_iter_at_line(line_nr-1);
-            auto end_iter=start_iter;
-            while(!end_iter.ends_line() && end_iter.forward_char()) {}
-            view->get_source_buffer()->remove_source_marks(start_iter, end_iter, "breakpoint");
-            return;
-          }
-        }
+      if(view->get_source_buffer()->get_source_marks_at_line(line_nr-1, "breakpoint").size()>0) {
+        auto start_iter=view->get_buffer()->get_iter_at_line(line_nr-1);
+        auto end_iter=start_iter;
+        while(!end_iter.ends_line() && end_iter.forward_char()) {}
+        view->get_source_buffer()->remove_source_marks(start_iter, end_iter, "breakpoint");
       }
-      Debug::get().breakpoints[project_path_string].emplace_back(filename, line_nr);
-      auto mark=view->get_source_buffer()->create_source_mark("breakpoint", view->get_buffer()->get_insert()->get_iter());
+      else
+        view->get_source_buffer()->create_source_mark("breakpoint", view->get_buffer()->get_insert()->get_iter());
     }
   });
   
