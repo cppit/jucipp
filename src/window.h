@@ -31,8 +31,11 @@ private:
   Gtk::HBox info_and_status_hbox;
   Gtk::AboutDialog about;
   EntryBox entry_box;
+  
   std::atomic<bool> compiling;
   std::atomic<bool> debugging;
+  Gtk::Label debug_status;
+  std::pair<boost::filesystem::path, int> debug_last_stop_line;
 
   void configure();
   void set_menu_actions();

@@ -272,14 +272,19 @@ Menu::Menu() {
   "      <attribute name='label' translatable='yes'>_Debug</attribute>"
   "      <section>"
   "        <item>"
-  "          <attribute name='label' translatable='yes'>_Start</attribute>"
-  "          <attribute name='action'>app.debug_start</attribute>"
-             +accels["debug_start"]+ //For Ubuntu...
+  "          <attribute name='label' translatable='yes'>_Start/_Continue</attribute>"
+  "          <attribute name='action'>app.debug_start_continue</attribute>"
+             +accels["debug_start_continue"]+ //For Ubuntu...
   "        </item>"
   "        <item>"
   "          <attribute name='label' translatable='yes'>_Stop</attribute>"
   "          <attribute name='action'>app.debug_stop</attribute>"
              +accels["debug_stop"]+ //For Ubuntu...
+  "        </item>"
+  "        <item>"
+  "          <attribute name='label' translatable='yes'>_Kill</attribute>"
+  "          <attribute name='action'>app.debug_kill</attribute>"
+             +accels["debug_kill"]+ //For Ubuntu...
   "        </item>"
   "      </section>"
   "      <section>"

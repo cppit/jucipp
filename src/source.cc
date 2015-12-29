@@ -122,12 +122,17 @@ Source::View::View(const boost::filesystem::path &file_path, const boost::filesy
   auto tag=get_buffer()->create_tag("spellcheck_error");
   tag->property_underline()=Pango::Underline::UNDERLINE_ERROR;
   
-  auto mark_attr=Gsv::MarkAttributes::create();
+  auto mark_attr_debug_breakpoint=Gsv::MarkAttributes::create();
   Gdk::RGBA rgba;
   rgba.set_red(1.0);
   rgba.set_alpha(0.1);
-  mark_attr->set_background(rgba);
-  set_mark_attributes("breakpoint", mark_attr, 100);
+  mark_attr_debug_breakpoint->set_background(rgba);
+  set_mark_attributes("debug_breakpoint", mark_attr_debug_breakpoint, 100);
+  auto mark_attr_debug_stop=Gsv::MarkAttributes::create();
+  rgba.set_red(0.0);
+  rgba.set_blue(1.0);
+  mark_attr_debug_stop->set_background(rgba);
+  set_mark_attributes("debug_stop", mark_attr_debug_stop, 100);
   
   get_buffer()->signal_changed().connect([this](){
     if(spellcheck_checker==NULL)

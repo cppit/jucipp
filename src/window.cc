@@ -47,6 +47,7 @@ Window::Window() : compiling(false), debugging(false) {
   terminal_vbox.pack_start(terminal_scrolled_window);
     
   info_and_status_hbox.pack_start(notebook.info, Gtk::PACK_SHRINK);
+  info_and_status_hbox.set_center_widget(debug_status);
   info_and_status_hbox.pack_end(notebook.status, Gtk::PACK_SHRINK);
   terminal_vbox.pack_end(info_and_status_hbox, Gtk::PACK_SHRINK);
   vpaned.pack2(terminal_vbox, true, true);
@@ -616,9 +617,14 @@ void Window::set_menu_actions() {
     Terminal::get().kill_last_async_process(true);
   });
   
-  menu.add_action("debug_start", [this](){
-    if(debugging)
+  menu.add_action("debug_start_continue", [this](){
+    if(debugging) {
+      //Continue
+      if(notebook.get_current_page()!=-1) {
+        Debug::get().continue_debug();
+      }
       return;
+    }
     boost::filesystem::path cmake_path;
     if(notebook.get_current_page()!=-1)
       cmake_path=notebook.get_current_view()->file_path.parent_path();
@@ -651,21 +657,12 @@ void Window::set_menu_actions() {
         auto view=notebook.get_view(c);
         if(project_path==view->project_path) {
           auto iter=view->get_buffer()->begin();
-          if(view->get_source_buffer()->get_source_marks_at_iter(iter, "breakpoint").size()>0)
+          if(view->get_source_buffer()->get_source_marks_at_iter(iter, "debug_breakpoint").size()>0)
             breakpoints->emplace_back(view->file_path.filename(), iter.get_line()+1);
-          while(view->get_source_buffer()->forward_iter_to_source_mark(iter, "breakpoint"))
+          while(view->get_source_buffer()->forward_iter_to_source_mark(iter, "debug_breakpoint"))
             breakpoints->emplace_back(view->file_path.filename(), iter.get_line()+1);
         }
       }
-      /*for(int c=0;c<notebook.size();c++) {
-        auto view=notebook.get_view(c);
-        if(project_path==view->project_path) {
-          for(int line_nr=0;line_nr<view->get_buffer()->get_line_count();line_nr++) {
-            //if(view->get_source_buffer()->get_source_marks_at_line(line_nr, "breakpoint").size()>0)
-            //  breakpoints->emplace_back(view->file_path.filename(), line_nr+1);
-          }
-        }
-      }*/
       Terminal::get().print("Compiling and running "+executable_path.string()+"\n");
       Terminal::get().async_process(Config::get().terminal.make_command, debug_build_path, [this, breakpoints, executable_path, debug_build_path](int exit_status){
         if(exit_status==EXIT_SUCCESS) {
@@ -682,6 +679,33 @@ void Window::set_menu_actions() {
           Debug::get().start(breakpoints, executable_path_spaces_fixed, debug_build_path, [this, executable_path](int exit_status){
             debugging=false;
             Terminal::get().async_print(executable_path.string()+" returned: "+std::to_string(exit_status)+'\n');
+          }, [this](const std::string &status) {
+            //TODO: move to main thread
+            if(status.empty())
+              debug_status.set_text("");
+            else
+              debug_status.set_text("debug: "+status);
+          }, [this](const boost::filesystem::path &file, int line) {
+            //TODO: move to main thread
+            //Remove debug stop source mark
+            for(int c=0;c<notebook.size();c++) {
+              auto view=notebook.get_view(c);
+              if(view->file_path==debug_last_stop_line.first) {
+                auto start_iter=view->get_buffer()->get_iter_at_line(debug_last_stop_line.second-1);
+                auto end_iter=start_iter;
+                while(!end_iter.ends_line() && end_iter.forward_char()) {}
+                view->get_source_buffer()->remove_source_marks(start_iter, end_iter, "debug_stop");
+                break;
+              }
+            }
+            //Add debug stop source mark
+            for(int c=0;c<notebook.size();c++) {
+              auto view=notebook.get_view(c);
+              if(view->file_path==file) {
+                view->get_source_buffer()->create_source_mark("debug_stop", view->get_buffer()->get_iter_at_line(line-1));
+                debug_last_stop_line={file, line};
+              }
+            }
           });
         }
       });
@@ -697,9 +721,9 @@ void Window::set_menu_actions() {
       Debug::get().stop();
     }
   });
-  menu.add_action("debug_continue", [this]() {
-    if(notebook.get_current_page()!=-1 && debugging) {
-      Debug::get().continue_debug();
+  menu.add_action("debug_kill", [this]() {
+    if(debugging) {
+      Debug::get().kill();
     }
   });
   menu.add_action("debug_toggle_breakpoint", [this](){
@@ -707,14 +731,14 @@ void Window::set_menu_actions() {
       auto view=notebook.get_current_view();
       auto line_nr=view->get_buffer()->get_insert()->get_iter().get_line()+1;
       
-      if(view->get_source_buffer()->get_source_marks_at_line(line_nr-1, "breakpoint").size()>0) {
+      if(view->get_source_buffer()->get_source_marks_at_line(line_nr-1, "debug_breakpoint").size()>0) {
         auto start_iter=view->get_buffer()->get_iter_at_line(line_nr-1);
         auto end_iter=start_iter;
         while(!end_iter.ends_line() && end_iter.forward_char()) {}
-        view->get_source_buffer()->remove_source_marks(start_iter, end_iter, "breakpoint");
+        view->get_source_buffer()->remove_source_marks(start_iter, end_iter, "debug_breakpoint");
       }
       else
-        view->get_source_buffer()->create_source_mark("breakpoint", view->get_buffer()->get_insert()->get_iter());
+        view->get_source_buffer()->create_source_mark("debug_breakpoint", view->get_buffer()->get_insert()->get_iter());
     }
   });
   
