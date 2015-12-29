@@ -418,7 +418,7 @@ void Source::ClangViewParse::show_type_tooltips(const Gdk::Rectangle &rectangle)
               debug_value.pop_back();
               size_t pos=debug_value.find(" = ");
               if(pos!=std::string::npos)
-                tooltip_buffer->insert_with_tag(tooltip_buffer->get_insert()->get_iter(), "\n\nDebug: "+debug_value.substr(pos+3), "def:note");
+                tooltip_buffer->insert_with_tag(tooltip_buffer->get_insert()->get_iter(), "\n\nValue: "+debug_value.substr(pos+3), "def:note");
             }
             
             return tooltip_buffer;

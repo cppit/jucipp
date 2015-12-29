@@ -132,7 +132,7 @@ Source::View::View(const boost::filesystem::path &file_path, const boost::filesy
   rgba.set_red(0.0);
   rgba.set_blue(1.0);
   mark_attr_debug_stop->set_background(rgba);
-  set_mark_attributes("debug_stop", mark_attr_debug_stop, 100);
+  set_mark_attributes("debug_stop", mark_attr_debug_stop, 101);
   
   get_buffer()->signal_changed().connect([this](){
     if(spellcheck_checker==NULL)
