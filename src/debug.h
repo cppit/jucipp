@@ -22,7 +22,7 @@ public:
              const boost::filesystem::path &executable, const boost::filesystem::path &path="",
              std::function<void(int exit_status)> callback=nullptr,
              std::function<void(const std::string &status)> status_callback=nullptr,
-             std::function<void(const boost::filesystem::path &file_path, int line_nr)> stop_callback=nullptr);
+             std::function<void(const boost::filesystem::path &file_path, int line_nr, int line_index)> stop_callback=nullptr);
   void continue_debug(); //can't use continue as function name
   void stop();
   void kill();

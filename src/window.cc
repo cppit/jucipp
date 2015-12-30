@@ -116,12 +116,12 @@ Window::Window() : compiling(false), debugging(false) {
     about.hide();
   });
   
-  debug_update_stop_line.connect([this](){
-    debug_stop_line_mutex.lock();
+  debug_update_stop.connect([this](){
+    debug_stop_mutex.lock();
     for(int c=0;c<notebook.size();c++) {
       auto view=notebook.get_view(c);
-      if(view->file_path==debug_last_stop_line.first) {
-        auto start_iter=view->get_buffer()->get_iter_at_line(debug_last_stop_line.second-1);
+      if(view->file_path==debug_last_stop.first) {
+        auto start_iter=view->get_buffer()->get_iter_at_line(debug_last_stop.second.first-1);
         auto end_iter=start_iter;
         while(!end_iter.ends_line() && end_iter.forward_char()) {}
         view->get_source_buffer()->remove_source_marks(start_iter, end_iter, "debug_stop");
@@ -131,12 +131,14 @@ Window::Window() : compiling(false), debugging(false) {
     //Add debug stop source mark
     for(int c=0;c<notebook.size();c++) {
       auto view=notebook.get_view(c);
-      if(view->file_path==debug_stop_line.first) {
-        view->get_source_buffer()->create_source_mark("debug_stop", view->get_buffer()->get_iter_at_line(debug_stop_line.second-1));
-        debug_last_stop_line=debug_stop_line;
+      if(view->file_path==debug_stop.first) {
+        view->get_source_buffer()->create_source_mark("debug_stop", view->get_buffer()->get_iter_at_line(debug_stop.second.first-1));
+        debug_last_stop=debug_stop;
+        view->get_buffer()->place_cursor(view->get_buffer()->get_insert()->get_iter());
+        break;
       }
     }
-    debug_stop_line_mutex.unlock();
+    debug_stop_mutex.unlock();
   });
   debug_update_status.connect([this](){
     debug_status_mutex.lock();
@@ -440,10 +442,10 @@ void Window::set_menu_actions() {
             auto end_line_index=iter.get_line_index();
             index=std::min(index, end_line_index);
             
+            view->get_buffer()->place_cursor(view->get_buffer()->get_iter_at_line_index(line, index));
             while(g_main_context_pending(NULL))
               g_main_context_iteration(NULL, false);
             if(notebook.get_current_page()!=-1 && notebook.get_current_view()==view) {
-              view->get_buffer()->place_cursor(view->get_buffer()->get_iter_at_line_index(line, index));
               view->scroll_to(view->get_buffer()->get_insert(), 0.0, 1.0, 0.5);
               view->delayed_tooltips_connection.disconnect();
             }
@@ -720,12 +722,13 @@ void Window::set_menu_actions() {
             debug_status=status;
             debug_status_mutex.unlock();
             debug_update_status();
-          }, [this](const boost::filesystem::path &file_path, int line_nr) {
-            debug_stop_line_mutex.lock();
-            debug_stop_line.first=file_path;
-            debug_stop_line.second=line_nr;
-            debug_stop_line_mutex.unlock();
-            debug_update_stop_line();
+          }, [this](const boost::filesystem::path &file_path, int line_nr, int line_index) {
+            debug_stop_mutex.lock();
+            debug_stop.first=file_path;
+            debug_stop.second.first=line_nr;
+            debug_stop.second.second=line_index;
+            debug_stop_mutex.unlock();
+            debug_update_stop();
             //Remove debug stop source mark
           });
         }
@@ -784,18 +787,29 @@ void Window::set_menu_actions() {
   });
   menu.add_action("debug_goto_stop", [this](){
     if(debugging) {
-      debug_stop_line_mutex.lock();
-      auto debug_stop_line_copy=debug_stop_line;
-      debug_stop_line_mutex.unlock();
-      notebook.open(debug_stop_line_copy.first);
+      debug_stop_mutex.lock();
+      auto debug_stop_copy=debug_stop;
+      debug_stop_mutex.unlock();
+      notebook.open(debug_stop_copy.first);
       if(notebook.get_current_page()!=-1) {
         auto view=notebook.get_current_view();
-        debug_update_stop_line();
-        while(g_main_context_pending(NULL))
-          g_main_context_iteration(NULL, false);
-        if(notebook.get_current_page()!=-1 && notebook.get_current_view()==view) {
-          view->get_buffer()->place_cursor(view->get_buffer()->get_iter_at_line(debug_stop_line_copy.second-1));
-          view->scroll_to(view->get_buffer()->get_insert(), 0.0, 1.0, 0.5);
+        debug_update_stop();
+        
+        int line_nr=debug_stop_copy.second.first-1;
+        int line_index= debug_stop_copy.second.second-1;
+        if(line_nr<view->get_buffer()->get_line_count()) {
+          auto iter=view->get_buffer()->get_iter_at_line(line_nr);
+          auto end_line_iter=iter;
+          while(!iter.ends_line() && iter.forward_char()) {}
+          auto line=view->get_buffer()->get_text(iter, end_line_iter);
+          if(line_index<line.bytes()) {
+            view->get_buffer()->place_cursor(view->get_buffer()->get_iter_at_line_index(line_nr, line_index));
+            
+            while(g_main_context_pending(NULL))
+              g_main_context_iteration(NULL, false);
+            if(notebook.get_current_page()!=-1 && notebook.get_current_view()==view)
+              view->scroll_to(view->get_buffer()->get_insert(), 0.0, 1.0, 0.5);
+          }
         }
       }
     }
@@ -1050,12 +1064,11 @@ void Window::goto_line_entry() {
           if(line>0 && line<=view->get_buffer()->get_line_count()) {
             line--;
             
+            view->get_buffer()->place_cursor(view->get_buffer()->get_iter_at_line(line));
             while(g_main_context_pending(NULL))
               g_main_context_iteration(NULL, false);
-            if(notebook.get_current_page()!=-1 && notebook.get_current_view()==view) {
-              view->get_buffer()->place_cursor(view->get_buffer()->get_iter_at_line(line));
+            if(notebook.get_current_page()!=-1 && notebook.get_current_view()==view)
               view->scroll_to(view->get_buffer()->get_insert(), 0.0, 1.0, 0.5);
-            }
           }
         }
         catch(const std::exception &e) {}  

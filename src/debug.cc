@@ -28,7 +28,7 @@ Debug::Debug(): listener("juCi++ lldb listener"), state(lldb::StateType::eStateI
 void Debug::start(std::shared_ptr<std::vector<std::pair<boost::filesystem::path, int> > > breakpoints, const boost::filesystem::path &executable,
                   const boost::filesystem::path &path, std::function<void(int exit_status)> callback,
                   std::function<void(const std::string &status)> status_callback,
-                  std::function<void(const boost::filesystem::path &file_path, int line_nr)> stop_callback) {
+                  std::function<void(const boost::filesystem::path &file_path, int line_nr, int line_index)> stop_callback) {
   auto target=debugger.CreateTarget(executable.string().c_str());
   
   if(!target.IsValid()) {
@@ -75,7 +75,7 @@ void Debug::start(std::shared_ptr<std::vector<std::pair<boost::filesystem::path,
             if(stop_callback) {
               lldb::SBStream stream;
               line_entry.GetFileSpec().GetDescription(stream);
-              stop_callback(stream.GetData(), line_entry.GetLine());
+              stop_callback(stream.GetData(), line_entry.GetLine(), line_entry.GetColumn());
             }
           }
           
@@ -86,7 +86,7 @@ void Debug::start(std::shared_ptr<std::vector<std::pair<boost::filesystem::path,
             if(status_callback)
               status_callback("");
             if(stop_callback)
-              stop_callback("", 0);
+              stop_callback("", 0, 0);
             process.reset();
             this->state=lldb::StateType::eStateInvalid;
             event_mutex.unlock();
@@ -99,7 +99,7 @@ void Debug::start(std::shared_ptr<std::vector<std::pair<boost::filesystem::path,
             if(status_callback)
               status_callback("");
             if(stop_callback)
-              stop_callback("", 0);
+              stop_callback("", 0, 0);
             process.reset();
             this->state=lldb::StateType::eStateInvalid;
             event_mutex.unlock();
@@ -178,7 +178,7 @@ std::string Debug::get_value(const std::string &variable, const boost::filesyste
   if(state==lldb::StateType::eStateStopped) {
     auto frame=process->GetSelectedThread().GetSelectedFrame();
     
-    auto values=frame.GetVariables(true, true, true, true);
+    auto values=frame.GetVariables(true, true, true, false);
     //First try to find variable based on name, file and line number
     for(uint32_t value_index=0;value_index<values.GetSize();value_index++) {
       lldb::SBStream stream;
