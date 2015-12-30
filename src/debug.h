@@ -7,6 +7,7 @@
 #include <lldb/API/SBListener.h>
 #include <lldb/API/SBProcess.h>
 #include <thread>
+#include <mutex>
 
 class Debug {
 private:
