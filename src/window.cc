@@ -884,7 +884,9 @@ bool Window::on_delete_event(GdkEventAny *event) {
       return true;
   }
   Terminal::get().kill_async_processes();
+#ifdef JUCI_ENABLE_DEBUG
   Debug::get().delete_debug();
+#endif
   return false;
 }
 
