@@ -289,9 +289,9 @@ Menu::Menu() {
   "      </section>"
   "      <section>"
   "        <item>"
-  "          <attribute name='label' translatable='yes'>_Continue</attribute>"
-  "          <attribute name='action'>app.debug_continue</attribute>"
-             +accels["debug_continue"]+ //For Ubuntu...
+  "          <attribute name='label' translatable='yes'>_Run Command</attribute>"
+  "          <attribute name='action'>app.debug_run_command</attribute>"
+             +accels["debug_run_command"]+ //For Ubuntu...
   "        </item>"
   "      </section>"
   "      <section>"

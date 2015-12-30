@@ -658,14 +658,16 @@ void Window::set_menu_actions() {
         if(project_path==view->project_path) {
           auto iter=view->get_buffer()->begin();
           if(view->get_source_buffer()->get_source_marks_at_iter(iter, "debug_breakpoint").size()>0)
-            breakpoints->emplace_back(view->file_path.filename(), iter.get_line()+1);
+            breakpoints->emplace_back(view->file_path, iter.get_line()+1);
           while(view->get_source_buffer()->forward_iter_to_source_mark(iter, "debug_breakpoint"))
-            breakpoints->emplace_back(view->file_path.filename(), iter.get_line()+1);
+            breakpoints->emplace_back(view->file_path, iter.get_line()+1);
         }
       }
-      Terminal::get().print("Compiling and running "+executable_path.string()+"\n");
+      Terminal::get().print("Compiling and debugging "+executable_path.string()+"\n");
       Terminal::get().async_process(Config::get().terminal.make_command, debug_build_path, [this, breakpoints, executable_path, debug_build_path](int exit_status){
-        if(exit_status==EXIT_SUCCESS) {
+        if(exit_status!=EXIT_SUCCESS)
+          debugging=false;
+        else {
           auto executable_path_spaces_fixed=executable_path.string();
           char last_char=0;
           for(size_t c=0;c<executable_path_spaces_fixed.size();c++) {
@@ -685,7 +687,7 @@ void Window::set_menu_actions() {
               debug_status.set_text("");
             else
               debug_status.set_text("debug: "+status);
-          }, [this](const boost::filesystem::path &file, int line) {
+          }, [this](const boost::filesystem::path &file_path, int line_nr) {
             //TODO: move to main thread
             //Remove debug stop source mark
             for(int c=0;c<notebook.size();c++) {
@@ -701,9 +703,9 @@ void Window::set_menu_actions() {
             //Add debug stop source mark
             for(int c=0;c<notebook.size();c++) {
               auto view=notebook.get_view(c);
-              if(view->file_path==file) {
-                view->get_source_buffer()->create_source_mark("debug_stop", view->get_buffer()->get_iter_at_line(line-1));
-                debug_last_stop_line={file, line};
+              if(view->file_path==file_path) {
+                view->get_source_buffer()->create_source_mark("debug_stop", view->get_buffer()->get_iter_at_line(line_nr-1));
+                debug_last_stop_line={file_path, line_nr};
               }
             }
           });
@@ -725,6 +727,26 @@ void Window::set_menu_actions() {
     if(debugging) {
       Debug::get().kill();
     }
+  });
+  menu.add_action("debug_run_command", [this]() {
+    entry_box.clear();
+    entry_box.entries.emplace_back(last_run_debug_command, [this](const std::string& content){
+      if(content!="") {
+        if(debugging) {
+          auto command_return=Debug::get().run_command(content);
+          Terminal::get().async_print(command_return.first);
+          Terminal::get().async_print(command_return.second, true);
+        }
+        last_run_debug_command=content;
+      }
+      entry_box.hide();
+    }, 30);
+    auto entry_it=entry_box.entries.begin();
+    entry_it->set_placeholder_text("Debug Command");
+    entry_box.buttons.emplace_back("Run debug command", [this, entry_it](){
+      entry_it->activate();
+    });
+    entry_box.show();
   });
   menu.add_action("debug_toggle_breakpoint", [this](){
     if(notebook.get_current_page()!=-1) {
@@ -824,6 +846,7 @@ bool Window::on_delete_event(GdkEventAny *event) {
       return true;
   }
   Terminal::get().kill_async_processes();
+  Debug::get().delete_debug();
   return false;
 }
 
