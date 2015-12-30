@@ -6,7 +6,6 @@
 #include <regex>
 #include "cmake.h"
 #include "filesystem.h"
-#include "debug.h"
 
 #if GTKSOURCEVIEWMM_MAJOR_VERSION > 2 & GTKSOURCEVIEWMM_MINOR_VERSION > 17
 #include "gtksourceview-3.0/gtksourceview/gtksourcemap.h"
