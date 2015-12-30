@@ -669,11 +669,10 @@ Source::ClangViewParse(file_path, project_path, language), autocomplete_state(Au
       else {
         if(autocomplete_state==AutocompleteState::STARTING || autocomplete_state==AutocompleteState::RESTARTING)
           autocomplete_state=AutocompleteState::CANCELED;
-        else {
-          auto iter=get_buffer()->get_insert()->get_iter();
-          if(last_keyval=='.' || last_keyval==':' || (last_keyval=='>' && iter.backward_char() && iter.backward_char() && *iter=='-'))
-            autocomplete_check();
-        }
+        auto iter=get_buffer()->get_insert()->get_iter();
+        iter.backward_chars(2);
+        if(last_keyval=='.' || (last_keyval==':' && *iter==':') || (last_keyval=='>' && *iter=='-'))
+          autocomplete_check();
       }
     }
   });
