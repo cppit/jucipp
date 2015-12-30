@@ -6,7 +6,9 @@
 //#include "api.h"
 #include "dialogs.h"
 #include "filesystem.h"
+#ifdef JUCI_ENABLE_DEBUG
 #include "debug.h"
+#endif
 
 namespace sigc {
 #ifndef SIGC_FUNCTORS_DEDUCE_RESULT_TYPE_WITH_DECLTYPE
@@ -648,6 +650,7 @@ void Window::set_menu_actions() {
     Terminal::get().kill_last_async_process(true);
   });
   
+#ifdef JUCI_ENABLE_DEBUG
   menu.add_action("debug_start_continue", [this](){
     if(debugging) {
       //Continue
@@ -797,6 +800,7 @@ void Window::set_menu_actions() {
       }
     }
   });
+#endif
   
   menu.add_action("next_tab", [this]() {
     if(notebook.get_current_page()!=-1) {
