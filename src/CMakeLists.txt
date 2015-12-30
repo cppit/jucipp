@@ -84,8 +84,6 @@ set(source_files juci.h
     cmake.h
     cmake.cc
     dialogs.cc
-    debug.h
-    debug.cc
     
     ../libclangmm/src/CodeCompleteResults.cc
     ../libclangmm/src/CompilationDatabase.cc
