@@ -172,20 +172,45 @@ void Debug::delete_debug() {
     debug_thread.join();
 }
 
-std::string Debug::get_value(const std::string &variable) {
+std::string Debug::get_value(const std::string &variable, const boost::filesystem::path &file_path, unsigned int line_nr) {
   std::string variable_value;
   event_mutex.lock();
   if(state==lldb::StateType::eStateStopped) {
     auto frame=process->GetSelectedThread().GetSelectedFrame();
+    
     auto values=frame.GetVariables(true, true, true, true);
+    //First try to find variable based on name, file and line number
     for(uint32_t value_index=0;value_index<values.GetSize();value_index++) {
       lldb::SBStream stream;
       auto value=values.GetValueAtIndex(value_index);
 
       if(value.GetName()==variable) {
-        value.GetDescription(stream);
-        variable_value=stream.GetData();
-        break;
+        auto declaration=value.GetDeclaration();
+        if(declaration.IsValid()) {
+          if(declaration.GetLine()==line_nr) {
+            auto file_spec=declaration.GetFileSpec();
+            boost::filesystem::path value_decl_path=file_spec.GetDirectory();
+            value_decl_path/=file_spec.GetFilename();
+            if(value_decl_path==file_path) {
+              value.GetDescription(stream);
+              variable_value=stream.GetData();
+              break;
+            }
+          }
+        }
+      }
+    }
+    if(variable_value.empty()) {
+      //In case a variable is missing file and line number, only do check on name
+      for(uint32_t value_index=0;value_index<values.GetSize();value_index++) {
+        lldb::SBStream stream;
+        auto value=values.GetValueAtIndex(value_index);
+
+        if(value.GetName()==variable) {
+          value.GetDescription(stream);
+          variable_value=stream.GetData();
+          break;
+        }
       }
     }
   }

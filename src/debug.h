@@ -29,7 +29,7 @@ public:
   
   void delete_debug(); //can't use delete as function name
   
-  std::string get_value(const std::string &variable);
+  std::string get_value(const std::string &variable, const boost::filesystem::path &file_path, unsigned int line_nr);
     
 private:
   lldb::SBDebugger debugger;

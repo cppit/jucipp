@@ -413,7 +413,8 @@ void Source::ClangViewParse::show_type_tooltips(const Gdk::Rectangle &rectangle)
             auto brief_comment=token.get_cursor().get_brief_comments();
             if(brief_comment!="")
               tooltip_buffer->insert_with_tag(tooltip_buffer->get_insert()->get_iter(), "\n\n"+brief_comment, "def:note");
-            auto debug_value=Debug::get().get_value(token.get_spelling());
+            auto location=token.get_cursor().get_referenced().get_source_location();
+            auto debug_value=Debug::get().get_value(token.get_spelling(), location.get_path(), location.get_offset().line);
             if(!debug_value.empty()) {
               debug_value.pop_back();
               size_t pos=debug_value.find(" = ");
