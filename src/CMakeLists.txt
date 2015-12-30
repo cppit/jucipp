@@ -39,6 +39,7 @@ if(LIBLLDB_FOUND)
   set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -DJUCI_ENABLE_DEBUG")
 else()
   set(LIBLLDB_LIBRARIES "")
+  message("Will compile juCi++ without debugging support")
 endif()
 #find_package(PythonLibs 2.7)
 
