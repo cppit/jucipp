@@ -101,6 +101,7 @@ const std::string configjson =
 "        \"debug_start_continue\": \"<primary>y\",\n"
 "        \"debug_stop\": \"<primary><shift>y\",\n"
 "        \"debug_kill\": \"<primary><shift>k\",\n"
+"        \"debug_goto_stop\": \"<primary><shift>l\",\n"
 "        \"debug_run_command\": \"<alt><shift>Return\",\n"
 "        \"debug_toggle_breakpoint\": \"<primary>b\",\n"
 #ifdef __linux

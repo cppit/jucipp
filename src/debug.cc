@@ -56,7 +56,7 @@ void Debug::start(std::shared_ptr<std::vector<std::pair<boost::filesystem::path,
     lldb::SBEvent event;
     while(true) {
       event_mutex.lock();
-      if(listener.WaitForEvent(1, event)) {
+      if(listener.GetNextEvent(event)) {
         if((event.GetType() & lldb::SBProcess::eBroadcastBitStateChanged)>0) {
           auto state=process->GetStateFromEvent(event);
           this->state=state;

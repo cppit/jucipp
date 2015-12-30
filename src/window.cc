@@ -47,7 +47,7 @@ Window::Window() : compiling(false), debugging(false) {
   terminal_vbox.pack_start(terminal_scrolled_window);
     
   info_and_status_hbox.pack_start(notebook.info, Gtk::PACK_SHRINK);
-  info_and_status_hbox.set_center_widget(debug_status);
+  info_and_status_hbox.set_center_widget(debug_status_label);
   info_and_status_hbox.pack_end(notebook.status, Gtk::PACK_SHRINK);
   terminal_vbox.pack_end(info_and_status_hbox, Gtk::PACK_SHRINK);
   vpaned.pack2(terminal_vbox, true, true);
@@ -112,6 +112,37 @@ Window::Window() : compiling(false), debugging(false) {
   
   about.signal_response().connect([this](int d){
     about.hide();
+  });
+  
+  debug_update_stop_line.connect([this](){
+    debug_stop_line_mutex.lock();
+    for(int c=0;c<notebook.size();c++) {
+      auto view=notebook.get_view(c);
+      if(view->file_path==debug_last_stop_line.first) {
+        auto start_iter=view->get_buffer()->get_iter_at_line(debug_last_stop_line.second-1);
+        auto end_iter=start_iter;
+        while(!end_iter.ends_line() && end_iter.forward_char()) {}
+        view->get_source_buffer()->remove_source_marks(start_iter, end_iter, "debug_stop");
+        break;
+      }
+    }
+    //Add debug stop source mark
+    for(int c=0;c<notebook.size();c++) {
+      auto view=notebook.get_view(c);
+      if(view->file_path==debug_stop_line.first) {
+        view->get_source_buffer()->create_source_mark("debug_stop", view->get_buffer()->get_iter_at_line(debug_stop_line.second-1));
+        debug_last_stop_line=debug_stop_line;
+      }
+    }
+    debug_stop_line_mutex.unlock();
+  });
+  debug_update_status.connect([this](){
+    debug_status_mutex.lock();
+    if(debug_status.empty())
+      debug_status_label.set_text("");
+    else
+      debug_status_label.set_text("debug: "+debug_status);
+    debug_status_mutex.unlock();
   });
   
   about.set_version(Config::get().window.version);
@@ -682,32 +713,17 @@ void Window::set_menu_actions() {
             debugging=false;
             Terminal::get().async_print(executable_path.string()+" returned: "+std::to_string(exit_status)+'\n');
           }, [this](const std::string &status) {
-            //TODO: move to main thread
-            if(status.empty())
-              debug_status.set_text("");
-            else
-              debug_status.set_text("debug: "+status);
+            debug_status_mutex.lock();
+            debug_status=status;
+            debug_status_mutex.unlock();
+            debug_update_status();
           }, [this](const boost::filesystem::path &file_path, int line_nr) {
-            //TODO: move to main thread
+            debug_stop_line_mutex.lock();
+            debug_stop_line.first=file_path;
+            debug_stop_line.second=line_nr;
+            debug_stop_line_mutex.unlock();
+            debug_update_stop_line();
             //Remove debug stop source mark
-            for(int c=0;c<notebook.size();c++) {
-              auto view=notebook.get_view(c);
-              if(view->file_path==debug_last_stop_line.first) {
-                auto start_iter=view->get_buffer()->get_iter_at_line(debug_last_stop_line.second-1);
-                auto end_iter=start_iter;
-                while(!end_iter.ends_line() && end_iter.forward_char()) {}
-                view->get_source_buffer()->remove_source_marks(start_iter, end_iter, "debug_stop");
-                break;
-              }
-            }
-            //Add debug stop source mark
-            for(int c=0;c<notebook.size();c++) {
-              auto view=notebook.get_view(c);
-              if(view->file_path==file_path) {
-                view->get_source_buffer()->create_source_mark("debug_stop", view->get_buffer()->get_iter_at_line(line_nr-1));
-                debug_last_stop_line={file_path, line_nr};
-              }
-            }
           });
         }
       });
@@ -761,6 +777,24 @@ void Window::set_menu_actions() {
       }
       else
         view->get_source_buffer()->create_source_mark("debug_breakpoint", view->get_buffer()->get_insert()->get_iter());
+    }
+  });
+  menu.add_action("debug_goto_stop", [this](){
+    if(debugging) {
+      debug_stop_line_mutex.lock();
+      auto debug_stop_line_copy=debug_stop_line;
+      debug_stop_line_mutex.unlock();
+      notebook.open(debug_stop_line_copy.first);
+      if(notebook.get_current_page()!=-1) {
+        auto view=notebook.get_current_view();
+        debug_update_stop_line();
+        while(g_main_context_pending(NULL))
+          g_main_context_iteration(NULL, false);
+        if(notebook.get_current_page()!=-1 && notebook.get_current_view()==view) {
+          view->get_buffer()->place_cursor(view->get_buffer()->get_iter_at_line(debug_stop_line_copy.second-1));
+          view->scroll_to(view->get_buffer()->get_insert(), 0.0, 1.0, 0.5);
+        }
+      }
     }
   });
   

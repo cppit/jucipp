@@ -301,6 +301,13 @@ Menu::Menu() {
              +accels["debug_toggle_breakpoint"]+ //For Ubuntu...
   "        </item>"
   "      </section>"
+  "      <section>"
+  "        <item>"
+  "          <attribute name='label' translatable='yes'>_Go _to _Stop</attribute>"
+  "          <attribute name='action'>app.debug_goto_stop</attribute>"
+             +accels["debug_goto_stop"]+ //For Ubuntu...
+  "        </item>"
+  "      </section>"
   "    </submenu>"
   ""
   "    <submenu>"

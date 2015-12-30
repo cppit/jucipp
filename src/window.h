@@ -33,9 +33,17 @@ private:
   EntryBox entry_box;
   
   std::atomic<bool> compiling;
+  
   std::atomic<bool> debugging;
-  Gtk::Label debug_status;
+  Gtk::Label debug_status_label;
   std::pair<boost::filesystem::path, int> debug_last_stop_line;
+  
+  std::pair<boost::filesystem::path, int> debug_stop_line;
+  std::mutex debug_stop_line_mutex;
+  Glib::Dispatcher debug_update_stop_line;
+  std::string debug_status;
+  std::mutex debug_status_mutex;
+  Glib::Dispatcher debug_update_status;
 
   void configure();
   void set_menu_actions();
