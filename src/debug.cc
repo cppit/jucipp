@@ -16,7 +16,7 @@
 
 using namespace std; //TODO: remove
 
-extern const char **environ;
+extern char **environ;
 
 void log(const char *msg, void *) {
   cout << "debugger log: " << msg << endl;
@@ -47,7 +47,7 @@ void Debug::start(std::shared_ptr<std::vector<std::pair<boost::filesystem::path,
   }
   
   lldb::SBError error;
-  process = std::unique_ptr<lldb::SBProcess>(new lldb::SBProcess(target.Launch(listener, nullptr, environ, nullptr, nullptr, nullptr, path.string().c_str(), lldb::eLaunchFlagNone, false, error)));
+  process = std::unique_ptr<lldb::SBProcess>(new lldb::SBProcess(target.Launch(listener, nullptr, (const char**)environ, nullptr, nullptr, nullptr, path.string().c_str(), lldb::eLaunchFlagNone, false, error)));
   if(error.Fail()) {
     Terminal::get().async_print(std::string("Error (debug): ")+error.GetCString()+'\n', true);
     return;
@@ -267,7 +267,7 @@ void Debug::remove_breakpoint(const boost::filesystem::path &file_path, int line
         auto breakpoint=target.GetBreakpointAtIndex(b_index);
         for(uint32_t l_index=0;l_index<breakpoint.GetNumLocations();l_index++) {
           auto line_entry=breakpoint.GetLocationAtIndex(l_index).GetAddress().GetLineEntry();
-          if(line_entry.GetLine()==line_nr_try) {
+          if(line_entry.GetLine()==static_cast<uint32_t>(line_nr_try)) {
             auto file_spec=line_entry.GetFileSpec();
             boost::filesystem::path breakpoint_path=file_spec.GetDirectory();
             breakpoint_path/=file_spec.GetFilename();
