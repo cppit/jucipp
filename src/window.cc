@@ -121,10 +121,7 @@ Window::Window() : compiling(false), debugging(false) {
     for(int c=0;c<notebook.size();c++) {
       auto view=notebook.get_view(c);
       if(view->file_path==debug_last_stop.first) {
-        auto start_iter=view->get_buffer()->get_iter_at_line(debug_last_stop.second.first-1);
-        auto end_iter=start_iter;
-        while(!end_iter.ends_line() && end_iter.forward_char()) {}
-        view->get_source_buffer()->remove_source_marks(start_iter, end_iter, "debug_stop");
+        view->get_source_buffer()->remove_source_marks(view->get_buffer()->begin(), view->get_buffer()->end(), "debug_stop");
         break;
       }
     }
@@ -132,8 +129,10 @@ Window::Window() : compiling(false), debugging(false) {
     for(int c=0;c<notebook.size();c++) {
       auto view=notebook.get_view(c);
       if(view->file_path==debug_stop.first) {
-        view->get_source_buffer()->create_source_mark("debug_stop", view->get_buffer()->get_iter_at_line(debug_stop.second.first-1));
-        debug_last_stop=debug_stop;
+        if(debug_stop.second.first-1<view->get_buffer()->get_line_count()) {
+          view->get_source_buffer()->create_source_mark("debug_stop", view->get_buffer()->get_iter_at_line(debug_stop.second.first-1));
+          debug_last_stop=debug_stop;
+        }
         view->get_buffer()->place_cursor(view->get_buffer()->get_insert()->get_iter());
         break;
       }
@@ -811,14 +810,14 @@ void Window::set_menu_actions() {
             auto end_line_iter=iter;
             while(!iter.ends_line() && iter.forward_char()) {}
             auto line=view->get_buffer()->get_text(iter, end_line_iter);
-            if(line_index<line.bytes()) {
-              view->get_buffer()->place_cursor(view->get_buffer()->get_iter_at_line_index(line_nr, line_index));
-              
-              while(g_main_context_pending(NULL))
-                g_main_context_iteration(NULL, false);
-              if(notebook.get_current_page()!=-1 && notebook.get_current_view()==view)
-                view->scroll_to(view->get_buffer()->get_insert(), 0.0, 1.0, 0.5);
-            }
+            if(line_index>=line.bytes())
+              line_index=0;
+            view->get_buffer()->place_cursor(view->get_buffer()->get_iter_at_line_index(line_nr, line_index));
+            
+            while(g_main_context_pending(NULL))
+              g_main_context_iteration(NULL, false);
+            if(notebook.get_current_page()!=-1 && notebook.get_current_view()==view)
+              view->scroll_to(view->get_buffer()->get_insert(), 0.0, 1.0, 0.5);
           }
         }
       }
