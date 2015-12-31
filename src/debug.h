@@ -31,6 +31,9 @@ public:
   void delete_debug(); //can't use delete as function name
   
   std::string get_value(const std::string &variable, const boost::filesystem::path &file_path, unsigned int line_nr);
+  
+  bool is_running();
+  void write(const std::string &buffer);
     
 private:
   lldb::SBDebugger debugger;

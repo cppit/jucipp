@@ -1,4 +1,7 @@
 #include "debug.h"
+#include <stdio.h>
+#include <iostream>
+#include "terminal.h"
 
 #include <lldb/API/SBTarget.h>
 #include <lldb/API/SBProcess.h>
@@ -10,10 +13,9 @@
 #include <lldb/API/SBCommandInterpreter.h>
 #include <lldb/API/SBCommandReturnObject.h>
 
-#include "terminal.h"
+using namespace std; //TODO: remove
 
-#include <iostream> //TODO: remove
-using namespace std;
+extern const char **environ;
 
 void log(const char *msg, void *) {
   cout << "debugger log: " << msg << endl;
@@ -44,7 +46,7 @@ void Debug::start(std::shared_ptr<std::vector<std::pair<boost::filesystem::path,
   }
   
   lldb::SBError error;
-  process = std::unique_ptr<lldb::SBProcess>(new lldb::SBProcess(target.Launch(listener, nullptr, nullptr, nullptr, nullptr, nullptr, path.string().c_str(), lldb::eLaunchFlagNone, false, error)));
+  process = std::unique_ptr<lldb::SBProcess>(new lldb::SBProcess(target.Launch(listener, nullptr, environ, nullptr, nullptr, nullptr, path.string().c_str(), lldb::eLaunchFlagNone, false, error)));
   if(error.Fail()) {
     Terminal::get().async_print(std::string("Error (debug): ")+error.GetCString()+'\n', true);
     return;
@@ -219,4 +221,20 @@ std::string Debug::get_value(const std::string &variable, const boost::filesyste
   }
   event_mutex.unlock();
   return variable_value;
+}
+
+bool Debug::is_running() {
+  bool running;
+  event_mutex.lock();
+  running=state==lldb::StateType::eStateRunning;
+  event_mutex.unlock();
+  return running;
+}
+
+void Debug::write(const std::string &buffer) {
+  event_mutex.lock();
+  if(state==lldb::StateType::eStateRunning) {
+    process->PutSTDIN(buffer.c_str(), buffer.size());
+  }
+  event_mutex.unlock();
 }
