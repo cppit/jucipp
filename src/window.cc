@@ -810,7 +810,7 @@ void Window::set_menu_actions() {
             auto end_line_iter=iter;
             while(!iter.ends_line() && iter.forward_char()) {}
             auto line=view->get_buffer()->get_text(iter, end_line_iter);
-            if(line_index>=line.bytes())
+            if(static_cast<size_t>(line_index)>=line.bytes())
               line_index=0;
             view->get_buffer()->place_cursor(view->get_buffer()->get_iter_at_line_index(line_nr, line_index));
             

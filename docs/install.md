@@ -10,11 +10,12 @@
   - [MSYS 2](#windows-with-msys2-httpsmsys2githubio)
 
 ## Debian/Ubuntu 15
-Note that if you use a different libclang version, be sure to install the same version of lldb (dev package).
+**Currently, if using another libclang version, the same version of lldb is needed.**
 
 Install dependencies:
 ```sh
-sudo apt-get install git cmake make g++ libclang-dev liblldb-3.5-dev pkg-config libboost-system-dev libboost-thread-dev libboost-filesystem-dev libboost-log-dev libboost-regex-dev libgtksourceviewmm-3.0-dev aspell-en libaspell-dev
+sudo apt-get install git cmake make g++ pkg-config libboost-system-dev libboost-thread-dev libboost-filesystem-dev libboost-log-dev libboost-regex-dev libgtksourceviewmm-3.0-dev aspell-en libaspell-dev
+sudo apt-get install libclang-3.6-dev liblldb-3.6-dev || sudo apt-get install  libclang-3.5-dev liblldb-3.5-dev
 sudo apt-get install clang-format-3.6 || sudo apt-get install clang-format-3.5
 ```
 
@@ -45,6 +46,8 @@ sudo make install
 ```
 
 ##Arch Linux
+**lldb install instructions needed**
+
 Package available in the Arch User Repository:
 https://aur.archlinux.org/packages/jucipp-git/
 
@@ -85,7 +88,7 @@ make install
 ```
 
 ##Windows with MSYS2 (https://msys2.github.io/)
-Note that MSYS2 does not yet support lldb, but you can still compile juCi++ without debug support.
+**MSYS2 does not yet support lldb, but you can still compile juCi++ without debug support.**
 
 Install dependencies (replace `x86_64` with `i686` for 32-bit MSYS2 installs):
 ```sh
