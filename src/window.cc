@@ -770,8 +770,8 @@ void Window::set_menu_actions() {
     entry_box.show();
   });
   menu.add_action("debug_toggle_breakpoint", [this](){
-    bool debug_is_stopped=Debug::get().is_stopped();
-    if(Debug::get().is_invalid() || debug_is_stopped) {
+    bool debug_is_stopped_or_running=Debug::get().is_stopped() || Debug::get().is_running();
+    if(Debug::get().is_invalid() || debug_is_stopped_or_running) {
       if(notebook.get_current_page()!=-1) {
         auto view=notebook.get_current_view();
         auto line_nr=view->get_buffer()->get_insert()->get_iter().get_line();
@@ -781,12 +781,12 @@ void Window::set_menu_actions() {
           auto end_iter=start_iter;
           while(!end_iter.ends_line() && end_iter.forward_char()) {}
           view->get_source_buffer()->remove_source_marks(start_iter, end_iter, "debug_breakpoint");
-          if(debug_is_stopped)
+          if(debug_is_stopped_or_running)
             Debug::get().remove_breakpoint(view->file_path, line_nr+1, view->get_buffer()->get_line_count()+1);
         }
         else {
           view->get_source_buffer()->create_source_mark("debug_breakpoint", view->get_buffer()->get_insert()->get_iter());
-          if(debug_is_stopped)
+          if(debug_is_stopped_or_running)
             Debug::get().add_breakpoint(view->file_path, line_nr+1);
         }
       }

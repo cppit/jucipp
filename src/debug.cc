@@ -87,7 +87,9 @@ void Debug::start(std::shared_ptr<std::vector<std::pair<boost::filesystem::path,
                 stop_callback("", 0, 0);
             }
           }
-          
+          else if(state==lldb::StateType::eStateRunning) {
+            stop_callback("", 0, 0);
+          }
           else if(state==lldb::StateType::eStateExited) {
             auto exit_status=process->GetExitStatus();
             if(callback)
@@ -101,7 +103,6 @@ void Debug::start(std::shared_ptr<std::vector<std::pair<boost::filesystem::path,
             event_mutex.unlock();
             return;
           }
-          
           else if(state==lldb::StateType::eStateCrashed) {
             if(callback)
               callback(-1);
@@ -250,7 +251,7 @@ bool Debug::is_running() {
 
 void Debug::add_breakpoint(const boost::filesystem::path &file_path, int line_nr) {
   event_mutex.lock();
-  if(state==lldb::eStateStopped) {
+  if(state==lldb::eStateStopped || state==lldb::eStateRunning) {
     if(!(process->GetTarget().BreakpointCreateByLocation(file_path.string().c_str(), line_nr)).IsValid())
       Terminal::get().async_print("Error (debug): Could not create breakpoint at: "+file_path.string()+":"+std::to_string(line_nr)+'\n', true);
   }
@@ -259,7 +260,7 @@ void Debug::add_breakpoint(const boost::filesystem::path &file_path, int line_nr
 
 void Debug::remove_breakpoint(const boost::filesystem::path &file_path, int line_nr, int line_count) {
   event_mutex.lock();
-  if(state==lldb::eStateStopped) {
+  if(state==lldb::eStateStopped || state==lldb::eStateRunning) {
     auto target=process->GetTarget();
     for(int line_nr_try=line_nr;line_nr_try<line_count;line_nr_try++) {
       for(uint32_t b_index=0;b_index<target.GetNumBreakpoints();b_index++) {
