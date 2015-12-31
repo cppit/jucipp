@@ -12,6 +12,7 @@
 #include <lldb/API/SBDeclaration.h>
 #include <lldb/API/SBCommandInterpreter.h>
 #include <lldb/API/SBCommandReturnObject.h>
+#include <lldb/API/SBBreakpointLocation.h>
 
 using namespace std; //TODO: remove
 
@@ -223,12 +224,64 @@ std::string Debug::get_value(const std::string &variable, const boost::filesyste
   return variable_value;
 }
 
+bool Debug::is_invalid() {
+  bool invalid;
+  event_mutex.lock();
+  invalid=state==lldb::StateType::eStateInvalid;
+  event_mutex.unlock();
+  return invalid;
+}
+
+bool Debug::is_stopped() {
+  bool stopped;
+  event_mutex.lock();
+  stopped=state==lldb::StateType::eStateStopped;
+  event_mutex.unlock();
+  return stopped;
+}
+
 bool Debug::is_running() {
   bool running;
   event_mutex.lock();
   running=state==lldb::StateType::eStateRunning;
   event_mutex.unlock();
   return running;
+}
+
+void Debug::add_breakpoint(const boost::filesystem::path &file_path, int line_nr) {
+  event_mutex.lock();
+  if(state==lldb::eStateStopped) {
+    if(!(process->GetTarget().BreakpointCreateByLocation(file_path.string().c_str(), line_nr)).IsValid())
+      Terminal::get().async_print("Error (debug): Could not create breakpoint at: "+file_path.string()+":"+std::to_string(line_nr)+'\n', true);
+  }
+  event_mutex.unlock();
+}
+
+void Debug::remove_breakpoint(const boost::filesystem::path &file_path, int line_nr, int line_count) {
+  event_mutex.lock();
+  if(state==lldb::eStateStopped) {
+    auto target=process->GetTarget();
+    for(int line_nr_try=line_nr;line_nr_try<line_count;line_nr_try++) {
+      for(uint32_t b_index=0;b_index<target.GetNumBreakpoints();b_index++) {
+        auto breakpoint=target.GetBreakpointAtIndex(b_index);
+        for(uint32_t l_index=0;l_index<breakpoint.GetNumLocations();l_index++) {
+          auto line_entry=breakpoint.GetLocationAtIndex(l_index).GetAddress().GetLineEntry();
+          if(line_entry.GetLine()==line_nr_try) {
+            auto file_spec=line_entry.GetFileSpec();
+            boost::filesystem::path breakpoint_path=file_spec.GetDirectory();
+            breakpoint_path/=file_spec.GetFilename();
+            if(breakpoint_path==file_path) {
+              if(!target.BreakpointDelete(breakpoint.GetID()))
+                Terminal::get().async_print("Error (debug): Could not delete breakpoint at: "+file_path.string()+":"+std::to_string(line_nr)+'\n', true);
+              event_mutex.unlock();
+              return;
+            }
+          }
+        }
+      }
+    }
+  }
+  event_mutex.unlock();
 }
 
 void Debug::write(const std::string &buffer) {

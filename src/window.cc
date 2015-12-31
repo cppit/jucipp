@@ -771,18 +771,26 @@ void Window::set_menu_actions() {
     entry_box.show();
   });
   menu.add_action("debug_toggle_breakpoint", [this](){
-    if(notebook.get_current_page()!=-1) {
-      auto view=notebook.get_current_view();
-      auto line_nr=view->get_buffer()->get_insert()->get_iter().get_line()+1;
-      
-      if(view->get_source_buffer()->get_source_marks_at_line(line_nr-1, "debug_breakpoint").size()>0) {
-        auto start_iter=view->get_buffer()->get_iter_at_line(line_nr-1);
-        auto end_iter=start_iter;
-        while(!end_iter.ends_line() && end_iter.forward_char()) {}
-        view->get_source_buffer()->remove_source_marks(start_iter, end_iter, "debug_breakpoint");
+    bool debug_is_stopped=Debug::get().is_stopped();
+    if(Debug::get().is_invalid() || debug_is_stopped) {
+      if(notebook.get_current_page()!=-1) {
+        auto view=notebook.get_current_view();
+        auto line_nr=view->get_buffer()->get_insert()->get_iter().get_line();
+        
+        if(view->get_source_buffer()->get_source_marks_at_line(line_nr, "debug_breakpoint").size()>0) {
+          auto start_iter=view->get_buffer()->get_iter_at_line(line_nr);
+          auto end_iter=start_iter;
+          while(!end_iter.ends_line() && end_iter.forward_char()) {}
+          view->get_source_buffer()->remove_source_marks(start_iter, end_iter, "debug_breakpoint");
+          if(debug_is_stopped)
+            Debug::get().remove_breakpoint(view->file_path, line_nr+1, view->get_buffer()->get_line_count()+1);
+        }
+        else {
+          view->get_source_buffer()->create_source_mark("debug_breakpoint", view->get_buffer()->get_insert()->get_iter());
+          if(debug_is_stopped)
+            Debug::get().add_breakpoint(view->file_path, line_nr+1);
+        }
       }
-      else
-        view->get_source_buffer()->create_source_mark("debug_breakpoint", view->get_buffer()->get_insert()->get_iter());
     }
   });
   menu.add_action("debug_goto_stop", [this](){

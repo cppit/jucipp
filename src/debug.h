@@ -32,7 +32,13 @@ public:
   
   std::string get_value(const std::string &variable, const boost::filesystem::path &file_path, unsigned int line_nr);
   
+  bool is_invalid();
+  bool is_stopped();
   bool is_running();
+  
+  void add_breakpoint(const boost::filesystem::path &file_path, int line_nr);
+  void remove_breakpoint(const boost::filesystem::path &file_path, int line_nr, int line_count);
+  
   void write(const std::string &buffer);
     
 private:
