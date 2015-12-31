@@ -790,25 +790,27 @@ void Window::set_menu_actions() {
       debug_stop_mutex.lock();
       auto debug_stop_copy=debug_stop;
       debug_stop_mutex.unlock();
-      notebook.open(debug_stop_copy.first);
-      if(notebook.get_current_page()!=-1) {
-        auto view=notebook.get_current_view();
-        debug_update_stop();
-        
-        int line_nr=debug_stop_copy.second.first-1;
-        int line_index= debug_stop_copy.second.second-1;
-        if(line_nr<view->get_buffer()->get_line_count()) {
-          auto iter=view->get_buffer()->get_iter_at_line(line_nr);
-          auto end_line_iter=iter;
-          while(!iter.ends_line() && iter.forward_char()) {}
-          auto line=view->get_buffer()->get_text(iter, end_line_iter);
-          if(line_index<line.bytes()) {
-            view->get_buffer()->place_cursor(view->get_buffer()->get_iter_at_line_index(line_nr, line_index));
-            
-            while(g_main_context_pending(NULL))
-              g_main_context_iteration(NULL, false);
-            if(notebook.get_current_page()!=-1 && notebook.get_current_view()==view)
-              view->scroll_to(view->get_buffer()->get_insert(), 0.0, 1.0, 0.5);
+      if(!debug_stop_copy.first.empty()) {
+        notebook.open(debug_stop_copy.first);
+        if(notebook.get_current_page()!=-1) {
+          auto view=notebook.get_current_view();
+          debug_update_stop();
+          
+          int line_nr=debug_stop_copy.second.first-1;
+          int line_index=debug_stop_copy.second.second-1;
+          if(line_nr<view->get_buffer()->get_line_count()) {
+            auto iter=view->get_buffer()->get_iter_at_line(line_nr);
+            auto end_line_iter=iter;
+            while(!iter.ends_line() && iter.forward_char()) {}
+            auto line=view->get_buffer()->get_text(iter, end_line_iter);
+            if(line_index<line.bytes()) {
+              view->get_buffer()->place_cursor(view->get_buffer()->get_iter_at_line_index(line_nr, line_index));
+              
+              while(g_main_context_pending(NULL))
+                g_main_context_iteration(NULL, false);
+              if(notebook.get_current_page()!=-1 && notebook.get_current_view()==view)
+                view->scroll_to(view->get_buffer()->get_insert(), 0.0, 1.0, 0.5);
+            }
           }
         }
       }

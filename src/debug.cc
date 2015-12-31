@@ -19,16 +19,16 @@ void log(const char *msg, void *) {
   cout << "debugger log: " << msg << endl;
 }
 
-Debug::Debug(): listener("juCi++ lldb listener"), state(lldb::StateType::eStateInvalid), buffer_size(131072) {
-  lldb::SBDebugger::Initialize();
-  
-  debugger=lldb::SBDebugger::Create(true, log, nullptr);
-}
+Debug::Debug(): listener("juCi++ lldb listener"), state(lldb::StateType::eStateInvalid), buffer_size(131072) {}
 
 void Debug::start(std::shared_ptr<std::vector<std::pair<boost::filesystem::path, int> > > breakpoints, const boost::filesystem::path &executable,
                   const boost::filesystem::path &path, std::function<void(int exit_status)> callback,
                   std::function<void(const std::string &status)> status_callback,
                   std::function<void(const boost::filesystem::path &file_path, int line_nr, int line_index)> stop_callback) {
+  if(!debugger.IsValid()) {
+    lldb::SBDebugger::Initialize();
+    debugger=lldb::SBDebugger::Create(true, log, nullptr);
+  }
   auto target=debugger.CreateTarget(executable.string().c_str());
   
   if(!target.IsValid()) {
@@ -49,10 +49,9 @@ void Debug::start(std::shared_ptr<std::vector<std::pair<boost::filesystem::path,
     Terminal::get().async_print(std::string("Error (debug): ")+error.GetCString()+'\n', true);
     return;
   }
-  
   if(debug_thread.joinable())
     debug_thread.join();
-  debug_thread=std::thread([this, breakpoints, executable, path, callback, status_callback, stop_callback]() {
+  debug_thread=std::thread([this, callback, status_callback, stop_callback]() {
     lldb::SBEvent event;
     while(true) {
       event_mutex.lock();
@@ -73,9 +72,16 @@ void Debug::start(std::shared_ptr<std::vector<std::pair<boost::filesystem::path,
           if(state==lldb::StateType::eStateStopped) {
             auto line_entry=process->GetSelectedThread().GetSelectedFrame().GetLineEntry();
             if(stop_callback) {
-              lldb::SBStream stream;
-              line_entry.GetFileSpec().GetDescription(stream);
-              stop_callback(stream.GetData(), line_entry.GetLine(), line_entry.GetColumn());
+              if(line_entry.IsValid()) {
+                lldb::SBStream stream;
+                line_entry.GetFileSpec().GetDescription(stream);
+                auto column=line_entry.GetColumn();
+                if(column==0)
+                  column=1;
+                stop_callback(stream.GetData(), line_entry.GetLine(), column);
+              }
+              else
+                stop_callback("", 0, 0);
             }
           }
           
@@ -170,6 +176,7 @@ void Debug::delete_debug() {
   kill();
   if(debug_thread.joinable())
     debug_thread.join();
+  lldb::SBDebugger::Terminate();
 }
 
 std::string Debug::get_value(const std::string &variable, const boost::filesystem::path &file_path, unsigned int line_nr) {
