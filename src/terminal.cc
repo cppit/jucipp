@@ -268,10 +268,11 @@ bool Terminal::on_key_press_event(GdkEventKey *event) {
     }
     else if(event->keyval==GDK_KEY_Return) {
       stdin_buffer+='\n';
-      if(debug_is_running)
+      if(debug_is_running) {
 #ifdef JUCI_ENABLE_DEBUG
         Debug::get().write(stdin_buffer);
 #endif
+      }
       else
         processes.back()->write(stdin_buffer);
       get_buffer()->insert_at_cursor(stdin_buffer.substr(stdin_buffer.size()-1));
