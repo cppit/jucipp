@@ -1,5 +1,6 @@
 #include "debug.h"
 #include <stdio.h>
+#include <stdlib.h>
 #include <iostream>
 #include "terminal.h"
 
@@ -22,7 +23,11 @@ void log(const char *msg, void *) {
   cout << "debugger log: " << msg << endl;
 }
 
-Debug::Debug(): listener("juCi++ lldb listener"), state(lldb::StateType::eStateInvalid), buffer_size(131072) {}
+Debug::Debug(): listener("juCi++ lldb listener"), state(lldb::StateType::eStateInvalid), buffer_size(131072) {
+#ifdef __APPLE__
+  setenv("LLDB_DEBUGSERVER_PATH", "/usr/local/opt/llvm/bin/debugserver", 0);
+#endif
+}
 
 void Debug::start(std::shared_ptr<std::vector<std::pair<boost::filesystem::path, int> > > breakpoints, const boost::filesystem::path &executable,
                   const boost::filesystem::path &path, std::function<void(int exit_status)> callback,
