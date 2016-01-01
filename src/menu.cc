@@ -239,6 +239,11 @@ Menu::Menu() {
   "      <attribute name='label' translatable='yes'>_Project</attribute>"
   "      <section>"
   "        <item>"
+  "          <attribute name='label' translatable='yes'>_Set _Run _Arguments</attribute>"
+  "          <attribute name='action'>app.project_set_run_arguments</attribute>"
+             +accels["project_set_run_arguments"]+ //For Ubuntu...
+  "        </item>"
+  "        <item>"
   "          <attribute name='label' translatable='yes'>_Compile _and _Run</attribute>"
   "          <attribute name='action'>app.compile_and_run</attribute>"
              +accels["compile_and_run"]+ //For Ubuntu...
@@ -271,6 +276,11 @@ Menu::Menu() {
   "    <submenu>"
   "      <attribute name='label' translatable='yes'>_Debug</attribute>"
   "      <section>"
+  "        <item>"
+  "          <attribute name='label' translatable='yes'>_Set _Run _Arguments</attribute>"
+  "          <attribute name='action'>app.debug_set_run_arguments</attribute>"
+             +accels["debug_set_run_arguments"]+ //For Ubuntu...
+  "        </item>"
   "        <item>"
   "          <attribute name='label' translatable='yes'>_Start/_Continue</attribute>"
   "          <attribute name='action'>app.debug_start_continue</attribute>"

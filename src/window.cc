@@ -167,6 +167,17 @@ Window::Window() : compiling(false), debugging(false) {
   JDEBUG("end");
 } // Window constructor
 
+std::unique_ptr<CMake> Window::get_cmake() {
+  boost::filesystem::path path;
+  if(notebook.get_current_page()!=-1)
+    path=notebook.get_current_view()->file_path.parent_path();
+  else
+    path=Directories::get().current_path;
+  if(path.empty())
+    return nullptr;
+  return std::unique_ptr<CMake>(new CMake(path));
+}
+
 void Window::configure() {
   Config::get().load();
   auto style_context = Gtk::StyleContext::create();
@@ -546,57 +557,111 @@ void Window::set_menu_actions() {
     }
   });
   
+  menu.add_action("project_set_run_arguments", [this]() {
+    auto cmake=get_cmake();
+    if(!cmake)
+      return;
+    auto project_path=std::make_shared<boost::filesystem::path>(cmake->project_path);
+    if(project_path->empty())
+      return;
+    auto run_arguments_it=project_run_arguments.find(project_path->string());
+    std::string run_arguments;
+    if(run_arguments_it!=project_run_arguments.end())
+      run_arguments=run_arguments_it->second;
+
+    if(run_arguments.empty()) {
+      boost::filesystem::path cmake_path;
+      if(notebook.get_current_page()!=-1)
+        cmake_path=notebook.get_current_view()->file_path.parent_path();
+      else
+        cmake_path=Directories::get().current_path;
+      if(cmake_path.empty())
+        return;
+      CMake cmake(cmake_path);
+      if(cmake.project_path.empty())
+        return;
+      auto executable_path=cmake.get_executable(notebook.get_current_page()!=-1?notebook.get_current_view()->file_path:"");
+      
+      if(executable_path!="") {
+        auto project_path=cmake.project_path;
+        auto default_build_path=CMake::get_default_build_path(project_path);
+        if(!default_build_path.empty()) {
+          auto executable_path_string=executable_path.string();
+          size_t pos=executable_path_string.find(project_path.string());
+          if(pos!=std::string::npos) {
+            executable_path_string.replace(pos, project_path.string().size(), default_build_path.string());
+            executable_path=executable_path_string;
+          }
+        }
+        run_arguments=executable_path.string();
+      }
+    }
+    
+    entry_box.clear();
+    entry_box.labels.emplace_back();
+    auto label_it=entry_box.labels.begin();
+    label_it->update=[label_it](int state, const std::string& message){
+      label_it->set_text("testing");
+    };
+    label_it->update(0, "");
+    entry_box.entries.emplace_back(run_arguments, [this, project_path](const std::string& content){
+      project_run_arguments[project_path->string()]=content;
+      entry_box.hide();
+    }, 50);
+    auto entry_it=entry_box.entries.begin();
+    entry_it->set_placeholder_text("Project: Set Run Arguments");
+    entry_box.buttons.emplace_back("Project: set run arguments", [this, entry_it](){
+      entry_it->activate();
+    });
+    entry_box.show();
+  });
   menu.add_action("compile_and_run", [this]() {
     if(compiling)
       return;
-    boost::filesystem::path cmake_path;
-    if(notebook.get_current_page()!=-1)
-      cmake_path=notebook.get_current_view()->file_path.parent_path();
-    else
-      cmake_path=Directories::get().current_path;
-    if(cmake_path.empty())
-      return;
-    CMake cmake(cmake_path);
-    if(cmake.project_path.empty())
-      return;
-    auto executable_path=cmake.get_executable(notebook.get_current_page()!=-1?notebook.get_current_view()->file_path:"");
     
-    if(executable_path!="") {
-      auto project_path=cmake.project_path;
-      auto default_build_path=CMake::get_default_build_path(project_path);
-      if(default_build_path.empty())
-        return;
-      compiling=true;
-      auto executable_path_string=executable_path.string();
-      size_t pos=executable_path_string.find(project_path.string());
-      if(pos!=std::string::npos) {
-        executable_path_string.replace(pos, project_path.string().size(), default_build_path.string());
-        executable_path=executable_path_string;
-      }
-      Terminal::get().print("Compiling and running "+executable_path.string()+"\n");
-      Terminal::get().async_process(Config::get().terminal.make_command, default_build_path, [this, executable_path, default_build_path](int exit_status){
-        compiling=false;
-        if(exit_status==EXIT_SUCCESS) {
-          auto executable_path_spaces_fixed=executable_path.string();
-          char last_char=0;
-          for(size_t c=0;c<executable_path_spaces_fixed.size();c++) {
-            if(last_char!='\\' && executable_path_spaces_fixed[c]==' ') {
-              executable_path_spaces_fixed.insert(c, "\\");
-              c++;
-            }
-            last_char=executable_path_spaces_fixed[c];
-          }
-          Terminal::get().async_process(executable_path_spaces_fixed, default_build_path, [this, executable_path](int exit_status){
-            Terminal::get().async_print(executable_path.string()+" returned: "+std::to_string(exit_status)+'\n');
-          });
-        }
-      });
+    auto cmake=get_cmake();
+    if(!cmake)
+      return;
+    auto project_path=cmake->project_path;
+    if(project_path.empty())
+      return;
+    
+    auto default_build_path=CMake::get_default_build_path(project_path);
+    if(default_build_path.empty())
+      return;
+    
+    auto run_arguments_it=project_run_arguments.find(project_path.string());
+    std::string run_arguments;
+    if(run_arguments_it!=project_run_arguments.end())
+      run_arguments=run_arguments_it->second;
+    
+    std::string command;
+    if(!run_arguments.empty()) {
+      command=run_arguments;
     }
     else {
-      Terminal::get().print("Could not find add_executable in the following paths:\n");
-      for(auto &path: cmake.paths)
-        Terminal::get().print("  "+path.string()+"\n");
+      command=cmake->get_executable(notebook.get_current_page()!=-1?notebook.get_current_view()->file_path:"").string();
+      if(command.empty()) {
+        Terminal::get().print("Could not find add_executable in the following paths:\n");
+        for(auto &path: cmake->paths)
+          Terminal::get().print("  "+path.string()+"\n");
+        return;
+      }
+      size_t pos=command.find(project_path.string());
+      if(pos!=std::string::npos)
+        command.replace(pos, project_path.string().size(), default_build_path.string());
     }
+    
+    compiling=true;
+    Terminal::get().print("Compiling and running "+command+"\n");
+    Terminal::get().async_process(Config::get().terminal.make_command, default_build_path, [this, command, default_build_path](int exit_status){
+      compiling=false;
+      if(exit_status==EXIT_SUCCESS) {
+        Terminal::get().async_process(command, default_build_path, [this, command](int exit_status){
+          Terminal::get().async_print(command+" returned: "+std::to_string(exit_status)+'\n');
+        });
+      }
+    });
   });
   menu.add_action("compile", [this]() {
     if(compiling)
@@ -659,90 +724,82 @@ void Window::set_menu_actions() {
 #ifdef JUCI_ENABLE_DEBUG
   menu.add_action("debug_start_continue", [this](){
     if(debugging) {
-      //Continue
-      if(notebook.get_current_page()!=-1) {
-        Debug::get().continue_debug();
-      }
+      Debug::get().continue_debug();
       return;
     }
-    boost::filesystem::path cmake_path;
-    if(notebook.get_current_page()!=-1)
-      cmake_path=notebook.get_current_view()->file_path.parent_path();
-    else
-      cmake_path=Directories::get().current_path;
-    if(cmake_path.empty())
-      return;
-    CMake cmake(cmake_path);
-    if(cmake.project_path.empty())
-      return;
-    auto executable_path=cmake.get_executable(notebook.get_current_page()!=-1?notebook.get_current_view()->file_path:"");
     
-    if(executable_path!="") {
-      auto project_path=cmake.project_path;
-      auto debug_build_path=CMake::get_debug_build_path(project_path);
-      if(debug_build_path.empty())
+    auto cmake=get_cmake();
+    if(!cmake)
+      return;
+    auto project_path=cmake->project_path;
+    if(project_path.empty())
+      return;
+        
+    auto debug_build_path=CMake::get_debug_build_path(project_path);
+    if(debug_build_path.empty())
+      return;
+    if(!CMake::create_debug_build(project_path))
+      return;
+    
+    /*auto run_arguments_it=project_run_arguments.find(project_path.string());
+    std::string run_arguments;
+    if(run_arguments_it!=project_run_arguments.end())
+      run_arguments=run_arguments_it->second;*/
+    
+    std::string command;
+    /*if(!run_arguments.empty()) {
+      command=run_arguments;
+    }
+    else {*/
+      command=cmake->get_executable(notebook.get_current_page()!=-1?notebook.get_current_view()->file_path:"").string();
+      if(command.empty()) {
+        Terminal::get().print("Could not find add_executable in the following paths:\n");
+        for(auto &path: cmake->paths)
+          Terminal::get().print("  "+path.string()+"\n");
         return;
-      if(!CMake::create_debug_build(project_path))
-        return;
-      debugging=true;
-      auto executable_path_string=executable_path.string();
-      size_t pos=executable_path_string.find(project_path.string());
-      if(pos!=std::string::npos) {
-        executable_path_string.replace(pos, project_path.string().size(), debug_build_path.string());
-        executable_path=executable_path_string;
       }
-      
-      auto breakpoints=std::make_shared<std::vector<std::pair<boost::filesystem::path, int> > >();
-      for(int c=0;c<notebook.size();c++) {
-        auto view=notebook.get_view(c);
-        if(project_path==view->project_path) {
-          auto iter=view->get_buffer()->begin();
-          if(view->get_source_buffer()->get_source_marks_at_iter(iter, "debug_breakpoint").size()>0)
-            breakpoints->emplace_back(view->file_path, iter.get_line()+1);
-          while(view->get_source_buffer()->forward_iter_to_source_mark(iter, "debug_breakpoint"))
-            breakpoints->emplace_back(view->file_path, iter.get_line()+1);
-        }
+      size_t pos=command.find(project_path.string());
+      if(pos!=std::string::npos)
+        command.replace(pos, project_path.string().size(), debug_build_path.string());
+    //}
+    
+    auto breakpoints=std::make_shared<std::vector<std::pair<boost::filesystem::path, int> > >();
+    for(int c=0;c<notebook.size();c++) {
+      auto view=notebook.get_view(c);
+      if(project_path==view->project_path) {
+        auto iter=view->get_buffer()->begin();
+        if(view->get_source_buffer()->get_source_marks_at_iter(iter, "debug_breakpoint").size()>0)
+          breakpoints->emplace_back(view->file_path, iter.get_line()+1);
+        while(view->get_source_buffer()->forward_iter_to_source_mark(iter, "debug_breakpoint"))
+          breakpoints->emplace_back(view->file_path, iter.get_line()+1);
       }
-      Terminal::get().print("Compiling and debugging "+executable_path.string()+"\n");
-      Terminal::get().async_process(Config::get().terminal.make_command, debug_build_path, [this, breakpoints, executable_path, debug_build_path](int exit_status){
-        if(exit_status!=EXIT_SUCCESS)
+    }
+    
+    debugging=true;
+    Terminal::get().print("Compiling and debugging "+command+"\n");
+    Terminal::get().async_process(Config::get().terminal.make_command, debug_build_path, [this, breakpoints, command, debug_build_path](int exit_status){
+      if(exit_status!=EXIT_SUCCESS)
+        debugging=false;
+      else {
+        Debug::get().start(breakpoints, command, debug_build_path, [this, command](int exit_status){
           debugging=false;
-        else {
-          auto executable_path_spaces_fixed=executable_path.string();
-          char last_char=0;
-          for(size_t c=0;c<executable_path_spaces_fixed.size();c++) {
-            if(last_char!='\\' && executable_path_spaces_fixed[c]==' ') {
-              executable_path_spaces_fixed.insert(c, "\\");
-              c++;
-            }
-            last_char=executable_path_spaces_fixed[c];
-          }
-          
-          Debug::get().start(breakpoints, executable_path_spaces_fixed, debug_build_path, [this, executable_path](int exit_status){
-            debugging=false;
-            Terminal::get().async_print(executable_path.string()+" returned: "+std::to_string(exit_status)+'\n');
-          }, [this](const std::string &status) {
-            debug_status_mutex.lock();
-            debug_status=status;
-            debug_status_mutex.unlock();
-            debug_update_status();
-          }, [this](const boost::filesystem::path &file_path, int line_nr, int line_index) {
-            debug_stop_mutex.lock();
-            debug_stop.first=file_path;
-            debug_stop.second.first=line_nr;
-            debug_stop.second.second=line_index;
-            debug_stop_mutex.unlock();
-            debug_update_stop();
-            //Remove debug stop source mark
-          });
-        }
-      });
-    }
-    else {
-      Terminal::get().print("Could not find add_executable in the following paths:\n");
-      for(auto &path: cmake.paths)
-        Terminal::get().print("  "+path.string()+"\n");
-    }
+          Terminal::get().async_print(command+" returned: "+std::to_string(exit_status)+'\n');
+        }, [this](const std::string &status) {
+          debug_status_mutex.lock();
+          debug_status=status;
+          debug_status_mutex.unlock();
+          debug_update_status();
+        }, [this](const boost::filesystem::path &file_path, int line_nr, int line_index) {
+          debug_stop_mutex.lock();
+          debug_stop.first=file_path;
+          debug_stop.second.first=line_nr;
+          debug_stop.second.second=line_index;
+          debug_stop_mutex.unlock();
+          debug_update_stop();
+          //Remove debug stop source mark
+        });
+      }
+    });
   });
   menu.add_action("debug_stop", [this]() {
     if(debugging) {

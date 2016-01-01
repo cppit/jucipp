@@ -2,7 +2,7 @@
 #define JUCI_FILES_H_
 #include <string>
 
-#define JUCI_VERSION "1.1.0-1"
+#define JUCI_VERSION "1.1.0-2"
 
 const std::string configjson =
 "{\n"
@@ -92,12 +92,14 @@ const std::string configjson =
 "        \"source_rename\": \"<primary>r\",\n"
 "        \"source_goto_next_diagnostic\": \"<primary>e\",\n"
 "        \"source_apply_fix_its\": \"<control>space\",\n"
+"        \"project_set_run_arguments\": \"\",\n"
 "        \"compile_and_run\": \"<primary>Return\",\n"
 "        \"compile\": \"<primary><shift>Return\",\n"
 "        \"compile_and_run\": \"<primary>Return\",\n"
 "        \"run_command\": \"<alt>Return\",\n"
 "        \"kill_last_running\": \"<primary>Escape\",\n"
 "        \"force_kill_last_running\": \"<primary><shift>Escape\",\n"
+"        \"debug_set_run_arguments\": \"\",\n"
 "        \"debug_start_continue\": \"<primary>y\",\n"
 "        \"debug_stop\": \"<primary><shift>y\",\n"
 "        \"debug_kill\": \"<primary><shift>k\",\n"

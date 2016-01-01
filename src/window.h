@@ -4,6 +4,7 @@
 #include "gtkmm.h"
 #include "entrybox.h"
 #include "notebook.h"
+#include "cmake.h"
 #include <atomic>
 
 class Window : public Gtk::ApplicationWindow {
@@ -44,6 +45,10 @@ private:
   std::string debug_status;
   std::mutex debug_status_mutex;
   Glib::Dispatcher debug_update_status;
+
+  std::unique_ptr<CMake> get_cmake();
+  std::unordered_map<std::string, std::string> project_run_arguments;
+  std::unordered_map<std::string, std::string> debug_run_arguments;
 
   void configure();
   void set_menu_actions();
