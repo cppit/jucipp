@@ -115,8 +115,8 @@ bool CMake::create_compile_commands(const boost::filesystem::path &project_path)
     return false;
   auto compile_commands_path=default_build_path/"compile_commands.json";
   Dialog::Message message("Creating "+compile_commands_path.string());
-  auto exit_status=Terminal::get().process(Config::get().terminal.cmake_command+" "+
-                                           project_path.string()+" -DCMAKE_EXPORT_COMPILE_COMMANDS=ON", default_build_path);
+  auto exit_status=Terminal::get().process(Config::get().terminal.cmake_command+" \""+
+                                           project_path.string()+"\" -DCMAKE_EXPORT_COMPILE_COMMANDS=ON", default_build_path);
   message.hide();
   if(exit_status==EXIT_SUCCESS) {
 #ifdef _WIN32 //Temporary fix to MSYS2's libclang
@@ -145,8 +145,8 @@ bool CMake::create_debug_build(const boost::filesystem::path &project_path) {
   std::unique_ptr<Dialog::Message> message;
   if(!boost::filesystem::exists(debug_build_path/"CMakeCache.txt"))
     message=std::unique_ptr<Dialog::Message>(new Dialog::Message("Creating debug build"));
-  auto exit_status=Terminal::get().process(Config::get().terminal.cmake_command+" "+
-                                           project_path.string()+" -DCMAKE_BUILD_TYPE=Debug", debug_build_path);
+  auto exit_status=Terminal::get().process(Config::get().terminal.cmake_command+" \""+
+                                           project_path.string()+"\" -DCMAKE_BUILD_TYPE=Debug", debug_build_path);
   if(message)
     message->hide();
   if(exit_status==EXIT_SUCCESS)

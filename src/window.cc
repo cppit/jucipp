@@ -178,6 +178,21 @@ std::unique_ptr<CMake> Window::get_cmake() {
   return std::unique_ptr<CMake>(new CMake(path));
 }
 
+void Window::escape_executable(std::string &executable) {
+  bool backslash=false;
+  for(auto it=executable.begin();it!=executable.end();) {
+    if(*it=='\\' && !backslash)
+      backslash=true;
+    else if(backslash)
+      backslash=false;
+    else if(*it==' ') {
+      it=executable.insert(it, '\\');
+      it++;
+    }
+    it++;
+  }
+}
+
 void Window::configure() {
   Config::get().load();
   auto style_context = Gtk::StyleContext::create();
@@ -580,20 +595,18 @@ void Window::set_menu_actions() {
       CMake cmake(cmake_path);
       if(cmake.project_path.empty())
         return;
-      auto executable_path=cmake.get_executable(notebook.get_current_page()!=-1?notebook.get_current_view()->file_path:"");
+      auto executable=cmake.get_executable(notebook.get_current_page()!=-1?notebook.get_current_view()->file_path:"").string();
       
-      if(executable_path!="") {
+      if(executable!="") {
         auto project_path=cmake.project_path;
         auto default_build_path=CMake::get_default_build_path(project_path);
         if(!default_build_path.empty()) {
-          auto executable_path_string=executable_path.string();
-          size_t pos=executable_path_string.find(project_path.string());
-          if(pos!=std::string::npos) {
-            executable_path_string.replace(pos, project_path.string().size(), default_build_path.string());
-            executable_path=executable_path_string;
-          }
+          size_t pos=executable.find(project_path.string());
+          if(pos!=std::string::npos)
+            executable.replace(pos, project_path.string().size(), default_build_path.string());
+          escape_executable(executable);
         }
-        run_arguments=executable_path.string();
+        run_arguments=executable;
       }
     }
     
@@ -601,7 +614,7 @@ void Window::set_menu_actions() {
     entry_box.labels.emplace_back();
     auto label_it=entry_box.labels.begin();
     label_it->update=[label_it](int state, const std::string& message){
-      label_it->set_text("testing");
+      label_it->set_text("Leave empty to let juCi++ deduce executable");
     };
     label_it->update(0, "");
     entry_box.entries.emplace_back(run_arguments, [this, project_path](const std::string& content){
@@ -650,6 +663,7 @@ void Window::set_menu_actions() {
       size_t pos=command.find(project_path.string());
       if(pos!=std::string::npos)
         command.replace(pos, project_path.string().size(), default_build_path.string());
+      escape_executable(command);
     }
     
     compiling=true;
@@ -761,6 +775,7 @@ void Window::set_menu_actions() {
       size_t pos=command.find(project_path.string());
       if(pos!=std::string::npos)
         command.replace(pos, project_path.string().size(), debug_build_path.string());
+      escape_executable(command);
     //}
     
     auto breakpoints=std::make_shared<std::vector<std::pair<boost::filesystem::path, int> > >();
