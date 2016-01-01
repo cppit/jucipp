@@ -49,7 +49,12 @@ Window::Window() : compiling(false), debugging(false) {
   terminal_vbox.pack_start(terminal_scrolled_window);
     
   info_and_status_hbox.pack_start(notebook.info, Gtk::PACK_SHRINK);
+#if GTK_VERSION_GE(3, 12)
   info_and_status_hbox.set_center_widget(debug_status_label);
+#else
+  debug_status_label.set_halign(Gtk::Align::ALIGN_CENTER);
+  info_and_status_hbox.pack_start(debug_status_label);
+#endif
   info_and_status_hbox.pack_end(notebook.status, Gtk::PACK_SHRINK);
   terminal_vbox.pack_end(info_and_status_hbox, Gtk::PACK_SHRINK);
   vpaned.pack2(terminal_vbox, true, true);
@@ -120,7 +125,7 @@ Window::Window() : compiling(false), debugging(false) {
     debug_stop_mutex.lock();
     for(int c=0;c<notebook.size();c++) {
       auto view=notebook.get_view(c);
-      if(view->file_path==debug_last_stop.first) {
+      if(view->file_path==debug_last_stop_file_path) {
         view->get_source_buffer()->remove_source_marks(view->get_buffer()->begin(), view->get_buffer()->end(), "debug_stop");
         break;
       }
@@ -131,7 +136,7 @@ Window::Window() : compiling(false), debugging(false) {
       if(view->file_path==debug_stop.first) {
         if(debug_stop.second.first-1<view->get_buffer()->get_line_count()) {
           view->get_source_buffer()->create_source_mark("debug_stop", view->get_buffer()->get_iter_at_line(debug_stop.second.first-1));
-          debug_last_stop=debug_stop;
+          debug_last_stop_file_path=debug_stop.first;
         }
         view->get_buffer()->place_cursor(view->get_buffer()->get_insert()->get_iter());
         break;

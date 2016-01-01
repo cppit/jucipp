@@ -36,9 +36,9 @@ private:
   
   std::atomic<bool> debugging;
   Gtk::Label debug_status_label;
-  std::pair<boost::filesystem::path, std::pair<int, int> > debug_last_stop;
   
   std::pair<boost::filesystem::path, std::pair<int, int> > debug_stop;
+  boost::filesystem::path debug_last_stop_file_path;
   std::mutex debug_stop_mutex;
   Glib::Dispatcher debug_update_stop;
   std::string debug_status;
