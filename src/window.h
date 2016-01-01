@@ -47,7 +47,6 @@ private:
   Glib::Dispatcher debug_update_status;
 
   std::unique_ptr<CMake> get_cmake();
-  void escape_executable(std::string &executable);
   std::unordered_map<std::string, std::string> project_run_arguments;
   std::unordered_map<std::string, std::string> debug_run_arguments;
 

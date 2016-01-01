@@ -135,3 +135,23 @@ bool filesystem::write(const std::string &path, Glib::RefPtr<Gtk::TextBuffer> bu
   }
   return false;
 }
+
+std::string filesystem::escape(const std::string &path) {
+  auto escaped=path;
+  size_t pos=0;
+  while((pos=escaped.find(' ', pos))!=std::string::npos) {
+    escaped.replace(pos, 1, "\\ ");
+    pos+=2;
+  }
+  return escaped;
+}
+
+std::string filesystem::unescape(const std::string &path) {
+  auto escaped=path;
+  size_t pos=0;
+  while((pos=escaped.find("\\ ", pos))!=std::string::npos) {
+    escaped.replace(pos, 2, " ");
+    pos+=1;
+  }
+  return escaped;
+}
