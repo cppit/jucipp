@@ -289,6 +289,23 @@ Menu::Menu() {
   "      </section>"
   "      <section>"
   "        <item>"
+  "          <attribute name='label' translatable='yes'>_Step _Over</attribute>"
+  "          <attribute name='action'>app.debug_step_over</attribute>"
+             +accels["debug_step_over"]+ //For Ubuntu...
+  "        </item>"
+  "        <item>"
+  "          <attribute name='label' translatable='yes'>_Step _Into</attribute>"
+  "          <attribute name='action'>app.debug_step_into</attribute>"
+             +accels["debug_step_into"]+ //For Ubuntu...
+  "        </item>"
+  "        <item>"
+  "          <attribute name='label' translatable='yes'>_Step _Out</attribute>"
+  "          <attribute name='action'>app.debug_step_out</attribute>"
+             +accels["debug_step_out"]+ //For Ubuntu...
+  "        </item>"
+  "      </section>"
+  "      <section>"
+  "        <item>"
   "          <attribute name='label' translatable='yes'>_Run Command</attribute>"
   "          <attribute name='action'>app.debug_run_command</attribute>"
              +accels["debug_run_command"]+ //For Ubuntu...
