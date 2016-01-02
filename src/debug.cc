@@ -262,8 +262,9 @@ std::vector<Debug::Frame> Debug::get_backtrace() {
     for(uint32_t c_f=0;c_f<thread.GetNumFrames();c_f++) {
       Frame backtrace_frame;
       auto frame=thread.GetFrameAtIndex(c_f);
-      if(frame.GetFunction().IsValid())
-        backtrace_frame.function_name=frame.GetFunctionName();
+      auto function_name=frame.GetFunctionName();
+      if(function_name!=NULL)
+        backtrace_frame.function_name=function_name;
       auto line_entry=frame.GetLineEntry();
       if(line_entry.IsValid()) {
         lldb::SBStream stream;
