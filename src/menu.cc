@@ -316,6 +316,13 @@ Menu::Menu() {
   "      </section>"
   "      <section>"
   "        <item>"
+  "          <attribute name='label' translatable='yes'>_Backtrace</attribute>"
+  "          <attribute name='action'>app.debug_backtrace</attribute>"
+             +accels["debug_backtrace"]+ //For Ubuntu...
+  "        </item>"
+  "      </section>"
+  "      <section>"
+  "        <item>"
   "          <attribute name='label' translatable='yes'>_Run Command</attribute>"
   "          <attribute name='action'>app.debug_run_command</attribute>"
              +accels["debug_run_command"]+ //For Ubuntu...

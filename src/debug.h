@@ -10,6 +10,14 @@
 #include <mutex>
 
 class Debug {
+public:
+  class Frame {
+  public:
+    std::string file_path;
+    std::string function_name;
+    int line_nr;
+    int line_index;
+  };
 private:
   Debug();
 public:
@@ -30,6 +38,7 @@ public:
   void step_into();
   void step_out();
   std::pair<std::string, std::string> run_command(const std::string &command);
+  std::vector<Frame> get_backtrace();
   
   void delete_debug(); //can't use delete as function name
   

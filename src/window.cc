@@ -151,6 +151,7 @@ Window::Window() : compiling(false), debugging(false) {
   menu.actions["debug_step_over"]->set_enabled(false);
   menu.actions["debug_step_into"]->set_enabled(false);
   menu.actions["debug_step_out"]->set_enabled(false);
+  menu.actions["debug_backtrace"]->set_enabled(false);
   menu.actions["debug_run_command"]->set_enabled(false);
   menu.actions["debug_goto_stop"]->set_enabled(false);
   debug_update_status.connect([this](){
@@ -163,6 +164,7 @@ Window::Window() : compiling(false), debugging(false) {
       menu.actions["debug_step_over"]->set_enabled(false);
       menu.actions["debug_step_into"]->set_enabled(false);
       menu.actions["debug_step_out"]->set_enabled(false);
+      menu.actions["debug_backtrace"]->set_enabled(false);
       menu.actions["debug_run_command"]->set_enabled(false);
       menu.actions["debug_goto_stop"]->set_enabled(false);
     }
@@ -174,6 +176,7 @@ Window::Window() : compiling(false), debugging(false) {
       menu.actions["debug_step_over"]->set_enabled();
       menu.actions["debug_step_into"]->set_enabled();
       menu.actions["debug_step_out"]->set_enabled();
+      menu.actions["debug_backtrace"]->set_enabled();
       menu.actions["debug_run_command"]->set_enabled();
       menu.actions["debug_goto_stop"]->set_enabled();
     }
@@ -911,6 +914,68 @@ void Window::set_menu_actions() {
   menu.add_action("debug_step_out", [this]() {
     if(debugging)
       Debug::get().step_out();
+  });
+  menu.add_action("debug_backtrace", [this]() {
+    if(debugging && notebook.get_current_page()!=-1) {
+      auto backtrace=Debug::get().get_backtrace();
+      
+      auto view=notebook.get_current_view();
+      auto buffer=view->get_buffer();
+      auto iter=buffer->get_insert()->get_iter();
+      Gdk::Rectangle visible_rect;
+      view->get_visible_rect(visible_rect);
+      Gdk::Rectangle iter_rect;
+      view->get_iter_location(iter, iter_rect);
+      iter_rect.set_width(1);
+      if(!visible_rect.intersects(iter_rect)) {
+        view->get_iter_at_location(iter, 0, visible_rect.get_y()+visible_rect.get_height()/3);
+      }
+      view->selection_dialog=std::unique_ptr<SelectionDialog>(new SelectionDialog(*view, buffer->create_mark(iter), true, true));
+      auto rows=std::make_shared<std::unordered_map<std::string, Debug::Frame> >();
+      if(backtrace.size()==0)
+        return;
+      
+      std::string project_path;
+      auto cmake=get_cmake();
+      if(cmake)
+        project_path=cmake->project_path.string();
+      
+      for(auto &frame: backtrace) {
+        std::string row;
+        if(frame.file_path.empty())
+          row=frame.function_name;
+        else {
+          auto file_path=frame.file_path;
+          if(!project_path.empty()) {
+            auto pos=file_path.find(project_path);
+            if(pos==0)
+              file_path.erase(0, project_path.size()+1);
+          }
+          
+          row="<b>"+Glib::Markup::escape_text(file_path)+":"+std::to_string(frame.line_nr)+"</b> "+Glib::Markup::escape_text(frame.function_name);
+        }
+        (*rows)[row]=frame;
+        view->selection_dialog->add_row(row);
+      }
+      
+      view->selection_dialog->on_select=[this, rows](const std::string& selected, bool hide_window) {
+        auto frame=rows->at(selected);
+        if(!frame.file_path.empty()) {
+          notebook.open(frame.file_path);
+          if(notebook.get_current_page()!=-1) {
+            auto view=notebook.get_current_view();
+            
+            view->get_buffer()->place_cursor(view->get_buffer()->get_iter_at_line_index(frame.line_nr-1, frame.line_index-1));
+            
+            while(g_main_context_pending(NULL))
+              g_main_context_iteration(NULL, false);
+            if(notebook.get_current_page()!=-1 && notebook.get_current_view()==view)
+              view->scroll_to(view->get_buffer()->get_insert(), 0.0, 1.0, 0.5);
+          }
+        }
+      };
+      view->selection_dialog->show();
+    }
   });
   menu.add_action("debug_run_command", [this]() {
     entry_box.clear();

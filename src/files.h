@@ -2,7 +2,7 @@
 #define JUCI_FILES_H_
 #include <string>
 
-#define JUCI_VERSION "1.1.0-2"
+#define JUCI_VERSION "1.1.0-3"
 
 const std::string configjson =
 "{\n"
@@ -106,6 +106,7 @@ const std::string configjson =
 "        \"debug_step_over\": \"<primary>n\",\n"
 "        \"debug_step_into\": \"<primary>t\",\n"
 "        \"debug_step_out\": \"<primary><shift>t\",\n"
+"        \"debug_backtrace\": \"<primary><shift>n\",\n"
 "        \"debug_run_command\": \"<alt><shift>Return\",\n"
 "        \"debug_toggle_breakpoint\": \"<primary>b\",\n"
 "        \"debug_goto_stop\": \"<primary><shift>l\",\n"

@@ -254,6 +254,33 @@ std::pair<std::string, std::string> Debug::run_command(const std::string &comman
   return command_return;
 }
 
+std::vector<Debug::Frame> Debug::get_backtrace() {
+  std::vector<Frame> backtrace;
+  event_mutex.lock();
+  if(state==lldb::StateType::eStateStopped) {
+    auto thread=process->GetSelectedThread();
+    for(uint32_t c_f=0;c_f<thread.GetNumFrames();c_f++) {
+      Frame backtrace_frame;
+      auto frame=thread.GetFrameAtIndex(c_f);
+      backtrace_frame.function_name=frame.GetFunctionName();
+      auto line_entry=frame.GetLineEntry();
+      if(line_entry.IsValid()) {
+        lldb::SBStream stream;
+        line_entry.GetFileSpec().GetDescription(stream);
+        auto column=line_entry.GetColumn();
+        if(column==0)
+          column=1;
+        backtrace_frame.file_path=stream.GetData();
+        backtrace_frame.line_nr=line_entry.GetLine();
+        backtrace_frame.line_index=column;
+      }
+      backtrace.emplace_back(backtrace_frame);
+    }
+  }
+  event_mutex.unlock();
+  return backtrace;
+}
+
 void Debug::delete_debug() {
   kill();
   if(debug_thread.joinable())
