@@ -18,8 +18,8 @@ public:
     return singleton;
   }
   
-  void start(std::shared_ptr<std::vector<std::pair<boost::filesystem::path, int> > > breakpoints,
-             const boost::filesystem::path &executable, const boost::filesystem::path &path="",
+  void start(const std::string &command, const boost::filesystem::path &path="",
+             std::shared_ptr<std::vector<std::pair<boost::filesystem::path, int> > > breakpoints=nullptr,
              std::function<void(int exit_status)> callback=nullptr,
              std::function<void(const std::string &status)> status_callback=nullptr,
              std::function<void(const boost::filesystem::path &file_path, int line_nr, int line_index)> stop_callback=nullptr);

@@ -1,8 +1,12 @@
 #include "debug.h"
 #include <stdio.h>
+#ifdef __APPLE__
 #include <stdlib.h>
+#include <boost/filesystem.hpp>
+#endif
 #include <iostream>
 #include "terminal.h"
+#include "filesystem.h"
 
 #include <lldb/API/SBTarget.h>
 #include <lldb/API/SBProcess.h>
@@ -25,36 +29,81 @@ void log(const char *msg, void *) {
 
 Debug::Debug(): listener("juCi++ lldb listener"), state(lldb::StateType::eStateInvalid), buffer_size(131072) {
 #ifdef __APPLE__
-  setenv("LLDB_DEBUGSERVER_PATH", "/usr/local/opt/llvm/bin/debugserver", 0);
+  auto debugserver_path=boost::filesystem::path("/usr/local/opt/llvm/bin/debugserver");
+  if(boost::filesystem::exists(debugserver_path))
+    setenv("LLDB_DEBUGSERVER_PATH", debugserver_path.string().c_str(), 0);
 #endif
 }
 
-void Debug::start(std::shared_ptr<std::vector<std::pair<boost::filesystem::path, int> > > breakpoints, const boost::filesystem::path &executable,
-                  const boost::filesystem::path &path, std::function<void(int exit_status)> callback,
+void Debug::start(const std::string &command, const boost::filesystem::path &path,
+                  std::shared_ptr<std::vector<std::pair<boost::filesystem::path, int> > > breakpoints,
+                  std::function<void(int exit_status)> callback,
                   std::function<void(const std::string &status)> status_callback,
                   std::function<void(const boost::filesystem::path &file_path, int line_nr, int line_index)> stop_callback) {
   if(!debugger.IsValid()) {
     lldb::SBDebugger::Initialize();
     debugger=lldb::SBDebugger::Create(true, log, nullptr);
   }
-  auto target=debugger.CreateTarget(executable.string().c_str());
   
+  //Create executable string and argument array
+  std::string executable;
+  std::vector<std::string> arguments;
+  size_t start_pos=std::string::npos;
+  bool quote=false;
+  bool double_quote=false;
+  bool symbol=false;
+  for(size_t c=0;c<=command.size();c++) { 
+    if(c==command.size() || (!quote && !double_quote && !symbol && command[c]==' ')) {
+      if(c>0 && start_pos!=std::string::npos) {
+        if(executable.empty())
+          executable=filesystem::unescape(command.substr(start_pos, c-start_pos));
+        else
+          arguments.emplace_back(filesystem::unescape(command.substr(start_pos, c-start_pos)));
+        start_pos=std::string::npos;
+      }
+    }
+    else if(command[c]=='\\' && !quote && !double_quote)
+      symbol=true;
+    else if(symbol)
+      symbol=false;
+    else if(command[c]=='\'' && !double_quote)
+      quote=!quote;
+    else if(command[c]=='"' && !quote)
+      double_quote=!double_quote;
+    if(c<command.size() && start_pos==std::string::npos && command[c]!=' ')
+      start_pos=c;
+  }
+  const char *argv[arguments.size()+1];
+  for(size_t c=0;c<arguments.size();c++)
+    argv[c]=arguments[c].c_str();
+  argv[arguments.size()]=NULL;
+  
+  auto target=debugger.CreateTarget(executable.c_str());
   if(!target.IsValid()) {
-    Terminal::get().async_print("Error (debug): Could not create debug target to: "+executable.string()+'\n', true);
+    Terminal::get().async_print("Error (debug): Could not create debug target to: "+executable+'\n', true);
+    if(callback)
+      callback(-1);
     return;
   }
   
-  for(auto &breakpoint: *breakpoints) {
-    if(!(target.BreakpointCreateByLocation(breakpoint.first.string().c_str(), breakpoint.second)).IsValid()) {
-      Terminal::get().async_print("Error (debug): Could not create breakpoint at: "+breakpoint.first.string()+":"+std::to_string(breakpoint.second)+'\n', true);
-      return;
+  //Set breakpoints
+  if(breakpoints) {
+    for(auto &breakpoint: *breakpoints) {
+      if(!(target.BreakpointCreateByLocation(breakpoint.first.string().c_str(), breakpoint.second)).IsValid()) {
+        Terminal::get().async_print("Error (debug): Could not create breakpoint at: "+breakpoint.first.string()+":"+std::to_string(breakpoint.second)+'\n', true);
+        if(callback)
+          callback(-1);
+        return;
+      }
     }
   }
   
   lldb::SBError error;
-  process = std::unique_ptr<lldb::SBProcess>(new lldb::SBProcess(target.Launch(listener, nullptr, (const char**)environ, nullptr, nullptr, nullptr, path.string().c_str(), lldb::eLaunchFlagNone, false, error)));
+  process = std::unique_ptr<lldb::SBProcess>(new lldb::SBProcess(target.Launch(listener, argv, (const char**)environ, nullptr, nullptr, nullptr, path.string().c_str(), lldb::eLaunchFlagNone, false, error)));
   if(error.Fail()) {
     Terminal::get().async_print(std::string("Error (debug): ")+error.GetCString()+'\n', true);
+    if(callback)
+      callback(-1);
     return;
   }
   if(debug_thread.joinable())

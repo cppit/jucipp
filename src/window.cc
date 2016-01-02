@@ -590,10 +590,10 @@ void Window::set_menu_actions() {
           if(pos!=std::string::npos)
             executable.replace(pos, project_path.string().size(), default_build_path.string());
         }
-        run_arguments=filesystem::escape(executable);
+        run_arguments=filesystem::escape_argument(executable);
       }
       else
-        run_arguments=cmake.project_path.string();
+        run_arguments=filesystem::escape_argument(CMake::get_default_build_path(cmake.project_path));
     }
     
     entry_box.clear();
@@ -644,12 +644,13 @@ void Window::set_menu_actions() {
         Terminal::get().print("Could not find add_executable in the following paths:\n");
         for(auto &path: cmake->paths)
           Terminal::get().print("  "+path.string()+"\n");
+        Terminal::get().print("Solution: either use Project Set Run Arguments, or open a source file within a directory where add_executable is set.\n", true);
         return;
       }
       size_t pos=command.find(project_path.string());
       if(pos!=std::string::npos)
         command.replace(pos, project_path.string().size(), default_build_path.string());
-      command=filesystem::escape(command);
+      command=filesystem::escape_argument(command);
     }
     
     compiling=true;
@@ -722,6 +723,63 @@ void Window::set_menu_actions() {
   });
   
 #ifdef JUCI_ENABLE_DEBUG
+  menu.add_action("debug_set_run_arguments", [this]() {
+    auto cmake=get_cmake();
+    if(!cmake)
+      return;
+    auto project_path=std::make_shared<boost::filesystem::path>(cmake->project_path);
+    if(project_path->empty())
+      return;
+    auto run_arguments_it=debug_run_arguments.find(project_path->string());
+    std::string run_arguments;
+    if(run_arguments_it!=debug_run_arguments.end())
+      run_arguments=run_arguments_it->second;
+  
+    if(run_arguments.empty()) {
+      boost::filesystem::path cmake_path;
+      if(notebook.get_current_page()!=-1)
+        cmake_path=notebook.get_current_view()->file_path.parent_path();
+      else
+        cmake_path=Directories::get().current_path;
+      if(cmake_path.empty())
+        return;
+      CMake cmake(cmake_path);
+      if(cmake.project_path.empty())
+        return;
+      auto executable=cmake.get_executable(notebook.get_current_page()!=-1?notebook.get_current_view()->file_path:"").string();
+      
+      if(executable!="") {
+        auto project_path=cmake.project_path;
+        auto debug_build_path=CMake::get_debug_build_path(project_path);
+        if(!debug_build_path.empty()) {
+          size_t pos=executable.find(project_path.string());
+          if(pos!=std::string::npos)
+            executable.replace(pos, project_path.string().size(), debug_build_path.string());
+        }
+        run_arguments=filesystem::escape_argument(executable);
+      }
+      else
+        run_arguments=filesystem::escape_argument(CMake::get_debug_build_path(cmake.project_path));
+    }
+    
+    entry_box.clear();
+    entry_box.labels.emplace_back();
+    auto label_it=entry_box.labels.begin();
+    label_it->update=[label_it](int state, const std::string& message){
+      label_it->set_text("Leave empty to let juCi++ deduce executable");
+    };
+    label_it->update(0, "");
+    entry_box.entries.emplace_back(run_arguments, [this, project_path](const std::string& content){
+      debug_run_arguments[project_path->string()]=content;
+      entry_box.hide();
+    }, 50);
+    auto entry_it=entry_box.entries.begin();
+    entry_it->set_placeholder_text("Project: Set Run Arguments");
+    entry_box.buttons.emplace_back("Project: set run arguments", [this, entry_it](){
+      entry_it->activate();
+    });
+    entry_box.show();
+  });
   menu.add_action("debug_start_continue", [this](){
     if(debugging) {
       Debug::get().continue_debug();
@@ -741,28 +799,29 @@ void Window::set_menu_actions() {
     if(!CMake::create_debug_build(project_path))
       return;
     
-    /*auto run_arguments_it=project_run_arguments.find(project_path.string());
+    auto run_arguments_it=debug_run_arguments.find(project_path.string());
     std::string run_arguments;
-    if(run_arguments_it!=project_run_arguments.end())
-      run_arguments=run_arguments_it->second;*/
+    if(run_arguments_it!=debug_run_arguments.end())
+      run_arguments=run_arguments_it->second;
     
     std::string command;
-    /*if(!run_arguments.empty()) {
+    if(!run_arguments.empty()) {
       command=run_arguments;
     }
-    else {*/
+    else {
       command=cmake->get_executable(notebook.get_current_page()!=-1?notebook.get_current_view()->file_path:"").string();
       if(command.empty()) {
         Terminal::get().print("Could not find add_executable in the following paths:\n");
         for(auto &path: cmake->paths)
           Terminal::get().print("  "+path.string()+"\n");
+        Terminal::get().print("Solution: either use Debug Set Run Arguments, or open a source file within a directory where add_executable is set.\n", true);
         return;
       }
       size_t pos=command.find(project_path.string());
       if(pos!=std::string::npos)
         command.replace(pos, project_path.string().size(), debug_build_path.string());
-      command=filesystem::escape(command);
-    //}
+      command=filesystem::escape_argument(command);
+    }
     
     auto breakpoints=std::make_shared<std::vector<std::pair<boost::filesystem::path, int> > >();
     for(int c=0;c<notebook.size();c++) {
@@ -782,7 +841,7 @@ void Window::set_menu_actions() {
       if(exit_status!=EXIT_SUCCESS)
         debugging=false;
       else {
-        Debug::get().start(breakpoints, filesystem::unescape(command), debug_build_path, [this, command](int exit_status){
+        Debug::get().start(command, debug_build_path, breakpoints, [this, command](int exit_status){
           debugging=false;
           Terminal::get().async_print(command+" returned: "+std::to_string(exit_status)+'\n');
         }, [this](const std::string &status) {
