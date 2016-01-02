@@ -962,7 +962,6 @@ void Window::set_menu_actions() {
         notebook.open(debug_stop_copy.first);
         if(notebook.get_current_page()!=-1) {
           auto view=notebook.get_current_view();
-          debug_update_stop();
           
           int line_nr=debug_stop_copy.second.first-1;
           int line_index=debug_stop_copy.second.second-1;
@@ -980,6 +979,7 @@ void Window::set_menu_actions() {
             if(notebook.get_current_page()!=-1 && notebook.get_current_view()==view)
               view->scroll_to(view->get_buffer()->get_insert(), 0.0, 1.0, 0.5);
           }
+          debug_update_stop();
         }
       }
     }
