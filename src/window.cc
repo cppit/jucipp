@@ -627,7 +627,7 @@ void Window::set_menu_actions() {
     entry_box.labels.emplace_back();
     auto label_it=entry_box.labels.begin();
     label_it->update=[label_it](int state, const std::string& message){
-      label_it->set_text("Leave empty to let juCi++ deduce executable");
+      label_it->set_text("Set empty to let juCi++ deduce executable");
     };
     label_it->update(0, "");
     entry_box.entries.emplace_back(run_arguments, [this, project_path](const std::string& content){
@@ -793,7 +793,7 @@ void Window::set_menu_actions() {
     entry_box.labels.emplace_back();
     auto label_it=entry_box.labels.begin();
     label_it->update=[label_it](int state, const std::string& message){
-      label_it->set_text("Leave empty to let juCi++ deduce executable");
+      label_it->set_text("Set empty to let juCi++ deduce executable");
     };
     label_it->update(0, "");
     entry_box.entries.emplace_back(run_arguments, [this, project_path](const std::string& content){
@@ -868,6 +868,7 @@ void Window::set_menu_actions() {
       if(exit_status!=EXIT_SUCCESS)
         debugging=false;
       else {
+        debug_start_mutex.lock();
         Debug::get().start(command, debug_build_path, breakpoints, [this, command](int exit_status){
           debugging=false;
           Terminal::get().async_print(command+" returned: "+std::to_string(exit_status)+'\n');
@@ -885,6 +886,7 @@ void Window::set_menu_actions() {
           debug_update_stop();
           //Remove debug stop source mark
         });
+        debug_start_mutex.unlock();
       }
     });
   });
@@ -1069,7 +1071,9 @@ bool Window::on_delete_event(GdkEventAny *event) {
   }
   Terminal::get().kill_async_processes();
 #ifdef JUCI_ENABLE_DEBUG
+  debug_start_mutex.lock();
   Debug::get().delete_debug();
+  debug_start_mutex.unlock();
 #endif
   return false;
 }

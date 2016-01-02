@@ -258,7 +258,6 @@ void Debug::delete_debug() {
   kill();
   if(debug_thread.joinable())
     debug_thread.join();
-  lldb::SBDebugger::Terminate();
 }
 
 std::string Debug::get_value(const std::string &variable, const boost::filesystem::path &file_path, unsigned int line_nr) {
