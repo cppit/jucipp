@@ -872,25 +872,16 @@ void Window::set_menu_actions() {
     }
   });
   menu.add_action("debug_step_over", [this]() {
-    if(debugging) {
-      auto command_return=Debug::get().run_command("thread step-over");
-      Terminal::get().async_print(command_return.first);
-      Terminal::get().async_print(command_return.second, true);
-    }
+    if(debugging)
+      Debug::get().step_over();
   });
   menu.add_action("debug_step_into", [this]() {
-    if(debugging) {
-      auto command_return=Debug::get().run_command("thread step-in");
-      Terminal::get().async_print(command_return.first);
-      Terminal::get().async_print(command_return.second, true);
-    }
+    if(debugging)
+      Debug::get().step_into();
   });
   menu.add_action("debug_step_out", [this]() {
-    if(debugging) {
-      auto command_return=Debug::get().run_command("thread step-out");
-      Terminal::get().async_print(command_return.first);
-      Terminal::get().async_print(command_return.second, true);
-    }
+    if(debugging)
+      Debug::get().step_out();
   });
   menu.add_action("debug_run_command", [this]() {
     entry_box.clear();

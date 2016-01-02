@@ -26,6 +26,9 @@ public:
   void continue_debug(); //can't use continue as function name
   void stop();
   void kill();
+  void step_over();
+  void step_into();
+  void step_out();
   std::pair<std::string, std::string> run_command(const std::string &command);
   
   void delete_debug(); //can't use delete as function name

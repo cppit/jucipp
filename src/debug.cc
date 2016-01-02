@@ -217,6 +217,30 @@ void Debug::kill() {
   event_mutex.unlock();
 }
 
+void Debug::step_over() {
+  event_mutex.lock();
+  if(state==lldb::StateType::eStateStopped) {
+    process->GetSelectedThread().StepOver();
+  }
+  event_mutex.unlock();
+}
+
+void Debug::step_into() {
+  event_mutex.lock();
+  if(state==lldb::StateType::eStateStopped) {
+    process->GetSelectedThread().StepInto();
+  }
+  event_mutex.unlock();
+}
+
+void Debug::step_out() {
+  event_mutex.lock();
+  if(state==lldb::StateType::eStateStopped) {
+    process->GetSelectedThread().StepOut();
+  }
+  event_mutex.unlock();
+}
+
 std::pair<std::string, std::string> Debug::run_command(const std::string &command) {
   std::pair<std::string, std::string> command_return;
   event_mutex.lock();
