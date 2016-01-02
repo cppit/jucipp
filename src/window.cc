@@ -145,6 +145,7 @@ Window::Window() : compiling(false), debugging(false) {
     debug_stop_mutex.unlock();
   });
   
+#ifdef JUCI_ENABLE_DEBUG
   auto &menu=Menu::get();
   menu.actions["debug_stop"]->set_enabled(false);
   menu.actions["debug_kill"]->set_enabled(false);
@@ -154,6 +155,7 @@ Window::Window() : compiling(false), debugging(false) {
   menu.actions["debug_backtrace"]->set_enabled(false);
   menu.actions["debug_run_command"]->set_enabled(false);
   menu.actions["debug_goto_stop"]->set_enabled(false);
+#endif
   debug_update_status.connect([this](){
     debug_status_mutex.lock();
     if(debug_status.empty()) {
