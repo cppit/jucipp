@@ -144,12 +144,39 @@ Window::Window() : compiling(false), debugging(false) {
     }
     debug_stop_mutex.unlock();
   });
+  
+  auto &menu=Menu::get();
+  menu.actions["debug_stop"]->set_enabled(false);
+  menu.actions["debug_kill"]->set_enabled(false);
+  menu.actions["debug_step_over"]->set_enabled(false);
+  menu.actions["debug_step_into"]->set_enabled(false);
+  menu.actions["debug_step_out"]->set_enabled(false);
+  menu.actions["debug_run_command"]->set_enabled(false);
+  menu.actions["debug_goto_stop"]->set_enabled(false);
   debug_update_status.connect([this](){
     debug_status_mutex.lock();
-    if(debug_status.empty())
+    if(debug_status.empty()) {
       debug_status_label.set_text("");
-    else
+      auto &menu=Menu::get();
+      menu.actions["debug_stop"]->set_enabled(false);
+      menu.actions["debug_kill"]->set_enabled(false);
+      menu.actions["debug_step_over"]->set_enabled(false);
+      menu.actions["debug_step_into"]->set_enabled(false);
+      menu.actions["debug_step_out"]->set_enabled(false);
+      menu.actions["debug_run_command"]->set_enabled(false);
+      menu.actions["debug_goto_stop"]->set_enabled(false);
+    }
+    else {
       debug_status_label.set_text("debug: "+debug_status);
+      auto &menu=Menu::get();
+      menu.actions["debug_stop"]->set_enabled();
+      menu.actions["debug_kill"]->set_enabled();
+      menu.actions["debug_step_over"]->set_enabled();
+      menu.actions["debug_step_into"]->set_enabled();
+      menu.actions["debug_step_out"]->set_enabled();
+      menu.actions["debug_run_command"]->set_enabled();
+      menu.actions["debug_goto_stop"]->set_enabled();
+    }
     debug_status_mutex.unlock();
   });
   
