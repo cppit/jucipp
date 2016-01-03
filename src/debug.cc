@@ -117,6 +117,16 @@ void Debug::start(const std::string &command, const boost::filesystem::path &pat
           auto state=process->GetStateFromEvent(event);
           this->state=state;
           
+          if(state==lldb::StateType::eStateStopped) {
+            for(uint32_t c=0;c<process->GetNumThreads();c++) {
+              auto thread=process->GetThreadAtIndex(c);
+              if(thread.GetStopReason()>=2) {
+                process->SetSelectedThreadByIndexID(thread.GetIndexID());
+                break;
+              }
+            }
+          }
+          
           //Update debug status
           lldb::SBStream stream;
           event.GetDescription(stream);
@@ -128,7 +138,8 @@ void Debug::start(const std::string &command, const boost::filesystem::path &pat
             if(state==lldb::StateType::eStateStopped) {
               char buffer[100];
               auto n=process->GetSelectedThread().GetStopDescription(buffer, 100);
-              status+=" ("+std::string(buffer, n)+")";
+              if(n>0)
+                status+=" ("+std::string(buffer, n<=100?n:100)+")";
             }
             status_callback(status);
           }
