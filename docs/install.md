@@ -1,21 +1,23 @@
 # juCi++ Installation Guide
 
-- Linux
-  - [Debian/Ubuntu 15](#debianubuntu-15)
-  - [Ubuntu 14/Linux Mint 17](#ubuntu-14linux-mint-17)
-  - [Arch Linux](#arch-linux)
-- OS X
-  - [Homebrew](#os-x-with-homebrew-httpbrewsh)
-- Windows
-  - [MSYS 2](#windows-with-msys2-httpsmsys2githubio)
+- Installation
+  - Linux
+    - [Debian/Ubuntu 15](#debianubuntu-15)
+    - [Ubuntu 14/Linux Mint 17](#ubuntu-14linux-mint-17)
+    - [Arch Linux](#arch-linux)
+  - OS X
+    - [Homebrew](#os-x-with-homebrew-httpbrewsh)
+  - Windows
+    - [MSYS 2](#windows-with-msys2-httpsmsys2githubio)
+- [Run](#run)
 
 ## Debian/Ubuntu 15
 **Currently, if using another libclang version, the same version of lldb is needed.**
 
 Install dependencies:
 ```sh
-sudo apt-get install git cmake make g++ pkg-config libboost-system-dev libboost-thread-dev libboost-filesystem-dev libboost-log-dev libboost-regex-dev libgtksourceviewmm-3.0-dev aspell-en libaspell-dev
 sudo apt-get install libclang-3.6-dev liblldb-3.6-dev || sudo apt-get install  libclang-3.5-dev liblldb-3.5-dev
+sudo apt-get install git cmake make g++ pkg-config libboost-system-dev libboost-thread-dev libboost-filesystem-dev libboost-log-dev libboost-regex-dev libgtksourceviewmm-3.0-dev aspell-en libaspell-dev
 sudo apt-get install clang-format-3.6 || sudo apt-get install clang-format-3.5
 ```
 
@@ -30,6 +32,8 @@ sudo make install
 ```
 
 ## Ubuntu 14/Linux Mint 17
+**Currently, if using another libclang version, the same version of lldb is needed.**
+
 Install dependencies:
 ```sh
 sudo apt-get install git cmake make g++ libclang-3.6-dev liblldb-3.6-dev clang-format-3.6 pkg-config libboost-system-dev libboost-thread-dev libboost-filesystem-dev libboost-log-dev libboost-regex-dev libgtksourceviewmm-3.0-dev aspell-en libaspell-dev
@@ -71,7 +75,9 @@ make install
 ```
 
 ## OS X with Homebrew (http://brew.sh/)
-Install dependencies (installing llvm may take some time, and you need to follow the lldb code signing instructions):
+**installing llvm may take some time, and you need to follow the lldb code signing instructions**
+
+Install dependencies:
 ```sh
 brew install --with-clang --with-lldb llvm
 brew install cmake pkg-config boost homebrew/x11/gtksourceviewmm3 aspell clang-format
