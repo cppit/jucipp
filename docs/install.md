@@ -50,7 +50,7 @@ sudo make install
 ```
 
 ##Arch Linux
-**lldb install instructions needed**
+**lldb install instructions needed.**
 
 Package available in the Arch User Repository:
 https://aur.archlinux.org/packages/jucipp-git/
@@ -75,7 +75,7 @@ make install
 ```
 
 ## OS X with Homebrew (http://brew.sh/)
-**installing llvm may take some time, and you need to follow the lldb code signing instructions**
+**Installing llvm may take some time, and you need to follow the lldb code signing instructions.**
 
 Install dependencies:
 ```sh
