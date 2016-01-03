@@ -2,8 +2,8 @@
 #include <stdio.h>
 #ifdef __APPLE__
 #include <stdlib.h>
-#include <boost/filesystem.hpp>
 #endif
+#include <boost/filesystem.hpp>
 #include <iostream>
 #include "terminal.h"
 #include "filesystem.h"
@@ -137,16 +137,23 @@ void Debug::start(const std::string &command, const boost::filesystem::path &pat
             auto status=event_desc.substr(pos+3);
             if(state==lldb::StateType::eStateStopped) {
               char buffer[100];
-              auto n=process->GetSelectedThread().GetStopDescription(buffer, 100);
+              auto thread=process->GetSelectedThread();
+              auto n=thread.GetStopDescription(buffer, 100);
               if(n>0)
                 status+=" ("+std::string(buffer, n<=100?n:100)+")";
+              auto line_entry=thread.GetSelectedFrame().GetLineEntry();
+              if(line_entry.IsValid()) {
+                lldb::SBStream stream;
+                line_entry.GetFileSpec().GetDescription(stream);
+                status +=" - "+boost::filesystem::path(stream.GetData()).filename().string()+":"+std::to_string(line_entry.GetLine());
+              }
             }
             status_callback(status);
           }
           
           if(state==lldb::StateType::eStateStopped) {
-            auto line_entry=process->GetSelectedThread().GetSelectedFrame().GetLineEntry();
             if(stop_callback) {
+              auto line_entry=process->GetSelectedThread().GetSelectedFrame().GetLineEntry();
               if(line_entry.IsValid()) {
                 lldb::SBStream stream;
                 line_entry.GetFileSpec().GetDescription(stream);
