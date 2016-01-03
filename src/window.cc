@@ -138,10 +138,11 @@ Window::Window() : compiling(false), debugging(false) {
           view->get_source_buffer()->create_source_mark("debug_stop", view->get_buffer()->get_iter_at_line(debug_stop.second.first-1));
           debug_last_stop_file_path=debug_stop.first;
         }
-        view->get_buffer()->place_cursor(view->get_buffer()->get_insert()->get_iter());
         break;
       }
     }
+    if(notebook.get_current_page()!=-1)
+      notebook.get_current_view()->get_buffer()->place_cursor(notebook.get_current_view()->get_buffer()->get_insert()->get_iter());
     debug_stop_mutex.unlock();
   });
   
