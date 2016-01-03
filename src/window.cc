@@ -938,23 +938,12 @@ void Window::set_menu_actions() {
       if(backtrace.size()==0)
         return;
       
-      std::string project_path;
-      auto cmake=get_cmake();
-      if(cmake)
-        project_path=cmake->project_path.string();
-      
       for(auto &frame: backtrace) {
         std::string row;
         if(frame.file_path.empty())
           row=frame.function_name;
         else {
-          auto file_path=frame.file_path;
-          if(!project_path.empty()) {
-            auto pos=file_path.find(project_path);
-            if(pos==0)
-              file_path.erase(0, project_path.size()+1);
-          }
-          
+          auto file_path=boost::filesystem::path(frame.file_path).filename().string();
           row="<b>"+Glib::Markup::escape_text(file_path)+":"+std::to_string(frame.line_nr)+"</b> "+Glib::Markup::escape_text(frame.function_name);
         }
         (*rows)[row]=frame;
