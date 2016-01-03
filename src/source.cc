@@ -125,11 +125,14 @@ Source::View::View(const boost::filesystem::path &file_path, const boost::filesy
   auto mark_attr_debug_breakpoint=Gsv::MarkAttributes::create();
   Gdk::RGBA rgba;
   rgba.set_red(1.0);
-  rgba.set_alpha(0.15);
+  rgba.set_green(0.5);
+  rgba.set_blue(0.5);
+  rgba.set_alpha(0.3);
   mark_attr_debug_breakpoint->set_background(rgba);
   set_mark_attributes("debug_breakpoint", mark_attr_debug_breakpoint, 100);
   auto mark_attr_debug_stop=Gsv::MarkAttributes::create();
-  rgba.set_red(0.0);
+  rgba.set_red(0.5);
+  rgba.set_green(0.5);
   rgba.set_blue(1.0);
   mark_attr_debug_stop->set_background(rgba);
   set_mark_attributes("debug_stop", mark_attr_debug_stop, 101);
