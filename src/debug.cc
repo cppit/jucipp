@@ -123,8 +123,15 @@ void Debug::start(const std::string &command, const boost::filesystem::path &pat
           std::string event_desc=stream.GetData();
           event_desc.pop_back();
           auto pos=event_desc.rfind(" = ");
-          if(status_callback && pos!=std::string::npos)
-            status_callback(event_desc.substr(pos+3));
+          if(status_callback && pos!=std::string::npos) {
+            auto status=event_desc.substr(pos+3);
+            if(state==lldb::StateType::eStateStopped) {
+              char buffer[100];
+              auto n=process->GetSelectedThread().GetStopDescription(buffer, 100);
+              status+=" ("+std::string(buffer, n)+")";
+            }
+            status_callback(status);
+          }
           
           if(state==lldb::StateType::eStateStopped) {
             auto line_entry=process->GetSelectedThread().GetSelectedFrame().GetLineEntry();
