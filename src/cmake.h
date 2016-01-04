@@ -3,6 +3,7 @@
 #include <boost/filesystem.hpp>
 #include <vector>
 #include <unordered_map>
+#include <unordered_set>
 
 class CMake {
 public:
@@ -12,7 +13,7 @@ public:
   
   static boost::filesystem::path get_default_build_path(const boost::filesystem::path &project_path);
   static boost::filesystem::path get_debug_build_path(const boost::filesystem::path &project_path);
-  static bool create_compile_commands(const boost::filesystem::path &project_path);
+  static bool create_default_build(const boost::filesystem::path &project_path, bool force=false);
   static bool create_debug_build(const boost::filesystem::path &project_path);
   
   boost::filesystem::path get_executable(const boost::filesystem::path &file_path);
@@ -30,5 +31,6 @@ private:
   void parse();
   std::vector<std::string> get_function_parameters(std::string &data);
   bool parsed=false;
+  static std::unordered_set<std::string> debug_build_needed;
 };
 #endif //JUCI_CMAKE_H_

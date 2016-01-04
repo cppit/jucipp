@@ -208,7 +208,11 @@ std::unique_ptr<CMake> Window::get_cmake() {
     path=Directories::get().current_path;
   if(path.empty())
     return nullptr;
-  return std::unique_ptr<CMake>(new CMake(path));
+  auto cmake=std::unique_ptr<CMake>(new CMake(path));
+  if(cmake->project_path.empty())
+    return nullptr;
+  CMake::create_default_build(cmake->project_path);
+  return cmake;
 }
 
 void Window::configure() {
@@ -594,29 +598,18 @@ void Window::set_menu_actions() {
     auto cmake=get_cmake();
     if(!cmake)
       return;
+    
     auto project_path=std::make_shared<boost::filesystem::path>(cmake->project_path);
-    if(project_path->empty())
-      return;
     auto run_arguments_it=project_run_arguments.find(project_path->string());
     std::string run_arguments;
     if(run_arguments_it!=project_run_arguments.end())
       run_arguments=run_arguments_it->second;
 
     if(run_arguments.empty()) {
-      boost::filesystem::path cmake_path;
-      if(notebook.get_current_page()!=-1)
-        cmake_path=notebook.get_current_view()->file_path.parent_path();
-      else
-        cmake_path=Directories::get().current_path;
-      if(cmake_path.empty())
-        return;
-      CMake cmake(cmake_path);
-      if(cmake.project_path.empty())
-        return;
-      auto executable=cmake.get_executable(notebook.get_current_page()!=-1?notebook.get_current_view()->file_path:"").string();
+      auto executable=cmake->get_executable(notebook.get_current_page()!=-1?notebook.get_current_view()->file_path:"").string();
       
       if(executable!="") {
-        auto project_path=cmake.project_path;
+        auto project_path=cmake->project_path;
         auto default_build_path=CMake::get_default_build_path(project_path);
         if(!default_build_path.empty()) {
           size_t pos=executable.find(project_path.string());
@@ -626,7 +619,7 @@ void Window::set_menu_actions() {
         run_arguments=filesystem::escape_argument(executable);
       }
       else
-        run_arguments=filesystem::escape_argument(CMake::get_default_build_path(cmake.project_path));
+        run_arguments=filesystem::escape_argument(CMake::get_default_build_path(cmake->project_path));
     }
     
     entry_box.clear();
@@ -655,8 +648,6 @@ void Window::set_menu_actions() {
     if(!cmake)
       return;
     auto project_path=cmake->project_path;
-    if(project_path.empty())
-      return;
     
     auto default_build_path=CMake::get_default_build_path(project_path);
     if(default_build_path.empty())
@@ -700,24 +691,18 @@ void Window::set_menu_actions() {
   menu.add_action("compile", [this]() {
     if(compiling)
       return;
-    boost::filesystem::path cmake_path;
-    if(notebook.get_current_page()!=-1)
-      cmake_path=notebook.get_current_view()->file_path.parent_path();
-    else
-      cmake_path=Directories::get().current_path;
-    if(cmake_path.empty())
+    auto cmake=get_cmake();
+    if(!cmake)
       return;
-    CMake cmake(cmake_path);
-    if(cmake.project_path!="") {
-      auto default_build_path=CMake::get_default_build_path(cmake.project_path);
-      if(default_build_path.empty())
-        return;
-      compiling=true;
-      Terminal::get().print("Compiling project "+cmake.project_path.string()+"\n");
-      Terminal::get().async_process(Config::get().terminal.make_command, default_build_path, [this](int exit_status){
-        compiling=false;
-      });
-    }
+    
+    auto default_build_path=CMake::get_default_build_path(cmake->project_path);
+    if(default_build_path.empty())
+      return;
+    compiling=true;
+    Terminal::get().print("Compiling project "+cmake->project_path.string()+"\n");
+    Terminal::get().async_process(Config::get().terminal.make_command, default_build_path, [this](int exit_status){
+      compiling=false;
+    });
   });
   
   menu.add_action("run_command", [this]() {
@@ -760,29 +745,18 @@ void Window::set_menu_actions() {
     auto cmake=get_cmake();
     if(!cmake)
       return;
+
     auto project_path=std::make_shared<boost::filesystem::path>(cmake->project_path);
-    if(project_path->empty())
-      return;
     auto run_arguments_it=debug_run_arguments.find(project_path->string());
     std::string run_arguments;
     if(run_arguments_it!=debug_run_arguments.end())
       run_arguments=run_arguments_it->second;
   
     if(run_arguments.empty()) {
-      boost::filesystem::path cmake_path;
-      if(notebook.get_current_page()!=-1)
-        cmake_path=notebook.get_current_view()->file_path.parent_path();
-      else
-        cmake_path=Directories::get().current_path;
-      if(cmake_path.empty())
-        return;
-      CMake cmake(cmake_path);
-      if(cmake.project_path.empty())
-        return;
-      auto executable=cmake.get_executable(notebook.get_current_page()!=-1?notebook.get_current_view()->file_path:"").string();
+      auto executable=cmake->get_executable(notebook.get_current_page()!=-1?notebook.get_current_view()->file_path:"").string();
       
       if(executable!="") {
-        auto project_path=cmake.project_path;
+        auto project_path=cmake->project_path;
         auto debug_build_path=CMake::get_debug_build_path(project_path);
         if(!debug_build_path.empty()) {
           size_t pos=executable.find(project_path.string());
@@ -792,7 +766,7 @@ void Window::set_menu_actions() {
         run_arguments=filesystem::escape_argument(executable);
       }
       else
-        run_arguments=filesystem::escape_argument(CMake::get_debug_build_path(cmake.project_path));
+        run_arguments=filesystem::escape_argument(CMake::get_debug_build_path(cmake->project_path));
     }
     
     entry_box.clear();
@@ -823,8 +797,6 @@ void Window::set_menu_actions() {
     if(!cmake)
       return;
     auto project_path=cmake->project_path;
-    if(project_path.empty())
-      return;
         
     auto debug_build_path=CMake::get_debug_build_path(project_path);
     if(debug_build_path.empty())
