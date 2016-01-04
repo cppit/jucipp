@@ -48,8 +48,6 @@ sudo make install
 ```
 
 ##Arch Linux
-**lldb install instructions needed.**
-
 Package available in the Arch User Repository:
 https://aur.archlinux.org/packages/jucipp-git/
 
@@ -57,7 +55,7 @@ Alternatively, follow the instructions below.
 
 Install dependencies:
 ```sh
-sudo pacman -S git cmake make clang gtksourceviewmm boost aspell aspell-en
+sudo pacman -S git cmake make clang lldb gtksourceviewmm boost aspell aspell-en
 ```
 
 Get juCi++ source, compile and install:
