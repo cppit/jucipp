@@ -161,7 +161,6 @@ bool CMake::create_debug_build(const boost::filesystem::path &project_path) {
     auto it=debug_build_needed.find(project_path.string());
     if(it==debug_build_needed.end())
       return true;
-    debug_build_needed.erase(it);
   }
   
   std::unique_ptr<Dialog::Message> message;
@@ -170,8 +169,12 @@ bool CMake::create_debug_build(const boost::filesystem::path &project_path) {
                                            filesystem::escape_argument(project_path)+" -DCMAKE_BUILD_TYPE=Debug", debug_build_path);
   if(message)
     message->hide();
-  if(exit_status==EXIT_SUCCESS)
+  if(exit_status==EXIT_SUCCESS) {
+    auto it=debug_build_needed.find(project_path.string());
+    if(it!=debug_build_needed.end())
+      debug_build_needed.erase(it);
     return true;
+  }
   return false;
 }
 

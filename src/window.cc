@@ -211,7 +211,8 @@ std::unique_ptr<CMake> Window::get_cmake() {
   auto cmake=std::unique_ptr<CMake>(new CMake(path));
   if(cmake->project_path.empty())
     return nullptr;
-  CMake::create_default_build(cmake->project_path);
+  if(!CMake::create_default_build(cmake->project_path))
+    return nullptr;
   return cmake;
 }
 
