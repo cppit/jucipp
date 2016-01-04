@@ -109,3 +109,7 @@ make install
 ```sh
 juci
 ```
+Alternatively, you can also include directories and files:
+```sh
+juci [directory] [file1 file2 ...]
+```
