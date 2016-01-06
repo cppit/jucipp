@@ -54,8 +54,8 @@ public:
   void write(const std::string &buffer);
     
 private:
-  lldb::SBDebugger debugger;
-  lldb::SBListener listener;
+  std::unique_ptr<lldb::SBDebugger> debugger;
+  std::unique_ptr<lldb::SBListener> listener;
   std::unique_ptr<lldb::SBProcess> process;
   std::thread debug_thread;
   

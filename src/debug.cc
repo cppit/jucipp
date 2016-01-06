@@ -27,7 +27,7 @@ void log(const char *msg, void *) {
   cout << "debugger log: " << msg << endl;
 }
 
-Debug::Debug(): listener("juCi++ lldb listener"), state(lldb::StateType::eStateInvalid), buffer_size(131072) {
+Debug::Debug(): state(lldb::StateType::eStateInvalid), buffer_size(131072) {
 #ifdef __APPLE__
   auto debugserver_path=boost::filesystem::path("/usr/local/opt/llvm/bin/debugserver");
   if(boost::filesystem::exists(debugserver_path))
@@ -40,9 +40,10 @@ void Debug::start(const std::string &command, const boost::filesystem::path &pat
                   std::function<void(int exit_status)> callback,
                   std::function<void(const std::string &status)> status_callback,
                   std::function<void(const boost::filesystem::path &file_path, int line_nr, int line_index)> stop_callback) {
-  if(!debugger.IsValid()) {
+  if(!debugger) {
     lldb::SBDebugger::Initialize();
-    debugger=lldb::SBDebugger::Create(true, log, nullptr);
+    debugger=std::unique_ptr<lldb::SBDebugger>(new lldb::SBDebugger(lldb::SBDebugger::Create(true, log, nullptr)));
+    listener=std::unique_ptr<lldb::SBListener>(new lldb::SBListener("juCi++ lldb listener"));
   }
   
   //Create executable string and argument array
@@ -78,7 +79,7 @@ void Debug::start(const std::string &command, const boost::filesystem::path &pat
     argv[c]=arguments[c].c_str();
   argv[arguments.size()]=NULL;
   
-  auto target=debugger.CreateTarget(executable.c_str());
+  auto target=debugger->CreateTarget(executable.c_str());
   if(!target.IsValid()) {
     Terminal::get().async_print("Error (debug): Could not create debug target to: "+executable+'\n', true);
     if(callback)
@@ -99,7 +100,7 @@ void Debug::start(const std::string &command, const boost::filesystem::path &pat
   }
   
   lldb::SBError error;
-  process = std::unique_ptr<lldb::SBProcess>(new lldb::SBProcess(target.Launch(listener, argv, (const char**)environ, nullptr, nullptr, nullptr, path.string().c_str(), lldb::eLaunchFlagNone, false, error)));
+  process = std::unique_ptr<lldb::SBProcess>(new lldb::SBProcess(target.Launch(*listener, argv, (const char**)environ, nullptr, nullptr, nullptr, path.string().c_str(), lldb::eLaunchFlagNone, false, error)));
   if(error.Fail()) {
     Terminal::get().async_print(std::string("Error (debug): ")+error.GetCString()+'\n', true);
     if(callback)
@@ -112,7 +113,7 @@ void Debug::start(const std::string &command, const boost::filesystem::path &pat
     lldb::SBEvent event;
     while(true) {
       event_mutex.lock();
-      if(listener.GetNextEvent(event)) {
+      if(listener->GetNextEvent(event)) {
         if((event.GetType() & lldb::SBProcess::eBroadcastBitStateChanged)>0) {
           auto state=process->GetStateFromEvent(event);
           this->state=state;
@@ -271,7 +272,7 @@ std::pair<std::string, std::string> Debug::run_command(const std::string &comman
   event_mutex.lock();
   if(state==lldb::StateType::eStateStopped) {
     lldb::SBCommandReturnObject command_return_object;
-    debugger.GetCommandInterpreter().HandleCommand(command.c_str(), command_return_object, true);
+    debugger->GetCommandInterpreter().HandleCommand(command.c_str(), command_return_object, true);
     command_return.first=command_return_object.GetOutput();
     command_return.second=command_return_object.GetError();
   }

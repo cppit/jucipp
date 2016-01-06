@@ -963,10 +963,10 @@ void Window::set_menu_actions() {
     entry_box.show();
   });
   menu.add_action("debug_toggle_breakpoint", [this](){
-    bool debug_is_stopped_or_running=Debug::get().is_stopped() || Debug::get().is_running();
-    if(Debug::get().is_invalid() || debug_is_stopped_or_running) {
-      if(notebook.get_current_page()!=-1) {
-        auto view=notebook.get_current_view();
+    if(notebook.get_current_page()!=-1) {
+    auto view=notebook.get_current_view();
+      bool debug_is_stopped_or_running=Debug::get().is_stopped() || Debug::get().is_running();
+      if(Debug::get().is_invalid() || debug_is_stopped_or_running) {
         auto line_nr=view->get_buffer()->get_insert()->get_iter().get_line();
         
         if(view->get_source_buffer()->get_source_marks_at_line(line_nr, "debug_breakpoint").size()>0) {
@@ -1057,6 +1057,17 @@ void Window::activate_menu_items(bool activate) {
   menu.actions["source_rename"]->set_enabled(activate ? static_cast<bool>(notebook.get_current_view()->rename_similar_tokens) : false);
   menu.actions["source_goto_next_diagnostic"]->set_enabled(activate ? static_cast<bool>(notebook.get_current_view()->goto_next_diagnostic) : false);
   menu.actions["source_apply_fix_its"]->set_enabled(activate ? static_cast<bool>(notebook.get_current_view()->apply_fix_its) : false);
+#ifdef JUCI_ENABLE_DEBUG
+  if(notebook.get_current_page()!=-1) {
+    auto view=notebook.get_current_view();
+    if(view->language->get_id()=="c" || view->language->get_id()=="cpp" || view->language->get_id()=="objc" || view->language->get_id()=="chdr" || view->language->get_id()=="cpphdr")
+      menu.actions["debug_toggle_breakpoint"]->set_enabled(true);
+    else
+      menu.actions["debug_toggle_breakpoint"]->set_enabled(false);
+  }
+  else
+    menu.actions["debug_toggle_breakpoint"]->set_enabled(false);
+#endif
 }
 
 bool Window::on_key_press_event(GdkEventKey *event) {
