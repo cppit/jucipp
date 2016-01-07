@@ -1060,7 +1060,7 @@ void Window::activate_menu_items(bool activate) {
 #ifdef JUCI_ENABLE_DEBUG
   if(notebook.get_current_page()!=-1) {
     auto view=notebook.get_current_view();
-    if(view->language->get_id()=="c" || view->language->get_id()=="cpp" || view->language->get_id()=="objc" || view->language->get_id()=="chdr" || view->language->get_id()=="cpphdr")
+    if(view->language && (view->language->get_id()=="c" || view->language->get_id()=="cpp" || view->language->get_id()=="objc" || view->language->get_id()=="chdr" || view->language->get_id()=="cpphdr"))
       menu.actions["debug_toggle_breakpoint"]->set_enabled(true);
     else
       menu.actions["debug_toggle_breakpoint"]->set_enabled(false);
