@@ -13,6 +13,7 @@ public:
 private:
   std::vector<boost::filesystem::path> directories;
   std::vector<boost::filesystem::path> files;
+  std::vector<std::string> errors;
 };
 
 #endif // JUCI_JUCI_H_
