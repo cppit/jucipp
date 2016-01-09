@@ -13,6 +13,7 @@ class Debug {
 public:
   class Frame {
   public:
+    std::string module_filename;
     std::string file_path;
     std::string function_name;
     int line_nr;

@@ -291,6 +291,12 @@ std::vector<Debug::Frame> Debug::get_backtrace() {
       auto function_name=frame.GetFunctionName();
       if(function_name!=NULL)
         backtrace_frame.function_name=function_name;
+      
+      auto module_filename=frame.GetModule().GetFileSpec().GetFilename();
+      if(module_filename!=NULL) {
+        backtrace_frame.module_filename=module_filename;
+      }
+      
       auto line_entry=frame.GetLineEntry();
       if(line_entry.IsValid()) {
         lldb::SBStream stream;
