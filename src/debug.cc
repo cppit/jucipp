@@ -270,7 +270,7 @@ void Debug::step_out() {
 std::pair<std::string, std::string> Debug::run_command(const std::string &command) {
   std::pair<std::string, std::string> command_return;
   event_mutex.lock();
-  if(state==lldb::StateType::eStateStopped) {
+  if(state==lldb::StateType::eStateStopped || state==lldb::StateType::eStateRunning) {
     lldb::SBCommandReturnObject command_return_object;
     debugger->GetCommandInterpreter().HandleCommand(command.c_str(), command_return_object, true);
     command_return.first=command_return_object.GetOutput();
