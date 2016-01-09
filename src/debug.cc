@@ -288,6 +288,9 @@ std::vector<Debug::Frame> Debug::get_backtrace() {
     for(uint32_t c_f=0;c_f<thread.GetNumFrames();c_f++) {
       Frame backtrace_frame;
       auto frame=thread.GetFrameAtIndex(c_f);
+      
+      backtrace_frame.index=c_f;
+      
       auto function_name=frame.GetFunctionName();
       if(function_name!=NULL)
         backtrace_frame.function_name=function_name;
@@ -313,6 +316,15 @@ std::vector<Debug::Frame> Debug::get_backtrace() {
   }
   event_mutex.unlock();
   return backtrace;
+}
+
+void Debug::select_frame(uint32_t index) {
+  event_mutex.lock();
+  if(state==lldb::StateType::eStateStopped) {
+    auto thread=process->GetSelectedThread();
+    thread.SetSelectedFrame(index);
+  }
+  event_mutex.unlock();
 }
 
 void Debug::delete_debug() {

@@ -13,6 +13,7 @@ class Debug {
 public:
   class Frame {
   public:
+    uint32_t index;
     std::string module_filename;
     std::string file_path;
     std::string function_name;
@@ -40,6 +41,7 @@ public:
   void step_out();
   std::pair<std::string, std::string> run_command(const std::string &command);
   std::vector<Frame> get_backtrace();
+  void select_frame(uint32_t index);
   
   void delete_debug(); //can't use delete as function name
   
