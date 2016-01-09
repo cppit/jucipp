@@ -1195,6 +1195,8 @@ Source::ClangViewAutocomplete(file_path, project_path, language) {
   goto_method=[this](){    
     if(parsed) {
       auto iter=get_buffer()->get_insert()->get_iter();
+      if(iter.get_line_offset()>=80)
+        iter=get_buffer()->get_iter_at_line(iter.get_line());
       Gdk::Rectangle visible_rect;
       get_visible_rect(visible_rect);
       Gdk::Rectangle iter_rect;

@@ -514,6 +514,8 @@ void Window::set_menu_actions() {
         auto token=current_view->get_token();
         if(token) {
           auto iter=current_view->get_buffer()->get_insert()->get_iter();
+          if(iter.get_line_offset()>=80)
+            iter=current_view->get_buffer()->get_iter_at_line(iter.get_line());
           Gdk::Rectangle visible_rect;
           current_view->get_visible_rect(visible_rect);
           Gdk::Rectangle iter_rect;
@@ -898,6 +900,8 @@ void Window::set_menu_actions() {
       auto view=notebook.get_current_view();
       auto buffer=view->get_buffer();
       auto iter=buffer->get_insert()->get_iter();
+      if(iter.get_line_offset()>=80)
+        iter=buffer->get_iter_at_line(iter.get_line());
       Gdk::Rectangle visible_rect;
       view->get_visible_rect(visible_rect);
       Gdk::Rectangle iter_rect;
@@ -913,11 +917,16 @@ void Window::set_menu_actions() {
       
       for(auto &frame: backtrace) {
         std::string row="<i>"+frame.module_filename+"</i>";
+        
+        //Shorten frame.function_name if it is too long
+        if(frame.function_name.size()>120) {
+          frame.function_name=frame.function_name.substr(0, 58)+"...."+frame.function_name.substr(frame.function_name.size()-58);
+        }
         if(frame.file_path.empty())
-          row+=" - "+frame.function_name;
+          row+=" - "+Glib::Markup::escape_text(frame.function_name);
         else {
           auto file_path=boost::filesystem::path(frame.file_path).filename().string();
-          row+=":<b>"+Glib::Markup::escape_text(file_path)+":"+std::to_string(frame.line_nr)+"</b> - "+Glib::Markup::escape_text(frame.function_name);
+          row+="<i>:</i><b>"+Glib::Markup::escape_text(file_path)+":"+std::to_string(frame.line_nr)+"</b> - "+Glib::Markup::escape_text(frame.function_name);
         }
         (*rows)[row]=frame;
         view->selection_dialog->add_row(row);
