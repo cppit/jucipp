@@ -428,7 +428,7 @@ void Source::ClangViewParse::show_type_tooltips(const Gdk::Rectangle &rectangle)
                   next_char_iter++;
                   debug_value.replace(iter, next_char_iter, "?");
                 }
-                tooltip_buffer->insert_with_tag(tooltip_buffer->get_insert()->get_iter(), "\n\nValue: "+debug_value.substr(pos+3, debug_value.size()-4), "def:note");
+                tooltip_buffer->insert_with_tag(tooltip_buffer->get_insert()->get_iter(), "\n\nValue: "+debug_value.substr(pos+3, debug_value.size()-(pos+3)-1), "def:note");
               }
             }
 #endif
