@@ -417,18 +417,26 @@ void Source::ClangViewParse::show_type_tooltips(const Gdk::Rectangle &rectangle)
               tooltip_buffer->insert_with_tag(tooltip_buffer->get_insert()->get_iter(), "\n\n"+brief_comment, "def:note");
 
 #ifdef JUCI_ENABLE_DEBUG
-            auto location=token.get_cursor().get_referenced().get_source_location();
-            Glib::ustring debug_value=Debug::get().get_value(token.get_spelling(), location.get_path(), location.get_offset().line);
-            if(!debug_value.empty()) {
-              size_t pos=debug_value.find(" = ");
-              if(pos!=Glib::ustring::npos) {
-                Glib::ustring::iterator iter;
-                while(!debug_value.validate(iter)) {
-                  auto next_char_iter=iter;
-                  next_char_iter++;
-                  debug_value.replace(iter, next_char_iter, "?");
+            if(Debug::get().is_stopped()) {
+              auto location=token.get_cursor().get_referenced().get_source_location();
+              Glib::ustring value_type="Value";
+              Glib::ustring debug_value=Debug::get().get_value(token.get_spelling(), location.get_path(), location.get_offset().line);
+              if(debug_value.empty()) {
+                value_type="Return value";
+                auto location=token.get_cursor().get_source_location();
+                debug_value=Debug::get().get_return_value(token.get_spelling(), location.get_path(), location.get_offset().line, location.get_offset().index);
+              }
+              if(!debug_value.empty()) {
+                size_t pos=debug_value.find(" = ");
+                if(pos!=Glib::ustring::npos) {
+                  Glib::ustring::iterator iter;
+                  while(!debug_value.validate(iter)) {
+                    auto next_char_iter=iter;
+                    next_char_iter++;
+                    debug_value.replace(iter, next_char_iter, "?");
+                  }
+                  tooltip_buffer->insert_with_tag(tooltip_buffer->get_insert()->get_iter(), "\n\n"+value_type+": "+debug_value.substr(pos+3, debug_value.size()-(pos+3)-1), "def:note");
                 }
-                tooltip_buffer->insert_with_tag(tooltip_buffer->get_insert()->get_iter(), "\n\nValue: "+debug_value.substr(pos+3, debug_value.size()-(pos+3)-1), "def:note");
               }
             }
 #endif

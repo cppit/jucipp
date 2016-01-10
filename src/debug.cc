@@ -375,6 +375,29 @@ std::string Debug::get_value(const std::string &variable, const boost::filesyste
   return variable_value;
 }
 
+std::string Debug::get_return_value(const std::string &variable, const boost::filesystem::path &file_path, unsigned int line_nr, unsigned int line_index) {
+  std::string return_value;
+  event_mutex.lock();
+  if(state==lldb::StateType::eStateStopped) {
+    auto thread=process->GetSelectedThread();
+    auto thread_return_value=thread.GetStopReturnValue();
+    if(thread_return_value.IsValid()) {
+      auto line_entry=thread.GetSelectedFrame().GetLineEntry();
+      if(line_entry.IsValid()) {
+        lldb::SBStream stream;
+        line_entry.GetFileSpec().GetDescription(stream);
+        if(boost::filesystem::path(stream.GetData())==file_path && line_entry.GetLine()==line_nr && line_entry.GetColumn()==line_index) {
+          lldb::SBStream stream;
+          thread_return_value.GetDescription(stream);
+          return_value=stream.GetData();
+        }
+      }
+    }
+  }
+  event_mutex.unlock();
+  return return_value;
+}
+
 bool Debug::is_invalid() {
   bool invalid;
   event_mutex.lock();
