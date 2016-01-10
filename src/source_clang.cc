@@ -418,12 +418,18 @@ void Source::ClangViewParse::show_type_tooltips(const Gdk::Rectangle &rectangle)
 
 #ifdef JUCI_ENABLE_DEBUG
             auto location=token.get_cursor().get_referenced().get_source_location();
-            auto debug_value=Debug::get().get_value(token.get_spelling(), location.get_path(), location.get_offset().line);
+            Glib::ustring debug_value=Debug::get().get_value(token.get_spelling(), location.get_path(), location.get_offset().line);
             if(!debug_value.empty()) {
-              debug_value.pop_back();
               size_t pos=debug_value.find(" = ");
-              if(pos!=std::string::npos)
-                tooltip_buffer->insert_with_tag(tooltip_buffer->get_insert()->get_iter(), "\n\nValue: "+debug_value.substr(pos+3), "def:note");
+              if(pos!=Glib::ustring::npos) {
+                Glib::ustring::iterator iter;
+                while(!debug_value.validate(iter)) {
+                  auto next_char_iter=iter;
+                  next_char_iter++;
+                  debug_value.replace(iter, next_char_iter, "?");
+                }
+                tooltip_buffer->insert_with_tag(tooltip_buffer->get_insert()->get_iter(), "\n\nValue: "+debug_value.substr(pos+3, debug_value.size()-4), "def:note");
+              }
             }
 #endif
             
