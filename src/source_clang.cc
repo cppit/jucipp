@@ -424,7 +424,7 @@ void Source::ClangViewParse::show_type_tooltips(const Gdk::Rectangle &rectangle)
               if(debug_value.empty()) {
                 value_type="Return value";
                 auto location=token.get_cursor().get_source_location();
-                debug_value=Debug::get().get_return_value(token.get_spelling(), location.get_path(), location.get_offset().line, location.get_offset().index);
+                debug_value=Debug::get().get_return_value(location.get_path(), location.get_offset().line, location.get_offset().index);
               }
               if(!debug_value.empty()) {
                 size_t pos=debug_value.find(" = ");
