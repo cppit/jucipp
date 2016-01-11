@@ -393,9 +393,7 @@ std::string Debug::get_return_value(const std::string &function_name, const boos
       if(line_entry.IsValid()) {
         lldb::SBStream stream;
         line_entry.GetFileSpec().GetDescription(stream);
-        auto pos=last_function_name.find('[');
-        if(pos==std::string::npos)
-          pos=last_function_name.find('(');
+        auto pos=last_function_name.find('(');
         if(pos!=std::string::npos && last_function_name.substr(0, pos)==function_name && boost::filesystem::path(stream.GetData())==file_path) {
           lldb::SBStream stream;
           thread_return_value.GetDescription(stream);
