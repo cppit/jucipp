@@ -126,13 +126,6 @@ void Debug::start(const std::string &command, const boost::filesystem::path &pat
                 break;
               }
             }
-            
-            last_function_name=current_function_name;
-            auto function_name_cstr=process->GetSelectedThread().GetSelectedFrame().GetFunctionName();
-            if(function_name_cstr!=NULL)
-              current_function_name=function_name_cstr;
-            else
-              current_function_name.clear();
           }
           
           //Update debug status
@@ -382,7 +375,7 @@ std::string Debug::get_value(const std::string &variable, const boost::filesyste
   return variable_value;
 }
 
-std::string Debug::get_return_value(const std::string &function_name, const boost::filesystem::path &file_path) {
+std::string Debug::get_return_value(const boost::filesystem::path &file_path, unsigned int line_nr, unsigned int line_index) {
   std::string return_value;
   event_mutex.lock();
   if(state==lldb::StateType::eStateStopped) {
@@ -393,8 +386,8 @@ std::string Debug::get_return_value(const std::string &function_name, const boos
       if(line_entry.IsValid()) {
         lldb::SBStream stream;
         line_entry.GetFileSpec().GetDescription(stream);
-        auto pos=last_function_name.find('(');
-        if(pos!=std::string::npos && last_function_name.substr(0, pos)==function_name && boost::filesystem::path(stream.GetData())==file_path) {
+        if(boost::filesystem::path(stream.GetData())==file_path && line_entry.GetLine()==line_nr &&
+           (line_entry.GetColumn()==0 || line_entry.GetColumn()==line_index)) {
           lldb::SBStream stream;
           thread_return_value.GetDescription(stream);
           return_value=stream.GetData();

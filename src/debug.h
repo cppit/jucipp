@@ -46,7 +46,7 @@ public:
   void delete_debug(); //can't use delete as function name
   
   std::string get_value(const std::string &variable, const boost::filesystem::path &file_path, unsigned int line_nr);
-  std::string get_return_value(const std::string &function_name, const boost::filesystem::path &file_path);
+  std::string get_return_value(const boost::filesystem::path &file_path, unsigned int line_nr, unsigned int line_index);
   
   bool is_invalid();
   bool is_stopped();
@@ -67,9 +67,6 @@ private:
   std::mutex event_mutex;
   
   size_t buffer_size;
-  
-  std::string last_function_name;
-  std::string current_function_name;
 };
 
 #endif
