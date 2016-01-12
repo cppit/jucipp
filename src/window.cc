@@ -1012,6 +1012,10 @@ void Window::set_menu_actions() {
       };
       
       view->selection_dialog->on_changed=[this, rows, iter](const std::string &selected) {
+        if(selected.empty()) {
+          debug_variable_tooltips->hide();
+          return;
+        }
         if(notebook.get_current_page()!=-1) {
           auto view=notebook.get_current_view();
           debug_variable_tooltips=std::unique_ptr<Tooltips>(new Tooltips());
