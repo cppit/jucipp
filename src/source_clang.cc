@@ -182,7 +182,11 @@ void Source::ClangViewParse::soft_reparse() {
 }
 
 std::vector<std::string> Source::ClangViewParse::get_compilation_commands() {
-  clang::CompilationDatabase db(CMake::get_default_build_path(project_path).string());
+  boost::filesystem::path default_build_path;
+  if(boost::filesystem::exists(project_path/"CMakeLists.txt"))
+    default_build_path=CMake::get_default_build_path(project_path);
+  
+  clang::CompilationDatabase db(default_build_path.string());
   clang::CompileCommands commands(file_path.string(), db);
   std::vector<clang::CompileCommand> cmds = commands.get_commands();
   std::vector<std::string> arguments;
