@@ -318,6 +318,48 @@ std::vector<Debug::Frame> Debug::get_backtrace() {
   return backtrace;
 }
 
+std::vector<Debug::Variable> Debug::get_variables() {
+  vector<Debug::Variable> variables;
+  event_mutex.lock();
+  if(state==lldb::StateType::eStateStopped) {
+    for(uint32_t c_t=0;c_t<process->GetNumThreads();c_t++) {
+      auto thread=process->GetThreadAtIndex(c_t);
+      for(uint32_t c_f=0;c_f<thread.GetNumFrames();c_f++) {
+        auto frame=thread.GetFrameAtIndex(c_f);
+        auto values=frame.GetVariables(true, true, true, false);
+        for(uint32_t value_index=0;value_index<values.GetSize();value_index++) {
+          lldb::SBStream stream;
+          auto value=values.GetValueAtIndex(value_index);
+        
+          auto declaration=value.GetDeclaration();
+          if(declaration.IsValid()) {
+            Debug::Variable variable;
+            
+            variable.frame_index=c_f;
+            variable.name=value.GetName();
+            
+            variable.line_nr=declaration.GetLine();
+            variable.line_index=declaration.GetColumn();
+            if(variable.line_index==0)
+              variable.line_index=1;
+            
+            auto file_spec=declaration.GetFileSpec();
+            variable.file_path=file_spec.GetDirectory();
+            variable.file_path/=file_spec.GetFilename();
+            
+            value.GetDescription(stream);
+            variable.value=stream.GetData();
+            
+            variables.emplace_back(variable);
+          }
+        }
+      }
+    }
+  }
+  event_mutex.unlock();
+  return variables;
+}
+
 void Debug::select_frame(uint32_t index) {
   event_mutex.lock();
   if(state==lldb::StateType::eStateStopped) {

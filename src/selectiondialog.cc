@@ -72,6 +72,18 @@ list_view_text(use_markup), start_mark(start_mark), show_search_entry(show_searc
     });
   }
   
+  list_view_text.signal_cursor_changed().connect([this]() {
+    if(!shown)
+      return;
+    auto it=list_view_text.get_selection()->get_selected();
+    if(it) {
+      std::string row;
+      it->get_value(0, row);
+      if(on_changed)
+        on_changed(row);
+    }
+  });
+  
   scrolled_window.add(list_view_text);
   if(!show_search_entry)
     window->add(scrolled_window);
@@ -102,13 +114,13 @@ void SelectionDialogBase::show() {
 void SelectionDialogBase::hide() {
   if(!shown)
     return;
+  shown=false;
   window->hide();
   if(tooltips)
     tooltips->hide();
   if(on_hide)
     on_hide();
   list_view_text.clear();
-  shown=false;
 }
 
 void SelectionDialogBase::update_tooltips() {

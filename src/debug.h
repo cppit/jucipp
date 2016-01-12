@@ -20,6 +20,15 @@ public:
     int line_nr;
     int line_index;
   };
+  class Variable {
+  public:
+    uint32_t frame_index;
+    std::string name;
+    std::string value;
+    boost::filesystem::path file_path;
+    int line_nr;
+    int line_index;
+  };
 private:
   Debug();
 public:
@@ -41,6 +50,7 @@ public:
   void step_out();
   std::pair<std::string, std::string> run_command(const std::string &command);
   std::vector<Frame> get_backtrace();
+  std::vector<Variable> get_variables();
   void select_frame(uint32_t index);
   
   void delete_debug(); //can't use delete as function name

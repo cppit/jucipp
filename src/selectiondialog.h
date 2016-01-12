@@ -35,6 +35,7 @@ public:
   virtual void move();
   
   std::function<void()> on_hide;
+  std::function<void(const std::string &selected)> on_changed;
   std::function<void(const std::string& selected, bool hide_window)> on_select;
   Glib::RefPtr<Gtk::TextBuffer::Mark> start_mark;
   

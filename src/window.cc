@@ -154,6 +154,7 @@ Window::Window() : compiling(false), debugging(false) {
   menu.actions["debug_step_into"]->set_enabled(false);
   menu.actions["debug_step_out"]->set_enabled(false);
   menu.actions["debug_backtrace"]->set_enabled(false);
+  menu.actions["debug_show_variables"]->set_enabled(false);
   menu.actions["debug_run_command"]->set_enabled(false);
   menu.actions["debug_goto_stop"]->set_enabled(false);
 #endif
@@ -168,6 +169,7 @@ Window::Window() : compiling(false), debugging(false) {
       menu.actions["debug_step_into"]->set_enabled(false);
       menu.actions["debug_step_out"]->set_enabled(false);
       menu.actions["debug_backtrace"]->set_enabled(false);
+      menu.actions["debug_show_variables"]->set_enabled(false);
       menu.actions["debug_run_command"]->set_enabled(false);
       menu.actions["debug_goto_stop"]->set_enabled(false);
     }
@@ -180,6 +182,7 @@ Window::Window() : compiling(false), debugging(false) {
       menu.actions["debug_step_into"]->set_enabled();
       menu.actions["debug_step_out"]->set_enabled();
       menu.actions["debug_backtrace"]->set_enabled();
+      menu.actions["debug_show_variables"]->set_enabled();
       menu.actions["debug_run_command"]->set_enabled();
       menu.actions["debug_goto_stop"]->set_enabled();
     }
@@ -950,6 +953,92 @@ void Window::set_menu_actions() {
           }
         }
       };
+      view->selection_dialog->show();
+    }
+  });
+  menu.add_action("debug_show_variables", [this]() {
+    if(debugging && notebook.get_current_page()!=-1) {
+      auto variables=Debug::get().get_variables();
+      
+      auto view=notebook.get_current_view();
+      auto buffer=view->get_buffer();
+      auto iter=buffer->get_insert()->get_iter();
+      if(iter.get_line_offset()>=80)
+        iter=buffer->get_iter_at_line(iter.get_line());
+      Gdk::Rectangle visible_rect;
+      view->get_visible_rect(visible_rect);
+      Gdk::Rectangle iter_rect;
+      view->get_iter_location(iter, iter_rect);
+      iter_rect.set_width(1);
+      if(!visible_rect.intersects(iter_rect)) {
+        view->get_iter_at_location(iter, 0, visible_rect.get_y()+visible_rect.get_height()/3);
+      }
+      view->selection_dialog=std::unique_ptr<SelectionDialog>(new SelectionDialog(*view, buffer->create_mark(iter), true, true));
+      auto rows=std::make_shared<std::unordered_map<std::string, Debug::Variable> >();
+      if(variables.size()==0)
+        return;
+      
+      for(auto &variable: variables) {
+        std::string row=variable.file_path.filename().string()+":"+std::to_string(variable.line_nr)+" - <b>"+Glib::Markup::escape_text(variable.name)+"</b>";
+        
+        (*rows)[row]=variable;
+        view->selection_dialog->add_row(row);
+      }
+      
+      view->selection_dialog->on_select=[this, rows](const std::string& selected, bool hide_window) {
+        auto variable=rows->at(selected);
+        if(!variable.file_path.empty()) {
+          notebook.open(variable.file_path);
+          if(notebook.get_current_page()!=-1) {
+            auto view=notebook.get_current_view();
+            
+            Debug::get().select_frame(variable.frame_index);
+            
+            view->get_buffer()->place_cursor(view->get_buffer()->get_iter_at_line_index(variable.line_nr-1, variable.line_index-1));
+            
+            while(g_main_context_pending(NULL))
+              g_main_context_iteration(NULL, false);
+            if(notebook.get_current_page()!=-1 && notebook.get_current_view()==view)
+              view->scroll_to(view->get_buffer()->get_insert(), 0.0, 1.0, 0.5);
+          }
+        }
+      };
+      
+      view->selection_dialog->on_hide=[this]() {
+        if(debug_variable_tooltips) {
+          debug_variable_tooltips->hide();
+          debug_variable_tooltips.reset();
+        }
+      };
+      
+      view->selection_dialog->on_changed=[this, rows, iter](const std::string &selected) {
+        if(notebook.get_current_page()!=-1) {
+          auto view=notebook.get_current_view();
+          debug_variable_tooltips=std::unique_ptr<Tooltips>(new Tooltips());
+          auto create_tooltip_buffer=[this, rows, view, selected]() {
+            auto variable=rows->at(selected);
+            auto tooltip_buffer=Gtk::TextBuffer::create(view->get_buffer()->get_tag_table());
+            
+            Glib::ustring value=variable.value;
+            if(!value.empty()) {
+              Glib::ustring::iterator iter;
+              while(!value.validate(iter)) {
+                auto next_char_iter=iter;
+                next_char_iter++;
+                value.replace(iter, next_char_iter, "?");
+              } 
+              tooltip_buffer->insert_with_tag(tooltip_buffer->get_insert()->get_iter(), value.substr(0, value.size()-1), "def:note");
+            }
+            
+            return tooltip_buffer;
+          };
+          
+          debug_variable_tooltips->emplace_back(create_tooltip_buffer, *view, view->get_buffer()->create_mark(iter), view->get_buffer()->create_mark(iter));
+      
+          debug_variable_tooltips->show(true);
+        }
+      };
+      
       view->selection_dialog->show();
     }
   });

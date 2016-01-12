@@ -320,6 +320,11 @@ Menu::Menu() {
   "          <attribute name='action'>app.debug_backtrace</attribute>"
              +accels["debug_backtrace"]+ //For Ubuntu...
   "        </item>"
+  "        <item>"
+  "          <attribute name='label' translatable='yes'>_Show _Variables</attribute>"
+  "          <attribute name='action'>app.debug_show_variables</attribute>"
+             +accels["debug_show_variables"]+ //For Ubuntu...
+  "        </item>"
   "      </section>"
   "      <section>"
   "        <item>"
