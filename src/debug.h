@@ -22,6 +22,7 @@ public:
   };
   class Variable {
   public:
+    uint32_t thread_index_id;
     uint32_t frame_index;
     std::string name;
     std::string value;
@@ -55,7 +56,7 @@ public:
   
   void delete_debug(); //can't use delete as function name
   
-  std::string get_value(const std::string &variable, const boost::filesystem::path &file_path, unsigned int line_nr);
+  std::string get_value(const std::string &variable, const boost::filesystem::path &file_path, unsigned int line_nr, unsigned int line_index);
   std::string get_return_value(const boost::filesystem::path &file_path, unsigned int line_nr, unsigned int line_index);
   
   bool is_invalid();

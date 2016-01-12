@@ -24,7 +24,7 @@ using namespace std; //TODO: remove
 extern char **environ;
 
 void log(const char *msg, void *) {
-  cout << "debugger log: " << msg << endl;
+  std::cout << "debugger log: " << msg << std::endl;
 }
 
 Debug::Debug(): state(lldb::StateType::eStateInvalid), buffer_size(131072) {
@@ -211,7 +211,7 @@ void Debug::start(const std::string &command, const boost::filesystem::path &pat
         }
       }
       event_mutex.unlock();
-      this_thread::sleep_for(std::chrono::milliseconds(200));
+      std::this_thread::sleep_for(std::chrono::milliseconds(200));
     }
   });
 }
@@ -319,7 +319,7 @@ std::vector<Debug::Frame> Debug::get_backtrace() {
 }
 
 std::vector<Debug::Variable> Debug::get_variables() {
-  vector<Debug::Variable> variables;
+  std::vector<Debug::Variable> variables;
   event_mutex.lock();
   if(state==lldb::StateType::eStateStopped) {
     for(uint32_t c_t=0;c_t<process->GetNumThreads();c_t++) {
@@ -335,6 +335,7 @@ std::vector<Debug::Variable> Debug::get_variables() {
           if(declaration.IsValid()) {
             Debug::Variable variable;
             
+            variable.thread_index_id=thread.GetIndexID();
             variable.frame_index=c_f;
             variable.name=value.GetName();
             
@@ -375,7 +376,7 @@ void Debug::delete_debug() {
     debug_thread.join();
 }
 
-std::string Debug::get_value(const std::string &variable, const boost::filesystem::path &file_path, unsigned int line_nr) {
+std::string Debug::get_value(const std::string &variable, const boost::filesystem::path &file_path, unsigned int line_nr, unsigned int line_index) {
   std::string variable_value;
   event_mutex.lock();
   if(state==lldb::StateType::eStateStopped) {
@@ -390,7 +391,7 @@ std::string Debug::get_value(const std::string &variable, const boost::filesyste
       if(value.GetName()==variable) {
         auto declaration=value.GetDeclaration();
         if(declaration.IsValid()) {
-          if(declaration.GetLine()==line_nr) {
+          if(declaration.GetLine()==line_nr && (declaration.GetColumn()==0 || declaration.GetColumn()==line_index)) {
             auto file_spec=declaration.GetFileSpec();
             boost::filesystem::path value_decl_path=file_spec.GetDirectory();
             value_decl_path/=file_spec.GetFilename();

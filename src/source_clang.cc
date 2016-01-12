@@ -420,7 +420,7 @@ void Source::ClangViewParse::show_type_tooltips(const Gdk::Rectangle &rectangle)
             if(Debug::get().is_stopped()) {
               auto location=token.get_cursor().get_referenced().get_source_location();
               Glib::ustring value_type="Value";
-              Glib::ustring debug_value=Debug::get().get_value(token.get_spelling(), location.get_path(), location.get_offset().line);
+              Glib::ustring debug_value=Debug::get().get_value(token.get_spelling(), location.get_path(), location.get_offset().line, location.get_offset().index);
               if(debug_value.empty()) {
                 value_type="Return value";
                 auto location=token.get_cursor().get_source_location();

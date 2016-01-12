@@ -979,7 +979,7 @@ void Window::set_menu_actions() {
         return;
       
       for(auto &variable: variables) {
-        std::string row=variable.file_path.filename().string()+":"+std::to_string(variable.line_nr)+" - <b>"+Glib::Markup::escape_text(variable.name)+"</b>";
+        std::string row="#"+std::to_string(variable.thread_index_id)+":#"+std::to_string(variable.frame_index)+":"+variable.file_path.filename().string()+":"+std::to_string(variable.line_nr)+" - <b>"+Glib::Markup::escape_text(variable.name)+"</b>";
         
         (*rows)[row]=variable;
         view->selection_dialog->add_row(row);
