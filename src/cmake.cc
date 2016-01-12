@@ -36,9 +36,6 @@ CMake::CMake(const boost::filesystem::path &path) {
 }
 
 boost::filesystem::path CMake::get_default_build_path(const boost::filesystem::path &project_path) {
-  if(!boost::filesystem::exists(project_path/"CMakeLists.txt"))
-    return boost::filesystem::path();
-  
   boost::filesystem::path default_build_path=Config::get().terminal.default_build_path;
   
   const std::string path_variable_project_directory_name="<project_directory_name>";
@@ -54,23 +51,11 @@ boost::filesystem::path CMake::get_default_build_path(const boost::filesystem::p
   
   if(default_build_path.is_relative())
     default_build_path=project_path/default_build_path;
-    
-  if(!boost::filesystem::exists(default_build_path)) {
-    boost::system::error_code ec;
-    boost::filesystem::create_directories(default_build_path, ec);
-    if(ec) {
-      Terminal::get().print("Error: could not create "+default_build_path.string()+": "+ec.message()+"\n", true);
-      return boost::filesystem::path();
-    }
-  }
   
   return default_build_path;
 }
 
 boost::filesystem::path CMake::get_debug_build_path(const boost::filesystem::path &project_path) {
-  if(!boost::filesystem::exists(project_path/"CMakeLists.txt"))
-    return boost::filesystem::path();
-  
   boost::filesystem::path debug_build_path=Config::get().terminal.debug_build_path;
   
   const std::string path_variable_project_directory_name="<project_directory_name>";
@@ -95,18 +80,8 @@ boost::filesystem::path CMake::get_debug_build_path(const boost::filesystem::pat
   if(pos!=0)
     debug_build_path=debug_build_path_string;
   
-  
   if(debug_build_path.is_relative())
     debug_build_path=project_path/debug_build_path;
-    
-  if(!boost::filesystem::exists(debug_build_path)) {
-    boost::system::error_code ec;
-    boost::filesystem::create_directories(debug_build_path, ec);
-    if(ec) {
-      Terminal::get().print("Error: could not create "+debug_build_path.string()+": "+ec.message()+"\n", true);
-      return boost::filesystem::path();
-    }
-  }
   
   return debug_build_path;
 }
@@ -115,9 +90,20 @@ bool CMake::create_default_build(const boost::filesystem::path &project_path, bo
   if(project_path.empty())
     return false;
   
+  if(!boost::filesystem::exists(project_path/"CMakeLists.txt"))
+    return false;
+  
   auto default_build_path=get_default_build_path(project_path);
   if(default_build_path.empty())
     return false;
+  if(!boost::filesystem::exists(default_build_path)) {
+    boost::system::error_code ec;
+    boost::filesystem::create_directories(default_build_path, ec);
+    if(ec) {
+      Terminal::get().print("Error: could not create "+default_build_path.string()+": "+ec.message()+"\n", true);
+      return false;
+    }
+  }
   
   if(!force && boost::filesystem::exists(default_build_path/"compile_commands.json"))
     return true;
@@ -152,10 +138,21 @@ bool CMake::create_default_build(const boost::filesystem::path &project_path, bo
 bool CMake::create_debug_build(const boost::filesystem::path &project_path) {
   if(project_path.empty())
     return false;
-    
+  
+  if(!boost::filesystem::exists(project_path/"CMakeLists.txt"))
+    return false;
+  
   auto debug_build_path=get_debug_build_path(project_path);
   if(debug_build_path.empty())
     return false;
+  if(!boost::filesystem::exists(debug_build_path)) {
+    boost::system::error_code ec;
+    boost::filesystem::create_directories(debug_build_path, ec);
+    if(ec) {
+      Terminal::get().print("Error: could not create "+debug_build_path.string()+": "+ec.message()+"\n", true);
+      return false;
+    }
+  }
   
   if(boost::filesystem::exists(debug_build_path/"CMakeCache.txt")) {
     auto it=debug_build_needed.find(project_path.string());

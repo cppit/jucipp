@@ -257,6 +257,9 @@ bool Notebook::save(int page) {
             project_path=cmake.project_path;
         }
         if(project_path!="") {
+          auto debug_project_path=CMake::get_debug_build_path(project_path);
+          if(!debug_project_path.empty() && boost::filesystem::exists(debug_project_path))
+            CMake::create_debug_build(project_path);
           for(auto source_view: source_views) {
             if(auto source_clang_view=dynamic_cast<Source::ClangView*>(source_view)) {
               if(project_path==source_clang_view->project_path)
