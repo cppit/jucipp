@@ -68,6 +68,20 @@ list_view_text(use_markup), start_mark(start_mark), show_search_entry(show_searc
     dialog->get_vbox()->pack_start(scrolled_window, true, true);
     dialog->set_transient_for((Gtk::Window&)(*text_view.get_toplevel()));
   }
+  
+  list_view_text.signal_cursor_changed().connect([this]() {
+    if(!shown)
+      return;
+    auto it=list_view_text.get_selection()->get_selected();
+    std::string row;
+    if(it)
+      it->get_value(0, row);
+    if(last_row==row)
+      return;
+    if(on_changed)
+      on_changed(row);
+    last_row=row;
+  });
 }
 
 SelectionDialogBase::~SelectionDialogBase() {
@@ -129,21 +143,7 @@ void SelectionDialogBase::resize() {
   }
 }
 
-SelectionDialog::SelectionDialog(Gtk::TextView& text_view, Glib::RefPtr<Gtk::TextBuffer::Mark> start_mark, bool show_search_entry, bool use_markup) : SelectionDialogBase(text_view, start_mark, show_search_entry, use_markup) {
-  list_view_text.signal_cursor_changed().connect([this]() {
-    if(!shown)
-      return;
-    auto it=list_view_text.get_selection()->get_selected();
-    std::string row;
-    if(it)
-      it->get_value(0, row);
-    if(last_row==row)
-      return;
-    if(on_changed)
-      on_changed(row);
-    last_row=row;
-  });
-}
+SelectionDialog::SelectionDialog(Gtk::TextView& text_view, Glib::RefPtr<Gtk::TextBuffer::Mark> start_mark, bool show_search_entry, bool use_markup) : SelectionDialogBase(text_view, start_mark, show_search_entry, use_markup) {}
 
 void SelectionDialog::show() {
   SelectionDialogBase::show();
@@ -282,26 +282,7 @@ bool SelectionDialog::on_key_press(GdkEventKey* key) {
   return false;
 }
 
-CompletionDialog::CompletionDialog(Gtk::TextView& text_view, Glib::RefPtr<Gtk::TextBuffer::Mark> start_mark) : SelectionDialogBase(text_view, start_mark, false, false) {
-  list_view_text.signal_event_after().connect([this](GdkEvent* event){
-    if(event->type==GDK_KEY_PRESS || event->type==GDK_BUTTON_PRESS) {
-      update_tooltips();
-    }
-  });
-  if(show_search_entry) {
-    search_entry.signal_event_after().connect([this](GdkEvent* event){
-      if(event->type==GDK_KEY_PRESS || event->type==GDK_BUTTON_PRESS) {
-        update_tooltips();
-      }
-    });
-  }
-}
-
-void CompletionDialog::add_row(const std::string& row, const std::string& tooltip) {
-  SelectionDialogBase::add_row(row);
-  if(tooltip.size()>0)
-    tooltip_texts[row]=tooltip;
-}
+CompletionDialog::CompletionDialog(Gtk::TextView& text_view, Glib::RefPtr<Gtk::TextBuffer::Mark> start_mark) : SelectionDialogBase(text_view, start_mark, false, false) {}
 
 void CompletionDialog::show() {
   SelectionDialogBase::show();
@@ -348,18 +329,8 @@ void CompletionDialog::show() {
     list_view_text.set_search_entry(search_entry);
   }
   
-  if(list_view_text.get_model()->children().size()>0) {
+  if(list_view_text.get_model()->children().size()>0)
     list_view_text.set_cursor(list_view_text.get_model()->get_path(list_view_text.get_model()->children().begin()));
-    update_tooltips();
-  }
-}
-
-void CompletionDialog::hide() {
-  if(!shown)
-    return;
-  SelectionDialogBase::hide();
-  if(tooltips)
-    tooltips->hide();
 }
 
 void CompletionDialog::select(bool hide_window) {
@@ -394,7 +365,6 @@ bool CompletionDialog::on_key_release(GdkEventKey* key) {
         list_view_text.set_cursor(list_view_text.get_model()->get_path(list_view_text.get_model()->children().begin()));
       }
     }
-    update_tooltips();
   }
   return false;
 }
@@ -407,12 +377,9 @@ bool CompletionDialog::on_key_press(GdkEventKey* key) {
     if(row_in_entry) {
       text_view.get_buffer()->erase(start_mark->get_iter(), text_view.get_buffer()->get_insert()->get_iter());
       row_in_entry=false;
-      if(key->keyval==GDK_KEY_BackSpace) {
-        update_tooltips();
+      if(key->keyval==GDK_KEY_BackSpace)
         return true;
-      }
     }
-    update_tooltips();
     return false;
   }
   if(key->keyval==GDK_KEY_Shift_L || key->keyval==GDK_KEY_Shift_R || key->keyval==GDK_KEY_Alt_L || key->keyval==GDK_KEY_Alt_R || key->keyval==GDK_KEY_Control_L || key->keyval==GDK_KEY_Control_R || key->keyval==GDK_KEY_Meta_L || key->keyval==GDK_KEY_Meta_R)
@@ -428,7 +395,6 @@ bool CompletionDialog::on_key_press(GdkEventKey* key) {
     else
       list_view_text.set_cursor(list_view_text.get_model()->get_path(list_view_text.get_model()->children().begin()));
     select(false);
-    update_tooltips();
     return true;
   }
   if(key->keyval==GDK_KEY_Up && list_view_text.get_model()->children().size()>0) {
@@ -446,7 +412,6 @@ bool CompletionDialog::on_key_press(GdkEventKey* key) {
         list_view_text.set_cursor(list_view_text.get_model()->get_path(last_it));
     }
     select(false);
-    update_tooltips();
     return true;
   }
   if(key->keyval==GDK_KEY_Return || key->keyval==GDK_KEY_ISO_Left_Tab || key->keyval==GDK_KEY_Tab) {
@@ -457,36 +422,4 @@ bool CompletionDialog::on_key_press(GdkEventKey* key) {
   if(key->keyval==GDK_KEY_Escape)
     return true;
   return false;
-}
-
-void CompletionDialog::update_tooltips() {
-  auto it=list_view_text.get_selection()->get_selected();
-  if(it) {
-    std::string row;
-    it->get_value(0, row);
-    if(row!=last_row || last_row.size()==0) {
-      if(tooltips)
-        tooltips->hide();
-      auto it=tooltip_texts.find(row);
-      if(it!=tooltip_texts.end()) {
-        auto tooltip_text=it->second;
-        if(tooltip_text.size()>0) {
-          tooltips=std::unique_ptr<Tooltips>(new Tooltips());
-          auto get_tooltip_buffer=[this, tooltip_text]() {
-            auto tooltip_buffer=Gtk::TextBuffer::create(text_view.get_buffer()->get_tag_table());
-            tooltip_buffer->insert_with_tag(tooltip_buffer->get_insert()->get_iter(), tooltip_text, "def:note");
-            return tooltip_buffer;
-          };
-          tooltips->emplace_back(get_tooltip_buffer, text_view, text_view.get_buffer()->create_mark(start_mark->get_iter()), text_view.get_buffer()->create_mark(text_view.get_buffer()->get_insert()->get_iter()));
-          tooltips->show(true);
-        }
-      }
-    }
-    last_row=row;
-  }
-  else {
-    last_row="";
-    if(tooltips)
-      tooltips->hide();
-  }
 }

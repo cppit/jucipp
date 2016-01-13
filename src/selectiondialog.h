@@ -36,6 +36,7 @@ public:
   
   std::function<void()> on_hide;
   std::function<void(const std::string& selected, bool hide_window)> on_select;
+  std::function<void(const std::string &selected)> on_changed;
   Glib::RefPtr<Gtk::TextBuffer::Mark> start_mark;
   
   bool shown=false;
@@ -48,6 +49,8 @@ protected:
   ListViewText list_view_text;
   Gtk::Entry search_entry;
   bool show_search_entry;
+  
+  std::string last_row;
 };
 
 class SelectionDialog : public SelectionDialogBase {
@@ -55,18 +58,12 @@ public:
   SelectionDialog(Gtk::TextView& text_view, Glib::RefPtr<Gtk::TextBuffer::Mark> start_mark, bool show_search_entry=true, bool use_markup=false);
   bool on_key_press(GdkEventKey* key);
   void show();
-  
-  std::function<void(const std::string &selected)> on_changed;
-private:
-  std::string last_row;
 };
 
 class CompletionDialog : public SelectionDialogBase {
 public:
   CompletionDialog(Gtk::TextView& text_view, Glib::RefPtr<Gtk::TextBuffer::Mark> start_mark);
-  void add_row(const std::string& row, const std::string& tooltip);
   void show();
-  void hide();
   bool on_key_release(GdkEventKey* key);
   bool on_key_press(GdkEventKey* key);
   
@@ -75,11 +72,6 @@ private:
   
   int show_offset;
   bool row_in_entry=false;
-  
-  void update_tooltips();
-  std::unique_ptr<Tooltips> tooltips;
-  std::unordered_map<std::string, std::string> tooltip_texts;
-  std::string last_row;
 };
 
 #endif  // JUCI_SELECTIONDIALOG_H_

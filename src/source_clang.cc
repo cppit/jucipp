@@ -744,10 +744,11 @@ Source::ClangViewParse(file_path, project_path, language), autocomplete_state(Au
         if (!row.empty()) {
           if(!return_value.empty())
             row+=" --> " + return_value;
-          autocomplete_dialog_rows[row] = row_insert_on_selection;
-          autocomplete_dialog->add_row(row, data.brief_comments);
+          autocomplete_dialog_rows[row] = std::pair<std::string, std::string>(std::move(row_insert_on_selection), std::move(data.brief_comments));
+          autocomplete_dialog->add_row(row);
         }
       }
+      autocomplete_data.clear();
       set_status("");
       autocomplete_state=AutocompleteState::IDLE;
       if (!autocomplete_dialog_rows.empty()) {
@@ -797,11 +798,15 @@ void Source::ClangViewAutocomplete::autocomplete_dialog_setup() {
   autocomplete_dialog_rows.clear();
   autocomplete_dialog->on_hide=[this](){
     get_source_buffer()->end_user_action();
+    if(autocomplete_tooltips) {
+      autocomplete_tooltips->hide();
+      autocomplete_tooltips.reset();
+    }
     parsed=false;
     soft_reparse();
   };
   autocomplete_dialog->on_select=[this](const std::string& selected, bool hide_window) {
-    auto row = autocomplete_dialog_rows.at(selected);
+    auto row = autocomplete_dialog_rows.at(selected).first;
     get_buffer()->erase(autocomplete_dialog->start_mark->get_iter(), get_buffer()->get_insert()->get_iter());
     auto iter=get_buffer()->get_insert()->get_iter();
     if(*iter=='<' || *iter=='(') {
@@ -848,6 +853,34 @@ void Source::ClangViewAutocomplete::autocomplete_dialog_setup() {
         if(iter.backward_char() && *iter==':')
           autocomplete_restart();
       }
+    }
+  };
+  
+  autocomplete_dialog->on_changed=[this](const std::string &selected) {
+    if(selected.empty()) {
+      if(autocomplete_tooltips)
+        autocomplete_tooltips->hide();
+      return;
+    }
+    auto tooltip=std::make_shared<std::string>(autocomplete_dialog_rows.at(selected).second);
+    if(tooltip->empty()) {
+      if(autocomplete_tooltips)
+        autocomplete_tooltips->hide();
+    }
+    else {
+      autocomplete_tooltips=std::unique_ptr<Tooltips>(new Tooltips());
+      auto create_tooltip_buffer=[this, tooltip]() {
+        auto tooltip_buffer=Gtk::TextBuffer::create(get_buffer()->get_tag_table());
+        
+        tooltip_buffer->insert_with_tag(tooltip_buffer->get_insert()->get_iter(), *tooltip, "def:note");
+        
+        return tooltip_buffer;
+      };
+      
+      auto iter=autocomplete_dialog->start_mark->get_iter();
+      autocomplete_tooltips->emplace_back(create_tooltip_buffer, *this, get_buffer()->create_mark(iter), get_buffer()->create_mark(iter));
+  
+      autocomplete_tooltips->show(true);
     }
   };
 }
