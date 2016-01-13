@@ -179,6 +179,10 @@ void SelectionDialog::show() {
     *search_key=search_entry.get_text();
     filter_model->refilter();
     list_view_text.set_search_entry(search_entry); //TODO:Report the need of this to GTK's git (bug)
+    if(search_key->empty()) {
+      if(list_view_text.get_model()->children().size()>0)
+        list_view_text.set_cursor(list_view_text.get_model()->get_path(list_view_text.get_model()->children().begin()));
+    }
   });
   
   search_entry.signal_event().connect([this](GdkEvent* event) {
