@@ -87,6 +87,7 @@ namespace Source {
     
     std::unique_ptr<CompletionDialog> autocomplete_dialog;
     std::unique_ptr<SelectionDialog> selection_dialog;
+    Gtk::TextIter get_iter_for_dialog();
     sigc::connection delayed_tooltips_connection;
     
     std::function<void(View* view, const std::string &status_text)> on_update_status;

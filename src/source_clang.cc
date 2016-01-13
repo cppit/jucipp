@@ -1209,17 +1209,7 @@ Source::ClangViewAutocomplete(file_path, project_path, language) {
   
   goto_method=[this](){    
     if(parsed) {
-      auto iter=get_buffer()->get_insert()->get_iter();
-      if(iter.get_line_offset()>=80)
-        iter=get_buffer()->get_iter_at_line(iter.get_line());
-      Gdk::Rectangle visible_rect;
-      get_visible_rect(visible_rect);
-      Gdk::Rectangle iter_rect;
-      get_iter_location(iter, iter_rect);
-      iter_rect.set_width(1);
-      if(!visible_rect.intersects(iter_rect)) {
-        get_iter_at_location(iter, 0, visible_rect.get_y()+visible_rect.get_height()/3);
-      }
+      auto iter=get_iter_for_dialog();
       selection_dialog=std::unique_ptr<SelectionDialog>(new SelectionDialog(*this, get_buffer()->create_mark(iter), true, true));
       auto rows=std::make_shared<std::unordered_map<std::string, clang::Offset> >();
       auto methods=clang_tokens->get_cxx_methods();

@@ -516,17 +516,7 @@ void Window::set_menu_actions() {
       if(current_view->get_token && current_view->get_usages) {
         auto token=current_view->get_token();
         if(token) {
-          auto iter=current_view->get_buffer()->get_insert()->get_iter();
-          if(iter.get_line_offset()>=80)
-            iter=current_view->get_buffer()->get_iter_at_line(iter.get_line());
-          Gdk::Rectangle visible_rect;
-          current_view->get_visible_rect(visible_rect);
-          Gdk::Rectangle iter_rect;
-          current_view->get_iter_location(iter, iter_rect);
-          iter_rect.set_width(1);
-          if(!visible_rect.intersects(iter_rect)) {
-            current_view->get_iter_at_location(iter, 0, visible_rect.get_y()+visible_rect.get_height()/3);
-          }
+          auto iter=current_view->get_iter_for_dialog();
           current_view->selection_dialog=std::unique_ptr<SelectionDialog>(new SelectionDialog(*current_view, current_view->get_buffer()->create_mark(iter), true, true));
           auto rows=std::make_shared<std::unordered_map<std::string, Source::Offset> >();
           
@@ -901,19 +891,8 @@ void Window::set_menu_actions() {
       auto backtrace=Debug::get().get_backtrace();
       
       auto view=notebook.get_current_view();
-      auto buffer=view->get_buffer();
-      auto iter=buffer->get_insert()->get_iter();
-      if(iter.get_line_offset()>=80)
-        iter=buffer->get_iter_at_line(iter.get_line());
-      Gdk::Rectangle visible_rect;
-      view->get_visible_rect(visible_rect);
-      Gdk::Rectangle iter_rect;
-      view->get_iter_location(iter, iter_rect);
-      iter_rect.set_width(1);
-      if(!visible_rect.intersects(iter_rect)) {
-        view->get_iter_at_location(iter, 0, visible_rect.get_y()+visible_rect.get_height()/3);
-      }
-      view->selection_dialog=std::unique_ptr<SelectionDialog>(new SelectionDialog(*view, buffer->create_mark(iter), true, true));
+      auto iter=view->get_iter_for_dialog();
+      view->selection_dialog=std::unique_ptr<SelectionDialog>(new SelectionDialog(*view, view->get_buffer()->create_mark(iter), true, true));
       auto rows=std::make_shared<std::unordered_map<std::string, Debug::Frame> >();
       if(backtrace.size()==0)
         return;
@@ -961,19 +940,8 @@ void Window::set_menu_actions() {
       auto variables=Debug::get().get_variables();
       
       auto view=notebook.get_current_view();
-      auto buffer=view->get_buffer();
-      auto iter=buffer->get_insert()->get_iter();
-      if(iter.get_line_offset()>=80)
-        iter=buffer->get_iter_at_line(iter.get_line());
-      Gdk::Rectangle visible_rect;
-      view->get_visible_rect(visible_rect);
-      Gdk::Rectangle iter_rect;
-      view->get_iter_location(iter, iter_rect);
-      iter_rect.set_width(1);
-      if(!visible_rect.intersects(iter_rect)) {
-        view->get_iter_at_location(iter, 0, visible_rect.get_y()+visible_rect.get_height()/3);
-      }
-      view->selection_dialog=std::unique_ptr<SelectionDialog>(new SelectionDialog(*view, buffer->create_mark(iter), true, true));
+      auto iter=view->get_iter_for_dialog();
+      view->selection_dialog=std::unique_ptr<SelectionDialog>(new SelectionDialog(*view, view->get_buffer()->create_mark(iter), true, true));
       auto rows=std::make_shared<std::unordered_map<std::string, Debug::Variable> >();
       if(variables.size()==0)
         return;
