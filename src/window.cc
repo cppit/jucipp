@@ -960,7 +960,7 @@ void Window::set_menu_actions() {
           if(notebook.get_current_page()!=-1) {
             auto view=notebook.get_current_view();
             
-            Debug::get().select_frame(variable.frame_index);
+            Debug::get().select_frame(variable.frame_index, variable.thread_index_id);
             
             view->get_buffer()->place_cursor(view->get_buffer()->get_iter_at_line_index(variable.line_nr-1, variable.line_index-1));
             

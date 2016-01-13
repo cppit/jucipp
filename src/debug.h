@@ -52,7 +52,7 @@ public:
   std::pair<std::string, std::string> run_command(const std::string &command);
   std::vector<Frame> get_backtrace();
   std::vector<Variable> get_variables();
-  void select_frame(uint32_t index);
+  void select_frame(uint32_t frame_index, uint32_t thread_index_id=0);
   
   void delete_debug(); //can't use delete as function name
   

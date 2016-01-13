@@ -361,11 +361,12 @@ std::vector<Debug::Variable> Debug::get_variables() {
   return variables;
 }
 
-void Debug::select_frame(uint32_t index) {
+void Debug::select_frame(uint32_t frame_index, uint32_t thread_index_id) {
   event_mutex.lock();
   if(state==lldb::StateType::eStateStopped) {
-    auto thread=process->GetSelectedThread();
-    thread.SetSelectedFrame(index);
+    if(thread_index_id!=0)
+      process->SetSelectedThreadByIndexID(thread_index_id);
+    process->GetSelectedThread().SetSelectedFrame(frame_index);;
   }
   event_mutex.unlock();
 }
