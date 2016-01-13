@@ -728,20 +728,17 @@ Source::ClangViewParse(file_path, project_path, language), autocomplete_state(Au
       autocomplete_dialog_setup();
       
       for (auto &data : autocomplete_data) {
-        std::stringstream ss;
+        std::string row;
         std::string return_value;
         for (auto &chunk : data.chunks) {
-          switch (chunk.kind) {
-          case clang::CompletionChunk_ResultType:
-            return_value = chunk.chunk;
-            break;
-          case clang::CompletionChunk_Informative: break;
-          default: ss << chunk.chunk; break;
-          }
+          if(chunk.kind==clang::CompletionChunk_ResultType)
+            return_value=chunk.chunk;
+          else if(chunk.kind!=clang::CompletionChunk_Informative)
+            row+=chunk.chunk;
         }
-        auto row=ss.str();
-        auto row_insert_on_selection=row;
+        data.chunks.clear();
         if (!row.empty()) {
+          auto row_insert_on_selection=row;
           if(!return_value.empty())
             row+=" --> " + return_value;
           autocomplete_dialog_rows[row] = std::pair<std::string, std::string>(std::move(row_insert_on_selection), std::move(data.brief_comments));
