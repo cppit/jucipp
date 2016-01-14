@@ -48,7 +48,7 @@ private:
   std::mutex debug_status_mutex;
   Glib::Dispatcher debug_update_status;
   
-  std::unique_ptr<Tooltips> debug_variable_tooltips;
+  Tooltips debug_variable_tooltips;
 
   std::unique_ptr<CMake> get_cmake();
   std::unordered_map<std::string, std::string> project_run_arguments;

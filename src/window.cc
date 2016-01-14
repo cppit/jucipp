@@ -973,21 +973,18 @@ void Window::set_menu_actions() {
       };
       
       view->selection_dialog->on_hide=[this]() {
-        if(debug_variable_tooltips) {
-          debug_variable_tooltips->hide();
-          debug_variable_tooltips.reset();
-        }
+        debug_variable_tooltips.hide();
+        debug_variable_tooltips.clear();
       };
       
       view->selection_dialog->on_changed=[this, rows, iter](const std::string &selected) {
         if(selected.empty()) {
-          if(debug_variable_tooltips)
-            debug_variable_tooltips->hide();
+          debug_variable_tooltips.hide();
           return;
         }
         if(notebook.get_current_page()!=-1) {
           auto view=notebook.get_current_view();
-          debug_variable_tooltips=std::unique_ptr<Tooltips>(new Tooltips());
+          debug_variable_tooltips.clear();
           auto create_tooltip_buffer=[this, rows, view, selected]() {
             auto variable=rows->at(selected);
             auto tooltip_buffer=Gtk::TextBuffer::create(view->get_buffer()->get_tag_table());
@@ -1006,9 +1003,9 @@ void Window::set_menu_actions() {
             return tooltip_buffer;
           };
           
-          debug_variable_tooltips->emplace_back(create_tooltip_buffer, *view, view->get_buffer()->create_mark(iter), view->get_buffer()->create_mark(iter));
+          debug_variable_tooltips.emplace_back(create_tooltip_buffer, *view, view->get_buffer()->create_mark(iter), view->get_buffer()->create_mark(iter));
       
-          debug_variable_tooltips->show(true);
+          debug_variable_tooltips.show(true);
         }
       };
       
