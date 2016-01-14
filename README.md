@@ -8,11 +8,11 @@ towards libclang with speed and ease of use in mind.
 
 ## Features
 * Platform independent
-* Debug integration through lldb
 * Fast and responsive (written in C++)
 * Syntax highlighting for more than 100 different file types
 * C++ warnings and errors on the fly
 * C++ Fix-its
+* Debug integration through lldb
 * Automated CMake processing
 * Fast C++ autocompletion
 * Keyword and buffer autocompletion for other file types
