@@ -56,13 +56,11 @@ class SelectionDialog : public SelectionDialogBase {
 public:
   SelectionDialog(Gtk::TextView& text_view, Glib::RefPtr<Gtk::TextBuffer::Mark> start_mark, bool show_search_entry=true, bool use_markup=false);
   bool on_key_press(GdkEventKey* key);
-  void show();
 };
 
 class CompletionDialog : public SelectionDialogBase {
 public:
   CompletionDialog(Gtk::TextView& text_view, Glib::RefPtr<Gtk::TextBuffer::Mark> start_mark);
-  void show();
   bool on_key_release(GdkEventKey* key);
   bool on_key_press(GdkEventKey* key);
   

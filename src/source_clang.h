@@ -103,7 +103,7 @@ namespace Source {
     std::vector<AutoCompleteData> autocomplete_data;
     std::unordered_map<std::string, std::pair<std::string, std::string> > autocomplete_dialog_rows;
     std::vector<AutoCompleteData> autocomplete_get_suggestions(const std::string &buffer, int line_number, int column);
-    std::unique_ptr<Tooltips> autocomplete_tooltips;
+    Tooltips autocomplete_tooltips;
     Glib::Dispatcher autocomplete_done;
     Glib::Dispatcher autocomplete_restart;
     Glib::Dispatcher autocomplete_error;

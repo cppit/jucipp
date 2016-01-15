@@ -96,6 +96,9 @@ void SelectionDialogBase::show() {
   shown=true;
   move();
   window->show_all();
+  
+  if(list_view_text.get_model()->children().size()>0)
+    list_view_text.set_cursor(list_view_text.get_model()->get_path(list_view_text.get_model()->children().begin()));
 }
 
 void SelectionDialogBase::hide() {
@@ -143,10 +146,7 @@ void SelectionDialogBase::resize() {
   }
 }
 
-SelectionDialog::SelectionDialog(Gtk::TextView& text_view, Glib::RefPtr<Gtk::TextBuffer::Mark> start_mark, bool show_search_entry, bool use_markup) : SelectionDialogBase(text_view, start_mark, show_search_entry, use_markup) {}
-
-void SelectionDialog::show() {
-  SelectionDialogBase::show();
+SelectionDialog::SelectionDialog(Gtk::TextView& text_view, Glib::RefPtr<Gtk::TextBuffer::Mark> start_mark, bool show_search_entry, bool use_markup) : SelectionDialogBase(text_view, start_mark, show_search_entry, use_markup) {
   std::shared_ptr<std::string> search_key(new std::string());
   auto filter_model=Gtk::TreeModelFilter::create(list_view_text.get_model());
   
@@ -240,9 +240,6 @@ void SelectionDialog::show() {
     hide();
     return true;
   });
-  
-  if(list_view_text.get_model()->children().size()>0)
-    list_view_text.set_cursor(list_view_text.get_model()->get_path(list_view_text.get_model()->children().begin()));
 }
 
 bool SelectionDialog::on_key_press(GdkEventKey* key) {
@@ -286,13 +283,9 @@ bool SelectionDialog::on_key_press(GdkEventKey* key) {
   return false;
 }
 
-CompletionDialog::CompletionDialog(Gtk::TextView& text_view, Glib::RefPtr<Gtk::TextBuffer::Mark> start_mark) : SelectionDialogBase(text_view, start_mark, false, false) {}
-
-void CompletionDialog::show() {
-  SelectionDialogBase::show();
-  
+CompletionDialog::CompletionDialog(Gtk::TextView& text_view, Glib::RefPtr<Gtk::TextBuffer::Mark> start_mark) : SelectionDialogBase(text_view, start_mark, false, false) {
   show_offset=text_view.get_buffer()->get_insert()->get_iter().get_offset();
-
+  
   std::shared_ptr<std::string> search_key(new std::string());
   auto filter_model=Gtk::TreeModelFilter::create(list_view_text.get_model());  
   if(show_offset==start_mark->get_iter().get_offset()) {
@@ -332,9 +325,6 @@ void CompletionDialog::show() {
     search_entry.set_text(text);
     list_view_text.set_search_entry(search_entry);
   }
-  
-  if(list_view_text.get_model()->children().size()>0)
-    list_view_text.set_cursor(list_view_text.get_model()->get_path(list_view_text.get_model()->children().begin()));
 }
 
 void CompletionDialog::select(bool hide_window) {

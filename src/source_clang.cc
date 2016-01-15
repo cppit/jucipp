@@ -795,10 +795,8 @@ void Source::ClangViewAutocomplete::autocomplete_dialog_setup() {
   autocomplete_dialog_rows.clear();
   autocomplete_dialog->on_hide=[this](){
     get_source_buffer()->end_user_action();
-    if(autocomplete_tooltips) {
-      autocomplete_tooltips->hide();
-      autocomplete_tooltips.reset();
-    }
+    autocomplete_tooltips.hide();
+    autocomplete_tooltips.clear();
     parsed=false;
     soft_reparse();
   };
@@ -855,17 +853,15 @@ void Source::ClangViewAutocomplete::autocomplete_dialog_setup() {
   
   autocomplete_dialog->on_changed=[this](const std::string &selected) {
     if(selected.empty()) {
-      if(autocomplete_tooltips)
-        autocomplete_tooltips->hide();
+      autocomplete_tooltips.hide();
       return;
     }
     auto tooltip=std::make_shared<std::string>(autocomplete_dialog_rows.at(selected).second);
     if(tooltip->empty()) {
-      if(autocomplete_tooltips)
-        autocomplete_tooltips->hide();
+      autocomplete_tooltips.hide();
     }
     else {
-      autocomplete_tooltips=std::unique_ptr<Tooltips>(new Tooltips());
+      autocomplete_tooltips.clear();
       auto create_tooltip_buffer=[this, tooltip]() {
         auto tooltip_buffer=Gtk::TextBuffer::create(get_buffer()->get_tag_table());
         
@@ -875,9 +871,9 @@ void Source::ClangViewAutocomplete::autocomplete_dialog_setup() {
       };
       
       auto iter=autocomplete_dialog->start_mark->get_iter();
-      autocomplete_tooltips->emplace_back(create_tooltip_buffer, *this, get_buffer()->create_mark(iter), get_buffer()->create_mark(iter));
+      autocomplete_tooltips.emplace_back(create_tooltip_buffer, *this, get_buffer()->create_mark(iter), get_buffer()->create_mark(iter));
   
-      autocomplete_tooltips->show(true);
+      autocomplete_tooltips.show(true);
     }
   };
 }
