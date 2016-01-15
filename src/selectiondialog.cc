@@ -59,6 +59,17 @@ list_view_text(use_markup), start_mark(start_mark), show_search_entry(show_searc
     resize();
   });
   
+  list_view_text.signal_event_after().connect([this](GdkEvent* event){
+    if(event->type==GDK_KEY_PRESS || event->type==GDK_BUTTON_PRESS)
+      cursor_changed();
+  });
+  if(show_search_entry) {
+    search_entry.signal_event_after().connect([this](GdkEvent* event){
+      if(event->type==GDK_KEY_PRESS || event->type==GDK_BUTTON_PRESS)
+        cursor_changed();
+    });
+  }
+  
   scrolled_window.add(list_view_text);
   if(!show_search_entry)
     window->add(scrolled_window);
@@ -185,7 +196,6 @@ SelectionDialog::SelectionDialog(Gtk::TextView& text_view, Glib::RefPtr<Gtk::Tex
       if(list_view_text.get_model()->children().size()>0)
         list_view_text.set_cursor(list_view_text.get_model()->get_path(list_view_text.get_model()->children().begin()));
     }
-    cursor_changed();
   });
   
   search_entry.signal_event().connect([this](GdkEvent* event) {
@@ -195,14 +205,8 @@ SelectionDialog::SelectionDialog(Gtk::TextView& text_view, Glib::RefPtr<Gtk::Tex
         auto it=list_view_text.get_selection()->get_selected();
         if(it) {
           it++;
-          if(it) {
+          if(it)
             list_view_text.set_cursor(list_view_text.get_model()->get_path(it));
-            cursor_changed();
-          }
-        }
-        else {
-          list_view_text.set_cursor(list_view_text.get_model()->get_path(list_view_text.get_model()->children().begin()));
-          cursor_changed();
         }
         return true;
       }
@@ -210,18 +214,8 @@ SelectionDialog::SelectionDialog(Gtk::TextView& text_view, Glib::RefPtr<Gtk::Tex
         auto it=list_view_text.get_selection()->get_selected();
         if(it) {
           it--;
-          if(it) {
+          if(it)
             list_view_text.set_cursor(list_view_text.get_model()->get_path(it));
-            cursor_changed();
-          }
-        }
-        else {
-          auto last_it=list_view_text.get_model()->children().end();
-          last_it--;
-          if(last_it) {
-            list_view_text.set_cursor(list_view_text.get_model()->get_path(last_it));
-            cursor_changed();
-          }
         }
         return true;
       }
@@ -256,14 +250,8 @@ bool SelectionDialog::on_key_press(GdkEventKey* key) {
     auto it=list_view_text.get_selection()->get_selected();
     if(it) {
       it++;
-      if(it) {
+      if(it)
         list_view_text.set_cursor(list_view_text.get_model()->get_path(it));
-        cursor_changed();
-      }
-    }
-    else {
-      list_view_text.set_cursor(list_view_text.get_model()->get_path(list_view_text.get_model()->children().begin()));
-      cursor_changed();
     }
     return true;
   }
@@ -271,18 +259,8 @@ bool SelectionDialog::on_key_press(GdkEventKey* key) {
     auto it=list_view_text.get_selection()->get_selected();
     if(it) {
       it--;
-      if(it) {
+      if(it)
         list_view_text.set_cursor(list_view_text.get_model()->get_path(it));
-        cursor_changed();
-      }
-    }
-    else {
-      auto last_it=list_view_text.get_model()->children().end();
-      last_it--;
-      if(last_it) {
-        list_view_text.set_cursor(list_view_text.get_model()->get_path(last_it));
-        cursor_changed();
-      }
     }
     return true;
   }
@@ -402,10 +380,6 @@ bool CompletionDialog::on_key_press(GdkEventKey* key) {
         cursor_changed();
       }
     }
-    else {
-      list_view_text.set_cursor(list_view_text.get_model()->get_path(list_view_text.get_model()->children().begin()));
-      cursor_changed();
-    }
     select(false);
     return true;
   }
@@ -415,14 +389,6 @@ bool CompletionDialog::on_key_press(GdkEventKey* key) {
       it--;
       if(it) {
         list_view_text.set_cursor(list_view_text.get_model()->get_path(it));
-        cursor_changed();
-      }
-    }
-    else {
-      auto last_it=list_view_text.get_model()->children().end();
-      last_it--;
-      if(last_it) {
-        list_view_text.set_cursor(list_view_text.get_model()->get_path(last_it));
         cursor_changed();
       }
     }
