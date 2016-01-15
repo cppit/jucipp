@@ -40,6 +40,8 @@ public:
   
   bool shown=false;
 protected:
+  void cursor_changed();
+  
   void resize();
   Gtk::TextView& text_view;
   

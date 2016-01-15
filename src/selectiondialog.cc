@@ -68,20 +68,20 @@ list_view_text(use_markup), start_mark(start_mark), show_search_entry(show_searc
     dialog->get_vbox()->pack_start(scrolled_window, true, true);
     dialog->set_transient_for((Gtk::Window&)(*text_view.get_toplevel()));
   }
-  
-  list_view_text.signal_cursor_changed().connect([this]() {
-    if(!shown)
-      return;
-    auto it=list_view_text.get_selection()->get_selected();
-    std::string row;
-    if(it)
-      it->get_value(0, row);
-    if(last_row==row)
-      return;
-    if(on_changed)
-      on_changed(row);
-    last_row=row;
-  });
+}
+
+void SelectionDialogBase::cursor_changed() {
+  if(!shown)
+    return;
+  auto it=list_view_text.get_selection()->get_selected();
+  std::string row;
+  if(it)
+    it->get_value(0, row);
+  if(last_row==row)
+    return;
+  if(on_changed)
+    on_changed(row);
+  last_row=row;
 }
 
 SelectionDialogBase::~SelectionDialogBase() {
@@ -97,8 +97,10 @@ void SelectionDialogBase::show() {
   move();
   window->show_all();
   
-  if(list_view_text.get_model()->children().size()>0)
+  if(list_view_text.get_model()->children().size()>0) {
     list_view_text.set_cursor(list_view_text.get_model()->get_path(list_view_text.get_model()->children().begin()));
+    cursor_changed();
+  }
 }
 
 void SelectionDialogBase::hide() {
@@ -183,6 +185,7 @@ SelectionDialog::SelectionDialog(Gtk::TextView& text_view, Glib::RefPtr<Gtk::Tex
       if(list_view_text.get_model()->children().size()>0)
         list_view_text.set_cursor(list_view_text.get_model()->get_path(list_view_text.get_model()->children().begin()));
     }
+    cursor_changed();
   });
   
   search_entry.signal_event().connect([this](GdkEvent* event) {
@@ -194,10 +197,13 @@ SelectionDialog::SelectionDialog(Gtk::TextView& text_view, Glib::RefPtr<Gtk::Tex
           it++;
           if(it) {
             list_view_text.set_cursor(list_view_text.get_model()->get_path(it));
+            cursor_changed();
           }
         }
-        else
+        else {
           list_view_text.set_cursor(list_view_text.get_model()->get_path(list_view_text.get_model()->children().begin()));
+          cursor_changed();
+        }
         return true;
       }
       if(key->keyval==GDK_KEY_Up && list_view_text.get_model()->children().size()>0) {
@@ -206,13 +212,16 @@ SelectionDialog::SelectionDialog(Gtk::TextView& text_view, Glib::RefPtr<Gtk::Tex
           it--;
           if(it) {
             list_view_text.set_cursor(list_view_text.get_model()->get_path(it));
+            cursor_changed();
           }
         }
         else {
           auto last_it=list_view_text.get_model()->children().end();
           last_it--;
-          if(last_it)
+          if(last_it) {
             list_view_text.set_cursor(list_view_text.get_model()->get_path(last_it));
+            cursor_changed();
+          }
         }
         return true;
       }
@@ -249,10 +258,13 @@ bool SelectionDialog::on_key_press(GdkEventKey* key) {
       it++;
       if(it) {
         list_view_text.set_cursor(list_view_text.get_model()->get_path(it));
+        cursor_changed();
       }
     }
-    else
+    else {
       list_view_text.set_cursor(list_view_text.get_model()->get_path(list_view_text.get_model()->children().begin()));
+      cursor_changed();
+    }
     return true;
   }
   if(key->keyval==GDK_KEY_Up && list_view_text.get_model()->children().size()>0) {
@@ -261,13 +273,16 @@ bool SelectionDialog::on_key_press(GdkEventKey* key) {
       it--;
       if(it) {
         list_view_text.set_cursor(list_view_text.get_model()->get_path(it));
+        cursor_changed();
       }
     }
     else {
       auto last_it=list_view_text.get_model()->children().end();
       last_it--;
-      if(last_it)
+      if(last_it) {
         list_view_text.set_cursor(list_view_text.get_model()->get_path(last_it));
+        cursor_changed();
+      }
     }
     return true;
   }
@@ -355,10 +370,10 @@ bool CompletionDialog::on_key_release(GdkEventKey* key) {
     search_entry.set_text(text);
     list_view_text.set_search_entry(search_entry);
     if(text=="") {
-      if(list_view_text.get_model()->children().size()>0) {
+      if(list_view_text.get_model()->children().size()>0)
         list_view_text.set_cursor(list_view_text.get_model()->get_path(list_view_text.get_model()->children().begin()));
-      }
     }
+    cursor_changed();
   }
   return false;
 }
@@ -384,10 +399,13 @@ bool CompletionDialog::on_key_press(GdkEventKey* key) {
       it++;
       if(it) {
         list_view_text.set_cursor(list_view_text.get_model()->get_path(it));
+        cursor_changed();
       }
     }
-    else
+    else {
       list_view_text.set_cursor(list_view_text.get_model()->get_path(list_view_text.get_model()->children().begin()));
+      cursor_changed();
+    }
     select(false);
     return true;
   }
@@ -397,13 +415,16 @@ bool CompletionDialog::on_key_press(GdkEventKey* key) {
       it--;
       if(it) {
         list_view_text.set_cursor(list_view_text.get_model()->get_path(it));
+        cursor_changed();
       }
     }
     else {
       auto last_it=list_view_text.get_model()->children().end();
       last_it--;
-      if(last_it)
+      if(last_it) {
         list_view_text.set_cursor(list_view_text.get_model()->get_path(last_it));
+        cursor_changed();
+      }
     }
     select(false);
     return true;
