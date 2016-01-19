@@ -6,6 +6,9 @@
 //#include "api.h"
 #include "dialogs.h"
 #include "filesystem.h"
+#ifdef JUCI_ENABLE_DEBUG
+#include "debug.h"
+#endif
 
 namespace sigc {
 #ifndef SIGC_FUNCTORS_DEDUCE_RESULT_TYPE_WITH_DECLTYPE
@@ -21,7 +24,7 @@ namespace sigc {
 #endif
 }
 
-Window::Window() : compiling(false) {
+Window::Window() : compiling(false), debugging(false) {
   JDEBUG("start");
   set_title("juCi++");
   set_events(Gdk::POINTER_MOTION_MASK|Gdk::FOCUS_CHANGE_MASK|Gdk::SCROLL_MASK|Gdk::LEAVE_NOTIFY_MASK);
@@ -46,6 +49,12 @@ Window::Window() : compiling(false) {
   terminal_vbox.pack_start(terminal_scrolled_window);
     
   info_and_status_hbox.pack_start(notebook.info, Gtk::PACK_SHRINK);
+#if GTK_VERSION_GE(3, 12)
+  info_and_status_hbox.set_center_widget(debug_status_label);
+#else
+  debug_status_label.set_halign(Gtk::Align::ALIGN_CENTER);
+  info_and_status_hbox.pack_start(debug_status_label);
+#endif
   info_and_status_hbox.pack_end(notebook.status, Gtk::PACK_SHRINK);
   terminal_vbox.pack_end(info_and_status_hbox, Gtk::PACK_SHRINK);
   vpaned.pack2(terminal_vbox, true, true);
@@ -112,6 +121,74 @@ Window::Window() : compiling(false) {
     about.hide();
   });
   
+  debug_update_stop.connect([this](){
+    debug_stop_mutex.lock();
+    for(int c=0;c<notebook.size();c++) {
+      auto view=notebook.get_view(c);
+      if(view->file_path==debug_last_stop_file_path) {
+        view->get_source_buffer()->remove_source_marks(view->get_buffer()->begin(), view->get_buffer()->end(), "debug_stop");
+        break;
+      }
+    }
+    //Add debug stop source mark
+    for(int c=0;c<notebook.size();c++) {
+      auto view=notebook.get_view(c);
+      if(view->file_path==debug_stop.first) {
+        if(debug_stop.second.first-1<view->get_buffer()->get_line_count()) {
+          view->get_source_buffer()->create_source_mark("debug_stop", view->get_buffer()->get_iter_at_line(debug_stop.second.first-1));
+          debug_last_stop_file_path=debug_stop.first;
+        }
+        break;
+      }
+    }
+    if(notebook.get_current_page()!=-1)
+      notebook.get_current_view()->get_buffer()->place_cursor(notebook.get_current_view()->get_buffer()->get_insert()->get_iter());
+    debug_stop_mutex.unlock();
+  });
+  
+#ifdef JUCI_ENABLE_DEBUG
+  auto &menu=Menu::get();
+  menu.actions["debug_stop"]->set_enabled(false);
+  menu.actions["debug_kill"]->set_enabled(false);
+  menu.actions["debug_step_over"]->set_enabled(false);
+  menu.actions["debug_step_into"]->set_enabled(false);
+  menu.actions["debug_step_out"]->set_enabled(false);
+  menu.actions["debug_backtrace"]->set_enabled(false);
+  menu.actions["debug_show_variables"]->set_enabled(false);
+  menu.actions["debug_run_command"]->set_enabled(false);
+  menu.actions["debug_goto_stop"]->set_enabled(false);
+#endif
+  debug_update_status.connect([this](){
+    debug_status_mutex.lock();
+    if(debug_status.empty()) {
+      debug_status_label.set_text("");
+      auto &menu=Menu::get();
+      menu.actions["debug_stop"]->set_enabled(false);
+      menu.actions["debug_kill"]->set_enabled(false);
+      menu.actions["debug_step_over"]->set_enabled(false);
+      menu.actions["debug_step_into"]->set_enabled(false);
+      menu.actions["debug_step_out"]->set_enabled(false);
+      menu.actions["debug_backtrace"]->set_enabled(false);
+      menu.actions["debug_show_variables"]->set_enabled(false);
+      menu.actions["debug_run_command"]->set_enabled(false);
+      menu.actions["debug_goto_stop"]->set_enabled(false);
+    }
+    else {
+      debug_status_label.set_text("debug: "+debug_status);
+      auto &menu=Menu::get();
+      menu.actions["debug_stop"]->set_enabled();
+      menu.actions["debug_kill"]->set_enabled();
+      menu.actions["debug_step_over"]->set_enabled();
+      menu.actions["debug_step_into"]->set_enabled();
+      menu.actions["debug_step_out"]->set_enabled();
+      menu.actions["debug_backtrace"]->set_enabled();
+      menu.actions["debug_show_variables"]->set_enabled();
+      menu.actions["debug_run_command"]->set_enabled();
+      menu.actions["debug_goto_stop"]->set_enabled();
+    }
+    debug_status_mutex.unlock();
+  });
+  
   about.set_version(Config::get().window.version);
   about.set_authors({"(in order of appearance)",
                      "Ted Johan Kristoffersen", 
@@ -125,6 +202,22 @@ Window::Window() : compiling(false) {
   about.set_transient_for(*this);
   JDEBUG("end");
 } // Window constructor
+
+std::unique_ptr<CMake> Window::get_cmake() {
+  boost::filesystem::path path;
+  if(notebook.get_current_page()!=-1)
+    path=notebook.get_current_view()->file_path.parent_path();
+  else
+    path=Directories::get().current_path;
+  if(path.empty())
+    return nullptr;
+  auto cmake=std::unique_ptr<CMake>(new CMake(path));
+  if(cmake->project_path.empty())
+    return nullptr;
+  if(!CMake::create_default_build(cmake->project_path))
+    return nullptr;
+  return cmake;
+}
 
 void Window::configure() {
   Config::get().load();
@@ -405,10 +498,10 @@ void Window::set_menu_actions() {
             auto end_line_index=iter.get_line_index();
             index=std::min(index, end_line_index);
             
+            view->get_buffer()->place_cursor(view->get_buffer()->get_iter_at_line_index(line, index));
             while(g_main_context_pending(NULL))
               g_main_context_iteration(NULL, false);
             if(notebook.get_current_page()!=-1 && notebook.get_current_view()==view) {
-              view->get_buffer()->place_cursor(view->get_buffer()->get_iter_at_line_index(line, index));
               view->scroll_to(view->get_buffer()->get_insert(), 0.0, 1.0, 0.5);
               view->delayed_tooltips_connection.disconnect();
             }
@@ -423,15 +516,7 @@ void Window::set_menu_actions() {
       if(current_view->get_token && current_view->get_usages) {
         auto token=current_view->get_token();
         if(token) {
-          auto iter=current_view->get_buffer()->get_insert()->get_iter();
-          Gdk::Rectangle visible_rect;
-          current_view->get_visible_rect(visible_rect);
-          Gdk::Rectangle iter_rect;
-          current_view->get_iter_location(iter, iter_rect);
-          iter_rect.set_width(1);
-          if(!visible_rect.intersects(iter_rect)) {
-            current_view->get_iter_at_location(iter, 0, visible_rect.get_y()+visible_rect.get_height()/3);
-          }
+          auto iter=current_view->get_iter_for_dialog();
           current_view->selection_dialog=std::unique_ptr<SelectionDialog>(new SelectionDialog(*current_view, current_view->get_buffer()->create_mark(iter), true, true));
           auto rows=std::make_shared<std::unordered_map<std::string, Source::Offset> >();
           
@@ -505,98 +590,115 @@ void Window::set_menu_actions() {
     }
   });
   
+  menu.add_action("project_set_run_arguments", [this]() {
+    auto cmake=get_cmake();
+    if(!cmake)
+      return;
+    
+    auto project_path=std::make_shared<boost::filesystem::path>(cmake->project_path);
+    auto run_arguments_it=project_run_arguments.find(project_path->string());
+    std::string run_arguments;
+    if(run_arguments_it!=project_run_arguments.end())
+      run_arguments=run_arguments_it->second;
+
+    if(run_arguments.empty()) {
+      auto executable=cmake->get_executable(notebook.get_current_page()!=-1?notebook.get_current_view()->file_path:"").string();
+      
+      if(executable!="") {
+        auto project_path=cmake->project_path;
+        auto default_build_path=CMake::get_default_build_path(project_path);
+        if(!default_build_path.empty()) {
+          size_t pos=executable.find(project_path.string());
+          if(pos!=std::string::npos)
+            executable.replace(pos, project_path.string().size(), default_build_path.string());
+        }
+        run_arguments=filesystem::escape_argument(executable);
+      }
+      else
+        run_arguments=filesystem::escape_argument(CMake::get_default_build_path(cmake->project_path));
+    }
+    
+    entry_box.clear();
+    entry_box.labels.emplace_back();
+    auto label_it=entry_box.labels.begin();
+    label_it->update=[label_it](int state, const std::string& message){
+      label_it->set_text("Set empty to let juCi++ deduce executable");
+    };
+    label_it->update(0, "");
+    entry_box.entries.emplace_back(run_arguments, [this, project_path](const std::string& content){
+      project_run_arguments[project_path->string()]=content;
+      entry_box.hide();
+    }, 50);
+    auto entry_it=entry_box.entries.begin();
+    entry_it->set_placeholder_text("Project: Set Run Arguments");
+    entry_box.buttons.emplace_back("Project: set run arguments", [this, entry_it](){
+      entry_it->activate();
+    });
+    entry_box.show();
+  });
   menu.add_action("compile_and_run", [this]() {
     if(compiling)
       return;
-    boost::filesystem::path cmake_path;
-    if(notebook.get_current_page()!=-1)
-      cmake_path=notebook.get_current_view()->file_path.parent_path();
-    else
-      cmake_path=Directories::get().current_path;
-    if(cmake_path.empty())
+    
+    auto cmake=get_cmake();
+    if(!cmake)
       return;
-    CMake cmake(cmake_path);
-    auto executables = cmake.get_functions_parameters("add_executable");
+    auto project_path=cmake->project_path;
     
-    //Attempt to find executable based add_executable files and opened tab
-    boost::filesystem::path executable_path;
-    if(notebook.get_current_page()!=-1) {
-      for(auto &executable: executables) {
-        if(executable.second.size()>1) {
-          for(size_t c=1;c<executable.second.size();c++) {
-            if(executable.second[c]==notebook.get_current_view()->file_path.filename()) {
-              executable_path=executable.first.parent_path()/executable.second[0];
-              break;
-            }
-          }
-        }
-        if(!executable_path.empty())
-          break;
-      }
+    auto default_build_path=CMake::get_default_build_path(project_path);
+    if(default_build_path.empty())
+      return;
+    
+    auto run_arguments_it=project_run_arguments.find(project_path.string());
+    std::string run_arguments;
+    if(run_arguments_it!=project_run_arguments.end())
+      run_arguments=run_arguments_it->second;
+    
+    std::string command;
+    if(!run_arguments.empty()) {
+      command=run_arguments;
     }
-    if(executable_path.empty() && executables.size()>0 && executables[0].second.size()>0)
-      executable_path=executables[0].first.parent_path()/executables[0].second[0];
+    else {
+      command=cmake->get_executable(notebook.get_current_page()!=-1?notebook.get_current_view()->file_path:"").string();
+      if(command.empty()) {
+        Terminal::get().print("Could not find add_executable in the following paths:\n");
+        for(auto &path: cmake->paths)
+          Terminal::get().print("  "+path.string()+"\n");
+        Terminal::get().print("Solution: either use Project Set Run Arguments, or open a source file within a directory where add_executable is set.\n", true);
+        return;
+      }
+      size_t pos=command.find(project_path.string());
+      if(pos!=std::string::npos)
+        command.replace(pos, project_path.string().size(), default_build_path.string());
+      command=filesystem::escape_argument(command);
+    }
     
-    if(cmake.project_path!="") {
-      if(executable_path!="") {
-        auto project_path=cmake.project_path;
-        auto default_build_path=CMake::get_default_build_path(project_path);
-        if(default_build_path.empty())
-          return;
-        compiling=true;
-        auto executable_path_string=executable_path.string();
-        size_t pos=executable_path_string.find(project_path.string());
-        if(pos!=std::string::npos) {
-          executable_path_string.replace(pos, project_path.string().size(), default_build_path.string());
-          executable_path=executable_path_string;
-        }
-        Terminal::get().print("Compiling and running "+executable_path.string()+"\n");
-        Terminal::get().async_process(Config::get().terminal.make_command, default_build_path, [this, executable_path, default_build_path](int exit_status){
-          compiling=false;
-          if(exit_status==EXIT_SUCCESS) {
-            auto executable_path_spaces_fixed=executable_path.string();
-            char last_char=0;
-            for(size_t c=0;c<executable_path_spaces_fixed.size();c++) {
-              if(last_char!='\\' && executable_path_spaces_fixed[c]==' ') {
-                executable_path_spaces_fixed.insert(c, "\\");
-                c++;
-              }
-              last_char=executable_path_spaces_fixed[c];
-            }
-            Terminal::get().async_process(executable_path_spaces_fixed, default_build_path, [this, executable_path](int exit_status){
-              Terminal::get().async_print(executable_path.string()+" returned: "+std::to_string(exit_status)+'\n');
-            });
-          }
+    compiling=true;
+    Terminal::get().print("Compiling and running "+command+"\n");
+    Terminal::get().async_process(Config::get().terminal.make_command, default_build_path, [this, command, default_build_path](int exit_status){
+      compiling=false;
+      if(exit_status==EXIT_SUCCESS) {
+        Terminal::get().async_process(command, default_build_path, [this, command](int exit_status){
+          Terminal::get().async_print(command+" returned: "+std::to_string(exit_status)+'\n');
         });
       }
-      else {
-        Terminal::get().print("Could not find add_executable in the following paths:\n");
-        for(auto &path: cmake.paths)
-          Terminal::get().print("  "+path.string()+"\n");
-      }
-    }
+    });
   });
   menu.add_action("compile", [this]() {
     if(compiling)
       return;
-    boost::filesystem::path cmake_path;
-    if(notebook.get_current_page()!=-1)
-      cmake_path=notebook.get_current_view()->file_path.parent_path();
-    else
-      cmake_path=Directories::get().current_path;
-    if(cmake_path.empty())
+    auto cmake=get_cmake();
+    if(!cmake)
       return;
-    CMake cmake(cmake_path);
-    if(cmake.project_path!="") {
-      auto default_build_path=CMake::get_default_build_path(cmake.project_path);
-      if(default_build_path.empty())
-        return;
-      compiling=true;
-      Terminal::get().print("Compiling project "+cmake.project_path.string()+"\n");
-      Terminal::get().async_process(Config::get().terminal.make_command, default_build_path, [this](int exit_status){
-        compiling=false;
-      });
-    }
+    
+    auto default_build_path=CMake::get_default_build_path(cmake->project_path);
+    if(default_build_path.empty())
+      return;
+    compiling=true;
+    Terminal::get().print("Compiling project "+cmake->project_path.string()+"\n");
+    Terminal::get().async_process(Config::get().terminal.make_command, default_build_path, [this](int exit_status){
+      compiling=false;
+    });
   });
   
   menu.add_action("run_command", [this]() {
@@ -633,6 +735,358 @@ void Window::set_menu_actions() {
   menu.add_action("force_kill_last_running", [this]() {
     Terminal::get().kill_last_async_process(true);
   });
+  
+#ifdef JUCI_ENABLE_DEBUG
+  menu.add_action("debug_set_run_arguments", [this]() {
+    auto cmake=get_cmake();
+    if(!cmake)
+      return;
+
+    auto project_path=std::make_shared<boost::filesystem::path>(cmake->project_path);
+    auto run_arguments_it=debug_run_arguments.find(project_path->string());
+    std::string run_arguments;
+    if(run_arguments_it!=debug_run_arguments.end())
+      run_arguments=run_arguments_it->second;
+  
+    if(run_arguments.empty()) {
+      auto executable=cmake->get_executable(notebook.get_current_page()!=-1?notebook.get_current_view()->file_path:"").string();
+      
+      if(executable!="") {
+        auto project_path=cmake->project_path;
+        auto debug_build_path=CMake::get_debug_build_path(project_path);
+        if(!debug_build_path.empty()) {
+          size_t pos=executable.find(project_path.string());
+          if(pos!=std::string::npos)
+            executable.replace(pos, project_path.string().size(), debug_build_path.string());
+        }
+        run_arguments=filesystem::escape_argument(executable);
+      }
+      else
+        run_arguments=filesystem::escape_argument(CMake::get_debug_build_path(cmake->project_path));
+    }
+    
+    entry_box.clear();
+    entry_box.labels.emplace_back();
+    auto label_it=entry_box.labels.begin();
+    label_it->update=[label_it](int state, const std::string& message){
+      label_it->set_text("Set empty to let juCi++ deduce executable");
+    };
+    label_it->update(0, "");
+    entry_box.entries.emplace_back(run_arguments, [this, project_path](const std::string& content){
+      debug_run_arguments[project_path->string()]=content;
+      entry_box.hide();
+    }, 50);
+    auto entry_it=entry_box.entries.begin();
+    entry_it->set_placeholder_text("Project: Set Run Arguments");
+    entry_box.buttons.emplace_back("Project: set run arguments", [this, entry_it](){
+      entry_it->activate();
+    });
+    entry_box.show();
+  });
+  menu.add_action("debug_start_continue", [this](){
+    if(debugging) {
+      Debug::get().continue_debug();
+      return;
+    }
+    
+    auto cmake=get_cmake();
+    if(!cmake)
+      return;
+    auto project_path=cmake->project_path;
+        
+    auto debug_build_path=CMake::get_debug_build_path(project_path);
+    if(debug_build_path.empty())
+      return;
+    if(!CMake::create_debug_build(project_path))
+      return;
+    
+    auto run_arguments_it=debug_run_arguments.find(project_path.string());
+    std::string run_arguments;
+    if(run_arguments_it!=debug_run_arguments.end())
+      run_arguments=run_arguments_it->second;
+    
+    std::string command;
+    if(!run_arguments.empty()) {
+      command=run_arguments;
+    }
+    else {
+      command=cmake->get_executable(notebook.get_current_page()!=-1?notebook.get_current_view()->file_path:"").string();
+      if(command.empty()) {
+        Terminal::get().print("Could not find add_executable in the following paths:\n");
+        for(auto &path: cmake->paths)
+          Terminal::get().print("  "+path.string()+"\n");
+        Terminal::get().print("Solution: either use Debug Set Run Arguments, or open a source file within a directory where add_executable is set.\n", true);
+        return;
+      }
+      size_t pos=command.find(project_path.string());
+      if(pos!=std::string::npos)
+        command.replace(pos, project_path.string().size(), debug_build_path.string());
+      command=filesystem::escape_argument(command);
+    }
+    
+    auto breakpoints=std::make_shared<std::vector<std::pair<boost::filesystem::path, int> > >();
+    for(int c=0;c<notebook.size();c++) {
+      auto view=notebook.get_view(c);
+      if(project_path==view->project_path) {
+        auto iter=view->get_buffer()->begin();
+        if(view->get_source_buffer()->get_source_marks_at_iter(iter, "debug_breakpoint").size()>0)
+          breakpoints->emplace_back(view->file_path, iter.get_line()+1);
+        while(view->get_source_buffer()->forward_iter_to_source_mark(iter, "debug_breakpoint"))
+          breakpoints->emplace_back(view->file_path, iter.get_line()+1);
+      }
+    }
+    
+    debugging=true;
+    Terminal::get().print("Compiling and debugging "+command+"\n");
+    Terminal::get().async_process(Config::get().terminal.make_command, debug_build_path, [this, breakpoints, command, debug_build_path](int exit_status){
+      if(exit_status!=EXIT_SUCCESS)
+        debugging=false;
+      else {
+        debug_start_mutex.lock();
+        Debug::get().start(command, debug_build_path, breakpoints, [this, command](int exit_status){
+          debugging=false;
+          Terminal::get().async_print(command+" returned: "+std::to_string(exit_status)+'\n');
+        }, [this](const std::string &status) {
+          debug_status_mutex.lock();
+          debug_status=status;
+          debug_status_mutex.unlock();
+          debug_update_status();
+        }, [this](const boost::filesystem::path &file_path, int line_nr, int line_index) {
+          debug_stop_mutex.lock();
+          debug_stop.first=file_path;
+          debug_stop.second.first=line_nr;
+          debug_stop.second.second=line_index;
+          debug_stop_mutex.unlock();
+          debug_update_stop();
+          //Remove debug stop source mark
+        });
+        debug_start_mutex.unlock();
+      }
+    });
+  });
+  menu.add_action("debug_stop", [this]() {
+    if(debugging) {
+      Debug::get().stop();
+    }
+  });
+  menu.add_action("debug_kill", [this]() {
+    if(debugging) {
+      Debug::get().kill();
+    }
+  });
+  menu.add_action("debug_step_over", [this]() {
+    if(debugging)
+      Debug::get().step_over();
+  });
+  menu.add_action("debug_step_into", [this]() {
+    if(debugging)
+      Debug::get().step_into();
+  });
+  menu.add_action("debug_step_out", [this]() {
+    if(debugging)
+      Debug::get().step_out();
+  });
+  menu.add_action("debug_backtrace", [this]() {
+    if(debugging && notebook.get_current_page()!=-1) {
+      auto backtrace=Debug::get().get_backtrace();
+      
+      auto view=notebook.get_current_view();
+      auto iter=view->get_iter_for_dialog();
+      view->selection_dialog=std::unique_ptr<SelectionDialog>(new SelectionDialog(*view, view->get_buffer()->create_mark(iter), true, true));
+      auto rows=std::make_shared<std::unordered_map<std::string, Debug::Frame> >();
+      if(backtrace.size()==0)
+        return;
+      
+      for(auto &frame: backtrace) {
+        std::string row="<i>"+frame.module_filename+"</i>";
+        
+        //Shorten frame.function_name if it is too long
+        if(frame.function_name.size()>120) {
+          frame.function_name=frame.function_name.substr(0, 58)+"...."+frame.function_name.substr(frame.function_name.size()-58);
+        }
+        if(frame.file_path.empty())
+          row+=" - "+Glib::Markup::escape_text(frame.function_name);
+        else {
+          auto file_path=boost::filesystem::path(frame.file_path).filename().string();
+          row+=":<b>"+Glib::Markup::escape_text(file_path)+":"+std::to_string(frame.line_nr)+"</b> - "+Glib::Markup::escape_text(frame.function_name);
+        }
+        (*rows)[row]=frame;
+        view->selection_dialog->add_row(row);
+      }
+      
+      view->selection_dialog->on_select=[this, rows](const std::string& selected, bool hide_window) {
+        auto frame=rows->at(selected);
+        if(!frame.file_path.empty()) {
+          notebook.open(frame.file_path);
+          if(notebook.get_current_page()!=-1) {
+            auto view=notebook.get_current_view();
+            
+            Debug::get().select_frame(frame.index);
+            
+            view->get_buffer()->place_cursor(view->get_buffer()->get_iter_at_line_index(frame.line_nr-1, frame.line_index-1));
+            
+            while(g_main_context_pending(NULL))
+              g_main_context_iteration(NULL, false);
+            if(notebook.get_current_page()!=-1 && notebook.get_current_view()==view)
+              view->scroll_to(view->get_buffer()->get_insert(), 0.0, 1.0, 0.5);
+          }
+        }
+      };
+      view->selection_dialog->show();
+    }
+  });
+  menu.add_action("debug_show_variables", [this]() {
+    if(debugging && notebook.get_current_page()!=-1) {
+      auto variables=Debug::get().get_variables();
+      
+      auto view=notebook.get_current_view();
+      auto iter=view->get_iter_for_dialog();
+      view->selection_dialog=std::unique_ptr<SelectionDialog>(new SelectionDialog(*view, view->get_buffer()->create_mark(iter), true, true));
+      auto rows=std::make_shared<std::unordered_map<std::string, Debug::Variable> >();
+      if(variables.size()==0)
+        return;
+      
+      for(auto &variable: variables) {
+        std::string row="#"+std::to_string(variable.thread_index_id)+":#"+std::to_string(variable.frame_index)+":"+variable.file_path.filename().string()+":"+std::to_string(variable.line_nr)+" - <b>"+Glib::Markup::escape_text(variable.name)+"</b>";
+        
+        (*rows)[row]=variable;
+        view->selection_dialog->add_row(row);
+      }
+      
+      view->selection_dialog->on_select=[this, rows](const std::string& selected, bool hide_window) {
+        auto variable=rows->at(selected);
+        if(!variable.file_path.empty()) {
+          notebook.open(variable.file_path);
+          if(notebook.get_current_page()!=-1) {
+            auto view=notebook.get_current_view();
+            
+            Debug::get().select_frame(variable.frame_index, variable.thread_index_id);
+            
+            view->get_buffer()->place_cursor(view->get_buffer()->get_iter_at_line_index(variable.line_nr-1, variable.line_index-1));
+            
+            while(g_main_context_pending(NULL))
+              g_main_context_iteration(NULL, false);
+            if(notebook.get_current_page()!=-1 && notebook.get_current_view()==view)
+              view->scroll_to(view->get_buffer()->get_insert(), 0.0, 1.0, 0.5);
+          }
+        }
+      };
+      
+      view->selection_dialog->on_hide=[this]() {
+        debug_variable_tooltips.hide();
+        debug_variable_tooltips.clear();
+      };
+      
+      view->selection_dialog->on_changed=[this, rows, iter](const std::string &selected) {
+        if(selected.empty()) {
+          debug_variable_tooltips.hide();
+          return;
+        }
+        if(notebook.get_current_page()!=-1) {
+          auto view=notebook.get_current_view();
+          debug_variable_tooltips.clear();
+          auto create_tooltip_buffer=[this, rows, view, selected]() {
+            auto variable=rows->at(selected);
+            auto tooltip_buffer=Gtk::TextBuffer::create(view->get_buffer()->get_tag_table());
+            
+            Glib::ustring value=variable.value;
+            if(!value.empty()) {
+              Glib::ustring::iterator iter;
+              while(!value.validate(iter)) {
+                auto next_char_iter=iter;
+                next_char_iter++;
+                value.replace(iter, next_char_iter, "?");
+              } 
+              tooltip_buffer->insert_with_tag(tooltip_buffer->get_insert()->get_iter(), value.substr(0, value.size()-1), "def:note");
+            }
+            
+            return tooltip_buffer;
+          };
+          
+          debug_variable_tooltips.emplace_back(create_tooltip_buffer, *view, view->get_buffer()->create_mark(iter), view->get_buffer()->create_mark(iter));
+      
+          debug_variable_tooltips.show(true);
+        }
+      };
+      
+      view->selection_dialog->show();
+    }
+  });
+  menu.add_action("debug_run_command", [this]() {
+    entry_box.clear();
+    entry_box.entries.emplace_back(last_run_debug_command, [this](const std::string& content){
+      if(content!="") {
+        if(debugging) {
+          auto command_return=Debug::get().run_command(content);
+          Terminal::get().async_print(command_return.first);
+          Terminal::get().async_print(command_return.second, true);
+        }
+        last_run_debug_command=content;
+      }
+      entry_box.hide();
+    }, 30);
+    auto entry_it=entry_box.entries.begin();
+    entry_it->set_placeholder_text("Debug Command");
+    entry_box.buttons.emplace_back("Run debug command", [this, entry_it](){
+      entry_it->activate();
+    });
+    entry_box.show();
+  });
+  menu.add_action("debug_toggle_breakpoint", [this](){
+    if(notebook.get_current_page()!=-1) {
+    auto view=notebook.get_current_view();
+      bool debug_is_stopped_or_running=Debug::get().is_stopped() || Debug::get().is_running();
+      if(Debug::get().is_invalid() || debug_is_stopped_or_running) {
+        auto line_nr=view->get_buffer()->get_insert()->get_iter().get_line();
+        
+        if(view->get_source_buffer()->get_source_marks_at_line(line_nr, "debug_breakpoint").size()>0) {
+          auto start_iter=view->get_buffer()->get_iter_at_line(line_nr);
+          auto end_iter=start_iter;
+          while(!end_iter.ends_line() && end_iter.forward_char()) {}
+          view->get_source_buffer()->remove_source_marks(start_iter, end_iter, "debug_breakpoint");
+          if(debug_is_stopped_or_running)
+            Debug::get().remove_breakpoint(view->file_path, line_nr+1, view->get_buffer()->get_line_count()+1);
+        }
+        else {
+          view->get_source_buffer()->create_source_mark("debug_breakpoint", view->get_buffer()->get_insert()->get_iter());
+          if(debug_is_stopped_or_running)
+            Debug::get().add_breakpoint(view->file_path, line_nr+1);
+        }
+      }
+    }
+  });
+  menu.add_action("debug_goto_stop", [this](){
+    if(debugging) {
+      debug_stop_mutex.lock();
+      auto debug_stop_copy=debug_stop;
+      debug_stop_mutex.unlock();
+      if(!debug_stop_copy.first.empty()) {
+        notebook.open(debug_stop_copy.first);
+        if(notebook.get_current_page()!=-1) {
+          auto view=notebook.get_current_view();
+          
+          int line_nr=debug_stop_copy.second.first-1;
+          int line_index=debug_stop_copy.second.second-1;
+          if(line_nr<view->get_buffer()->get_line_count()) {
+            auto iter=view->get_buffer()->get_iter_at_line(line_nr);
+            auto end_line_iter=iter;
+            while(!iter.ends_line() && iter.forward_char()) {}
+            auto line=view->get_buffer()->get_text(iter, end_line_iter);
+            if(static_cast<size_t>(line_index)>=line.bytes())
+              line_index=0;
+            view->get_buffer()->place_cursor(view->get_buffer()->get_iter_at_line_index(line_nr, line_index));
+            
+            while(g_main_context_pending(NULL))
+              g_main_context_iteration(NULL, false);
+            if(notebook.get_current_page()!=-1 && notebook.get_current_view()==view)
+              view->scroll_to(view->get_buffer()->get_insert(), 0.0, 1.0, 0.5);
+          }
+          debug_update_stop();
+        }
+      }
+    }
+  });
+#endif
   
   menu.add_action("next_tab", [this]() {
     if(notebook.get_current_page()!=-1) {
@@ -673,6 +1127,17 @@ void Window::activate_menu_items(bool activate) {
   menu.actions["source_rename"]->set_enabled(activate ? static_cast<bool>(notebook.get_current_view()->rename_similar_tokens) : false);
   menu.actions["source_goto_next_diagnostic"]->set_enabled(activate ? static_cast<bool>(notebook.get_current_view()->goto_next_diagnostic) : false);
   menu.actions["source_apply_fix_its"]->set_enabled(activate ? static_cast<bool>(notebook.get_current_view()->apply_fix_its) : false);
+#ifdef JUCI_ENABLE_DEBUG
+  if(notebook.get_current_page()!=-1) {
+    auto view=notebook.get_current_view();
+    if(view->language && (view->language->get_id()=="c" || view->language->get_id()=="cpp" || view->language->get_id()=="objc" || view->language->get_id()=="chdr" || view->language->get_id()=="cpphdr"))
+      menu.actions["debug_toggle_breakpoint"]->set_enabled(true);
+    else
+      menu.actions["debug_toggle_breakpoint"]->set_enabled(false);
+  }
+  else
+    menu.actions["debug_toggle_breakpoint"]->set_enabled(false);
+#endif
 }
 
 bool Window::on_key_press_event(GdkEventKey *event) {
@@ -716,6 +1181,11 @@ bool Window::on_delete_event(GdkEventAny *event) {
       return true;
   }
   Terminal::get().kill_async_processes();
+#ifdef JUCI_ENABLE_DEBUG
+  debug_start_mutex.lock();
+  Debug::get().delete_debug();
+  debug_start_mutex.unlock();
+#endif
   return false;
 }
 
@@ -879,12 +1349,11 @@ void Window::goto_line_entry() {
           if(line>0 && line<=view->get_buffer()->get_line_count()) {
             line--;
             
+            view->get_buffer()->place_cursor(view->get_buffer()->get_iter_at_line(line));
             while(g_main_context_pending(NULL))
               g_main_context_iteration(NULL, false);
-            if(notebook.get_current_page()!=-1 && notebook.get_current_view()==view) {
-              view->get_buffer()->place_cursor(view->get_buffer()->get_iter_at_line(line));
+            if(notebook.get_current_page()!=-1 && notebook.get_current_view()==view)
               view->scroll_to(view->get_buffer()->get_insert(), 0.0, 1.0, 0.5);
-            }
           }
         }
         catch(const std::exception &e) {}  

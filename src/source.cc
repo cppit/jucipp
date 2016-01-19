@@ -121,7 +121,22 @@ Source::View::View(const boost::filesystem::path &file_path, const boost::filesy
   spellcheck_checker=NULL;
   auto tag=get_buffer()->create_tag("spellcheck_error");
   tag->property_underline()=Pango::Underline::UNDERLINE_ERROR;
-    
+  
+  auto mark_attr_debug_breakpoint=Gsv::MarkAttributes::create();
+  Gdk::RGBA rgba;
+  rgba.set_red(1.0);
+  rgba.set_green(0.5);
+  rgba.set_blue(0.5);
+  rgba.set_alpha(0.3);
+  mark_attr_debug_breakpoint->set_background(rgba);
+  set_mark_attributes("debug_breakpoint", mark_attr_debug_breakpoint, 100);
+  auto mark_attr_debug_stop=Gsv::MarkAttributes::create();
+  rgba.set_red(0.5);
+  rgba.set_green(0.5);
+  rgba.set_blue(1.0);
+  mark_attr_debug_stop->set_background(rgba);
+  set_mark_attributes("debug_stop", mark_attr_debug_stop, 101);
+  
   get_buffer()->signal_changed().connect([this](){
     if(spellcheck_checker==NULL)
       return;
@@ -665,6 +680,21 @@ void Source::View::paste() {
     Gtk::Clipboard::get()->set_text(text);
     get_buffer()->paste_clipboard(Gtk::Clipboard::get());
   }
+}
+
+Gtk::TextIter Source::View::get_iter_for_dialog() {
+  auto iter=get_buffer()->get_insert()->get_iter();
+  if(iter.get_line_offset()>=80)
+    iter=get_buffer()->get_iter_at_line(iter.get_line());
+  Gdk::Rectangle visible_rect;
+  get_visible_rect(visible_rect);
+  Gdk::Rectangle iter_rect;
+  get_iter_location(iter, iter_rect);
+  iter_rect.set_width(1);
+  if(!visible_rect.intersects(iter_rect)) {
+    get_iter_at_location(iter, 0, visible_rect.get_y()+visible_rect.get_height()/3);
+  }
+  return iter;
 }
 
 void Source::View::set_status(const std::string &status) {

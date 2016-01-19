@@ -130,6 +130,7 @@ void Directories::open(const boost::filesystem::path& dir_path) {
   update_mutex.unlock();
     
   cmake=std::unique_ptr<CMake>(new CMake(dir_path));
+  CMake::create_default_build(cmake->project_path);
   auto project=cmake->get_functions_parameters("project");
   if(project.size()>0 && project[0].second.size()>0)
     get_column(0)->set_title(project[0].second[0]);

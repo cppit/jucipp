@@ -143,6 +143,7 @@ void Tooltips::show(const Gdk::Rectangle& rectangle, bool disregard_drawn) {
     if(rectangle.intersects(tooltip.activation_rectangle)) {
       tooltip.adjust(disregard_drawn);
       tooltip.window->show_all();
+      shown=true;
     }
     else if(tooltip.window)
       tooltip.window->hide();
@@ -154,6 +155,7 @@ void Tooltips::show(bool disregard_drawn) {
     tooltip.update();
     tooltip.adjust(disregard_drawn);
     tooltip.window->show_all();
+    shown=true;
   }
 }
 
@@ -162,4 +164,5 @@ void Tooltips::hide() {
     if(tooltip.window)
       tooltip.window->hide();
   }
+  shown=false;
 }

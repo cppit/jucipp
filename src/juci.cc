@@ -32,7 +32,7 @@ int Application::on_command_line(const Glib::RefPtr<Gio::ApplicationCommandLine>
           files.emplace_back(new_p);
         }
         else
-          Terminal::get().print("Error: folder path "+parent_p.string()+" does not exist.\n", true);
+          errors.emplace_back("Error: folder path "+parent_p.string()+" does not exist.\n");
       }
     }
   }
@@ -66,8 +66,12 @@ void Application::on_activate() {
       another_juci_app.detach();
     }
   }
+  
   for(auto &file: files)
     Window::get().notebook.open(file);
+  
+  for(auto &error: errors)
+    Terminal::get().print(error, true);
 }
 
 void Application::on_startup() {

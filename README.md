@@ -12,6 +12,7 @@ towards libclang with speed and ease of use in mind.
 * Syntax highlighting for more than 100 different file types
 * C++ warnings and errors on the fly
 * C++ Fix-its
+* Debug integration through lldb
 * Automated CMake processing
 * Fast C++ autocompletion
 * Keyword and buffer autocompletion for other file types
@@ -44,6 +45,7 @@ See [enhancements](https://github.com/cppit/jucipp/labels/enhancement) for plann
 * gtksourceviewmm-3.0
 * aspell
 * libclang
+* lldb
 * [libclangmm](http://github.com/cppit/libclangmm/) (downloaded directly with git --recursive, no need to install)
 * [tiny-process-library](http://github.com/eidheim/tiny-process-library/) (downloaded directly with git --recursive, no need to install)
 

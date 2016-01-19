@@ -30,6 +30,7 @@ public:
   static void init() {drawn_tooltips_rectangle=Gdk::Rectangle();}
   void show(const Gdk::Rectangle& rectangle, bool disregard_drawn=false);
   void show(bool disregard_drawn=false);
+  bool shown=false;
   void hide();
   void clear() {tooltip_list.clear();};
   
@@ -37,10 +38,10 @@ public:
   void emplace_back(Ts&&... params) {
     tooltip_list.emplace_back(std::forward<Ts>(params)...);
   }
-   
+
   static Gdk::Rectangle drawn_tooltips_rectangle;
   
-  private:
+private:
   std::list<Tooltip> tooltip_list;
 };
 

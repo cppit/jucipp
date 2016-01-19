@@ -2,6 +2,9 @@
 #include "config.h"
 #include "terminal.h"
 #include "cmake.h"
+#ifdef JUCI_ENABLE_DEBUG
+#include "debug.h"
+#endif
 
 namespace sigc {
 #ifndef SIGC_FUNCTORS_DEDUCE_RESULT_TYPE_WITH_DECLTYPE
@@ -179,11 +182,7 @@ void Source::ClangViewParse::soft_reparse() {
 }
 
 std::vector<std::string> Source::ClangViewParse::get_compilation_commands() {
-  boost::filesystem::path default_build_path;
-  if(boost::filesystem::exists(project_path/"CMakeLists.txt"))
-    default_build_path=CMake::get_default_build_path(project_path);
-  
-  clang::CompilationDatabase db(default_build_path.string());
+  clang::CompilationDatabase db(CMake::get_default_build_path(project_path).string());
   clang::CompileCommands commands(file_path.string(), db);
   std::vector<clang::CompileCommand> cmds = commands.get_commands();
   std::vector<std::string> arguments;
@@ -416,6 +415,33 @@ void Source::ClangViewParse::show_type_tooltips(const Gdk::Rectangle &rectangle)
             auto brief_comment=token.get_cursor().get_brief_comments();
             if(brief_comment!="")
               tooltip_buffer->insert_with_tag(tooltip_buffer->get_insert()->get_iter(), "\n\n"+brief_comment, "def:note");
+
+#ifdef JUCI_ENABLE_DEBUG
+            if(Debug::get().is_stopped()) {
+              auto location=token.get_cursor().get_referenced().get_source_location();
+              Glib::ustring value_type="Value";
+              Glib::ustring debug_value=Debug::get().get_value(token.get_spelling(), location.get_path(), location.get_offset().line, location.get_offset().index);
+              if(debug_value.empty()) {
+                value_type="Return value";
+                auto cursor=token.get_cursor();
+                auto offsets=cursor.get_source_range().get_offsets();
+                debug_value=Debug::get().get_return_value(cursor.get_source_location().get_path(), offsets.first.line, offsets.first.index);
+              }
+              if(!debug_value.empty()) {
+                size_t pos=debug_value.find(" = ");
+                if(pos!=Glib::ustring::npos) {
+                  Glib::ustring::iterator iter;
+                  while(!debug_value.validate(iter)) {
+                    auto next_char_iter=iter;
+                    next_char_iter++;
+                    debug_value.replace(iter, next_char_iter, "?");
+                  }
+                  tooltip_buffer->insert_with_tag(tooltip_buffer->get_insert()->get_iter(), "\n\n"+value_type+": "+debug_value.substr(pos+3, debug_value.size()-(pos+3)-1), "def:note");
+                }
+              }
+            }
+#endif
+            
             return tooltip_buffer;
           };
           
@@ -658,11 +684,10 @@ Source::ClangViewParse(file_path, project_path, language), autocomplete_state(Au
       else {
         if(autocomplete_state==AutocompleteState::STARTING || autocomplete_state==AutocompleteState::RESTARTING)
           autocomplete_state=AutocompleteState::CANCELED;
-        else {
-          auto iter=get_buffer()->get_insert()->get_iter();
-          if(last_keyval=='.' || last_keyval==':' || (last_keyval=='>' && iter.backward_char() && iter.backward_char() && *iter=='-'))
-            autocomplete_check();
-        }
+        auto iter=get_buffer()->get_insert()->get_iter();
+        iter.backward_chars(2);
+        if(last_keyval=='.' || (last_keyval==':' && *iter==':') || (last_keyval=='>' && *iter=='-'))
+          autocomplete_check();
       }
     }
   });
@@ -703,26 +728,24 @@ Source::ClangViewParse(file_path, project_path, language), autocomplete_state(Au
       autocomplete_dialog_setup();
       
       for (auto &data : autocomplete_data) {
-        std::stringstream ss;
+        std::string row;
         std::string return_value;
         for (auto &chunk : data.chunks) {
-          switch (chunk.kind) {
-          case clang::CompletionChunk_ResultType:
-            return_value = chunk.chunk;
-            break;
-          case clang::CompletionChunk_Informative: break;
-          default: ss << chunk.chunk; break;
-          }
+          if(chunk.kind==clang::CompletionChunk_ResultType)
+            return_value=chunk.chunk;
+          else if(chunk.kind!=clang::CompletionChunk_Informative)
+            row+=chunk.chunk;
         }
-        auto row=ss.str();
-        auto row_insert_on_selection=row;
+        data.chunks.clear();
         if (!row.empty()) {
+          auto row_insert_on_selection=row;
           if(!return_value.empty())
             row+=" --> " + return_value;
-          autocomplete_dialog_rows[row] = row_insert_on_selection;
-          autocomplete_dialog->add_row(row, data.brief_comments);
+          autocomplete_dialog_rows[row] = std::pair<std::string, std::string>(std::move(row_insert_on_selection), std::move(data.brief_comments));
+          autocomplete_dialog->add_row(row);
         }
       }
+      autocomplete_data.clear();
       set_status("");
       autocomplete_state=AutocompleteState::IDLE;
       if (!autocomplete_dialog_rows.empty()) {
@@ -772,11 +795,13 @@ void Source::ClangViewAutocomplete::autocomplete_dialog_setup() {
   autocomplete_dialog_rows.clear();
   autocomplete_dialog->on_hide=[this](){
     get_source_buffer()->end_user_action();
+    autocomplete_tooltips.hide();
+    autocomplete_tooltips.clear();
     parsed=false;
     soft_reparse();
   };
   autocomplete_dialog->on_select=[this](const std::string& selected, bool hide_window) {
-    auto row = autocomplete_dialog_rows.at(selected);
+    auto row = autocomplete_dialog_rows.at(selected).first;
     get_buffer()->erase(autocomplete_dialog->start_mark->get_iter(), get_buffer()->get_insert()->get_iter());
     auto iter=get_buffer()->get_insert()->get_iter();
     if(*iter=='<' || *iter=='(') {
@@ -823,6 +848,32 @@ void Source::ClangViewAutocomplete::autocomplete_dialog_setup() {
         if(iter.backward_char() && *iter==':')
           autocomplete_restart();
       }
+    }
+  };
+  
+  autocomplete_dialog->on_changed=[this](const std::string &selected) {
+    if(selected.empty()) {
+      autocomplete_tooltips.hide();
+      return;
+    }
+    auto tooltip=std::make_shared<std::string>(autocomplete_dialog_rows.at(selected).second);
+    if(tooltip->empty()) {
+      autocomplete_tooltips.hide();
+    }
+    else {
+      autocomplete_tooltips.clear();
+      auto create_tooltip_buffer=[this, tooltip]() {
+        auto tooltip_buffer=Gtk::TextBuffer::create(get_buffer()->get_tag_table());
+        
+        tooltip_buffer->insert_with_tag(tooltip_buffer->get_insert()->get_iter(), *tooltip, "def:note");
+        
+        return tooltip_buffer;
+      };
+      
+      auto iter=autocomplete_dialog->start_mark->get_iter();
+      autocomplete_tooltips.emplace_back(create_tooltip_buffer, *this, get_buffer()->create_mark(iter), get_buffer()->create_mark(iter));
+  
+      autocomplete_tooltips.show(true);
     }
   };
 }
@@ -1184,15 +1235,7 @@ Source::ClangViewAutocomplete(file_path, project_path, language) {
   
   goto_method=[this](){    
     if(parsed) {
-      auto iter=get_buffer()->get_insert()->get_iter();
-      Gdk::Rectangle visible_rect;
-      get_visible_rect(visible_rect);
-      Gdk::Rectangle iter_rect;
-      get_iter_location(iter, iter_rect);
-      iter_rect.set_width(1);
-      if(!visible_rect.intersects(iter_rect)) {
-        get_iter_at_location(iter, 0, visible_rect.get_y()+visible_rect.get_height()/3);
-      }
+      auto iter=get_iter_for_dialog();
       selection_dialog=std::unique_ptr<SelectionDialog>(new SelectionDialog(*this, get_buffer()->create_mark(iter), true, true));
       auto rows=std::make_shared<std::unordered_map<std::string, clang::Offset> >();
       auto methods=clang_tokens->get_cxx_methods();

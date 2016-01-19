@@ -25,5 +25,8 @@ public:
   static bool write(const std::string &path, Glib::RefPtr<Gtk::TextBuffer> text_buffer);
   static bool write(const boost::filesystem::path &path, Glib::RefPtr<Gtk::TextBuffer> text_buffer) { return write(path.string(), text_buffer); }
 
+  static std::string escape_argument(const std::string &argument);
+  static std::string escape_argument(const boost::filesystem::path &argument) { return escape_argument(argument.string()); };
+  static std::string unescape(const std::string &argument);
 };
 #endif  // JUCI_FILESYSTEM_H_

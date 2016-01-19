@@ -2,6 +2,9 @@
 #include <iostream>
 #include "logging.h"
 #include "config.h"
+#ifdef JUCI_ENABLE_DEBUG
+#include "debug.h"
+#endif
 
 Terminal::InProgress::InProgress(const std::string& start_msg): stop(false) {
   waiting_print.connect([this](){
@@ -243,7 +246,11 @@ void Terminal::async_print(int line_nr, const std::string &message) {
 
 bool Terminal::on_key_press_event(GdkEventKey *event) {
   processes_mutex.lock();
-  if(processes.size()>0) {
+  bool debug_is_running=false;
+#ifdef JUCI_ENABLE_DEBUG
+  debug_is_running=Debug::get().is_running();
+#endif
+  if(processes.size()>0 || debug_is_running) {
     get_buffer()->place_cursor(get_buffer()->end());
     auto unicode=gdk_keyval_to_unicode(event->keyval);
     char chr=(char)unicode;
@@ -261,7 +268,13 @@ bool Terminal::on_key_press_event(GdkEventKey *event) {
     }
     else if(event->keyval==GDK_KEY_Return) {
       stdin_buffer+='\n';
-      processes.back()->write(stdin_buffer);
+      if(debug_is_running) {
+#ifdef JUCI_ENABLE_DEBUG
+        Debug::get().write(stdin_buffer);
+#endif
+      }
+      else
+        processes.back()->write(stdin_buffer);
       get_buffer()->insert_at_cursor(stdin_buffer.substr(stdin_buffer.size()-1));
       stdin_buffer.clear();
     }

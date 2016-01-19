@@ -28,7 +28,19 @@ endif()
 INCLUDE(FindPkgConfig)
 
 find_package(LibClang REQUIRED)
-
+string(REPLACE libclang liblldb LIBLLDB_LIBRARIES "${LIBCLANG_LIBRARIES}")
+if(EXISTS "${LIBLLDB_LIBRARIES}")
+  set(LIBLLDB_FOUND TRUE)
+elseif(EXISTS "${LIBLLDB_LIBRARIES}.1")
+  set(LIBLLDB_LIBRARIES "${LIBLLDB_LIBRARIES}.1")
+  set(LIBLLDB_FOUND TRUE)
+endif()
+if(LIBLLDB_FOUND)
+  set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -DJUCI_ENABLE_DEBUG")
+else()
+  set(LIBLLDB_LIBRARIES "")
+  message("liblldb not found. Compiling juCi++ without debugging support")
+endif()
 #find_package(PythonLibs 2.7)
 
 #find_package(Boost 1.55 COMPONENTS python thread log system filesystem REQUIRED)
@@ -90,6 +102,10 @@ set(source_files juci.h
     
     ../tiny-process-library/process.cpp)
 
+if(LIBLLDB_FOUND)
+  list(APPEND source_files debug.h debug.cc)
+endif()
+
 if(MSYS)
   list(APPEND source_files dialogs_unix.cc) #dialogs_win.cc does not work any more because of missing SHCreateItemFromParsingName
   list(APPEND source_files ../tiny-process-library/process_win.cpp)
@@ -136,6 +152,7 @@ target_link_libraries(${project_name}
   ${GTKSVMM_LIBRARIES}
   ${Boost_LIBRARIES}
   ${ASPELL_LIBRARIES}
+  ${LIBLLDB_LIBRARIES}
   #${PYTHON_LIBRARIES}
 )
 

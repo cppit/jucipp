@@ -2,7 +2,7 @@
 #define JUCI_FILES_H_
 #include <string>
 
-#define JUCI_VERSION "1.0.1"
+#define JUCI_VERSION "1.1.0-4"
 
 const std::string configjson =
 "{\n"
@@ -92,11 +92,25 @@ const std::string configjson =
 "        \"source_rename\": \"<primary>r\",\n"
 "        \"source_goto_next_diagnostic\": \"<primary>e\",\n"
 "        \"source_apply_fix_its\": \"<control>space\",\n"
+"        \"project_set_run_arguments\": \"\",\n"
 "        \"compile_and_run\": \"<primary>Return\",\n"
 "        \"compile\": \"<primary><shift>Return\",\n"
+"        \"compile_and_run\": \"<primary>Return\",\n"
 "        \"run_command\": \"<alt>Return\",\n"
 "        \"kill_last_running\": \"<primary>Escape\",\n"
 "        \"force_kill_last_running\": \"<primary><shift>Escape\",\n"
+"        \"debug_set_run_arguments\": \"\",\n"
+"        \"debug_start_continue\": \"<primary>y\",\n"
+"        \"debug_stop\": \"<primary><shift>y\",\n"
+"        \"debug_kill\": \"<primary><shift>k\",\n"
+"        \"debug_step_over\": \"<primary>j\",\n"
+"        \"debug_step_into\": \"<primary>t\",\n"
+"        \"debug_step_out\": \"<primary><shift>t\",\n"
+"        \"debug_backtrace\": \"<primary><shift>j\",\n"
+"        \"debug_show_variables\": \"<primary><shift>b\",\n"
+"        \"debug_run_command\": \"<alt><shift>Return\",\n"
+"        \"debug_toggle_breakpoint\": \"<primary>b\",\n"
+"        \"debug_goto_stop\": \"<primary><shift>l\",\n"
 #ifdef __linux
 "        \"next_tab\": \"<primary>Tab\",\n"
 "        \"previous_tab\": \"<primary><shift>Tab\",\n"
@@ -109,6 +123,8 @@ const std::string configjson =
 "    \"project\": {\n"
 "        \"default_build_path_comment\": \"Use <project_directory_name> to insert the project top level directory name\",\n"
 "        \"default_build_path\": \"./build\",\n"
+"        \"debug_build_path_comment\": \"Use <project_directory_name> to insert the project top level directory name, and <default_build_path> to insert your default_build_path setting.\",\n"
+"        \"debug_build_path\": \"<default_build_path>/debug\",\n"
 #ifdef _WIN32
 "        \"cmake_command\": \"cmake -G\\\"MSYS Makefiles\\\" -DCMAKE_INSTALL_PREFIX="+JUCI_CMAKE_INSTALL_PREFIX+"\",\n"
 #else

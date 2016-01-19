@@ -1,19 +1,22 @@
 # juCi++ Installation Guide
 
-- Linux
-  - [Debian/Ubuntu 15](#debianubuntu-15)
-  - [Ubuntu 14/Linux Mint 17](#ubuntu-14linux-mint-17)
-  - [Arch Linux](#arch-linux)
-- OS X
-  - [Homebrew](#os-x-with-homebrew-httpbrewsh)
-- Windows
-  - [MSYS 2](#windows-with-msys2-httpsmsys2githubio)
+- Installation
+  - Linux
+    - [Debian testing/Linux Mint/Ubuntu](#debian-testinglinux-mintubuntu)
+    - [Debian stable](#debian-stable)
+    - [Arch Linux](#arch-linux)
+  - OS X
+    - [Homebrew](#os-x-with-homebrew-httpbrewsh)
+  - Windows
+    - [MSYS 2](#windows-with-msys2-httpsmsys2githubio)
+- [Run](#run)
 
-## Debian/Ubuntu 15
+## Debian testing/Linux Mint/Ubuntu
+**Currently, if using another libclang version, the same version of lldb is needed.**
+
 Install dependencies:
 ```sh
-sudo apt-get install git cmake make g++ libclang-dev pkg-config libboost-system-dev libboost-thread-dev libboost-filesystem-dev libboost-log-dev libboost-regex-dev libgtksourceviewmm-3.0-dev aspell-en libaspell-dev
-sudo apt-get install clang-format-3.6 || sudo apt-get install clang-format-3.5
+sudo apt-get install git cmake make g++ libclang-3.6-dev liblldb-3.6-dev clang-format-3.6 pkg-config libboost-system-dev libboost-thread-dev libboost-filesystem-dev libboost-log-dev libboost-regex-dev libgtksourceviewmm-3.0-dev aspell-en libaspell-dev
 ```
 
 Get juCi++ source, compile and install:
@@ -26,10 +29,12 @@ make
 sudo make install
 ```
 
-## Ubuntu 14/Linux Mint 17
+## Debian stable
+**Currently, if using another libclang version, the same version of lldb is needed.**
+
 Install dependencies:
 ```sh
-sudo apt-get install git cmake make g++ libclang-3.6-dev clang-format-3.6 pkg-config libboost-system-dev libboost-thread-dev libboost-filesystem-dev libboost-log-dev libboost-regex-dev libgtksourceviewmm-3.0-dev aspell-en libaspell-dev
+sudo apt-get install git cmake make g++ libclang-3.5-dev liblldb-3.5-dev clang-format-3.5 pkg-config libboost-system-dev libboost-thread-dev libboost-filesystem-dev libboost-log-dev libboost-regex-dev libgtksourceviewmm-3.0-dev aspell-en libaspell-dev
 ```
 
 Get juCi++ source, compile and install:
@@ -50,8 +55,7 @@ Alternatively, follow the instructions below.
 
 Install dependencies:
 ```sh
-#as root
-pacman -S git cmake make clang gtksourceviewmm boost aspell aspell-en
+sudo pacman -S git cmake make clang lldb gtksourceviewmm boost aspell aspell-en
 ```
 
 Get juCi++ source, compile and install:
@@ -61,14 +65,16 @@ mkdir jucipp/build
 cd jucipp/build
 cmake ..
 make
-# as root
-make install
+sudo make install
 ```
 
 ## OS X with Homebrew (http://brew.sh/)
-Install dependencies (installing llvm may take some time):
+**Installing llvm may take some time, and you need to follow the lldb code signing instructions.**
+
+Install dependencies:
 ```sh
-brew install cmake --with-clang llvm pkg-config boost homebrew/x11/gtksourceviewmm3 aspell clang-format
+brew install --with-clang --with-lldb llvm
+brew install cmake pkg-config boost homebrew/x11/gtksourceviewmm3 aspell clang-format
 ```
 
 Get juCi++ source, compile and install:
@@ -82,6 +88,8 @@ make install
 ```
 
 ##Windows with MSYS2 (https://msys2.github.io/)
+**MSYS2 does not yet support lldb, but you can still compile juCi++ without debug support.**
+
 Install dependencies (replace `x86_64` with `i686` for 32-bit MSYS2 installs):
 ```sh
 pacman -S git mingw-w64-x86_64-cmake make mingw-w64-x86_64-toolchain mingw-w64-x86_64-clang mingw-w64-x86_64-gtkmm3 mingw-w64-x86_64-gtksourceviewmm3 mingw-w64-x86_64-boost mingw-w64-x86_64-aspell mingw-w64-x86_64-aspell-en
@@ -97,34 +105,11 @@ make
 make install
 ```
 
-<!--
-## Windows with Cygwin (https://www.cygwin.com/)
-**Make sure the PATH environment variable does not include paths to non-Cygwin cmake, make and g++.**
-
-Select and install the following packages from the Cygwin-installer:
-```
-pkg-config libboost-devel libgtkmm3.0-devel libgtksourceviewmm3.0-devel xinit
-```
-Then run the following in the Cygwin Terminal:
-```sh
-git clone https://github.com/cppit/jucipp.git
-cd jucipp
-cmake .
-make
-make install
-```
-
-Note that we are currently working on a Windows-version without the need of an X-server.
--->
-
 ## Run
 ```sh
 juci
 ```
-
-<!--
-#### Windows
+Alternatively, you can also include directories and files:
 ```sh
-startxwin /usr/local/bin/juci
+juci [directory] [file1 file2 ...]
 ```
--->

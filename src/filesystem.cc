@@ -135,3 +135,29 @@ bool filesystem::write(const std::string &path, Glib::RefPtr<Gtk::TextBuffer> bu
   }
   return false;
 }
+
+std::string filesystem::escape_argument(const std::string &argument) {
+  auto escaped=argument;
+  size_t pos=0;
+  while((pos=escaped.find(' ', pos))!=std::string::npos) {
+    escaped.replace(pos, 1, "\\ ");
+    pos+=2;
+  }
+  return escaped;
+}
+
+std::string filesystem::unescape(const std::string &argument) {
+  auto escaped=argument;
+  size_t pos=0;
+  while((pos=escaped.find("\\ ", pos))!=std::string::npos) {
+    escaped.replace(pos, 2, " ");
+    pos+=1;
+  }
+  if(escaped.size()>=2) {
+    if((escaped[0]=='\'' && escaped[escaped.size()-1]=='\'') ||
+       (escaped[0]=='"' && escaped[escaped.size()-1]=='"')) {
+      escaped=escaped.substr(1, escaped.size()-2);
+    }
+  }
+  return escaped;
+}
