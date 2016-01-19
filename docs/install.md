@@ -48,6 +48,8 @@ sudo make install
 ```
 
 ##Arch Linux
+** Arch Linux's lldb package has an issue that is being worked on, and for the time being you have to build juCi++ without debug support. If you have the lldb package installed, please remove this package before building juCi++.**
+
 Package available in the Arch User Repository:
 https://aur.archlinux.org/packages/jucipp-git/
 
@@ -55,7 +57,7 @@ Alternatively, follow the instructions below.
 
 Install dependencies:
 ```sh
-sudo pacman -S git cmake make clang lldb gtksourceviewmm boost aspell aspell-en
+sudo pacman -S git cmake make clang gtksourceviewmm boost aspell aspell-en
 ```
 
 Get juCi++ source, compile and install:
@@ -69,7 +71,7 @@ sudo make install
 ```
 
 ## OS X with Homebrew (http://brew.sh/)
-**Installing llvm may take some time, and you need to follow the lldb code signing instructions.**
+**Installing llvm may take some time, and you need to follow the lldb code signing instructions. For an easier dependency install, but without debug support, remove `--with-lldb` below.**
 
 Install dependencies:
 ```sh
