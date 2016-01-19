@@ -48,7 +48,7 @@ sudo make install
 ```
 
 ##Arch Linux
-** Arch Linux's lldb package has an issue that is being worked on, and for the time being you have to build juCi++ without debug support. If you have the lldb package installed, please remove this package before building juCi++.**
+**Arch Linux's lldb package has an issue that is being worked on, and for the time being you have to build juCi++ without debug support. If you have the lldb package installed, please remove this package before building juCi++.**
 
 Package available in the Arch User Repository:
 https://aur.archlinux.org/packages/jucipp-git/
