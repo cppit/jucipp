@@ -90,7 +90,9 @@ make install
 ```
 
 ##Windows with MSYS2 (https://msys2.github.io/)
-**MSYS2 does not yet support lldb, but you can still compile juCi++ without debug support.**
+**MSYS2 does not yet support lldb, but you can still compile juCi++ without debug support. Also for the time being, MSYS2 must be installed in the default MSYS2 folder (C:\msys64 or C:\msys32).**
+
+Note that juCi++ must be run in a MinGW Shell (for instance MinGW-w64 Win64 Shell). 
 
 Install dependencies (replace `x86_64` with `i686` for 32-bit MSYS2 installs):
 ```sh
