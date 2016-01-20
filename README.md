@@ -33,7 +33,9 @@ See [enhancements](https://github.com/cppit/jucipp/labels/enhancement) for plann
 
 ## Screenshots
 <img src="https://github.com/cppit/jucipp/blob/master/docs/images/screenshot1.png" width="350"/>
-<img src="https://github.com/cppit/jucipp/blob/master/docs/images/screenshot2.png" width="350"/>
+<img src="https://github.com/cppit/jucipp/blob/master/docs/images/screenshot2.png" width="350"/><br>
+<img src="https://github.com/cppit/jucipp/blob/master/docs/images/screenshot3.png" width="350"/>
+<img src="https://github.com/cppit/jucipp/blob/master/docs/images/screenshot4.png" width="350"/>
 
 ## Dependencies
 * boost-filesystem
