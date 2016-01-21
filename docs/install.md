@@ -12,8 +12,6 @@
 - [Run](#run)
 
 ## Debian testing/Linux Mint/Ubuntu
-**Currently, if using another libclang version, the same version of lldb is needed.**
-
 Install dependencies:
 ```sh
 sudo apt-get install git cmake make g++ libclang-3.6-dev liblldb-3.6-dev clang-format-3.6 pkg-config libboost-system-dev libboost-thread-dev libboost-filesystem-dev libboost-log-dev libboost-regex-dev libgtksourceviewmm-3.0-dev aspell-en libaspell-dev
@@ -30,8 +28,6 @@ sudo make install
 ```
 
 ## Debian stable
-**Currently, if using another libclang version, the same version of lldb is needed.**
-
 Install dependencies:
 ```sh
 sudo apt-get install git cmake make g++ libclang-3.5-dev liblldb-3.5-dev clang-format-3.5 pkg-config libboost-system-dev libboost-thread-dev libboost-filesystem-dev libboost-log-dev libboost-regex-dev libgtksourceviewmm-3.0-dev aspell-en libaspell-dev
