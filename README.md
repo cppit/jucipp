@@ -32,7 +32,7 @@ towards libclang with speed and ease of use in mind.
 See [enhancements](https://github.com/cppit/jucipp/labels/enhancement) for planned features.
 
 ## Screenshots
-<img src="https://github.com/cppit/jucipp/blob/master/docs/images/screenshot1.png" width="350"/>
+<img src="https://github.com/cppit/jucipp/blob/master/docs/images/screenshot1b.png" width="350"/>
 <img src="https://github.com/cppit/jucipp/blob/master/docs/images/screenshot2b.png" width="350"/><br>
 <img src="https://github.com/cppit/jucipp/blob/master/docs/images/screenshot3b.png" width="350"/>
 <img src="https://github.com/cppit/jucipp/blob/master/docs/images/screenshot4.png" width="350"/>
