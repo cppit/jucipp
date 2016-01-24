@@ -291,9 +291,8 @@ std::vector<Debug::Frame> Debug::get_backtrace() {
       
       backtrace_frame.index=c_f;
       
-      auto function_name=frame.GetFunctionName();
-      if(function_name!=NULL)
-        backtrace_frame.function_name=function_name;
+      if(frame.GetFunctionName()!=NULL)
+        backtrace_frame.function_name=frame.GetFunctionName();
       
       auto module_filename=frame.GetModule().GetFileSpec().GetFilename();
       if(module_filename!=NULL) {
@@ -337,9 +336,8 @@ std::vector<Debug::Variable> Debug::get_variables() {
             
             variable.thread_index_id=thread.GetIndexID();
             variable.frame_index=c_f;
-            auto value_name=value.GetName();
-            if(value_name!=NULL)
-              variable.name=value_name;
+            if(value.GetName()!=NULL)
+              variable.name=value.GetName();
             
             variable.line_nr=declaration.GetLine();
             variable.line_index=declaration.GetColumn();
@@ -391,7 +389,7 @@ std::string Debug::get_value(const std::string &variable, const boost::filesyste
       lldb::SBStream stream;
       auto value=values.GetValueAtIndex(value_index);
 
-      if(value.GetName()==variable) {
+      if(value.GetName()!=NULL && value.GetName()==variable) {
         auto declaration=value.GetDeclaration();
         if(declaration.IsValid()) {
           if(declaration.GetLine()==line_nr && (declaration.GetColumn()==0 || declaration.GetColumn()==line_index)) {
