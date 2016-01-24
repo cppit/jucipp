@@ -132,8 +132,16 @@ void Directories::open(const boost::filesystem::path& dir_path) {
   cmake=std::unique_ptr<CMake>(new CMake(dir_path));
   CMake::create_default_build(cmake->project_path);
   auto project=cmake->get_functions_parameters("project");
-  if(project.size()>0 && project[0].second.size()>0)
-    get_column(0)->set_title(project[0].second[0]);
+  if(project.size()>0 && project[0].second.size()>0) {
+    auto title=project[0].second[0];
+    //TOTO: report that set_title does not handle '_' correctly?
+    size_t pos=0;
+    while((pos=title.find('_', pos))!=std::string::npos) {
+      title.replace(pos, 1, "__");
+      pos+=2;
+    }
+    get_column(0)->set_title(title);
+  }
   else
     get_column(0)->set_title("");
   update_mutex.lock();
