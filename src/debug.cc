@@ -337,7 +337,9 @@ std::vector<Debug::Variable> Debug::get_variables() {
             
             variable.thread_index_id=thread.GetIndexID();
             variable.frame_index=c_f;
-            variable.name=value.GetName();
+            auto value_name=value.GetName();
+            if(value_name!=NULL)
+              variable.name=value_name;
             
             variable.line_nr=declaration.GetLine();
             variable.line_index=declaration.GetColumn();

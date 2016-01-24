@@ -134,7 +134,7 @@ void Directories::open(const boost::filesystem::path& dir_path) {
   auto project=cmake->get_functions_parameters("project");
   if(project.size()>0 && project[0].second.size()>0) {
     auto title=project[0].second[0];
-    //TOTO: report that set_title does not handle '_' correctly?
+    //TODO: report that set_title does not handle '_' correctly?
     size_t pos=0;
     while((pos=title.find('_', pos))!=std::string::npos) {
       title.replace(pos, 1, "__");
