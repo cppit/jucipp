@@ -2,6 +2,7 @@
 #define JUCI_SOURCE_H_
 #include <aspell.h>
 #include <boost/property_tree/xml_parser.hpp>
+#include <boost/filesystem.hpp>
 #include <gtksourceviewmm.h>
 #include <string>
 #include <unordered_map>

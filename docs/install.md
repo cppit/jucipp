@@ -3,7 +3,7 @@
 - Installation
   - Linux
     - [Debian testing/Linux Mint/Ubuntu](#debian-testinglinux-mintubuntu)
-    - [Debian stable](#debian-stable)
+    - [Debian stable/Linux Mint Debian Edition](#debian-stablelinux-mint-debian-edition)
     - [Arch Linux](#arch-linux)
   - OS X
     - [Homebrew](#os-x-with-homebrew-httpbrewsh)
@@ -27,7 +27,7 @@ make
 sudo make install
 ```
 
-## Debian stable
+## Debian stable/Linux Mint Debian Edition
 Install dependencies:
 ```sh
 sudo apt-get install git cmake make g++ libclang-3.5-dev liblldb-3.5-dev clang-format-3.5 pkg-config libboost-system-dev libboost-thread-dev libboost-filesystem-dev libboost-log-dev libboost-regex-dev libgtksourceviewmm-3.0-dev aspell-en libaspell-dev
