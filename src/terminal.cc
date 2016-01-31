@@ -178,7 +178,35 @@ void Terminal::kill_async_processes(bool force) {
 }
 
 size_t Terminal::print(const std::string &message, bool bold){
+#ifdef _WIN32
+  //Remove color codes
+  auto message_no_color=message; //copy here since operations on Glib::ustring is too slow
+  size_t pos=0;
+  while((pos=message_no_color.find('\e', pos))!=std::string::npos) {
+    if((pos+2)>=message_no_color.size())
+      break;
+    if(message_no_color[pos+1]=='[') {
+      size_t end_pos=pos+2;
+      bool color_code_found=false;
+      while(end_pos<message_no_color.size()) {
+        if((message_no_color[end_pos]>='0' && message_no_color[end_pos]<='9') || message_no_color[end_pos]==';')
+          end_pos++;
+        else if(message_no_color[end_pos]=='m') {
+          color_code_found=true;
+          break;
+        }
+        else
+          break;
+      }
+      if(color_code_found)
+        message_no_color.erase(pos, end_pos-pos+1);
+    }
+  }
+  Glib::ustring umessage=message_no_color;
+#else
   Glib::ustring umessage=message;
+#endif
+  
   Glib::ustring::iterator iter;
   while(!umessage.validate(iter)) {
     auto next_char_iter=iter;
