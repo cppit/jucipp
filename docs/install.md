@@ -22,7 +22,7 @@ Get juCi++ source, compile and install:
 git clone --recursive https://github.com/cppit/jucipp
 mkdir jucipp/build
 cd jucipp/build
-cmake ..
+cmake -DCMAKE_CXX_COMPILER=g++ ..
 make
 sudo make install
 ```
@@ -38,7 +38,7 @@ Get juCi++ source, compile and install:
 git clone --recursive https://github.com/cppit/jucipp
 mkdir jucipp/build
 cd jucipp/build
-cmake ..
+cmake -DCMAKE_CXX_COMPILER=g++ ..
 make
 sudo make install
 ```
