@@ -201,6 +201,7 @@ std::vector<std::string> Source::ClangViewParse::get_compilation_commands() {
 #ifdef __APPLE__
     arguments.emplace_back("-I/usr/local/Cellar/llvm/"+clang_version+"/lib/clang/"+clang_version+"/include");
     arguments.emplace_back("-I/Applications/Xcode.app/Contents/Developer/Toolchains/XcodeDefault.xctoolchain/usr/bin/../include/c++/v1");
+    arguments.emplace_back("-I/Library/Developer/CommandLineTools/usr/bin/../include/c++/v1"); //Added for OS X 10.11
 #endif
 #ifdef _WIN32
     arguments.emplace_back("-IC:/msys32/mingw32/lib/clang/"+clang_version+"/include");
