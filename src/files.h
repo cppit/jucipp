@@ -130,7 +130,7 @@ const std::string configjson =
 "        \"cmake_command\": \"cmake\",\n"
 #endif
 "        \"make_command\": \"cmake --build .\",\n"
-"        \"save_on_compile_or_run\": false"
+"        \"save_on_compile_or_run\": false\n"
 "    },\n"
 "    \"documentation_searches\": {\n"
 "        \"clang\": {\n"
