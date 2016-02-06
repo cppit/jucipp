@@ -2,7 +2,7 @@
 #define JUCI_FILES_H_
 #include <string>
 
-#define JUCI_VERSION "1.1.0-4"
+#define JUCI_VERSION "1.1.0-5"
 
 const std::string configjson =
 "{\n"
@@ -130,7 +130,8 @@ const std::string configjson =
 #else
 "        \"cmake_command\": \"cmake\",\n"
 #endif
-"        \"make_command\": \"cmake --build .\"\n"
+"        \"make_command\": \"cmake --build .\",\n"
+"        \"save_on_compile_or_run\": false"
 "    },\n"
 "    \"documentation_searches\": {\n"
 "        \"clang\": {\n"

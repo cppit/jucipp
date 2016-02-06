@@ -283,6 +283,19 @@ bool Notebook::save_current() {
   return save(get_current_page());
 }
 
+void Notebook::save_project_files() {
+  if(get_current_page()==-1)
+    return;
+  auto current_view=get_current_view();
+  for(int c=0;c<size();c++) {
+    auto view=get_view(c);
+    if(view->get_buffer()->get_modified()) {
+      if(current_view->project_path==view->project_path)
+        save(c);
+    }
+  }
+}
+
 bool Notebook::close(int page) {
   JDEBUG("start");
   if (page!=-1) {

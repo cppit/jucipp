@@ -640,6 +640,9 @@ void Window::set_menu_actions() {
     if(compiling)
       return;
     
+    if(Config::get().window.save_on_compile_or_run)
+      notebook.save_project_files();
+    
     auto cmake=get_cmake();
     if(!cmake)
       return;
@@ -687,6 +690,10 @@ void Window::set_menu_actions() {
   menu.add_action("compile", [this]() {
     if(compiling)
       return;
+    
+    if(Config::get().window.save_on_compile_or_run)
+      notebook.save_project_files();
+    
     auto cmake=get_cmake();
     if(!cmake)
       return;
@@ -788,6 +795,9 @@ void Window::set_menu_actions() {
       Debug::get().continue_debug();
       return;
     }
+    
+    if(Config::get().window.save_on_compile_or_run)
+      notebook.save_project_files();
     
     auto cmake=get_cmake();
     if(!cmake)

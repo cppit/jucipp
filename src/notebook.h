@@ -27,6 +27,7 @@ public:
   void open(const boost::filesystem::path &file_path);
   bool save(int page);
   bool save_current();
+  void save_project_files();
   void configure(int view_nr);
   boost::filesystem::path get_current_folder();
 

@@ -20,6 +20,7 @@ public:
     std::string theme_variant;
     std::string version;
     std::pair<int, int> default_size;
+    bool save_on_compile_or_run;
   };
   
   class Terminal {
