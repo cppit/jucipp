@@ -95,7 +95,6 @@ const std::string configjson =
 "        \"project_set_run_arguments\": \"\",\n"
 "        \"compile_and_run\": \"<primary>Return\",\n"
 "        \"compile\": \"<primary><shift>Return\",\n"
-"        \"compile_and_run\": \"<primary>Return\",\n"
 "        \"run_command\": \"<alt>Return\",\n"
 "        \"kill_last_running\": \"<primary>Escape\",\n"
 "        \"force_kill_last_running\": \"<primary><shift>Escape\",\n"
