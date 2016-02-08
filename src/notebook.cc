@@ -354,6 +354,14 @@ boost::filesystem::path Notebook::get_current_folder() {
   return current_path;
 }
 
+std::unique_ptr<Project> Notebook::get_project() {
+  boost::filesystem::path file_path;
+  if(get_current_page()!=-1)
+    file_path=get_current_view()->file_path;
+  
+  return std::unique_ptr<Project>(new ProjectClang(file_path));
+}
+
 bool Notebook::save_modified_dialog(int page) {
   Gtk::MessageDialog dialog((Gtk::Window&)(*get_toplevel()), "Save file!", false, Gtk::MESSAGE_QUESTION, Gtk::BUTTONS_YES_NO);
   dialog.set_default_response(Gtk::RESPONSE_YES);

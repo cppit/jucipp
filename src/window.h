@@ -6,6 +6,7 @@
 #include "notebook.h"
 #include "cmake.h"
 #include "tooltips.h"
+#include "project.h"
 #include <atomic>
 
 class Window : public Gtk::ApplicationWindow {
@@ -33,6 +34,8 @@ private:
   Gtk::HBox info_and_status_hbox;
   Gtk::AboutDialog about;
   EntryBox entry_box;
+  
+  std::unique_ptr<Project> project;
   
   std::atomic<bool> compiling;
   
