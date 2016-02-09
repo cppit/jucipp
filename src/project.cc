@@ -381,14 +381,14 @@ void ProjectClang::debug_delete() {
 }
 #endif
 
-ProjectMarkDown::~ProjectMarkDown() {
+ProjectMarkdown::~ProjectMarkdown() {
   if(!last_temp_path.empty()) {
     boost::filesystem::remove(last_temp_path);
     last_temp_path=boost::filesystem::path();
   }
 }
 
-void ProjectMarkDown::compile_and_run() {
+void ProjectMarkdown::compile_and_run() {
   if(!last_temp_path.empty()) {
     boost::filesystem::remove(last_temp_path);
     last_temp_path=boost::filesystem::path();
@@ -411,4 +411,20 @@ void ProjectMarkDown::compile_and_run() {
       }
     }
   }
+}
+
+void ProjectPython::compile_and_run() {
+  auto command="python "+notebook.get_current_view()->file_path.string();
+  Terminal::get().print("Running "+command+"\n");
+  Terminal::get().async_process(command, notebook.get_current_view()->file_path.parent_path(), [command](int exit_status) {
+    Terminal::get().async_print(command+" returned: "+std::to_string(exit_status)+'\n');
+  });
+}
+
+void ProjectJavaScript::compile_and_run() {
+  auto command="node "+notebook.get_current_view()->file_path.string();
+  Terminal::get().print("Running "+command+"\n");
+  Terminal::get().async_process(command, notebook.get_current_view()->file_path.parent_path(), [command](int exit_status) {
+    Terminal::get().async_print(command+" returned: "+std::to_string(exit_status)+'\n');
+  });
 }

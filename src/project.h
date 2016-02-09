@@ -69,12 +69,26 @@ public:
   void debug_delete() override;
 };
 
-class ProjectMarkDown : public Project {
+class ProjectMarkdown : public Project {
 public:
-  ProjectMarkDown(Notebook &notebook) : Project(notebook) {}
-  ~ProjectMarkDown();
+  ProjectMarkdown(Notebook &notebook) : Project(notebook) {}
+  ~ProjectMarkdown();
   
   boost::filesystem::path last_temp_path;
+  void compile_and_run() override;
+};
+
+class ProjectPython : public Project {
+public:
+  ProjectPython(Notebook &notebook) : Project(notebook) {}
+  
+  void compile_and_run() override;
+};
+
+class ProjectJavaScript : public Project {
+public:
+  ProjectJavaScript(Notebook &notebook) : Project(notebook) {}
+  
   void compile_and_run() override;
 };
 
