@@ -53,8 +53,9 @@ public:
   void compile() override;
   void compile_and_run() override;
   
-  std::pair<std::string, std::string> debug_get_run_arguments() override;
   std::mutex debug_start_mutex;
+#ifdef JUCI_ENABLE_DEBUG
+  std::pair<std::string, std::string> debug_get_run_arguments() override;
   void debug_start(std::function<void(const std::string &status)> status_callback,
                    std::function<void(const boost::filesystem::path &file_path, int line_nr, int line_index)> stop_callback) override;
   void debug_continue() override;
@@ -67,6 +68,7 @@ public:
   void debug_show_variables() override;
   void debug_run_command(const std::string &command) override;
   void debug_delete() override;
+#endif
 };
 
 class ProjectMarkdown : public Project {
@@ -88,6 +90,13 @@ public:
 class ProjectJavaScript : public Project {
 public:
   ProjectJavaScript(Notebook &notebook) : Project(notebook) {}
+  
+  void compile_and_run() override;
+};
+
+class ProjectHTML : public Project {
+public:
+  ProjectHTML(Notebook &notebook) : Project(notebook) {}
   
   void compile_and_run() override;
 };

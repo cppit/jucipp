@@ -407,7 +407,15 @@ void ProjectMarkdown::compile_and_run() {
         std::ofstream file_stream(temp_path.string(), std::fstream::binary);
         file_stream << stdout_stream.rdbuf();
         file_stream.close();
-        Terminal::get().async_process("open "+temp_path.string());
+        
+        auto uri=temp_path.string();
+#ifdef __APPLE__
+        Terminal::get().process("open \""+uri+"\"");
+#else
+        GError* error=NULL;
+        gtk_show_uri(NULL, uri.c_str(), GDK_CURRENT_TIME, &error);
+        g_clear_error(&error);
+#endif
       }
     }
   }
@@ -427,4 +435,15 @@ void ProjectJavaScript::compile_and_run() {
   Terminal::get().async_process(command, notebook.get_current_view()->file_path.parent_path(), [command](int exit_status) {
     Terminal::get().async_print(command+" returned: "+std::to_string(exit_status)+'\n');
   });
+}
+
+void ProjectHTML::compile_and_run() {
+  auto uri=notebook.get_current_view()->file_path.string();
+#ifdef __APPLE__
+  Terminal::get().process("open \""+uri+"\"");
+#else
+  GError* error=NULL;
+  gtk_show_uri(NULL, uri.c_str(), GDK_CURRENT_TIME, &error);
+  g_clear_error(&error);
+#endif
 }

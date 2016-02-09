@@ -362,6 +362,8 @@ std::unique_ptr<Project> Notebook::get_project() {
       return std::unique_ptr<Project>(new ProjectPython(*this));
     if(get_current_view()->language->get_id()=="js")
       return std::unique_ptr<Project>(new ProjectJavaScript(*this));
+    if(get_current_view()->language->get_id()=="html")
+      return std::unique_ptr<Project>(new ProjectHTML(*this));
   }
   
   return std::unique_ptr<Project>(new ProjectClang(*this));
