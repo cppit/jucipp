@@ -36,7 +36,7 @@ Debug::Debug(): state(lldb::StateType::eStateInvalid), buffer_size(131072) {
 }
 
 void Debug::start(const std::string &command, const boost::filesystem::path &path,
-                  std::shared_ptr<std::vector<std::pair<boost::filesystem::path, int> > > breakpoints,
+                  const std::vector<std::pair<boost::filesystem::path, int> > &breakpoints,
                   std::function<void(int exit_status)> callback,
                   std::function<void(const std::string &status)> status_callback,
                   std::function<void(const boost::filesystem::path &file_path, int line_nr, int line_index)> stop_callback) {
@@ -88,14 +88,12 @@ void Debug::start(const std::string &command, const boost::filesystem::path &pat
   }
   
   //Set breakpoints
-  if(breakpoints) {
-    for(auto &breakpoint: *breakpoints) {
-      if(!(target.BreakpointCreateByLocation(breakpoint.first.string().c_str(), breakpoint.second)).IsValid()) {
-        Terminal::get().async_print("Error (debug): Could not create breakpoint at: "+breakpoint.first.string()+":"+std::to_string(breakpoint.second)+'\n', true);
-        if(callback)
-          callback(-1);
-        return;
-      }
+  for(auto &breakpoint: breakpoints) {
+    if(!(target.BreakpointCreateByLocation(breakpoint.first.string().c_str(), breakpoint.second)).IsValid()) {
+      Terminal::get().async_print("Error (debug): Could not create breakpoint at: "+breakpoint.first.string()+":"+std::to_string(breakpoint.second)+'\n', true);
+      if(callback)
+        callback(-1);
+      return;
     }
   }
   

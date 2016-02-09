@@ -10,6 +10,8 @@
 #include <map>
 #include <sigc++/sigc++.h>
 
+class Project; //Avoiding this would lead to bloated code
+
 class Notebook : public Gtk::Notebook {
   class TabLabel : public Gtk::Box {
   public:

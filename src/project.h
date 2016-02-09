@@ -1,17 +1,22 @@
 #ifndef JUCI_PROJECT_H_
 #define JUCI_PROJECT_H_
 
+#include "notebook.h" //Avoiding this circular include would lead to bloated code
 #include "cmake.h"
 #include <boost/filesystem.hpp>
 #include "directories.h"
 #include <atomic>
+#include <mutex>
+#include "tooltips.h"
+
+class Notebook; //Avoiding this circular include would lead to bloated code
 
 class Project {
 public:
-  Project(const boost::filesystem::path &file_path) : file_path(file_path) {}
+  Project(Notebook &notebook) : notebook(notebook) {}
   virtual ~Project() {}
   
-  boost::filesystem::path file_path;
+  Notebook &notebook;
   
   static std::unordered_map<std::string, std::string> run_arguments;
   static std::unordered_map<std::string, std::string> debug_run_arguments;
@@ -23,7 +28,10 @@ public:
   virtual void compile_and_run() {}
   
   virtual std::pair<std::string, std::string> debug_get_run_arguments() {return {"", ""};}
-  virtual void debug_start_continue() {}
+  Tooltips debug_variable_tooltips;
+  virtual void debug_start(std::function<void(const std::string &status)> status_callback,
+                           std::function<void(const boost::filesystem::path &file_path, int line_nr, int line_index)> stop_callback) {}
+  virtual void debug_continue() {}
   virtual void debug_stop() {}
   virtual void debug_kill() {}
   virtual void debug_step_over() {}
@@ -31,25 +39,39 @@ public:
   virtual void debug_step_out() {}
   virtual void debug_backtrace() {}
   virtual void debug_show_variables() {}
-  virtual void debug_run_command() {}
-  virtual void debug_toggle_breakpoint() {}
-  virtual void debug_goto_stop() {}
+  virtual void debug_run_command(const std::string &command) {}
+  virtual void debug_delete() {}
 };
 
 class ProjectClang : public Project {
 public:
-  ProjectClang(const boost::filesystem::path &file_path) : Project(file_path) {}
+  ProjectClang(Notebook &notebook) : Project(notebook) {}
   
   std::unique_ptr<CMake> get_cmake();
   
   std::pair<std::string, std::string> get_run_arguments() override;
   void compile() override;
   void compile_and_run() override;
+  
+  std::pair<std::string, std::string> debug_get_run_arguments() override;
+  std::mutex debug_start_mutex;
+  void debug_start(std::function<void(const std::string &status)> status_callback,
+                   std::function<void(const boost::filesystem::path &file_path, int line_nr, int line_index)> stop_callback) override;
+  void debug_continue() override;
+  void debug_stop() override;
+  void debug_kill() override;
+  void debug_step_over() override;
+  void debug_step_into() override;
+  void debug_step_out() override;
+  void debug_backtrace() override;
+  void debug_show_variables() override;
+  void debug_run_command(const std::string &command) override;
+  void debug_delete() override;
 };
 
 class ProjectMarkDown : public Project {
 public:
-  ProjectMarkDown(const boost::filesystem::path &file_path) : Project(file_path) {}
+  ProjectMarkDown(Notebook &notebook) : Project(notebook) {}
   ~ProjectMarkDown();
   
   boost::filesystem::path last_temp_path;

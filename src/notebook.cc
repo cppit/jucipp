@@ -355,17 +355,13 @@ boost::filesystem::path Notebook::get_current_folder() {
 }
 
 std::unique_ptr<Project> Notebook::get_project() {
-  boost::filesystem::path file_path;
-  if(get_current_page()!=-1)
-    file_path=get_current_view()->file_path;
-  
   if(get_current_page()!=-1) {
     if(get_current_view()->language->get_id()=="markdown") {
-      return std::unique_ptr<Project>(new ProjectMarkDown(file_path));
+      return std::unique_ptr<Project>(new ProjectMarkDown(*this));
     }
   }
   
-  return std::unique_ptr<Project>(new ProjectClang(file_path));
+  return std::unique_ptr<Project>(new ProjectClang(*this));
 }
 
 bool Notebook::save_modified_dialog(int page) {
