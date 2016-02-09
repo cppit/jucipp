@@ -412,8 +412,11 @@ void ProjectMarkdown::compile_and_run() {
 #ifdef __APPLE__
         Terminal::get().process("open \""+uri+"\"");
 #else
+#ifdef __linux
+        uri="file://"+uri;
+#endif
         GError* error=NULL;
-        gtk_show_uri(NULL, ("file://"+uri).c_str(), GDK_CURRENT_TIME, &error);
+        gtk_show_uri(NULL, uri.c_str(), GDK_CURRENT_TIME, &error);
         g_clear_error(&error);
 #endif
       }
@@ -442,8 +445,11 @@ void ProjectHTML::compile_and_run() {
 #ifdef __APPLE__
   Terminal::get().process("open \""+uri+"\"");
 #else
+#ifdef __linux
+  uri="file://"+uri;
+#endif
   GError* error=NULL;
-  gtk_show_uri(NULL, ("file://"+uri).c_str(), GDK_CURRENT_TIME, &error);
+  gtk_show_uri(NULL, uri.c_str(), GDK_CURRENT_TIME, &error);
   g_clear_error(&error);
 #endif
 }
