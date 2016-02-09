@@ -2,6 +2,7 @@
 #include "config.h"
 #include "terminal.h"
 #include "filesystem.h"
+#include <fstream>
 
 std::unordered_map<std::string, std::string> Project::run_arguments;
 std::unordered_map<std::string, std::string> Project::debug_run_arguments;
@@ -110,4 +111,36 @@ void ProjectClang::compile_and_run() {
       });
     }
   });
+}
+
+ProjectMarkDown::~ProjectMarkDown() {
+  if(!last_temp_path.empty()) {
+    boost::filesystem::remove(last_temp_path);
+    last_temp_path=boost::filesystem::path();
+  }
+}
+
+void ProjectMarkDown::compile_and_run() {
+  if(!last_temp_path.empty()) {
+    boost::filesystem::remove(last_temp_path);
+    last_temp_path=boost::filesystem::path();
+  }
+  
+  std::stringstream stdin_stream, stdout_stream;
+  auto exit_status=Terminal::get().process(stdin_stream, stdout_stream, "markdown "+file_path.string(), this->file_path.parent_path());
+  if(exit_status==0) {
+    boost::system::error_code ec;
+    auto temp_path=boost::filesystem::temp_directory_path(ec);
+    if(!ec) {
+      temp_path/=boost::filesystem::unique_path();
+      temp_path+=".html";
+      if(!boost::filesystem::exists(temp_path)) {
+        last_temp_path=temp_path;
+        std::ofstream file_stream(temp_path.string(), std::fstream::binary);
+        file_stream << stdout_stream.rdbuf();
+        file_stream.close();
+        Terminal::get().async_process("open "+temp_path.string());
+      }
+    }
+  }
 }

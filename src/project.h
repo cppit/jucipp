@@ -47,4 +47,13 @@ public:
   void compile_and_run() override;
 };
 
+class ProjectMarkDown : public Project {
+public:
+  ProjectMarkDown(const boost::filesystem::path &file_path) : Project(file_path) {}
+  ~ProjectMarkDown();
+  
+  boost::filesystem::path last_temp_path;
+  void compile_and_run() override;
+};
+
 #endif  // JUCI_PROJECT_H_
