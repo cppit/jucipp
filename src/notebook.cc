@@ -354,21 +354,6 @@ boost::filesystem::path Notebook::get_current_folder() {
   return current_path;
 }
 
-std::unique_ptr<Project> Notebook::get_project() {
-  if(get_current_page()!=-1) {
-    if(get_current_view()->language->get_id()=="markdown")
-      return std::unique_ptr<Project>(new ProjectMarkdown(*this));
-    if(get_current_view()->language->get_id()=="python")
-      return std::unique_ptr<Project>(new ProjectPython(*this));
-    if(get_current_view()->language->get_id()=="js")
-      return std::unique_ptr<Project>(new ProjectJavaScript(*this));
-    if(get_current_view()->language->get_id()=="html")
-      return std::unique_ptr<Project>(new ProjectHTML(*this));
-  }
-  
-  return std::unique_ptr<Project>(new ProjectClang(*this));
-}
-
 bool Notebook::save_modified_dialog(int page) {
   Gtk::MessageDialog dialog((Gtk::Window&)(*get_toplevel()), "Save file!", false, Gtk::MESSAGE_QUESTION, Gtk::BUTTONS_YES_NO);
   dialog.set_default_response(Gtk::RESPONSE_YES);

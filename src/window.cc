@@ -575,7 +575,7 @@ void Window::set_menu_actions() {
   });
   
   menu.add_action("project_set_run_arguments", [this]() {
-    project=notebook.get_project();
+    project=get_project();
     auto run_arguments=std::make_shared<std::pair<std::string, std::string> >(project->get_run_arguments());
     if(run_arguments->second.empty())
       return;
@@ -605,7 +605,7 @@ void Window::set_menu_actions() {
     if(Config::get().window.save_on_compile_or_run)
       notebook.save_project_files();
         
-    project=notebook.get_project();
+    project=get_project();
     project->compile_and_run();
   });
   menu.add_action("compile", [this]() {
@@ -615,7 +615,7 @@ void Window::set_menu_actions() {
     if(Config::get().window.save_on_compile_or_run)
       notebook.save_project_files();
         
-    project=notebook.get_project();
+    project=get_project();
     project->compile();
   });
   
@@ -656,7 +656,7 @@ void Window::set_menu_actions() {
   
 #ifdef JUCI_ENABLE_DEBUG
   menu.add_action("debug_set_run_arguments", [this]() {
-    project=notebook.get_project();
+    project=get_project();
     auto run_arguments=std::make_shared<std::pair<std::string, std::string> >(project->debug_get_run_arguments());
     if(run_arguments->second.empty())
       return;
@@ -688,7 +688,7 @@ void Window::set_menu_actions() {
     if(Config::get().window.save_on_compile_or_run)
       notebook.save_project_files();
     
-    project=notebook.get_project();
+    project=get_project();
     
     project->debug_start([this](const std::string &status) {
       debug_status_mutex.lock();
@@ -1125,4 +1125,20 @@ void Window::rename_token_entry() {
       }
     }
   }
+}
+
+std::unique_ptr<Project> Window::get_project() {
+  if(notebook.get_current_page()!=-1) {
+    auto language_id=notebook.get_current_view()->language->get_id();
+    if(language_id=="markdown")
+      return std::unique_ptr<Project>(new ProjectMarkdown(notebook));
+    if(language_id=="python")
+      return std::unique_ptr<Project>(new ProjectPython(notebook));
+    if(language_id=="js")
+      return std::unique_ptr<Project>(new ProjectJavaScript(notebook));
+    if(language_id=="html")
+      return std::unique_ptr<Project>(new ProjectHTML(notebook));
+  }
+  
+  return std::unique_ptr<Project>(new ProjectClang(notebook));
 }

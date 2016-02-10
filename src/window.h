@@ -60,6 +60,8 @@ private:
   bool case_sensitive_search=true;
   bool regex_search=false;
   bool search_entry_shown=false;
+  
+  std::unique_ptr<Project> get_project();
 };
 
 #endif  // JUCI_WINDOW_H

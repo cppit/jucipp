@@ -1,15 +1,13 @@
 #ifndef JUCI_PROJECT_H_
 #define JUCI_PROJECT_H_
 
-#include "notebook.h" //Avoiding this circular include would lead to bloated code
+#include "notebook.h"
 #include "cmake.h"
 #include <boost/filesystem.hpp>
 #include "directories.h"
 #include <atomic>
 #include <mutex>
 #include "tooltips.h"
-
-class Notebook; //Avoiding this circular include would lead to bloated code
 
 class Project {
 public:

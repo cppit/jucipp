@@ -5,12 +5,9 @@
 #include "gtkmm.h"
 #include "source.h"
 #include "source_clang.h"
-#include "project.h"
 #include <type_traits>
 #include <map>
 #include <sigc++/sigc++.h>
-
-class Project; //Avoiding this would lead to bloated code
 
 class Notebook : public Gtk::Notebook {
   class TabLabel : public Gtk::Box {
@@ -33,7 +30,6 @@ public:
   void save_project_files();
   void configure(int view_nr);
   boost::filesystem::path get_current_folder();
-  std::unique_ptr<Project> get_project();
 
   Gtk::Label info;
   Gtk::Label status;
