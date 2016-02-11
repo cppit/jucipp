@@ -1,5 +1,6 @@
 #include "juci.h"
 #include "window.h"
+#include "notebook.h"
 #include "directories.h"
 #include "menu.h"
 #include "config.h"
@@ -68,7 +69,7 @@ void Application::on_activate() {
   }
   
   for(auto &file: files)
-    Window::get().notebook.open(file);
+    Notebook::get().open(file);
   
   for(auto &error: errors)
     Terminal::get().print(error, true);

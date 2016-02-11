@@ -3,16 +3,98 @@
 #include "terminal.h"
 #include "filesystem.h"
 #include <fstream>
+#include "menu.h"
 #ifdef JUCI_ENABLE_DEBUG
 #include "debug.h"
 #endif
 
-std::unordered_map<std::string, std::string> Project::run_arguments;
-std::unordered_map<std::string, std::string> Project::debug_run_arguments;
-std::atomic<bool> Project::compiling(false);
-std::atomic<bool> Project::debugging(false);
+Project::Project() : notebook(Notebook::get()), compiling(false), debugging(false) {
+  debug_update_stop.connect([this](){
+    debug_stop_mutex.lock();
+    for(int c=0;c<notebook.size();c++) {
+      auto view=notebook.get_view(c);
+      if(view->file_path==debug_last_stop_file_path) {
+        view->get_source_buffer()->remove_source_marks(view->get_buffer()->begin(), view->get_buffer()->end(), "debug_stop");
+        break;
+      }
+    }
+    //Add debug stop source mark
+    for(int c=0;c<notebook.size();c++) {
+      auto view=notebook.get_view(c);
+      if(view->file_path==debug_stop.first) {
+        if(debug_stop.second.first-1<view->get_buffer()->get_line_count()) {
+          view->get_source_buffer()->create_source_mark("debug_stop", view->get_buffer()->get_iter_at_line(debug_stop.second.first-1));
+          debug_last_stop_file_path=debug_stop.first;
+        }
+        break;
+      }
+    }
+    if(notebook.get_current_page()!=-1)
+      notebook.get_current_view()->get_buffer()->place_cursor(notebook.get_current_view()->get_buffer()->get_insert()->get_iter());
+    debug_stop_mutex.unlock();
+  });
+  
+#ifdef JUCI_ENABLE_DEBUG
+  auto &menu=Menu::get();
+  menu.actions["debug_stop"]->set_enabled(false);
+  menu.actions["debug_kill"]->set_enabled(false);
+  menu.actions["debug_step_over"]->set_enabled(false);
+  menu.actions["debug_step_into"]->set_enabled(false);
+  menu.actions["debug_step_out"]->set_enabled(false);
+  menu.actions["debug_backtrace"]->set_enabled(false);
+  menu.actions["debug_show_variables"]->set_enabled(false);
+  menu.actions["debug_run_command"]->set_enabled(false);
+  menu.actions["debug_goto_stop"]->set_enabled(false);
+#endif
+  debug_update_status.connect([this](){
+    debug_status_mutex.lock();
+    if(debug_status.empty()) {
+      debug_status_label.set_text("");
+      auto &menu=Menu::get();
+      menu.actions["debug_stop"]->set_enabled(false);
+      menu.actions["debug_kill"]->set_enabled(false);
+      menu.actions["debug_step_over"]->set_enabled(false);
+      menu.actions["debug_step_into"]->set_enabled(false);
+      menu.actions["debug_step_out"]->set_enabled(false);
+      menu.actions["debug_backtrace"]->set_enabled(false);
+      menu.actions["debug_show_variables"]->set_enabled(false);
+      menu.actions["debug_run_command"]->set_enabled(false);
+      menu.actions["debug_goto_stop"]->set_enabled(false);
+    }
+    else {
+      debug_status_label.set_text("debug: "+debug_status);
+      auto &menu=Menu::get();
+      menu.actions["debug_stop"]->set_enabled();
+      menu.actions["debug_kill"]->set_enabled();
+      menu.actions["debug_step_over"]->set_enabled();
+      menu.actions["debug_step_into"]->set_enabled();
+      menu.actions["debug_step_out"]->set_enabled();
+      menu.actions["debug_backtrace"]->set_enabled();
+      menu.actions["debug_show_variables"]->set_enabled();
+      menu.actions["debug_run_command"]->set_enabled();
+      menu.actions["debug_goto_stop"]->set_enabled();
+    }
+    debug_status_mutex.unlock();
+  });
+}
 
-std::unique_ptr<CMake> ProjectClang::get_cmake() {
+std::unique_ptr<Project::Language> Project::get_language() {
+  if(notebook.get_current_page()!=-1) {
+    auto language_id=notebook.get_current_view()->language->get_id();
+    if(language_id=="markdown")
+      return std::unique_ptr<Project::Language>(new Project::Markdown());
+    if(language_id=="python")
+      return std::unique_ptr<Project::Language>(new Project::Python());
+    if(language_id=="js")
+      return std::unique_ptr<Project::Language>(new Project::JavaScript());
+    if(language_id=="html")
+      return std::unique_ptr<Project::Language>(new Project::HTML());
+  }
+  
+  return std::unique_ptr<Project::Language>(new Project::Clang());
+}
+
+std::unique_ptr<CMake> Project::Clang::get_cmake() {
   boost::filesystem::path path;
   if(notebook.get_current_page()!=-1)
     path=notebook.get_current_view()->file_path.parent_path();
@@ -28,15 +110,15 @@ std::unique_ptr<CMake> ProjectClang::get_cmake() {
   return cmake;
 }
 
-std::pair<std::string, std::string> ProjectClang::get_run_arguments() {
+std::pair<std::string, std::string> Project::Clang::get_run_arguments() {
   auto cmake=get_cmake();
   if(!cmake)
     return {"", ""};
   
   auto project_path=cmake->project_path.string();
-  auto run_arguments_it=run_arguments.find(project_path);
+  auto run_arguments_it=Project::get().run_arguments.find(project_path);
   std::string arguments;
-  if(run_arguments_it!=run_arguments.end())
+  if(run_arguments_it!=Project::get().run_arguments.end())
     arguments=run_arguments_it->second;
   
   if(arguments.empty()) {
@@ -59,7 +141,7 @@ std::pair<std::string, std::string> ProjectClang::get_run_arguments() {
   return {project_path, arguments};
 }
 
-void ProjectClang::compile() {    
+void Project::Clang::compile() {    
   auto cmake=get_cmake();
   if(!cmake)
     return;
@@ -67,14 +149,14 @@ void ProjectClang::compile() {
   auto default_build_path=CMake::get_default_build_path(cmake->project_path);
   if(default_build_path.empty())
     return;
-  compiling=true;
+  Project::get().compiling=true;
   Terminal::get().print("Compiling project "+cmake->project_path.string()+"\n");
   Terminal::get().async_process(Config::get().terminal.make_command, default_build_path, [this](int exit_status) {
-    compiling=false;
+    Project::get().compiling=false;
   });
 }
 
-void ProjectClang::compile_and_run() {
+void Project::Clang::compile_and_run() {
   auto cmake=get_cmake();
   if(!cmake)
     return;
@@ -84,9 +166,9 @@ void ProjectClang::compile_and_run() {
   if(default_build_path.empty())
     return;
   
-  auto run_arguments_it=run_arguments.find(project_path.string());
+  auto run_arguments_it=Project::get().run_arguments.find(project_path.string());
   std::string arguments;
-  if(run_arguments_it!=run_arguments.end())
+  if(run_arguments_it!=Project::get().run_arguments.end())
     arguments=run_arguments_it->second;
   
   if(arguments.empty()) {
@@ -104,10 +186,10 @@ void ProjectClang::compile_and_run() {
     arguments=filesystem::escape_argument(arguments);
   }
   
-  compiling=true;
+  Project::get().compiling=true;
   Terminal::get().print("Compiling and running "+arguments+"\n");
   Terminal::get().async_process(Config::get().terminal.make_command, default_build_path, [this, arguments, default_build_path](int exit_status){
-    compiling=false;
+    Project::get().compiling=false;
     if(exit_status==EXIT_SUCCESS) {
       Terminal::get().async_process(arguments, default_build_path, [this, arguments](int exit_status){
         Terminal::get().async_print(arguments+" returned: "+std::to_string(exit_status)+'\n');
@@ -117,15 +199,15 @@ void ProjectClang::compile_and_run() {
 }
 
 #ifdef JUCI_ENABLE_DEBUG
-std::pair<std::string, std::string> ProjectClang::debug_get_run_arguments() {
+std::pair<std::string, std::string> Project::Clang::debug_get_run_arguments() {
   auto cmake=get_cmake();
   if(!cmake)
     return {"", ""};
   
   auto project_path=cmake->project_path.string();
-  auto run_arguments_it=debug_run_arguments.find(project_path);
+  auto run_arguments_it=Project::get().debug_run_arguments.find(project_path);
   std::string arguments;
-  if(run_arguments_it!=debug_run_arguments.end())
+  if(run_arguments_it!=Project::get().debug_run_arguments.end())
     arguments=run_arguments_it->second;
   
   if(arguments.empty()) {
@@ -148,8 +230,7 @@ std::pair<std::string, std::string> ProjectClang::debug_get_run_arguments() {
   return {project_path, arguments};
 }
 
-void ProjectClang::debug_start(std::function<void(const std::string &status)> status_callback,
-                               std::function<void(const boost::filesystem::path &file_path, int line_nr, int line_index)> stop_callback) {
+void Project::Clang::debug_start() {
   auto cmake=get_cmake();
   if(!cmake)
     return;
@@ -161,9 +242,9 @@ void ProjectClang::debug_start(std::function<void(const std::string &status)> st
   if(!CMake::create_debug_build(project_path))
     return;
   
-  auto run_arguments_it=debug_run_arguments.find(project_path.string());
+  auto run_arguments_it=Project::get().debug_run_arguments.find(project_path.string());
   std::string run_arguments;
-  if(run_arguments_it!=debug_run_arguments.end())
+  if(run_arguments_it!=Project::get().debug_run_arguments.end())
     run_arguments=run_arguments_it->second;
   
   if(run_arguments.empty()) {
@@ -193,53 +274,67 @@ void ProjectClang::debug_start(std::function<void(const std::string &status)> st
     }
   }
   
-  debugging=true;
+  Project::get().debugging=true;
   Terminal::get().print("Compiling and debugging "+run_arguments+"\n");
-  Terminal::get().async_process(Config::get().terminal.make_command, debug_build_path, [this, breakpoints, run_arguments, debug_build_path, status_callback, stop_callback](int exit_status){
+  Terminal::get().async_process(Config::get().terminal.make_command, debug_build_path, [this, breakpoints, run_arguments, debug_build_path](int exit_status){
     if(exit_status!=EXIT_SUCCESS)
-      debugging=false;
+      Project::get().debugging=false;
     else {
       debug_start_mutex.lock();
       Debug::get().start(run_arguments, debug_build_path, *breakpoints, [this, run_arguments](int exit_status){
-        debugging=false;
+        Project::get().debugging=false;
         Terminal::get().async_print(run_arguments+" returned: "+std::to_string(exit_status)+'\n');
-      }, status_callback, stop_callback);
+      }, [this](const std::string &status) {
+        auto &project=Project::get();
+        project.debug_status_mutex.lock();
+        project.debug_status=status;
+        project.debug_status_mutex.unlock();
+        project.debug_update_status();
+      }, [this](const boost::filesystem::path &file_path, int line_nr, int line_index) {
+        auto &project=Project::get();
+        project.debug_stop_mutex.lock();
+        project.debug_stop.first=file_path;
+        project.debug_stop.second.first=line_nr;
+        project.debug_stop.second.second=line_index;
+        project.debug_stop_mutex.unlock();
+        project.debug_update_stop();
+      });
       debug_start_mutex.unlock();
     }
   });
 }
 
-void ProjectClang::debug_continue() {
+void Project::Clang::debug_continue() {
   Debug::get().continue_debug();
 }
 
-void ProjectClang::debug_stop() {
-  if(debugging)
+void Project::Clang::debug_stop() {
+  if(Project::get().debugging)
     Debug::get().stop();
 }
 
-void ProjectClang::debug_kill() {
-  if(debugging)
+void Project::Clang::debug_kill() {
+  if(Project::get().debugging)
     Debug::get().kill();
 }
 
-void ProjectClang::debug_step_over() {
-  if(debugging)
+void Project::Clang::debug_step_over() {
+  if(Project::get().debugging)
     Debug::get().step_over();
 }
 
-void ProjectClang::debug_step_into() {
-  if(debugging)
+void Project::Clang::debug_step_into() {
+  if(Project::get().debugging)
     Debug::get().step_into();
 }
 
-void ProjectClang::debug_step_out() {
-  if(debugging)
+void Project::Clang::debug_step_out() {
+  if(Project::get().debugging)
     Debug::get().step_out();
 }
 
-void ProjectClang::debug_backtrace() {
-  if(debugging && notebook.get_current_page()!=-1) {
+void Project::Clang::debug_backtrace() {
+  if(Project::get().debugging && notebook.get_current_page()!=-1) {
     auto backtrace=Debug::get().get_backtrace();
     
     auto view=notebook.get_current_view();
@@ -288,8 +383,8 @@ void ProjectClang::debug_backtrace() {
   }
 }
 
-void ProjectClang::debug_show_variables() {
-  if(debugging && notebook.get_current_page()!=-1) {
+void Project::Clang::debug_show_variables() {
+  if(Project::get().debugging && notebook.get_current_page()!=-1) {
     auto variables=Debug::get().get_variables();
     
     auto view=notebook.get_current_view();
@@ -366,29 +461,62 @@ void ProjectClang::debug_show_variables() {
   }
 }
 
-void ProjectClang::debug_run_command(const std::string &command) {
-  if(debugging) {
+void Project::Clang::debug_run_command(const std::string &command) {
+  if(Project::get().debugging) {
     auto command_return=Debug::get().run_command(command);
     Terminal::get().async_print(command_return.first);
     Terminal::get().async_print(command_return.second, true);
   }
 }
 
-void ProjectClang::debug_delete() {
+void Project::Clang::debug_goto_stop() {
+  if(Project::get().debugging) {
+    auto &project=Project::get();
+    project.debug_stop_mutex.lock();
+    auto debug_stop_copy=project.debug_stop;
+    project.debug_stop_mutex.unlock();
+    if(!debug_stop_copy.first.empty()) {
+      notebook.open(debug_stop_copy.first);
+      if(notebook.get_current_page()!=-1) {
+        auto view=notebook.get_current_view();
+        
+        int line_nr=debug_stop_copy.second.first-1;
+        int line_index=debug_stop_copy.second.second-1;
+        if(line_nr<view->get_buffer()->get_line_count()) {
+          auto iter=view->get_buffer()->get_iter_at_line(line_nr);
+          auto end_line_iter=iter;
+          while(!iter.ends_line() && iter.forward_char()) {}
+          auto line=view->get_buffer()->get_text(iter, end_line_iter);
+          if(static_cast<size_t>(line_index)>=line.bytes())
+            line_index=0;
+          view->get_buffer()->place_cursor(view->get_buffer()->get_iter_at_line_index(line_nr, line_index));
+          
+          while(g_main_context_pending(NULL))
+            g_main_context_iteration(NULL, false);
+          if(notebook.get_current_page()!=-1 && notebook.get_current_view()==view)
+            view->scroll_to(view->get_buffer()->get_insert(), 0.0, 1.0, 0.5);
+        }
+        project.debug_update_stop();
+      }
+    }
+  }
+}
+
+void Project::Clang::debug_delete() {
   debug_start_mutex.lock();
   Debug::get().delete_debug();
   debug_start_mutex.unlock();
 }
 #endif
 
-ProjectMarkdown::~ProjectMarkdown() {
+Project::Markdown::~Markdown() {
   if(!last_temp_path.empty()) {
     boost::filesystem::remove(last_temp_path);
     last_temp_path=boost::filesystem::path();
   }
 }
 
-void ProjectMarkdown::compile_and_run() {
+void Project::Markdown::compile_and_run() {
   if(!last_temp_path.empty()) {
     boost::filesystem::remove(last_temp_path);
     last_temp_path=boost::filesystem::path();
@@ -424,7 +552,7 @@ void ProjectMarkdown::compile_and_run() {
   }
 }
 
-void ProjectPython::compile_and_run() {
+void Project::Python::compile_and_run() {
   auto command="python "+notebook.get_current_view()->file_path.string();
   Terminal::get().print("Running "+command+"\n");
   Terminal::get().async_process(command, notebook.get_current_view()->file_path.parent_path(), [command](int exit_status) {
@@ -432,7 +560,7 @@ void ProjectPython::compile_and_run() {
   });
 }
 
-void ProjectJavaScript::compile_and_run() {
+void Project::JavaScript::compile_and_run() {
   auto command="node "+notebook.get_current_view()->file_path.string();
   Terminal::get().print("Running "+command+"\n");
   Terminal::get().async_process(command, notebook.get_current_view()->file_path.parent_path(), [command](int exit_status) {
@@ -440,7 +568,7 @@ void ProjectJavaScript::compile_and_run() {
   });
 }
 
-void ProjectHTML::compile_and_run() {
+void Project::HTML::compile_and_run() {
   auto uri=notebook.get_current_view()->file_path.string();
 #ifdef __APPLE__
   Terminal::get().process("open \""+uri+"\"");

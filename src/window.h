@@ -1,7 +1,7 @@
 #ifndef JUCI_WINDOW_H_
 #define JUCI_WINDOW_H_
 
-#include "gtkmm.h"
+#include <gtkmm.h>
 #include "entrybox.h"
 #include "notebook.h"
 #include "cmake.h"
@@ -11,13 +11,12 @@
 class Window : public Gtk::ApplicationWindow {
 private:
   Window();
+  Notebook &notebook; //convenience reference
 public:
   static Window &get() {
     static Window singleton;
     return singleton;
   }
-  
-  Notebook notebook;
 
 protected:
   bool on_key_press_event(GdkEventKey *event) override;
@@ -34,17 +33,7 @@ private:
   Gtk::AboutDialog about;
   EntryBox entry_box;
   
-  std::unique_ptr<Project> project;
-  
-  Gtk::Label debug_status_label;
-  
-  std::pair<boost::filesystem::path, std::pair<int, int> > debug_stop;
-  boost::filesystem::path debug_last_stop_file_path;
-  std::mutex debug_stop_mutex;
-  Glib::Dispatcher debug_update_stop;
-  std::string debug_status;
-  std::mutex debug_status_mutex;
-  Glib::Dispatcher debug_update_status;
+  std::unique_ptr<Project::Language> project_language;
 
   void configure();
   void set_menu_actions();
@@ -60,8 +49,6 @@ private:
   bool case_sensitive_search=true;
   bool regex_search=false;
   bool search_entry_shown=false;
-  
-  std::unique_ptr<Project> get_project();
 };
 
 #endif  // JUCI_WINDOW_H

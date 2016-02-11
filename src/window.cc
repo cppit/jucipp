@@ -24,7 +24,7 @@ namespace sigc {
 #endif
 }
 
-Window::Window() {
+Window::Window() : notebook(Notebook::get()) {
   JDEBUG("start");
   set_title("juCi++");
   set_events(Gdk::POINTER_MOTION_MASK|Gdk::FOCUS_CHANGE_MASK|Gdk::SCROLL_MASK|Gdk::LEAVE_NOTIFY_MASK);
@@ -50,7 +50,7 @@ Window::Window() {
     
   info_and_status_hbox.pack_start(notebook.info, Gtk::PACK_SHRINK);
 #if GTK_VERSION_GE(3, 12)
-  info_and_status_hbox.set_center_widget(debug_status_label);
+  info_and_status_hbox.set_center_widget(Project::get().debug_status_label);
 #else
   debug_status_label.set_halign(Gtk::Align::ALIGN_CENTER);
   info_and_status_hbox.pack_start(debug_status_label);
@@ -119,74 +119,6 @@ Window::Window() {
   
   about.signal_response().connect([this](int d){
     about.hide();
-  });
-  
-  debug_update_stop.connect([this](){
-    debug_stop_mutex.lock();
-    for(int c=0;c<notebook.size();c++) {
-      auto view=notebook.get_view(c);
-      if(view->file_path==debug_last_stop_file_path) {
-        view->get_source_buffer()->remove_source_marks(view->get_buffer()->begin(), view->get_buffer()->end(), "debug_stop");
-        break;
-      }
-    }
-    //Add debug stop source mark
-    for(int c=0;c<notebook.size();c++) {
-      auto view=notebook.get_view(c);
-      if(view->file_path==debug_stop.first) {
-        if(debug_stop.second.first-1<view->get_buffer()->get_line_count()) {
-          view->get_source_buffer()->create_source_mark("debug_stop", view->get_buffer()->get_iter_at_line(debug_stop.second.first-1));
-          debug_last_stop_file_path=debug_stop.first;
-        }
-        break;
-      }
-    }
-    if(notebook.get_current_page()!=-1)
-      notebook.get_current_view()->get_buffer()->place_cursor(notebook.get_current_view()->get_buffer()->get_insert()->get_iter());
-    debug_stop_mutex.unlock();
-  });
-  
-#ifdef JUCI_ENABLE_DEBUG
-  auto &menu=Menu::get();
-  menu.actions["debug_stop"]->set_enabled(false);
-  menu.actions["debug_kill"]->set_enabled(false);
-  menu.actions["debug_step_over"]->set_enabled(false);
-  menu.actions["debug_step_into"]->set_enabled(false);
-  menu.actions["debug_step_out"]->set_enabled(false);
-  menu.actions["debug_backtrace"]->set_enabled(false);
-  menu.actions["debug_show_variables"]->set_enabled(false);
-  menu.actions["debug_run_command"]->set_enabled(false);
-  menu.actions["debug_goto_stop"]->set_enabled(false);
-#endif
-  debug_update_status.connect([this](){
-    debug_status_mutex.lock();
-    if(debug_status.empty()) {
-      debug_status_label.set_text("");
-      auto &menu=Menu::get();
-      menu.actions["debug_stop"]->set_enabled(false);
-      menu.actions["debug_kill"]->set_enabled(false);
-      menu.actions["debug_step_over"]->set_enabled(false);
-      menu.actions["debug_step_into"]->set_enabled(false);
-      menu.actions["debug_step_out"]->set_enabled(false);
-      menu.actions["debug_backtrace"]->set_enabled(false);
-      menu.actions["debug_show_variables"]->set_enabled(false);
-      menu.actions["debug_run_command"]->set_enabled(false);
-      menu.actions["debug_goto_stop"]->set_enabled(false);
-    }
-    else {
-      debug_status_label.set_text("debug: "+debug_status);
-      auto &menu=Menu::get();
-      menu.actions["debug_stop"]->set_enabled();
-      menu.actions["debug_kill"]->set_enabled();
-      menu.actions["debug_step_over"]->set_enabled();
-      menu.actions["debug_step_into"]->set_enabled();
-      menu.actions["debug_step_out"]->set_enabled();
-      menu.actions["debug_backtrace"]->set_enabled();
-      menu.actions["debug_show_variables"]->set_enabled();
-      menu.actions["debug_run_command"]->set_enabled();
-      menu.actions["debug_goto_stop"]->set_enabled();
-    }
-    debug_status_mutex.unlock();
   });
   
   about.set_version(Config::get().window.version);
@@ -575,8 +507,8 @@ void Window::set_menu_actions() {
   });
   
   menu.add_action("project_set_run_arguments", [this]() {
-    project=get_project();
-    auto run_arguments=std::make_shared<std::pair<std::string, std::string> >(project->get_run_arguments());
+    auto project_language=Project::get().get_language();
+    auto run_arguments=std::make_shared<std::pair<std::string, std::string> >(project_language->get_run_arguments());
     if(run_arguments->second.empty())
       return;
     
@@ -588,7 +520,7 @@ void Window::set_menu_actions() {
     };
     label_it->update(0, "");
     entry_box.entries.emplace_back(run_arguments->second, [this, run_arguments](const std::string& content){
-      Project::run_arguments[run_arguments->first]=content;
+      Project::get().run_arguments[run_arguments->first]=content;
       entry_box.hide();
     }, 50);
     auto entry_it=entry_box.entries.begin();
@@ -599,24 +531,24 @@ void Window::set_menu_actions() {
     entry_box.show();
   });
   menu.add_action("compile_and_run", [this]() {
-    if(Project::compiling)
+    if(Project::get().compiling)
       return;
     
     if(Config::get().window.save_on_compile_or_run)
       notebook.save_project_files();
         
-    project=get_project();
-    project->compile_and_run();
+    project_language=Project::get().get_language();
+    project_language->compile_and_run();
   });
   menu.add_action("compile", [this]() {
-    if(Project::compiling)
+    if(Project::get().compiling)
       return;
     
     if(Config::get().window.save_on_compile_or_run)
       notebook.save_project_files();
         
-    project=get_project();
-    project->compile();
+    project_language=Project::get().get_language();
+    project_language->compile();
   });
   
   menu.add_action("run_command", [this]() {
@@ -656,8 +588,8 @@ void Window::set_menu_actions() {
   
 #ifdef JUCI_ENABLE_DEBUG
   menu.add_action("debug_set_run_arguments", [this]() {
-    project=get_project();
-    auto run_arguments=std::make_shared<std::pair<std::string, std::string> >(project->debug_get_run_arguments());
+    auto project_language=Project::get().get_language();
+    auto run_arguments=std::make_shared<std::pair<std::string, std::string> >(project_language->debug_get_run_arguments());
     if(run_arguments->second.empty())
       return;
     
@@ -669,7 +601,7 @@ void Window::set_menu_actions() {
     };
     label_it->update(0, "");
     entry_box.entries.emplace_back(run_arguments->second, [this, run_arguments](const std::string& content){
-      Project::debug_run_arguments[run_arguments->first]=content;
+      Project::get().debug_run_arguments[run_arguments->first]=content;
       entry_box.hide();
     }, 50);
     auto entry_it=entry_box.entries.begin();
@@ -680,64 +612,52 @@ void Window::set_menu_actions() {
     entry_box.show();
   });
   menu.add_action("debug_start_continue", [this](){
-    if(Project::debugging) {
-      project->debug_continue();
+    if(Project::get().debugging) {
+      project_language->debug_continue();
       return;
     }
     
     if(Config::get().window.save_on_compile_or_run)
       notebook.save_project_files();
     
-    project=get_project();
+    project_language=Project::get().get_language();
     
-    project->debug_start([this](const std::string &status) {
-      debug_status_mutex.lock();
-      debug_status=status;
-      debug_status_mutex.unlock();
-      debug_update_status();
-    }, [this](const boost::filesystem::path &file_path, int line_nr, int line_index) {
-      debug_stop_mutex.lock();
-      debug_stop.first=file_path;
-      debug_stop.second.first=line_nr;
-      debug_stop.second.second=line_index;
-      debug_stop_mutex.unlock();
-      debug_update_stop();
-    });
+    project_language->debug_start();
   });
   menu.add_action("debug_stop", [this]() {
-    if(project)
-      project->debug_stop();
+    if(project_language)
+      project_language->debug_stop();
   });
   menu.add_action("debug_kill", [this]() {
-    if(project)
-      project->debug_kill();
+    if(project_language)
+      project_language->debug_kill();
   });
   menu.add_action("debug_step_over", [this]() {
-    if(project)
-      project->debug_step_over();
+    if(project_language)
+      project_language->debug_step_over();
   });
   menu.add_action("debug_step_into", [this]() {
-    if(project)
-      project->debug_step_into();
+    if(project_language)
+      project_language->debug_step_into();
   });
   menu.add_action("debug_step_out", [this]() {
-    if(project)
-      project->debug_step_out();
+    if(project_language)
+      project_language->debug_step_out();
   });
   menu.add_action("debug_backtrace", [this]() {
-    if(project)
-      project->debug_backtrace();
+    if(project_language)
+      project_language->debug_backtrace();
   });
   menu.add_action("debug_show_variables", [this]() {
-    if(project)
-      project->debug_show_variables();
+    if(project_language)
+      project_language->debug_show_variables();
   });
   menu.add_action("debug_run_command", [this]() {
     entry_box.clear();
     entry_box.entries.emplace_back(last_run_debug_command, [this](const std::string& content){
       if(content!="") {
-        if(project)
-          project->debug_run_command(content);
+        if(project_language)
+          project_language->debug_run_command(content);
         last_run_debug_command=content;
       }
       entry_box.hide();
@@ -773,35 +693,8 @@ void Window::set_menu_actions() {
     }
   });
   menu.add_action("debug_goto_stop", [this](){
-    if(project && project->debugging) {
-      debug_stop_mutex.lock();
-      auto debug_stop_copy=debug_stop;
-      debug_stop_mutex.unlock();
-      if(!debug_stop_copy.first.empty()) {
-        notebook.open(debug_stop_copy.first);
-        if(notebook.get_current_page()!=-1) {
-          auto view=notebook.get_current_view();
-          
-          int line_nr=debug_stop_copy.second.first-1;
-          int line_index=debug_stop_copy.second.second-1;
-          if(line_nr<view->get_buffer()->get_line_count()) {
-            auto iter=view->get_buffer()->get_iter_at_line(line_nr);
-            auto end_line_iter=iter;
-            while(!iter.ends_line() && iter.forward_char()) {}
-            auto line=view->get_buffer()->get_text(iter, end_line_iter);
-            if(static_cast<size_t>(line_index)>=line.bytes())
-              line_index=0;
-            view->get_buffer()->place_cursor(view->get_buffer()->get_iter_at_line_index(line_nr, line_index));
-            
-            while(g_main_context_pending(NULL))
-              g_main_context_iteration(NULL, false);
-            if(notebook.get_current_page()!=-1 && notebook.get_current_view()==view)
-              view->scroll_to(view->get_buffer()->get_insert(), 0.0, 1.0, 0.5);
-          }
-          debug_update_stop();
-        }
-      }
-    }
+    if(project_language)
+      project_language->debug_goto_stop();
   });
 #endif
   
@@ -899,8 +792,8 @@ bool Window::on_delete_event(GdkEventAny *event) {
   }
   Terminal::get().kill_async_processes();
 #ifdef JUCI_ENABLE_DEBUG
-  if(project)
-    project->debug_delete();
+  if(project_language)
+    project_language->debug_delete();
 #endif
   return false;
 }
@@ -1125,20 +1018,4 @@ void Window::rename_token_entry() {
       }
     }
   }
-}
-
-std::unique_ptr<Project> Window::get_project() {
-  if(notebook.get_current_page()!=-1) {
-    auto language_id=notebook.get_current_view()->language->get_id();
-    if(language_id=="markdown")
-      return std::unique_ptr<Project>(new ProjectMarkdown(notebook));
-    if(language_id=="python")
-      return std::unique_ptr<Project>(new ProjectPython(notebook));
-    if(language_id=="js")
-      return std::unique_ptr<Project>(new ProjectJavaScript(notebook));
-    if(language_id=="html")
-      return std::unique_ptr<Project>(new ProjectHTML(notebook));
-  }
-  
-  return std::unique_ptr<Project>(new ProjectClang(notebook));
 }
