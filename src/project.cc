@@ -469,6 +469,30 @@ void Project::Clang::debug_run_command(const std::string &command) {
   }
 }
 
+void Project::Clang::toggle_breakpoint() {
+  if(notebook.get_current_page()!=-1) {
+    auto view=notebook.get_current_view();
+    bool debug_is_stopped_or_running=Debug::get().is_stopped() || Debug::get().is_running();
+    if(Debug::get().is_invalid() || debug_is_stopped_or_running) {
+      auto line_nr=view->get_buffer()->get_insert()->get_iter().get_line();
+      
+      if(view->get_source_buffer()->get_source_marks_at_line(line_nr, "debug_breakpoint").size()>0) {
+        auto start_iter=view->get_buffer()->get_iter_at_line(line_nr);
+        auto end_iter=start_iter;
+        while(!end_iter.ends_line() && end_iter.forward_char()) {}
+        view->get_source_buffer()->remove_source_marks(start_iter, end_iter, "debug_breakpoint");
+        if(debug_is_stopped_or_running)
+          Debug::get().remove_breakpoint(view->file_path, line_nr+1, view->get_buffer()->get_line_count()+1);
+      }
+      else {
+        view->get_source_buffer()->create_source_mark("debug_breakpoint", view->get_buffer()->get_insert()->get_iter());
+        if(debug_is_stopped_or_running)
+          Debug::get().add_breakpoint(view->file_path, line_nr+1);
+      }
+    }
+  }
+}
+
 void Project::Clang::debug_goto_stop() {
   if(Project::get().debugging) {
     auto &project=Project::get();

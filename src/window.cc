@@ -52,8 +52,8 @@ Window::Window() : notebook(Notebook::get()) {
 #if GTK_VERSION_GE(3, 12)
   info_and_status_hbox.set_center_widget(Project::get().debug_status_label);
 #else
-  debug_status_label.set_halign(Gtk::Align::ALIGN_CENTER);
-  info_and_status_hbox.pack_start(debug_status_label);
+  Project::get().debug_status_label.set_halign(Gtk::Align::ALIGN_CENTER);
+  info_and_status_hbox.pack_start(Project::get().debug_status_label);
 #endif
   info_and_status_hbox.pack_end(notebook.status, Gtk::PACK_SHRINK);
   terminal_vbox.pack_end(info_and_status_hbox, Gtk::PACK_SHRINK);
@@ -670,27 +670,10 @@ void Window::set_menu_actions() {
     entry_box.show();
   });
   menu.add_action("debug_toggle_breakpoint", [this](){
-    if(notebook.get_current_page()!=-1) {
-    auto view=notebook.get_current_view();
-      bool debug_is_stopped_or_running=Debug::get().is_stopped() || Debug::get().is_running();
-      if(Debug::get().is_invalid() || debug_is_stopped_or_running) {
-        auto line_nr=view->get_buffer()->get_insert()->get_iter().get_line();
-        
-        if(view->get_source_buffer()->get_source_marks_at_line(line_nr, "debug_breakpoint").size()>0) {
-          auto start_iter=view->get_buffer()->get_iter_at_line(line_nr);
-          auto end_iter=start_iter;
-          while(!end_iter.ends_line() && end_iter.forward_char()) {}
-          view->get_source_buffer()->remove_source_marks(start_iter, end_iter, "debug_breakpoint");
-          if(debug_is_stopped_or_running)
-            Debug::get().remove_breakpoint(view->file_path, line_nr+1, view->get_buffer()->get_line_count()+1);
-        }
-        else {
-          view->get_source_buffer()->create_source_mark("debug_breakpoint", view->get_buffer()->get_insert()->get_iter());
-          if(debug_is_stopped_or_running)
-            Debug::get().add_breakpoint(view->file_path, line_nr+1);
-        }
-      }
-    }
+    if(Project::get().debugging)
+      project_language->toggle_breakpoint();
+    else
+      Project::get().get_language()->toggle_breakpoint();
   });
   menu.add_action("debug_goto_stop", [this](){
     if(project_language)

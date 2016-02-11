@@ -57,6 +57,7 @@ public:
     virtual void debug_backtrace() {}
     virtual void debug_show_variables() {}
     virtual void debug_run_command(const std::string &command) {}
+    virtual void toggle_breakpoint() {}
     virtual void debug_goto_stop() {}
     virtual void debug_delete() {}
   };
@@ -84,6 +85,7 @@ public:
     void debug_backtrace() override;
     void debug_show_variables() override;
     void debug_run_command(const std::string &command) override;
+    void toggle_breakpoint() override;
     void debug_goto_stop() override;
     void debug_delete() override;
   #endif
