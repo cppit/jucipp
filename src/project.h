@@ -12,10 +12,7 @@
 
 class Project {
 private:
-  std::pair<boost::filesystem::path, std::pair<int, int> > debug_stop;
-  std::mutex debug_stop_mutex;
   boost::filesystem::path debug_last_stop_file_path;
-  Glib::Dispatcher debug_update_stop;
   std::string debug_status;
   std::mutex debug_status_mutex;
   Glib::Dispatcher debug_update_status;
@@ -29,6 +26,9 @@ public:
   }
 
   Gtk::Label debug_status_label;
+  std::pair<boost::filesystem::path, std::pair<int, int> > debug_stop;
+  std::mutex debug_stop_mutex;
+  Glib::Dispatcher debug_update_stop;
   std::unordered_map<std::string, std::string> run_arguments;
   std::unordered_map<std::string, std::string> debug_run_arguments;
   std::atomic<bool> compiling;
@@ -57,8 +57,8 @@ public:
     virtual void debug_backtrace() {}
     virtual void debug_show_variables() {}
     virtual void debug_run_command(const std::string &command) {}
-    virtual void toggle_breakpoint() {}
-    virtual void debug_goto_stop() {}
+    virtual void debug_add_breakpoint(const boost::filesystem::path &file_path, int line_nr) {}
+    virtual void debug_remove_breakpoint(const boost::filesystem::path &file_path, int line_nr, int line_count) {}
     virtual void debug_delete() {}
   };
   
@@ -85,8 +85,8 @@ public:
     void debug_backtrace() override;
     void debug_show_variables() override;
     void debug_run_command(const std::string &command) override;
-    void toggle_breakpoint() override;
-    void debug_goto_stop() override;
+    void debug_add_breakpoint(const boost::filesystem::path &file_path, int line_nr) override;
+    void debug_remove_breakpoint(const boost::filesystem::path &file_path, int line_nr, int line_count) override;
     void debug_delete() override;
   #endif
   };

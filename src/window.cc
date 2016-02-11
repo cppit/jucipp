@@ -667,14 +667,56 @@ void Window::set_menu_actions() {
     entry_box.show();
   });
   menu.add_action("debug_toggle_breakpoint", [this](){
-    if(Project::get().debugging)
-      project_language->toggle_breakpoint();
-    else
-      Project::get().get_language()->toggle_breakpoint();
+    if(notebook.get_current_page()!=-1) {
+      auto view=notebook.get_current_view();
+      auto line_nr=view->get_buffer()->get_insert()->get_iter().get_line();
+      
+      if(view->get_source_buffer()->get_source_marks_at_line(line_nr, "debug_breakpoint").size()>0) {
+        auto start_iter=view->get_buffer()->get_iter_at_line(line_nr);
+        auto end_iter=start_iter;
+        while(!end_iter.ends_line() && end_iter.forward_char()) {}
+        view->get_source_buffer()->remove_source_marks(start_iter, end_iter, "debug_breakpoint");
+        if(project_language)
+          project_language->debug_remove_breakpoint(view->file_path, line_nr+1, view->get_buffer()->get_line_count()+1);
+      }
+      else {
+        view->get_source_buffer()->create_source_mark("debug_breakpoint", view->get_buffer()->get_insert()->get_iter());
+        if(project_language)
+          project_language->debug_add_breakpoint(view->file_path, line_nr+1);
+      }
+    }
   });
   menu.add_action("debug_goto_stop", [this](){
-    if(project_language)
-      project_language->debug_goto_stop();
+    if(Project::get().debugging) {
+      auto &project=Project::get();
+      project.debug_stop_mutex.lock();
+      auto debug_stop_copy=project.debug_stop;
+      project.debug_stop_mutex.unlock();
+      if(!debug_stop_copy.first.empty()) {
+        notebook.open(debug_stop_copy.first);
+        if(notebook.get_current_page()!=-1) {
+          auto view=notebook.get_current_view();
+          
+          int line_nr=debug_stop_copy.second.first-1;
+          int line_index=debug_stop_copy.second.second-1;
+          if(line_nr<view->get_buffer()->get_line_count()) {
+            auto iter=view->get_buffer()->get_iter_at_line(line_nr);
+            auto end_line_iter=iter;
+            while(!iter.ends_line() && iter.forward_char()) {}
+            auto line=view->get_buffer()->get_text(iter, end_line_iter);
+            if(static_cast<size_t>(line_index)>=line.bytes())
+              line_index=0;
+            view->get_buffer()->place_cursor(view->get_buffer()->get_iter_at_line_index(line_nr, line_index));
+            
+            while(g_main_context_pending(NULL))
+              g_main_context_iteration(NULL, false);
+            if(notebook.get_current_page()!=-1 && notebook.get_current_view()==view)
+              view->scroll_to(view->get_buffer()->get_insert(), 0.0, 1.0, 0.5);
+          }
+          project.debug_update_stop();
+        }
+      }
+    }
   });
 #endif
   
