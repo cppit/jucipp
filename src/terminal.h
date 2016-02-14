@@ -23,7 +23,6 @@ public:
     void start(const std::string& msg);
     size_t line_nr;
     std::atomic<bool> stop;
-    Dispatcher dispatcher;
     
     std::thread wait_thread;
   };
@@ -43,9 +42,9 @@ public:
   void kill_async_processes(bool force=false);
   
   size_t print(const std::string &message, bool bold=false);
-  void print(size_t line_nr, const std::string &message);
   std::shared_ptr<InProgress> print_in_progress(std::string start_msg);
   void async_print(const std::string &message, bool bold=false);
+  void async_print(size_t line_nr, const std::string &message);
 protected:
   bool on_key_press_event(GdkEventKey *event);
 private:

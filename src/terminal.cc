@@ -21,11 +21,8 @@ void Terminal::InProgress::start(const std::string& msg) {
   wait_thread=std::thread([this](){
     size_t c=0;
     while(!stop) {
-      if(c%100==0) {
-        dispatcher.add([this] {
-          Terminal::get().print(line_nr-1, ".");
-        });
-      }
+      if(c%100==0)
+        Terminal::get().async_print(line_nr-1, ".");
       std::this_thread::sleep_for(std::chrono::milliseconds(10));
       c++;
     }
@@ -35,18 +32,14 @@ void Terminal::InProgress::start(const std::string& msg) {
 void Terminal::InProgress::done(const std::string& msg) {
   if(!stop) {
     stop=true;
-    dispatcher.add([this, msg] {
-      Terminal::get().print(line_nr-1, msg);
-    });
+    Terminal::get().async_print(line_nr-1, msg);
   }
 }
 
 void Terminal::InProgress::cancel(const std::string& msg) {
   if(!stop) {
     stop=true;
-    dispatcher.add([this, msg] {
-      Terminal::get().print(line_nr-1, msg);
-    });
+    Terminal::get().async_print(line_nr-1, msg);
   }
 }
 
@@ -213,23 +206,6 @@ size_t Terminal::print(const std::string &message, bool bold){
   return static_cast<size_t>(get_buffer()->end().get_line())+deleted_lines;
 }
 
-void Terminal::print(size_t line_nr, const std::string &message){
-  if(line_nr<deleted_lines)
-    return;
-  
-  Glib::ustring umessage=message;
-  Glib::ustring::iterator iter;
-  while(!umessage.validate(iter)) {
-    auto next_char_iter=iter;
-    next_char_iter++;
-    umessage.replace(iter, next_char_iter, "?");
-  }
-  
-  auto end_line_iter=get_buffer()->get_iter_at_line(static_cast<int>(line_nr-deleted_lines));
-  while(!end_line_iter.ends_line() && end_line_iter.forward_char()) {}
-  get_buffer()->insert(end_line_iter, umessage);
-}
-
 std::shared_ptr<Terminal::InProgress> Terminal::print_in_progress(std::string start_msg) {
   std::shared_ptr<Terminal::InProgress> in_progress=std::shared_ptr<Terminal::InProgress>(new Terminal::InProgress(start_msg));
   return in_progress;
@@ -238,6 +214,25 @@ std::shared_ptr<Terminal::InProgress> Terminal::print_in_progress(std::string st
 void Terminal::async_print(const std::string &message, bool bold) {
   dispatcher.add([this, message, bold] {
     Terminal::get().print(message, bold);
+  });
+}
+
+void Terminal::async_print(size_t line_nr, const std::string &message) {
+  dispatcher.add([this, line_nr, message] {
+    if(line_nr<deleted_lines)
+      return;
+    
+    Glib::ustring umessage=message;
+    Glib::ustring::iterator iter;
+    while(!umessage.validate(iter)) {
+      auto next_char_iter=iter;
+      next_char_iter++;
+      umessage.replace(iter, next_char_iter, "?");
+    }
+    
+    auto end_line_iter=get_buffer()->get_iter_at_line(static_cast<int>(line_nr-deleted_lines));
+    while(!end_line_iter.ends_line() && end_line_iter.forward_char()) {}
+    get_buffer()->insert(end_line_iter, umessage);
   });
 }
 
