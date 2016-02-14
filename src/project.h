@@ -2,43 +2,31 @@
 #define JUCI_PROJECT_H_
 
 #include <gtkmm.h>
-#include "notebook.h"
 #include "cmake.h"
 #include <boost/filesystem.hpp>
 #include "directories.h"
 #include <atomic>
 #include <mutex>
 #include "tooltips.h"
+#include "dispatcher.h"
+#include <iostream>
 
 class Project {
 private:
-  boost::filesystem::path debug_last_stop_file_path;
-  std::string debug_status;
-  std::mutex debug_status_mutex;
-  Glib::Dispatcher debug_update_status;
-
-  Project();
-  Notebook &notebook; //convenience reference
+  static boost::filesystem::path debug_last_stop_file_path;
 public:
-  static Project &get() {
-    static Project singleton;
-    return singleton;
-  }
-
-  Gtk::Label debug_status_label;
-  std::pair<boost::filesystem::path, std::pair<int, int> > debug_stop;
-  std::mutex debug_stop_mutex;
-  Glib::Dispatcher debug_update_stop;
-  std::unordered_map<std::string, std::string> run_arguments;
-  std::unordered_map<std::string, std::string> debug_run_arguments;
-  std::atomic<bool> compiling;
-  std::atomic<bool> debugging;
+  static std::unordered_map<std::string, std::string> run_arguments;
+  static std::unordered_map<std::string, std::string> debug_run_arguments;
+  static std::atomic<bool> compiling;
+  static std::atomic<bool> debugging;
+  static std::pair<boost::filesystem::path, std::pair<int, int> > debug_stop;
+  static void debug_update_stop();
+  static std::unique_ptr<Gtk::Label> debug_status_label;
+  static void debug_update_status(const std::string &debug_status);
   
   class Language {
-  protected:
-    Notebook &notebook; //convenience reference
   public:
-    Language() : notebook(Notebook::get()) {}
+    Language() {}
     virtual ~Language() {}
     
     virtual std::pair<std::string, std::string> get_run_arguments() {return {"", ""};}
@@ -63,8 +51,11 @@ public:
   };
   
   class Clang : public Language {
+  private:
+    Dispatcher dispatcher;
   public:
     Clang() : Language() {}
+    ~Clang() { dispatcher.disconnect(); }
     
     std::unique_ptr<CMake> get_cmake();
     
@@ -121,7 +112,7 @@ public:
     void compile_and_run() override;
   };
   
-  std::unique_ptr<Language> get_language();
+  static std::unique_ptr<Language> get_language();
 };
 
 #endif  // JUCI_PROJECT_H_

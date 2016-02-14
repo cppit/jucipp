@@ -86,6 +86,8 @@ set(source_files juci.h
     dialogs.cc
     project.h
     project.cc
+    dispatcher.h
+    dispatcher.cc
     
     ../libclangmm/src/CodeCompleteResults.cc
     ../libclangmm/src/CompilationDatabase.cc

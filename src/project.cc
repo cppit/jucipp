@@ -4,83 +4,74 @@
 #include "filesystem.h"
 #include <fstream>
 #include "menu.h"
+#include "notebook.h"
 #ifdef JUCI_ENABLE_DEBUG
 #include "debug.h"
 #endif
 
-Project::Project() : notebook(Notebook::get()), compiling(false), debugging(false) {
-  debug_update_stop.connect([this](){
-    debug_stop_mutex.lock();
-    for(int c=0;c<notebook.size();c++) {
-      auto view=notebook.get_view(c);
-      if(view->file_path==debug_last_stop_file_path) {
-        view->get_source_buffer()->remove_source_marks(view->get_buffer()->begin(), view->get_buffer()->end(), "debug_stop");
-        break;
+std::unordered_map<std::string, std::string> Project::run_arguments;
+std::unordered_map<std::string, std::string> Project::debug_run_arguments;
+std::atomic<bool> Project::compiling;
+std::atomic<bool> Project::debugging;
+std::pair<boost::filesystem::path, std::pair<int, int> > Project::debug_stop;
+boost::filesystem::path Project::debug_last_stop_file_path;
+std::unique_ptr<Gtk::Label> Project::debug_status_label;
+
+void Project::debug_update_status(const std::string &debug_status) {
+  if(debug_status.empty()) {
+    debug_status_label->set_text("");
+    auto &menu=Menu::get();
+    menu.actions["debug_stop"]->set_enabled(false);
+    menu.actions["debug_kill"]->set_enabled(false);
+    menu.actions["debug_step_over"]->set_enabled(false);
+    menu.actions["debug_step_into"]->set_enabled(false);
+    menu.actions["debug_step_out"]->set_enabled(false);
+    menu.actions["debug_backtrace"]->set_enabled(false);
+    menu.actions["debug_show_variables"]->set_enabled(false);
+    menu.actions["debug_run_command"]->set_enabled(false);
+    menu.actions["debug_goto_stop"]->set_enabled(false);
+  }
+  else {
+    debug_status_label->set_text("debug: "+debug_status);
+    auto &menu=Menu::get();
+    menu.actions["debug_stop"]->set_enabled();
+    menu.actions["debug_kill"]->set_enabled();
+    menu.actions["debug_step_over"]->set_enabled();
+    menu.actions["debug_step_into"]->set_enabled();
+    menu.actions["debug_step_out"]->set_enabled();
+    menu.actions["debug_backtrace"]->set_enabled();
+    menu.actions["debug_show_variables"]->set_enabled();
+    menu.actions["debug_run_command"]->set_enabled();
+    menu.actions["debug_goto_stop"]->set_enabled();
+  }
+}
+
+void Project::debug_update_stop() {
+  for(int c=0;c<Notebook::get().size();c++) {
+    auto view=Notebook::get().get_view(c);
+    if(view->file_path==debug_last_stop_file_path) {
+      view->get_source_buffer()->remove_source_marks(view->get_buffer()->begin(), view->get_buffer()->end(), "debug_stop");
+      break;
+    }
+  }
+  //Add debug stop source mark
+  for(int c=0;c<Notebook::get().size();c++) {
+    auto view=Notebook::get().get_view(c);
+    if(view->file_path==debug_stop.first) {
+      if(debug_stop.second.first-1<view->get_buffer()->get_line_count()) {
+        view->get_source_buffer()->create_source_mark("debug_stop", view->get_buffer()->get_iter_at_line(debug_stop.second.first-1));
+        debug_last_stop_file_path=debug_stop.first;
       }
+      break;
     }
-    //Add debug stop source mark
-    for(int c=0;c<notebook.size();c++) {
-      auto view=notebook.get_view(c);
-      if(view->file_path==debug_stop.first) {
-        if(debug_stop.second.first-1<view->get_buffer()->get_line_count()) {
-          view->get_source_buffer()->create_source_mark("debug_stop", view->get_buffer()->get_iter_at_line(debug_stop.second.first-1));
-          debug_last_stop_file_path=debug_stop.first;
-        }
-        break;
-      }
-    }
-    if(notebook.get_current_page()!=-1)
-      notebook.get_current_view()->get_buffer()->place_cursor(notebook.get_current_view()->get_buffer()->get_insert()->get_iter());
-    debug_stop_mutex.unlock();
-  });
-  
-#ifdef JUCI_ENABLE_DEBUG
-  auto &menu=Menu::get();
-  menu.actions["debug_stop"]->set_enabled(false);
-  menu.actions["debug_kill"]->set_enabled(false);
-  menu.actions["debug_step_over"]->set_enabled(false);
-  menu.actions["debug_step_into"]->set_enabled(false);
-  menu.actions["debug_step_out"]->set_enabled(false);
-  menu.actions["debug_backtrace"]->set_enabled(false);
-  menu.actions["debug_show_variables"]->set_enabled(false);
-  menu.actions["debug_run_command"]->set_enabled(false);
-  menu.actions["debug_goto_stop"]->set_enabled(false);
-#endif
-  debug_update_status.connect([this](){
-    debug_status_mutex.lock();
-    if(debug_status.empty()) {
-      debug_status_label.set_text("");
-      auto &menu=Menu::get();
-      menu.actions["debug_stop"]->set_enabled(false);
-      menu.actions["debug_kill"]->set_enabled(false);
-      menu.actions["debug_step_over"]->set_enabled(false);
-      menu.actions["debug_step_into"]->set_enabled(false);
-      menu.actions["debug_step_out"]->set_enabled(false);
-      menu.actions["debug_backtrace"]->set_enabled(false);
-      menu.actions["debug_show_variables"]->set_enabled(false);
-      menu.actions["debug_run_command"]->set_enabled(false);
-      menu.actions["debug_goto_stop"]->set_enabled(false);
-    }
-    else {
-      debug_status_label.set_text("debug: "+debug_status);
-      auto &menu=Menu::get();
-      menu.actions["debug_stop"]->set_enabled();
-      menu.actions["debug_kill"]->set_enabled();
-      menu.actions["debug_step_over"]->set_enabled();
-      menu.actions["debug_step_into"]->set_enabled();
-      menu.actions["debug_step_out"]->set_enabled();
-      menu.actions["debug_backtrace"]->set_enabled();
-      menu.actions["debug_show_variables"]->set_enabled();
-      menu.actions["debug_run_command"]->set_enabled();
-      menu.actions["debug_goto_stop"]->set_enabled();
-    }
-    debug_status_mutex.unlock();
-  });
+  }
+  if(Notebook::get().get_current_page()!=-1)
+    Notebook::get().get_current_view()->get_buffer()->place_cursor(Notebook::get().get_current_view()->get_buffer()->get_insert()->get_iter());
 }
 
 std::unique_ptr<Project::Language> Project::get_language() {
-  if(notebook.get_current_page()!=-1) {
-    auto language_id=notebook.get_current_view()->language->get_id();
+  if(Notebook::get().get_current_page()!=-1) {
+    auto language_id=Notebook::get().get_current_view()->language->get_id();
     if(language_id=="markdown")
       return std::unique_ptr<Project::Language>(new Project::Markdown());
     if(language_id=="python")
@@ -96,8 +87,8 @@ std::unique_ptr<Project::Language> Project::get_language() {
 
 std::unique_ptr<CMake> Project::Clang::get_cmake() {
   boost::filesystem::path path;
-  if(notebook.get_current_page()!=-1)
-    path=notebook.get_current_view()->file_path.parent_path();
+  if(Notebook::get().get_current_page()!=-1)
+    path=Notebook::get().get_current_view()->file_path.parent_path();
   else
     path=Directories::get().current_path;
   if(path.empty())
@@ -116,13 +107,13 @@ std::pair<std::string, std::string> Project::Clang::get_run_arguments() {
     return {"", ""};
   
   auto project_path=cmake->project_path.string();
-  auto run_arguments_it=Project::get().run_arguments.find(project_path);
+  auto run_arguments_it=run_arguments.find(project_path);
   std::string arguments;
-  if(run_arguments_it!=Project::get().run_arguments.end())
+  if(run_arguments_it!=run_arguments.end())
     arguments=run_arguments_it->second;
   
   if(arguments.empty()) {
-    auto executable=cmake->get_executable(notebook.get_current_page()!=-1?notebook.get_current_view()->file_path:"").string();
+    auto executable=cmake->get_executable(Notebook::get().get_current_page()!=-1?Notebook::get().get_current_view()->file_path:"").string();
     
     if(executable!="") {
       auto project_path=cmake->project_path;
@@ -149,10 +140,10 @@ void Project::Clang::compile() {
   auto default_build_path=CMake::get_default_build_path(cmake->project_path);
   if(default_build_path.empty())
     return;
-  Project::get().compiling=true;
+  compiling=true;
   Terminal::get().print("Compiling project "+cmake->project_path.string()+"\n");
   Terminal::get().async_process(Config::get().terminal.make_command, default_build_path, [this](int exit_status) {
-    Project::get().compiling=false;
+    compiling=false;
   });
 }
 
@@ -166,13 +157,13 @@ void Project::Clang::compile_and_run() {
   if(default_build_path.empty())
     return;
   
-  auto run_arguments_it=Project::get().run_arguments.find(project_path.string());
+  auto run_arguments_it=run_arguments.find(project_path.string());
   std::string arguments;
-  if(run_arguments_it!=Project::get().run_arguments.end())
+  if(run_arguments_it!=run_arguments.end())
     arguments=run_arguments_it->second;
   
   if(arguments.empty()) {
-    arguments=cmake->get_executable(notebook.get_current_page()!=-1?notebook.get_current_view()->file_path:"").string();
+    arguments=cmake->get_executable(Notebook::get().get_current_page()!=-1?Notebook::get().get_current_view()->file_path:"").string();
     if(arguments.empty()) {
       Terminal::get().print("Could not find add_executable in the following paths:\n");
       for(auto &path: cmake->paths)
@@ -186,10 +177,10 @@ void Project::Clang::compile_and_run() {
     arguments=filesystem::escape_argument(arguments);
   }
   
-  Project::get().compiling=true;
+  compiling=true;
   Terminal::get().print("Compiling and running "+arguments+"\n");
   Terminal::get().async_process(Config::get().terminal.make_command, default_build_path, [this, arguments, default_build_path](int exit_status){
-    Project::get().compiling=false;
+    compiling=false;
     if(exit_status==EXIT_SUCCESS) {
       Terminal::get().async_process(arguments, default_build_path, [this, arguments](int exit_status){
         Terminal::get().async_print(arguments+" returned: "+std::to_string(exit_status)+'\n');
@@ -205,13 +196,13 @@ std::pair<std::string, std::string> Project::Clang::debug_get_run_arguments() {
     return {"", ""};
   
   auto project_path=cmake->project_path.string();
-  auto run_arguments_it=Project::get().debug_run_arguments.find(project_path);
+  auto run_arguments_it=debug_run_arguments.find(project_path);
   std::string arguments;
-  if(run_arguments_it!=Project::get().debug_run_arguments.end())
+  if(run_arguments_it!=debug_run_arguments.end())
     arguments=run_arguments_it->second;
   
   if(arguments.empty()) {
-    auto executable=cmake->get_executable(notebook.get_current_page()!=-1?notebook.get_current_view()->file_path:"").string();
+    auto executable=cmake->get_executable(Notebook::get().get_current_page()!=-1?Notebook::get().get_current_view()->file_path:"").string();
     
     if(executable!="") {
       auto project_path=cmake->project_path;
@@ -242,13 +233,13 @@ void Project::Clang::debug_start() {
   if(!CMake::create_debug_build(project_path))
     return;
   
-  auto run_arguments_it=Project::get().debug_run_arguments.find(project_path.string());
+  auto run_arguments_it=debug_run_arguments.find(project_path.string());
   std::string run_arguments;
-  if(run_arguments_it!=Project::get().debug_run_arguments.end())
+  if(run_arguments_it!=debug_run_arguments.end())
     run_arguments=run_arguments_it->second;
   
   if(run_arguments.empty()) {
-    run_arguments=cmake->get_executable(notebook.get_current_page()!=-1?notebook.get_current_view()->file_path:"").string();
+    run_arguments=cmake->get_executable(Notebook::get().get_current_page()!=-1?Notebook::get().get_current_view()->file_path:"").string();
     if(run_arguments.empty()) {
       Terminal::get().print("Could not find add_executable in the following paths:\n");
       for(auto &path: cmake->paths)
@@ -263,8 +254,8 @@ void Project::Clang::debug_start() {
   }
   
   auto breakpoints=std::make_shared<std::vector<std::pair<boost::filesystem::path, int> > >();
-  for(int c=0;c<notebook.size();c++) {
-    auto view=notebook.get_view(c);
+  for(int c=0;c<Notebook::get().size();c++) {
+    auto view=Notebook::get().get_view(c);
     if(project_path==view->project_path) {
       auto iter=view->get_buffer()->begin();
       if(view->get_source_buffer()->get_source_marks_at_iter(iter, "debug_breakpoint").size()>0)
@@ -274,30 +265,29 @@ void Project::Clang::debug_start() {
     }
   }
   
-  Project::get().debugging=true;
+  debugging=true;
   Terminal::get().print("Compiling and debugging "+run_arguments+"\n");
   Terminal::get().async_process(Config::get().terminal.make_command, debug_build_path, [this, breakpoints, run_arguments, debug_build_path](int exit_status){
     if(exit_status!=EXIT_SUCCESS)
-      Project::get().debugging=false;
+      debugging=false;
     else {
       debug_start_mutex.lock();
       Debug::get().start(run_arguments, debug_build_path, *breakpoints, [this, run_arguments](int exit_status){
-        Project::get().debugging=false;
+        debugging=false;
         Terminal::get().async_print(run_arguments+" returned: "+std::to_string(exit_status)+'\n');
       }, [this](const std::string &status) {
-        auto &project=Project::get();
-        project.debug_status_mutex.lock();
-        project.debug_status=status;
-        project.debug_status_mutex.unlock();
-        project.debug_update_status();
-      }, [this](const boost::filesystem::path &file_path, int line_nr, int line_index) {
-        auto &project=Project::get();
-        project.debug_stop_mutex.lock();
-        project.debug_stop.first=file_path;
-        project.debug_stop.second.first=line_nr;
-        project.debug_stop.second.second=line_index;
-        project.debug_stop_mutex.unlock();
-        project.debug_update_stop();
+        dispatcher.add([this, status] {
+          debug_update_status(status);
+        });
+      }, [this](const boost::filesystem::path &file_path, int line_nr, int line_index) {        
+        dispatcher.add([this, file_path, line_nr, line_index] {
+          Project::debug_stop.first=file_path;
+          Project::debug_stop.second.first=line_nr;
+          Project::debug_stop.second.second=line_index;
+          
+          debug_update_stop();
+        });
+        
       });
       debug_start_mutex.unlock();
     }
@@ -309,35 +299,35 @@ void Project::Clang::debug_continue() {
 }
 
 void Project::Clang::debug_stop() {
-  if(Project::get().debugging)
+  if(debugging)
     Debug::get().stop();
 }
 
 void Project::Clang::debug_kill() {
-  if(Project::get().debugging)
+  if(debugging)
     Debug::get().kill();
 }
 
 void Project::Clang::debug_step_over() {
-  if(Project::get().debugging)
+  if(debugging)
     Debug::get().step_over();
 }
 
 void Project::Clang::debug_step_into() {
-  if(Project::get().debugging)
+  if(debugging)
     Debug::get().step_into();
 }
 
 void Project::Clang::debug_step_out() {
-  if(Project::get().debugging)
+  if(debugging)
     Debug::get().step_out();
 }
 
 void Project::Clang::debug_backtrace() {
-  if(Project::get().debugging && notebook.get_current_page()!=-1) {
+  if(debugging && Notebook::get().get_current_page()!=-1) {
     auto backtrace=Debug::get().get_backtrace();
     
-    auto view=notebook.get_current_view();
+    auto view=Notebook::get().get_current_view();
     auto iter=view->get_iter_for_dialog();
     view->selection_dialog=std::unique_ptr<SelectionDialog>(new SelectionDialog(*view, view->get_buffer()->create_mark(iter), true, true));
     auto rows=std::make_shared<std::unordered_map<std::string, Debug::Frame> >();
@@ -364,9 +354,9 @@ void Project::Clang::debug_backtrace() {
     view->selection_dialog->on_select=[this, rows](const std::string& selected, bool hide_window) {
       auto frame=rows->at(selected);
       if(!frame.file_path.empty()) {
-        notebook.open(frame.file_path);
-        if(notebook.get_current_page()!=-1) {
-          auto view=notebook.get_current_view();
+        Notebook::get().open(frame.file_path);
+        if(Notebook::get().get_current_page()!=-1) {
+          auto view=Notebook::get().get_current_view();
           
           Debug::get().select_frame(frame.index);
           
@@ -374,7 +364,7 @@ void Project::Clang::debug_backtrace() {
           
           while(g_main_context_pending(NULL))
             g_main_context_iteration(NULL, false);
-          if(notebook.get_current_page()!=-1 && notebook.get_current_view()==view)
+          if(Notebook::get().get_current_page()!=-1 && Notebook::get().get_current_view()==view)
             view->scroll_to(view->get_buffer()->get_insert(), 0.0, 1.0, 0.5);
         }
       }
@@ -384,10 +374,10 @@ void Project::Clang::debug_backtrace() {
 }
 
 void Project::Clang::debug_show_variables() {
-  if(Project::get().debugging && notebook.get_current_page()!=-1) {
+  if(debugging && Notebook::get().get_current_page()!=-1) {
     auto variables=Debug::get().get_variables();
     
-    auto view=notebook.get_current_view();
+    auto view=Notebook::get().get_current_view();
     auto iter=view->get_iter_for_dialog();
     view->selection_dialog=std::unique_ptr<SelectionDialog>(new SelectionDialog(*view, view->get_buffer()->create_mark(iter), true, true));
     auto rows=std::make_shared<std::unordered_map<std::string, Debug::Variable> >();
@@ -404,9 +394,9 @@ void Project::Clang::debug_show_variables() {
     view->selection_dialog->on_select=[this, rows](const std::string& selected, bool hide_window) {
       auto variable=rows->at(selected);
       if(!variable.file_path.empty()) {
-        notebook.open(variable.file_path);
-        if(notebook.get_current_page()!=-1) {
-          auto view=notebook.get_current_view();
+        Notebook::get().open(variable.file_path);
+        if(Notebook::get().get_current_page()!=-1) {
+          auto view=Notebook::get().get_current_view();
           
           Debug::get().select_frame(variable.frame_index, variable.thread_index_id);
           
@@ -414,7 +404,7 @@ void Project::Clang::debug_show_variables() {
           
           while(g_main_context_pending(NULL))
             g_main_context_iteration(NULL, false);
-          if(notebook.get_current_page()!=-1 && notebook.get_current_view()==view)
+          if(Notebook::get().get_current_page()!=-1 && Notebook::get().get_current_view()==view)
             view->scroll_to(view->get_buffer()->get_insert(), 0.0, 1.0, 0.5);
         }
       }
@@ -430,8 +420,8 @@ void Project::Clang::debug_show_variables() {
         debug_variable_tooltips.hide();
         return;
       }
-      if(notebook.get_current_page()!=-1) {
-        auto view=notebook.get_current_view();
+      if(Notebook::get().get_current_page()!=-1) {
+        auto view=Notebook::get().get_current_view();
         debug_variable_tooltips.clear();
         auto create_tooltip_buffer=[this, rows, view, selected]() {
           auto variable=rows->at(selected);
@@ -462,7 +452,7 @@ void Project::Clang::debug_show_variables() {
 }
 
 void Project::Clang::debug_run_command(const std::string &command) {
-  if(Project::get().debugging) {
+  if(debugging) {
     auto command_return=Debug::get().run_command(command);
     Terminal::get().async_print(command_return.first);
     Terminal::get().async_print(command_return.second, true);
@@ -498,7 +488,7 @@ void Project::Markdown::compile_and_run() {
   }
   
   std::stringstream stdin_stream, stdout_stream;
-  auto exit_status=Terminal::get().process(stdin_stream, stdout_stream, "markdown "+notebook.get_current_view()->file_path.string());
+  auto exit_status=Terminal::get().process(stdin_stream, stdout_stream, "markdown "+Notebook::get().get_current_view()->file_path.string());
   if(exit_status==0) {
     boost::system::error_code ec;
     auto temp_path=boost::filesystem::temp_directory_path(ec);
@@ -528,23 +518,23 @@ void Project::Markdown::compile_and_run() {
 }
 
 void Project::Python::compile_and_run() {
-  auto command="python "+notebook.get_current_view()->file_path.string();
+  auto command="python "+Notebook::get().get_current_view()->file_path.string();
   Terminal::get().print("Running "+command+"\n");
-  Terminal::get().async_process(command, notebook.get_current_view()->file_path.parent_path(), [command](int exit_status) {
+  Terminal::get().async_process(command, Notebook::get().get_current_view()->file_path.parent_path(), [command](int exit_status) {
     Terminal::get().async_print(command+" returned: "+std::to_string(exit_status)+'\n');
   });
 }
 
 void Project::JavaScript::compile_and_run() {
-  auto command="node "+notebook.get_current_view()->file_path.string();
+  auto command="node "+Notebook::get().get_current_view()->file_path.string();
   Terminal::get().print("Running "+command+"\n");
-  Terminal::get().async_process(command, notebook.get_current_view()->file_path.parent_path(), [command](int exit_status) {
+  Terminal::get().async_process(command, Notebook::get().get_current_view()->file_path.parent_path(), [command](int exit_status) {
     Terminal::get().async_print(command+" returned: "+std::to_string(exit_status)+'\n');
   });
 }
 
 void Project::HTML::compile_and_run() {
-  auto uri=notebook.get_current_view()->file_path.string();
+  auto uri=Notebook::get().get_current_view()->file_path.string();
 #ifdef __APPLE__
   Terminal::get().process("open \""+uri+"\"");
 #else

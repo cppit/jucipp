@@ -25,7 +25,11 @@ Window::Window() : notebook(Notebook::get()) {
   JDEBUG("start");
   set_title("juCi++");
   set_events(Gdk::POINTER_MOTION_MASK|Gdk::FOCUS_CHANGE_MASK|Gdk::SCROLL_MASK|Gdk::LEAVE_NOTIFY_MASK);
+  
+  Project::debug_status_label=std::unique_ptr<Gtk::Label>(new Gtk::Label());
+  
   set_menu_actions();
+    
   configure();
   set_default_size(Config::get().window.default_size.first, Config::get().window.default_size.second);
   
@@ -46,11 +50,12 @@ Window::Window() : notebook(Notebook::get()) {
   terminal_vbox.pack_start(terminal_scrolled_window);
     
   info_and_status_hbox.pack_start(notebook.info, Gtk::PACK_SHRINK);
+  
 #if GTK_VERSION_GE(3, 12)
-  info_and_status_hbox.set_center_widget(Project::get().debug_status_label);
+  info_and_status_hbox.set_center_widget(*Project::debug_status_label);
 #else
   Project::get().debug_status_label.set_halign(Gtk::Align::ALIGN_CENTER);
-  info_and_status_hbox.pack_start(Project::get().debug_status_label);
+  info_and_status_hbox.pack_start(*Project::debug_status_label);
 #endif
   info_and_status_hbox.pack_end(notebook.status, Gtk::PACK_SHRINK);
   terminal_vbox.pack_end(info_and_status_hbox, Gtk::PACK_SHRINK);
@@ -504,7 +509,7 @@ void Window::set_menu_actions() {
   });
   
   menu.add_action("project_set_run_arguments", [this]() {
-    auto project_language=Project::get().get_language();
+    auto project_language=Project::get_language();
     auto run_arguments=std::make_shared<std::pair<std::string, std::string> >(project_language->get_run_arguments());
     if(run_arguments->second.empty())
       return;
@@ -517,7 +522,7 @@ void Window::set_menu_actions() {
     };
     label_it->update(0, "");
     entry_box.entries.emplace_back(run_arguments->second, [this, run_arguments](const std::string& content){
-      Project::get().run_arguments[run_arguments->first]=content;
+      Project::run_arguments[run_arguments->first]=content;
       entry_box.hide();
     }, 50);
     auto entry_it=entry_box.entries.begin();
@@ -528,23 +533,23 @@ void Window::set_menu_actions() {
     entry_box.show();
   });
   menu.add_action("compile_and_run", [this]() {
-    if(Project::get().compiling)
+    if(Project::compiling)
       return;
     
     if(Config::get().window.save_on_compile_or_run)
       notebook.save_project_files();
         
-    project_language=Project::get().get_language();
+    project_language=Project::get_language();
     project_language->compile_and_run();
   });
   menu.add_action("compile", [this]() {
-    if(Project::get().compiling)
+    if(Project::compiling)
       return;
     
     if(Config::get().window.save_on_compile_or_run)
       notebook.save_project_files();
         
-    project_language=Project::get().get_language();
+    project_language=Project::get_language();
     project_language->compile();
   });
   
@@ -585,7 +590,7 @@ void Window::set_menu_actions() {
   
 #ifdef JUCI_ENABLE_DEBUG
   menu.add_action("debug_set_run_arguments", [this]() {
-    auto project_language=Project::get().get_language();
+    auto project_language=Project::get_language();
     auto run_arguments=std::make_shared<std::pair<std::string, std::string> >(project_language->debug_get_run_arguments());
     if(run_arguments->second.empty())
       return;
@@ -598,7 +603,7 @@ void Window::set_menu_actions() {
     };
     label_it->update(0, "");
     entry_box.entries.emplace_back(run_arguments->second, [this, run_arguments](const std::string& content){
-      Project::get().debug_run_arguments[run_arguments->first]=content;
+      Project::debug_run_arguments[run_arguments->first]=content;
       entry_box.hide();
     }, 50);
     auto entry_it=entry_box.entries.begin();
@@ -609,7 +614,7 @@ void Window::set_menu_actions() {
     entry_box.show();
   });
   menu.add_action("debug_start_continue", [this](){
-    if(Project::get().debugging) {
+    if(Project::debugging) {
       project_language->debug_continue();
       return;
     }
@@ -617,7 +622,7 @@ void Window::set_menu_actions() {
     if(Config::get().window.save_on_compile_or_run)
       notebook.save_project_files();
     
-    project_language=Project::get().get_language();
+    project_language=Project::get_language();
     
     project_language->debug_start();
   });
@@ -687,18 +692,14 @@ void Window::set_menu_actions() {
     }
   });
   menu.add_action("debug_goto_stop", [this](){
-    if(Project::get().debugging) {
-      auto &project=Project::get();
-      project.debug_stop_mutex.lock();
-      auto debug_stop_copy=project.debug_stop;
-      project.debug_stop_mutex.unlock();
-      if(!debug_stop_copy.first.empty()) {
-        notebook.open(debug_stop_copy.first);
+    if(Project::debugging) {
+      if(!Project::debug_stop.first.empty()) {
+        notebook.open(Project::debug_stop.first);
         if(notebook.get_current_page()!=-1) {
           auto view=notebook.get_current_view();
           
-          int line_nr=debug_stop_copy.second.first-1;
-          int line_index=debug_stop_copy.second.second-1;
+          int line_nr=Project::debug_stop.second.first-1;
+          int line_index=Project::debug_stop.second.second-1;
           if(line_nr<view->get_buffer()->get_line_count()) {
             auto iter=view->get_buffer()->get_iter_at_line(line_nr);
             auto end_line_iter=iter;
@@ -713,11 +714,13 @@ void Window::set_menu_actions() {
             if(notebook.get_current_page()!=-1 && notebook.get_current_view()==view)
               view->scroll_to(view->get_buffer()->get_insert(), 0.0, 1.0, 0.5);
           }
-          project.debug_update_stop();
+          Project::debug_update_stop();
         }
       }
     }
   });
+  
+  Project::debug_update_status("");
 #endif
   
   menu.add_action("next_tab", [this]() {

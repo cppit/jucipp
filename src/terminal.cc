@@ -7,9 +7,6 @@
 #endif
 
 Terminal::InProgress::InProgress(const std::string& start_msg): stop(false) {
-  waiting_print.connect([this](){
-    Terminal::get().async_print(line_nr-1, ".");
-  });
   start(start_msg);
 }
 
@@ -24,8 +21,11 @@ void Terminal::InProgress::start(const std::string& msg) {
   wait_thread=std::thread([this](){
     size_t c=0;
     while(!stop) {
-      if(c%100==0)
-        waiting_print();
+      if(c%100==0) {
+        dispatcher.add([this] {
+          Terminal::get().print(line_nr-1, ".");
+        });
+      }
       std::this_thread::sleep_for(std::chrono::milliseconds(10));
       c++;
     }
@@ -35,39 +35,24 @@ void Terminal::InProgress::start(const std::string& msg) {
 void Terminal::InProgress::done(const std::string& msg) {
   if(!stop) {
     stop=true;
-    Terminal::get().async_print(line_nr-1, msg);
+    dispatcher.add([this, msg] {
+      Terminal::get().print(line_nr-1, msg);
+    });
   }
 }
 
 void Terminal::InProgress::cancel(const std::string& msg) {
   if(!stop) {
     stop=true;
-    Terminal::get().async_print(line_nr-1, msg);
+    dispatcher.add([this, msg] {
+      Terminal::get().print(line_nr-1, msg);
+    });
   }
 }
 
 Terminal::Terminal() {
   bold_tag=get_buffer()->create_tag();
   bold_tag->property_weight()=PANGO_WEIGHT_BOLD;
-  
-  async_print_dispatcher.connect([this](){
-    async_print_strings_mutex.lock();
-    if(async_print_strings.size()>0) {
-      for(auto &string_bold: async_print_strings)
-        print(string_bold.first, string_bold.second);
-      async_print_strings.clear();
-    }
-    async_print_strings_mutex.unlock();
-  });
-  async_print_on_line_dispatcher.connect([this](){
-    async_print_on_line_strings_mutex.lock();
-    if(async_print_on_line_strings.size()>0) {
-      for(auto &line_string: async_print_on_line_strings)
-        print(line_string.first, line_string.second);
-      async_print_on_line_strings.clear();
-    }
-    async_print_on_line_strings_mutex.unlock();
-  });
 }
 
 int Terminal::process(const std::string &command, const boost::filesystem::path &path, bool use_pipes) {  
@@ -251,25 +236,9 @@ std::shared_ptr<Terminal::InProgress> Terminal::print_in_progress(std::string st
 }
 
 void Terminal::async_print(const std::string &message, bool bold) {
-  async_print_strings_mutex.lock();
-  bool dispatch=true;
-  if(async_print_strings.size()>0)
-    dispatch=false;
-  async_print_strings.emplace_back(message, bold);
-  async_print_strings_mutex.unlock();
-  if(dispatch)
-    async_print_dispatcher();
-}
-
-void Terminal::async_print(int line_nr, const std::string &message) {
-  async_print_on_line_strings_mutex.lock();
-  bool dispatch=true;
-  if(async_print_on_line_strings.size()>0)
-    dispatch=false;
-  async_print_on_line_strings.emplace_back(line_nr, message);
-  async_print_on_line_strings_mutex.unlock();
-  if(dispatch)
-    async_print_on_line_dispatcher();
+  dispatcher.add([this, message, bold] {
+    Terminal::get().print(message, bold);
+  });
 }
 
 bool Terminal::on_key_press_event(GdkEventKey *event) {
