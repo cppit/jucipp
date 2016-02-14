@@ -531,7 +531,7 @@ void Window::set_menu_actions() {
     entry_box.show();
   });
   menu.add_action("compile_and_run", [this]() {
-    if(Project::compiling)
+    if(Project::compiling || Project::debugging)
       return;
     
     if(Config::get().window.save_on_compile_or_run)
@@ -541,7 +541,7 @@ void Window::set_menu_actions() {
     project_language->compile_and_run();
   });
   menu.add_action("compile", [this]() {
-    if(Project::compiling)
+    if(Project::compiling || Project::debugging)
       return;
     
     if(Config::get().window.save_on_compile_or_run)
@@ -612,7 +612,9 @@ void Window::set_menu_actions() {
     entry_box.show();
   });
   menu.add_action("debug_start_continue", [this](){
-    if(Project::debugging) {
+    if(Project::compiling)
+      return;
+    else if(Project::debugging) {
       project_language->debug_continue();
       return;
     }

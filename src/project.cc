@@ -286,7 +286,6 @@ void Project::Clang::debug_start() {
           
           debug_update_stop();
         });
-        
       });
       debug_start_mutex.unlock();
     }
