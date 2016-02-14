@@ -21,8 +21,12 @@ public:
   static std::atomic<bool> debugging;
   static std::pair<boost::filesystem::path, std::pair<int, int> > debug_stop;
   static void debug_update_stop();
-  static std::unique_ptr<Gtk::Label> debug_status_label;
   static void debug_update_status(const std::string &debug_status);
+  
+  static Gtk::Label &debug_status_label() {
+    static Gtk::Label label;
+    return label;
+  }
   
   class Language {
   public:

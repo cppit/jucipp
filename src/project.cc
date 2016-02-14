@@ -15,11 +15,10 @@ std::atomic<bool> Project::compiling;
 std::atomic<bool> Project::debugging;
 std::pair<boost::filesystem::path, std::pair<int, int> > Project::debug_stop;
 boost::filesystem::path Project::debug_last_stop_file_path;
-std::unique_ptr<Gtk::Label> Project::debug_status_label;
 
 void Project::debug_update_status(const std::string &debug_status) {
   if(debug_status.empty()) {
-    debug_status_label->set_text("");
+    debug_status_label().set_text("");
     auto &menu=Menu::get();
     menu.actions["debug_stop"]->set_enabled(false);
     menu.actions["debug_kill"]->set_enabled(false);
@@ -32,7 +31,7 @@ void Project::debug_update_status(const std::string &debug_status) {
     menu.actions["debug_goto_stop"]->set_enabled(false);
   }
   else {
-    debug_status_label->set_text("debug: "+debug_status);
+    debug_status_label().set_text("debug: "+debug_status);
     auto &menu=Menu::get();
     menu.actions["debug_stop"]->set_enabled();
     menu.actions["debug_kill"]->set_enabled();
@@ -279,7 +278,7 @@ void Project::Clang::debug_start() {
         dispatcher.add([this, status] {
           debug_update_status(status);
         });
-      }, [this](const boost::filesystem::path &file_path, int line_nr, int line_index) {        
+      }, [this](const boost::filesystem::path &file_path, int line_nr, int line_index) {
         dispatcher.add([this, file_path, line_nr, line_index] {
           Project::debug_stop.first=file_path;
           Project::debug_stop.second.first=line_nr;

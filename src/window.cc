@@ -26,8 +26,6 @@ Window::Window() : notebook(Notebook::get()) {
   set_title("juCi++");
   set_events(Gdk::POINTER_MOTION_MASK|Gdk::FOCUS_CHANGE_MASK|Gdk::SCROLL_MASK|Gdk::LEAVE_NOTIFY_MASK);
   
-  Project::debug_status_label=std::unique_ptr<Gtk::Label>(new Gtk::Label());
-  
   set_menu_actions();
     
   configure();
@@ -52,10 +50,10 @@ Window::Window() : notebook(Notebook::get()) {
   info_and_status_hbox.pack_start(notebook.info, Gtk::PACK_SHRINK);
   
 #if GTK_VERSION_GE(3, 12)
-  info_and_status_hbox.set_center_widget(*Project::debug_status_label);
+  info_and_status_hbox.set_center_widget(Project::debug_status_label());
 #else
-  Project::debug_status_label->set_halign(Gtk::Align::ALIGN_CENTER);
-  info_and_status_hbox.pack_start(*Project::debug_status_label);
+  Project::debug_status_label().set_halign(Gtk::Align::ALIGN_CENTER);
+  info_and_status_hbox.pack_start(Project::debug_status_label());
 #endif
   info_and_status_hbox.pack_end(notebook.status, Gtk::PACK_SHRINK);
   terminal_vbox.pack_end(info_and_status_hbox, Gtk::PACK_SHRINK);
