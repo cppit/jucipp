@@ -9,6 +9,7 @@
 #include <thread>
 #include <mutex>
 #include <atomic>
+#include "dispatcher.h"
 
 class Directories : public Gtk::TreeView {
 public:
@@ -51,7 +52,7 @@ private:
   std::mutex update_mutex;
   std::thread update_thread;
   std::atomic<bool> stop_update_thread;
-  Glib::Dispatcher update_dispatcher;
+  Dispatcher dispatcher;
   std::vector<std::string> update_paths;
 };
 

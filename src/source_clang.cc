@@ -35,36 +35,6 @@ Source::View(file_path, project_path, language) {
   configure();
   
   parsing_in_progress=Terminal::get().print_in_progress("Parsing "+file_path.string());
-  //GTK-calls must happen in main thread, so the parse_thread
-  //sends signals to the main thread that it is to call the following functions:
-  parse_preprocess_connection=parse_preprocess.connect([this]{
-    auto expected=ParseProcessState::PREPROCESSING;
-    if(parse_mutex.try_lock()) {
-      if(parse_process_state.compare_exchange_strong(expected, ParseProcessState::PROCESSING))
-        parse_thread_buffer=get_buffer()->get_text();
-      parse_mutex.unlock();
-    }
-    else
-      parse_process_state.compare_exchange_strong(expected, ParseProcessState::STARTING);
-  });
-  parse_postprocess_connection=parse_postprocess.connect([this](){
-    if(parse_mutex.try_lock()) {
-      auto expected=ParseProcessState::POSTPROCESSING;
-      if(parse_process_state.compare_exchange_strong(expected, ParseProcessState::IDLE)) {
-        update_syntax();
-        update_diagnostics();
-        parsed=true;
-        set_status("");
-      }
-      parse_mutex.unlock();
-    }
-  });
-  parse_error_connection=parse_error.connect([this](){
-    Terminal::get().print("Error: failed to reparse "+this->file_path.string()+".\n", true);
-    set_status("");
-    set_info("");
-    parsing_in_progress->cancel("failed");
-  });
   parse_initialize();
   
   get_buffer()->signal_changed().connect([this]() {
@@ -140,8 +110,18 @@ void Source::ClangViewParse::parse_initialize() {
       if(parse_state!=ParseState::PROCESSING)
         break;
       auto expected=ParseProcessState::STARTING;
-      if(parse_process_state.compare_exchange_strong(expected, ParseProcessState::PREPROCESSING))
-        parse_preprocess();
+      if(parse_process_state.compare_exchange_strong(expected, ParseProcessState::PREPROCESSING)) {
+        dispatcher.add([this] {
+          auto expected=ParseProcessState::PREPROCESSING;
+          if(parse_mutex.try_lock()) {
+            if(parse_process_state.compare_exchange_strong(expected, ParseProcessState::PROCESSING))
+              parse_thread_buffer=get_buffer()->get_text();
+            parse_mutex.unlock();
+          }
+          else
+            parse_process_state.compare_exchange_strong(expected, ParseProcessState::STARTING);
+        });
+      }
       else if (parse_process_state==ParseProcessState::PROCESSING && parse_mutex.try_lock()) {
         auto status=clang_tu->ReparseTranslationUnit(parse_thread_buffer.raw());
         parsing_in_progress->done("done");
@@ -150,7 +130,18 @@ void Source::ClangViewParse::parse_initialize() {
           if(parse_process_state.compare_exchange_strong(expected, ParseProcessState::POSTPROCESSING)) {
             clang_tokens=clang_tu->get_tokens(0, parse_thread_buffer.bytes()-1);
             parse_mutex.unlock();
-            parse_postprocess();
+            dispatcher.add([this] {
+              if(parse_mutex.try_lock()) {
+                auto expected=ParseProcessState::POSTPROCESSING;
+                if(parse_process_state.compare_exchange_strong(expected, ParseProcessState::IDLE)) {
+                  update_syntax();
+                  update_diagnostics();
+                  parsed=true;
+                  set_status("");
+                }
+                parse_mutex.unlock();
+              }
+            });
           }
           else
             parse_mutex.unlock();
@@ -158,7 +149,12 @@ void Source::ClangViewParse::parse_initialize() {
         else {
           parse_state=ParseState::STOP;
           parse_mutex.unlock();
-          parse_error();
+          dispatcher.add([this] {
+            Terminal::get().print("Error: failed to reparse "+this->file_path.string()+".\n", true);
+            set_status("");
+            set_info("");
+            parsing_in_progress->cancel("failed");
+          });
         }
       }
     }
@@ -713,69 +709,10 @@ Source::ClangViewParse(file_path, project_path, language), autocomplete_state(Au
     return false;
   });
   
-  autocomplete_done_connection=autocomplete_done.connect([this](){
-    if(autocomplete_state==AutocompleteState::CANCELED) {
-      set_status("");
-      soft_reparse();
-      autocomplete_state=AutocompleteState::IDLE;
-    }
-    else if(autocomplete_state==AutocompleteState::RESTARTING) {
-      set_status("");
-      soft_reparse();
-      autocomplete_state=AutocompleteState::IDLE;
-      autocomplete_restart();
-    }
-    else {
-      autocomplete_dialog_setup();
-      
-      for (auto &data : autocomplete_data) {
-        std::string row;
-        std::string return_value;
-        for (auto &chunk : data.chunks) {
-          if(chunk.kind==clang::CompletionChunk_ResultType)
-            return_value=chunk.chunk;
-          else if(chunk.kind!=clang::CompletionChunk_Informative)
-            row+=chunk.chunk;
-        }
-        data.chunks.clear();
-        if (!row.empty()) {
-          auto row_insert_on_selection=row;
-          if(!return_value.empty())
-            row+=" --> " + return_value;
-          autocomplete_dialog_rows[row] = std::pair<std::string, std::string>(std::move(row_insert_on_selection), std::move(data.brief_comments));
-          autocomplete_dialog->add_row(row);
-        }
-      }
-      autocomplete_data.clear();
-      set_status("");
-      autocomplete_state=AutocompleteState::IDLE;
-      if (!autocomplete_dialog_rows.empty()) {
-        get_source_buffer()->begin_user_action();
-        autocomplete_dialog->show();
-      }
-      else
-        soft_reparse();
-    }
-  });
-  
-  autocomplete_restart_connection=autocomplete_restart.connect([this]() {
-    autocomplete_check();
-  });
-  autocomplete_error_connection=autocomplete_error.connect([this]() {
-    Terminal::get().print("Error: autocomplete failed, reparsing "+this->file_path.string()+"\n", true);
-    autocomplete_state=AutocompleteState::CANCELED;
-    full_reparse();
-  });
-  
-  do_delete_object_connection=do_delete_object.connect([this](){
+  do_delete_object.connect([this](){
     if(delete_thread.joinable())
       delete_thread.join();
-    do_delete_object_connection.disconnect();
     delete this;
-  });
-  do_full_reparse.connect([this](){
-    parse_initialize();
-    full_reparse_running=false;
   });
 }
 
@@ -847,7 +784,7 @@ void Source::ClangViewAutocomplete::autocomplete_dialog_setup() {
         //new autocomplete after for instance when selecting "std::"
         auto iter=get_buffer()->get_insert()->get_iter();
         if(iter.backward_char() && *iter==':')
-          autocomplete_restart();
+          autocomplete_check();
       }
     }
   };
@@ -918,8 +855,6 @@ void Source::ClangViewAutocomplete::autocomplete() {
 
   autocomplete_state=AutocompleteState::STARTING;
   
-  autocomplete_data.clear();
-  
   set_status("autocomplete...");
   if(autocomplete_thread.joinable())
     autocomplete_thread.join();
@@ -938,12 +873,62 @@ void Source::ClangViewAutocomplete::autocomplete() {
     parse_mutex.lock();
     if(parse_state==ParseState::PROCESSING) {
       parse_process_state=ParseProcessState::IDLE;
-      autocomplete_data=autocomplete_get_suggestions(buffer->raw(), line_nr, column_nr);
+      auto autocomplete_data=std::make_shared<std::vector<AutoCompleteData> >(autocomplete_get_suggestions(buffer->raw(), line_nr, column_nr));
+      
+      if(parse_state==ParseState::PROCESSING)
+        dispatcher.add([this, autocomplete_data] {
+          if(autocomplete_state==AutocompleteState::CANCELED) {
+            set_status("");
+            soft_reparse();
+            autocomplete_state=AutocompleteState::IDLE;
+          }
+          else if(autocomplete_state==AutocompleteState::RESTARTING) {
+            set_status("");
+            soft_reparse();
+            autocomplete_state=AutocompleteState::IDLE;
+            dispatcher.add([this] {
+              autocomplete_check();
+            });
+          }
+          else {
+            autocomplete_dialog_setup();
+            
+            for (auto &data : *autocomplete_data) {
+              std::string row;
+              std::string return_value;
+              for (auto &chunk : data.chunks) {
+                if(chunk.kind==clang::CompletionChunk_ResultType)
+                  return_value=chunk.chunk;
+                else if(chunk.kind!=clang::CompletionChunk_Informative)
+                  row+=chunk.chunk;
+              }
+              data.chunks.clear();
+              if (!row.empty()) {
+                auto row_insert_on_selection=row;
+                if(!return_value.empty())
+                  row+=" --> " + return_value;
+                autocomplete_dialog_rows[row] = std::pair<std::string, std::string>(std::move(row_insert_on_selection), std::move(data.brief_comments));
+                autocomplete_dialog->add_row(row);
+              }
+            }
+            set_status("");
+            autocomplete_state=AutocompleteState::IDLE;
+            if (!autocomplete_dialog_rows.empty()) {
+              get_source_buffer()->begin_user_action();
+              autocomplete_dialog->show();
+            }
+            else
+              soft_reparse();
+          }
+        });
+      else {
+        dispatcher.add([this] {
+          Terminal::get().print("Error: autocomplete failed, reparsing "+this->file_path.string()+"\n", true);
+          autocomplete_state=AutocompleteState::CANCELED;
+          full_reparse();
+        });
+      }
     }
-    if(parse_state==ParseState::PROCESSING)
-      autocomplete_done();
-    else
-      autocomplete_error();
     parse_mutex.unlock();
   });
 }
@@ -1017,7 +1002,10 @@ bool Source::ClangViewAutocomplete::full_reparse() {
         parse_thread.join();
       if(autocomplete_thread.joinable())
         autocomplete_thread.join();
-      do_full_reparse();
+      dispatcher.add([this] {
+        parse_initialize();
+        full_reparse_running=false;
+      });
     });
     return true;
   }
@@ -1479,14 +1467,8 @@ Source::ClangView::ClangView(const boost::filesystem::path &file_path, const boo
 }
 
 void Source::ClangView::async_delete() {
+  dispatcher.disconnect();
   delayed_reparse_connection.disconnect();
-  parse_postprocess_connection.disconnect();
-  parse_preprocess_connection.disconnect();
-  parse_error_connection.disconnect();
-  autocomplete_done_connection.disconnect();
-  autocomplete_restart_connection.disconnect();
-  autocomplete_error_connection.disconnect();
-  do_restart_parse_connection.disconnect();
   delayed_tag_similar_tokens_connection.disconnect();
   ClangViewAutocomplete::async_delete();
 }

@@ -77,17 +77,7 @@ Directories::Directories() : Gtk::TreeView(), stop_update_thread(false) {
       child->set_value(column_record.color, rgba);
     }
   });
-  
-  update_dispatcher.connect([this](){
-    update_mutex.lock();
-    for(auto &path: update_paths) {
-      if(last_write_times.count(path)>0)
-        add_path(path, last_write_times.at(path).first);
-    }
-    update_paths.clear();
-    update_mutex.unlock();
-  });
-  
+    
   update_thread=std::thread([this](){
     while(!stop_update_thread) {
       std::this_thread::sleep_for(std::chrono::milliseconds(1000));
@@ -105,8 +95,17 @@ Directories::Directories() : Gtk::TreeView(), stop_update_thread(false) {
           else
             it=last_write_times.erase(it);
         }
-        if(update_paths.size()>0)
-          update_dispatcher();
+        if(update_paths.size()>0) {
+          dispatcher.add([this] {
+            update_mutex.lock();
+            for(auto &path: update_paths) {
+              if(last_write_times.count(path)>0)
+                add_path(path, last_write_times.at(path).first);
+            }
+            update_paths.clear();
+            update_mutex.unlock();
+          });
+        }
       }
       update_mutex.unlock();
     }
@@ -116,6 +115,7 @@ Directories::Directories() : Gtk::TreeView(), stop_update_thread(false) {
 Directories::~Directories() {
   stop_update_thread=true;
   update_thread.join();
+  dispatcher.disconnect();
 }
 
 void Directories::open(const boost::filesystem::path& dir_path) {
