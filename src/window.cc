@@ -54,7 +54,7 @@ Window::Window() : notebook(Notebook::get()) {
 #if GTK_VERSION_GE(3, 12)
   info_and_status_hbox.set_center_widget(*Project::debug_status_label);
 #else
-  Project::get().debug_status_label.set_halign(Gtk::Align::ALIGN_CENTER);
+  Project::debug_status_label.set_halign(Gtk::Align::ALIGN_CENTER);
   info_and_status_hbox.pack_start(*Project::debug_status_label);
 #endif
   info_and_status_hbox.pack_end(notebook.status, Gtk::PACK_SHRINK);
