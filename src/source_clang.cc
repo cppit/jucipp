@@ -886,9 +886,7 @@ void Source::ClangViewAutocomplete::autocomplete() {
             set_status("");
             soft_reparse();
             autocomplete_state=AutocompleteState::IDLE;
-            dispatcher.add([this] {
-              autocomplete_check();
-            });
+            autocomplete_check();
           }
           else {
             autocomplete_dialog_setup();
