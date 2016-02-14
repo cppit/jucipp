@@ -26,7 +26,6 @@ namespace Source {
     };
     
     ClangViewParse(const boost::filesystem::path &file_path, const boost::filesystem::path& project_path, Glib::RefPtr<Gsv::Language> language);
-    ~ClangViewParse() { dispatcher.disconnect(); }
     
     void configure() override;
     
