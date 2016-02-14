@@ -875,7 +875,7 @@ void Source::ClangViewAutocomplete::autocomplete() {
       parse_process_state=ParseProcessState::IDLE;
       auto autocomplete_data=std::make_shared<std::vector<AutoCompleteData> >(autocomplete_get_suggestions(buffer->raw(), line_nr, column_nr));
       
-      if(parse_state==ParseState::PROCESSING)
+      if(parse_state==ParseState::PROCESSING) {
         dispatcher.add([this, autocomplete_data] {
           if(autocomplete_state==AutocompleteState::CANCELED) {
             set_status("");
@@ -911,6 +911,7 @@ void Source::ClangViewAutocomplete::autocomplete() {
                 autocomplete_dialog->add_row(row);
               }
             }
+            autocomplete_data->clear();
             set_status("");
             autocomplete_state=AutocompleteState::IDLE;
             if (!autocomplete_dialog_rows.empty()) {
@@ -921,6 +922,7 @@ void Source::ClangViewAutocomplete::autocomplete() {
               soft_reparse();
           }
         });
+      }
       else {
         dispatcher.add([this] {
           Terminal::get().print("Error: autocomplete failed, reparsing "+this->file_path.string()+"\n", true);
