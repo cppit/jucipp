@@ -273,7 +273,7 @@ void Project::Clang::debug_start() {
       debugging=false;
     else {
       debug_start_mutex.lock();
-      DebugClang::get().start(run_arguments, debug_build_path, *breakpoints, [this, run_arguments](int exit_status){
+      Debug::Clang::get().start(run_arguments, debug_build_path, *breakpoints, [this, run_arguments](int exit_status){
         debugging=false;
         Terminal::get().async_print(run_arguments+" returned: "+std::to_string(exit_status)+'\n');
       }, [this](const std::string &status) {
@@ -295,42 +295,42 @@ void Project::Clang::debug_start() {
 }
 
 void Project::Clang::debug_continue() {
-  DebugClang::get().continue_debug();
+  Debug::Clang::get().continue_debug();
 }
 
 void Project::Clang::debug_stop() {
   if(debugging)
-    DebugClang::get().stop();
+    Debug::Clang::get().stop();
 }
 
 void Project::Clang::debug_kill() {
   if(debugging)
-    DebugClang::get().kill();
+    Debug::Clang::get().kill();
 }
 
 void Project::Clang::debug_step_over() {
   if(debugging)
-    DebugClang::get().step_over();
+    Debug::Clang::get().step_over();
 }
 
 void Project::Clang::debug_step_into() {
   if(debugging)
-    DebugClang::get().step_into();
+    Debug::Clang::get().step_into();
 }
 
 void Project::Clang::debug_step_out() {
   if(debugging)
-    DebugClang::get().step_out();
+    Debug::Clang::get().step_out();
 }
 
 void Project::Clang::debug_backtrace() {
   if(debugging && Notebook::get().get_current_page()!=-1) {
-    auto backtrace=DebugClang::get().get_backtrace();
+    auto backtrace=Debug::Clang::get().get_backtrace();
     
     auto view=Notebook::get().get_current_view();
     auto iter=view->get_iter_for_dialog();
     view->selection_dialog=std::unique_ptr<SelectionDialog>(new SelectionDialog(*view, view->get_buffer()->create_mark(iter), true, true));
-    auto rows=std::make_shared<std::unordered_map<std::string, DebugClang::Frame> >();
+    auto rows=std::make_shared<std::unordered_map<std::string, Debug::Clang::Frame> >();
     if(backtrace.size()==0)
       return;
     
@@ -358,7 +358,7 @@ void Project::Clang::debug_backtrace() {
         if(Notebook::get().get_current_page()!=-1) {
           auto view=Notebook::get().get_current_view();
           
-          DebugClang::get().select_frame(frame.index);
+          Debug::Clang::get().select_frame(frame.index);
           
           view->get_buffer()->place_cursor(view->get_buffer()->get_iter_at_line_index(frame.line_nr-1, frame.line_index-1));
           
@@ -375,12 +375,12 @@ void Project::Clang::debug_backtrace() {
 
 void Project::Clang::debug_show_variables() {
   if(debugging && Notebook::get().get_current_page()!=-1) {
-    auto variables=DebugClang::get().get_variables();
+    auto variables=Debug::Clang::get().get_variables();
     
     auto view=Notebook::get().get_current_view();
     auto iter=view->get_iter_for_dialog();
     view->selection_dialog=std::unique_ptr<SelectionDialog>(new SelectionDialog(*view, view->get_buffer()->create_mark(iter), true, true));
-    auto rows=std::make_shared<std::unordered_map<std::string, DebugClang::Variable> >();
+    auto rows=std::make_shared<std::unordered_map<std::string, Debug::Clang::Variable> >();
     if(variables.size()==0)
       return;
     
@@ -398,7 +398,7 @@ void Project::Clang::debug_show_variables() {
         if(Notebook::get().get_current_page()!=-1) {
           auto view=Notebook::get().get_current_view();
           
-          DebugClang::get().select_frame(variable.frame_index, variable.thread_index_id);
+          Debug::Clang::get().select_frame(variable.frame_index, variable.thread_index_id);
           
           view->get_buffer()->place_cursor(view->get_buffer()->get_iter_at_line_index(variable.line_nr-1, variable.line_index-1));
           
@@ -453,31 +453,31 @@ void Project::Clang::debug_show_variables() {
 
 void Project::Clang::debug_run_command(const std::string &command) {
   if(debugging) {
-    auto command_return=DebugClang::get().run_command(command);
+    auto command_return=Debug::Clang::get().run_command(command);
     Terminal::get().async_print(command_return.first);
     Terminal::get().async_print(command_return.second, true);
   }
 }
 
 void Project::Clang::debug_add_breakpoint(const boost::filesystem::path &file_path, int line_nr) {
-  DebugClang::get().add_breakpoint(file_path, line_nr);
+  Debug::Clang::get().add_breakpoint(file_path, line_nr);
 }
 
 void Project::Clang::debug_remove_breakpoint(const boost::filesystem::path &file_path, int line_nr, int line_count) {
-  DebugClang::get().remove_breakpoint(file_path, line_nr, line_count);
+  Debug::Clang::get().remove_breakpoint(file_path, line_nr, line_count);
 }
 
 bool Project::Clang::debug_is_running() {
-  return DebugClang::get().is_running();
+  return Debug::Clang::get().is_running();
 }
 
 void Project::Clang::debug_write(const std::string &buffer) {
-  DebugClang::get().write(buffer);
+  Debug::Clang::get().write(buffer);
 }
 
 void Project::Clang::debug_delete() {
   debug_start_mutex.lock();
-  DebugClang::get().delete_debug();
+  Debug::Clang::get().delete_debug();
   debug_start_mutex.unlock();
 }
 #endif
