@@ -18,7 +18,7 @@ Dispatcher::~Dispatcher() {
   functions_mutex.unlock();
 }
 
-void Dispatcher::add(std::function<void()> function) {
+void Dispatcher::push(std::function<void()> &&function) {
   functions_mutex.lock();
   functions.emplace_back(function);
   functions_mutex.unlock();

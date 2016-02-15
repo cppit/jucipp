@@ -96,7 +96,7 @@ Directories::Directories() : Gtk::TreeView(), stop_update_thread(false) {
             it=last_write_times.erase(it);
         }
         if(update_paths.size()>0) {
-          dispatcher.add([this] {
+          dispatcher.push([this] {
             update_mutex.lock();
             for(auto &path: update_paths) {
               if(last_write_times.count(path)>0)

@@ -13,7 +13,7 @@ private:
 public:
   Dispatcher();
   ~Dispatcher();
-  void add(std::function<void()> function);
+  void push(std::function<void()> &&function);
   void disconnect();
 };
 

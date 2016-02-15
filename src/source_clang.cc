@@ -111,7 +111,7 @@ void Source::ClangViewParse::parse_initialize() {
         break;
       auto expected=ParseProcessState::STARTING;
       if(parse_process_state.compare_exchange_strong(expected, ParseProcessState::PREPROCESSING)) {
-        dispatcher.add([this] {
+        dispatcher.push([this] {
           auto expected=ParseProcessState::PREPROCESSING;
           if(parse_mutex.try_lock()) {
             if(parse_process_state.compare_exchange_strong(expected, ParseProcessState::PROCESSING))
@@ -130,7 +130,7 @@ void Source::ClangViewParse::parse_initialize() {
           if(parse_process_state.compare_exchange_strong(expected, ParseProcessState::POSTPROCESSING)) {
             clang_tokens=clang_tu->get_tokens(0, parse_thread_buffer.bytes()-1);
             parse_mutex.unlock();
-            dispatcher.add([this] {
+            dispatcher.push([this] {
               if(parse_mutex.try_lock()) {
                 auto expected=ParseProcessState::POSTPROCESSING;
                 if(parse_process_state.compare_exchange_strong(expected, ParseProcessState::IDLE)) {
@@ -149,7 +149,7 @@ void Source::ClangViewParse::parse_initialize() {
         else {
           parse_state=ParseState::STOP;
           parse_mutex.unlock();
-          dispatcher.add([this] {
+          dispatcher.push([this] {
             Terminal::get().print("Error: failed to reparse "+this->file_path.string()+".\n", true);
             set_status("");
             set_info("");
@@ -876,7 +876,7 @@ void Source::ClangViewAutocomplete::autocomplete() {
       auto autocomplete_data=std::make_shared<std::vector<AutoCompleteData> >(autocomplete_get_suggestions(buffer->raw(), line_nr, column_nr));
       
       if(parse_state==ParseState::PROCESSING) {
-        dispatcher.add([this, autocomplete_data] {
+        dispatcher.push([this, autocomplete_data] {
           if(autocomplete_state==AutocompleteState::CANCELED) {
             set_status("");
             soft_reparse();
@@ -922,7 +922,7 @@ void Source::ClangViewAutocomplete::autocomplete() {
         });
       }
       else {
-        dispatcher.add([this] {
+        dispatcher.push([this] {
           Terminal::get().print("Error: autocomplete failed, reparsing "+this->file_path.string()+"\n", true);
           autocomplete_state=AutocompleteState::CANCELED;
           full_reparse();
@@ -1002,7 +1002,7 @@ bool Source::ClangViewAutocomplete::full_reparse() {
         parse_thread.join();
       if(autocomplete_thread.joinable())
         autocomplete_thread.join();
-      dispatcher.add([this] {
+      dispatcher.push([this] {
         parse_initialize();
         full_reparse_running=false;
       });

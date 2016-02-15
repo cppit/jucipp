@@ -212,13 +212,13 @@ std::shared_ptr<Terminal::InProgress> Terminal::print_in_progress(std::string st
 }
 
 void Terminal::async_print(const std::string &message, bool bold) {
-  dispatcher.add([this, message, bold] {
+  dispatcher.push([this, message, bold] {
     Terminal::get().print(message, bold);
   });
 }
 
 void Terminal::async_print(size_t line_nr, const std::string &message) {
-  dispatcher.add([this, line_nr, message] {
+  dispatcher.push([this, line_nr, message] {
     if(line_nr<deleted_lines)
       return;
     
