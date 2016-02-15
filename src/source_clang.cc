@@ -3,7 +3,7 @@
 #include "terminal.h"
 #include "cmake.h"
 #ifdef JUCI_ENABLE_DEBUG
-#include "debug.h"
+#include "debug_clang.h"
 #endif
 
 namespace sigc {
@@ -414,15 +414,15 @@ void Source::ClangViewParse::show_type_tooltips(const Gdk::Rectangle &rectangle)
               tooltip_buffer->insert_with_tag(tooltip_buffer->get_insert()->get_iter(), "\n\n"+brief_comment, "def:note");
 
 #ifdef JUCI_ENABLE_DEBUG
-            if(Debug::get().is_stopped()) {
+            if(DebugClang::get().is_stopped()) {
               auto location=token.get_cursor().get_referenced().get_source_location();
               Glib::ustring value_type="Value";
-              Glib::ustring debug_value=Debug::get().get_value(token.get_spelling(), location.get_path(), location.get_offset().line, location.get_offset().index);
+              Glib::ustring debug_value=DebugClang::get().get_value(token.get_spelling(), location.get_path(), location.get_offset().line, location.get_offset().index);
               if(debug_value.empty()) {
                 value_type="Return value";
                 auto cursor=token.get_cursor();
                 auto offsets=cursor.get_source_range().get_offsets();
-                debug_value=Debug::get().get_return_value(cursor.get_source_location().get_path(), offsets.first.line, offsets.first.index);
+                debug_value=DebugClang::get().get_return_value(cursor.get_source_location().get_path(), offsets.first.line, offsets.first.index);
               }
               if(!debug_value.empty()) {
                 size_t pos=debug_value.find(" = ");

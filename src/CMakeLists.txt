@@ -107,7 +107,7 @@ set(source_files juci.h
     ../tiny-process-library/process.cpp)
 
 if(LIBLLDB_FOUND)
-  list(APPEND source_files debug.h debug.cc)
+  list(APPEND source_files debug_clang.h debug_clang.cc)
 endif()
 
 if(MSYS)

@@ -1,5 +1,5 @@
-#ifndef JUCI_DEBUG_H_
-#define JUCI_DEBUG_H_
+#ifndef JUCI_DEBUG_CLANG_H_
+#define JUCI_DEBUG_CLANG_H_
 
 #include <boost/filesystem.hpp>
 #include <unordered_map>
@@ -9,7 +9,7 @@
 #include <thread>
 #include <mutex>
 
-class Debug {
+class DebugClang {
 public:
   class Frame {
   public:
@@ -31,10 +31,10 @@ public:
     int line_index;
   };
 private:
-  Debug();
+  DebugClang();
 public:
-  static Debug &get() {
-    static Debug singleton;
+  static DebugClang &get() {
+    static DebugClang singleton;
     return singleton;
   }
   

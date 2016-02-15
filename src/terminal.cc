@@ -3,7 +3,7 @@
 #include "logging.h"
 #include "config.h"
 #ifdef JUCI_ENABLE_DEBUG
-#include "debug.h"
+#include "debug_clang.h"
 #endif
 
 Terminal::InProgress::InProgress(const std::string& start_msg): stop(false) {
@@ -240,7 +240,7 @@ bool Terminal::on_key_press_event(GdkEventKey *event) {
   processes_mutex.lock();
   bool debug_is_running=false;
 #ifdef JUCI_ENABLE_DEBUG
-  debug_is_running=Debug::get().is_running();
+  debug_is_running=DebugClang::get().is_running();
 #endif
   if(processes.size()>0 || debug_is_running) {
     get_buffer()->place_cursor(get_buffer()->end());
@@ -262,7 +262,7 @@ bool Terminal::on_key_press_event(GdkEventKey *event) {
       stdin_buffer+='\n';
       if(debug_is_running) {
 #ifdef JUCI_ENABLE_DEBUG
-        Debug::get().write(stdin_buffer);
+        DebugClang::get().write(stdin_buffer);
 #endif
       }
       else
