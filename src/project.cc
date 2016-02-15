@@ -141,7 +141,7 @@ void Project::Clang::compile() {
     return;
   compiling=true;
   Terminal::get().print("Compiling project "+cmake->project_path.string()+"\n");
-  Terminal::get().async_process(Config::get().terminal.make_command, default_build_path, [this](int exit_status) {
+  Terminal::get().async_process(Config::get().project.make_command, default_build_path, [this](int exit_status) {
     compiling=false;
   });
 }
@@ -178,7 +178,7 @@ void Project::Clang::compile_and_run() {
   
   compiling=true;
   Terminal::get().print("Compiling and running "+arguments+"\n");
-  Terminal::get().async_process(Config::get().terminal.make_command, default_build_path, [this, arguments, default_build_path](int exit_status){
+  Terminal::get().async_process(Config::get().project.make_command, default_build_path, [this, arguments, default_build_path](int exit_status){
     compiling=false;
     if(exit_status==EXIT_SUCCESS) {
       Terminal::get().async_process(arguments, default_build_path, [this, arguments](int exit_status){
@@ -266,7 +266,7 @@ void Project::Clang::debug_start() {
   
   debugging=true;
   Terminal::get().print("Compiling and debugging "+run_arguments+"\n");
-  Terminal::get().async_process(Config::get().terminal.make_command, debug_build_path, [this, breakpoints, run_arguments, debug_build_path](int exit_status){
+  Terminal::get().async_process(Config::get().project.make_command, debug_build_path, [this, breakpoints, run_arguments, debug_build_path](int exit_status){
     if(exit_status!=EXIT_SUCCESS)
       debugging=false;
     else {

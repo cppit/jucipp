@@ -36,7 +36,7 @@ CMake::CMake(const boost::filesystem::path &path) {
 }
 
 boost::filesystem::path CMake::get_default_build_path(const boost::filesystem::path &project_path) {
-  boost::filesystem::path default_build_path=Config::get().terminal.default_build_path;
+  boost::filesystem::path default_build_path=Config::get().project.default_build_path;
   
   const std::string path_variable_project_directory_name="<project_directory_name>";
   size_t pos=0;
@@ -56,7 +56,7 @@ boost::filesystem::path CMake::get_default_build_path(const boost::filesystem::p
 }
 
 boost::filesystem::path CMake::get_debug_build_path(const boost::filesystem::path &project_path) {
-  boost::filesystem::path debug_build_path=Config::get().terminal.debug_build_path;
+  boost::filesystem::path debug_build_path=Config::get().project.debug_build_path;
   
   const std::string path_variable_project_directory_name="<project_directory_name>";
   size_t pos=0;
@@ -72,7 +72,7 @@ boost::filesystem::path CMake::get_debug_build_path(const boost::filesystem::pat
   const std::string path_variable_default_build_path="<default_build_path>";
   pos=0;
   debug_build_path_string=debug_build_path.string();
-  auto default_build_path=Config::get().terminal.default_build_path;
+  auto default_build_path=Config::get().project.default_build_path;
   while((pos=debug_build_path_string.find(path_variable_default_build_path, pos))!=std::string::npos) {
     debug_build_path_string.replace(pos, path_variable_default_build_path.size(), default_build_path);
     pos+=default_build_path.size();
@@ -112,7 +112,7 @@ bool CMake::create_default_build(const boost::filesystem::path &project_path, bo
   
   auto compile_commands_path=default_build_path/"compile_commands.json";
   Dialog::Message message("Creating/updating default build");
-  auto exit_status=Terminal::get().process(Config::get().terminal.cmake_command+" "+
+  auto exit_status=Terminal::get().process(Config::get().project.cmake_command+" "+
                                            filesystem::escape_argument(project_path)+" -DCMAKE_EXPORT_COMPILE_COMMANDS=ON", default_build_path);
   message.hide();
   if(exit_status==EXIT_SUCCESS) {
@@ -162,7 +162,7 @@ bool CMake::create_debug_build(const boost::filesystem::path &project_path) {
   
   std::unique_ptr<Dialog::Message> message;
   message=std::unique_ptr<Dialog::Message>(new Dialog::Message("Creating/updating debug build"));
-  auto exit_status=Terminal::get().process(Config::get().terminal.cmake_command+" "+
+  auto exit_status=Terminal::get().process(Config::get().project.cmake_command+" "+
                                            filesystem::escape_argument(project_path)+" -DCMAKE_BUILD_TYPE=Debug", debug_build_path);
   if(message)
     message->hide();

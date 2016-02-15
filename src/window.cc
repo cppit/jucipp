@@ -534,7 +534,7 @@ void Window::set_menu_actions() {
     if(Project::compiling || Project::debugging)
       return;
     
-    if(Config::get().window.save_on_compile_or_run)
+    if(Config::get().project.save_on_compile_or_run)
       notebook.save_project_files();
         
     project_language=Project::get_language();
@@ -544,7 +544,7 @@ void Window::set_menu_actions() {
     if(Project::compiling || Project::debugging)
       return;
     
-    if(Config::get().window.save_on_compile_or_run)
+    if(Config::get().project.save_on_compile_or_run)
       notebook.save_project_files();
         
     project_language=Project::get_language();
@@ -619,7 +619,7 @@ void Window::set_menu_actions() {
       return;
     }
     
-    if(Config::get().window.save_on_compile_or_run)
+    if(Config::get().project.save_on_compile_or_run)
       notebook.save_project_files();
     
     project_language=Project::get_language();
