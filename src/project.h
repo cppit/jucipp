@@ -51,6 +51,8 @@ public:
     virtual void debug_run_command(const std::string &command) {}
     virtual void debug_add_breakpoint(const boost::filesystem::path &file_path, int line_nr) {}
     virtual void debug_remove_breakpoint(const boost::filesystem::path &file_path, int line_nr, int line_count) {}
+    virtual bool debug_is_running() { return false; }
+    virtual void debug_write(const std::string &buffer) {}
     virtual void debug_delete() {}
   };
   
@@ -82,6 +84,8 @@ public:
     void debug_run_command(const std::string &command) override;
     void debug_add_breakpoint(const boost::filesystem::path &file_path, int line_nr) override;
     void debug_remove_breakpoint(const boost::filesystem::path &file_path, int line_nr, int line_count) override;
+    bool debug_is_running() override;
+    void debug_write(const std::string &buffer) override;
     void debug_delete() override;
   #endif
   };
@@ -117,6 +121,7 @@ public:
   };
   
   static std::unique_ptr<Language> get_language();
+  static std::unique_ptr<Language> current_language;
 };
 
 #endif  // JUCI_PROJECT_H_

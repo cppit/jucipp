@@ -32,8 +32,6 @@ private:
   Gtk::HBox info_and_status_hbox;
   Gtk::AboutDialog about;
   EntryBox entry_box;
-  
-  std::unique_ptr<Project::Language> project_language;
 
   void configure();
   void set_menu_actions();

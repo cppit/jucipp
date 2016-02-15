@@ -16,6 +16,8 @@ std::atomic<bool> Project::debugging;
 std::pair<boost::filesystem::path, std::pair<int, int> > Project::debug_stop;
 boost::filesystem::path Project::debug_last_stop_file_path;
 
+std::unique_ptr<Project::Language> Project::current_language;
+
 void Project::debug_update_status(const std::string &debug_status) {
   if(debug_status.empty()) {
     debug_status_label().set_text("");
@@ -463,6 +465,14 @@ void Project::Clang::debug_add_breakpoint(const boost::filesystem::path &file_pa
 
 void Project::Clang::debug_remove_breakpoint(const boost::filesystem::path &file_path, int line_nr, int line_count) {
   DebugClang::get().remove_breakpoint(file_path, line_nr, line_count);
+}
+
+bool Project::Clang::debug_is_running() {
+  return DebugClang::get().is_running();
+}
+
+void Project::Clang::debug_write(const std::string &buffer) {
+  DebugClang::get().write(buffer);
 }
 
 void Project::Clang::debug_delete() {

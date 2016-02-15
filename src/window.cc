@@ -536,9 +536,9 @@ void Window::set_menu_actions() {
     
     if(Config::get().project.save_on_compile_or_run)
       notebook.save_project_files();
-        
-    project_language=Project::get_language();
-    project_language->compile_and_run();
+    
+    Project::current_language=Project::get_language();
+    Project::current_language->compile_and_run();
   });
   menu.add_action("compile", [this]() {
     if(Project::compiling || Project::debugging)
@@ -547,8 +547,8 @@ void Window::set_menu_actions() {
     if(Config::get().project.save_on_compile_or_run)
       notebook.save_project_files();
         
-    project_language=Project::get_language();
-    project_language->compile();
+    Project::current_language=Project::get_language();
+    Project::current_language->compile();
   });
   
   menu.add_action("run_command", [this]() {
@@ -615,51 +615,51 @@ void Window::set_menu_actions() {
     if(Project::compiling)
       return;
     else if(Project::debugging) {
-      project_language->debug_continue();
+      Project::current_language->debug_continue();
       return;
     }
     
     if(Config::get().project.save_on_compile_or_run)
       notebook.save_project_files();
     
-    project_language=Project::get_language();
+    Project::current_language=Project::get_language();
     
-    project_language->debug_start();
+    Project::current_language->debug_start();
   });
   menu.add_action("debug_stop", [this]() {
-    if(project_language)
-      project_language->debug_stop();
+    if(Project::current_language)
+      Project::current_language->debug_stop();
   });
   menu.add_action("debug_kill", [this]() {
-    if(project_language)
-      project_language->debug_kill();
+    if(Project::current_language)
+      Project::current_language->debug_kill();
   });
   menu.add_action("debug_step_over", [this]() {
-    if(project_language)
-      project_language->debug_step_over();
+    if(Project::current_language)
+      Project::current_language->debug_step_over();
   });
   menu.add_action("debug_step_into", [this]() {
-    if(project_language)
-      project_language->debug_step_into();
+    if(Project::current_language)
+      Project::current_language->debug_step_into();
   });
   menu.add_action("debug_step_out", [this]() {
-    if(project_language)
-      project_language->debug_step_out();
+    if(Project::current_language)
+      Project::current_language->debug_step_out();
   });
   menu.add_action("debug_backtrace", [this]() {
-    if(project_language)
-      project_language->debug_backtrace();
+    if(Project::current_language)
+      Project::current_language->debug_backtrace();
   });
   menu.add_action("debug_show_variables", [this]() {
-    if(project_language)
-      project_language->debug_show_variables();
+    if(Project::current_language)
+      Project::current_language->debug_show_variables();
   });
   menu.add_action("debug_run_command", [this]() {
     entry_box.clear();
     entry_box.entries.emplace_back(last_run_debug_command, [this](const std::string& content){
       if(content!="") {
-        if(project_language)
-          project_language->debug_run_command(content);
+        if(Project::current_language)
+          Project::current_language->debug_run_command(content);
         last_run_debug_command=content;
       }
       entry_box.hide();
@@ -681,13 +681,13 @@ void Window::set_menu_actions() {
         auto end_iter=start_iter;
         while(!end_iter.ends_line() && end_iter.forward_char()) {}
         view->get_source_buffer()->remove_source_marks(start_iter, end_iter, "debug_breakpoint");
-        if(project_language)
-          project_language->debug_remove_breakpoint(view->file_path, line_nr+1, view->get_buffer()->get_line_count()+1);
+        if(Project::current_language)
+          Project::current_language->debug_remove_breakpoint(view->file_path, line_nr+1, view->get_buffer()->get_line_count()+1);
       }
       else {
         view->get_source_buffer()->create_source_mark("debug_breakpoint", view->get_buffer()->get_insert()->get_iter());
-        if(project_language)
-          project_language->debug_add_breakpoint(view->file_path, line_nr+1);
+        if(Project::current_language)
+          Project::current_language->debug_add_breakpoint(view->file_path, line_nr+1);
       }
     }
   });
@@ -817,8 +817,8 @@ bool Window::on_delete_event(GdkEventAny *event) {
   }
   Terminal::get().kill_async_processes();
 #ifdef JUCI_ENABLE_DEBUG
-  if(project_language)
-    project_language->debug_delete();
+  if(Project::current_language)
+    Project::current_language->debug_delete();
 #endif
   return false;
 }
