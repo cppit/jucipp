@@ -200,7 +200,8 @@ std::vector<std::string> Source::ClangViewParse::get_compilation_commands() {
     arguments.emplace_back("-I/Library/Developer/CommandLineTools/usr/bin/../include/c++/v1"); //Added for OS X 10.11
 #endif
 #ifdef _WIN32
-    arguments.emplace_back("-I"+(Config::get().terminal.msys2_mingw_path/"lib/clang"/clang_version/"include").string());
+    if(!Config::get().terminal.msys2_mingw_path.empty())
+      arguments.emplace_back("-I"+(Config::get().terminal.msys2_mingw_path/"lib/clang"/clang_version/"include").string());
 #endif
   }
   arguments.emplace_back("-fretain-comments-from-system-headers");
