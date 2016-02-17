@@ -26,6 +26,10 @@ public:
   public:
     std::string clang_format_command;
     int history_size;
+    
+#ifdef _WIN32
+    boost::filesystem::path msys2_mingw_path;
+#endif
   };
   
   class Project {

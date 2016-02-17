@@ -5,6 +5,7 @@
 #include <iostream>
 #include "filesystem.h"
 #include "terminal.h"
+#include <algorithm>
 
 Config::Config() {
   std::vector<std::string> environment_variables = {"JUCI_HOME", "HOME", "AppData"};
@@ -25,6 +26,13 @@ Config::Config() {
     searched_envs+="]";
     throw std::runtime_error("One of these environment variables needs to point to a writable directory to save configuration: " + searched_envs);
   }
+  
+#ifdef _WIN32
+    terminal.msys2_mingw_path=boost::filesystem::path(std::getenv("WD")).parent_path().parent_path().parent_path();
+    std::string msystem=std::getenv("MSYSTEM");
+    std::transform(msystem.begin(), msystem.end(), msystem.begin(), ::tolower);
+    terminal.msys2_mingw_path/=msystem;
+#endif
 }
 
 void Config::load() {

@@ -125,7 +125,7 @@ const std::string configjson =
 "        \"debug_build_path_comment\": \"Use <project_directory_name> to insert the project top level directory name, and <default_build_path> to insert your default_build_path setting.\",\n"
 "        \"debug_build_path\": \"<default_build_path>/debug\",\n"
 #ifdef _WIN32
-"        \"cmake_command\": \"cmake -G\\\"MSYS Makefiles\\\" -DCMAKE_INSTALL_PREFIX="+JUCI_CMAKE_INSTALL_PREFIX+"\",\n"
+"        \"cmake_command\": \"cmake -G\\\"MSYS Makefiles\\\"\",\n"
 #else
 "        \"cmake_command\": \"cmake\",\n"
 #endif
