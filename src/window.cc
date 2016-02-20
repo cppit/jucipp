@@ -681,12 +681,12 @@ void Window::set_menu_actions() {
         auto end_iter=start_iter;
         while(!end_iter.ends_line() && end_iter.forward_char()) {}
         view->get_source_buffer()->remove_source_marks(start_iter, end_iter, "debug_breakpoint");
-        if(Project::current_language)
+        if(Project::current_language && Project::debugging)
           Project::current_language->debug_remove_breakpoint(view->file_path, line_nr+1, view->get_buffer()->get_line_count()+1);
       }
       else {
         view->get_source_buffer()->create_source_mark("debug_breakpoint", view->get_buffer()->get_insert()->get_iter());
-        if(Project::current_language)
+        if(Project::current_language && Project::debugging)
           Project::current_language->debug_add_breakpoint(view->file_path, line_nr+1);
       }
     }
