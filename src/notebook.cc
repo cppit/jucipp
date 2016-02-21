@@ -52,6 +52,13 @@ Notebook::TabLabel::TabLabel(const std::string &title) : Gtk::Box(Gtk::ORIENTATI
 Notebook::Notebook() : Gtk::Notebook(), last_index(-1) {
   Gsv::init();
   
+  std::string data =  ".notebook {\n"
+                      "padding: 4px;\n"
+                      "}";
+  auto provider = Gtk::CssProvider::create();
+  provider->load_from_data(data);
+  get_style_context()->add_provider(provider, GTK_STYLE_PROVIDER_PRIORITY_APPLICATION);
+  
   signal_switch_page().connect([this](Gtk::Widget* page, guint page_num) {
     last_index=-1;
   });
