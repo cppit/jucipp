@@ -22,6 +22,8 @@ namespace sigc {
 }
 
 Directories::Directories() : Gtk::TreeView(), stop_update_thread(false) {
+  this->set_enable_tree_lines(true);
+  
   tree_store = Gtk::TreeStore::create(column_record);
   set_model(tree_store);
   append_column("", column_record.name);
