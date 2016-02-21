@@ -48,8 +48,9 @@ Notebook::Notebook() : Gtk::Notebook(), last_index(-1) {
   Gsv::init();
   
   auto provider = Gtk::CssProvider::create();
-  provider->load_from_data(".notebook {padding: 0px; -GtkNotebook-tab-overlap: 0px;} .notebook tab {padding: 4px;}");
+  provider->load_from_data(".notebook {padding: 0px; -GtkNotebook-tab-overlap: 0px;} .notebook tab {border-radius: 5px;padding: 4px;}");
   get_style_context()->add_provider(provider, GTK_STYLE_PROVIDER_PRIORITY_APPLICATION);
+  get_style_context()->set_junction_sides(Gtk::JunctionSides::JUNCTION_BOTTOM);
   
   signal_switch_page().connect([this](Gtk::Widget* page, guint page_num) {
     last_index=-1;
