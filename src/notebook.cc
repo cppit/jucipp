@@ -47,7 +47,6 @@ Notebook::TabLabel::TabLabel(const std::string &title) : Gtk::Box(Gtk::ORIENTATI
 Notebook::Notebook() : Gtk::Notebook(), last_index(-1) {
   Gsv::init();
   
-  //Ubuntu forces its own theme
   auto provider = Gtk::CssProvider::create();
   provider->load_from_data(".notebook {padding: 0px; -GtkNotebook-tab-overlap: 0px;} .notebook tab {padding: 4px;}");
   get_style_context()->add_provider(provider, GTK_STYLE_PROVIDER_PRIORITY_APPLICATION);
