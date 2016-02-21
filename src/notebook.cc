@@ -32,6 +32,7 @@ Notebook::TabLabel::TabLabel(const std::string &title) : Gtk::Box(Gtk::ORIENTATI
   button.set_image_from_icon_name("window-close-symbolic", Gtk::ICON_SIZE_MENU);
   button.set_can_focus(false);
   button.set_relief(Gtk::ReliefStyle::RELIEF_NONE);
+  
   //Based on http://www.micahcarrick.com/gtk-notebook-tabs-with-close-button.html
   std::string data =  ".button {\n"
                       "-GtkButton-default-border : 0px;\n"
@@ -41,11 +42,17 @@ Notebook::TabLabel::TabLabel(const std::string &title) : Gtk::Box(Gtk::ORIENTATI
                       "-GtkWidget-focus-padding : 0px;\n"
                       "padding: 0px;\n"
                       "}";
-  auto provider = Gtk::CssProvider::create();
-  provider->load_from_data(data);
-  button.get_style_context()->add_provider(provider, GTK_STYLE_PROVIDER_PRIORITY_APPLICATION);
+  auto provider_button = Gtk::CssProvider::create();
+  provider_button->load_from_data(data);
+  button.get_style_context()->add_provider(provider_button, GTK_STYLE_PROVIDER_PRIORITY_APPLICATION);
+  
+  auto provider_label = Gtk::CssProvider::create();
+  provider_label->load_from_data(".label {padding: 7px;}");
+  label.get_style_context()->add_provider(provider_label, GTK_STYLE_PROVIDER_PRIORITY_APPLICATION);
+  
   pack_start(label, Gtk::PACK_SHRINK);
   pack_end(button, Gtk::PACK_SHRINK);
+  
   show_all();
 }
 
@@ -54,11 +61,7 @@ Notebook::Notebook() : Gtk::Notebook(), last_index(-1) {
   
   //Ubuntu forces its own theme
   std::string data =  ".notebook {\n"
-#ifdef JUCI_UBUNTU
-                      "padding: 1px;\n"
-#else
-                      "padding: 4px;\n"
-#endif
+                      "padding: 0px;\n"
                       "-GtkNotebook-tab-overlap: 0px;\n"
                       "-GtkNotebook-show-border: 0;\n"
                       "}";
