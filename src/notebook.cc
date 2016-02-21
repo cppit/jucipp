@@ -54,6 +54,8 @@ Notebook::Notebook() : Gtk::Notebook(), last_index(-1) {
   
   std::string data =  ".notebook {\n"
                       "padding: 4px;\n"
+                      "-GtkNotebook-tab-overlap: 0px;\n"
+                      "-GtkNotebook-show-border: 0;\n"
                       "}";
   auto provider = Gtk::CssProvider::create();
   provider->load_from_data(data);
