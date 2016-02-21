@@ -7,7 +7,7 @@
 Menu::Menu() {
   auto accels=Config::get().menu.keys;
   for(auto &accel: accels) {
-#ifdef JUCI_UBUNTU_BUGGED_MENU
+#ifdef JUCI_UBUNTU
     size_t pos=0;
     std::string second=accel.second;
     while((pos=second.find('<', pos))!=std::string::npos) {

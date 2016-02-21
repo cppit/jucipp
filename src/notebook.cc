@@ -52,8 +52,13 @@ Notebook::TabLabel::TabLabel(const std::string &title) : Gtk::Box(Gtk::ORIENTATI
 Notebook::Notebook() : Gtk::Notebook(), last_index(-1) {
   Gsv::init();
   
+  //Ubuntu forces its own theme
   std::string data =  ".notebook {\n"
+#ifdef JUCI_UBUNTU
+                      "padding: 1px;\n"
+#else
                       "padding: 4px;\n"
+#endif
                       "-GtkNotebook-tab-overlap: 0px;\n"
                       "-GtkNotebook-show-border: 0;\n"
                       "}";
