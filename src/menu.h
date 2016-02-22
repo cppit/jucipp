@@ -19,8 +19,12 @@ public:
   void set_keys();
   
   void build();
-  Glib::RefPtr<Gtk::Builder> builder;
   
+  Glib::RefPtr<Gio::Menu> juci_menu;
+  Glib::RefPtr<Gio::Menu> window_menu;
+  
+private:
+  Glib::RefPtr<Gtk::Builder> builder;
   std::string ui_xml;
 };
 #endif  // JUCI_MENU_H_

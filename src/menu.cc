@@ -404,6 +404,10 @@ void Menu::build() {
   
   try {
     builder->add_from_string(ui_xml);
+    auto object = Menu::get().builder->get_object("juci-menu");
+    juci_menu = Glib::RefPtr<Gio::Menu>::cast_dynamic(object);
+    object = Menu::get().builder->get_object("window-menu");
+    window_menu = Glib::RefPtr<Gio::Menu>::cast_dynamic(object);
   }
   catch (const Glib::Error &ex) {
     std::cerr << "building menu failed: " << ex.what();
