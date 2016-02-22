@@ -1,5 +1,6 @@
 #include "juci.h"
 #include "window.h"
+#include "notebook.h"
 #include "directories.h"
 #include "menu.h"
 #include "config.h"
@@ -68,7 +69,7 @@ void Application::on_activate() {
   }
   
   for(auto &file: files)
-    Window::get().notebook.open(file);
+    Notebook::get().open(file);
   
   for(auto &error: errors)
     Terminal::get().print(error, true);
@@ -79,16 +80,12 @@ void Application::on_startup() {
   
   Menu::get().build();
 
-  auto object = Menu::get().builder->get_object("juci-menu");
-  auto juci_menu = Glib::RefPtr<Gio::Menu>::cast_dynamic(object);
-  object = Menu::get().builder->get_object("window-menu");
-  auto window_menu = Glib::RefPtr<Gio::Menu>::cast_dynamic(object);
-  if (!juci_menu || !window_menu) {
+  if (!Menu::get().juci_menu || !Menu::get().window_menu) {
     std::cerr << "Menu not found." << std::endl;
   }
   else {
-    set_app_menu(juci_menu);
-    set_menubar(window_menu);
+    set_app_menu(Menu::get().juci_menu);
+    set_menubar(Menu::get().window_menu);
   }
 }
 

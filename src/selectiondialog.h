@@ -17,7 +17,6 @@ public:
   bool use_markup;
   ListViewText(bool use_markup);
   void append(const std::string& value);
-  void clear();
 private:
   Glib::RefPtr<Gtk::ListStore> list_store;
   ColumnRecord column_record;

@@ -1,5 +1,6 @@
 #include "dialogs.h"
 #include "window.h"
+#include "notebook.h"
 #include <cmath>
 
 namespace sigc {
@@ -34,7 +35,7 @@ std::string Dialog::gtk_dialog(const std::string &title,
   
   dialog.set_transient_for(Window::get());
   
-  auto current_path=Window::get().notebook.get_current_folder();
+  auto current_path=Notebook::get().get_current_folder();
   boost::system::error_code ec;
   if(current_path.empty())
     current_path=boost::filesystem::current_path(ec);

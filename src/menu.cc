@@ -7,7 +7,7 @@
 Menu::Menu() {
   auto accels=Config::get().menu.keys;
   for(auto &accel: accels) {
-#ifdef JUCI_UBUNTU_BUGGED_MENU
+#ifdef JUCI_UBUNTU
     size_t pos=0;
     std::string second=accel.second;
     while((pos=second.find('<', pos))!=std::string::npos) {
@@ -404,6 +404,10 @@ void Menu::build() {
   
   try {
     builder->add_from_string(ui_xml);
+    auto object = Menu::get().builder->get_object("juci-menu");
+    juci_menu = Glib::RefPtr<Gio::Menu>::cast_dynamic(object);
+    object = Menu::get().builder->get_object("window-menu");
+    window_menu = Glib::RefPtr<Gio::Menu>::cast_dynamic(object);
   }
   catch (const Glib::Error &ex) {
     std::cerr << "building menu failed: " << ex.what();

@@ -1,23 +1,22 @@
 #ifndef JUCI_WINDOW_H_
 #define JUCI_WINDOW_H_
 
-#include "gtkmm.h"
+#include <gtkmm.h>
 #include "entrybox.h"
 #include "notebook.h"
 #include "cmake.h"
-#include "tooltips.h"
+#include "project.h"
 #include <atomic>
 
 class Window : public Gtk::ApplicationWindow {
 private:
   Window();
+  Notebook &notebook; //convenience reference
 public:
   static Window &get() {
     static Window singleton;
     return singleton;
   }
-  
-  Notebook notebook;
 
 protected:
   bool on_key_press_event(GdkEventKey *event) override;
@@ -33,26 +32,6 @@ private:
   Gtk::HBox info_and_status_hbox;
   Gtk::AboutDialog about;
   EntryBox entry_box;
-  
-  std::atomic<bool> compiling;
-  
-  std::atomic<bool> debugging;
-  Gtk::Label debug_status_label;
-  
-  std::mutex debug_start_mutex;
-  std::pair<boost::filesystem::path, std::pair<int, int> > debug_stop;
-  boost::filesystem::path debug_last_stop_file_path;
-  std::mutex debug_stop_mutex;
-  Glib::Dispatcher debug_update_stop;
-  std::string debug_status;
-  std::mutex debug_status_mutex;
-  Glib::Dispatcher debug_update_status;
-  
-  Tooltips debug_variable_tooltips;
-
-  std::unique_ptr<CMake> get_cmake();
-  std::unordered_map<std::string, std::string> project_run_arguments;
-  std::unordered_map<std::string, std::string> debug_run_arguments;
 
   void configure();
   void set_menu_actions();

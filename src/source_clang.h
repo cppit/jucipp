@@ -9,6 +9,7 @@
 #include "clangmm.h"
 #include "source.h"
 #include "terminal.h"
+#include "dispatcher.h"
 
 namespace Source {
   class ClangViewParse : public View {
@@ -30,6 +31,7 @@ namespace Source {
     
     void soft_reparse() override;
   protected:
+    Dispatcher dispatcher;
     void parse_initialize();
     std::unique_ptr<clang::TranslationUnit> clang_tu;
     std::unique_ptr<clang::Tokens> clang_tokens;
@@ -53,13 +55,7 @@ namespace Source {
     std::mutex parse_mutex;
     std::atomic<ParseState> parse_state;
     std::atomic<ParseProcessState> parse_process_state;
-    sigc::connection parse_preprocess_connection;
-    sigc::connection parse_postprocess_connection;
-    sigc::connection parse_error_connection;
   private:
-    Glib::Dispatcher parse_preprocess;
-    Glib::Dispatcher parse_postprocess;
-    Glib::Dispatcher parse_error;
     Glib::ustring parse_thread_buffer;
     
     void update_syntax();
@@ -90,29 +86,19 @@ namespace Source {
     bool on_key_press_event(GdkEventKey* key) override;
     
     std::thread autocomplete_thread;
-    sigc::connection autocomplete_done_connection;
-    sigc::connection autocomplete_restart_connection;
-    sigc::connection autocomplete_error_connection;
-    sigc::connection do_delete_object_connection;
-    sigc::connection do_restart_parse_connection;
   private:
     std::atomic<AutocompleteState> autocomplete_state;
     void autocomplete_dialog_setup();
     void autocomplete_check();
     void autocomplete();
-    std::vector<AutoCompleteData> autocomplete_data;
     std::unordered_map<std::string, std::pair<std::string, std::string> > autocomplete_dialog_rows;
     std::vector<AutoCompleteData> autocomplete_get_suggestions(const std::string &buffer, int line_number, int column);
     Tooltips autocomplete_tooltips;
-    Glib::Dispatcher autocomplete_done;
-    Glib::Dispatcher autocomplete_restart;
-    Glib::Dispatcher autocomplete_error;
     guint last_keyval=0;
     std::string prefix;
     std::mutex prefix_mutex;
     
     Glib::Dispatcher do_delete_object;
-    Glib::Dispatcher do_full_reparse;
     std::thread delete_thread;
     std::thread full_reparse_thread;
     bool full_reparse_running=false;

@@ -27,30 +27,30 @@ namespace sigc {
 
 Notebook::TabLabel::TabLabel(const std::string &title) : Gtk::Box(Gtk::ORIENTATION_HORIZONTAL) {
   set_can_focus(false);
-  label.set_text(title);
+  label.set_text(title+' ');
   label.set_can_focus(false);
   button.set_image_from_icon_name("window-close-symbolic", Gtk::ICON_SIZE_MENU);
   button.set_can_focus(false);
   button.set_relief(Gtk::ReliefStyle::RELIEF_NONE);
+  
   //Based on http://www.micahcarrick.com/gtk-notebook-tabs-with-close-button.html
-  std::string data =  ".button {\n"
-                      "-GtkButton-default-border : 0px;\n"
-                      "-GtkButton-default-outside-border : 0px;\n"
-                      "-GtkButton-inner-border: 0px;\n"
-                      "-GtkWidget-focus-line-width : 0px;\n"
-                      "-GtkWidget-focus-padding : 0px;\n"
-                      "padding: 0px;\n"
-                      "}";
   auto provider = Gtk::CssProvider::create();
-  provider->load_from_data(data);
+  provider->load_from_data(".button {border: 0px; outline-width: 0px; margin: 0px; padding: 0px;}");
   button.get_style_context()->add_provider(provider, GTK_STYLE_PROVIDER_PRIORITY_APPLICATION);
+    
   pack_start(label, Gtk::PACK_SHRINK);
   pack_end(button, Gtk::PACK_SHRINK);
+  
   show_all();
 }
 
 Notebook::Notebook() : Gtk::Notebook(), last_index(-1) {
   Gsv::init();
+  
+  auto provider = Gtk::CssProvider::create();
+  provider->load_from_data(".notebook {padding: 0px; -GtkNotebook-tab-overlap: 0px;} .notebook tab {border-radius: 5px;padding: 4px;}");
+  get_style_context()->add_provider(provider, GTK_STYLE_PROVIDER_PRIORITY_APPLICATION);
+  get_style_context()->set_junction_sides(Gtk::JunctionSides::JUNCTION_BOTTOM);
   
   signal_switch_page().connect([this](Gtk::Widget* page, guint page_num) {
     last_index=-1;
@@ -166,7 +166,9 @@ void Notebook::open(const boost::filesystem::path &file_path) {
   get_current_view()->get_buffer()->signal_modified_changed().connect([this, source_view]() {
     std::string title=source_view->file_path.filename().string();
     if(source_view->get_buffer()->get_modified())
-      title+="*";
+      title+='*';
+    else
+      title+=' ';
     int page=-1;
     for(int c=0;c<size();c++) {
       if(get_view(c)==source_view) {
@@ -370,4 +372,3 @@ bool Notebook::save_modified_dialog(int page) {
     return false;
   }
 }
-

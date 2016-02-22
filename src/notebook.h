@@ -16,8 +16,15 @@ class Notebook : public Gtk::Notebook {
     Gtk::Label label;
     Gtk::Button button;
   };
-public:
+  
+private:
   Notebook();
+public:
+  static Notebook &get() {
+    static Notebook singleton;
+    return singleton;
+  }
+  
   Source::View* get_view(int page);
   size_t get_index(int page);
   int size();
