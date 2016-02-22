@@ -19,32 +19,20 @@ boost::filesystem::path Project::debug_last_stop_file_path;
 std::unique_ptr<Project::Language> Project::current_language;
 
 void Project::debug_update_status(const std::string &debug_status) {
-  if(debug_status.empty()) {
+  if(debug_status.empty())
     debug_status_label().set_text("");
-    auto &menu=Menu::get();
-    menu.actions["debug_stop"]->set_enabled(false);
-    menu.actions["debug_kill"]->set_enabled(false);
-    menu.actions["debug_step_over"]->set_enabled(false);
-    menu.actions["debug_step_into"]->set_enabled(false);
-    menu.actions["debug_step_out"]->set_enabled(false);
-    menu.actions["debug_backtrace"]->set_enabled(false);
-    menu.actions["debug_show_variables"]->set_enabled(false);
-    menu.actions["debug_run_command"]->set_enabled(false);
-    menu.actions["debug_goto_stop"]->set_enabled(false);
-  }
-  else {
+  else
     debug_status_label().set_text("debug: "+debug_status);
-    auto &menu=Menu::get();
-    menu.actions["debug_stop"]->set_enabled();
-    menu.actions["debug_kill"]->set_enabled();
-    menu.actions["debug_step_over"]->set_enabled();
-    menu.actions["debug_step_into"]->set_enabled();
-    menu.actions["debug_step_out"]->set_enabled();
-    menu.actions["debug_backtrace"]->set_enabled();
-    menu.actions["debug_show_variables"]->set_enabled();
-    menu.actions["debug_run_command"]->set_enabled();
-    menu.actions["debug_goto_stop"]->set_enabled();
-  }
+  auto &menu=Menu::get();
+  menu.actions["debug_stop"]->set_enabled(!debug_status.empty());
+  menu.actions["debug_kill"]->set_enabled(!debug_status.empty());
+  menu.actions["debug_step_over"]->set_enabled(!debug_status.empty());
+  menu.actions["debug_step_into"]->set_enabled(!debug_status.empty());
+  menu.actions["debug_step_out"]->set_enabled(!debug_status.empty());
+  menu.actions["debug_backtrace"]->set_enabled(!debug_status.empty());
+  menu.actions["debug_show_variables"]->set_enabled(!debug_status.empty());
+  menu.actions["debug_run_command"]->set_enabled(!debug_status.empty());
+  menu.actions["debug_goto_stop"]->set_enabled(!debug_status.empty());
 }
 
 void Project::debug_update_stop() {
