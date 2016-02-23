@@ -168,10 +168,10 @@ void Project::Clang::compile_and_run() {
   
   compiling=true;
   Terminal::get().print("Compiling and running "+arguments+"\n");
-  Terminal::get().async_process(Config::get().project.make_command, default_build_path, [this, arguments, default_build_path](int exit_status){
+  Terminal::get().async_process(Config::get().project.make_command, default_build_path, [this, arguments, project_path](int exit_status){
     compiling=false;
     if(exit_status==EXIT_SUCCESS) {
-      Terminal::get().async_process(arguments, default_build_path, [this, arguments](int exit_status){
+      Terminal::get().async_process(arguments, project_path, [this, arguments](int exit_status){
         Terminal::get().async_print(arguments+" returned: "+std::to_string(exit_status)+'\n');
       });
     }
@@ -256,12 +256,12 @@ void Project::Clang::debug_start() {
   
   debugging=true;
   Terminal::get().print("Compiling and debugging "+run_arguments+"\n");
-  Terminal::get().async_process(Config::get().project.make_command, debug_build_path, [this, breakpoints, run_arguments, debug_build_path](int exit_status){
+  Terminal::get().async_process(Config::get().project.make_command, debug_build_path, [this, breakpoints, run_arguments, project_path](int exit_status){
     if(exit_status!=EXIT_SUCCESS)
       debugging=false;
     else {
       debug_start_mutex.lock();
-      Debug::Clang::get().start(run_arguments, debug_build_path, *breakpoints, [this, run_arguments](int exit_status){
+      Debug::Clang::get().start(run_arguments, project_path, *breakpoints, [this, run_arguments](int exit_status){
         debugging=false;
         Terminal::get().async_print(run_arguments+" returned: "+std::to_string(exit_status)+'\n');
       }, [this](const std::string &status) {
