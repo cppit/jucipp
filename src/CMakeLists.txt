@@ -21,6 +21,10 @@ if(UNIX) #Checking if compiling on Ubuntu that for instance has a buggy menu sys
   endif()
 endif()
 
+if(MSYS)
+  set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -DMSYS_PROCESS_USE_SH")
+endif()
+
 INCLUDE(FindPkgConfig)
 
 find_package(LibClang REQUIRED)
