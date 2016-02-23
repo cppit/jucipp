@@ -484,7 +484,7 @@ void Project::Markdown::compile_and_run() {
   }
   
   std::stringstream stdin_stream, stdout_stream;
-  auto exit_status=Terminal::get().process(stdin_stream, stdout_stream, "markdown "+Notebook::get().get_current_view()->file_path.string());
+  auto exit_status=Terminal::get().process(stdin_stream, stdout_stream, "markdown "+filesystem::escape_argument(Notebook::get().get_current_view()->file_path.string()));
   if(exit_status==0) {
     boost::system::error_code ec;
     auto temp_path=boost::filesystem::temp_directory_path(ec);
@@ -499,7 +499,7 @@ void Project::Markdown::compile_and_run() {
         
         auto uri=temp_path.string();
 #ifdef __APPLE__
-        Terminal::get().process("open \""+uri+"\"");
+        Terminal::get().process("open "+filesystem::escape_argument(uri));
 #else
 #ifdef __linux
         uri="file://"+uri;
@@ -514,7 +514,7 @@ void Project::Markdown::compile_and_run() {
 }
 
 void Project::Python::compile_and_run() {
-  auto command="python "+Notebook::get().get_current_view()->file_path.string();
+  auto command="python "+filesystem::escape_argument(Notebook::get().get_current_view()->file_path.string());
   Terminal::get().print("Running "+command+"\n");
   Terminal::get().async_process(command, Notebook::get().get_current_view()->file_path.parent_path(), [command](int exit_status) {
     Terminal::get().async_print(command+" returned: "+std::to_string(exit_status)+'\n');
@@ -522,7 +522,7 @@ void Project::Python::compile_and_run() {
 }
 
 void Project::JavaScript::compile_and_run() {
-  auto command="node "+Notebook::get().get_current_view()->file_path.string();
+  auto command="node "+filesystem::escape_argument(Notebook::get().get_current_view()->file_path.string());
   Terminal::get().print("Running "+command+"\n");
   Terminal::get().async_process(command, Notebook::get().get_current_view()->file_path.parent_path(), [command](int exit_status) {
     Terminal::get().async_print(command+" returned: "+std::to_string(exit_status)+'\n');
@@ -532,7 +532,7 @@ void Project::JavaScript::compile_and_run() {
 void Project::HTML::compile_and_run() {
   auto uri=Notebook::get().get_current_view()->file_path.string();
 #ifdef __APPLE__
-  Terminal::get().process("open \""+uri+"\"");
+  Terminal::get().process("open "+filesystem::escape_argument(uri));
 #else
 #ifdef __linux
   uri="file://"+uri;
