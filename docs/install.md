@@ -49,6 +49,12 @@ sudo make install
 Package available in the Arch User Repository:
 https://aur.archlinux.org/packages/jucipp-git/
 
+If you have the arch package [yaourt](https://archlinux.fr/yaourt-en) installed:
+```sh
+yaourt -S jucipp-git
+```
+
+
 Alternatively, follow the instructions below.
 
 Install dependencies:
