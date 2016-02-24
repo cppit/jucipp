@@ -4,7 +4,6 @@
 #include <gtkmm.h>
 #include "entrybox.h"
 #include "notebook.h"
-#include "cmake.h"
 #include "project.h"
 #include <atomic>
 
