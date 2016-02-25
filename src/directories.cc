@@ -3,6 +3,7 @@
 #include <algorithm>
 #include <unordered_set>
 #include "source.h"
+#include "cmake.h"
 
 #include <iostream> //TODO: remove
 using namespace std; //TODO: remove
@@ -130,12 +131,13 @@ void Directories::open(const boost::filesystem::path& dir_path) {
   last_write_times.clear();
   update_paths.clear();
   update_mutex.unlock();
-    
-  cmake=std::unique_ptr<CMake>(new CMake(dir_path));
-  CMake::create_default_build(cmake->project_path);
-  auto project=cmake->get_functions_parameters("project");
-  if(project.size()>0 && project[0].second.size()>0) {
-    auto title=project[0].second[0];
+  
+  auto cmake=CMake(dir_path, true);
+  cmake.create_default_build();
+  project_path=cmake.project_path;
+  auto project_name=cmake.get_functions_parameters("project");
+  if(project_name.size()>0 && project_name[0].second.size()>0) {
+    auto title=project_name[0].second[0];
     //TODO: report that set_title does not handle '_' correctly?
     size_t pos=0;
     while((pos=title.find('_', pos))!=std::string::npos) {

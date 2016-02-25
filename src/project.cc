@@ -82,10 +82,10 @@ std::unique_ptr<CMake> Project::Clang::get_cmake() {
     path=Directories::get().current_path;
   if(path.empty())
     return nullptr;
-  auto cmake=std::unique_ptr<CMake>(new CMake(path));
+  auto cmake=std::unique_ptr<CMake>(new CMake(path, true));
   if(cmake->project_path.empty())
     return nullptr;
-  if(!CMake::create_default_build(cmake->project_path))
+  if(!cmake->create_default_build())
     return nullptr;
   return cmake;
 }
@@ -96,7 +96,7 @@ std::pair<std::string, std::string> Project::Clang::get_run_arguments() {
     return {"", ""};
   
   auto project_path=cmake->project_path.string();
-  auto run_arguments_it=run_arguments.find(project_path);
+  auto run_arguments_it=run_arguments.find(cmake->project_path.string());
   std::string arguments;
   if(run_arguments_it!=run_arguments.end())
     arguments=run_arguments_it->second;
@@ -105,17 +105,16 @@ std::pair<std::string, std::string> Project::Clang::get_run_arguments() {
     auto executable=cmake->get_executable(Notebook::get().get_current_page()!=-1?Notebook::get().get_current_view()->file_path:"").string();
     
     if(executable!="") {
-      auto project_path=cmake->project_path;
-      auto build_path=CMake::get_default_build_path(project_path);
+      auto build_path=cmake->get_default_build_path();
       if(!build_path.empty()) {
-        size_t pos=executable.find(project_path.string());
+        size_t pos=executable.find(project_path);
         if(pos!=std::string::npos)
-          executable.replace(pos, project_path.string().size(), build_path.string());
+          executable.replace(pos, project_path.size(), build_path.string());
       }
       arguments=filesystem::escape_argument(executable);
     }
     else
-      arguments=filesystem::escape_argument(CMake::get_default_build_path(cmake->project_path));
+      arguments=filesystem::escape_argument(cmake->get_default_build_path());
   }
   
   return {project_path, arguments};
@@ -126,7 +125,7 @@ void Project::Clang::compile() {
   if(!cmake)
     return;
   
-  auto default_build_path=CMake::get_default_build_path(cmake->project_path);
+  auto default_build_path=cmake->get_default_build_path();
   if(default_build_path.empty())
     return;
   compiling=true;
@@ -142,7 +141,7 @@ void Project::Clang::compile_and_run() {
     return;
   auto project_path=cmake->project_path;
   
-  auto default_build_path=CMake::get_default_build_path(project_path);
+  auto default_build_path=cmake->get_default_build_path();
   if(default_build_path.empty())
     return;
   
@@ -194,17 +193,16 @@ std::pair<std::string, std::string> Project::Clang::debug_get_run_arguments() {
     auto executable=cmake->get_executable(Notebook::get().get_current_page()!=-1?Notebook::get().get_current_view()->file_path:"").string();
     
     if(executable!="") {
-      auto project_path=cmake->project_path;
-      auto build_path=CMake::get_debug_build_path(project_path);
+      auto build_path=cmake->get_debug_build_path();
       if(!build_path.empty()) {
-        size_t pos=executable.find(project_path.string());
+        size_t pos=executable.find(project_path);
         if(pos!=std::string::npos)
-          executable.replace(pos, project_path.string().size(), build_path.string());
+          executable.replace(pos, project_path.size(), build_path.string());
       }
       arguments=filesystem::escape_argument(executable);
     }
     else
-      arguments=filesystem::escape_argument(CMake::get_debug_build_path(cmake->project_path));
+      arguments=filesystem::escape_argument(cmake->get_debug_build_path());
   }
   
   return {project_path, arguments};
@@ -216,10 +214,10 @@ void Project::Clang::debug_start() {
     return;
   auto project_path=cmake->project_path;
       
-  auto debug_build_path=CMake::get_debug_build_path(project_path);
+  auto debug_build_path=cmake->get_debug_build_path();
   if(debug_build_path.empty())
     return;
-  if(!CMake::create_debug_build(project_path))
+  if(!cmake->create_debug_build())
     return;
   
   auto run_arguments_it=debug_run_arguments.find(project_path.string());
