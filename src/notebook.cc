@@ -99,18 +99,18 @@ void Notebook::open(const boost::filesystem::path &file_path) {
   auto language=Source::guess_language(file_path);
   boost::filesystem::path project_path;
   auto &directories=Directories::get();
-  if(!directories.project_path.empty() && file_path.generic_string().substr(0, directories.project_path.generic_string().size()+1)==directories.project_path.generic_string()+'/')
-    project_path=directories.project_path;
+  if(directories.cmake && directories.cmake->project_path!="" && file_path.generic_string().substr(0, directories.cmake->project_path.generic_string().size()+1)==directories.cmake->project_path.generic_string()+'/')
+    project_path=directories.cmake->project_path;
   else {
     project_path=file_path.parent_path();
-    CMake cmake(project_path, true);
+    CMake cmake(project_path);
     if(cmake.project_path!="") {
       project_path=cmake.project_path;
       Terminal::get().print("Project path for "+file_path.string()+" set to "+project_path.string()+"\n");
     }
   }
   if(language && (language->get_id()=="chdr" || language->get_id()=="cpphdr" || language->get_id()=="c" || language->get_id()=="cpp" || language->get_id()=="objc")) {
-    CMake(project_path).create_default_build();
+    CMake::create_default_build(project_path);
     source_views.emplace_back(new Source::ClangView(file_path, project_path, language));
   }
   else
@@ -249,19 +249,19 @@ bool Notebook::save(int page) {
       boost::filesystem::path project_path;
       if(view->file_path.filename()=="CMakeLists.txt") {
         auto &directories=Directories::get();
-        if(!directories.project_path.empty() && view->file_path.generic_string().substr(0, directories.project_path.generic_string().size()+1)==directories.project_path.generic_string()+'/') {
-          if(CMake(directories.project_path).create_default_build(true))
-            project_path=directories.project_path;
+        if(directories.cmake && directories.cmake->project_path!="" && view->file_path.generic_string().substr(0, directories.cmake->project_path.generic_string().size()+1)==directories.cmake->project_path.generic_string()+'/') {
+          if(CMake::create_default_build(directories.cmake->project_path, true))
+            project_path=directories.cmake->project_path;
         }
         else {
-          CMake cmake(view->file_path.parent_path(), true);
-          if(cmake.create_default_build(true))
+          CMake cmake(view->file_path.parent_path());
+          if(CMake::create_default_build(cmake.project_path, true))
             project_path=cmake.project_path;
         }
         if(project_path!="") {
-          auto debug_project_path=CMake(project_path).get_debug_build_path();
+          auto debug_project_path=CMake::get_debug_build_path(project_path);
           if(!debug_project_path.empty() && boost::filesystem::exists(debug_project_path))
-            CMake(project_path).create_debug_build();
+            CMake::create_debug_build(project_path);
           for(auto source_view: source_views) {
             if(auto source_clang_view=dynamic_cast<Source::ClangView*>(source_view)) {
               if(project_path==source_clang_view->project_path)
