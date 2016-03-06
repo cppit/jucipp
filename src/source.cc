@@ -299,7 +299,8 @@ Source::View::View(const boost::filesystem::path &file_path, const boost::filesy
   
   if(language && (language->get_id()=="chdr" || language->get_id()=="cpphdr" || language->get_id()=="c" ||
                   language->get_id()=="cpp" || language->get_id()=="objc" || language->get_id()=="java" ||
-                  language->get_id()=="js" || language->get_id()=="ts" || language->get_id()=="proto")) {
+                  language->get_id()=="js" || language->get_id()=="ts" || language->get_id()=="proto" ||
+                  language->get_id()=="c-sharp")) {
     is_bracket_language=true;
     
     auto_indent=[this]() {
