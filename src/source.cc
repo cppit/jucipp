@@ -292,6 +292,74 @@ Source::View::View(const boost::filesystem::path &file_path, const boost::filesy
     }
   }
   set_tab_char_and_size(tab_char, tab_size);
+  
+  if(language && (language->get_id()=="chdr" || language->get_id()=="cpphdr" || language->get_id()=="c" ||
+                  language->get_id()=="cpp" || language->get_id()=="objc" || language->get_id()=="java" ||
+                  language->get_id()=="js" || language->get_id()=="ts" || language->get_id()=="proto")) {
+    auto_indent=[this]() {
+      auto command=Config::get().terminal.clang_format_command;
+      bool use_style_file=false;
+      
+      auto style_file_search_path=this->file_path.parent_path();
+      while(true) {
+        if(boost::filesystem::exists(style_file_search_path/".clang-format") || boost::filesystem::exists(style_file_search_path/"_clang-format")) {
+          use_style_file=true;
+          break;
+        }
+        if(style_file_search_path==style_file_search_path.root_directory())
+          break;
+        style_file_search_path=style_file_search_path.parent_path();
+      }
+      
+      if(use_style_file)
+        command+=" -style=file";
+      else {
+        unsigned indent_width;
+        std::string tab_style;
+        if(tab_char=='\t') {
+          indent_width=tab_size*8;
+          tab_style="UseTab: Always";
+        }
+        else {
+          indent_width=tab_size;
+          tab_style="UseTab: Never";
+        }
+        command+=" -style=\"{IndentWidth: "+std::to_string(indent_width);
+        command+=", "+tab_style;
+        command+=", "+std::string("AccessModifierOffset: -")+std::to_string(indent_width);
+        if(Config::get().source.clang_format_style!="")
+          command+=", "+Config::get().source.clang_format_style;
+        command+="}\"";
+      }
+      
+      std::stringstream stdin_stream(get_buffer()->get_text()), stdout_stream;
+      
+      auto exit_status=Terminal::get().process(stdin_stream, stdout_stream, command, this->file_path.parent_path());
+      if(exit_status==0) {
+        get_source_buffer()->begin_user_action();
+        auto iter=get_buffer()->get_insert()->get_iter();
+        auto cursor_line_nr=iter.get_line();
+        auto cursor_line_offset=iter.get_line_offset();
+        
+        get_buffer()->set_text(stdout_stream.str());
+        
+        cursor_line_nr=std::min(cursor_line_nr, get_buffer()->get_line_count()-1);
+        if(cursor_line_nr>=0) {
+          iter=get_buffer()->get_iter_at_line(cursor_line_nr);
+          for(int c=0;c<cursor_line_offset;c++) {
+            if(iter.ends_line())
+              break;
+            iter.forward_char();
+          }
+          get_buffer()->place_cursor(iter);
+          while(g_main_context_pending(NULL)) //TODO: minor: might crash if the buffer is saved and closed really fast right after doing auto indent
+            g_main_context_iteration(NULL, false);
+          scroll_to(get_buffer()->get_insert(), 0.0, 1.0, 0.5);
+        }
+        get_source_buffer()->end_user_action();
+      }
+    };
+  }
 }
 
 void Source::View::set_tab_char_and_size(char tab_char, unsigned tab_size) {
@@ -1445,10 +1513,8 @@ Source::GenericView::GenericView(const boost::filesystem::path &file_path, const
   configure();
   spellcheck_all=true;
   
-  if(language) {
+  if(language)
     get_source_buffer()->set_language(language);
-    Terminal::get().print("Language for file "+file_path.string()+" set to "+language->get_name()+".\n");
-  }
   
   auto completion=get_completion();
   completion->property_show_headers()=false;
