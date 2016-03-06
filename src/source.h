@@ -7,6 +7,7 @@
 #include <string>
 #include <unordered_map>
 #include <vector>
+#include <boost/regex.hpp>
 
 #include "selectiondialog.h"
 #include "tooltips.h"
@@ -136,7 +137,14 @@ namespace Source {
     bool find_right_bracket_forward(Gtk::TextIter iter, Gtk::TextIter &found_iter);
     bool find_left_bracket_backward(Gtk::TextIter iter, Gtk::TextIter &found_iter);
     
+    boost::regex bracket_regex;
+    boost::regex no_bracket_statement_regex;
+    boost::regex no_bracket_no_para_statement_regex;
+    
     bool on_key_press_event(GdkEventKey* key) override;
+    bool on_key_press_event_basic(GdkEventKey* key);
+    bool on_key_press_event_bracket_language(GdkEventKey* key);
+    bool is_bracket_language=false;
     bool on_button_press_event(GdkEventButton *event) override;
     
     std::pair<char, unsigned> find_tab_char_and_size();

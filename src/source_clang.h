@@ -5,7 +5,6 @@
 #include <atomic>
 #include <mutex>
 #include <set>
-#include <boost/regex.hpp>
 #include "clangmm.h"
 #include "source.h"
 #include "terminal.h"
@@ -41,12 +40,6 @@ namespace Source {
     
     void show_diagnostic_tooltips(const Gdk::Rectangle &rectangle) override;
     void show_type_tooltips(const Gdk::Rectangle &rectangle) override;
-    
-    bool on_key_press_event(GdkEventKey* key) override;
-    
-    boost::regex bracket_regex;
-    boost::regex no_bracket_statement_regex;
-    boost::regex no_bracket_no_para_statement_regex;
     
     std::set<int> diagnostic_offsets;
     std::vector<FixIt> fix_its;
