@@ -1064,6 +1064,10 @@ bool Source::View::on_key_press_event(GdkEventKey* key) {
   if(get_buffer()->get_has_selection())
     return on_key_press_event_basic(key);
   
+  auto iter=get_buffer()->get_insert()->get_iter();
+  if(iter.backward_char() && (get_source_buffer()->iter_has_context_class(iter, "comment") || get_source_buffer()->iter_has_context_class(iter, "string")))
+    return on_key_press_event_basic(key);
+  
   if(is_bracket_language)
     return on_key_press_event_bracket_language(key);
   else
@@ -1287,12 +1291,8 @@ bool Source::View::on_key_press_event_basic(GdkEventKey* key) {
 
 //Bracket language indentation
 bool Source::View::on_key_press_event_bracket_language(GdkEventKey* key) {
-  auto iter=get_buffer()->get_insert()->get_iter();
-  if(iter.backward_char() && (get_source_buffer()->iter_has_context_class(iter, "comment") || get_source_buffer()->iter_has_context_class(iter, "string")))
-    return on_key_press_event_basic(key);
-  
   get_source_buffer()->begin_user_action();
-  iter=get_buffer()->get_insert()->get_iter();
+  auto iter=get_buffer()->get_insert()->get_iter();
   //Indent depending on if/else/etc and brackets
   if(key->keyval==GDK_KEY_Return && !iter.starts_line()) {
     //First remove spaces or tabs around cursor
