@@ -501,15 +501,6 @@ Source::ClangViewParse(file_path, project_path, language), autocomplete_state(Au
   });
 }
 
-bool Source::ClangViewAutocomplete::on_key_press_event(GdkEventKey *key) {
-  last_keyval=key->keyval;
-  if(autocomplete_dialog && autocomplete_dialog->shown) {
-    if(autocomplete_dialog->on_key_press(key))
-      return true;
-  }
-  return View::on_key_press_event(key);
-}
-
 void Source::ClangViewAutocomplete::autocomplete_dialog_setup() {
   auto start_iter=get_buffer()->get_insert()->get_iter();
   if(prefix.size()>0 && !start_iter.backward_chars(prefix.size()))

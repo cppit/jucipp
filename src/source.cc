@@ -151,12 +151,12 @@ Source::View::View(const boost::filesystem::path &file_path, const boost::filesy
       if(ends_line || *iter=='/' || *iter=='*') //iter_has_context_class is sadly bugged
         backward_success=context_iter.backward_char();
       if(backward_success) {
-        if(last_keyval_is_backspace && !is_word_iter(iter) && iter.forward_char()) {} //backspace fix
+        if(last_keyval==GDK_KEY_BackSpace && !is_word_iter(iter) && iter.forward_char()) {} //backspace fix
         if((spellcheck_all && !get_source_buffer()->iter_has_context_class(context_iter, "no-spell-check")) || get_source_buffer()->iter_has_context_class(context_iter, "comment") || get_source_buffer()->iter_has_context_class(context_iter, "string")) {
-          if(!is_word_iter(iter) || last_keyval_is_return) { //Might have used space or - to split two words
+          if(!is_word_iter(iter) || last_keyval==GDK_KEY_Return) { //Might have used space or - to split two words
             auto first=iter;
             auto second=iter;
-            if(last_keyval_is_return) {
+            if(last_keyval==GDK_KEY_Return) {
               while(first && !first.ends_line() && first.backward_char()) {}
               if(first.backward_char() && second.forward_char()) {
                 get_buffer()->remove_tag_by_name("spellcheck_error", first, second);
@@ -1049,6 +1049,21 @@ bool Source::View::find_left_bracket_backward(Gtk::TextIter iter, Gtk::TextIter 
 }
 
 bool Source::View::on_key_press_event(GdkEventKey* key) {
+  if(spellcheck_suggestions_dialog && spellcheck_suggestions_dialog->shown) {
+    if(spellcheck_suggestions_dialog->on_key_press(key))
+      return true;
+  }
+  
+  if(autocomplete_dialog && autocomplete_dialog->shown) {
+    if(autocomplete_dialog->on_key_press(key))
+      return true;
+  }
+  
+  last_keyval=key->keyval;
+  
+  if(get_buffer()->get_has_selection())
+    return on_key_press_event_basic(key);
+  
   if(is_bracket_language)
     return on_key_press_event_bracket_language(key);
   else
@@ -1057,20 +1072,6 @@ bool Source::View::on_key_press_event(GdkEventKey* key) {
 
 //Basic indentation
 bool Source::View::on_key_press_event_basic(GdkEventKey* key) {
-  if(spellcheck_suggestions_dialog && spellcheck_suggestions_dialog->shown) {
-    if(spellcheck_suggestions_dialog->on_key_press(key))
-      return true;
-  }
-
-  if(key->keyval==GDK_KEY_BackSpace)
-    last_keyval_is_backspace=true;
-  else
-    last_keyval_is_backspace=false;
-  if(key->keyval==GDK_KEY_Return)
-    last_keyval_is_return=true;
-  else
-    last_keyval_is_return=false;
-  
   get_source_buffer()->begin_user_action();
   auto iter=get_buffer()->get_insert()->get_iter();
   //Indent as in next or previous line
@@ -1286,18 +1287,10 @@ bool Source::View::on_key_press_event_basic(GdkEventKey* key) {
 
 //Bracket language indentation
 bool Source::View::on_key_press_event_bracket_language(GdkEventKey* key) {
-  if(spellcheck_suggestions_dialog && spellcheck_suggestions_dialog->shown) {
-    if(spellcheck_suggestions_dialog->on_key_press(key))
-      return true;
-  }
-  
   auto iter=get_buffer()->get_insert()->get_iter();
   if(iter.backward_char() && (get_source_buffer()->iter_has_context_class(iter, "comment") || get_source_buffer()->iter_has_context_class(iter, "string")))
     return on_key_press_event_basic(key);
   
-  if(get_buffer()->get_has_selection()) {
-    return on_key_press_event_basic(key);
-  }
   get_source_buffer()->begin_user_action();
   iter=get_buffer()->get_insert()->get_iter();
   //Indent depending on if/else/etc and brackets
