@@ -1,5 +1,5 @@
 # juCi++
-###### a lightweight platform independent C++-IDE with support for C++11, C++14, and experimental C++17 features depending on libclang version.
+###### a lightweight, platform independent C++-IDE with support for C++11, C++14, and experimental C++17 features depending on libclang version.
 <!--<img src="https://github.com/cppit/jucipp/blob/master/docs/images/screenshot3.png"/>-->
 ## About
 Current IDEs struggle with C++ support due to the complexity of

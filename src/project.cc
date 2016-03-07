@@ -265,11 +265,11 @@ void Project::Clang::debug_start() {
         debugging=false;
         Terminal::get().async_print(run_arguments+" returned: "+std::to_string(exit_status)+'\n');
       }, [this](const std::string &status) {
-        dispatcher.push([this, status] {
+        dispatcher.post([this, status] {
           debug_update_status(status);
         });
       }, [this](const boost::filesystem::path &file_path, int line_nr, int line_index) {
-        dispatcher.push([this, file_path, line_nr, line_index] {
+        dispatcher.post([this, file_path, line_nr, line_index] {
           Project::debug_stop.first=file_path;
           Project::debug_stop.second.first=line_nr;
           Project::debug_stop.second.second=line_index;
