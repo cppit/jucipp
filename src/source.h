@@ -92,6 +92,7 @@ namespace Source {
     Gtk::TextIter get_iter_for_dialog();
     sigc::connection delayed_tooltips_connection;
     
+    std::function<void(View* view, bool center, bool show_tooltips)> scroll_to_cursor_delayed=[](View* view, bool center, bool show_tooltips) {};
     std::function<void(View* view, const std::string &status_text)> on_update_status;
     std::function<void(View* view, const std::string &info_text)> on_update_info;
     void set_status(const std::string &status);

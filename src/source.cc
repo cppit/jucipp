@@ -349,6 +349,7 @@ Source::View::View(const boost::filesystem::path &file_path, const boost::filesy
         auto cursor_line_offset=iter.get_line_offset();
         
         get_buffer()->set_text(stdout_stream.str());
+        get_source_buffer()->end_user_action();
         
         cursor_line_nr=std::min(cursor_line_nr, get_buffer()->get_line_count()-1);
         if(cursor_line_nr>=0) {
@@ -359,11 +360,8 @@ Source::View::View(const boost::filesystem::path &file_path, const boost::filesy
             iter.forward_char();
           }
           get_buffer()->place_cursor(iter);
-          while(g_main_context_pending(NULL)) //TODO: minor: might crash if the buffer is saved and closed really fast right after doing auto indent
-            g_main_context_iteration(NULL, false);
-          scroll_to(get_buffer()->get_insert(), 0.0, 1.0, 0.5);
+          scroll_to_cursor_delayed(this, true, false);
         }
-        get_source_buffer()->end_user_action();
       }
     };
   }
@@ -748,12 +746,13 @@ void Source::View::paste() {
       }
     }
     get_buffer()->place_cursor(get_buffer()->get_insert()->get_iter());
-    scroll_to(get_buffer()->get_insert());
     get_source_buffer()->end_user_action();
+    scroll_to_cursor_delayed(this, false, false);
   }
   else {
     Gtk::Clipboard::get()->set_text(text);
     get_buffer()->paste_clipboard(Gtk::Clipboard::get());
+    scroll_to_cursor_delayed(this, false, false);
   }
 }
 

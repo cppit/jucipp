@@ -116,6 +116,18 @@ void Notebook::open(const boost::filesystem::path &file_path) {
   else
     source_views.emplace_back(new Source::GenericView(file_path, project_path, language));
   
+  source_views.back()->scroll_to_cursor_delayed=[this](Source::View* view, bool center, bool show_tooltips) {
+    while(g_main_context_pending(NULL))
+      g_main_context_iteration(NULL, false);
+    if(get_current_page()!=-1 && get_current_view()==view) {
+      if(center)
+        view->scroll_to(view->get_buffer()->get_insert(), 0.0, 1.0, 0.5);
+      else
+        view->scroll_to(view->get_buffer()->get_insert());
+      if(!show_tooltips)
+        view->delayed_tooltips_connection.disconnect();
+    }
+  };
   source_views.back()->on_update_status=[this](Source::View* view, const std::string &status_text) {
     if(get_current_page()!=-1 && get_current_view()==view)
       status.set_text(status_text+" ");
