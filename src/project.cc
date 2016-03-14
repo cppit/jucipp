@@ -60,15 +60,18 @@ void Project::debug_update_stop() {
 
 std::unique_ptr<Project::Language> Project::get_language() {
   if(Notebook::get().get_current_page()!=-1) {
-    auto language_id=Notebook::get().get_current_view()->language->get_id();
-    if(language_id=="markdown")
-      return std::unique_ptr<Project::Language>(new Project::Markdown());
-    if(language_id=="python")
-      return std::unique_ptr<Project::Language>(new Project::Python());
-    if(language_id=="js")
-      return std::unique_ptr<Project::Language>(new Project::JavaScript());
-    if(language_id=="html")
-      return std::unique_ptr<Project::Language>(new Project::HTML());
+    auto view=Notebook::get().get_current_view();
+    if(view->language) {
+      auto language_id=view->language->get_id();
+      if(language_id=="markdown")
+        return std::unique_ptr<Project::Language>(new Project::Markdown());
+      if(language_id=="python")
+        return std::unique_ptr<Project::Language>(new Project::Python());
+      if(language_id=="js")
+        return std::unique_ptr<Project::Language>(new Project::JavaScript());
+      if(language_id=="html")
+        return std::unique_ptr<Project::Language>(new Project::HTML());
+    }
   }
   
   return std::unique_ptr<Project::Language>(new Project::Clang());
