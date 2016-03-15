@@ -13,18 +13,30 @@
 
 class Directories : public Gtk::TreeView {
 public:
-  class ColumnRecord : public Gtk::TreeModel::ColumnRecord {
+  class TreeStore : public Gtk::TreeStore {
+  protected:
+    TreeStore() {}
+    
+    bool row_drop_possible_vfunc(const Gtk::TreeModel::Path& path, const Gtk::SelectionData& selection_data) const override;
+    bool drag_data_received_vfunc(const TreeModel::Path &path, const Gtk::SelectionData &selection_data) override;
+    bool drag_data_delete_vfunc (const Gtk::TreeModel::Path &path) override;
+    
   public:
-    ColumnRecord() {
-      add(id);
-      add(name);
-      add(path);
-      add(color);
-    }
-    Gtk::TreeModelColumn<std::string> id;
-    Gtk::TreeModelColumn<std::string> name;
-    Gtk::TreeModelColumn<boost::filesystem::path> path;
-    Gtk::TreeModelColumn<Gdk::RGBA> color;
+    class ColumnRecord : public Gtk::TreeModel::ColumnRecord {
+    public:
+      ColumnRecord() {
+        add(id);
+        add(name);
+        add(path);
+        add(color);
+      }
+      Gtk::TreeModelColumn<std::string> id;
+      Gtk::TreeModelColumn<std::string> name;
+      Gtk::TreeModelColumn<boost::filesystem::path> path;
+      Gtk::TreeModelColumn<Gdk::RGBA> color;
+    };
+    
+    static Glib::RefPtr<TreeStore> create() {return Glib::RefPtr<TreeStore>(new TreeStore());}
   };
 
 private:
@@ -43,10 +55,13 @@ public:
   std::unique_ptr<CMake> cmake;
   boost::filesystem::path current_path;
   
+protected:
+  bool on_button_press_event(GdkEventButton* event) override;
+  
 private:
   void add_path(const boost::filesystem::path& dir_path, const Gtk::TreeModel::Row &row);
   Glib::RefPtr<Gtk::TreeStore> tree_store;
-  ColumnRecord column_record;
+  TreeStore::ColumnRecord column_record;
   
   std::unordered_map<std::string, std::pair<Gtk::TreeModel::Row, std::time_t> > last_write_times;
   std::mutex update_mutex;
@@ -54,6 +69,10 @@ private:
   std::atomic<bool> stop_update_thread;
   Dispatcher dispatcher;
   std::vector<std::string> update_paths;
+  
+  Gtk::Menu menu;
+  Gtk::MenuItem menu_item_delete;
+  boost::filesystem::path menu_popup_row_path;
 };
 
 #endif  // JUCI_DIRECTORIES_H_

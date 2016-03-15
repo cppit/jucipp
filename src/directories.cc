@@ -3,6 +3,8 @@
 #include <algorithm>
 #include <unordered_set>
 #include "source.h"
+#include "terminal.h"
+#include "notebook.h"
 
 #include <iostream> //TODO: remove
 using namespace std; //TODO: remove
@@ -21,10 +23,87 @@ namespace sigc {
 #endif
 }
 
+bool Directories::TreeStore::row_drop_possible_vfunc(const Gtk::TreeModel::Path& path, const Gtk::SelectionData& selection_data) const {
+  return true;
+}
+
+bool Directories::TreeStore::drag_data_received_vfunc(const TreeModel::Path &path, const Gtk::SelectionData &selection_data) {
+  auto &directories=Directories::get();
+  
+  auto get_target_folder=[this, &directories](const TreeModel::Path &path) {
+    if(path.size()==1)
+      return directories.current_path;
+    else {
+      auto it=get_iter(path);
+      if(it) {
+        auto prev_path=path;
+        prev_path.up();
+        it=get_iter(prev_path);
+        if(it)
+          return it->get_value(directories.column_record.path);
+      }
+      else {
+        auto prev_path=path;
+        prev_path.up();
+        if(prev_path.size()==1)
+          return directories.current_path;
+        else {
+          prev_path.up();
+          it=get_iter(prev_path);
+          if(it)
+            return it->get_value(directories.column_record.path);
+        }
+      }
+    }
+    return boost::filesystem::path();
+  };
+  
+  auto it=directories.get_selection()->get_selected();
+  if(it) {
+    auto source_path=it->get_value(directories.column_record.path);
+    auto target_path=get_target_folder(path);
+    
+    target_path/=source_path.filename();
+    
+    if(source_path==target_path)
+      return false;
+    
+    if(boost::filesystem::exists(target_path)) {
+      Terminal::get().print("Error: Could not move file: "+target_path.string()+" already exists\n", true);
+      return false;
+    }
+    
+    boost::system::error_code ec;
+    boost::filesystem::rename(source_path, target_path, ec);
+    if(ec) {
+      Terminal::get().print("Error: Could not move file: "+ec.message()+'\n', true);
+      return false;
+    }
+    
+    for(int c=0;c<Notebook::get().size();c++) {
+      auto view=Notebook::get().get_view(c);
+      if(view->file_path==source_path) {
+        view->file_path=target_path;
+        break;
+      }
+    }
+    
+    Directories::get().update();
+    directories.select(target_path);
+  }
+  
+  return false;
+}
+
+bool Directories::TreeStore::drag_data_delete_vfunc (const Gtk::TreeModel::Path &path) {
+  return false;
+}
+
 Directories::Directories() : Gtk::TreeView(), stop_update_thread(false) {
   this->set_enable_tree_lines(true);
   
-  tree_store = Gtk::TreeStore::create(column_record);
+  tree_store = TreeStore::create();
+  tree_store->set_column_types(column_record);
   set_model(tree_store);
   append_column("", column_record.name);
   auto renderer=dynamic_cast<Gtk::CellRendererText*>(get_column(0)->get_first_cell());
@@ -112,6 +191,18 @@ Directories::Directories() : Gtk::TreeView(), stop_update_thread(false) {
       update_mutex.unlock();
     }
   });
+  
+  enable_model_drag_source();
+  enable_model_drag_dest();
+  
+  menu_item_delete.set_label("Delete");
+  menu_item_delete.signal_activate().connect([this] {
+    std::cout << "delete " << menu_popup_row_path << std::endl;
+  });
+  menu.append(menu_item_delete);
+  
+  menu.show_all();
+  menu.accelerate(*this);
 }
 
 Directories::~Directories() {
@@ -207,6 +298,19 @@ void Directories::select(const boost::filesystem::path &path) {
     return false;
   });
  JDEBUG("end");
+}
+
+bool Directories::on_button_press_event(GdkEventButton* event) {
+  if(event->type==GDK_BUTTON_PRESS && event->button==3) {
+    Gtk::TreeModel::Path path;
+    if(get_path_at_pos(static_cast<int>(event->x), static_cast<int>(event->y), path)) {
+      menu_popup_row_path=get_model()->get_iter(path)->get_value(column_record.path);
+      menu.popup(event->button, event->time);
+      return true;
+    }
+  }
+  
+  return Gtk::TreeView::on_button_press_event(event);
 }
 
 void Directories::add_path(const boost::filesystem::path& dir_path, const Gtk::TreeModel::Row &parent) {
