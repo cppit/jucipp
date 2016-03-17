@@ -151,12 +151,12 @@ Source::View::View(const boost::filesystem::path &file_path, const boost::filesy
       if(ends_line || *iter=='/' || *iter=='*') //iter_has_context_class is sadly bugged
         backward_success=context_iter.backward_char();
       if(backward_success) {
-        if(last_keyval_is_backspace && !is_word_iter(iter) && iter.forward_char()) {} //backspace fix
+        if(last_keyval==GDK_KEY_BackSpace && !is_word_iter(iter) && iter.forward_char()) {} //backspace fix
         if((spellcheck_all && !get_source_buffer()->iter_has_context_class(context_iter, "no-spell-check")) || get_source_buffer()->iter_has_context_class(context_iter, "comment") || get_source_buffer()->iter_has_context_class(context_iter, "string")) {
-          if(!is_word_iter(iter) || last_keyval_is_return) { //Might have used space or - to split two words
+          if(!is_word_iter(iter) || last_keyval==GDK_KEY_Return) { //Might have used space or - to split two words
             auto first=iter;
             auto second=iter;
-            if(last_keyval_is_return) {
+            if(last_keyval==GDK_KEY_Return) {
               while(first && !first.ends_line() && first.backward_char()) {}
               if(first.backward_char() && second.forward_char()) {
                 get_buffer()->remove_tag_by_name("spellcheck_error", first, second);
@@ -292,6 +292,79 @@ Source::View::View(const boost::filesystem::path &file_path, const boost::filesy
     }
   }
   set_tab_char_and_size(tab_char, tab_size);
+  
+  bracket_regex=boost::regex("^([ \\t]*).*\\{ *$");
+  no_bracket_statement_regex=boost::regex("^([ \\t]*)(if|for|else if|while) *\\(.*[^;}] *$");
+  no_bracket_no_para_statement_regex=boost::regex("^([ \\t]*)(else) *$");
+  
+  if(language && (language->get_id()=="chdr" || language->get_id()=="cpphdr" || language->get_id()=="c" ||
+                  language->get_id()=="cpp" || language->get_id()=="objc" || language->get_id()=="java" ||
+                  language->get_id()=="js" || language->get_id()=="ts" || language->get_id()=="proto" ||
+                  language->get_id()=="c-sharp")) {
+    is_bracket_language=true;
+    
+    auto_indent=[this]() {
+      auto command=Config::get().terminal.clang_format_command;
+      bool use_style_file=false;
+      
+      auto style_file_search_path=this->file_path.parent_path();
+      while(true) {
+        if(boost::filesystem::exists(style_file_search_path/".clang-format") || boost::filesystem::exists(style_file_search_path/"_clang-format")) {
+          use_style_file=true;
+          break;
+        }
+        if(style_file_search_path==style_file_search_path.root_directory())
+          break;
+        style_file_search_path=style_file_search_path.parent_path();
+      }
+      
+      if(use_style_file)
+        command+=" -style=file";
+      else {
+        unsigned indent_width;
+        std::string tab_style;
+        if(tab_char=='\t') {
+          indent_width=tab_size*8;
+          tab_style="UseTab: Always";
+        }
+        else {
+          indent_width=tab_size;
+          tab_style="UseTab: Never";
+        }
+        command+=" -style=\"{IndentWidth: "+std::to_string(indent_width);
+        command+=", "+tab_style;
+        command+=", "+std::string("AccessModifierOffset: -")+std::to_string(indent_width);
+        if(Config::get().source.clang_format_style!="")
+          command+=", "+Config::get().source.clang_format_style;
+        command+="}\"";
+      }
+      
+      std::stringstream stdin_stream(get_buffer()->get_text()), stdout_stream;
+      
+      auto exit_status=Terminal::get().process(stdin_stream, stdout_stream, command, this->file_path.parent_path());
+      if(exit_status==0) {
+        get_source_buffer()->begin_user_action();
+        auto iter=get_buffer()->get_insert()->get_iter();
+        auto cursor_line_nr=iter.get_line();
+        auto cursor_line_offset=iter.get_line_offset();
+        
+        get_buffer()->set_text(stdout_stream.str());
+        get_source_buffer()->end_user_action();
+        
+        cursor_line_nr=std::min(cursor_line_nr, get_buffer()->get_line_count()-1);
+        if(cursor_line_nr>=0) {
+          iter=get_buffer()->get_iter_at_line(cursor_line_nr);
+          for(int c=0;c<cursor_line_offset;c++) {
+            if(iter.ends_line())
+              break;
+            iter.forward_char();
+          }
+          get_buffer()->place_cursor(iter);
+          scroll_to_cursor_delayed(this, true, false);
+        }
+      }
+    };
+  }
 }
 
 void Source::View::set_tab_char_and_size(char tab_char, unsigned tab_size) {
@@ -673,12 +746,13 @@ void Source::View::paste() {
       }
     }
     get_buffer()->place_cursor(get_buffer()->get_insert()->get_iter());
-    scroll_to(get_buffer()->get_insert());
     get_source_buffer()->end_user_action();
+    scroll_to_cursor_delayed(this, false, false);
   }
   else {
     Gtk::Clipboard::get()->set_text(text);
     get_buffer()->paste_clipboard(Gtk::Clipboard::get());
+    scroll_to_cursor_delayed(this, false, false);
   }
 }
 
@@ -973,22 +1047,34 @@ bool Source::View::find_left_bracket_backward(Gtk::TextIter iter, Gtk::TextIter 
   return false;
 }
 
-//Basic indentation
 bool Source::View::on_key_press_event(GdkEventKey* key) {
   if(spellcheck_suggestions_dialog && spellcheck_suggestions_dialog->shown) {
     if(spellcheck_suggestions_dialog->on_key_press(key))
       return true;
   }
-
-  if(key->keyval==GDK_KEY_BackSpace)
-    last_keyval_is_backspace=true;
-  else
-    last_keyval_is_backspace=false;
-  if(key->keyval==GDK_KEY_Return)
-    last_keyval_is_return=true;
-  else
-    last_keyval_is_return=false;
   
+  if(autocomplete_dialog && autocomplete_dialog->shown) {
+    if(autocomplete_dialog->on_key_press(key))
+      return true;
+  }
+  
+  last_keyval=key->keyval;
+  
+  if(get_buffer()->get_has_selection())
+    return on_key_press_event_basic(key);
+  
+  auto iter=get_buffer()->get_insert()->get_iter();
+  if(iter.backward_char() && (get_source_buffer()->iter_has_context_class(iter, "comment") || get_source_buffer()->iter_has_context_class(iter, "string")))
+    return on_key_press_event_basic(key);
+  
+  if(is_bracket_language)
+    return on_key_press_event_bracket_language(key);
+  else
+    return on_key_press_event_basic(key);
+}
+
+//Basic indentation
+bool Source::View::on_key_press_event_basic(GdkEventKey* key) {
   get_source_buffer()->begin_user_action();
   auto iter=get_buffer()->get_insert()->get_iter();
   //Indent as in next or previous line
@@ -1200,6 +1286,203 @@ bool Source::View::on_key_press_event(GdkEventKey* key) {
   bool stop=Gsv::View::on_key_press_event(key);
   get_source_buffer()->end_user_action();
   return stop;
+}
+
+//Bracket language indentation
+bool Source::View::on_key_press_event_bracket_language(GdkEventKey* key) {
+  get_source_buffer()->begin_user_action();
+  auto iter=get_buffer()->get_insert()->get_iter();
+  //Indent depending on if/else/etc and brackets
+  if(key->keyval==GDK_KEY_Return && !iter.starts_line()) {
+    //First remove spaces or tabs around cursor
+    auto start_blank_iter=iter;
+    auto end_blank_iter=iter;
+    while((*end_blank_iter==' ' || *end_blank_iter=='\t') &&
+          !end_blank_iter.ends_line() && end_blank_iter.forward_char()) {}
+    start_blank_iter.backward_char();
+    while((*start_blank_iter==' ' || *start_blank_iter=='\t' || start_blank_iter.ends_line()) &&
+          !start_blank_iter.starts_line() && start_blank_iter.backward_char()) {}
+    if(!start_blank_iter.starts_line()) {
+      start_blank_iter.forward_char();
+      get_buffer()->erase(start_blank_iter, end_blank_iter);
+    }
+    else
+      get_buffer()->erase(iter, end_blank_iter);
+    iter=get_buffer()->get_insert()->get_iter();
+    
+    Gtk::TextIter start_of_sentence_iter;
+    if(find_start_of_closed_expression(iter, start_of_sentence_iter)) {
+      auto start_sentence_tabs_end_iter=get_tabs_end_iter(start_of_sentence_iter);
+      auto tabs=get_line_before(start_sentence_tabs_end_iter);
+      
+      boost::smatch sm;
+      if(iter.backward_char() && *iter=='{') {
+        auto found_iter=iter;
+        bool found_right_bracket=find_right_bracket_forward(iter, found_iter);
+        
+        bool has_bracket=false;
+        if(found_right_bracket) {
+          auto tabs_end_iter=get_tabs_end_iter(found_iter);
+          auto line_tabs=get_line_before(tabs_end_iter);
+          if(tabs.size()==line_tabs.size())
+            has_bracket=true;
+        }
+        if(*get_buffer()->get_insert()->get_iter()=='}') {
+          get_source_buffer()->insert_at_cursor("\n"+tabs+tab+"\n"+tabs);
+          auto insert_it = get_source_buffer()->get_insert()->get_iter();
+          if(insert_it.backward_chars(tabs.size()+1)) {
+            scroll_to(get_source_buffer()->get_insert());
+            get_source_buffer()->place_cursor(insert_it);
+          }
+          get_source_buffer()->end_user_action();
+          return true;
+        }
+        else if(!has_bracket) {
+          //Insert new lines with bracket end
+          get_source_buffer()->insert_at_cursor("\n"+tabs+tab+"\n"+tabs+"}");
+          auto insert_it = get_source_buffer()->get_insert()->get_iter();
+          if(insert_it.backward_chars(tabs.size()+2)) {
+            scroll_to(get_source_buffer()->get_insert());
+            get_source_buffer()->place_cursor(insert_it);
+          }
+          get_source_buffer()->end_user_action();
+          return true;
+        }
+        else {
+          get_source_buffer()->insert_at_cursor("\n"+tabs+tab);
+          scroll_to(get_buffer()->get_insert());
+          get_source_buffer()->end_user_action();
+          return true;
+        }
+      }
+      auto line=get_line_before();
+      iter=get_buffer()->get_insert()->get_iter();
+      auto found_iter=iter;
+      if(find_open_expression_symbol(iter, start_of_sentence_iter, found_iter)) {
+        auto tabs_end_iter=get_tabs_end_iter(found_iter);
+        tabs=get_line_before(tabs_end_iter);
+        auto iter=tabs_end_iter;
+        while(iter<=found_iter) {
+          tabs+=' ';
+          iter.forward_char();
+        }
+      }
+      else if(boost::regex_match(line, sm, no_bracket_statement_regex)) {
+        get_source_buffer()->insert_at_cursor("\n"+tabs+tab);
+        scroll_to(get_source_buffer()->get_insert());
+        get_source_buffer()->end_user_action();
+        return true;
+      }
+      else if(boost::regex_match(line, sm, no_bracket_no_para_statement_regex)) {
+        get_source_buffer()->insert_at_cursor("\n"+tabs+tab);
+        scroll_to(get_source_buffer()->get_insert());
+        get_source_buffer()->end_user_action();
+        return true;
+      }
+      //Indenting after for instance if(...)\n...;\n
+      else if(iter.backward_char() && *iter==';') {
+        boost::smatch sm2;
+        size_t line_nr=get_source_buffer()->get_insert()->get_iter().get_line();
+        if(line_nr>0 && tabs.size()>=tab_size) {
+          std::string previous_line=get_line(line_nr-1);
+          if(!boost::regex_match(previous_line, sm2, bracket_regex)) {
+            if(boost::regex_match(previous_line, sm2, no_bracket_statement_regex)) {
+              get_source_buffer()->insert_at_cursor("\n"+sm2[1].str());
+              scroll_to(get_source_buffer()->get_insert());
+              get_source_buffer()->end_user_action();
+              return true;
+            }
+            else if(boost::regex_match(previous_line, sm2, no_bracket_no_para_statement_regex)) {
+              get_source_buffer()->insert_at_cursor("\n"+sm2[1].str());
+              scroll_to(get_source_buffer()->get_insert());
+              get_source_buffer()->end_user_action();
+              return true;
+            }
+          }
+        }
+      }
+      //Indenting after ':'
+      else if(*iter==':') {
+        Gtk::TextIter left_bracket_iter;
+        if(find_left_bracket_backward(iter, left_bracket_iter)) {
+          if(!left_bracket_iter.ends_line())
+            left_bracket_iter.forward_char();
+          Gtk::TextIter start_of_left_bracket_sentence_iter;
+          if(find_start_of_closed_expression(left_bracket_iter, start_of_left_bracket_sentence_iter)) {
+            boost::smatch sm;
+            auto tabs_end_iter=get_tabs_end_iter(start_of_left_bracket_sentence_iter);
+            auto tabs_start_of_sentence=get_line_before(tabs_end_iter);
+            if(tabs.size()==(tabs_start_of_sentence.size()+tab_size)) {
+              auto start_line_iter=get_buffer()->get_iter_at_line(iter.get_line());
+              auto start_line_plus_tab_size=start_line_iter;
+              for(size_t c=0;c<tab_size;c++)
+                start_line_plus_tab_size.forward_char();
+              get_buffer()->erase(start_line_iter, start_line_plus_tab_size);
+            }
+            else {
+              get_source_buffer()->insert_at_cursor("\n"+tabs+tab);
+              scroll_to(get_source_buffer()->get_insert());
+              get_source_buffer()->end_user_action();
+              return true;
+            }
+          }
+        }
+      }
+      get_source_buffer()->insert_at_cursor("\n"+tabs);
+      scroll_to(get_source_buffer()->get_insert());
+      get_source_buffer()->end_user_action();
+      return true;
+    }
+  }
+  //Indent left when writing } on a new line
+  else if(key->keyval==GDK_KEY_braceright) {
+    std::string line=get_line_before();
+    if(line.size()>=tab_size) {
+      for(auto c: line) {
+        if(c!=tab_char) {
+          get_source_buffer()->insert_at_cursor("}");
+          get_source_buffer()->end_user_action();
+          return true;
+        }
+      }
+      Gtk::TextIter insert_it = get_source_buffer()->get_insert()->get_iter();
+      Gtk::TextIter line_it = get_source_buffer()->get_iter_at_line(insert_it.get_line());
+      Gtk::TextIter line_plus_it=line_it;
+      line_plus_it.forward_chars(tab_size);
+      get_source_buffer()->erase(line_it, line_plus_it);
+    }
+    get_source_buffer()->insert_at_cursor("}");
+    get_source_buffer()->end_user_action();
+    return true;
+  }
+  //Indent left when writing { on a new line after for instance if(...)\n...
+  else if(key->keyval==GDK_KEY_braceleft) {
+    auto iter=get_buffer()->get_insert()->get_iter();
+    auto tabs_end_iter=get_tabs_end_iter();
+    auto tabs=get_line_before(tabs_end_iter);
+    size_t line_nr=iter.get_line();
+    if(line_nr>0 && tabs.size()>=tab_size && iter==tabs_end_iter) {
+      std::string previous_line=get_line(line_nr-1);
+      boost::smatch sm;
+      if(!boost::regex_match(previous_line, sm, bracket_regex)) {
+        auto start_iter=iter;
+        start_iter.backward_chars(tab_size);
+        if(boost::regex_match(previous_line, sm, no_bracket_statement_regex) ||
+           boost::regex_match(previous_line, sm, no_bracket_no_para_statement_regex)) {
+          if((tabs.size()-tab_size)==sm[1].str().size()) {
+            get_buffer()->erase(start_iter, iter);
+            get_buffer()->insert_at_cursor("{");
+            scroll_to(get_buffer()->get_insert());
+            get_buffer()->end_user_action();
+            return true;
+          }
+        }
+      }
+    }
+  }
+  
+  get_source_buffer()->end_user_action();
+  return on_key_press_event_basic(key);
 }
 
 bool Source::View::on_button_press_event(GdkEventButton *event) {
@@ -1445,10 +1728,8 @@ Source::GenericView::GenericView(const boost::filesystem::path &file_path, const
   configure();
   spellcheck_all=true;
   
-  if(language) {
+  if(language)
     get_source_buffer()->set_language(language);
-    Terminal::get().print("Language for file "+file_path.string()+" set to "+language->get_name()+".\n");
-  }
   
   auto completion=get_completion();
   completion->property_show_headers()=false;

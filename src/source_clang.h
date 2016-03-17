@@ -5,7 +5,6 @@
 #include <atomic>
 #include <mutex>
 #include <set>
-#include <boost/regex.hpp>
 #include "clangmm.h"
 #include "source.h"
 #include "terminal.h"
@@ -42,12 +41,6 @@ namespace Source {
     void show_diagnostic_tooltips(const Gdk::Rectangle &rectangle) override;
     void show_type_tooltips(const Gdk::Rectangle &rectangle) override;
     
-    bool on_key_press_event(GdkEventKey* key) override;
-    
-    boost::regex bracket_regex;
-    boost::regex no_bracket_statement_regex;
-    boost::regex no_bracket_no_para_statement_regex;
-    
     std::set<int> diagnostic_offsets;
     std::vector<FixIt> fix_its;
     
@@ -83,8 +76,6 @@ namespace Source {
     virtual void async_delete();
     bool full_reparse() override;
   protected:
-    bool on_key_press_event(GdkEventKey* key) override;
-    
     std::thread autocomplete_thread;
   private:
     std::atomic<AutocompleteState> autocomplete_state;
@@ -94,7 +85,6 @@ namespace Source {
     std::unordered_map<std::string, std::pair<std::string, std::string> > autocomplete_dialog_rows;
     std::vector<AutoCompleteData> autocomplete_get_suggestions(const std::string &buffer, int line_number, int column);
     Tooltips autocomplete_tooltips;
-    guint last_keyval=0;
     std::string prefix;
     std::mutex prefix_mutex;
     
