@@ -116,8 +116,8 @@ namespace Source {
     Tooltips type_tooltips;
     virtual void show_diagnostic_tooltips(const Gdk::Rectangle &rectangle) {}
     virtual void show_type_tooltips(const Gdk::Rectangle &rectangle) {}
-    gdouble on_motion_last_x;
-    gdouble on_motion_last_y;
+    gdouble on_motion_last_x=0.0;
+    gdouble on_motion_last_y=0.0;
     void set_tooltip_and_dialog_events();
         
     std::string get_line(const Gtk::TextIter &iter);
