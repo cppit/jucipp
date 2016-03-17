@@ -70,6 +70,7 @@ private:
   std::vector<std::string> update_paths;
   
   Gtk::Menu menu;
+  Gtk::MenuItem menu_item_rename;
   Gtk::MenuItem menu_item_delete;
   boost::filesystem::path menu_popup_row_path;
 };

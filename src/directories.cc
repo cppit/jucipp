@@ -6,6 +6,7 @@
 #include "terminal.h"
 #include "notebook.h"
 #include "filesystem.h"
+#include "entrybox.h"
 
 #include <iostream> //TODO: remove
 using namespace std; //TODO: remove
@@ -70,19 +71,32 @@ bool Directories::TreeStore::drag_data_received_vfunc(const TreeModel::Path &pat
       return false;
     
     if(boost::filesystem::exists(target_path)) {
-      Terminal::get().print("Error: Could not move file: "+target_path.string()+" already exists\n", true);
+      Terminal::get().print("Error: could not move file: "+target_path.string()+" already exists\n", true);
       return false;
     }
+    
+    bool is_directory=boost::filesystem::is_directory(source_path);
     
     boost::system::error_code ec;
     boost::filesystem::rename(source_path, target_path, ec);
     if(ec) {
-      Terminal::get().print("Error: Could not move file: "+ec.message()+'\n', true);
+      Terminal::get().print("Error: could not move file: "+ec.message()+'\n', true);
       return false;
     }
     
     for(int c=0;c<Notebook::get().size();c++) {
       auto view=Notebook::get().get_view(c);
+      if(is_directory) {
+        if(filesystem::file_in_path(view->file_path, source_path)) {
+          auto file_it=view->file_path.begin();
+          for(auto source_it=source_path.begin();source_it!=source_path.end();source_it++)
+            file_it++;
+          auto new_file_path=target_path;
+          for(;file_it!=view->file_path.end();file_it++)
+            new_file_path/=*file_it;
+          view->file_path=new_file_path;
+        }
+      }
       if(view->file_path==source_path) {
         view->file_path=target_path;
         break;
@@ -195,6 +209,50 @@ Directories::Directories() : Gtk::TreeView(), stop_update_thread(false) {
   
   enable_model_drag_source();
   enable_model_drag_dest();
+  
+  menu_item_rename.set_label("Rename");
+  menu_item_rename.signal_activate().connect([this] {
+    EntryBox::get().clear();
+    auto source_path=std::make_shared<boost::filesystem::path>(menu_popup_row_path);
+    EntryBox::get().entries.emplace_back(menu_popup_row_path.filename().string(), [this, source_path](const std::string& content){
+      bool is_directory=boost::filesystem::is_directory(*source_path);
+      
+      boost::system::error_code ec;
+      auto target_path=source_path->parent_path()/content;
+      boost::filesystem::rename(*source_path, target_path, ec);
+      if(ec)
+        Terminal::get().print("Error: could not rename "+source_path->string()+": "+ec.message()+'\n');
+      else {
+        update();
+        
+        for(int c=0;c<Notebook::get().size();c++) {
+          auto view=Notebook::get().get_view(c);
+          if(is_directory) {
+            if(filesystem::file_in_path(view->file_path, *source_path)) {
+              auto file_it=view->file_path.begin();
+              for(auto source_it=source_path->begin();source_it!=source_path->end();source_it++)
+                file_it++;
+              auto new_file_path=target_path;
+              for(;file_it!=view->file_path.end();file_it++)
+                new_file_path/=*file_it;
+              view->file_path=new_file_path;
+            }
+          }
+          else if(view->file_path==menu_popup_row_path)
+            view->get_buffer()->set_modified();
+        }
+        
+        EntryBox::get().hide();
+      }
+    });
+    auto entry_it=EntryBox::get().entries.begin();
+    entry_it->set_placeholder_text("Filename");
+    EntryBox::get().buttons.emplace_back("Rename file", [this, entry_it](){
+      entry_it->activate();
+    });
+    EntryBox::get().show();
+  });
+  menu.append(menu_item_rename);
   
   menu_item_delete.set_label("Delete");
   menu_item_delete.signal_activate().connect([this] {
