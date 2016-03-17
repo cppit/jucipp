@@ -6,6 +6,7 @@
 //#include "api.h"
 #include "dialogs.h"
 #include "filesystem.h"
+#include "project.h"
 
 namespace sigc {
 #ifndef SIGC_FUNCTORS_DEDUCE_RESULT_TYPE_WITH_DECLTYPE
@@ -168,7 +169,7 @@ void Window::set_menu_actions() {
       }
       else {
         if(filesystem::write(path)) {
-          if(Directories::get().current_path!="")
+          if(Directories::get().path!="")
             Directories::get().update();
           notebook.open(path);
           Terminal::get().print("New file "+path.string()+" created.\n");
@@ -185,7 +186,7 @@ void Window::set_menu_actions() {
       boost::system::error_code ec;
       auto last_write_time=boost::filesystem::last_write_time(path, ec);
       if(!ec && last_write_time>=time_now) {
-        if(Directories::get().current_path!="")
+        if(Directories::get().path!="")
           Directories::get().update();
         Terminal::get().print("New folder "+path.string()+" created.\n");
       }
@@ -260,7 +261,7 @@ void Window::set_menu_actions() {
         if(file) {
           file << notebook.get_current_view()->get_buffer()->get_text();
           file.close();
-          if(Directories::get().current_path!="")
+          if(Directories::get().path!="")
             Directories::get().update();
           notebook.open(path);
           Terminal::get().print("File saved to: " + notebook.get_current_view()->file_path.string()+"\n");
@@ -526,20 +527,22 @@ void Window::set_menu_actions() {
     if(Project::compiling || Project::debugging)
       return;
     
-    if(Config::get().project.save_on_compile_or_run)
-      notebook.save_project_files();
-    
     Project::current_language=Project::get_language();
+    
+    if(Config::get().project.save_on_compile_or_run)
+      Project::save_files(Project::current_language->build->project_path);
+    
     Project::current_language->compile_and_run();
   });
   menu.add_action("compile", [this]() {
     if(Project::compiling || Project::debugging)
       return;
+            
+    Project::current_language=Project::get_language();
     
     if(Config::get().project.save_on_compile_or_run)
-      notebook.save_project_files();
-        
-    Project::current_language=Project::get_language();
+      Project::save_files(Project::current_language->build->project_path);
+    
     Project::current_language->compile();
   });
   
@@ -548,7 +551,7 @@ void Window::set_menu_actions() {
     entry_box.labels.emplace_back();
     auto label_it=entry_box.labels.begin();
     label_it->update=[label_it](int state, const std::string& message){
-      label_it->set_text("Run Command directory order: file project path, opened directory, current directory");
+      label_it->set_text("Run Command directory order: opened directory, file path, current directory");
     };
     label_it->update(0, "");
     entry_box.entries.emplace_back(last_run_command, [this](const std::string& content){
@@ -610,11 +613,11 @@ void Window::set_menu_actions() {
       Project::current_language->debug_continue();
       return;
     }
+        
+    Project::current_language=Project::get_language();
     
     if(Config::get().project.save_on_compile_or_run)
-      notebook.save_project_files();
-    
-    Project::current_language=Project::get_language();
+      Project::save_files(Project::current_language->build->project_path);
     
     Project::current_language->debug_start();
   });

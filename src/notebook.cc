@@ -4,7 +4,7 @@
 #include "logging.h"
 #include <fstream>
 #include <regex>
-#include "cmake.h"
+#include "project_build.h"
 #include "filesystem.h"
 
 #if GTKSOURCEVIEWMM_MAJOR_VERSION > 2 & GTKSOURCEVIEWMM_MINOR_VERSION > 17
@@ -97,24 +97,10 @@ void Notebook::open(const boost::filesystem::path &file_path) {
   }
   
   auto language=Source::guess_language(file_path);
-  boost::filesystem::path project_path;
-  auto &directories=Directories::get();
-  if(directories.cmake && directories.cmake->project_path!="" && file_path.generic_string().substr(0, directories.cmake->project_path.generic_string().size()+1)==directories.cmake->project_path.generic_string()+'/')
-    project_path=directories.cmake->project_path;
-  else {
-    project_path=file_path.parent_path();
-    CMake cmake(project_path);
-    if(cmake.project_path!="") {
-      project_path=cmake.project_path;
-      Terminal::get().print("Project path for "+file_path.string()+" set to "+project_path.string()+"\n");
-    }
-  }
-  if(language && (language->get_id()=="chdr" || language->get_id()=="cpphdr" || language->get_id()=="c" || language->get_id()=="cpp" || language->get_id()=="objc")) {
-    CMake::create_default_build(project_path);
-    source_views.emplace_back(new Source::ClangView(file_path, project_path, language));
-  }
+  if(language && (language->get_id()=="chdr" || language->get_id()=="cpphdr" || language->get_id()=="c" || language->get_id()=="cpp" || language->get_id()=="objc"))
+    source_views.emplace_back(new Source::ClangView(file_path, language));
   else
-    source_views.emplace_back(new Source::GenericView(file_path, project_path, language));
+    source_views.emplace_back(new Source::GenericView(file_path, language));
   
   source_views.back()->scroll_to_cursor_delayed=[this](Source::View* view, bool center, bool show_tooltips) {
     while(g_main_context_pending(NULL))
@@ -260,25 +246,15 @@ bool Notebook::save(int page) {
       //If CMakeLists.txt have been modified:
       boost::filesystem::path project_path;
       if(view->file_path.filename()=="CMakeLists.txt") {
-        auto &directories=Directories::get();
-        if(directories.cmake && directories.cmake->project_path!="" && view->file_path.generic_string().substr(0, directories.cmake->project_path.generic_string().size()+1)==directories.cmake->project_path.generic_string()+'/') {
-          if(CMake::create_default_build(directories.cmake->project_path, true))
-            project_path=directories.cmake->project_path;
-        }
-        else {
-          CMake cmake(view->file_path.parent_path());
-          if(CMake::create_default_build(cmake.project_path, true))
-            project_path=cmake.project_path;
-        }
-        if(project_path!="") {
-          auto debug_project_path=CMake::get_debug_build_path(project_path);
-          if(!debug_project_path.empty() && boost::filesystem::exists(debug_project_path))
-            CMake::create_debug_build(project_path);
-          for(auto source_view: source_views) {
-            if(auto source_clang_view=dynamic_cast<Source::ClangView*>(source_view)) {
-              if(project_path==source_clang_view->project_path)
-                source_clang_view->full_reparse_needed=true;
-            }
+        auto build=Project::get_build(view->file_path);
+        build->update_default_build(true);
+        if(boost::filesystem::exists(build->get_debug_build_path()))
+          build->update_debug_build();
+        
+        for(auto source_view: source_views) {
+          if(auto source_clang_view=dynamic_cast<Source::ClangView*>(source_view)) {
+            if(filesystem::file_in_path(source_clang_view->file_path, build->project_path))
+              source_clang_view->full_reparse_needed=true;
           }
         }
       }
@@ -295,19 +271,6 @@ bool Notebook::save_current() {
   if(get_current_page()==-1)
     return false;
   return save(get_current_page());
-}
-
-void Notebook::save_project_files() {
-  if(get_current_page()==-1)
-    return;
-  auto current_view=get_current_view();
-  for(int c=0;c<size();c++) {
-    auto view=get_view(c);
-    if(view->get_buffer()->get_modified()) {
-      if(current_view->project_path==view->project_path)
-        save(c);
-    }
-  }
 }
 
 bool Notebook::close(int page) {
@@ -358,14 +321,12 @@ bool Notebook::close_current_page() {
 }
 
 boost::filesystem::path Notebook::get_current_folder() {
-  boost::filesystem::path current_path;
-  
-  if(get_current_page()!=-1)
-    current_path=get_current_view()->project_path;
+  if(!Directories::get().path.empty())
+    return Directories::get().path;
+  else if(get_current_page()!=-1)
+    return get_current_view()->file_path.parent_path();
   else
-    current_path=Directories::get().current_path;
-  
-  return current_path;
+    return boost::filesystem::path();
 }
 
 bool Notebook::save_modified_dialog(int page) {

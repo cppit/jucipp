@@ -4,7 +4,6 @@
 #include <gtkmm.h>
 #include "entrybox.h"
 #include "notebook.h"
-#include "project.h"
 #include <atomic>
 
 class Window : public Gtk::ApplicationWindow {

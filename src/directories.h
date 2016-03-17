@@ -5,10 +5,10 @@
 #include <vector>
 #include <string>
 #include "boost/filesystem.hpp"
-#include "cmake.h"
 #include <thread>
 #include <mutex>
 #include <atomic>
+#include <unordered_map>
 #include "dispatcher.h"
 
 class Directories : public Gtk::TreeView {
@@ -52,8 +52,7 @@ public:
   void select(const boost::filesystem::path &path);
   
   std::function<void(const boost::filesystem::path &path)> on_row_activated;
-  std::unique_ptr<CMake> cmake;
-  boost::filesystem::path current_path;
+  boost::filesystem::path path;
   
 protected:
   bool on_button_press_event(GdkEventButton* event) override;

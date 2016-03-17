@@ -58,7 +58,7 @@ namespace Source {
 
   class View : public Gsv::View {
   public:
-    View(const boost::filesystem::path &file_path, const boost::filesystem::path &project_path, Glib::RefPtr<Gsv::Language> language);
+    View(const boost::filesystem::path &file_path, Glib::RefPtr<Gsv::Language> language);
     ~View();
     
     virtual void configure();
@@ -74,7 +74,6 @@ namespace Source {
     void paste();
         
     boost::filesystem::path file_path;
-    boost::filesystem::path project_path;
     Glib::RefPtr<Gsv::Language> language;
     
     std::function<void()> auto_indent;
@@ -181,7 +180,7 @@ namespace Source {
       static Glib::RefPtr<CompletionBuffer> create() {return Glib::RefPtr<CompletionBuffer>(new CompletionBuffer());}
     };
   public:
-    GenericView(const boost::filesystem::path &file_path, const boost::filesystem::path &project_path, Glib::RefPtr<Gsv::Language> language);
+    GenericView(const boost::filesystem::path &file_path, Glib::RefPtr<Gsv::Language> language);
     
     void parse_language_file(Glib::RefPtr<CompletionBuffer> &completion_buffer, bool &has_context_class, const boost::property_tree::ptree &pt);
   };

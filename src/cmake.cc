@@ -18,7 +18,7 @@ CMake::CMake(const boost::filesystem::path &path) {
     return false;
   };
   
-  auto search_path=path;
+  auto search_path=boost::filesystem::is_directory(path)?path:path.parent_path();
   while(true) {
     auto search_cmake_path=search_path/"CMakeLists.txt";
     if(boost::filesystem::exists(search_cmake_path))
@@ -35,7 +35,7 @@ CMake::CMake(const boost::filesystem::path &path) {
   }
 }
 
-boost::filesystem::path CMake::get_default_build_path(const boost::filesystem::path &project_path) {
+boost::filesystem::path CMake::get_default_build_path() {
   boost::filesystem::path default_build_path=Config::get().project.default_build_path;
   
   const std::string path_variable_project_directory_name="<project_directory_name>";
@@ -55,7 +55,7 @@ boost::filesystem::path CMake::get_default_build_path(const boost::filesystem::p
   return default_build_path;
 }
 
-boost::filesystem::path CMake::get_debug_build_path(const boost::filesystem::path &project_path) {
+boost::filesystem::path CMake::get_debug_build_path() {
   boost::filesystem::path debug_build_path=Config::get().project.debug_build_path;
   
   const std::string path_variable_project_directory_name="<project_directory_name>";
@@ -86,14 +86,14 @@ boost::filesystem::path CMake::get_debug_build_path(const boost::filesystem::pat
   return debug_build_path;
 }
 
-bool CMake::create_default_build(const boost::filesystem::path &project_path, bool force) {
+bool CMake::update_default_build(bool force) {
   if(project_path.empty())
     return false;
   
   if(!boost::filesystem::exists(project_path/"CMakeLists.txt"))
     return false;
   
-  auto default_build_path=get_default_build_path(project_path);
+  auto default_build_path=get_default_build_path();
   if(default_build_path.empty())
     return false;
   if(!boost::filesystem::exists(default_build_path)) {
@@ -135,14 +135,14 @@ bool CMake::create_default_build(const boost::filesystem::path &project_path, bo
   return false;
 }
 
-bool CMake::create_debug_build(const boost::filesystem::path &project_path) {
+bool CMake::update_debug_build() {
   if(project_path.empty())
     return false;
   
   if(!boost::filesystem::exists(project_path/"CMakeLists.txt"))
     return false;
   
-  auto debug_build_path=get_debug_build_path(project_path);
+  auto debug_build_path=get_debug_build_path();
   if(debug_build_path.empty())
     return false;
   if(!boost::filesystem::exists(debug_build_path)) {

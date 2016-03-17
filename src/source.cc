@@ -82,7 +82,7 @@ std::string Source::FixIt::string(Glib::RefPtr<Gtk::TextBuffer> buffer) {
 //////////////
 AspellConfig* Source::View::spellcheck_config=NULL;
 
-Source::View::View(const boost::filesystem::path &file_path, const boost::filesystem::path &project_path, Glib::RefPtr<Gsv::Language> language): file_path(file_path), project_path(project_path), language(language) {
+Source::View::View(const boost::filesystem::path &file_path, Glib::RefPtr<Gsv::Language> language): file_path(file_path), language(language) {
   get_source_buffer()->begin_not_undoable_action();
   if(language) {
     if(filesystem::read_non_utf8(file_path, get_buffer())==-1)
@@ -1724,7 +1724,7 @@ std::vector<std::string> Source::View::spellcheck_get_suggestions(const Gtk::Tex
 /////////////////////
 //// GenericView ////
 /////////////////////
-Source::GenericView::GenericView(const boost::filesystem::path &file_path, const boost::filesystem::path &project_path, Glib::RefPtr<Gsv::Language> language) : View(file_path, project_path, language) {
+Source::GenericView::GenericView(const boost::filesystem::path &file_path, Glib::RefPtr<Gsv::Language> language) : View(file_path, language) {
   configure();
   spellcheck_all=true;
   

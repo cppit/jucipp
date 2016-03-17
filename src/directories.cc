@@ -32,7 +32,7 @@ bool Directories::TreeStore::drag_data_received_vfunc(const TreeModel::Path &pat
   
   auto get_target_folder=[this, &directories](const TreeModel::Path &path) {
     if(path.size()==1)
-      return directories.current_path;
+      return directories.path;
     else {
       auto it=get_iter(path);
       if(it) {
@@ -46,7 +46,7 @@ bool Directories::TreeStore::drag_data_received_vfunc(const TreeModel::Path &pat
         auto prev_path=path;
         prev_path.up();
         if(prev_path.size()==1)
-          return directories.current_path;
+          return directories.path;
         else {
           prev_path.up();
           it=get_iter(prev_path);
@@ -222,26 +222,21 @@ void Directories::open(const boost::filesystem::path& dir_path) {
   update_paths.clear();
   update_mutex.unlock();
     
-  cmake=std::unique_ptr<CMake>(new CMake(dir_path));
-  CMake::create_default_build(cmake->project_path);
-  auto project=cmake->get_functions_parameters("project");
-  if(project.size()>0 && project[0].second.size()>0) {
-    auto title=project[0].second[0];
-    //TODO: report that set_title does not handle '_' correctly?
-    size_t pos=0;
-    while((pos=title.find('_', pos))!=std::string::npos) {
-      title.replace(pos, 1, "__");
-      pos+=2;
-    }
-    get_column(0)->set_title(title);
+  
+  //TODO: report that set_title does not handle '_' correctly?
+  auto title=dir_path.filename().string();
+  size_t pos=0;
+  while((pos=title.find('_', pos))!=std::string::npos) {
+    title.replace(pos, 1, "__");
+    pos+=2;
   }
-  else
-    get_column(0)->set_title("");
+  get_column(0)->set_title(title);
+
   update_mutex.lock();
   add_path(dir_path, Gtk::TreeModel::Row());
   update_mutex.unlock();
     
-  current_path=dir_path;
+  path=dir_path;
   
  JDEBUG("end");
 }
@@ -256,22 +251,22 @@ void Directories::update() {
  JDEBUG("end");
 }
 
-void Directories::select(const boost::filesystem::path &path) {
+void Directories::select(const boost::filesystem::path &select_path) {
  JDEBUG("start");
-  if(current_path=="")
+  if(path=="")
     return;
     
-  if(path.generic_string().substr(0, current_path.generic_string().size()+1)!=current_path.generic_string()+'/')
+  if(select_path.generic_string().substr(0, path.generic_string().size()+1)!=path.generic_string()+'/')
     return;
   
   std::list<boost::filesystem::path> paths;
   boost::filesystem::path parent_path;
-  if(boost::filesystem::is_directory(path))
-    parent_path=path;
+  if(boost::filesystem::is_directory(select_path))
+    parent_path=select_path;
   else
-    parent_path=path.parent_path();
+    parent_path=select_path.parent_path();
   paths.emplace_front(parent_path);
-  while(parent_path!=current_path) {
+  while(parent_path!=path) {
     parent_path=parent_path.parent_path();
     paths.emplace_front(parent_path);
   }
@@ -288,8 +283,8 @@ void Directories::select(const boost::filesystem::path &path) {
     });
   }
   
-  tree_store->foreach_iter([this, &path](const Gtk::TreeModel::iterator& iter){
-    if(iter->get_value(column_record.path)==path) {
+  tree_store->foreach_iter([this, &select_path](const Gtk::TreeModel::iterator& iter){
+    if(iter->get_value(column_record.path)==select_path) {
       auto tree_path=Gtk::TreePath(iter);
       expand_to_path(tree_path);
       set_cursor(tree_path);

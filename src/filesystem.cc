@@ -1,6 +1,7 @@
 #include <fstream>
 #include <iostream>
 #include <sstream>
+#include <algorithm>
 
 #include "filesystem.h"
 #include "logging.h"
@@ -161,3 +162,10 @@ std::string filesystem::unescape(const std::string &argument) {
   }
   return escaped;
 }
+
+bool filesystem::file_in_path(const boost::filesystem::path &file_path, const boost::filesystem::path &path) {
+  if(std::distance(file_path.begin(), file_path.end())<std::distance(path.begin(), path.end()))
+    return false;
+  return std::equal(path.begin(), path.end(), file_path.begin());
+}
+
