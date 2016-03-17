@@ -329,6 +329,10 @@ boost::filesystem::path Notebook::get_current_folder() {
     return boost::filesystem::path();
 }
 
+void Notebook::set_tab_label(int page, const std::string &label) {
+  tab_labels.at(get_index(page))->label.set_text(label);
+}
+
 bool Notebook::save_modified_dialog(int page) {
   Gtk::MessageDialog dialog((Gtk::Window&)(*get_toplevel()), "Save file!", false, Gtk::MESSAGE_QUESTION, Gtk::BUTTONS_YES_NO);
   dialog.set_default_response(Gtk::RESPONSE_YES);

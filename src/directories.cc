@@ -212,6 +212,8 @@ Directories::Directories() : Gtk::TreeView(), stop_update_thread(false) {
   
   menu_item_rename.set_label("Rename");
   menu_item_rename.signal_activate().connect([this] {
+    if(menu_popup_row_path.empty())
+      return;
     EntryBox::get().clear();
     auto source_path=std::make_shared<boost::filesystem::path>(menu_popup_row_path);
     EntryBox::get().entries.emplace_back(menu_popup_row_path.filename().string(), [this, source_path](const std::string& content){
@@ -224,6 +226,7 @@ Directories::Directories() : Gtk::TreeView(), stop_update_thread(false) {
         Terminal::get().print("Error: could not rename "+source_path->string()+": "+ec.message()+'\n');
       else {
         update();
+        select(target_path);
         
         for(int c=0;c<Notebook::get().size();c++) {
           auto view=Notebook::get().get_view(c);
@@ -238,8 +241,19 @@ Directories::Directories() : Gtk::TreeView(), stop_update_thread(false) {
               view->file_path=new_file_path;
             }
           }
-          else if(view->file_path==menu_popup_row_path)
-            view->get_buffer()->set_modified();
+          else if(view->file_path==*source_path) {
+            view->file_path=target_path;
+            Notebook::get().set_tab_label(c, target_path.filename().string());
+            std::string old_language_id;
+            if(view->language)
+              old_language_id=view->language->get_id();
+            view->language=Source::guess_language(target_path);
+            std::string new_language_id;
+            if(view->language)
+              new_language_id=view->language->get_id();
+            if(new_language_id!=old_language_id)
+              Terminal::get().print("Warning: language for "+target_path.string()+" has changed. Please reopen the file\n");
+          }
         }
         
         EntryBox::get().hide();
