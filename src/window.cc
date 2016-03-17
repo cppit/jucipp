@@ -162,7 +162,7 @@ void Window::set_menu_actions() {
   });
   
   menu.add_action("new_file", [this]() {
-    boost::filesystem::path path = Dialog::new_file();
+    boost::filesystem::path path = Dialog::new_file(notebook.get_current_folder());
     if(path!="") {
       if(boost::filesystem::exists(path)) {
         Terminal::get().print("Error: "+path.string()+" already exists.\n", true);
@@ -181,7 +181,7 @@ void Window::set_menu_actions() {
   });
   menu.add_action("new_folder", [this]() {
     auto time_now=std::chrono::system_clock::to_time_t(std::chrono::system_clock::now());
-    boost::filesystem::path path = Dialog::new_folder();
+    boost::filesystem::path path = Dialog::new_folder(notebook.get_current_folder());
     if(path!="" && boost::filesystem::exists(path)) {
       boost::system::error_code ec;
       auto last_write_time=boost::filesystem::last_write_time(path, ec);
@@ -196,7 +196,7 @@ void Window::set_menu_actions() {
     }
   });
   menu.add_action("new_project_cpp", [this]() {
-    boost::filesystem::path project_path = Dialog::new_folder();
+    boost::filesystem::path project_path = Dialog::new_folder(notebook.get_current_folder());
     if(project_path!="") {
       auto project_name=project_path.filename().string();
       for(size_t c=0;c<project_name.size();c++) {
@@ -228,12 +228,12 @@ void Window::set_menu_actions() {
   });
   
   menu.add_action("open_file", [this]() {
-    auto path=Dialog::open_file();
+    auto path=Dialog::open_file(notebook.get_current_folder());
     if(path!="")
       notebook.open(path);
   });
   menu.add_action("open_folder", [this]() {
-    auto path = Dialog::open_folder();
+    auto path = Dialog::open_folder(notebook.get_current_folder());
     if (path!="" && boost::filesystem::exists(path))
       Directories::get().open(path);
   });
