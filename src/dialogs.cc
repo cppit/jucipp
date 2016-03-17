@@ -40,14 +40,14 @@ std::string Dialog::gtk_dialog(const boost::filesystem::path &path, const std::s
   dialog.set_position(Gtk::WindowPosition::WIN_POS_CENTER_ON_PARENT);
   
   if(title=="Save File As")
-    gtk_file_chooser_set_filename((GtkFileChooser*)dialog.gobj(), path.c_str());
+    gtk_file_chooser_set_filename((GtkFileChooser*)dialog.gobj(), path.string().c_str());
   else if(!path.empty())
-    gtk_file_chooser_set_current_folder((GtkFileChooser*)dialog.gobj(), path.c_str());
+    gtk_file_chooser_set_current_folder((GtkFileChooser*)dialog.gobj(), path.string().c_str());
   else {
     boost::system::error_code ec;
     auto current_path=boost::filesystem::current_path(ec);
     if(!ec)
-      gtk_file_chooser_set_current_folder((GtkFileChooser*)dialog.gobj(), current_path.c_str());
+      gtk_file_chooser_set_current_folder((GtkFileChooser*)dialog.gobj(), current_path.string().c_str());
   }
   
   dialog.set_position(Gtk::WindowPosition::WIN_POS_CENTER_ON_PARENT);
