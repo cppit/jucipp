@@ -5,6 +5,7 @@
 #include "source.h"
 #include "terminal.h"
 #include "notebook.h"
+#include "filesystem.h"
 
 #include <iostream> //TODO: remove
 using namespace std; //TODO: remove
@@ -197,7 +198,34 @@ Directories::Directories() : Gtk::TreeView(), stop_update_thread(false) {
   
   menu_item_delete.set_label("Delete");
   menu_item_delete.signal_activate().connect([this] {
-    std::cout << "delete " << menu_popup_row_path << std::endl;
+    if(menu_popup_row_path.empty())
+      return;
+    Gtk::MessageDialog dialog((Gtk::Window&)(*get_toplevel()), "Delete!", false, Gtk::MESSAGE_QUESTION, Gtk::BUTTONS_YES_NO);
+    dialog.set_default_response(Gtk::RESPONSE_NO);
+    dialog.set_secondary_text("Are you sure you want to delete "+menu_popup_row_path.string()+"?");
+    int result = dialog.run();
+    if(result==Gtk::RESPONSE_YES) {
+      bool is_directory=boost::filesystem::is_directory(menu_popup_row_path);
+      
+      boost::system::error_code ec;
+      boost::filesystem::remove_all(menu_popup_row_path, ec);
+      if(ec)
+        Terminal::get().print("Error: could not delete "+menu_popup_row_path.string()+": "+ec.message()+"\n", true);
+      else {
+        update();
+        
+        for(int c=0;c<Notebook::get().size();c++) {
+          auto view=Notebook::get().get_view(c);
+          
+          if(is_directory) {
+            if(filesystem::file_in_path(view->file_path, menu_popup_row_path))
+              view->get_buffer()->set_modified();
+          }
+          else if(view->file_path==menu_popup_row_path)
+            view->get_buffer()->set_modified();
+        }
+      }
+    }
   });
   menu.append(menu_item_delete);
   
