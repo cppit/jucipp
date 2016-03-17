@@ -8,11 +8,11 @@
 #include <unordered_map>
 #include "tooltips.h"
 #include "dispatcher.h"
-#include "cmake.h"
 #include <iostream>
 #include "project_build.h"
 
 namespace Project {
+  Gtk::Label &debug_status_label();
   void save_files(const boost::filesystem::path &path);
   
   extern boost::filesystem::path debug_last_stop_file_path;
@@ -23,11 +23,6 @@ namespace Project {
   extern std::pair<boost::filesystem::path, std::pair<int, int> > debug_stop;
   void debug_update_stop();
   void debug_update_status(const std::string &debug_status);
-  
-  inline Gtk::Label &debug_status_label() {
-    static Gtk::Label label;
-    return label;
-  }
   
   class Language {
   public:

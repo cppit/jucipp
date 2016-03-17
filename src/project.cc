@@ -18,6 +18,11 @@ std::atomic<bool> Project::debugging(false);
 std::pair<boost::filesystem::path, std::pair<int, int> > Project::debug_stop;
 std::unique_ptr<Project::Language> Project::current_language;
 
+Gtk::Label &Project::debug_status_label() {
+  static Gtk::Label label;
+  return label;
+}
+
 void Project::save_files(const boost::filesystem::path &path) {
   if(Notebook::get().get_current_page()==-1)
     return;

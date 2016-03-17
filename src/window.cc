@@ -7,6 +7,7 @@
 #include "dialogs.h"
 #include "filesystem.h"
 #include "project.h"
+#include "entrybox.h"
 
 namespace sigc {
 #ifndef SIGC_FUNCTORS_DEDUCE_RESULT_TYPE_WITH_DECLTYPE
@@ -39,7 +40,7 @@ Window::Window() : notebook(Notebook::get()) {
   directories_scrolled_window.add(Directories::get());
   directory_and_notebook_panes.pack1(directories_scrolled_window, Gtk::SHRINK);
   notebook_vbox.pack_start(notebook);
-  notebook_vbox.pack_end(entry_box, Gtk::PACK_SHRINK);
+  notebook_vbox.pack_end(EntryBox::get(), Gtk::PACK_SHRINK);
   directory_and_notebook_panes.pack2(notebook_vbox, Gtk::SHRINK);
   directory_and_notebook_panes.set_position(static_cast<int>(0.2*Config::get().window.default_size.first));
   vpaned.set_position(static_cast<int>(0.75*Config::get().window.default_size.second));
@@ -73,17 +74,17 @@ Window::Window() : notebook(Notebook::get()) {
     Terminal::get().queue_draw();
   });
 
-  entry_box.signal_show().connect([this](){
+  EntryBox::get().signal_show().connect([this](){
     vpaned.set_focus_chain({&directory_and_notebook_panes});
     directory_and_notebook_panes.set_focus_chain({&notebook_vbox});
-    notebook_vbox.set_focus_chain({&entry_box});
+    notebook_vbox.set_focus_chain({&EntryBox::get()});
   });
-  entry_box.signal_hide().connect([this](){
+  EntryBox::get().signal_hide().connect([this](){
     vpaned.unset_focus_chain();
     directory_and_notebook_panes.unset_focus_chain();
     notebook_vbox.unset_focus_chain();
   });
-  entry_box.signal_hide().connect([this]() {
+  EntryBox::get().signal_hide().connect([this]() {
     if(notebook.get_current_page()!=-1) {
       notebook.get_current_view()->grab_focus();
     }
@@ -92,9 +93,9 @@ Window::Window() : notebook(Notebook::get()) {
   notebook.signal_switch_page().connect([this](Gtk::Widget* page, guint page_num) {
     if(notebook.get_current_page()!=-1) {
       auto view=notebook.get_current_view();
-      if(search_entry_shown && entry_box.labels.size()>0) {
+      if(search_entry_shown && EntryBox::get().labels.size()>0) {
         view->update_search_occurrences=[this](int number){
-          entry_box.labels.begin()->update(0, std::to_string(number));
+          EntryBox::get().labels.begin()->update(0, std::to_string(number));
         };
         view->search_highlight(last_search, case_sensitive_search, regex_search);
       }
@@ -115,7 +116,7 @@ Window::Window() : notebook(Notebook::get()) {
     }
   });
   notebook.signal_page_removed().connect([this](Gtk::Widget* page, guint page_num) {
-    entry_box.hide();
+    EntryBox::get().hide();
   });
   
   about.signal_response().connect([this](int d){
@@ -505,23 +506,23 @@ void Window::set_menu_actions() {
     if(run_arguments->second.empty())
       return;
     
-    entry_box.clear();
-    entry_box.labels.emplace_back();
-    auto label_it=entry_box.labels.begin();
+    EntryBox::get().clear();
+    EntryBox::get().labels.emplace_back();
+    auto label_it=EntryBox::get().labels.begin();
     label_it->update=[label_it](int state, const std::string& message){
       label_it->set_text("Set empty to let juCi++ deduce executable");
     };
     label_it->update(0, "");
-    entry_box.entries.emplace_back(run_arguments->second, [this, run_arguments](const std::string& content){
+    EntryBox::get().entries.emplace_back(run_arguments->second, [this, run_arguments](const std::string& content){
       Project::run_arguments[run_arguments->first]=content;
-      entry_box.hide();
+      EntryBox::get().hide();
     }, 50);
-    auto entry_it=entry_box.entries.begin();
+    auto entry_it=EntryBox::get().entries.begin();
     entry_it->set_placeholder_text("Project: Set Run Arguments");
-    entry_box.buttons.emplace_back("Project: set run arguments", [this, entry_it](){
+    EntryBox::get().buttons.emplace_back("Project: set run arguments", [this, entry_it](){
       entry_it->activate();
     });
-    entry_box.show();
+    EntryBox::get().show();
   });
   menu.add_action("compile_and_run", [this]() {
     if(Project::compiling || Project::debugging)
@@ -547,14 +548,14 @@ void Window::set_menu_actions() {
   });
   
   menu.add_action("run_command", [this]() {
-    entry_box.clear();
-    entry_box.labels.emplace_back();
-    auto label_it=entry_box.labels.begin();
+    EntryBox::get().clear();
+    EntryBox::get().labels.emplace_back();
+    auto label_it=EntryBox::get().labels.begin();
     label_it->update=[label_it](int state, const std::string& message){
       label_it->set_text("Run Command directory order: opened directory, file path, current directory");
     };
     label_it->update(0, "");
-    entry_box.entries.emplace_back(last_run_command, [this](const std::string& content){
+    EntryBox::get().entries.emplace_back(last_run_command, [this](const std::string& content){
       if(content!="") {
         last_run_command=content;
         auto run_path=notebook.get_current_folder();
@@ -564,14 +565,14 @@ void Window::set_menu_actions() {
           Terminal::get().async_print(content+" returned: "+std::to_string(exit_status)+'\n');
         });
       }
-      entry_box.hide();
+      EntryBox::get().hide();
     }, 30);
-    auto entry_it=entry_box.entries.begin();
+    auto entry_it=EntryBox::get().entries.begin();
     entry_it->set_placeholder_text("Command");
-    entry_box.buttons.emplace_back("Run command", [this, entry_it](){
+    EntryBox::get().buttons.emplace_back("Run command", [this, entry_it](){
       entry_it->activate();
     });
-    entry_box.show();
+    EntryBox::get().show();
   });
   
   menu.add_action("kill_last_running", [this]() {
@@ -588,23 +589,23 @@ void Window::set_menu_actions() {
     if(run_arguments->second.empty())
       return;
     
-    entry_box.clear();
-    entry_box.labels.emplace_back();
-    auto label_it=entry_box.labels.begin();
+    EntryBox::get().clear();
+    EntryBox::get().labels.emplace_back();
+    auto label_it=EntryBox::get().labels.begin();
     label_it->update=[label_it](int state, const std::string& message){
       label_it->set_text("Set empty to let juCi++ deduce executable");
     };
     label_it->update(0, "");
-    entry_box.entries.emplace_back(run_arguments->second, [this, run_arguments](const std::string& content){
+    EntryBox::get().entries.emplace_back(run_arguments->second, [this, run_arguments](const std::string& content){
       Project::debug_run_arguments[run_arguments->first]=content;
-      entry_box.hide();
+      EntryBox::get().hide();
     }, 50);
-    auto entry_it=entry_box.entries.begin();
+    auto entry_it=EntryBox::get().entries.begin();
     entry_it->set_placeholder_text("Debug: Set Run Arguments");
-    entry_box.buttons.emplace_back("Debug: set run arguments", [this, entry_it](){
+    EntryBox::get().buttons.emplace_back("Debug: set run arguments", [this, entry_it](){
       entry_it->activate();
     });
-    entry_box.show();
+    EntryBox::get().show();
   });
   menu.add_action("debug_start_continue", [this](){
     if(Project::compiling)
@@ -650,21 +651,21 @@ void Window::set_menu_actions() {
       Project::current_language->debug_show_variables();
   });
   menu.add_action("debug_run_command", [this]() {
-    entry_box.clear();
-    entry_box.entries.emplace_back(last_run_debug_command, [this](const std::string& content){
+    EntryBox::get().clear();
+    EntryBox::get().entries.emplace_back(last_run_debug_command, [this](const std::string& content){
       if(content!="") {
         if(Project::current_language)
           Project::current_language->debug_run_command(content);
         last_run_debug_command=content;
       }
-      entry_box.hide();
+      EntryBox::get().hide();
     }, 30);
-    auto entry_it=entry_box.entries.begin();
+    auto entry_it=EntryBox::get().entries.begin();
     entry_it->set_placeholder_text("Debug Command");
-    entry_box.buttons.emplace_back("Run debug command", [this, entry_it](){
+    EntryBox::get().buttons.emplace_back("Run debug command", [this, entry_it](){
       entry_it->activate();
     });
-    entry_box.show();
+    EntryBox::get().show();
   });
   menu.add_action("debug_toggle_breakpoint", [this](){
     if(notebook.get_current_page()!=-1) {
@@ -769,7 +770,7 @@ void Window::activate_menu_items(bool activate) {
 
 bool Window::on_key_press_event(GdkEventKey *event) {
   if(event->keyval==GDK_KEY_Escape) {
-    entry_box.hide();
+    EntryBox::get().hide();
   }
 #ifdef __APPLE__ //For Apple's Command-left, right, up, down keys
   else if((event->state & GDK_META_MASK)>0 && (event->state & GDK_MOD1_MASK)==0) {
@@ -816,9 +817,9 @@ bool Window::on_delete_event(GdkEventAny *event) {
 }
 
 void Window::search_and_replace_entry() {
-  entry_box.clear();
-  entry_box.labels.emplace_back();
-  auto label_it=entry_box.labels.begin();
+  EntryBox::get().clear();
+  EntryBox::get().labels.emplace_back();
+  auto label_it=EntryBox::get().labels.begin();
   label_it->update=[label_it](int state, const std::string& message){
     if(state==0) {
       try {
@@ -833,11 +834,11 @@ void Window::search_and_replace_entry() {
       catch(const std::exception &e) {}
     }
   };
-  entry_box.entries.emplace_back(last_search, [this](const std::string& content){
+  EntryBox::get().entries.emplace_back(last_search, [this](const std::string& content){
     if(notebook.get_current_page()!=-1)
       notebook.get_current_view()->search_forward();
   });
-  auto search_entry_it=entry_box.entries.begin();
+  auto search_entry_it=EntryBox::get().entries.begin();
   search_entry_it->set_placeholder_text("Find");
   if(notebook.get_current_page()!=-1) {
     notebook.get_current_view()->update_search_occurrences=[label_it](int number){
@@ -858,11 +859,11 @@ void Window::search_and_replace_entry() {
       notebook.get_current_view()->search_highlight(search_entry_it->get_text(), case_sensitive_search, regex_search);
   });
 
-  entry_box.entries.emplace_back(last_replace, [this](const std::string &content){
+  EntryBox::get().entries.emplace_back(last_replace, [this](const std::string &content){
     if(notebook.get_current_page()!=-1)
       notebook.get_current_view()->replace_forward(content);
   });
-  auto replace_entry_it=entry_box.entries.begin();
+  auto replace_entry_it=EntryBox::get().entries.begin();
   replace_entry_it++;
   replace_entry_it->set_placeholder_text("Replace");
   replace_entry_it->signal_key_press_event().connect([this, replace_entry_it](GdkEventKey* event){
@@ -876,25 +877,25 @@ void Window::search_and_replace_entry() {
     last_replace=replace_entry_it->get_text();
   });
 
-  entry_box.buttons.emplace_back("Replace all", [this, replace_entry_it](){
+  EntryBox::get().buttons.emplace_back("Replace all", [this, replace_entry_it](){
     if(notebook.get_current_page()!=-1)
       notebook.get_current_view()->replace_all(replace_entry_it->get_text());
   });
-  entry_box.toggle_buttons.emplace_back("Match case");
-  entry_box.toggle_buttons.back().set_active(case_sensitive_search);
-  entry_box.toggle_buttons.back().on_activate=[this, search_entry_it](){
+  EntryBox::get().toggle_buttons.emplace_back("Match case");
+  EntryBox::get().toggle_buttons.back().set_active(case_sensitive_search);
+  EntryBox::get().toggle_buttons.back().on_activate=[this, search_entry_it](){
     case_sensitive_search=!case_sensitive_search;
     if(notebook.get_current_page()!=-1)
       notebook.get_current_view()->search_highlight(search_entry_it->get_text(), case_sensitive_search, regex_search);
   };
-  entry_box.toggle_buttons.emplace_back("Use regex");
-  entry_box.toggle_buttons.back().set_active(regex_search);
-  entry_box.toggle_buttons.back().on_activate=[this, search_entry_it](){
+  EntryBox::get().toggle_buttons.emplace_back("Use regex");
+  EntryBox::get().toggle_buttons.back().set_active(regex_search);
+  EntryBox::get().toggle_buttons.back().on_activate=[this, search_entry_it](){
     regex_search=!regex_search;
     if(notebook.get_current_page()!=-1)
       notebook.get_current_view()->search_highlight(search_entry_it->get_text(), case_sensitive_search, regex_search);
   };
-  entry_box.signal_hide().connect([this]() {
+  EntryBox::get().signal_hide().connect([this]() {
     for(int c=0;c<notebook.size();c++) {
       notebook.get_view(c)->update_search_occurrences=nullptr;
       notebook.get_view(c)->search_highlight("", case_sensitive_search, regex_search);
@@ -902,19 +903,19 @@ void Window::search_and_replace_entry() {
     search_entry_shown=false;
   });
   search_entry_shown=true;
-  entry_box.show();
+  EntryBox::get().show();
 }
 
 void Window::set_tab_entry() {
-  entry_box.clear();
+  EntryBox::get().clear();
   if(notebook.get_current_page()!=-1) {
     auto tab_char_and_size=notebook.get_current_view()->get_tab_char_and_size();
     
-    entry_box.labels.emplace_back();
-    auto label_it=entry_box.labels.begin();
+    EntryBox::get().labels.emplace_back();
+    auto label_it=EntryBox::get().labels.begin();
     
-    entry_box.entries.emplace_back(std::to_string(tab_char_and_size.second));
-    auto entry_tab_size_it=entry_box.entries.begin();
+    EntryBox::get().entries.emplace_back(std::to_string(tab_char_and_size.second));
+    auto entry_tab_size_it=EntryBox::get().entries.begin();
     entry_tab_size_it->set_placeholder_text("Tab size");
     
     char tab_char=tab_char_and_size.first;
@@ -924,8 +925,8 @@ void Window::set_tab_entry() {
     else if(tab_char=='\t')
       tab_char_string="tab";
       
-    entry_box.entries.emplace_back(tab_char_string);
-    auto entry_tab_char_it=entry_box.entries.rbegin();
+    EntryBox::get().entries.emplace_back(tab_char_string);
+    auto entry_tab_char_it=EntryBox::get().entries.rbegin();
     entry_tab_char_it->set_placeholder_text("Tab char");
     
     const auto activate_function=[this, entry_tab_char_it, entry_tab_size_it, label_it](const std::string& content){
@@ -945,7 +946,7 @@ void Window::set_tab_entry() {
 
         if(tab_char!=0 && tab_size>0) {
           notebook.get_current_view()->set_tab_char_and_size(tab_char, tab_size);
-          entry_box.hide();
+          EntryBox::get().hide();
         }
         else {
           label_it->set_text("Tab size must be >0 and tab char set to either 'space' or 'tab'");
@@ -956,18 +957,18 @@ void Window::set_tab_entry() {
     entry_tab_char_it->on_activate=activate_function;
     entry_tab_size_it->on_activate=activate_function;
     
-    entry_box.buttons.emplace_back("Set tab in current buffer", [this, entry_tab_char_it](){
+    EntryBox::get().buttons.emplace_back("Set tab in current buffer", [this, entry_tab_char_it](){
       entry_tab_char_it->activate();
     });
     
-    entry_box.show();
+    EntryBox::get().show();
   }
 }
 
 void Window::goto_line_entry() {
-  entry_box.clear();
+  EntryBox::get().clear();
   if(notebook.get_current_page()!=-1) {
-    entry_box.entries.emplace_back("", [this](const std::string& content){
+    EntryBox::get().entries.emplace_back("", [this](const std::string& content){
       if(notebook.get_current_page()!=-1) {
         auto view=notebook.get_current_view();
         try {
@@ -980,31 +981,31 @@ void Window::goto_line_entry() {
           }
         }
         catch(const std::exception &e) {}  
-        entry_box.hide();
+        EntryBox::get().hide();
       }
     });
-    auto entry_it=entry_box.entries.begin();
+    auto entry_it=EntryBox::get().entries.begin();
     entry_it->set_placeholder_text("Line number");
-    entry_box.buttons.emplace_back("Go to line", [this, entry_it](){
+    EntryBox::get().buttons.emplace_back("Go to line", [this, entry_it](){
       entry_it->activate();
     });
-    entry_box.show();
+    EntryBox::get().show();
   }
 }
 
 void Window::rename_token_entry() {
-  entry_box.clear();
+  EntryBox::get().clear();
   if(notebook.get_current_page()!=-1) {
     if(notebook.get_current_view()->get_token) {
       auto token=std::make_shared<Source::Token>(notebook.get_current_view()->get_token());
       if(*token) {
-        entry_box.labels.emplace_back();
-        auto label_it=entry_box.labels.begin();
+        EntryBox::get().labels.emplace_back();
+        auto label_it=EntryBox::get().labels.begin();
         label_it->update=[label_it](int state, const std::string& message){
           label_it->set_text("Warning: only opened and parsed tabs will have its content renamed, and modified files will be saved");
         };
         label_it->update(0, "");
-        entry_box.entries.emplace_back(token->spelling, [this, token](const std::string& content){
+        EntryBox::get().entries.emplace_back(token->spelling, [this, token](const std::string& content){
           if(notebook.get_current_page()!=-1 && content!=token->spelling) {
             std::vector<int> modified_pages;
             for(int c=0;c<notebook.size();c++) {
@@ -1020,15 +1021,15 @@ void Window::rename_token_entry() {
             }
             for(auto &page: modified_pages)
               notebook.get_view(page)->soft_reparse_needed=false;
-            entry_box.hide();
+            EntryBox::get().hide();
           }
         });
-        auto entry_it=entry_box.entries.begin();
+        auto entry_it=EntryBox::get().entries.begin();
         entry_it->set_placeholder_text("New name");
-        entry_box.buttons.emplace_back("Rename", [this, entry_it](){
+        EntryBox::get().buttons.emplace_back("Rename", [this, entry_it](){
           entry_it->activate();
         });
-        entry_box.show();
+        EntryBox::get().show();
       }
     }
   }

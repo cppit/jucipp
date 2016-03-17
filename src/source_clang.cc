@@ -1,7 +1,7 @@
 #include "source_clang.h"
 #include "config.h"
 #include "terminal.h"
-#include "project.h"
+#include "project_build.h"
 #ifdef JUCI_ENABLE_DEBUG
 #include "debug_clang.h"
 #endif
