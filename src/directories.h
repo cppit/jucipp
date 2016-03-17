@@ -17,7 +17,7 @@ public:
   protected:
     TreeStore() {}
     
-    bool row_drop_possible_vfunc(const Gtk::TreeModel::Path& path, const Gtk::SelectionData& selection_data) const override;
+    bool row_drop_possible_vfunc(const Gtk::TreeModel::Path &path, const Gtk::SelectionData &selection_data) const override;
     bool drag_data_received_vfunc(const TreeModel::Path &path, const Gtk::SelectionData &selection_data) override;
     bool drag_data_delete_vfunc (const Gtk::TreeModel::Path &path) override;
     
@@ -47,7 +47,7 @@ public:
     return singleton;
   }
   ~Directories();
-  void open(const boost::filesystem::path& dir_path="");
+  void open(const boost::filesystem::path &dir_path="");
   void update();
   void select(const boost::filesystem::path &path);
   
@@ -55,10 +55,10 @@ public:
   boost::filesystem::path path;
   
 protected:
-  bool on_button_press_event(GdkEventButton* event) override;
+  bool on_button_press_event(GdkEventButton *event) override;
   
 private:
-  void add_path(const boost::filesystem::path& dir_path, const Gtk::TreeModel::Row &row);
+  void add_path(const boost::filesystem::path &dir_path, const Gtk::TreeModel::Row &row);
   Glib::RefPtr<Gtk::TreeStore> tree_store;
   TreeStore::ColumnRecord column_record;
   

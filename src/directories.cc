@@ -25,7 +25,7 @@ namespace sigc {
 #endif
 }
 
-bool Directories::TreeStore::row_drop_possible_vfunc(const Gtk::TreeModel::Path& path, const Gtk::SelectionData& selection_data) const {
+bool Directories::TreeStore::row_drop_possible_vfunc(const Gtk::TreeModel::Path &path, const Gtk::SelectionData &selection_data) const {
   return true;
 }
 
@@ -128,7 +128,7 @@ Directories::Directories() : Gtk::TreeView(), stop_update_thread(false) {
   set_enable_search(true); //TODO: why does this not work in OS X?
   set_search_column(column_record.name);
   
-  signal_row_activated().connect([this](const Gtk::TreeModel::Path& path, Gtk::TreeViewColumn* column){
+  signal_row_activated().connect([this](const Gtk::TreeModel::Path &path, Gtk::TreeViewColumn *column){
     auto iter = tree_store->get_iter(path);
     if (iter) {
       auto filesystem_path=iter->get_value(column_record.path);
@@ -143,7 +143,7 @@ Directories::Directories() : Gtk::TreeView(), stop_update_thread(false) {
     }
   });
   
-  signal_test_expand_row().connect([this](const Gtk::TreeModel::iterator& iter, const Gtk::TreeModel::Path& path){
+  signal_test_expand_row().connect([this](const Gtk::TreeModel::iterator &iter, const Gtk::TreeModel::Path &path){
     if(iter->children().begin()->get_value(column_record.path)=="") {
       update_mutex.lock();
       add_path(iter->get_value(column_record.path), *iter);
@@ -151,7 +151,7 @@ Directories::Directories() : Gtk::TreeView(), stop_update_thread(false) {
     }
     return false;
   });
-  signal_row_collapsed().connect([this](const Gtk::TreeModel::iterator& iter, const Gtk::TreeModel::Path& path){
+  signal_row_collapsed().connect([this](const Gtk::TreeModel::iterator &iter, const Gtk::TreeModel::Path &path){
     update_mutex.lock();
     auto directory_str=iter->get_value(column_record.path).string();
     for(auto it=last_write_times.begin();it!=last_write_times.end();) {
@@ -216,7 +216,7 @@ Directories::Directories() : Gtk::TreeView(), stop_update_thread(false) {
       return;
     EntryBox::get().clear();
     auto source_path=std::make_shared<boost::filesystem::path>(menu_popup_row_path);
-    EntryBox::get().entries.emplace_back(menu_popup_row_path.filename().string(), [this, source_path](const std::string& content){
+    EntryBox::get().entries.emplace_back(menu_popup_row_path.filename().string(), [this, source_path](const std::string &content){
       bool is_directory=boost::filesystem::is_directory(*source_path);
       
       boost::system::error_code ec;
@@ -311,7 +311,7 @@ Directories::~Directories() {
   dispatcher.disconnect();
 }
 
-void Directories::open(const boost::filesystem::path& dir_path) {
+void Directories::open(const boost::filesystem::path &dir_path) {
   JDEBUG("start");
   if(dir_path.empty())
     return;
@@ -372,7 +372,7 @@ void Directories::select(const boost::filesystem::path &select_path) {
   }
 
   for(auto &a_path: paths) {
-    tree_store->foreach_iter([this, &a_path](const Gtk::TreeModel::iterator& iter){
+    tree_store->foreach_iter([this, &a_path](const Gtk::TreeModel::iterator &iter){
       if(iter->get_value(column_record.path)==a_path) {
         update_mutex.lock();
         add_path(a_path, *iter);
@@ -383,7 +383,7 @@ void Directories::select(const boost::filesystem::path &select_path) {
     });
   }
   
-  tree_store->foreach_iter([this, &select_path](const Gtk::TreeModel::iterator& iter){
+  tree_store->foreach_iter([this, &select_path](const Gtk::TreeModel::iterator &iter){
     if(iter->get_value(column_record.path)==select_path) {
       auto tree_path=Gtk::TreePath(iter);
       expand_to_path(tree_path);
@@ -396,7 +396,7 @@ void Directories::select(const boost::filesystem::path &select_path) {
 }
 
 bool Directories::on_button_press_event(GdkEventButton* event) {
-  if(event->type==GDK_BUTTON_PRESS && event->button==3) {
+  if(event->type==GDK_BUTTON_PRESS && event->button==GDK_BUTTON_SECONDARY) {
     Gtk::TreeModel::Path path;
     if(get_path_at_pos(static_cast<int>(event->x), static_cast<int>(event->y), path)) {
       menu_popup_row_path=get_model()->get_iter(path)->get_value(column_record.path);
@@ -408,7 +408,7 @@ bool Directories::on_button_press_event(GdkEventButton* event) {
   return Gtk::TreeView::on_button_press_event(event);
 }
 
-void Directories::add_path(const boost::filesystem::path& dir_path, const Gtk::TreeModel::Row &parent) {
+void Directories::add_path(const boost::filesystem::path &dir_path, const Gtk::TreeModel::Row &parent) {
   boost::system::error_code ec;
   auto last_write_time=boost::filesystem::last_write_time(dir_path, ec);
   if(ec)
