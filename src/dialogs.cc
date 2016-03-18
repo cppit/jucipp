@@ -50,8 +50,6 @@ std::string Dialog::gtk_dialog(const boost::filesystem::path &path, const std::s
       gtk_file_chooser_set_current_folder(reinterpret_cast<GtkFileChooser*>(dialog.gobj()), current_path.string().c_str());
   }
   
-  dialog.set_position(Gtk::WindowPosition::WIN_POS_CENTER_ON_PARENT);
-  
   for (auto &button : buttons) 
     dialog.add_button(button.first, button.second);
   return dialog.run() == Gtk::RESPONSE_OK ? dialog.get_filename() : "";
