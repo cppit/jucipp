@@ -249,7 +249,7 @@ bool Notebook::save(int page) {
         auto build=Project::get_build(view->file_path);
         build->update_default_build(true);
         if(boost::filesystem::exists(build->get_debug_build_path()))
-          build->update_debug_build();
+          build->update_debug_build(true);
         
         for(auto source_view: source_views) {
           if(auto source_clang_view=dynamic_cast<Source::ClangView*>(source_view)) {

@@ -20,8 +20,8 @@ boost::filesystem::path Project::CMake::get_debug_build_path() {
   return cmake.get_debug_build_path();
 }
 
-bool Project::CMake::update_debug_build() {
-  return cmake.update_debug_build();
+bool Project::CMake::update_debug_build(bool force) {
+  return cmake.update_debug_build(force);
 }
 
 boost::filesystem::path Project::CMake::get_executable(const boost::filesystem::path &path) {

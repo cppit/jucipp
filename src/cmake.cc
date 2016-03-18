@@ -5,8 +5,6 @@
 #include "terminal.h"
 #include <boost/regex.hpp>
 
-std::unordered_set<std::string> CMake::debug_build_needed;
-
 CMake::CMake(const boost::filesystem::path &path) {
   const auto find_cmake_project=[this](const boost::filesystem::path &cmake_path) {
     for(auto &line: filesystem::read_lines(cmake_path)) {
@@ -108,8 +106,6 @@ bool CMake::update_default_build(bool force) {
   if(!force && boost::filesystem::exists(default_build_path/"compile_commands.json"))
     return true;
   
-  debug_build_needed.emplace(project_path.string());
-  
   auto compile_commands_path=default_build_path/"compile_commands.json";
   Dialog::Message message("Creating/updating default build");
   auto exit_status=Terminal::get().process(Config::get().project.cmake_command+" "+
@@ -135,7 +131,7 @@ bool CMake::update_default_build(bool force) {
   return false;
 }
 
-bool CMake::update_debug_build() {
+bool CMake::update_debug_build(bool force) {
   if(project_path.empty())
     return false;
   
@@ -154,11 +150,8 @@ bool CMake::update_debug_build() {
     }
   }
   
-  if(boost::filesystem::exists(debug_build_path/"CMakeCache.txt")) {
-    auto it=debug_build_needed.find(project_path.string());
-    if(it==debug_build_needed.end())
-      return true;
-  }
+  if(!force && boost::filesystem::exists(debug_build_path/"CMakeCache.txt"))
+    return true;
   
   std::unique_ptr<Dialog::Message> message;
   message=std::unique_ptr<Dialog::Message>(new Dialog::Message("Creating/updating debug build"));
@@ -166,12 +159,8 @@ bool CMake::update_debug_build() {
                                            filesystem::escape_argument(project_path)+" -DCMAKE_BUILD_TYPE=Debug", debug_build_path);
   if(message)
     message->hide();
-  if(exit_status==EXIT_SUCCESS) {
-    auto it=debug_build_needed.find(project_path.string());
-    if(it!=debug_build_needed.end())
-      debug_build_needed.erase(it);
+  if(exit_status==EXIT_SUCCESS)
     return true;
-  }
   return false;
 }
 

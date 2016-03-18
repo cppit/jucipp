@@ -131,13 +131,11 @@ std::pair<std::string, std::string> Project::Clang::get_run_arguments() {
   return {project_path, arguments};
 }
 
-void Project::Clang::compile() {    
-  if(build->get_default_build_path().empty() || !build->update_default_build())
+void Project::Clang::compile() {
+  auto default_build_path=build->get_default_build_path();
+  if(default_build_path.empty() || !build->update_default_build())
     return;
   
-  auto default_build_path=build->get_default_build_path();
-  if(default_build_path.empty())
-    return;
   compiling=true;
   Terminal::get().print("Compiling project "+build->project_path.string()+"\n");
   Terminal::get().async_process(Config::get().project.make_command, default_build_path, [this](int exit_status) {
@@ -146,14 +144,11 @@ void Project::Clang::compile() {
 }
 
 void Project::Clang::compile_and_run() {
-  if(build->get_default_build_path().empty() || !build->update_default_build())
+  auto default_build_path=build->get_default_build_path();
+  if(default_build_path.empty() || !build->update_default_build())
     return;
   
   auto project_path=build->project_path;
-  
-  auto default_build_path=build->get_default_build_path();
-  if(default_build_path.empty())
-    return;
   
   auto run_arguments_it=run_arguments.find(project_path.string());
   std::string arguments;
@@ -217,15 +212,10 @@ std::pair<std::string, std::string> Project::Clang::debug_get_run_arguments() {
 }
 
 void Project::Clang::debug_start() {
-  if(build->get_default_build_path().empty() || !build->update_default_build())
+  auto debug_build_path=build->get_debug_build_path();
+  if(debug_build_path.empty() || !build->update_debug_build())
     return;
   auto project_path=build->project_path;
-      
-  auto debug_build_path=build->get_debug_build_path();
-  if(debug_build_path.empty())
-    return;
-  if(!build->update_debug_build())
-    return;
   
   auto run_arguments_it=debug_run_arguments.find(project_path.string());
   std::string run_arguments;

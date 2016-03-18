@@ -14,7 +14,7 @@ public:
   boost::filesystem::path get_default_build_path();
   boost::filesystem::path get_debug_build_path();
   bool update_default_build(bool force=false);
-  bool update_debug_build();
+  bool update_debug_build(bool force=false);
   
   boost::filesystem::path get_executable(const boost::filesystem::path &file_path);
   
@@ -31,6 +31,5 @@ private:
   void parse();
   std::vector<std::string> get_function_parameters(std::string &data);
   bool parsed=false;
-  static std::unordered_set<std::string> debug_build_needed;
 };
 #endif //JUCI_CMAKE_H_
