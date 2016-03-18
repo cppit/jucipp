@@ -36,7 +36,6 @@ public:
   bool save_current();
   void configure(int view_nr);
   boost::filesystem::path get_current_folder();
-  void set_tab_label(int page, const std::string &label);
 
   Gtk::Label info;
   Gtk::Label status;

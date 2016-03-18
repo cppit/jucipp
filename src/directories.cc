@@ -243,7 +243,8 @@ Directories::Directories() : Gtk::TreeView(), stop_update_thread(false) {
           }
           else if(view->file_path==*source_path) {
             view->file_path=target_path;
-            Notebook::get().set_tab_label(c, target_path.filename().string());
+            g_signal_emit_by_name(view->get_buffer()->gobj(), "modified_changed");
+            
             std::string old_language_id;
             if(view->language)
               old_language_id=view->language->get_id();
