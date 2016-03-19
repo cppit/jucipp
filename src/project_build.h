@@ -12,9 +12,9 @@ namespace Project {
     
     boost::filesystem::path project_path;
     
-    virtual boost::filesystem::path get_default_build_path() {return boost::filesystem::path();}
+    boost::filesystem::path get_default_build_path();
     virtual bool update_default_build(bool force=false) {return false;}
-    virtual boost::filesystem::path get_debug_build_path() {return boost::filesystem::path();}
+    boost::filesystem::path get_debug_build_path();
     virtual bool update_debug_build(bool force=false) {return false;}
     
     virtual boost::filesystem::path get_executable(const boost::filesystem::path &path) {return boost::filesystem::path();}
@@ -25,9 +25,7 @@ namespace Project {
   public:
     CMake(const boost::filesystem::path &path);
     
-    boost::filesystem::path get_default_build_path() override;
     bool update_default_build(bool force=false) override;
-    boost::filesystem::path get_debug_build_path() override;
     bool update_debug_build(bool force=false) override;
     
     boost::filesystem::path get_executable(const boost::filesystem::path &path) override;

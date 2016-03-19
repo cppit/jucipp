@@ -11,10 +11,8 @@ public:
   boost::filesystem::path project_path;
   std::vector<boost::filesystem::path> paths;
   
-  boost::filesystem::path get_default_build_path();
-  boost::filesystem::path get_debug_build_path();
-  bool update_default_build(bool force=false);
-  bool update_debug_build(bool force=false);
+  bool update_default_build(const boost::filesystem::path &default_build_path, bool force=false);
+  bool update_debug_build(const boost::filesystem::path &debug_build_path, bool force=false);
   
   boost::filesystem::path get_executable(const boost::filesystem::path &file_path);
   
