@@ -14,7 +14,7 @@
 namespace Project {
   Gtk::Label &debug_status_label();
   void save_files(const boost::filesystem::path &path);
-  void on_save();
+  void on_save(int page);
   
   extern boost::filesystem::path debug_last_stop_file_path;
   extern std::unordered_map<std::string, std::string> run_arguments;

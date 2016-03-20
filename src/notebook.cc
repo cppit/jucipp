@@ -243,7 +243,7 @@ bool Notebook::save(int page) {
       
       view->get_buffer()->set_modified(false);
       
-      Project::on_save();
+      Project::on_save(page);
       
       JDEBUG("end true");
       return true;

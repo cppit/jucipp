@@ -35,10 +35,10 @@ void Project::save_files(const boost::filesystem::path &path) {
   }
 }
 
-void Project::on_save() {
-  if(Notebook::get().get_current_page()==-1)
+void Project::on_save(int page) {
+  if(page>=Notebook::get().size())
     return;
-  auto view=Notebook::get().get_current_view();
+  auto view=Notebook::get().get_view(page);
   if(view->file_path.filename()=="CMakeLists.txt") {
     auto build=get_build(view->file_path);
     if(dynamic_cast<CMake*>(build.get())) {
