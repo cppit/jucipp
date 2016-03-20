@@ -98,29 +98,30 @@ void Project::debug_update_stop() {
 }
 
 std::unique_ptr<Project::Language> Project::get_language() {
+  std::unique_ptr<Project::Build> build;
+  
   if(Notebook::get().get_current_page()!=-1) {
     auto view=Notebook::get().get_current_view();
+    build=get_build(view->file_path);
     if(view->language) {
       auto language_id=view->language->get_id();
       if(language_id=="markdown")
-        return std::unique_ptr<Project::Language>(new Project::Markdown());
+        return std::unique_ptr<Project::Language>(new Project::Markdown(build));
       if(language_id=="python")
-        return std::unique_ptr<Project::Language>(new Project::Python());
+        return std::unique_ptr<Project::Language>(new Project::Python(build));
       if(language_id=="js")
-        return std::unique_ptr<Project::Language>(new Project::JavaScript());
+        return std::unique_ptr<Project::Language>(new Project::JavaScript(build));
       if(language_id=="html")
-        return std::unique_ptr<Project::Language>(new Project::HTML());
+        return std::unique_ptr<Project::Language>(new Project::HTML(build));
     }
   }
-  
-  return std::unique_ptr<Project::Language>(new Project::Clang());
-}
-
-Project::Language::Language() {
-  if(Notebook::get().get_current_page()!=-1)
-    build=get_build(Notebook::get().get_current_view()->file_path);
   else
     build=get_build(Directories::get().path);
+  
+  if(dynamic_cast<CMake*>(build.get()))
+    return std::unique_ptr<Project::Language>(new Project::Clang(build));
+  else
+    return std::unique_ptr<Project::Language>(new Project::Language(build));
 }
 
 std::pair<std::string, std::string> Project::Clang::get_run_arguments() {

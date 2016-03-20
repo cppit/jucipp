@@ -27,7 +27,7 @@ namespace Project {
   
   class Language {
   public:
-    Language();
+    Language(std::unique_ptr<Build> &build): build(std::move(build)) {}
     virtual ~Language() {}
     
     std::unique_ptr<Build> build;
@@ -59,7 +59,7 @@ namespace Project {
   private:
     Dispatcher dispatcher;
   public:
-    Clang() : Language() {}
+    Clang(std::unique_ptr<Build> &build) : Language(build) {}
     ~Clang() { dispatcher.disconnect(); }
     
     std::pair<std::string, std::string> get_run_arguments() override;
@@ -89,7 +89,7 @@ namespace Project {
   
   class Markdown : public Language {
   public:
-    Markdown() : Language() {}
+    Markdown(std::unique_ptr<Build> &build) : Language(build) {}
     ~Markdown();
     
     boost::filesystem::path last_temp_path;
@@ -98,21 +98,21 @@ namespace Project {
   
   class Python : public Language {
   public:
-    Python() : Language() {}
+    Python(std::unique_ptr<Build> &build) : Language(build) {}
     
     void compile_and_run() override;
   };
   
   class JavaScript : public Language {
   public:
-    JavaScript() : Language() {}
+    JavaScript(std::unique_ptr<Build> &build) : Language(build) {}
     
     void compile_and_run() override;
   };
   
   class HTML : public Language {
   public:
-    HTML() : Language() {}
+    HTML(std::unique_ptr<Build> &build) : Language(build) {}
     
     void compile_and_run() override;
   };
