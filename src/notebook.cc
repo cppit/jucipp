@@ -4,7 +4,7 @@
 #include "logging.h"
 #include <fstream>
 #include <regex>
-#include "project_build.h"
+#include "project.h"
 #include "filesystem.h"
 
 #if GTKSOURCEVIEWMM_MAJOR_VERSION > 2 & GTKSOURCEVIEWMM_MINOR_VERSION > 17
@@ -243,21 +243,8 @@ bool Notebook::save(int page) {
       
       view->get_buffer()->set_modified(false);
       
-      //If CMakeLists.txt have been modified:
-      boost::filesystem::path project_path;
-      if(view->file_path.filename()=="CMakeLists.txt") {
-        auto build=Project::get_build(view->file_path);
-        build->update_default_build(true);
-        if(boost::filesystem::exists(build->get_debug_build_path()))
-          build->update_debug_build(true);
-        
-        for(auto source_view: source_views) {
-          if(auto source_clang_view=dynamic_cast<Source::ClangView*>(source_view)) {
-            if(filesystem::file_in_path(source_clang_view->file_path, build->project_path))
-              source_clang_view->full_reparse_needed=true;
-          }
-        }
-      }
+      Project::on_save();
+      
       JDEBUG("end true");
       return true;
     }

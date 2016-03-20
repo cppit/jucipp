@@ -35,6 +35,28 @@ void Project::save_files(const boost::filesystem::path &path) {
   }
 }
 
+void Project::on_save() {
+  if(Notebook::get().get_current_page()==-1)
+    return;
+  auto view=Notebook::get().get_current_view();
+  if(view->file_path.filename()=="CMakeLists.txt") {
+    auto build=get_build(view->file_path);
+    if(dynamic_cast<CMake*>(build.get())) {
+      build->update_default_build(true);
+      if(boost::filesystem::exists(build->get_debug_build_path()))
+        build->update_debug_build(true);
+      
+      for(int c=0;c<Notebook::get().size();c++) {
+        auto source_view=Notebook::get().get_view(c);
+        if(auto source_clang_view=dynamic_cast<Source::ClangView*>(source_view)) {
+          if(filesystem::file_in_path(source_clang_view->file_path, build->project_path))
+            source_clang_view->full_reparse_needed=true;
+        }
+      }
+    }
+  }
+}
+
 void Project::debug_update_status(const std::string &debug_status) {
   if(debug_status.empty())
     debug_status_label().set_text("");
