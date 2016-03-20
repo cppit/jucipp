@@ -106,22 +106,22 @@ std::unique_ptr<Project::Language> Project::get_language() {
     if(view->language) {
       auto language_id=view->language->get_id();
       if(language_id=="markdown")
-        return std::unique_ptr<Project::Language>(new Project::Markdown(build));
+        return std::unique_ptr<Project::Language>(new Project::Markdown(std::move(build)));
       if(language_id=="python")
-        return std::unique_ptr<Project::Language>(new Project::Python(build));
+        return std::unique_ptr<Project::Language>(new Project::Python(std::move(build)));
       if(language_id=="js")
-        return std::unique_ptr<Project::Language>(new Project::JavaScript(build));
+        return std::unique_ptr<Project::Language>(new Project::JavaScript(std::move(build)));
       if(language_id=="html")
-        return std::unique_ptr<Project::Language>(new Project::HTML(build));
+        return std::unique_ptr<Project::Language>(new Project::HTML(std::move(build)));
     }
   }
   else
     build=get_build(Directories::get().path);
   
   if(dynamic_cast<CMake*>(build.get()))
-    return std::unique_ptr<Project::Language>(new Project::Clang(build));
+    return std::unique_ptr<Project::Language>(new Project::Clang(std::move(build)));
   else
-    return std::unique_ptr<Project::Language>(new Project::Language(build));
+    return std::unique_ptr<Project::Language>(new Project::Language(std::move(build)));
 }
 
 std::pair<std::string, std::string> Project::Clang::get_run_arguments() {
