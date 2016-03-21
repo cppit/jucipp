@@ -639,7 +639,7 @@ void Source::ClangViewAutocomplete::autocomplete() {
   auto buffer=std::make_shared<Glib::ustring>(get_buffer()->get_text());
   auto iter=get_buffer()->get_insert()->get_iter();
   auto line_nr=iter.get_line()+1;
-  auto column_nr=iter.get_line_offset()+1;
+  auto column_nr=iter.get_line_index()+1;
   auto pos=iter.get_offset()-1;
   while(pos>=0 && (((*buffer)[pos]>='a' && (*buffer)[pos]<='z') || ((*buffer)[pos]>='A' && (*buffer)[pos]<='Z') ||
                    ((*buffer)[pos]>='0' && (*buffer)[pos]<='9') || (*buffer)[pos]=='_')) {
