@@ -169,3 +169,14 @@ bool filesystem::file_in_path(const boost::filesystem::path &file_path, const bo
   return std::equal(path.begin(), path.end(), file_path.begin());
 }
 
+boost::filesystem::path filesystem::find_file_in_path_parents(const std::string &file_name, const boost::filesystem::path &path) {
+  auto current_path=path;
+  while(true) {
+    auto test_path=current_path/file_name;
+    if(boost::filesystem::exists(test_path))
+      return test_path;
+    if(current_path==current_path.root_directory())
+      return boost::filesystem::path();
+    current_path=current_path.parent_path();
+  }
+}

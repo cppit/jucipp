@@ -30,5 +30,6 @@ public:
   static std::string unescape(const std::string &argument);
   
   static bool file_in_path(const boost::filesystem::path &file_path, const boost::filesystem::path &path);
+  static boost::filesystem::path find_file_in_path_parents(const std::string &file_name, const boost::filesystem::path &path);
 };
 #endif  // JUCI_FILESYSTEM_H_

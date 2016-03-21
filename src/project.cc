@@ -39,18 +39,26 @@ void Project::on_save(int page) {
   if(page>=Notebook::get().size())
     return;
   auto view=Notebook::get().get_view(page);
-  if(view->file_path.filename()=="CMakeLists.txt") {
-    auto build=get_build(view->file_path);
-    if(dynamic_cast<CMake*>(build.get())) {
-      build->update_default_build(true);
-      if(boost::filesystem::exists(build->get_debug_build_path()))
-        build->update_debug_build(true);
-      
-      for(int c=0;c<Notebook::get().size();c++) {
-        auto source_view=Notebook::get().get_view(c);
-        if(auto source_clang_view=dynamic_cast<Source::ClangView*>(source_view)) {
-          if(filesystem::file_in_path(source_clang_view->file_path, build->project_path))
-            source_clang_view->full_reparse_needed=true;
+  if(view->language && view->language->get_id()=="cmake") {
+    boost::filesystem::path cmake_path;
+    if(view->file_path.filename()=="CMakeLists.txt")
+      cmake_path=view->file_path;
+    else
+      cmake_path=filesystem::find_file_in_path_parents("CMakeLists.txt", view->file_path.parent_path());
+    
+    if(!cmake_path.empty()) {
+      auto build=get_build(cmake_path);
+      if(dynamic_cast<CMake*>(build.get())) {
+        build->update_default_build(true);
+        if(boost::filesystem::exists(build->get_debug_build_path()))
+          build->update_debug_build(true);
+        
+        for(int c=0;c<Notebook::get().size();c++) {
+          auto source_view=Notebook::get().get_view(c);
+          if(auto source_clang_view=dynamic_cast<Source::ClangView*>(source_view)) {
+            if(filesystem::file_in_path(source_clang_view->file_path, build->project_path))
+              source_clang_view->full_reparse_needed=true;
+          }
         }
       }
     }
