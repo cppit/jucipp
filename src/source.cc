@@ -1283,9 +1283,27 @@ bool Source::View::on_key_press_event_basic(GdkEventKey* key) {
     return true;
   }
 
-  bool stop=Gsv::View::on_key_press_event(key);
+  //Workaround for TextView::on_key_press_event bug sometimes causing segmentation faults TODO: figure out the bug and create pull request to gtk
+  //Note: valgrind reports issues on TextView::on_key_press_event as well
+  auto unicode=gdk_keyval_to_unicode(key->keyval);
+  if(unicode>=32 && unicode!=127) {
+    if(get_buffer()->get_has_selection()) {
+      Gtk::TextIter selection_start, selection_end;
+      get_buffer()->get_selection_bounds(selection_start, selection_end);
+      get_buffer()->erase(selection_start, selection_end);
+    }
+    get_buffer()->insert_at_cursor(Glib::ustring(1, unicode));
+    get_source_buffer()->end_user_action();
+    
+    //Trick to make the cursor visible right after insertion:
+    set_cursor_visible(false);
+    set_cursor_visible();
+    
+    return true;
+  }
+
   get_source_buffer()->end_user_action();
-  return stop;
+  return Gsv::View::on_key_press_event(key);
 }
 
 //Bracket language indentation
