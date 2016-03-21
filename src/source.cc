@@ -1283,7 +1283,9 @@ bool Source::View::on_key_press_event_basic(GdkEventKey* key) {
     return true;
   }
 
-  //Workaround for TextView::on_key_press_event bug sometimes causing segmentation faults TODO: figure out the bug and create pull request to gtk
+  //Workaround for TextView::on_key_press_event bug sometimes causing segmentation faults
+  //TODO: figure out the bug and create pull request to gtk
+  //Have only experienced this on OS X
   //Note: valgrind reports issues on TextView::on_key_press_event as well
   auto unicode=gdk_keyval_to_unicode(key->keyval);
   if(unicode>=32 && unicode!=127) {
