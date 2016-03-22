@@ -185,11 +185,11 @@ Directories::Directories() : Gtk::TreeView(), stop_update_thread(false) {
         if(!ec) {
           if(last_write_time!=now && it->second.second<last_write_time) {
             auto path=std::make_shared<std::string>(it->first);
-            dispatcher.post([this, path] {
+            dispatcher.post([this, path, last_write_time] {
               update_mutex.lock();
               auto it=last_write_times.find(*path);
               if(it!=last_write_times.end())
-                add_path(*path, it->second.first);
+                add_path(*path, it->second.first, last_write_time);
               update_mutex.unlock();
             });
           }
@@ -403,9 +403,10 @@ bool Directories::on_button_press_event(GdkEventButton* event) {
   return Gtk::TreeView::on_button_press_event(event);
 }
 
-void Directories::add_path(const boost::filesystem::path &dir_path, const Gtk::TreeModel::Row &parent) {
+void Directories::add_path(const boost::filesystem::path &dir_path, const Gtk::TreeModel::Row &parent, time_t last_write_time) {
   boost::system::error_code ec;
-  auto last_write_time=boost::filesystem::last_write_time(dir_path, ec);
+  if(last_write_time==0)
+    last_write_time=boost::filesystem::last_write_time(dir_path, ec);
   if(ec)
     return;
   last_write_times[dir_path.string()]={parent, last_write_time};

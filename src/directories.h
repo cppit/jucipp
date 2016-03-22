@@ -58,7 +58,7 @@ protected:
   bool on_button_press_event(GdkEventButton *event) override;
   
 private:
-  void add_path(const boost::filesystem::path &dir_path, const Gtk::TreeModel::Row &row);
+  void add_path(const boost::filesystem::path &dir_path, const Gtk::TreeModel::Row &row, time_t last_write_time=0);
   Glib::RefPtr<Gtk::TreeStore> tree_store;
   TreeStore::ColumnRecord column_record;
   
