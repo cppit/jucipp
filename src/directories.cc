@@ -181,8 +181,9 @@ Directories::Directories() : Gtk::TreeView(), stop_update_thread(false) {
       for(auto it=last_write_times.begin();it!=last_write_times.end();) {
         boost::system::error_code ec;
         auto last_write_time=boost::filesystem::last_write_time(it->first, ec);
+        auto now = std::chrono::system_clock::to_time_t(std::chrono::system_clock::now());
         if(!ec) {
-          if(it->second.second<last_write_time) {
+          if(last_write_time!=now && it->second.second<last_write_time) {
             auto path=std::make_shared<std::string>(it->first);
             dispatcher.post([this, path] {
               update_mutex.lock();
