@@ -5,6 +5,7 @@
     - [Debian testing/Linux Mint/Ubuntu](#debian-testinglinux-mintubuntu)
     - [Debian stable/Linux Mint Debian Edition](#debian-stablelinux-mint-debian-edition)
     - [Arch Linux](#arch-linux)
+    - [Fedora 23](#fedora-23)
   - OS X
     - [Homebrew](#os-x-with-homebrew-httpbrewsh)
   - Windows
@@ -68,6 +69,22 @@ git clone --recursive https://github.com/cppit/jucipp
 mkdir jucipp/build
 cd jucipp/build
 cmake ..
+make
+sudo make install
+```
+
+## Fedora 23
+Install dependencies:
+```sh
+sudo dnf install git cmake make gcc-c++ clang-devel clang lldb-devel boost-devel gtksourceviewmm3-devel gtkmm30-devel aspell-devel aspell-en
+```
+
+Get juCi++ source, compile and install:
+```sh
+git clone --recursive https://github.com/cppit/jucipp
+mkdir jucipp/build
+cd jucipp/build
+cmake -DCMAKE_CXX_COMPILER=g++ ..
 make
 sudo make install
 ```
