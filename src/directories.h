@@ -67,7 +67,6 @@ private:
   std::thread update_thread;
   std::atomic<bool> stop_update_thread;
   Dispatcher dispatcher;
-  std::vector<std::string> update_paths;
   
   Gtk::Menu menu;
   Gtk::MenuItem menu_item_rename;

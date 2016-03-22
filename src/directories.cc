@@ -178,30 +178,24 @@ Directories::Directories() : Gtk::TreeView(), stop_update_thread(false) {
     while(!stop_update_thread) {
       std::this_thread::sleep_for(std::chrono::milliseconds(1000));
       update_mutex.lock();
-      if(update_paths.size()==0) {
-        for(auto it=last_write_times.begin();it!=last_write_times.end();) {
-          boost::system::error_code ec;
-          auto last_write_time=boost::filesystem::last_write_time(it->first, ec);
-          if(!ec) {
-            if(it->second.second<last_write_time) {
-              update_paths.emplace_back(it->first);
-            }
-            it++;
+      for(auto it=last_write_times.begin();it!=last_write_times.end();) {
+        boost::system::error_code ec;
+        auto last_write_time=boost::filesystem::last_write_time(it->first, ec);
+        if(!ec) {
+          if(it->second.second<last_write_time) {
+            auto path=std::make_shared<std::string>(it->first);
+            dispatcher.post([this, path] {
+              update_mutex.lock();
+              auto it=last_write_times.find(*path);
+              if(it!=last_write_times.end())
+                add_path(*path, it->second.first);
+              update_mutex.unlock();
+            });
           }
-          else
-            it=last_write_times.erase(it);
+          it++;
         }
-        if(update_paths.size()>0) {
-          dispatcher.post([this] {
-            update_mutex.lock();
-            for(auto &path: update_paths) {
-              if(last_write_times.count(path)>0)
-                add_path(path, last_write_times.at(path).first);
-            }
-            update_paths.clear();
-            update_mutex.unlock();
-          });
-        }
+        else
+          it=last_write_times.erase(it);
       }
       update_mutex.unlock();
     }
@@ -320,7 +314,6 @@ void Directories::open(const boost::filesystem::path &dir_path) {
   tree_store->clear();
   update_mutex.lock();
   last_write_times.clear();
-  update_paths.clear();
   update_mutex.unlock();
     
   
