@@ -154,6 +154,7 @@ namespace Source {
     
     bool spellcheck_all=false;
     std::unique_ptr<SelectionDialog> spellcheck_suggestions_dialog;
+    guint previous_keyval=0;
     guint last_keyval=0;
   private:
     GtkSourceSearchContext *search_context;

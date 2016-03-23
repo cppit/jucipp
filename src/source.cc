@@ -1058,6 +1058,7 @@ bool Source::View::on_key_press_event(GdkEventKey* key) {
       return true;
   }
   
+  previous_keyval=last_keyval;
   last_keyval=key->keyval;
   
   if(get_buffer()->get_has_selection())
@@ -1288,7 +1289,8 @@ bool Source::View::on_key_press_event_basic(GdkEventKey* key) {
   //Have only experienced this on OS X
   //Note: valgrind reports issues on TextView::on_key_press_event as well
   auto unicode=gdk_keyval_to_unicode(key->keyval);
-  if((key->state&(GDK_CONTROL_MASK|GDK_META_MASK))==0 && unicode>=32 && unicode!=127) {
+  if((key->state&(GDK_CONTROL_MASK|GDK_META_MASK))==0 && unicode>=32 && unicode!=127 &&
+     (previous_keyval<GDK_KEY_dead_grave || previous_keyval>GDK_KEY_dead_greek)) {
     if(get_buffer()->get_has_selection()) {
       Gtk::TextIter selection_start, selection_end;
       get_buffer()->get_selection_bounds(selection_start, selection_end);
