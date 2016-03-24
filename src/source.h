@@ -58,7 +58,7 @@ namespace Source {
 
   class View : public Gsv::View {
   public:
-    View(const boost::filesystem::path &file_path, const boost::filesystem::path &project_path, Glib::RefPtr<Gsv::Language> language);
+    View(const boost::filesystem::path &file_path, Glib::RefPtr<Gsv::Language> language);
     ~View();
     
     virtual void configure();
@@ -74,7 +74,6 @@ namespace Source {
     void paste();
         
     boost::filesystem::path file_path;
-    boost::filesystem::path project_path;
     Glib::RefPtr<Gsv::Language> language;
     
     std::function<void()> auto_indent;
@@ -117,8 +116,8 @@ namespace Source {
     Tooltips type_tooltips;
     virtual void show_diagnostic_tooltips(const Gdk::Rectangle &rectangle) {}
     virtual void show_type_tooltips(const Gdk::Rectangle &rectangle) {}
-    gdouble on_motion_last_x;
-    gdouble on_motion_last_y;
+    gdouble on_motion_last_x=0.0;
+    gdouble on_motion_last_y=0.0;
     void set_tooltip_and_dialog_events();
         
     std::string get_line(const Gtk::TextIter &iter);
@@ -155,6 +154,7 @@ namespace Source {
     
     bool spellcheck_all=false;
     std::unique_ptr<SelectionDialog> spellcheck_suggestions_dialog;
+    guint previous_non_modifier_keyval=0;
     guint last_keyval=0;
   private:
     GtkSourceSearchContext *search_context;
@@ -181,7 +181,7 @@ namespace Source {
       static Glib::RefPtr<CompletionBuffer> create() {return Glib::RefPtr<CompletionBuffer>(new CompletionBuffer());}
     };
   public:
-    GenericView(const boost::filesystem::path &file_path, const boost::filesystem::path &project_path, Glib::RefPtr<Gsv::Language> language);
+    GenericView(const boost::filesystem::path &file_path, Glib::RefPtr<Gsv::Language> language);
     
     void parse_language_file(Glib::RefPtr<CompletionBuffer> &completion_buffer, bool &has_context_class, const boost::property_tree::ptree &pt);
   };

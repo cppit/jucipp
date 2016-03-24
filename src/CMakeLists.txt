@@ -86,6 +86,8 @@ set(source_files juci.h
     dialogs.cc
     project.h
     project.cc
+    project_build.h
+    project_build.cc
     dispatcher.h
     dispatcher.cc
     

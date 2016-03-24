@@ -2,36 +2,35 @@
 #define JUCI_PROJECT_H_
 
 #include <gtkmm.h>
-#include "cmake.h"
 #include <boost/filesystem.hpp>
-#include "directories.h"
 #include <atomic>
 #include <mutex>
+#include <unordered_map>
 #include "tooltips.h"
 #include "dispatcher.h"
 #include <iostream>
+#include "project_build.h"
 
-class Project {
-private:
-  static boost::filesystem::path debug_last_stop_file_path;
-public:
-  static std::unordered_map<std::string, std::string> run_arguments;
-  static std::unordered_map<std::string, std::string> debug_run_arguments;
-  static std::atomic<bool> compiling;
-  static std::atomic<bool> debugging;
-  static std::pair<boost::filesystem::path, std::pair<int, int> > debug_stop;
-  static void debug_update_stop();
-  static void debug_update_status(const std::string &debug_status);
+namespace Project {
+  Gtk::Label &debug_status_label();
+  void save_files(const boost::filesystem::path &path);
+  void on_save(int page);
   
-  static Gtk::Label &debug_status_label() {
-    static Gtk::Label label;
-    return label;
-  }
+  extern boost::filesystem::path debug_last_stop_file_path;
+  extern std::unordered_map<std::string, std::string> run_arguments;
+  extern std::unordered_map<std::string, std::string> debug_run_arguments;
+  extern std::atomic<bool> compiling;
+  extern std::atomic<bool> debugging;
+  extern std::pair<boost::filesystem::path, std::pair<int, int> > debug_stop;
+  void debug_update_stop();
+  void debug_update_status(const std::string &debug_status);
   
   class Language {
   public:
-    Language() {}
+    Language(std::unique_ptr<Build> &&build): build(std::move(build)) {}
     virtual ~Language() {}
+    
+    std::unique_ptr<Build> build;
     
     virtual std::pair<std::string, std::string> get_run_arguments() {return {"", ""};}
     virtual void compile() {}
@@ -60,10 +59,8 @@ public:
   private:
     Dispatcher dispatcher;
   public:
-    Clang() : Language() {}
+    Clang(std::unique_ptr<Build> &&build) : Language(std::move(build)) {}
     ~Clang() { dispatcher.disconnect(); }
-    
-    std::unique_ptr<CMake> get_cmake();
     
     std::pair<std::string, std::string> get_run_arguments() override;
     void compile() override;
@@ -92,7 +89,7 @@ public:
   
   class Markdown : public Language {
   public:
-    Markdown() : Language() {}
+    Markdown(std::unique_ptr<Build> &&build) : Language(std::move(build)) {}
     ~Markdown();
     
     boost::filesystem::path last_temp_path;
@@ -101,27 +98,27 @@ public:
   
   class Python : public Language {
   public:
-    Python() : Language() {}
+    Python(std::unique_ptr<Build> &&build) : Language(std::move(build)) {}
     
     void compile_and_run() override;
   };
   
   class JavaScript : public Language {
   public:
-    JavaScript() : Language() {}
+    JavaScript(std::unique_ptr<Build> &&build) : Language(std::move(build)) {}
     
     void compile_and_run() override;
   };
   
   class HTML : public Language {
   public:
-    HTML() : Language() {}
+    HTML(std::unique_ptr<Build> &&build) : Language(std::move(build)) {}
     
     void compile_and_run() override;
   };
   
-  static std::unique_ptr<Language> get_language();
-  static std::unique_ptr<Language> current_language;
+  std::unique_ptr<Language> get_language();
+  extern std::unique_ptr<Language> current_language;
 };
 
 #endif  // JUCI_PROJECT_H_

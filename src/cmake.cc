@@ -5,8 +5,6 @@
 #include "terminal.h"
 #include <boost/regex.hpp>
 
-std::unordered_set<std::string> CMake::debug_build_needed;
-
 CMake::CMake(const boost::filesystem::path &path) {
   const auto find_cmake_project=[this](const boost::filesystem::path &cmake_path) {
     for(auto &line: filesystem::read_lines(cmake_path)) {
@@ -18,7 +16,7 @@ CMake::CMake(const boost::filesystem::path &path) {
     return false;
   };
   
-  auto search_path=path;
+  auto search_path=boost::filesystem::is_directory(path)?path:path.parent_path();
   while(true) {
     auto search_cmake_path=search_path/"CMakeLists.txt";
     if(boost::filesystem::exists(search_cmake_path))
@@ -35,65 +33,13 @@ CMake::CMake(const boost::filesystem::path &path) {
   }
 }
 
-boost::filesystem::path CMake::get_default_build_path(const boost::filesystem::path &project_path) {
-  boost::filesystem::path default_build_path=Config::get().project.default_build_path;
-  
-  const std::string path_variable_project_directory_name="<project_directory_name>";
-  size_t pos=0;
-  auto default_build_path_string=default_build_path.string();
-  auto path_filename_string=project_path.filename().string();
-  while((pos=default_build_path_string.find(path_variable_project_directory_name, pos))!=std::string::npos) {
-    default_build_path_string.replace(pos, path_variable_project_directory_name.size(), path_filename_string);
-    pos+=path_filename_string.size();
-  }
-  if(pos!=0)
-    default_build_path=default_build_path_string;
-  
-  if(default_build_path.is_relative())
-    default_build_path=project_path/default_build_path;
-  
-  return default_build_path;
-}
-
-boost::filesystem::path CMake::get_debug_build_path(const boost::filesystem::path &project_path) {
-  boost::filesystem::path debug_build_path=Config::get().project.debug_build_path;
-  
-  const std::string path_variable_project_directory_name="<project_directory_name>";
-  size_t pos=0;
-  auto debug_build_path_string=debug_build_path.string();
-  auto path_filename_string=project_path.filename().string();
-  while((pos=debug_build_path_string.find(path_variable_project_directory_name, pos))!=std::string::npos) {
-    debug_build_path_string.replace(pos, path_variable_project_directory_name.size(), path_filename_string);
-    pos+=path_filename_string.size();
-  }
-  if(pos!=0)
-    debug_build_path=debug_build_path_string;
-  
-  const std::string path_variable_default_build_path="<default_build_path>";
-  pos=0;
-  debug_build_path_string=debug_build_path.string();
-  auto default_build_path=Config::get().project.default_build_path;
-  while((pos=debug_build_path_string.find(path_variable_default_build_path, pos))!=std::string::npos) {
-    debug_build_path_string.replace(pos, path_variable_default_build_path.size(), default_build_path);
-    pos+=default_build_path.size();
-  }
-  if(pos!=0)
-    debug_build_path=debug_build_path_string;
-  
-  if(debug_build_path.is_relative())
-    debug_build_path=project_path/debug_build_path;
-  
-  return debug_build_path;
-}
-
-bool CMake::create_default_build(const boost::filesystem::path &project_path, bool force) {
+bool CMake::update_default_build(const boost::filesystem::path &default_build_path, bool force) {
   if(project_path.empty())
     return false;
   
   if(!boost::filesystem::exists(project_path/"CMakeLists.txt"))
     return false;
   
-  auto default_build_path=get_default_build_path(project_path);
   if(default_build_path.empty())
     return false;
   if(!boost::filesystem::exists(default_build_path)) {
@@ -107,8 +53,6 @@ bool CMake::create_default_build(const boost::filesystem::path &project_path, bo
   
   if(!force && boost::filesystem::exists(default_build_path/"compile_commands.json"))
     return true;
-  
-  debug_build_needed.emplace(project_path.string());
   
   auto compile_commands_path=default_build_path/"compile_commands.json";
   Dialog::Message message("Creating/updating default build");
@@ -135,14 +79,13 @@ bool CMake::create_default_build(const boost::filesystem::path &project_path, bo
   return false;
 }
 
-bool CMake::create_debug_build(const boost::filesystem::path &project_path) {
+bool CMake::update_debug_build(const boost::filesystem::path &debug_build_path, bool force) {
   if(project_path.empty())
     return false;
   
   if(!boost::filesystem::exists(project_path/"CMakeLists.txt"))
     return false;
   
-  auto debug_build_path=get_debug_build_path(project_path);
   if(debug_build_path.empty())
     return false;
   if(!boost::filesystem::exists(debug_build_path)) {
@@ -154,11 +97,8 @@ bool CMake::create_debug_build(const boost::filesystem::path &project_path) {
     }
   }
   
-  if(boost::filesystem::exists(debug_build_path/"CMakeCache.txt")) {
-    auto it=debug_build_needed.find(project_path.string());
-    if(it==debug_build_needed.end())
-      return true;
-  }
+  if(!force && boost::filesystem::exists(debug_build_path/"CMakeCache.txt"))
+    return true;
   
   std::unique_ptr<Dialog::Message> message;
   message=std::unique_ptr<Dialog::Message>(new Dialog::Message("Creating/updating debug build"));
@@ -166,12 +106,8 @@ bool CMake::create_debug_build(const boost::filesystem::path &project_path) {
                                            filesystem::escape_argument(project_path)+" -DCMAKE_BUILD_TYPE=Debug", debug_build_path);
   if(message)
     message->hide();
-  if(exit_status==EXIT_SUCCESS) {
-    auto it=debug_build_needed.find(project_path.string());
-    if(it!=debug_build_needed.end())
-      debug_build_needed.erase(it);
+  if(exit_status==EXIT_SUCCESS)
     return true;
-  }
   return false;
 }
 

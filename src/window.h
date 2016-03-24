@@ -2,9 +2,7 @@
 #define JUCI_WINDOW_H_
 
 #include <gtkmm.h>
-#include "entrybox.h"
 #include "notebook.h"
-#include "project.h"
 #include <atomic>
 
 class Window : public Gtk::ApplicationWindow {
@@ -30,7 +28,6 @@ private:
   Gtk::ScrolledWindow terminal_scrolled_window;
   Gtk::HBox info_and_status_hbox;
   Gtk::AboutDialog about;
-  EntryBox entry_box;
 
   void configure();
   void set_menu_actions();

@@ -1,7 +1,7 @@
 #include "source_clang.h"
 #include "config.h"
 #include "terminal.h"
-#include "cmake.h"
+#include "project_build.h"
 #ifdef JUCI_ENABLE_DEBUG
 #include "debug_clang.h"
 #endif
@@ -22,8 +22,8 @@ namespace sigc {
 
 clang::Index Source::ClangViewParse::clang_index(0, 0);
 
-Source::ClangViewParse::ClangViewParse(const boost::filesystem::path &file_path, const boost::filesystem::path& project_path, Glib::RefPtr<Gsv::Language> language):
-Source::View(file_path, project_path, language) {
+Source::ClangViewParse::ClangViewParse(const boost::filesystem::path &file_path, Glib::RefPtr<Gsv::Language> language):
+Source::View(file_path, language) {
   JDEBUG("start");
   
   auto tag_table=get_buffer()->get_tag_table();
@@ -174,7 +174,9 @@ void Source::ClangViewParse::soft_reparse() {
 }
 
 std::vector<std::string> Source::ClangViewParse::get_compilation_commands() {
-  clang::CompilationDatabase db(CMake::get_default_build_path(project_path).string());
+  auto build=Project::get_build(file_path);
+  build->update_default_build();
+  clang::CompilationDatabase db(build->get_default_build_path().string());
   clang::CompileCommands commands(file_path.string(), db);
   std::vector<clang::CompileCommand> cmds = commands.get_commands();
   std::vector<std::string> arguments;
@@ -450,8 +452,8 @@ void Source::ClangViewParse::show_type_tooltips(const Gdk::Rectangle &rectangle)
 //////////////////////////////
 //// ClangViewAutocomplete ///
 //////////////////////////////
-Source::ClangViewAutocomplete::ClangViewAutocomplete(const boost::filesystem::path &file_path, const boost::filesystem::path& project_path, Glib::RefPtr<Gsv::Language> language):
-Source::ClangViewParse(file_path, project_path, language), autocomplete_state(AutocompleteState::IDLE) {
+Source::ClangViewAutocomplete::ClangViewAutocomplete(const boost::filesystem::path &file_path, Glib::RefPtr<Gsv::Language> language):
+Source::ClangViewParse(file_path, language), autocomplete_state(AutocompleteState::IDLE) {
   get_buffer()->signal_changed().connect([this](){
     if(autocomplete_dialog && autocomplete_dialog->shown)
       delayed_reparse_connection.disconnect();
@@ -637,7 +639,7 @@ void Source::ClangViewAutocomplete::autocomplete() {
   auto buffer=std::make_shared<Glib::ustring>(get_buffer()->get_text());
   auto iter=get_buffer()->get_insert()->get_iter();
   auto line_nr=iter.get_line()+1;
-  auto column_nr=iter.get_line_offset()+1;
+  auto column_nr=iter.get_line_index()+1;
   auto pos=iter.get_offset()-1;
   while(pos>=0 && (((*buffer)[pos]>='a' && (*buffer)[pos]<='z') || ((*buffer)[pos]>='A' && (*buffer)[pos]<='Z') ||
                    ((*buffer)[pos]>='0' && (*buffer)[pos]<='9') || (*buffer)[pos]=='_')) {
@@ -791,8 +793,8 @@ bool Source::ClangViewAutocomplete::full_reparse() {
 ////////////////////////////
 //// ClangViewRefactor /////
 ////////////////////////////
-Source::ClangViewRefactor::ClangViewRefactor(const boost::filesystem::path &file_path, const boost::filesystem::path& project_path, Glib::RefPtr<Gsv::Language> language):
-Source::ClangViewAutocomplete(file_path, project_path, language) {
+Source::ClangViewRefactor::ClangViewRefactor(const boost::filesystem::path &file_path, Glib::RefPtr<Gsv::Language> language):
+Source::ClangViewAutocomplete(file_path, language) {
   similar_tokens_tag=get_buffer()->create_tag();
   similar_tokens_tag->property_weight()=1000; //TODO: replace with Pango::WEIGHT_ULTRAHEAVY in 2016 or so (when Ubuntu 14 is history)
   
@@ -1007,13 +1009,6 @@ Source::ClangViewAutocomplete(file_path, project_path, language) {
             auto referenced=cursor.get_referenced();
             if(referenced) {
               auto usr=referenced.get_usr();
-              boost::filesystem::path referenced_path=referenced.get_source_location().get_path();
-              
-              //Terminal::get().print(usr+'\n', true); //TODO: remove
-              
-              //Return empty if referenced is within project
-              if(referenced_path.generic_string().substr(0, this->project_path.generic_string().size()+1)==this->project_path.generic_string()+'/')
-                return data;
               
               data.emplace_back("clang");
               
@@ -1169,7 +1164,7 @@ void Source::ClangViewRefactor::tag_similar_tokens(const Token &token) {
   }
 }
 
-Source::ClangView::ClangView(const boost::filesystem::path &file_path, const boost::filesystem::path& project_path, Glib::RefPtr<Gsv::Language> language): ClangViewRefactor(file_path, project_path, language) {
+Source::ClangView::ClangView(const boost::filesystem::path &file_path, Glib::RefPtr<Gsv::Language> language): ClangViewRefactor(file_path, language) {
   if(language) {
     get_source_buffer()->set_highlight_syntax(true);
     get_source_buffer()->set_language(language);

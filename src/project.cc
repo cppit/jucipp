@@ -2,6 +2,7 @@
 #include "config.h"
 #include "terminal.h"
 #include "filesystem.h"
+#include "directories.h"
 #include <fstream>
 #include "menu.h"
 #include "notebook.h"
@@ -9,14 +10,60 @@
 #include "debug_clang.h"
 #endif
 
+boost::filesystem::path Project::debug_last_stop_file_path;
 std::unordered_map<std::string, std::string> Project::run_arguments;
 std::unordered_map<std::string, std::string> Project::debug_run_arguments;
-std::atomic<bool> Project::compiling;
-std::atomic<bool> Project::debugging;
+std::atomic<bool> Project::compiling(false);
+std::atomic<bool> Project::debugging(false);
 std::pair<boost::filesystem::path, std::pair<int, int> > Project::debug_stop;
-boost::filesystem::path Project::debug_last_stop_file_path;
-
 std::unique_ptr<Project::Language> Project::current_language;
+
+Gtk::Label &Project::debug_status_label() {
+  static Gtk::Label label;
+  return label;
+}
+
+void Project::save_files(const boost::filesystem::path &path) {
+  if(Notebook::get().get_current_page()==-1)
+    return;
+  for(int c=0;c<Notebook::get().size();c++) {
+    auto view=Notebook::get().get_view(c);
+    if(view->get_buffer()->get_modified()) {
+      if(filesystem::file_in_path(view->file_path, path))
+        Notebook::get().save(c);
+    }
+  }
+}
+
+void Project::on_save(int page) {
+  if(page>=Notebook::get().size())
+    return;
+  auto view=Notebook::get().get_view(page);
+  if(view->language && view->language->get_id()=="cmake") {
+    boost::filesystem::path cmake_path;
+    if(view->file_path.filename()=="CMakeLists.txt")
+      cmake_path=view->file_path;
+    else
+      cmake_path=filesystem::find_file_in_path_parents("CMakeLists.txt", view->file_path.parent_path());
+    
+    if(!cmake_path.empty()) {
+      auto build=get_build(cmake_path);
+      if(dynamic_cast<CMake*>(build.get())) {
+        build->update_default_build(true);
+        if(boost::filesystem::exists(build->get_debug_build_path()))
+          build->update_debug_build(true);
+        
+        for(int c=0;c<Notebook::get().size();c++) {
+          auto source_view=Notebook::get().get_view(c);
+          if(auto source_clang_view=dynamic_cast<Source::ClangView*>(source_view)) {
+            if(filesystem::file_in_path(source_clang_view->file_path, build->project_path))
+              source_clang_view->full_reparse_needed=true;
+          }
+        }
+      }
+    }
+  }
+}
 
 void Project::debug_update_status(const std::string &debug_status) {
   if(debug_status.empty())
@@ -59,57 +106,48 @@ void Project::debug_update_stop() {
 }
 
 std::unique_ptr<Project::Language> Project::get_language() {
+  std::unique_ptr<Project::Build> build;
+  
   if(Notebook::get().get_current_page()!=-1) {
     auto view=Notebook::get().get_current_view();
+    build=get_build(view->file_path);
     if(view->language) {
       auto language_id=view->language->get_id();
       if(language_id=="markdown")
-        return std::unique_ptr<Project::Language>(new Project::Markdown());
+        return std::unique_ptr<Project::Language>(new Project::Markdown(std::move(build)));
       if(language_id=="python")
-        return std::unique_ptr<Project::Language>(new Project::Python());
+        return std::unique_ptr<Project::Language>(new Project::Python(std::move(build)));
       if(language_id=="js")
-        return std::unique_ptr<Project::Language>(new Project::JavaScript());
+        return std::unique_ptr<Project::Language>(new Project::JavaScript(std::move(build)));
       if(language_id=="html")
-        return std::unique_ptr<Project::Language>(new Project::HTML());
+        return std::unique_ptr<Project::Language>(new Project::HTML(std::move(build)));
     }
   }
-  
-  return std::unique_ptr<Project::Language>(new Project::Clang());
-}
-
-std::unique_ptr<CMake> Project::Clang::get_cmake() {
-  boost::filesystem::path path;
-  if(Notebook::get().get_current_page()!=-1)
-    path=Notebook::get().get_current_view()->file_path.parent_path();
   else
-    path=Directories::get().current_path;
-  if(path.empty())
-    return nullptr;
-  auto cmake=std::unique_ptr<CMake>(new CMake(path));
-  if(cmake->project_path.empty())
-    return nullptr;
-  if(!CMake::create_default_build(cmake->project_path))
-    return nullptr;
-  return cmake;
+    build=get_build(Directories::get().path);
+  
+  if(dynamic_cast<CMake*>(build.get()))
+    return std::unique_ptr<Project::Language>(new Project::Clang(std::move(build)));
+  else
+    return std::unique_ptr<Project::Language>(new Project::Language(std::move(build)));
 }
 
 std::pair<std::string, std::string> Project::Clang::get_run_arguments() {
-  auto cmake=get_cmake();
-  if(!cmake)
+  if(build->get_default_build_path().empty() || !build->update_default_build())
     return {"", ""};
   
-  auto project_path=cmake->project_path.string();
+  auto project_path=build->project_path.string();
   auto run_arguments_it=run_arguments.find(project_path);
   std::string arguments;
   if(run_arguments_it!=run_arguments.end())
     arguments=run_arguments_it->second;
   
   if(arguments.empty()) {
-    auto executable=cmake->get_executable(Notebook::get().get_current_page()!=-1?Notebook::get().get_current_view()->file_path:"").string();
+    auto executable=build->get_executable(Notebook::get().get_current_page()!=-1?Notebook::get().get_current_view()->file_path:"").string();
     
     if(executable!="") {
-      auto project_path=cmake->project_path;
-      auto build_path=CMake::get_default_build_path(project_path);
+      auto project_path=build->project_path;
+      auto build_path=build->get_default_build_path();
       if(!build_path.empty()) {
         size_t pos=executable.find(project_path.string());
         if(pos!=std::string::npos)
@@ -118,36 +156,30 @@ std::pair<std::string, std::string> Project::Clang::get_run_arguments() {
       arguments=filesystem::escape_argument(executable);
     }
     else
-      arguments=filesystem::escape_argument(CMake::get_default_build_path(cmake->project_path));
+      arguments=filesystem::escape_argument(build->get_default_build_path());
   }
   
   return {project_path, arguments};
 }
 
-void Project::Clang::compile() {    
-  auto cmake=get_cmake();
-  if(!cmake)
+void Project::Clang::compile() {
+  auto default_build_path=build->get_default_build_path();
+  if(default_build_path.empty() || !build->update_default_build())
     return;
   
-  auto default_build_path=CMake::get_default_build_path(cmake->project_path);
-  if(default_build_path.empty())
-    return;
   compiling=true;
-  Terminal::get().print("Compiling project "+cmake->project_path.string()+"\n");
+  Terminal::get().print("Compiling project "+build->project_path.string()+"\n");
   Terminal::get().async_process(Config::get().project.make_command, default_build_path, [this](int exit_status) {
     compiling=false;
   });
 }
 
 void Project::Clang::compile_and_run() {
-  auto cmake=get_cmake();
-  if(!cmake)
+  auto default_build_path=build->get_default_build_path();
+  if(default_build_path.empty() || !build->update_default_build())
     return;
-  auto project_path=cmake->project_path;
   
-  auto default_build_path=CMake::get_default_build_path(project_path);
-  if(default_build_path.empty())
-    return;
+  auto project_path=build->project_path;
   
   auto run_arguments_it=run_arguments.find(project_path.string());
   std::string arguments;
@@ -155,11 +187,9 @@ void Project::Clang::compile_and_run() {
     arguments=run_arguments_it->second;
   
   if(arguments.empty()) {
-    arguments=cmake->get_executable(Notebook::get().get_current_page()!=-1?Notebook::get().get_current_view()->file_path:"").string();
+    arguments=build->get_executable(Notebook::get().get_current_page()!=-1?Notebook::get().get_current_view()->file_path:"").string();
     if(arguments.empty()) {
-      Terminal::get().print("Could not find add_executable in the following paths:\n");
-      for(auto &path: cmake->paths)
-        Terminal::get().print("  "+path.string()+"\n");
+      Terminal::get().print("Warning: could not find executable.\n");
       Terminal::get().print("Solution: either use Project Set Run Arguments, or open a source file within a directory where add_executable is set.\n", true);
       return;
     }
@@ -183,22 +213,21 @@ void Project::Clang::compile_and_run() {
 
 #ifdef JUCI_ENABLE_DEBUG
 std::pair<std::string, std::string> Project::Clang::debug_get_run_arguments() {
-  auto cmake=get_cmake();
-  if(!cmake)
+  if(build->get_default_build_path().empty() || !build->update_default_build())
     return {"", ""};
   
-  auto project_path=cmake->project_path.string();
+  auto project_path=build->project_path.string();
   auto run_arguments_it=debug_run_arguments.find(project_path);
   std::string arguments;
   if(run_arguments_it!=debug_run_arguments.end())
     arguments=run_arguments_it->second;
   
   if(arguments.empty()) {
-    auto executable=cmake->get_executable(Notebook::get().get_current_page()!=-1?Notebook::get().get_current_view()->file_path:"").string();
+    auto executable=build->get_executable(Notebook::get().get_current_page()!=-1?Notebook::get().get_current_view()->file_path:"").string();
     
     if(executable!="") {
-      auto project_path=cmake->project_path;
-      auto build_path=CMake::get_debug_build_path(project_path);
+      auto project_path=build->project_path;
+      auto build_path=build->get_debug_build_path();
       if(!build_path.empty()) {
         size_t pos=executable.find(project_path.string());
         if(pos!=std::string::npos)
@@ -207,23 +236,17 @@ std::pair<std::string, std::string> Project::Clang::debug_get_run_arguments() {
       arguments=filesystem::escape_argument(executable);
     }
     else
-      arguments=filesystem::escape_argument(CMake::get_debug_build_path(cmake->project_path));
+      arguments=filesystem::escape_argument(build->get_debug_build_path());
   }
   
   return {project_path, arguments};
 }
 
 void Project::Clang::debug_start() {
-  auto cmake=get_cmake();
-  if(!cmake)
+  auto debug_build_path=build->get_debug_build_path();
+  if(debug_build_path.empty() || !build->update_debug_build())
     return;
-  auto project_path=cmake->project_path;
-      
-  auto debug_build_path=CMake::get_debug_build_path(project_path);
-  if(debug_build_path.empty())
-    return;
-  if(!CMake::create_debug_build(project_path))
-    return;
+  auto project_path=build->project_path;
   
   auto run_arguments_it=debug_run_arguments.find(project_path.string());
   std::string run_arguments;
@@ -231,11 +254,9 @@ void Project::Clang::debug_start() {
     run_arguments=run_arguments_it->second;
   
   if(run_arguments.empty()) {
-    run_arguments=cmake->get_executable(Notebook::get().get_current_page()!=-1?Notebook::get().get_current_view()->file_path:"").string();
+    run_arguments=build->get_executable(Notebook::get().get_current_page()!=-1?Notebook::get().get_current_view()->file_path:"").string();
     if(run_arguments.empty()) {
-      Terminal::get().print("Could not find add_executable in the following paths:\n");
-      for(auto &path: cmake->paths)
-        Terminal::get().print("  "+path.string()+"\n");
+      Terminal::get().print("Warning: could not find executable.\n");
       Terminal::get().print("Solution: either use Debug Set Run Arguments, or open a source file within a directory where add_executable is set.\n", true);
       return;
     }
@@ -248,7 +269,7 @@ void Project::Clang::debug_start() {
   auto breakpoints=std::make_shared<std::vector<std::pair<boost::filesystem::path, int> > >();
   for(int c=0;c<Notebook::get().size();c++) {
     auto view=Notebook::get().get_view(c);
-    if(project_path==view->project_path) {
+    if(filesystem::file_in_path(view->file_path, project_path)) {
       auto iter=view->get_buffer()->begin();
       if(view->get_source_buffer()->get_source_marks_at_iter(iter, "debug_breakpoint").size()>0)
         breakpoints->emplace_back(view->file_path, iter.get_line()+1);

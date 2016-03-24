@@ -7,11 +7,11 @@
 
 class Dialog {
 public:
-  static std::string open_folder();
-  static std::string open_file();
-  static std::string new_file();
-  static std::string new_folder();
-  static std::string save_file_as(const boost::filesystem::path &file_path);
+  static std::string open_folder(const boost::filesystem::path &path);
+  static std::string open_file(const boost::filesystem::path &path);
+  static std::string new_file(const boost::filesystem::path &path);
+  static std::string new_folder(const boost::filesystem::path &path);
+  static std::string save_file_as(const boost::filesystem::path &path);
   
   class Message : public Gtk::MessageDialog {
   public:
@@ -19,10 +19,9 @@ public:
   };
   
 private:
-  static std::string gtk_dialog(const std::string &title,
+  static std::string gtk_dialog(const boost::filesystem::path &path, const std::string &title,
                           const std::vector<std::pair<std::string, Gtk::ResponseType>> &buttons,
-                          Gtk::FileChooserAction gtk_options,
-                          const std::string &file_name = "");
+                          Gtk::FileChooserAction gtk_options);
 };
 
 #endif //JUCI_DIALOG_H_

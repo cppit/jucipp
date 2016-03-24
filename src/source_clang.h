@@ -24,7 +24,7 @@ namespace Source {
       int kind;
     };
     
-    ClangViewParse(const boost::filesystem::path &file_path, const boost::filesystem::path& project_path, Glib::RefPtr<Gsv::Language> language);
+    ClangViewParse(const boost::filesystem::path &file_path, Glib::RefPtr<Gsv::Language> language);
     
     void configure() override;
     
@@ -71,7 +71,7 @@ namespace Source {
       std::string brief_comments;
     };
     
-    ClangViewAutocomplete(const boost::filesystem::path &file_path, const boost::filesystem::path& project_path, Glib::RefPtr<Gsv::Language> language);
+    ClangViewAutocomplete(const boost::filesystem::path &file_path, Glib::RefPtr<Gsv::Language> language);
     
     virtual void async_delete();
     bool full_reparse() override;
@@ -96,7 +96,7 @@ namespace Source {
 
   class ClangViewRefactor : public ClangViewAutocomplete {
   public:
-    ClangViewRefactor(const boost::filesystem::path &file_path, const boost::filesystem::path& project_path, Glib::RefPtr<Gsv::Language> language);
+    ClangViewRefactor(const boost::filesystem::path &file_path, Glib::RefPtr<Gsv::Language> language);
   protected:
     sigc::connection delayed_tag_similar_tokens_connection;
   private:
@@ -109,7 +109,7 @@ namespace Source {
   
   class ClangView : public ClangViewRefactor {
   public:
-    ClangView(const boost::filesystem::path &file_path, const boost::filesystem::path& project_path, Glib::RefPtr<Gsv::Language> language);
+    ClangView(const boost::filesystem::path &file_path, Glib::RefPtr<Gsv::Language> language);
     void async_delete() override;
   };
 }

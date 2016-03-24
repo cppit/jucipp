@@ -32,9 +32,15 @@ public:
     Label(std::function<void(int state, const std::string& message)> update=nullptr);
     std::function<void(int state, const std::string& message)> update;
   };
-
-public:
+  
+private:
   EntryBox();
+public:
+  static EntryBox &get() {
+    static EntryBox singleton;
+    return singleton;
+  }
+  
   Gtk::Box upper_box;
   Gtk::Box lower_box;
   void clear();

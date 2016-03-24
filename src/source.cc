@@ -82,7 +82,7 @@ std::string Source::FixIt::string(Glib::RefPtr<Gtk::TextBuffer> buffer) {
 //////////////
 AspellConfig* Source::View::spellcheck_config=NULL;
 
-Source::View::View(const boost::filesystem::path &file_path, const boost::filesystem::path &project_path, Glib::RefPtr<Gsv::Language> language): file_path(file_path), project_path(project_path), language(language) {
+Source::View::View(const boost::filesystem::path &file_path, Glib::RefPtr<Gsv::Language> language): file_path(file_path), language(language) {
   get_source_buffer()->begin_not_undoable_action();
   if(language) {
     if(filesystem::read_non_utf8(file_path, get_buffer())==-1)
@@ -1058,6 +1058,8 @@ bool Source::View::on_key_press_event(GdkEventKey* key) {
       return true;
   }
   
+  if(last_keyval<GDK_KEY_Shift_L || last_keyval>GDK_KEY_Hyper_R)
+    previous_non_modifier_keyval=last_keyval;
   last_keyval=key->keyval;
   
   if(get_buffer()->get_has_selection())
@@ -1283,9 +1285,30 @@ bool Source::View::on_key_press_event_basic(GdkEventKey* key) {
     return true;
   }
 
-  bool stop=Gsv::View::on_key_press_event(key);
+  //Workaround for TextView::on_key_press_event bug sometimes causing segmentation faults
+  //TODO: figure out the bug and create pull request to gtk
+  //Have only experienced this on OS X
+  //Note: valgrind reports issues on TextView::on_key_press_event as well
+  auto unicode=gdk_keyval_to_unicode(key->keyval);
+  if((key->state&(GDK_CONTROL_MASK|GDK_META_MASK))==0 && unicode>=32 && unicode!=127 &&
+     (previous_non_modifier_keyval<GDK_KEY_dead_grave || previous_non_modifier_keyval>GDK_KEY_dead_greek)) {
+    if(get_buffer()->get_has_selection()) {
+      Gtk::TextIter selection_start, selection_end;
+      get_buffer()->get_selection_bounds(selection_start, selection_end);
+      get_buffer()->erase(selection_start, selection_end);
+    }
+    get_buffer()->insert_at_cursor(Glib::ustring(1, unicode));
+    get_source_buffer()->end_user_action();
+    
+    //Trick to make the cursor visible right after insertion:
+    set_cursor_visible(false);
+    set_cursor_visible();
+    
+    return true;
+  }
+
   get_source_buffer()->end_user_action();
-  return stop;
+  return Gsv::View::on_key_press_event(key);
 }
 
 //Bracket language indentation
@@ -1724,7 +1747,7 @@ std::vector<std::string> Source::View::spellcheck_get_suggestions(const Gtk::Tex
 /////////////////////
 //// GenericView ////
 /////////////////////
-Source::GenericView::GenericView(const boost::filesystem::path &file_path, const boost::filesystem::path &project_path, Glib::RefPtr<Gsv::Language> language) : View(file_path, project_path, language) {
+Source::GenericView::GenericView(const boost::filesystem::path &file_path, Glib::RefPtr<Gsv::Language> language) : View(file_path, language) {
   configure();
   spellcheck_all=true;
   
