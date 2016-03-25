@@ -405,7 +405,7 @@ std::string Debug::Clang::get_value(const std::string &variable, const boost::fi
     }
     if(variable_value.empty()) {
       //In case a variable is missing file and line number, only do check on name
-      auto value=frame.FindVariable(variable.c_str());
+      auto value=frame.GetValueForVariablePath(variable.c_str());
       if(value.IsValid()) {
         lldb::SBStream stream;
         value.GetDescription(stream);
