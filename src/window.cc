@@ -812,6 +812,8 @@ bool Window::on_delete_event(GdkEventAny *event) {
       pt_files.push_back(std::make_pair("", pt_child));
     }
     pt_root.add_child("files", pt_files);
+    if(notebook.get_current_page()!=-1)
+      pt_root.put("current_file", notebook.get_current_view()->file_path.string());
     boost::property_tree::write_json((Config::get().juci_home_path()/"last_session.json").string(), pt_root);
   }
   catch(const std::exception &) {}
