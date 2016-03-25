@@ -803,6 +803,19 @@ bool Window::on_key_press_event(GdkEventKey *event) {
 }
 
 bool Window::on_delete_event(GdkEventAny *event) {
+  try {
+    boost::property_tree::ptree pt_root, pt_files;
+    pt_root.put("folder", Directories::get().path.string());
+    for(int c=0;c<notebook.size();c++) {
+      boost::property_tree::ptree pt_child;
+      pt_child.put("", notebook.get_view(c)->file_path.string());
+      pt_files.push_back(std::make_pair("", pt_child));
+    }
+    pt_root.add_child("files", pt_files);
+    boost::property_tree::write_json((Config::get().juci_home_path()/"last_session.json").string(), pt_root);
+  }
+  catch(const std::exception &) {}
+  
   auto size=notebook.size();
   for(int c=0;c<size;c++) {
     if(!notebook.close_current_page())
