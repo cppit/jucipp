@@ -425,6 +425,10 @@ void Source::ClangViewParse::show_type_tooltips(const Gdk::Rectangle &rectangle)
                   if(!(iter.backward_char() && *iter=='-' && iter.backward_char()))
                     break;
                 }
+                else if(*iter==':') {
+                  if(!(iter.backward_char() && *iter==':' && iter.backward_char()))
+                    break;
+                }
               }
               auto spelling=get_buffer()->get_text(start, end).raw();
               
