@@ -1307,8 +1307,9 @@ bool Source::View::on_key_press_event_basic(GdkEventKey* key) {
     return true;
   }
 
+  auto stop=Gsv::View::on_key_press_event(key);
   get_source_buffer()->end_user_action();
-  return Gsv::View::on_key_press_event(key);
+  return stop;
 }
 
 //Bracket language indentation

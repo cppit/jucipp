@@ -413,7 +413,26 @@ void Source::ClangViewParse::show_type_tooltips(const Gdk::Rectangle &rectangle)
             if(Debug::Clang::get().is_stopped()) {
               auto location=token.get_cursor().get_referenced().get_source_location();
               Glib::ustring value_type="Value";
-              Glib::ustring debug_value=Debug::Clang::get().get_value(token.get_spelling(), location.get_path(), location.get_offset().line, location.get_offset().index);
+              
+              auto start=get_buffer()->get_iter_at_line_index(token.offsets.first.line-1, token.offsets.first.index-1);
+              auto end=get_buffer()->get_iter_at_line_index(token.offsets.second.line-1, token.offsets.second.index-1);
+              auto iter=start;
+              while((*iter>='a' && *iter<='z') || (*iter>='A' && *iter<='Z') || (*iter>='0' && *iter<='9') || *iter=='_' || *iter=='.') {
+                start=iter;
+                if(!iter.backward_char())
+                  break;
+                if(*iter=='>') {
+                  if(!(iter.backward_char() && *iter=='-' && iter.backward_char()))
+                    break;
+                }
+                else if(*iter==':') {
+                  if(!(iter.backward_char() && *iter==':' && iter.backward_char()))
+                    break;
+                }
+              }
+              auto spelling=get_buffer()->get_text(start, end).raw();
+              
+              Glib::ustring debug_value=Debug::Clang::get().get_value(spelling, location.get_path(), location.get_offset().line, location.get_offset().index);
               if(debug_value.empty()) {
                 value_type="Return value";
                 auto cursor=token.get_cursor();

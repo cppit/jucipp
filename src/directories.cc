@@ -95,10 +95,12 @@ bool Directories::TreeStore::drag_data_received_vfunc(const TreeModel::Path &pat
           for(;file_it!=view->file_path.end();file_it++)
             new_file_path/=*file_it;
           view->file_path=new_file_path;
+          g_signal_emit_by_name(view->get_buffer()->gobj(), "modified_changed");
         }
       }
-      if(view->file_path==source_path) {
+      else if(view->file_path==source_path) {
         view->file_path=target_path;
+        g_signal_emit_by_name(view->get_buffer()->gobj(), "modified_changed");
         break;
       }
     }

@@ -44,6 +44,26 @@ int Application::on_command_line(const Glib::RefPtr<Gio::ApplicationCommandLine>
 void Application::on_activate() {
   add_window(Window::get());
   Window::get().show();
+  
+  std::string last_current_file;
+  
+  if(directories.empty() && files.empty()) {
+    try {
+      boost::property_tree::ptree pt;
+      boost::property_tree::read_json((Config::get().juci_home_path()/"last_session.json").string(), pt);
+      auto folder=pt.get<std::string>("folder");
+      if(!folder.empty())
+        directories.emplace_back(folder);
+      for(auto &v: pt.get_child("files")) {
+        std::string file=v.second.data();
+        if(!file.empty())
+          files.emplace_back(file);
+      }
+      last_current_file=pt.get<std::string>("current_file");
+    }
+    catch(const std::exception &) {}
+  }
+  
   bool first_directory=true;
   for(auto &directory: directories) {
     if(first_directory) {
@@ -73,6 +93,9 @@ void Application::on_activate() {
   
   for(auto &error: errors)
     Terminal::get().print(error, true);
+  
+  if(!last_current_file.empty())
+    Notebook::get().open(last_current_file);
 }
 
 void Application::on_startup() {
