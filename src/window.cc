@@ -891,34 +891,39 @@ void Window::search_and_replace_entry() {
   replace_entry_it->signal_changed().connect([this, replace_entry_it](){
     last_replace=replace_entry_it->get_text();
   });
+  
   EntryBox::get().buttons.emplace_back("↑", [this](){
     if(notebook.get_current_page()!=-1)
         notebook.get_current_view()->search_backward();
   });
-  EntryBox::get().buttons.back().set_tooltip_text("Find previous\n\nShortcut: press Shift+Enter in the search field");
+  EntryBox::get().buttons.back().set_tooltip_text("Find Previous (Shortcut: ⇧Enter in Entry)");
   EntryBox::get().buttons.emplace_back("⇄", [this, replace_entry_it](){
     if(notebook.get_current_page()!=-1) {
       notebook.get_current_view()->replace_forward(replace_entry_it->get_text());
     }
   });
-  EntryBox::get().buttons.back().set_tooltip_text("Replace current selection\n\nShortcut: press Enter in the replacement field");
+  EntryBox::get().buttons.back().set_tooltip_text("Replace Next (Shortcut: Enter in Entry)");
   EntryBox::get().buttons.emplace_back("↓", [this](){
     if(notebook.get_current_page()!=-1)
       notebook.get_current_view()->search_forward();
   });
-  EntryBox::get().buttons.back().set_tooltip_text("Find next\n\nShortcut: press Enter in the search field");
-  EntryBox::get().buttons.emplace_back("Replace all", [this, replace_entry_it](){
+  EntryBox::get().buttons.back().set_tooltip_text("Find Next (Shortcut: Enter in Entry)");
+  EntryBox::get().buttons.emplace_back("Replace All", [this, replace_entry_it](){
     if(notebook.get_current_page()!=-1)
       notebook.get_current_view()->replace_all(replace_entry_it->get_text());
   });
-  EntryBox::get().toggle_buttons.emplace_back("Match case");
+  EntryBox::get().buttons.back().set_tooltip_text("Replace All");
+  
+  EntryBox::get().toggle_buttons.emplace_back("Aa");
+  EntryBox::get().toggle_buttons.back().set_tooltip_text("Match Case");
   EntryBox::get().toggle_buttons.back().set_active(case_sensitive_search);
   EntryBox::get().toggle_buttons.back().on_activate=[this, search_entry_it](){
     case_sensitive_search=!case_sensitive_search;
     if(notebook.get_current_page()!=-1)
       notebook.get_current_view()->search_highlight(search_entry_it->get_text(), case_sensitive_search, regex_search);
   };
-  EntryBox::get().toggle_buttons.emplace_back("Use regex");
+  EntryBox::get().toggle_buttons.emplace_back(".*");
+  EntryBox::get().toggle_buttons.back().set_tooltip_text("Use Regex");
   EntryBox::get().toggle_buttons.back().set_active(regex_search);
   EntryBox::get().toggle_buttons.back().on_activate=[this, search_entry_it](){
     regex_search=!regex_search;
