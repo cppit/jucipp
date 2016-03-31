@@ -25,9 +25,10 @@ namespace sigc {
 #endif
 }
 
-Notebook::TabLabel::TabLabel(const std::string &title) : Gtk::Box(Gtk::ORIENTATION_HORIZONTAL) {
+Notebook::TabLabel::TabLabel(const boost::filesystem::path &path) : Gtk::Box(Gtk::ORIENTATION_HORIZONTAL) {
   set_can_focus(false);
-  label.set_text(title+' ');
+  set_tooltip_text(path.string());
+  label.set_text(path.filename().string()+' ');
   label.set_can_focus(false);
   button.set_image_from_icon_name("window-close-symbolic", Gtk::ICON_SIZE_MENU);
   button.set_can_focus(false);
@@ -135,8 +136,7 @@ void Notebook::open(const boost::filesystem::path &file_path) {
   configure(source_views.size()-1);
   
   //Set up tab label
-  std::string title=file_path.filename().string();
-  tab_labels.emplace_back(new TabLabel(title));
+  tab_labels.emplace_back(new TabLabel(file_path));
   auto source_view=source_views.back();
   tab_labels.back()->button.signal_clicked().connect([this, source_view](){
     for(int c=0;c<size();c++) {
@@ -174,8 +174,11 @@ void Notebook::open(const boost::filesystem::path &file_path) {
         break;
       }
     }
-    if(page!=-1)
-      tab_labels.at(get_index(page))->label.set_text(title);
+    if(page!=-1) {
+      auto &tab_label=tab_labels.at(get_index(page));
+      tab_label->label.set_text(title);
+      tab_label->set_tooltip_text(source_view->file_path.string());
+    }
   });
   
   JDEBUG("end");

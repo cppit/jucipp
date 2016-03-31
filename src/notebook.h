@@ -12,7 +12,7 @@
 class Notebook : public Gtk::Notebook {
   class TabLabel : public Gtk::Box {
   public:
-    TabLabel(const std::string &title);
+    TabLabel(const boost::filesystem::path &path);
     Gtk::Label label;
     Gtk::Button button;
   };
