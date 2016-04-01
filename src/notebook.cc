@@ -33,12 +33,7 @@ Notebook::TabLabel::TabLabel(const boost::filesystem::path &path) : Gtk::Box(Gtk
   button.set_image_from_icon_name("window-close-symbolic", Gtk::ICON_SIZE_MENU);
   button.set_can_focus(false);
   button.set_relief(Gtk::ReliefStyle::RELIEF_NONE);
-  
-  //Based on http://www.micahcarrick.com/gtk-notebook-tabs-with-close-button.html
-  auto provider = Gtk::CssProvider::create();
-  provider->load_from_data(".button {border: 0px; outline-width: 0px; margin: 0px; padding: 0px;}");
-  button.get_style_context()->add_provider(provider, GTK_STYLE_PROVIDER_PRIORITY_APPLICATION);
-    
+      
   pack_start(label, Gtk::PACK_SHRINK);
   pack_end(button, Gtk::PACK_SHRINK);
   
@@ -49,7 +44,12 @@ Notebook::Notebook() : Gtk::Notebook(), last_index(-1) {
   Gsv::init();
   
   auto provider = Gtk::CssProvider::create();
-  provider->load_from_data(".notebook {padding: 0px; -GtkNotebook-tab-overlap: 0px;} .notebook tab {border-radius: 5px;padding: 4px;}");
+  //Not sure if the following is needed because of a bug in MSYS2 gtk or gtk 3.20
+#ifndef _WIN32
+    provider->load_from_data("* {padding: 0px; margin: 0px;} .notebook {-GtkNotebook-tab-overlap: 0px;} tab {border-radius: 5px; padding: 3px}");
+#else
+    provider->load_from_data("* {padding: 0px; margin: 0px;} tab {padding: 2px;}");
+#endif
   get_style_context()->add_provider(provider, GTK_STYLE_PROVIDER_PRIORITY_APPLICATION);
   get_style_context()->set_junction_sides(Gtk::JunctionSides::JUNCTION_BOTTOM);
   
