@@ -44,11 +44,11 @@ Notebook::Notebook() : Gtk::Notebook(), last_index(-1) {
   Gsv::init();
   
   auto provider = Gtk::CssProvider::create();
-  //Not sure if the following is needed because of a bug in MSYS2 gtk or gtk 3.20
-#ifndef _WIN32
-    provider->load_from_data("* {padding: 0px; margin: 0px;} .notebook {-GtkNotebook-tab-overlap: 0px;} tab {border-radius: 5px; padding: 3px}");
-#else
+  //GtkNotebook-tab-overlap got removed in gtk 3.20, and border-radius with set_junction_sides stopped working
+#if GTK_VERSION_GE(3, 20)
     provider->load_from_data("* {padding: 0px; margin: 0px;} tab {padding: 2px;}");
+#else
+    provider->load_from_data("* {padding: 0px; margin: 0px;} .notebook {-GtkNotebook-tab-overlap: 0px;} tab {border-radius: 5px; padding: 3px}");
 #endif
   get_style_context()->add_provider(provider, GTK_STYLE_PROVIDER_PRIORITY_APPLICATION);
   get_style_context()->set_junction_sides(Gtk::JunctionSides::JUNCTION_BOTTOM);
