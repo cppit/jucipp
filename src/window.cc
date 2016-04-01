@@ -896,18 +896,18 @@ void Window::search_and_replace_entry() {
     if(notebook.get_current_page()!=-1)
         notebook.get_current_view()->search_backward();
   });
-  EntryBox::get().buttons.back().set_tooltip_text("Find Previous (shortcut: ⇧Enter in entry)");
+  EntryBox::get().buttons.back().set_tooltip_text("Find Previous\n\nShortcut: Shift+Enter in the Find entry field");
   EntryBox::get().buttons.emplace_back("⇄", [this, replace_entry_it](){
     if(notebook.get_current_page()!=-1) {
       notebook.get_current_view()->replace_forward(replace_entry_it->get_text());
     }
   });
-  EntryBox::get().buttons.back().set_tooltip_text("Replace Next (shortcut: Enter in entry)");
+  EntryBox::get().buttons.back().set_tooltip_text("Replace Next\n\nShortcut: Enter in the Replace entry field");
   EntryBox::get().buttons.emplace_back("↓", [this](){
     if(notebook.get_current_page()!=-1)
       notebook.get_current_view()->search_forward();
   });
-  EntryBox::get().buttons.back().set_tooltip_text("Find Next (shortcut: Enter in entry)");
+  EntryBox::get().buttons.back().set_tooltip_text("Find Next\n\nShortcut: Enter in the Find entry field");
   EntryBox::get().buttons.emplace_back("Replace All", [this, replace_entry_it](){
     if(notebook.get_current_page()!=-1)
       notebook.get_current_view()->replace_all(replace_entry_it->get_text());
