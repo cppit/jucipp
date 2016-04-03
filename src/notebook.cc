@@ -46,14 +46,13 @@ Notebook::Notebook() : Gtk::Notebook(), last_index(-1) {
   set_scrollable();
   
   auto provider = Gtk::CssProvider::create();
-  //GtkNotebook-tab-overlap got removed in gtk 3.20
+  //GtkNotebook-tab-overlap got removed in gtk 3.20, but margin works in 3.20
 #if GTK_VERSION_GE(3, 20)
     provider->load_from_data("tab {border-radius: 5px 5px 0 0; padding: 0 4px; margin: 0;}");
 #else
-    provider->load_from_data("* {padding: 0px; margin: 0px;} .notebook {-GtkNotebook-tab-overlap: 0px;} tab {border-radius: 5px; padding: 3px}");
+    provider->load_from_data(".notebook {-GtkNotebook-tab-overlap: 0px;} tab {border-radius: 5px 5px 0 0; padding: 4px 4px;}");
 #endif
   get_style_context()->add_provider(provider, GTK_STYLE_PROVIDER_PRIORITY_APPLICATION);
-  get_style_context()->set_junction_sides(Gtk::JunctionSides::JUNCTION_BOTTOM);
   
   signal_switch_page().connect([this](Gtk::Widget* page, guint page_num) {
     last_index=-1;
