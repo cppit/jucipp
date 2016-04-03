@@ -43,6 +43,8 @@ Notebook::TabLabel::TabLabel(const boost::filesystem::path &path) : Gtk::Box(Gtk
 Notebook::Notebook() : Gtk::Notebook(), last_index(-1) {
   Gsv::init();
   
+  set_scrollable();
+  
   auto provider = Gtk::CssProvider::create();
   //GtkNotebook-tab-overlap got removed in gtk 3.20, and border-radius with set_junction_sides stopped working
 #if GTK_VERSION_GE(3, 20)
