@@ -52,14 +52,16 @@ void Application::on_activate() {
       boost::property_tree::ptree pt;
       boost::property_tree::read_json((Config::get().juci_home_path()/"last_session.json").string(), pt);
       auto folder=pt.get<std::string>("folder");
-      if(!folder.empty())
+      if(!folder.empty() && boost::filesystem::exists(folder))
         directories.emplace_back(folder);
       for(auto &v: pt.get_child("files")) {
         std::string file=v.second.data();
-        if(!file.empty())
+        if(!file.empty() && boost::filesystem::exists(file))
           files.emplace_back(file);
       }
       last_current_file=pt.get<std::string>("current_file");
+      if(!boost::filesystem::exists(last_current_file))
+        last_current_file.clear();
     }
     catch(const std::exception &) {}
   }
