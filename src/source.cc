@@ -284,7 +284,6 @@ Source::View::View(const boost::filesystem::path &file_path, Glib::RefPtr<Gsv::L
           tab_str="<space>";
         else
           tab_str="<tab>";
-        Terminal::get().print("Tab char and size for file "+file_path.string()+" set to: "+tab_str+", "+std::to_string(tab_char_and_size.second)+".\n");
       }
       
       tab_char=tab_char_and_size.first;

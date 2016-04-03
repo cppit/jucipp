@@ -205,7 +205,14 @@ size_t Terminal::print(const std::string &message, bool bold){
 }
 
 std::shared_ptr<Terminal::InProgress> Terminal::print_in_progress(std::string start_msg) {
-  std::shared_ptr<Terminal::InProgress> in_progress=std::shared_ptr<Terminal::InProgress>(new Terminal::InProgress(start_msg));
+  auto in_progress=std::shared_ptr<Terminal::InProgress>(new Terminal::InProgress(start_msg), [this](Terminal::InProgress *in_progress) {
+    in_progresses_mutex.lock();
+    in_progresses.erase(in_progress);
+    in_progresses_mutex.unlock();
+  });
+  in_progresses_mutex.lock();
+  in_progresses.emplace(in_progress.get());
+  in_progresses_mutex.unlock();
   return in_progress;
 }
 
@@ -232,6 +239,16 @@ void Terminal::async_print(size_t line_nr, const std::string &message) {
     while(!end_line_iter.ends_line() && end_line_iter.forward_char()) {}
     get_buffer()->insert(end_line_iter, umessage);
   });
+}
+
+void Terminal::clear() {
+  in_progresses_mutex.lock();
+  for(auto &in_progress: in_progresses)
+    in_progress->stop=true;
+  in_progresses_mutex.unlock();
+  while(g_main_context_pending(NULL))
+    g_main_context_iteration(NULL, false);
+  get_buffer()->set_text("");
 }
 
 bool Terminal::on_key_press_event(GdkEventKey *event) {

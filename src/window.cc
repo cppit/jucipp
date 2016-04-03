@@ -146,6 +146,10 @@ void Window::configure() {
   style_context->add_provider_for_screen(screen, css_provider, GTK_STYLE_PROVIDER_PRIORITY_SETTINGS);
   Directories::get().update();
   Menu::get().set_keys();
+  if(Config::get().source.font.size()>0) {
+    Terminal::get().override_font(Pango::FontDescription(Config::get().source.font));
+    Directories::get().override_font(Pango::FontDescription(Config::get().source.font));
+  }
 }
 
 void Window::set_menu_actions() {
