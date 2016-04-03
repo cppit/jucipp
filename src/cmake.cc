@@ -8,7 +8,7 @@
 CMake::CMake(const boost::filesystem::path &path) {
   const auto find_cmake_project=[this](const boost::filesystem::path &cmake_path) {
     for(auto &line: filesystem::read_lines(cmake_path)) {
-      const boost::regex project_regex("^ *project *\\(.*$");
+      const boost::regex project_regex("^ *project *\\(.*$", boost::regex::icase);
       boost::smatch sm;
       if(boost::regex_match(line, sm, project_regex))
         return true;
@@ -19,13 +19,12 @@ CMake::CMake(const boost::filesystem::path &path) {
   auto search_path=boost::filesystem::is_directory(path)?path:path.parent_path();
   while(true) {
     auto search_cmake_path=search_path/"CMakeLists.txt";
-    if(boost::filesystem::exists(search_cmake_path))
+    if(boost::filesystem::exists(search_cmake_path)) {
       paths.emplace(paths.begin(), search_cmake_path);
-    else
-      break;
-    if(find_cmake_project(search_cmake_path)) {
-      project_path=search_path;
-      break;
+      if(find_cmake_project(search_cmake_path)) {
+        project_path=search_path;
+        break;
+      }
     }
     if(search_path==search_path.root_directory())
       break;
@@ -208,7 +207,7 @@ void CMake::find_variables() {
       if(end_line>start_line) {
         auto line=file.substr(start_line, end_line-start_line);
         boost::smatch sm;
-        const boost::regex set_regex("^ *set *\\( *([A-Za-z_][A-Za-z_0-9]*) +(.*)\\) *$");
+        const boost::regex set_regex("^ *set *\\( *([A-Za-z_][A-Za-z_0-9]*) +(.*)\\) *$", boost::regex::icase);
         if(boost::regex_match(line, sm, set_regex)) {
           auto data=sm[2].str();
           while(data.size()>0 && data.back()==' ')
@@ -217,7 +216,7 @@ void CMake::find_variables() {
           variables[sm[1].str()]=data;
         }
         else {
-          const boost::regex project_regex("^ *project *\\( *([^ ]+).*\\) *$");
+          const boost::regex project_regex("^ *project *\\( *([^ ]+).*\\) *$", boost::regex::icase);
           if(boost::regex_match(line, sm, project_regex)) {
             auto data=sm[1].str();
             parse_variable_parameters(data);
@@ -338,7 +337,7 @@ std::vector<std::pair<boost::filesystem::path, std::vector<std::string> > > CMak
         end_line=file.size();
       if(end_line>start_line) {
         auto line=file.substr(start_line, end_line-start_line);
-        const boost::regex function_regex("^ *"+name+" *\\( *(.*)\\) *$");
+        const boost::regex function_regex("^ *"+name+" *\\( *(.*)\\) *$", boost::regex::icase);
         boost::smatch sm;
         if(boost::regex_match(line, sm, function_regex)) {
           auto data=sm[1].str();
