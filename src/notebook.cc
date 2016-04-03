@@ -46,9 +46,9 @@ Notebook::Notebook() : Gtk::Notebook(), last_index(-1) {
   set_scrollable();
   
   auto provider = Gtk::CssProvider::create();
-  //GtkNotebook-tab-overlap got removed in gtk 3.20, and border-radius with set_junction_sides stopped working
+  //GtkNotebook-tab-overlap got removed in gtk 3.20
 #if GTK_VERSION_GE(3, 20)
-    provider->load_from_data("* {padding: 0px; margin: 0px;} tab {padding: 2px;}");
+    provider->load_from_data("tab {border-radius: 5px 5px 0 0; padding: 0 4px; margin: 0;}");
 #else
     provider->load_from_data("* {padding: 0px; margin: 0px;} .notebook {-GtkNotebook-tab-overlap: 0px;} tab {border-radius: 5px; padding: 3px}");
 #endif
