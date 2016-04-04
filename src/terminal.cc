@@ -226,6 +226,7 @@ std::shared_ptr<Terminal::InProgress> Terminal::print_in_progress(std::string st
     in_progresses_mutex.lock();
     in_progresses.erase(in_progress);
     in_progresses_mutex.unlock();
+    delete in_progress;
   });
   in_progresses_mutex.lock();
   in_progresses.emplace(in_progress.get());
