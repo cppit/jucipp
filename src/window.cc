@@ -146,6 +146,7 @@ void Window::configure() {
   style_context->add_provider_for_screen(screen, css_provider, GTK_STYLE_PROVIDER_PRIORITY_SETTINGS);
   Directories::get().update();
   Menu::get().set_keys();
+  Terminal::get().configure();
 }
 
 void Window::set_menu_actions() {

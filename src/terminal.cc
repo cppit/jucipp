@@ -9,7 +9,9 @@ Terminal::InProgress::InProgress(const std::string& start_msg): stop(false) {
 }
 
 Terminal::InProgress::~InProgress() {
+  stop_mutex.lock();
   stop=true;
+  stop_mutex.unlock();
   if(wait_thread.joinable())
     wait_thread.join();
 }
@@ -18,7 +20,14 @@ void Terminal::InProgress::start(const std::string& msg) {
   line_nr=Terminal::get().print(msg+"...\n");
   wait_thread=std::thread([this](){
     size_t c=0;
-    while(!stop) {
+    while(true) {
+      stop_mutex.lock();
+      if(stop) {
+        stop_mutex.unlock();
+        break;
+      }
+      else
+        stop_mutex.unlock();
       if(c%100==0)
         Terminal::get().async_print(line_nr-1, ".");
       std::this_thread::sleep_for(std::chrono::milliseconds(10));
@@ -28,17 +37,25 @@ void Terminal::InProgress::start(const std::string& msg) {
 }
 
 void Terminal::InProgress::done(const std::string& msg) {
+  stop_mutex.lock();
   if(!stop) {
     stop=true;
+    stop_mutex.unlock();
     Terminal::get().async_print(line_nr-1, msg);
   }
+  else
+    stop_mutex.unlock();
 }
 
 void Terminal::InProgress::cancel(const std::string& msg) {
+  stop_mutex.lock();
   if(!stop) {
     stop=true;
+    stop_mutex.unlock();
     Terminal::get().async_print(line_nr-1, msg);
   }
+  else
+    stop_mutex.unlock();
 }
 
 Terminal::Terminal() {
@@ -205,7 +222,14 @@ size_t Terminal::print(const std::string &message, bool bold){
 }
 
 std::shared_ptr<Terminal::InProgress> Terminal::print_in_progress(std::string start_msg) {
-  std::shared_ptr<Terminal::InProgress> in_progress=std::shared_ptr<Terminal::InProgress>(new Terminal::InProgress(start_msg));
+  auto in_progress=std::shared_ptr<Terminal::InProgress>(new Terminal::InProgress(start_msg), [this](Terminal::InProgress *in_progress) {
+    in_progresses_mutex.lock();
+    in_progresses.erase(in_progress);
+    in_progresses_mutex.unlock();
+  });
+  in_progresses_mutex.lock();
+  in_progresses.emplace(in_progress.get());
+  in_progresses_mutex.unlock();
   return in_progress;
 }
 
@@ -232,6 +256,36 @@ void Terminal::async_print(size_t line_nr, const std::string &message) {
     while(!end_line_iter.ends_line() && end_line_iter.forward_char()) {}
     get_buffer()->insert(end_line_iter, umessage);
   });
+}
+
+void Terminal::configure() {
+  if(Config::get().terminal.font.size()>0) {
+    override_font(Pango::FontDescription(Config::get().terminal.font));
+  }
+  else if(Config::get().source.font.size()>0) {
+    Pango::FontDescription font_description(Config::get().source.font);
+    auto font_description_size=font_description.get_size();
+    if(font_description_size==0) {
+      Pango::FontDescription default_font_description(Gtk::Settings::get_default()->property_gtk_font_name());
+      font_description_size=default_font_description.get_size();
+    }
+    if(font_description_size>0)
+      font_description.set_size(font_description_size*0.95);
+    override_font(font_description);
+  }
+}
+
+void Terminal::clear() {
+  in_progresses_mutex.lock();
+  for(auto &in_progress: in_progresses) {
+    in_progress->stop_mutex.lock();
+    in_progress->stop=true;
+    in_progress->stop_mutex.unlock();
+  }
+  in_progresses_mutex.unlock();
+  while(g_main_context_pending(NULL))
+    g_main_context_iteration(NULL, false);
+  get_buffer()->set_text("");
 }
 
 bool Terminal::on_key_press_event(GdkEventKey *event) {

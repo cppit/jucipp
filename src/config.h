@@ -26,6 +26,7 @@ public:
   public:
     std::string clang_format_command;
     int history_size;
+    std::string font;
     
 #ifdef _WIN32
     boost::filesystem::path msys2_mingw_path;
@@ -39,6 +40,7 @@ public:
     std::string cmake_command;
     std::string make_command;
     bool save_on_compile_or_run;
+    bool clear_terminal_on_compile;
   };
   
   class Source {
@@ -90,7 +92,8 @@ public:
 private:
   void find_or_create_config_files();
   void retrieve_config();
-  bool check_config_file(const boost::property_tree::ptree &default_cfg, std::string parent_path="");
+  bool add_missing_nodes(const boost::property_tree::ptree &default_cfg, std::string parent_path="");
+  bool remove_deprecated_nodes(const boost::property_tree::ptree &default_cfg, boost::property_tree::ptree &config_cfg, std::string parent_path="");
   void update_config_file();
   void get_source();
 

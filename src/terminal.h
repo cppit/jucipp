@@ -10,10 +10,12 @@
 #include <iostream>
 #include "process.hpp"
 #include "dispatcher.h"
+#include <unordered_set>
 
 class Terminal : public Gtk::TextView {
 public:
   class InProgress {
+    friend class Terminal;
   public:
     InProgress(const std::string& start_msg);
     ~InProgress();
@@ -22,7 +24,9 @@ public:
   private:
     void start(const std::string& msg);
     size_t line_nr;
-    std::atomic<bool> stop;
+    
+    bool stop;
+    std::mutex stop_mutex;
     
     std::thread wait_thread;
   };
@@ -45,6 +49,10 @@ public:
   std::shared_ptr<InProgress> print_in_progress(std::string start_msg);
   void async_print(const std::string &message, bool bold=false);
   void async_print(size_t line_nr, const std::string &message);
+  
+  void configure();
+  
+  void clear();
 protected:
   bool on_key_press_event(GdkEventKey *event);
 private:
@@ -56,6 +64,9 @@ private:
   std::string stdin_buffer;
   
   size_t deleted_lines=0;
+  
+  std::unordered_set<InProgress*> in_progresses;
+  std::mutex in_progresses_mutex;
 };
 
 #endif  // JUCI_TERMINAL_H_

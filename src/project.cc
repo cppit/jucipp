@@ -167,6 +167,9 @@ void Project::Clang::compile() {
   if(default_build_path.empty() || !build->update_default_build())
     return;
   
+  if(Config::get().project.clear_terminal_on_compile)
+    Terminal::get().clear();
+  
   compiling=true;
   Terminal::get().print("Compiling project "+build->project_path.string()+"\n");
   Terminal::get().async_process(Config::get().project.make_command, default_build_path, [this](int exit_status) {
@@ -198,6 +201,9 @@ void Project::Clang::compile_and_run() {
       arguments.replace(pos, project_path.string().size(), default_build_path.string());
     arguments=filesystem::escape_argument(arguments);
   }
+  
+  if(Config::get().project.clear_terminal_on_compile)
+    Terminal::get().clear();
   
   compiling=true;
   Terminal::get().print("Compiling and running "+arguments+"\n");
@@ -277,6 +283,9 @@ void Project::Clang::debug_start() {
         breakpoints->emplace_back(view->file_path, iter.get_line()+1);
     }
   }
+  
+  if(Config::get().project.clear_terminal_on_compile)
+    Terminal::get().clear();
   
   debugging=true;
   Terminal::get().print("Compiling and debugging "+run_arguments+"\n");
