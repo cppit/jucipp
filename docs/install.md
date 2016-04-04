@@ -6,6 +6,7 @@
     - [Debian stable/Linux Mint Debian Edition](#debian-stablelinux-mint-debian-edition)
     - [Arch Linux](#arch-linux)
     - [Fedora 23](#fedora-23)
+    - [Mageia 5](#mageia-5)
   - OS X
     - [Homebrew](#os-x-with-homebrew-httpbrewsh)
   - Windows
@@ -77,6 +78,33 @@ sudo make install
 Install dependencies:
 ```sh
 sudo dnf install git cmake make gcc-c++ clang-devel clang lldb-devel boost-devel gtksourceviewmm3-devel gtkmm30-devel aspell-devel aspell-en
+```
+
+Get juCi++ source, compile and install:
+```sh
+git clone --recursive https://github.com/cppit/jucipp
+mkdir jucipp/build
+cd jucipp/build
+cmake -DCMAKE_CXX_COMPILER=g++ ..
+make
+sudo make install
+```
+
+## Mageia 5
+
+**Mageia doesn't support LLDB, but you can compile without debug support.**
+
+Install dependencies:
+
+32-bit:
+
+```sh
+sudo urpmi git cmake make gcc-c++ clang libclang-devel libboost-devel libgtkmm3.0-devel libgtksourceviewmm3.0-devel libaspell-devel aspell-en
+```
+
+64-bit:
+```sh
+sudo urpmi git cmake make gcc-c++ clang lib64clang-devel lib64boost-devel lib64gtkmm3.0-devel lib64gtksourceviewmm3.0-devel lib64aspell-devel aspell-en
 ```
 
 Get juCi++ source, compile and install:
