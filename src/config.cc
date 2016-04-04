@@ -101,6 +101,7 @@ void Config::retrieve_config() {
   project.debug_build_path=cfg.get<std::string>("project.debug_build_path");
   project.make_command=cfg.get<std::string>("project.make_command");
   project.cmake_command=cfg.get<std::string>("project.cmake_command");
+  project.save_on_compile_or_run=cfg.get<bool>("project.save_on_compile_or_run");
   project.clear_terminal_on_compile=cfg.get<bool>("project.clear_terminal_on_compile");
   
   terminal.history_size=cfg.get<int>("terminal.history_size");
