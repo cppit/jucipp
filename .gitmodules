@@ -4,3 +4,6 @@
 [submodule "tiny-process-library"]
 	path = tiny-process-library
 	url = https://gitlab.com/eidheim/tiny-process-library
+[submodule "pybind11"]
+	path = pybind11
+	url = https://github.com/pybind/pybind11.git
