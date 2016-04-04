@@ -97,18 +97,21 @@ void Config::retrieve_config() {
   window.version = cfg.get<std::string>("version");
   window.default_size = {cfg.get<int>("default_window_size.width"), cfg.get<int>("default_window_size.height")};
   
-  project.save_on_compile_or_run=cfg.get<bool>("project.save_on_compile_or_run");
   project.default_build_path=cfg.get<std::string>("project.default_build_path");
   project.debug_build_path=cfg.get<std::string>("project.debug_build_path");
   project.make_command=cfg.get<std::string>("project.make_command");
   project.cmake_command=cfg.get<std::string>("project.cmake_command");
+  project.clear_terminal_on_compile=cfg.get<bool>("project.clear_terminal_on_compile");
   
-  terminal.history_size=cfg.get<int>("terminal_history_size");
+  terminal.history_size=cfg.get<int>("terminal.history_size");
+  terminal.font=cfg.get<std::string>("terminal.font");
   terminal.clang_format_command="clang-format";
 #ifdef __linux
   if(terminal.clang_format_command=="clang-format" &&
      !boost::filesystem::exists("/usr/bin/clang-format") && !boost::filesystem::exists("/usr/local/bin/clang-format")) {
-    if(boost::filesystem::exists("/usr/bin/clang-format-3.7"))
+    if(boost::filesystem::exists("/usr/bin/clang-format-3.8"))
+      terminal.clang_format_command="/usr/bin/clang-format-3.8";
+    else if(boost::filesystem::exists("/usr/bin/clang-format-3.7"))
       terminal.clang_format_command="/usr/bin/clang-format-3.7";
     else if(boost::filesystem::exists("/usr/bin/clang-format-3.6"))
       terminal.clang_format_command="/usr/bin/clang-format-3.6";
@@ -118,10 +121,10 @@ void Config::retrieve_config() {
 #endif
 }
 
-bool Config::check_config_file(const boost::property_tree::ptree &default_cfg, std::string parent_path) {
+bool Config::add_missing_nodes(const boost::property_tree::ptree &default_cfg, std::string parent_path) {
   if(parent_path.size()>0)
     parent_path+=".";
-  bool exists=true;
+  bool unchanged=true;
   for(auto &node: default_cfg) {
     auto path=parent_path+node.first;
     try {
@@ -129,15 +132,29 @@ bool Config::check_config_file(const boost::property_tree::ptree &default_cfg, s
     }
     catch(const std::exception &e) {
       cfg.add(path, node.second.data());
-      exists=false;
+      unchanged=false;
     }
+    unchanged&=add_missing_nodes(node.second, path);
+  }
+  return unchanged;
+}
+
+bool Config::remove_deprecated_nodes(const boost::property_tree::ptree &default_cfg, boost::property_tree::ptree &config_cfg, std::string parent_path) {
+  if(parent_path.size()>0)
+    parent_path+=".";
+  bool unchanged=true;
+  for(auto &node: config_cfg) {
+    auto path=parent_path+node.first;
     try {
-      exists&=check_config_file(node.second, path);
+      default_cfg.get<std::string>(path);
+      unchanged&=remove_deprecated_nodes(default_cfg, node.second, path);
     }
     catch(const std::exception &e) {
+      config_cfg.erase(node.first);
+      unchanged=false;
     }
   }
-  return exists;
+  return unchanged;
 }
 
 void Config::update_config_file() {
@@ -159,10 +176,10 @@ void Config::update_config_file() {
     std::cerr << "Error reading json-file: " << e.what() << std::endl;
     cfg_ok=false;
   }
-  cfg_ok&=check_config_file(default_cfg);
-  if(!cfg_ok) {
+  cfg_ok&=add_missing_nodes(default_cfg);
+  cfg_ok&=remove_deprecated_nodes(default_cfg, cfg);
+  if(!cfg_ok)
     boost::property_tree::write_json((home/"config"/"config.json").string(), cfg);
-  }
 }
 
 void Config::get_source() {

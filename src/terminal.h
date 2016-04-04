@@ -24,7 +24,9 @@ public:
   private:
     void start(const std::string& msg);
     size_t line_nr;
-    std::atomic<bool> stop;
+    
+    bool stop;
+    std::mutex stop_mutex;
     
     std::thread wait_thread;
   };
@@ -47,6 +49,8 @@ public:
   std::shared_ptr<InProgress> print_in_progress(std::string start_msg);
   void async_print(const std::string &message, bool bold=false);
   void async_print(size_t line_nr, const std::string &message);
+  
+  void configure();
   
   void clear();
 protected:

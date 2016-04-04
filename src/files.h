@@ -2,7 +2,7 @@
 #define JUCI_FILES_H_
 #include <string>
 
-#define JUCI_VERSION "1.1.1"
+#define JUCI_VERSION "1.1.2-rc1"
 
 const std::string configjson =
 "{\n"
@@ -11,12 +11,16 @@ const std::string configjson =
 "        \"width\": 800,\n"
 "        \"height\": 600\n"
 "    },\n"
-"    \"terminal_history_size\": 1000,\n"
 "    \"gtk_theme\": {\n"
 "        \"name_comment\": \"Use \\\"\\\" for default theme, At least these two exist on all systems: Adwaita, Raleigh\",\n"
 "        \"name\": \"Adwaita\",\n"
 "        \"variant_comment\": \"Use \\\"\\\" for default variant, and \\\"dark\\\" for dark theme variant\",\n"
 "        \"variant\": \"\"\n"
+"    },\n"
+"    \"terminal\": {\n"
+"        \"history_size\": 1000,\n"
+"        \"font_comment\": \"Use \\\"\\\" to use source.font with slightly smaller size\",\n"
+"        \"font\": \"\"\n"
 "    },\n"
 "    \"source\": {\n"
 "        \"style_comment\": \"Use \\\"\\\" for default style, and for instance juci-dark or juci-dark-blue together with dark gtk_theme variant. Styles from normal gtksourceview install: classic, cobalt, kate, oblivion, solarized-dark, solarized-light, tango\",\n"
@@ -130,7 +134,8 @@ const std::string configjson =
 "        \"cmake_command\": \"cmake\",\n"
 #endif
 "        \"make_command\": \"cmake --build .\",\n"
-"        \"save_on_compile_or_run\": true\n"
+"        \"save_on_compile_or_run\": true,\n"
+"        \"clear_terminal_on_compile\": true\n"
 "    },\n"
 "    \"documentation_searches\": {\n"
 "        \"clang\": {\n"

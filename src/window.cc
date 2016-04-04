@@ -146,18 +146,7 @@ void Window::configure() {
   style_context->add_provider_for_screen(screen, css_provider, GTK_STYLE_PROVIDER_PRIORITY_SETTINGS);
   Directories::get().update();
   Menu::get().set_keys();
-  
-  if(Config::get().source.font.size()>0) {
-    Pango::FontDescription font_description(Config::get().source.font);
-    auto font_description_size=font_description.get_size();
-    if(font_description_size==0) {
-      Pango::FontDescription default_font_description(Gtk::Settings::get_default()->property_gtk_font_name());
-      font_description_size=default_font_description.get_size();
-    }
-    if(font_description_size>0)
-      font_description.set_size(font_description_size*0.95);
-    Terminal::get().override_font(font_description);
-  }
+  Terminal::get().configure();
 }
 
 void Window::set_menu_actions() {
