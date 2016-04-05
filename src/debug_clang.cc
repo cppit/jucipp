@@ -110,7 +110,7 @@ void Debug::Clang::start(const std::string &command, const boost::filesystem::pa
   debug_thread=std::thread([this, callback, status_callback, stop_callback]() {
     lldb::SBEvent event;
     while(true) {
-      event_mutex.lock();
+      std::unique_lock<std::mutex> lock(event_mutex);
       if(listener->GetNextEvent(event)) {
         if((event.GetType() & lldb::SBProcess::eBroadcastBitStateChanged)>0) {
           auto state=process->GetStateFromEvent(event);
@@ -178,7 +178,6 @@ void Debug::Clang::start(const std::string &command, const boost::filesystem::pa
               stop_callback("", 0, 0);
             process.reset();
             this->state=lldb::StateType::eStateInvalid;
-            event_mutex.unlock();
             return;
           }
           else if(state==lldb::StateType::eStateCrashed) {
@@ -190,7 +189,6 @@ void Debug::Clang::start(const std::string &command, const boost::filesystem::pa
               stop_callback("", 0, 0);
             process.reset();
             this->state=lldb::StateType::eStateInvalid;
-            event_mutex.unlock();
             return;
           }
         }
@@ -208,79 +206,71 @@ void Debug::Clang::start(const std::string &command, const boost::filesystem::pa
             Terminal::get().async_print(std::string(buffer, n), true);
         }
       }
-      event_mutex.unlock();
       std::this_thread::sleep_for(std::chrono::milliseconds(200));
     }
   });
 }
 
 void Debug::Clang::continue_debug() {
-  event_mutex.lock();
+  std::unique_lock<std::mutex> lock(event_mutex);
   if(state==lldb::StateType::eStateStopped)
     process->Continue();
-  event_mutex.unlock();
 }
 
 void Debug::Clang::stop() {
-  event_mutex.lock();
+  std::unique_lock<std::mutex> lock(event_mutex);
   if(state==lldb::StateType::eStateRunning) {
     auto error=process->Stop();
     if(error.Fail())
       Terminal::get().async_print(std::string("Error (debug): ")+error.GetCString()+'\n', true);
   }
-  event_mutex.unlock();
 }
 
 void Debug::Clang::kill() {
-  event_mutex.lock();
+  std::unique_lock<std::mutex> lock(event_mutex);
   if(process) {
     auto error=process->Kill();
     if(error.Fail())
       Terminal::get().async_print(std::string("Error (debug): ")+error.GetCString()+'\n', true);
   }
-  event_mutex.unlock();
 }
 
 void Debug::Clang::step_over() {
-  event_mutex.lock();
+  std::unique_lock<std::mutex> lock(event_mutex);
   if(state==lldb::StateType::eStateStopped) {
     process->GetSelectedThread().StepOver();
   }
-  event_mutex.unlock();
 }
 
 void Debug::Clang::step_into() {
-  event_mutex.lock();
+  std::unique_lock<std::mutex> lock(event_mutex);
   if(state==lldb::StateType::eStateStopped) {
     process->GetSelectedThread().StepInto();
   }
-  event_mutex.unlock();
 }
 
 void Debug::Clang::step_out() {
-  event_mutex.lock();
+  std::unique_lock<std::mutex> lock(event_mutex);
   if(state==lldb::StateType::eStateStopped) {
     process->GetSelectedThread().StepOut();
   }
-  event_mutex.unlock();
 }
 
 std::pair<std::string, std::string> Debug::Clang::run_command(const std::string &command) {
   std::pair<std::string, std::string> command_return;
-  event_mutex.lock();
+  std::unique_lock<std::mutex> lock(event_mutex);
   if(state==lldb::StateType::eStateStopped || state==lldb::StateType::eStateRunning) {
     lldb::SBCommandReturnObject command_return_object;
     debugger->GetCommandInterpreter().HandleCommand(command.c_str(), command_return_object, true);
     command_return.first=command_return_object.GetOutput();
     command_return.second=command_return_object.GetError();
   }
-  event_mutex.unlock();
   return command_return;
 }
 
 std::vector<Debug::Clang::Frame> Debug::Clang::get_backtrace() {
   std::vector<Frame> backtrace;
-  event_mutex.lock();
+  std::unique_lock<std::mutex> lock(event_mutex);
   if(state==lldb::StateType::eStateStopped) {
     auto thread=process->GetSelectedThread();
     for(uint32_t c_f=0;c_f<thread.GetNumFrames();c_f++) {
@@ -311,13 +301,12 @@ std::vector<Debug::Clang::Frame> Debug::Clang::get_backtrace() {
       backtrace.emplace_back(backtrace_frame);
     }
   }
-  event_mutex.unlock();
   return backtrace;
 }
 
 std::vector<Debug::Clang::Variable> Debug::Clang::get_variables() {
   std::vector<Debug::Clang::Variable> variables;
-  event_mutex.lock();
+  std::unique_lock<std::mutex> lock(event_mutex);
   if(state==lldb::StateType::eStateStopped) {
     for(uint32_t c_t=0;c_t<process->GetNumThreads();c_t++) {
       auto thread=process->GetThreadAtIndex(c_t);
@@ -355,18 +344,16 @@ std::vector<Debug::Clang::Variable> Debug::Clang::get_variables() {
       }
     }
   }
-  event_mutex.unlock();
   return variables;
 }
 
 void Debug::Clang::select_frame(uint32_t frame_index, uint32_t thread_index_id) {
-  event_mutex.lock();
+  std::unique_lock<std::mutex> lock(event_mutex);
   if(state==lldb::StateType::eStateStopped) {
     if(thread_index_id!=0)
       process->SetSelectedThreadByIndexID(thread_index_id);
     process->GetSelectedThread().SetSelectedFrame(frame_index);;
   }
-  event_mutex.unlock();
 }
 
 void Debug::Clang::delete_debug() {
@@ -377,7 +364,7 @@ void Debug::Clang::delete_debug() {
 
 std::string Debug::Clang::get_value(const std::string &variable, const boost::filesystem::path &file_path, unsigned int line_nr, unsigned int line_index) {
   std::string variable_value;
-  event_mutex.lock();
+  std::unique_lock<std::mutex> lock(event_mutex);
   if(state==lldb::StateType::eStateStopped) {
     auto frame=process->GetSelectedThread().GetSelectedFrame();
     
@@ -413,13 +400,12 @@ std::string Debug::Clang::get_value(const std::string &variable, const boost::fi
       }
     }
   }
-  event_mutex.unlock();
   return variable_value;
 }
 
 std::string Debug::Clang::get_return_value(const boost::filesystem::path &file_path, unsigned int line_nr, unsigned int line_index) {
   std::string return_value;
-  event_mutex.lock();
+  std::unique_lock<std::mutex> lock(event_mutex);
   if(state==lldb::StateType::eStateStopped) {
     auto thread=process->GetSelectedThread();
     auto thread_return_value=thread.GetStopReturnValue();
@@ -437,45 +423,40 @@ std::string Debug::Clang::get_return_value(const boost::filesystem::path &file_p
       }
     }
   }
-  event_mutex.unlock();
   return return_value;
 }
 
 bool Debug::Clang::is_invalid() {
   bool invalid;
-  event_mutex.lock();
+  std::unique_lock<std::mutex> lock(event_mutex);
   invalid=state==lldb::StateType::eStateInvalid;
-  event_mutex.unlock();
   return invalid;
 }
 
 bool Debug::Clang::is_stopped() {
   bool stopped;
-  event_mutex.lock();
+  std::unique_lock<std::mutex> lock(event_mutex);
   stopped=state==lldb::StateType::eStateStopped;
-  event_mutex.unlock();
   return stopped;
 }
 
 bool Debug::Clang::is_running() {
   bool running;
-  event_mutex.lock();
+  std::unique_lock<std::mutex> lock(event_mutex);
   running=state==lldb::StateType::eStateRunning;
-  event_mutex.unlock();
   return running;
 }
 
 void Debug::Clang::add_breakpoint(const boost::filesystem::path &file_path, int line_nr) {
-  event_mutex.lock();
+  std::unique_lock<std::mutex> lock(event_mutex);
   if(state==lldb::eStateStopped || state==lldb::eStateRunning) {
     if(!(process->GetTarget().BreakpointCreateByLocation(file_path.string().c_str(), line_nr)).IsValid())
       Terminal::get().async_print("Error (debug): Could not create breakpoint at: "+file_path.string()+":"+std::to_string(line_nr)+'\n', true);
   }
-  event_mutex.unlock();
 }
 
 void Debug::Clang::remove_breakpoint(const boost::filesystem::path &file_path, int line_nr, int line_count) {
-  event_mutex.lock();
+  std::unique_lock<std::mutex> lock(event_mutex);
   if(state==lldb::eStateStopped || state==lldb::eStateRunning) {
     auto target=process->GetTarget();
     for(int line_nr_try=line_nr;line_nr_try<line_count;line_nr_try++) {
@@ -490,7 +471,6 @@ void Debug::Clang::remove_breakpoint(const boost::filesystem::path &file_path, i
             if(breakpoint_path==file_path) {
               if(!target.BreakpointDelete(breakpoint.GetID()))
                 Terminal::get().async_print("Error (debug): Could not delete breakpoint at: "+file_path.string()+":"+std::to_string(line_nr)+'\n', true);
-              event_mutex.unlock();
               return;
             }
           }
@@ -498,13 +478,11 @@ void Debug::Clang::remove_breakpoint(const boost::filesystem::path &file_path, i
       }
     }
   }
-  event_mutex.unlock();
 }
 
 void Debug::Clang::write(const std::string &buffer) {
-  event_mutex.lock();
+  std::unique_lock<std::mutex> lock(event_mutex);
   if(state==lldb::StateType::eStateRunning) {
     process->PutSTDIN(buffer.c_str(), buffer.size());
   }
-  event_mutex.unlock();
 }

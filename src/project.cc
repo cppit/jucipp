@@ -293,7 +293,7 @@ void Project::Clang::debug_start() {
     if(exit_status!=EXIT_SUCCESS)
       debugging=false;
     else {
-      debug_start_mutex.lock();
+      std::unique_lock<std::mutex> lock(debug_start_mutex);
       Debug::Clang::get().start(run_arguments, project_path, *breakpoints, [this, run_arguments](int exit_status){
         debugging=false;
         Terminal::get().async_print(run_arguments+" returned: "+std::to_string(exit_status)+'\n');
@@ -310,7 +310,6 @@ void Project::Clang::debug_start() {
           debug_update_stop();
         });
       });
-      debug_start_mutex.unlock();
     }
   });
 }
@@ -497,9 +496,8 @@ void Project::Clang::debug_write(const std::string &buffer) {
 }
 
 void Project::Clang::debug_delete() {
-  debug_start_mutex.lock();
+  std::unique_lock<std::mutex> lock(debug_start_mutex);
   Debug::Clang::get().delete_debug();
-  debug_start_mutex.unlock();
 }
 #endif
 

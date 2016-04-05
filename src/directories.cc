@@ -147,22 +147,22 @@ Directories::Directories() : Gtk::TreeView(), stop_update_thread(false) {
   
   signal_test_expand_row().connect([this](const Gtk::TreeModel::iterator &iter, const Gtk::TreeModel::Path &path){
     if(iter->children().begin()->get_value(column_record.path)=="") {
-      update_mutex.lock();
+      std::unique_lock<std::mutex> lock(update_mutex);
       add_path(iter->get_value(column_record.path), *iter);
-      update_mutex.unlock();
     }
     return false;
   });
   signal_row_collapsed().connect([this](const Gtk::TreeModel::iterator &iter, const Gtk::TreeModel::Path &path){
-    update_mutex.lock();
-    auto directory_str=iter->get_value(column_record.path).string();
-    for(auto it=last_write_times.begin();it!=last_write_times.end();) {
-      if(directory_str==it->first.substr(0, directory_str.size()))
-        it=last_write_times.erase(it);
-      else
-        it++;
+    {
+      std::unique_lock<std::mutex> lock(update_mutex);
+      auto directory_str=iter->get_value(column_record.path).string();
+      for(auto it=last_write_times.begin();it!=last_write_times.end();) {
+        if(directory_str==it->first.substr(0, directory_str.size()))
+          it=last_write_times.erase(it);
+        else
+          it++;
+      }
     }
-    update_mutex.unlock();
     auto children=iter->children();
     if(children) {
       while(children) {
@@ -179,7 +179,7 @@ Directories::Directories() : Gtk::TreeView(), stop_update_thread(false) {
   update_thread=std::thread([this](){
     while(!stop_update_thread) {
       std::this_thread::sleep_for(std::chrono::milliseconds(1000));
-      update_mutex.lock();
+      std::unique_lock<std::mutex> lock(update_mutex);
       for(auto it=last_write_times.begin();it!=last_write_times.end();) {
         boost::system::error_code ec;
         auto last_write_time=boost::filesystem::last_write_time(it->first, ec);
@@ -188,11 +188,10 @@ Directories::Directories() : Gtk::TreeView(), stop_update_thread(false) {
           if(last_write_time!=now && it->second.second<last_write_time) {
             auto path=std::make_shared<std::string>(it->first);
             dispatcher.post([this, path, last_write_time] {
-              update_mutex.lock();
+              std::unique_lock<std::mutex> lock(update_mutex);
               auto it=last_write_times.find(*path);
               if(it!=last_write_times.end())
                 add_path(*path, it->second.first, last_write_time);
-              update_mutex.unlock();
             });
           }
           it++;
@@ -200,7 +199,6 @@ Directories::Directories() : Gtk::TreeView(), stop_update_thread(false) {
         else
           it=last_write_times.erase(it);
       }
-      update_mutex.unlock();
     }
   });
   
@@ -315,9 +313,10 @@ void Directories::open(const boost::filesystem::path &dir_path) {
     return;
   
   tree_store->clear();
-  update_mutex.lock();
-  last_write_times.clear();
-  update_mutex.unlock();
+  {
+    std::unique_lock<std::mutex> lock(update_mutex);
+    last_write_times.clear();
+  }
     
   
   //TODO: report that set_title does not handle '_' correctly?
@@ -329,9 +328,10 @@ void Directories::open(const boost::filesystem::path &dir_path) {
   }
   get_column(0)->set_title(title);
 
-  update_mutex.lock();
-  add_path(dir_path, Gtk::TreeModel::Row());
-  update_mutex.unlock();
+  {
+    std::unique_lock<std::mutex> lock(update_mutex);
+    add_path(dir_path, Gtk::TreeModel::Row());
+  }
     
   path=dir_path;
   
@@ -340,11 +340,12 @@ void Directories::open(const boost::filesystem::path &dir_path) {
 
 void Directories::update() {
  JDEBUG("start");
-  update_mutex.lock();
-  for(auto &last_write_time: last_write_times) {
-    add_path(last_write_time.first, last_write_time.second.first);
-  }
-  update_mutex.unlock();
+ {
+   std::unique_lock<std::mutex> lock(update_mutex);
+   for(auto &last_write_time: last_write_times) {
+     add_path(last_write_time.first, last_write_time.second.first);
+   }
+ }
  JDEBUG("end");
 }
 
@@ -371,9 +372,8 @@ void Directories::select(const boost::filesystem::path &select_path) {
   for(auto &a_path: paths) {
     tree_store->foreach_iter([this, &a_path](const Gtk::TreeModel::iterator &iter){
       if(iter->get_value(column_record.path)==a_path) {
-        update_mutex.lock();
+        std::unique_lock<std::mutex> lock(update_mutex);
         add_path(a_path, *iter);
-        update_mutex.unlock();
         return true;
       }
       return false;
