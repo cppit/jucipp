@@ -206,6 +206,7 @@ void Debug::Clang::start(const std::string &command, const boost::filesystem::pa
             Terminal::get().async_print(std::string(buffer, n), true);
         }
       }
+      lock.unlock();
       std::this_thread::sleep_for(std::chrono::milliseconds(200));
     }
   });
