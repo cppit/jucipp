@@ -25,9 +25,12 @@ if(MSYS)
   set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -DMSYS_PROCESS_USE_SH")
 endif()
 
-INCLUDE(FindPkgConfig)
-
 find_package(LibClang REQUIRED)
+find_package(Boost 1.54 COMPONENTS thread log regex system filesystem REQUIRED)
+find_package(ASPELL REQUIRED)
+set(LIBCLANGMM_INCLUDE_DIR ../libclangmm/src)
+set(TINY_PROCESS_INCLUDE_DIR ../tiny-process-library)
+
 string(REPLACE libclang liblldb LIBLLDB_LIBRARIES "${LIBCLANG_LIBRARIES}")
 if(EXISTS "${LIBLLDB_LIBRARIES}")
   set(LIBLLDB_FOUND TRUE)
@@ -41,129 +44,101 @@ else()
   set(LIBLLDB_LIBRARIES "")
   message("liblldb not found. Building juCi++ without debugging support")
 endif()
-#find_package(PythonLibs 2.7)
 
-#find_package(Boost 1.55 COMPONENTS python thread log system filesystem REQUIRED)
-find_package(Boost 1.54 COMPONENTS thread log system filesystem regex REQUIRED)
-
-pkg_check_modules(GTKMM gtkmm-3.0 REQUIRED) # The name GTKMM is set here for the variables abouve
-
+include(FindPkgConfig)
+pkg_check_modules(GTKMM gtkmm-3.0 REQUIRED)
 pkg_check_modules(GTKSVMM gtksourceviewmm-3.0 REQUIRED)
 
-find_package(ASPELL REQUIRED)
-
-set(source_files juci.h
-    juci.cc	
-    menu.h
-    menu.cc
-    source.h
-    source.cc
-    source_clang.h
-    source_clang.cc
-    selectiondialog.h
-    selectiondialog.cc
-    config.h
-    config.cc
-    filesystem.h
-    filesystem.cc
-    window.cc
-    window.h
-    dialogs.h
-#    api.h
-#    api.cc
-    notebook.cc
-    notebook.h
-    entrybox.h
-    entrybox.cc
-    directories.h
-    directories.cc
-    terminal.h
-    terminal.cc
-    tooltips.h
-    tooltips.cc
-    cmake.h
-    cmake.cc
-    dialogs.cc
-    project.h
-    project.cc
-    project_build.h
-    project_build.cc
-    dispatcher.h
-    dispatcher.cc
-    
-    ../libclangmm/src/CodeCompleteResults.cc
-    ../libclangmm/src/CompilationDatabase.cc
-    ../libclangmm/src/CompileCommand.cc     
-    ../libclangmm/src/CompileCommands.cc    
-    ../libclangmm/src/CompletionString.cc   
-    ../libclangmm/src/Cursor.cc
-    ../libclangmm/src/Index.cc
-    ../libclangmm/src/SourceLocation.cc
-    ../libclangmm/src/SourceRange.cc
-    ../libclangmm/src/Token.cc
-    ../libclangmm/src/Tokens.cc
-    ../libclangmm/src/TranslationUnit.cc
-    ../libclangmm/src/Diagnostic.cc
-    ../libclangmm/src/Utility.cc
-    
-    ../tiny-process-library/process.cpp)
-
-if(LIBLLDB_FOUND)
-  list(APPEND source_files debug_clang.h debug_clang.cc)
-endif()
-
-if(MSYS)
-  list(APPEND source_files dialogs_unix.cc) #dialogs_win.cc does not work any more because of missing SHCreateItemFromParsingName
-  list(APPEND source_files ../tiny-process-library/process_win.cpp)
-else()
-  list(APPEND source_files dialogs_unix.cc)
-  list(APPEND source_files ../tiny-process-library/process_unix.cpp)
-endif()
-
-add_executable(${project_name} ${source_files})
-
-#  add_library(${module} SHARED
-#    api
-#    api_ext)
-
-include_directories(
-  ${Boost_INCLUDE_DIRS}
-#    ${PYTHON_INCLUDE_DIRS}
-  ${GTKMM_INCLUDE_DIRS}
-  ${GTKSVMM_INCLUDE_DIRS}
-  ${LIBCLANG_INCLUDE_DIRS}
-  ${ASPELL_INCLUDE_DIR}
-  ../libclangmm/src
-  ../tiny-process-library
+set(global_includes
+   ${Boost_INCLUDE_DIRS}
+   ${GTKMM_INCLUDE_DIRS}
+   ${GTKSVMM_INCLUDE_DIRS}
+   ${LIBCLANG_INCLUDE_DIRS}
+   ${LIBCLANGMM_INCLUDE_DIR}
+   ${ASPELL_INCLUDE_DIR}
+   ${TINY_PROCESS_INCLUDE_DIR}
 )
 
-link_directories(
-  ${GTKMM_LIBRARY_DIRS}
-  ${GTKSVMM_LIBRARY_DIRS}
-  ${Boost_LIBRARY_DIRS}
-#    ${PYTHON_INCLUDE_DIRS}
-  ${LIBCLANG_LIBRARY_DIRS}
-)
-
-#  set_target_properties(${module}
-#    PROPERTIES PREFIX ""
-#    LIBRARY_OUTPUT_DIRECTORY "${CMAKE_SOURCE_DIR}/lib/")
-
-#  target_link_libraries(${module} ${PYTHON_LIBRARIES} ${Boost_LIBRARIES})
-#  target_link_libraries(${module} ${Boost_LIBRARIES})
-
-target_link_libraries(${project_name}
+set(global_libraries
   ${LIBCLANG_LIBRARIES}
   ${GTKMM_LIBRARIES}
   ${GTKSVMM_LIBRARIES}
   ${Boost_LIBRARIES}
   ${ASPELL_LIBRARIES}
   ${LIBLLDB_LIBRARIES}
-  #${PYTHON_LIBRARIES}
 )
 
-#  install(TARGETS ${project_name} ${module}
+set(project_files
+    cmake.cc
+    cmake.h
+    config.cc
+    config.h
+    dialogs.cc
+    dialogs.h
+    directories.cc
+    directories.h
+    dispatcher.cc
+    dispatcher.h
+    entrybox.cc
+    entrybox.h
+    files.h
+    filesystem.cc
+    filesystem.h
+    juci.cc
+    juci.h
+    logging.h
+    menu.cc
+    menu.h
+    notebook.cc
+    notebook.h
+    project.cc
+    project.h
+    project_build.h
+    project_build.cc
+    selectiondialog.cc
+    selectiondialog.h
+    source.cc
+    source.h
+    source_clang.cc
+    source_clang.h
+    terminal.cc
+    terminal.h
+    tooltips.cc
+    tooltips.h
+    window.cc
+    window.h
+
+    ../libclangmm/src/CodeCompleteResults.cc
+    ../libclangmm/src/CompilationDatabase.cc
+    ../libclangmm/src/CompileCommand.cc     
+    ../libclangmm/src/CompileCommands.cc    
+    ../libclangmm/src/CompletionString.cc   
+    ../libclangmm/src/Cursor.cc
+    ../libclangmm/src/Diagnostic.cc
+    ../libclangmm/src/Index.cc
+    ../libclangmm/src/SourceLocation.cc
+    ../libclangmm/src/SourceRange.cc
+    ../libclangmm/src/Token.cc
+    ../libclangmm/src/Tokens.cc
+    ../libclangmm/src/TranslationUnit.cc
+    ../libclangmm/src/Utility.cc
+
+    ../tiny-process-library/process.cpp)
+
+if(LIBLLDB_FOUND)
+  list(APPEND project_files debug_clang.h debug_clang.cc)
+endif()
+
+if(MSYS)
+  list(APPEND project_files dialogs_unix.cc ../tiny-process-library/process_win.cpp)
+else()
+  list(APPEND project_files dialogs_unix.cc ../tiny-process-library/process_unix.cpp)
+endif()
+
+include_directories(${global_includes})
+add_executable(${project_name} ${project_files})
+target_link_libraries(${project_name} ${global_libraries})
+
 install(TARGETS ${project_name}
   RUNTIME DESTINATION bin
-#    LIBRARY DESTINATION ${lib_install_path}
 )
