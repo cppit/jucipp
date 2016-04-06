@@ -299,7 +299,7 @@ Directories::Directories() : Gtk::TreeView(), stop_update_thread(false) {
   });
   menu.append(menu_item_delete);
   
-  menu_item_create.set_label("Create new file here");
+  menu_item_create.set_label("Create file");
   menu_item_create.signal_activate().connect([this] {
     if(menu_popup_row_path.empty())
       return;
