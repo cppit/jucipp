@@ -309,7 +309,10 @@ Directories::Directories() : Gtk::TreeView(), stop_update_thread(false) {
         bool is_directory=boost::filesystem::is_directory(*source_path);
         auto target_path = (is_directory ? *source_path : source_path->parent_path())/content;
         if(!boost::filesystem::exists(target_path))
+        {
           filesystem::write(target_path, "");
+          Notebook::get().open(target_path);
+        }
         else
           Terminal::get().print("Cannot create "+target_path.string()+": file already exists.\n", true);
         update();
