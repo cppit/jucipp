@@ -69,6 +69,7 @@ private:
   Dispatcher dispatcher;
   
   Gtk::Menu menu;
+  Gtk::MenuItem menu_item_create;
   Gtk::MenuItem menu_item_rename;
   Gtk::MenuItem menu_item_delete;
   boost::filesystem::path menu_popup_row_path;

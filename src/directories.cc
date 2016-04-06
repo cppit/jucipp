@@ -299,6 +299,32 @@ Directories::Directories() : Gtk::TreeView(), stop_update_thread(false) {
   });
   menu.append(menu_item_delete);
   
+  menu_item_create.set_label("Create new file here");
+  menu_item_create.signal_activate().connect([this] {
+    if(menu_popup_row_path.empty())
+      return;
+    EntryBox::get().clear();
+    auto source_path=std::make_shared<boost::filesystem::path>(menu_popup_row_path);
+    EntryBox::get().entries.emplace_back("", [this, source_path](const std::string &content){
+        bool is_directory=boost::filesystem::is_directory(*source_path);
+        auto target_path = (is_directory ? *source_path : source_path->parent_path())/content;
+        if(!boost::filesystem::exists(target_path))
+          filesystem::write(target_path, "");
+        else
+          Terminal::get().print("Cannot create "+target_path.string()+": file already exists.\n", true);
+        update();
+        
+        EntryBox::get().hide();
+    });
+    auto entry_it=EntryBox::get().entries.begin();
+    entry_it->set_placeholder_text("Filename");
+    EntryBox::get().buttons.emplace_back("Create file", [this, entry_it](){
+      entry_it->activate();
+    });
+    EntryBox::get().show();
+  });
+  menu.append(menu_item_create);
+  
   menu.show_all();
   menu.accelerate(*this);
 }
