@@ -2,7 +2,7 @@
 #define JUCI_FILES_H_
 #include <string>
 
-#define JUCI_VERSION "1.1.2-rc1"
+#define JUCI_VERSION "1.1.2"
 
 const std::string configjson =
 "{\n"
