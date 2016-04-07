@@ -9,10 +9,7 @@ Terminal::InProgress::InProgress(const std::string& start_msg): stop(false) {
 }
 
 Terminal::InProgress::~InProgress() {
-  {
-    std::unique_lock<std::mutex> lock(stop_mutex);
-    stop=true;
-  }
+  stop=true;
   if(wait_thread.joinable())
     wait_thread.join();
 }
@@ -21,12 +18,7 @@ void Terminal::InProgress::start(const std::string& msg) {
   line_nr=Terminal::get().print(msg+"...\n");
   wait_thread=std::thread([this](){
     size_t c=0;
-    while(true) {
-      {
-        std::unique_lock<std::mutex> lock(stop_mutex);
-        if(stop)
-          break;
-      }
+    while(!stop) {
       if(c%100==0)
         Terminal::get().async_print(line_nr-1, ".");
       std::this_thread::sleep_for(std::chrono::milliseconds(10));
@@ -36,21 +28,15 @@ void Terminal::InProgress::start(const std::string& msg) {
 }
 
 void Terminal::InProgress::done(const std::string& msg) {
-  std::unique_lock<std::mutex> lock(stop_mutex);
-  if(!stop) {
-    stop=true;
-    lock.unlock();
+  bool expected=false;
+  if(stop.compare_exchange_strong(expected, true))
     Terminal::get().async_print(line_nr-1, msg);
-  }
 }
 
 void Terminal::InProgress::cancel(const std::string& msg) {
-  std::unique_lock<std::mutex> lock(stop_mutex);
-  if(!stop) {
-    stop=true;
-    lock.unlock();
+  bool expected=false;
+  if(stop.compare_exchange_strong(expected, true))
     Terminal::get().async_print(line_nr-1, msg);
-  }
 }
 
 Terminal::Terminal() {
@@ -135,7 +121,7 @@ void Terminal::async_process(const std::string &command, const boost::filesystem
       
     auto exit_status=process->get_exit_status();
     
-    processes_lock = std::unique_lock<std::mutex>(processes_mutex);
+    processes_lock.lock();
     for(auto it=processes.begin();it!=processes.end();it++) {
       if((*it)->get_id()==pid) {
         processes.erase(it);
@@ -272,12 +258,11 @@ void Terminal::configure() {
 }
 
 void Terminal::clear() {
-  std::unique_lock<std::mutex> lock(in_progresses_mutex);
-  for(auto &in_progress: in_progresses) {
-    std::unique_lock<std::mutex> stop_lock(in_progress->stop_mutex);
-    in_progress->stop=true;
+  {
+    std::unique_lock<std::mutex> lock(in_progresses_mutex);
+    for(auto &in_progress: in_progresses)
+      in_progress->stop=true;
   }
-  lock.unlock();
   while(g_main_context_pending(NULL))
     g_main_context_iteration(NULL, false);
   get_buffer()->set_text("");

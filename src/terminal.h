@@ -25,8 +25,7 @@ public:
     void start(const std::string& msg);
     size_t line_nr;
     
-    bool stop;
-    std::mutex stop_mutex;
+    std::atomic<bool> stop;
     
     std::thread wait_thread;
   };

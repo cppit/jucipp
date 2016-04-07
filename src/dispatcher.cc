@@ -17,9 +17,10 @@ Dispatcher::~Dispatcher() {
 }
 
 void Dispatcher::post(std::function<void()> &&function) {
-  std::unique_lock<std::mutex> lock(functions_mutex);
-  functions.emplace_back(function);
-  lock.unlock();
+  {
+    std::unique_lock<std::mutex> lock(functions_mutex);
+    functions.emplace_back(function);
+  }
   dispatcher();
 }
 

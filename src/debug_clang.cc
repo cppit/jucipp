@@ -428,24 +428,18 @@ std::string Debug::Clang::get_return_value(const boost::filesystem::path &file_p
 }
 
 bool Debug::Clang::is_invalid() {
-  bool invalid;
   std::unique_lock<std::mutex> lock(event_mutex);
-  invalid=state==lldb::StateType::eStateInvalid;
-  return invalid;
+  return state==lldb::StateType::eStateInvalid;
 }
 
 bool Debug::Clang::is_stopped() {
-  bool stopped;
   std::unique_lock<std::mutex> lock(event_mutex);
-  stopped=state==lldb::StateType::eStateStopped;
-  return stopped;
+  return state==lldb::StateType::eStateStopped;
 }
 
 bool Debug::Clang::is_running() {
-  bool running;
   std::unique_lock<std::mutex> lock(event_mutex);
-  running=state==lldb::StateType::eStateRunning;
-  return running;
+  return state==lldb::StateType::eStateRunning;
 }
 
 void Debug::Clang::add_breakpoint(const boost::filesystem::path &file_path, int line_nr) {
