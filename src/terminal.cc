@@ -9,9 +9,10 @@ Terminal::InProgress::InProgress(const std::string& start_msg): stop(false) {
 }
 
 Terminal::InProgress::~InProgress() {
-  stop_mutex.lock();
-  stop=true;
-  stop_mutex.unlock();
+  {
+    std::unique_lock<std::mutex> lock(stop_mutex);
+    stop=true;
+  }
   if(wait_thread.joinable())
     wait_thread.join();
 }
@@ -21,13 +22,11 @@ void Terminal::InProgress::start(const std::string& msg) {
   wait_thread=std::thread([this](){
     size_t c=0;
     while(true) {
-      stop_mutex.lock();
-      if(stop) {
-        stop_mutex.unlock();
-        break;
+      {
+        std::unique_lock<std::mutex> lock(stop_mutex);
+        if(stop)
+          break;
       }
-      else
-        stop_mutex.unlock();
       if(c%100==0)
         Terminal::get().async_print(line_nr-1, ".");
       std::this_thread::sleep_for(std::chrono::milliseconds(10));
@@ -37,25 +36,21 @@ void Terminal::InProgress::start(const std::string& msg) {
 }
 
 void Terminal::InProgress::done(const std::string& msg) {
-  stop_mutex.lock();
+  std::unique_lock<std::mutex> lock(stop_mutex);
   if(!stop) {
     stop=true;
-    stop_mutex.unlock();
+    lock.unlock();
     Terminal::get().async_print(line_nr-1, msg);
   }
-  else
-    stop_mutex.unlock();
 }
 
 void Terminal::InProgress::cancel(const std::string& msg) {
-  stop_mutex.lock();
+  std::unique_lock<std::mutex> lock(stop_mutex);
   if(!stop) {
     stop=true;
-    stop_mutex.unlock();
+    lock.unlock();
     Terminal::get().async_print(line_nr-1, msg);
   }
-  else
-    stop_mutex.unlock();
 }
 
 Terminal::Terminal() {
@@ -117,8 +112,8 @@ int Terminal::process(std::istream &stdin_stream, std::ostream &stdout_stream, c
 }
 
 void Terminal::async_process(const std::string &command, const boost::filesystem::path &path, std::function<void(int exit_status)> callback) {
-  std::thread async_execute_thread([this, command, path, callback](){    
-    processes_mutex.lock();
+  std::thread async_execute_thread([this, command, path, callback](){
+    std::unique_lock<std::mutex> processes_lock(processes_mutex);
     stdin_buffer.clear();
     std::shared_ptr<Process> process(new Process(command, path.string(), [this](const char* bytes, size_t n) {
       async_print(std::string(bytes, n));
@@ -127,7 +122,7 @@ void Terminal::async_process(const std::string &command, const boost::filesystem
     }, true));
     auto pid=process->get_id();
     if (pid<=0) {
-      processes_mutex.unlock();
+      processes_lock.unlock();
       async_print("Error: failed to run command: " + command + "\n", true);
       if(callback)
         callback(-1);
@@ -135,12 +130,12 @@ void Terminal::async_process(const std::string &command, const boost::filesystem
     }
     else {
       processes.emplace_back(process);
-      processes_mutex.unlock();
+      processes_lock.unlock();
     }
       
     auto exit_status=process->get_exit_status();
     
-    processes_mutex.lock();
+    processes_lock = std::unique_lock<std::mutex>(processes_mutex);
     for(auto it=processes.begin();it!=processes.end();it++) {
       if((*it)->get_id()==pid) {
         processes.erase(it);
@@ -148,7 +143,7 @@ void Terminal::async_process(const std::string &command, const boost::filesystem
       }
     }
     stdin_buffer.clear();
-    processes_mutex.unlock();
+    processes_lock.unlock();
       
     if(callback)
       callback(exit_status);
@@ -157,17 +152,15 @@ void Terminal::async_process(const std::string &command, const boost::filesystem
 }
 
 void Terminal::kill_last_async_process(bool force) {
-  processes_mutex.lock();
+  std::unique_lock<std::mutex> lock(processes_mutex);
   if(processes.size()>0)
     processes.back()->kill(force);
-  processes_mutex.unlock();
 }
 
 void Terminal::kill_async_processes(bool force) {
-  processes_mutex.lock();
+  std::unique_lock<std::mutex> lock(processes_mutex);
   for(auto &process: processes)
     process->kill(force);
-  processes_mutex.unlock();
 }
 
 size_t Terminal::print(const std::string &message, bool bold){
@@ -223,14 +216,16 @@ size_t Terminal::print(const std::string &message, bool bold){
 
 std::shared_ptr<Terminal::InProgress> Terminal::print_in_progress(std::string start_msg) {
   auto in_progress=std::shared_ptr<Terminal::InProgress>(new Terminal::InProgress(start_msg), [this](Terminal::InProgress *in_progress) {
-    in_progresses_mutex.lock();
-    in_progresses.erase(in_progress);
-    in_progresses_mutex.unlock();
+    {
+      std::unique_lock<std::mutex> lock(in_progresses_mutex);
+      in_progresses.erase(in_progress);
+    }
     delete in_progress;
   });
-  in_progresses_mutex.lock();
-  in_progresses.emplace(in_progress.get());
-  in_progresses_mutex.unlock();
+  {
+    std::unique_lock<std::mutex> lock(in_progresses_mutex);
+    in_progresses.emplace(in_progress.get());
+  }
   return in_progress;
 }
 
@@ -277,20 +272,19 @@ void Terminal::configure() {
 }
 
 void Terminal::clear() {
-  in_progresses_mutex.lock();
+  std::unique_lock<std::mutex> lock(in_progresses_mutex);
   for(auto &in_progress: in_progresses) {
-    in_progress->stop_mutex.lock();
+    std::unique_lock<std::mutex> stop_lock(in_progress->stop_mutex);
     in_progress->stop=true;
-    in_progress->stop_mutex.unlock();
   }
-  in_progresses_mutex.unlock();
+  lock.unlock();
   while(g_main_context_pending(NULL))
     g_main_context_iteration(NULL, false);
   get_buffer()->set_text("");
 }
 
 bool Terminal::on_key_press_event(GdkEventKey *event) {
-  processes_mutex.lock();
+  std::unique_lock<std::mutex> lock(processes_mutex);
   bool debug_is_running=false;
 #ifdef JUCI_ENABLE_DEBUG
   debug_is_running=Project::current_language?Project::current_language->debug_is_running():false;
@@ -324,6 +318,5 @@ bool Terminal::on_key_press_event(GdkEventKey *event) {
       stdin_buffer.clear();
     }
   }
-  processes_mutex.unlock();
   return true;
 }

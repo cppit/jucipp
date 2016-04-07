@@ -106,28 +106,31 @@ void Source::ClangViewParse::parse_initialize() {
       if(parse_state!=ParseState::PROCESSING)
         break;
       auto expected=ParseProcessState::STARTING;
+      std::unique_lock<std::mutex> parse_lock(parse_mutex, std::defer_lock);
       if(parse_process_state.compare_exchange_strong(expected, ParseProcessState::PREPROCESSING)) {
         dispatcher.post([this] {
           auto expected=ParseProcessState::PREPROCESSING;
-          if(parse_mutex.try_lock()) {
+          std::unique_lock<std::mutex> parse_lock(parse_mutex, std::defer_lock);
+          if(parse_lock.try_lock()) {
             if(parse_process_state.compare_exchange_strong(expected, ParseProcessState::PROCESSING))
               parse_thread_buffer=get_buffer()->get_text();
-            parse_mutex.unlock();
+            parse_lock.unlock();
           }
           else
             parse_process_state.compare_exchange_strong(expected, ParseProcessState::STARTING);
         });
       }
-      else if (parse_process_state==ParseProcessState::PROCESSING && parse_mutex.try_lock()) {
+      else if (parse_process_state==ParseProcessState::PROCESSING && parse_lock.try_lock()) {
         auto status=clang_tu->ReparseTranslationUnit(parse_thread_buffer.raw());
         parsing_in_progress->done("done");
         if(status==0) {
           auto expected=ParseProcessState::PROCESSING;
           if(parse_process_state.compare_exchange_strong(expected, ParseProcessState::POSTPROCESSING)) {
             clang_tokens=clang_tu->get_tokens(0, parse_thread_buffer.bytes()-1);
-            parse_mutex.unlock();
+            parse_lock.unlock();
             dispatcher.post([this] {
-              if(parse_mutex.try_lock()) {
+              std::unique_lock<std::mutex> parse_lock(parse_mutex, std::defer_lock);
+              if(parse_lock.try_lock()) {
                 auto expected=ParseProcessState::POSTPROCESSING;
                 if(parse_process_state.compare_exchange_strong(expected, ParseProcessState::IDLE)) {
                   update_syntax();
@@ -135,16 +138,16 @@ void Source::ClangViewParse::parse_initialize() {
                   parsed=true;
                   set_status("");
                 }
-                parse_mutex.unlock();
+                parse_lock.unlock();
               }
             });
           }
           else
-            parse_mutex.unlock();
+            parse_lock.unlock();
         }
         else {
           parse_state=ParseState::STOP;
-          parse_mutex.unlock();
+          parse_lock.unlock();
           dispatcher.post([this] {
             Terminal::get().print("Error: failed to reparse "+this->file_path.string()+".\n", true);
             set_status("");
@@ -623,16 +626,18 @@ void Source::ClangViewAutocomplete::autocomplete_check() {
   const boost::regex within_namespace("^(.*)([^a-zA-Z0-9_]+)([a-zA-Z0-9_]{3,})$");
   boost::smatch sm;
   if(boost::regex_match(line, sm, in_specified_namespace)) {
-    prefix_mutex.lock();
-    prefix=sm[3].str();
-    prefix_mutex.unlock();
+    {
+      std::unique_lock<std::mutex> lock(prefix_mutex);
+      prefix=sm[3].str();
+    }
     if(prefix.size()==0 || prefix[0]<'0' || prefix[0]>'9')
       autocomplete();
   }
   else if(boost::regex_match(line, sm, within_namespace)) {
-    prefix_mutex.lock();
-    prefix=sm[3].str();
-    prefix_mutex.unlock();
+    {
+      std::unique_lock<std::mutex> lock(prefix_mutex);
+      prefix=sm[3].str();
+    }
     if(prefix.size()==0 || prefix[0]<'0' || prefix[0]>'9')
       autocomplete();
   }
@@ -667,7 +672,7 @@ void Source::ClangViewAutocomplete::autocomplete() {
     pos--;
   }
   autocomplete_thread=std::thread([this, line_nr, column_nr, buffer](){
-    parse_mutex.lock();
+    std::unique_lock<std::mutex> lock(parse_mutex);
     if(parse_state==ParseState::PROCESSING) {
       parse_process_state=ParseProcessState::IDLE;
       auto autocomplete_data=std::make_shared<std::vector<AutoCompleteData> >(autocomplete_get_suggestions(buffer->raw(), line_nr, column_nr));
@@ -726,7 +731,6 @@ void Source::ClangViewAutocomplete::autocomplete() {
         });
       }
     }
-    parse_mutex.unlock();
   });
 }
 
@@ -740,9 +744,10 @@ std::vector<Source::ClangViewAutocomplete::AutoCompleteData> Source::ClangViewAu
   }
   
   if(autocomplete_state==AutocompleteState::STARTING) {
-    prefix_mutex.lock();
+    std::unique_lock<std::mutex> lock(prefix_mutex);
     auto prefix_copy=prefix;
-    prefix_mutex.unlock();
+    lock.unlock();
+      
     for (unsigned i = 0; i < results.size(); i++) {
       auto result=results.get(i);
       if(result.available()) {
