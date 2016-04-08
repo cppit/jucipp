@@ -45,6 +45,7 @@ set(BUILD_TESTING_SAVED ${BUILD_TESTING})
 set(BUILD_TESTING OFF CACHE BOOL "Disable sub-project tests" FORCE)
 add_subdirectory(libclangmm)
 add_subdirectory(tiny-process-library)
+add_subdirectory(pybind11)
 set(BUILD_TESTING ${BUILD_TESTING_SAVED} CACHE BOOL "Set to previous value" FORCE)
 
 find_package(Boost 1.54 COMPONENTS system filesystem serialization REQUIRED)
@@ -69,6 +70,8 @@ else()
   set(LIBLLDB_LIBRARIES "")
   message("liblldb not found. Building juCi++ without debugging support")
 endif()
+find_package(PythonLibs 3 REQUIRED)
+pkg_check_modules(PYGOBJECT pygobject-3.0 REQUIRED)
 
 # For both src and tests targets
 include_directories(
@@ -78,6 +81,8 @@ include_directories(
   ${LIBCLANG_INCLUDE_DIRS}
   ${ASPELL_INCLUDE_DIR}
   ${LIBGIT2_INCLUDE_DIRS}
+  ${PYTHON_INCLUDE_DIRS}
+  ${PYGOBJECT_INCLUDE_DIRS}
 )
 
 add_subdirectory("src")

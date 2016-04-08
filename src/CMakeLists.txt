@@ -33,6 +33,9 @@ target_link_libraries(juci_shared
   ${LIBGIT2_LIBRARIES}
   clangmm
   tiny-process-library
+  pybind11
+  ${PYTHON_LIBRARIES}
+  ${PYGOBJECT_LIBRARIES}
 )
 
 add_executable(juci
@@ -46,6 +49,7 @@ add_executable(juci
   notebook.cc
   project.cc
   selection_dialog.cc
+  python_interpreter.cc
   tooltips.cc
   window.cc
 )

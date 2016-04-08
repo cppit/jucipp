@@ -3,6 +3,7 @@
 #include "menu.h"
 #include "notebook.h"
 #include "directories.h"
+#include "python_interpreter.h"
 #include "dialogs.h"
 #include "filesystem.h"
 #include "project.h"
@@ -340,6 +341,27 @@ void Window::set_menu_actions() {
           for(size_t c=0;c<Notebook::get().size();c++) {
             Notebook::get().get_view(c)->configure();
             Notebook::get().configure(c);
+          }
+          if(view->file_path.extension().string()==".py"){
+            auto file_path=view->file_path;
+            while(file_path.has_parent_path()){
+              auto parent=file_path.parent_path();
+              if(parent==Config::get().python.plugin_directory){
+                auto stem=file_path.stem().string();
+                auto module=Python::get_loaded_module(stem);
+                module=module ? Python::reload(module) : Python::import(stem);
+                if(module)
+                  Terminal::get().print("Plugin `"+stem+"` was reloaded\n");
+                else {
+                  if(Python::thrown_exception_matches(PyExc_SyntaxError))
+                    Terminal::get().print(Python::SyntaxError());
+                  else
+                    Terminal::get().print(Python::Error());
+                }
+                break;
+              }
+              file_path=parent;
+            }
           }
         }
       }

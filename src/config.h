@@ -93,6 +93,12 @@ public:
     
     std::unordered_map<std::string, DocumentationSearch> documentation_searches;
   };
+
+  class Python {
+  public:
+    std::string site_packages;
+    std::string plugin_directory;
+  };
 private:
   Config();
 public:
@@ -108,6 +114,7 @@ public:
   Terminal terminal;
   Project project;
   Source source;
+  Python python;
   
   boost::filesystem::path home_path;
   boost::filesystem::path home_juci_path;
