@@ -283,7 +283,7 @@ void Window::set_menu_actions() {
       print_operation->set_job_name(view->file_path.filename().string());
       print_compositor->set_wrap_mode(Gtk::WrapMode::WRAP_WORD_CHAR);
       
-      print_operation->signal_begin_print().connect([view, print_operation, print_compositor](const Glib::RefPtr<Gtk::PrintContext>& print_context) {
+      print_operation->signal_begin_print().connect([print_operation, print_compositor](const Glib::RefPtr<Gtk::PrintContext>& print_context) {
         while(!print_compositor->paginate(print_context));
         print_operation->set_n_pages(print_compositor->get_n_pages());
       });
