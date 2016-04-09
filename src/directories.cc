@@ -299,8 +299,8 @@ Directories::Directories() : Gtk::TreeView(), stop_update_thread(false) {
   });
   menu.append(menu_item_delete);
   
-  menu_item_create.set_label("Create file");
-  menu_item_create.signal_activate().connect([this] {
+  auto create_file_label = "Create file";
+  auto create_file_signal = [this] {
     if(menu_popup_row_path.empty())
       return;
     EntryBox::get().clear();
@@ -325,11 +325,34 @@ Directories::Directories() : Gtk::TreeView(), stop_update_thread(false) {
       entry_it->activate();
     });
     EntryBox::get().show();
-  });
+  };
+  
+  menu_item_create.set_label(create_file_label);
+  menu_item_create.signal_activate().connect(create_file_signal);
   menu.append(menu_item_create);
   
   menu.show_all();
   menu.accelerate(*this);
+  
+  menu_root_item_create.set_label(create_file_label);
+  menu_root_item_create.signal_activate().connect(create_file_signal);
+  menu_root.append(menu_root_item_create);
+  
+  menu_root.show_all();
+  menu_root.accelerate(*this);
+  
+  set_headers_clickable();
+  forall([this](Gtk::Widget &widget) {
+    if(widget.get_name()=="GtkButton") {
+      widget.signal_button_press_event().connect([this](GdkEventButton *event) {
+        if(event->type==GDK_BUTTON_PRESS && event->button==GDK_BUTTON_SECONDARY && !path.empty()) {
+          menu_popup_row_path=this->path;
+          menu_root.popup(event->button, event->time);
+        }
+        return true;
+      });
+    }
+  });
 }
 
 Directories::~Directories() {
@@ -428,6 +451,10 @@ bool Directories::on_button_press_event(GdkEventButton* event) {
       menu_popup_row_path=get_model()->get_iter(path)->get_value(column_record.path);
       menu.popup(event->button, event->time);
       return true;
+    }
+    else {
+      menu_popup_row_path=this->path;
+      menu_root.popup(event->button, event->time);
     }
   }
   
