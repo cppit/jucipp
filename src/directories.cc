@@ -63,8 +63,10 @@ bool Directories::TreeStore::drag_data_received_vfunc(const TreeModel::Path &pat
   auto it=directories.get_selection()->get_selected();
   if(it) {
     auto source_path=it->get_value(directories.column_record.path);
-    auto target_path=get_target_folder(path);
+    if(source_path.empty())
+      return false;
     
+    auto target_path=get_target_folder(path);
     target_path/=source_path.filename();
     
     if(source_path==target_path)
@@ -218,7 +220,7 @@ Directories::Directories() : Gtk::TreeView(), stop_update_thread(false) {
       auto target_path=source_path->parent_path()/content;
       boost::filesystem::rename(*source_path, target_path, ec);
       if(ec)
-        Terminal::get().print("Error: could not rename "+source_path->string()+": "+ec.message()+'\n');
+        Terminal::get().print("Error: could not rename "+source_path->string()+": "+ec.message()+'\n', true);
       else {
         update();
         select(target_path);
@@ -297,8 +299,62 @@ Directories::Directories() : Gtk::TreeView(), stop_update_thread(false) {
   });
   menu.append(menu_item_delete);
   
+  auto create_file_label = "Create File";
+  auto create_file_signal = [this] {
+    if(menu_popup_row_path.empty())
+      return;
+    EntryBox::get().clear();
+    auto source_path=std::make_shared<boost::filesystem::path>(menu_popup_row_path);
+    EntryBox::get().entries.emplace_back("", [this, source_path](const std::string &content){
+        bool is_directory=boost::filesystem::is_directory(*source_path);
+        auto target_path = (is_directory ? *source_path : source_path->parent_path())/content;
+        if(!boost::filesystem::exists(target_path)) {
+          if(filesystem::write(target_path, "")) {
+            update();
+            Notebook::get().open(target_path);
+          }
+          else
+            Terminal::get().print("Error: could not create "+target_path.string()+'\n', true);
+        }
+        else
+          Terminal::get().print("Error: could not create "+target_path.string()+": file already exists\n", true);
+        
+        EntryBox::get().hide();
+    });
+    auto entry_it=EntryBox::get().entries.begin();
+    entry_it->set_placeholder_text("Filename");
+    EntryBox::get().buttons.emplace_back("Create file", [this, entry_it](){
+      entry_it->activate();
+    });
+    EntryBox::get().show();
+  };
+  
+  menu_item_create.set_label(create_file_label);
+  menu_item_create.signal_activate().connect(create_file_signal);
+  menu.append(menu_item_create);
+  
   menu.show_all();
   menu.accelerate(*this);
+  
+  menu_root_item_create.set_label(create_file_label);
+  menu_root_item_create.signal_activate().connect(create_file_signal);
+  menu_root.append(menu_root_item_create);
+  
+  menu_root.show_all();
+  menu_root.accelerate(*this);
+  
+  set_headers_clickable();
+  forall([this](Gtk::Widget &widget) {
+    if(widget.get_name()=="GtkButton") {
+      widget.signal_button_press_event().connect([this](GdkEventButton *event) {
+        if(event->type==GDK_BUTTON_PRESS && event->button==GDK_BUTTON_SECONDARY && !path.empty()) {
+          menu_popup_row_path=this->path;
+          menu_root.popup(event->button, event->time);
+        }
+        return true;
+      });
+    }
+  });
 }
 
 Directories::~Directories() {
@@ -394,10 +450,26 @@ void Directories::select(const boost::filesystem::path &select_path) {
 
 bool Directories::on_button_press_event(GdkEventButton* event) {
   if(event->type==GDK_BUTTON_PRESS && event->button==GDK_BUTTON_SECONDARY) {
+    EntryBox::get().hide();
     Gtk::TreeModel::Path path;
     if(get_path_at_pos(static_cast<int>(event->x), static_cast<int>(event->y), path)) {
       menu_popup_row_path=get_model()->get_iter(path)->get_value(column_record.path);
+      if(menu_popup_row_path.empty()) {
+        auto parent=get_model()->get_iter(path)->parent();
+        if(parent)
+          menu_popup_row_path=parent->get_value(column_record.path);
+        else {
+          menu_popup_row_path=this->path;
+          menu_root.popup(event->button, event->time);
+          return true;
+        }
+      }
       menu.popup(event->button, event->time);
+      return true;
+    }
+    else if(!this->path.empty()) {
+      menu_popup_row_path=this->path;
+      menu_root.popup(event->button, event->time);
       return true;
     }
   }
