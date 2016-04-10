@@ -274,6 +274,27 @@ void Window::set_menu_actions() {
     }
   });
   
+  menu.add_action("print", [this]() {
+    if(notebook.get_current_page()!=-1) {
+      auto view=notebook.get_current_view();
+      auto print_operation=Gtk::PrintOperation::create();
+      auto print_compositor=Gsv::PrintCompositor::create(*view);
+      
+      print_operation->set_job_name(view->file_path.filename().string());
+      print_compositor->set_wrap_mode(Gtk::WrapMode::WRAP_WORD_CHAR);
+      
+      print_operation->signal_begin_print().connect([print_operation, print_compositor](const Glib::RefPtr<Gtk::PrintContext>& print_context) {
+        while(!print_compositor->paginate(print_context));
+        print_operation->set_n_pages(print_compositor->get_n_pages());
+      });
+      print_operation->signal_draw_page().connect([print_compositor](const Glib::RefPtr<Gtk::PrintContext>& print_context, int page_nr) {
+        print_compositor->draw_page(print_context, page_nr);
+      });
+      
+      print_operation->run(Gtk::PRINT_OPERATION_ACTION_PRINT_DIALOG, *this);
+    }
+  });
+  
   menu.add_action("edit_undo", [this]() {
     if(notebook.get_current_page()!=-1) {
       auto undo_manager = notebook.get_current_view()->get_source_buffer()->get_undo_manager();

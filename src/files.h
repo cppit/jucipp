@@ -2,7 +2,7 @@
 #define JUCI_FILES_H_
 #include <string>
 
-#define JUCI_VERSION "1.1.2"
+#define JUCI_VERSION "1.1.2-1"
 
 const std::string configjson =
 "{\n"
@@ -75,6 +75,7 @@ const std::string configjson =
 "        \"open_folder\": \"<primary><shift>o\",\n"
 "        \"save\": \"<primary>s\",\n"
 "        \"save_as\": \"<primary><shift>s\",\n"
+"        \"print\": \"<primary>p\",\n"
 "        \"edit_undo\": \"<primary>z\",\n"
 "        \"edit_redo\": \"<primary><shift>z\",\n"
 "        \"edit_cut\": \"<primary>x\",\n"
