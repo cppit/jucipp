@@ -297,8 +297,60 @@ Directories::Directories() : Gtk::TreeView(), stop_update_thread(false) {
   });
   menu.append(menu_item_delete);
   
+  auto create_file_label = "Create file";
+  auto create_file_signal = [this] {
+    if(menu_popup_row_path.empty())
+      return;
+    EntryBox::get().clear();
+    auto source_path=std::make_shared<boost::filesystem::path>(menu_popup_row_path);
+    EntryBox::get().entries.emplace_back("", [this, source_path](const std::string &content){
+        bool is_directory=boost::filesystem::is_directory(*source_path);
+        auto target_path = (is_directory ? *source_path : source_path->parent_path())/content;
+        if(!boost::filesystem::exists(target_path))
+        {
+          filesystem::write(target_path, "");
+          Notebook::get().open(target_path);
+        }
+        else
+          Terminal::get().print("Cannot create "+target_path.string()+": file already exists.\n", true);
+        update();
+        
+        EntryBox::get().hide();
+    });
+    auto entry_it=EntryBox::get().entries.begin();
+    entry_it->set_placeholder_text("Filename");
+    EntryBox::get().buttons.emplace_back("Create file", [this, entry_it](){
+      entry_it->activate();
+    });
+    EntryBox::get().show();
+  };
+  
+  menu_item_create.set_label(create_file_label);
+  menu_item_create.signal_activate().connect(create_file_signal);
+  menu.append(menu_item_create);
+  
   menu.show_all();
   menu.accelerate(*this);
+  
+  menu_root_item_create.set_label(create_file_label);
+  menu_root_item_create.signal_activate().connect(create_file_signal);
+  menu_root.append(menu_root_item_create);
+  
+  menu_root.show_all();
+  menu_root.accelerate(*this);
+  
+  set_headers_clickable();
+  forall([this](Gtk::Widget &widget) {
+    if(widget.get_name()=="GtkButton") {
+      widget.signal_button_press_event().connect([this](GdkEventButton *event) {
+        if(event->type==GDK_BUTTON_PRESS && event->button==GDK_BUTTON_SECONDARY && !path.empty()) {
+          menu_popup_row_path=this->path;
+          menu_root.popup(event->button, event->time);
+        }
+        return true;
+      });
+    }
+  });
 }
 
 Directories::~Directories() {
@@ -399,6 +451,10 @@ bool Directories::on_button_press_event(GdkEventButton* event) {
       menu_popup_row_path=get_model()->get_iter(path)->get_value(column_record.path);
       menu.popup(event->button, event->time);
       return true;
+    }
+    else {
+      menu_popup_row_path=this->path;
+      menu_root.popup(event->button, event->time);
     }
   }
   

@@ -68,9 +68,13 @@ private:
   std::atomic<bool> stop_update_thread;
   Dispatcher dispatcher;
   
+  Gtk::Menu menu_root;
+  Gtk::MenuItem menu_root_item_create;
+  
   Gtk::Menu menu;
   Gtk::MenuItem menu_item_rename;
   Gtk::MenuItem menu_item_delete;
+  Gtk::MenuItem menu_item_create;
   boost::filesystem::path menu_popup_row_path;
 };
 
