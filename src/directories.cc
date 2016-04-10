@@ -314,24 +314,24 @@ Directories::Directories() : Gtk::TreeView(), stop_update_thread(false) {
     EntryBox::get().clear();
     auto source_path=std::make_shared<boost::filesystem::path>(menu_popup_row_path);
     EntryBox::get().entries.emplace_back("", [this, source_path](const std::string &content) {
-        bool is_directory=boost::filesystem::is_directory(*source_path);
-        auto target_path = (is_directory ? *source_path : source_path->parent_path())/content;
-        if(!boost::filesystem::exists(target_path)) {
-          if(filesystem::write(target_path, "")) {
-            update();
-            Notebook::get().open(target_path);
-          }
-          else {
-            Terminal::get().print("Error: could not create "+target_path.string()+'\n', true);
-            return;
-          }
+      bool is_directory=boost::filesystem::is_directory(*source_path);
+      auto target_path = (is_directory ? *source_path : source_path->parent_path())/content;
+      if(!boost::filesystem::exists(target_path)) {
+        if(filesystem::write(target_path, "")) {
+          update();
+          Notebook::get().open(target_path);
         }
         else {
-          Terminal::get().print("Error: could not create "+target_path.string()+": file already exists\n", true);
+          Terminal::get().print("Error: could not create "+target_path.string()+'\n', true);
           return;
         }
-        
-        EntryBox::get().hide();
+      }
+      else {
+        Terminal::get().print("Error: could not create "+target_path.string()+": file already exists\n", true);
+        return;
+      }
+      
+      EntryBox::get().hide();
     });
     auto entry_it=EntryBox::get().entries.begin();
     entry_it->set_placeholder_text("Filename");
