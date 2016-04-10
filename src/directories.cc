@@ -30,6 +30,8 @@ bool Directories::TreeStore::row_drop_possible_vfunc(const Gtk::TreeModel::Path 
 }
 
 bool Directories::TreeStore::drag_data_received_vfunc(const TreeModel::Path &path, const Gtk::SelectionData &selection_data) {
+  EntryBox::get().hide();
+  
   auto &directories=Directories::get();
   
   auto get_target_folder=[this, &directories](const TreeModel::Path &path) {
