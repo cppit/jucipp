@@ -216,42 +216,48 @@ Directories::Directories() : Gtk::TreeView(), stop_update_thread(false) {
     EntryBox::get().entries.emplace_back(menu_popup_row_path.filename().string(), [this, source_path](const std::string &content){
       bool is_directory=boost::filesystem::is_directory(*source_path);
       
-      boost::system::error_code ec;
       auto target_path=source_path->parent_path()/content;
+      
+      if(boost::filesystem::exists(target_path)) {
+        Terminal::get().print("Error: could not rename to "+target_path.string()+": already exists\n", true);
+        return;
+      }
+      
+      boost::system::error_code ec;
       boost::filesystem::rename(*source_path, target_path, ec);
-      if(ec)
+      if(ec) {
         Terminal::get().print("Error: could not rename "+source_path->string()+": "+ec.message()+'\n', true);
-      else {
-        update();
-        select(target_path);
-        
-        for(int c=0;c<Notebook::get().size();c++) {
-          auto view=Notebook::get().get_view(c);
-          if(is_directory) {
-            if(filesystem::file_in_path(view->file_path, *source_path)) {
-              auto file_it=view->file_path.begin();
-              for(auto source_it=source_path->begin();source_it!=source_path->end();source_it++)
-                file_it++;
-              auto new_file_path=target_path;
-              for(;file_it!=view->file_path.end();file_it++)
-                new_file_path/=*file_it;
-              view->file_path=new_file_path;
-            }
+        return;
+      }
+      update();
+      select(target_path);
+      
+      for(int c=0;c<Notebook::get().size();c++) {
+        auto view=Notebook::get().get_view(c);
+        if(is_directory) {
+          if(filesystem::file_in_path(view->file_path, *source_path)) {
+            auto file_it=view->file_path.begin();
+            for(auto source_it=source_path->begin();source_it!=source_path->end();source_it++)
+              file_it++;
+            auto new_file_path=target_path;
+            for(;file_it!=view->file_path.end();file_it++)
+              new_file_path/=*file_it;
+            view->file_path=new_file_path;
           }
-          else if(view->file_path==*source_path) {
-            view->file_path=target_path;
-            g_signal_emit_by_name(view->get_buffer()->gobj(), "modified_changed");
-            
-            std::string old_language_id;
-            if(view->language)
-              old_language_id=view->language->get_id();
-            view->language=Source::guess_language(target_path);
-            std::string new_language_id;
-            if(view->language)
-              new_language_id=view->language->get_id();
-            if(new_language_id!=old_language_id)
-              Terminal::get().print("Warning: language for "+target_path.string()+" has changed. Please reopen the file\n");
-          }
+        }
+        else if(view->file_path==*source_path) {
+          view->file_path=target_path;
+          g_signal_emit_by_name(view->get_buffer()->gobj(), "modified_changed");
+          
+          std::string old_language_id;
+          if(view->language)
+            old_language_id=view->language->get_id();
+          view->language=Source::guess_language(target_path);
+          std::string new_language_id;
+          if(view->language)
+            new_language_id=view->language->get_id();
+          if(new_language_id!=old_language_id)
+            Terminal::get().print("Warning: language for "+target_path.string()+" has changed. Please reopen the file\n");
         }
         
         EntryBox::get().hide();
@@ -305,7 +311,7 @@ Directories::Directories() : Gtk::TreeView(), stop_update_thread(false) {
       return;
     EntryBox::get().clear();
     auto source_path=std::make_shared<boost::filesystem::path>(menu_popup_row_path);
-    EntryBox::get().entries.emplace_back("", [this, source_path](const std::string &content){
+    EntryBox::get().entries.emplace_back("", [this, source_path](const std::string &content) {
         bool is_directory=boost::filesystem::is_directory(*source_path);
         auto target_path = (is_directory ? *source_path : source_path->parent_path())/content;
         if(!boost::filesystem::exists(target_path)) {
@@ -313,11 +319,15 @@ Directories::Directories() : Gtk::TreeView(), stop_update_thread(false) {
             update();
             Notebook::get().open(target_path);
           }
-          else
+          else {
             Terminal::get().print("Error: could not create "+target_path.string()+'\n', true);
+            return;
+          }
         }
-        else
+        else {
           Terminal::get().print("Error: could not create "+target_path.string()+": file already exists\n", true);
+          return;
+        }
         
         EntryBox::get().hide();
     });
