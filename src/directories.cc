@@ -261,9 +261,9 @@ Directories::Directories() : Gtk::TreeView(), stop_update_thread(false) {
           if(new_language_id!=old_language_id)
             Terminal::get().print("Warning: language for "+target_path.string()+" has changed. Please reopen the file\n");
         }
-        
-        EntryBox::get().hide();
       }
+      
+      EntryBox::get().hide();
     });
     auto entry_it=EntryBox::get().entries.begin();
     entry_it->set_placeholder_text("Filename");
