@@ -245,6 +245,7 @@ Directories::Directories() : Gtk::TreeView(), stop_update_thread(false) {
             for(;file_it!=view->file_path.end();file_it++)
               new_file_path/=*file_it;
             view->file_path=new_file_path;
+            g_signal_emit_by_name(view->get_buffer()->gobj(), "modified_changed");
           }
         }
         else if(view->file_path==*source_path) {
