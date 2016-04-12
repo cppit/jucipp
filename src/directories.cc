@@ -30,8 +30,6 @@ bool Directories::TreeStore::row_drop_possible_vfunc(const Gtk::TreeModel::Path 
 }
 
 bool Directories::TreeStore::drag_data_received_vfunc(const TreeModel::Path &path, const Gtk::SelectionData &selection_data) {
-  EntryBox::get().hide();
-  
   auto &directories=Directories::get();
   
   auto get_target_folder=[this, &directories](const TreeModel::Path &path) {
@@ -113,6 +111,7 @@ bool Directories::TreeStore::drag_data_received_vfunc(const TreeModel::Path &pat
     directories.select(target_path);
   }
   
+  EntryBox::get().hide();
   return false;
 }
 
@@ -208,6 +207,94 @@ Directories::Directories() : Gtk::TreeView(), stop_update_thread(false) {
   
   enable_model_drag_source();
   enable_model_drag_dest();
+  
+  auto new_file_label = "New File";
+  auto new_file_function = [this] {
+    if(menu_popup_row_path.empty())
+      return;
+    EntryBox::get().clear();
+    auto source_path=std::make_shared<boost::filesystem::path>(menu_popup_row_path);
+    EntryBox::get().entries.emplace_back("", [this, source_path](const std::string &content) {
+      bool is_directory=boost::filesystem::is_directory(*source_path);
+      auto target_path = (is_directory ? *source_path : source_path->parent_path())/content;
+      if(!boost::filesystem::exists(target_path)) {
+        if(filesystem::write(target_path, "")) {
+          update();
+          Notebook::get().open(target_path);
+        }
+        else {
+          Terminal::get().print("Error: could not create "+target_path.string()+'\n', true);
+          return;
+        }
+      }
+      else {
+        Terminal::get().print("Error: could not create "+target_path.string()+": already exists\n", true);
+        return;
+      }
+      
+      EntryBox::get().hide();
+    });
+    auto entry_it=EntryBox::get().entries.begin();
+    entry_it->set_placeholder_text("Filename");
+    EntryBox::get().buttons.emplace_back("Create New File", [this, entry_it](){
+      entry_it->activate();
+    });
+    EntryBox::get().show();
+  };
+  
+  menu_item_new_file.set_label(new_file_label);
+  menu_item_new_file.signal_activate().connect(new_file_function);
+  menu.append(menu_item_new_file);
+  
+  menu_root_item_new_file.set_label(new_file_label);
+  menu_root_item_new_file.signal_activate().connect(new_file_function);
+  menu_root.append(menu_root_item_new_file);
+  
+  auto new_folder_label = "New Folder";
+  auto new_folder_function = [this] {
+    if(menu_popup_row_path.empty())
+      return;
+    EntryBox::get().clear();
+    auto source_path=std::make_shared<boost::filesystem::path>(menu_popup_row_path);
+    EntryBox::get().entries.emplace_back("", [this, source_path](const std::string &content) {
+      bool is_directory=boost::filesystem::is_directory(*source_path);
+      auto target_path = (is_directory ? *source_path : source_path->parent_path())/content;
+      if(!boost::filesystem::exists(target_path)) {
+        boost::system::error_code ec;
+        boost::filesystem::create_directory(target_path, ec);
+        if(!ec) {
+          update();
+          select(target_path);
+        }
+        else {
+          Terminal::get().print("Error: could not create "+target_path.string()+": "+ec.message(), true);
+          return;
+        }
+      }
+      else {
+        Terminal::get().print("Error: could not create "+target_path.string()+": already exists\n", true);
+        return;
+      }
+      
+      EntryBox::get().hide();
+    });
+    auto entry_it=EntryBox::get().entries.begin();
+    entry_it->set_placeholder_text("Folder name");
+    EntryBox::get().buttons.emplace_back("Create New Folder", [this, entry_it](){
+      entry_it->activate();
+    });
+    EntryBox::get().show();
+  };
+  
+  menu_item_new_folder.set_label(new_folder_label);
+  menu_item_new_folder.signal_activate().connect(new_folder_function);
+  menu.append(menu_item_new_folder);
+  
+  menu_root_item_new_folder.set_label(new_folder_label);
+  menu_root_item_new_folder.signal_activate().connect(new_folder_function);
+  menu_root.append(menu_root_item_new_folder);
+  
+  menu.append(menu_item_separator);
   
   menu_item_rename.set_label("Rename");
   menu_item_rename.signal_activate().connect([this] {
@@ -308,50 +395,8 @@ Directories::Directories() : Gtk::TreeView(), stop_update_thread(false) {
   });
   menu.append(menu_item_delete);
   
-  auto create_file_label = "Create File";
-  auto create_file_signal = [this] {
-    if(menu_popup_row_path.empty())
-      return;
-    EntryBox::get().clear();
-    auto source_path=std::make_shared<boost::filesystem::path>(menu_popup_row_path);
-    EntryBox::get().entries.emplace_back("", [this, source_path](const std::string &content) {
-      bool is_directory=boost::filesystem::is_directory(*source_path);
-      auto target_path = (is_directory ? *source_path : source_path->parent_path())/content;
-      if(!boost::filesystem::exists(target_path)) {
-        if(filesystem::write(target_path, "")) {
-          update();
-          Notebook::get().open(target_path);
-        }
-        else {
-          Terminal::get().print("Error: could not create "+target_path.string()+'\n', true);
-          return;
-        }
-      }
-      else {
-        Terminal::get().print("Error: could not create "+target_path.string()+": file already exists\n", true);
-        return;
-      }
-      
-      EntryBox::get().hide();
-    });
-    auto entry_it=EntryBox::get().entries.begin();
-    entry_it->set_placeholder_text("Filename");
-    EntryBox::get().buttons.emplace_back("Create file", [this, entry_it](){
-      entry_it->activate();
-    });
-    EntryBox::get().show();
-  };
-  
-  menu_item_create.set_label(create_file_label);
-  menu_item_create.signal_activate().connect(create_file_signal);
-  menu.append(menu_item_create);
-  
   menu.show_all();
   menu.accelerate(*this);
-  
-  menu_root_item_create.set_label(create_file_label);
-  menu_root_item_create.signal_activate().connect(create_file_signal);
-  menu_root.append(menu_root_item_create);
   
   menu_root.show_all();
   menu_root.accelerate(*this);
