@@ -4,7 +4,7 @@
   - Linux
     - [Debian testing/Linux Mint/Ubuntu](#debian-testinglinux-mintubuntu)
     - [Debian stable/Linux Mint Debian Edition/Raspbian](#debian-stablelinux-mint-debian-editionraspbian)
-    - [Arch Linux](#arch-linux)
+    - [Arch Linux/Manjaro Linux](#arch-linuxmanjaro-linux)
     - [Fedora 23](#fedora-23)
     - [Mageia 5](#mageia-5)
   - OS X
@@ -45,7 +45,7 @@ make
 sudo make install
 ```
 
-##Arch Linux
+##Arch Linux/Manjaro Linux
 **Arch Linux's lldb package has an issue that is being worked on (see https://github.com/cppit/jucipp/issues/191), and for the time being you have to build juCi++ without debug support. If you have the lldb package installed, please remove this package before building juCi++.**
 
 Package available in the Arch User Repository:
