@@ -3,7 +3,7 @@
 - Installation
   - Linux
     - [Debian testing/Linux Mint/Ubuntu](#debian-testinglinux-mintubuntu)
-    - [Debian stable/Linux Mint Debian Edition](#debian-stablelinux-mint-debian-edition)
+    - [Debian stable/Linux Mint Debian Edition/Raspbian](#debian-stablelinux-mint-debian-editionraspbian)
     - [Arch Linux](#arch-linux)
     - [Fedora 23](#fedora-23)
     - [Mageia 5](#mageia-5)
@@ -29,7 +29,7 @@ make
 sudo make install
 ```
 
-## Debian stable/Linux Mint Debian Edition
+## Debian stable/Linux Mint Debian Edition/Raspbian
 Install dependencies:
 ```sh
 sudo apt-get install git cmake make g++ libclang-3.5-dev liblldb-3.5-dev clang-format-3.5 pkg-config libboost-system-dev libboost-thread-dev libboost-filesystem-dev libboost-log-dev libboost-regex-dev libgtksourceviewmm-3.0-dev aspell-en libaspell-dev
@@ -46,7 +46,7 @@ sudo make install
 ```
 
 ##Arch Linux
-**Arch Linux's lldb package has an issue that is being worked on, and for the time being you have to build juCi++ without debug support. If you have the lldb package installed, please remove this package before building juCi++.**
+**Arch Linux's lldb package has an issue that is being worked on (see https://github.com/cppit/jucipp/issues/191), and for the time being you have to build juCi++ without debug support. If you have the lldb package installed, please remove this package before building juCi++.**
 
 Package available in the Arch User Repository:
 https://aur.archlinux.org/packages/jucipp-git/
@@ -137,7 +137,7 @@ make install
 ```
 
 ##Windows with MSYS2 (https://msys2.github.io/)
-**MSYS2 does not yet support lldb, but you can still compile juCi++ without debug support.**
+**MSYS2 does not yet support lldb (see https://github.com/cppit/jucipp/issues/190), but you can still compile juCi++ without debug support.**
 
 Note that juCi++ must be run in a MinGW Shell (for instance MinGW-w64 Win64 Shell). 
 
