@@ -272,26 +272,6 @@ Source::View::View(const boost::filesystem::path &file_path, Glib::RefPtr<Gsv::L
   
   set_tooltip_and_dialog_events();
   
-  set_tab_width(4); //Visual size of a \t hardcoded to be equal to visual size of 4 spaces
-  tab_char=Config::get().source.default_tab_char;
-  tab_size=Config::get().source.default_tab_size;
-  if(Config::get().source.auto_tab_char_and_size) {
-    auto tab_char_and_size=find_tab_char_and_size();
-    if(tab_char_and_size.first!=0) {
-      if(tab_char!=tab_char_and_size.first || tab_size!=tab_char_and_size.second) {
-        std::string tab_str;
-        if(tab_char_and_size.first==' ')
-          tab_str="<space>";
-        else
-          tab_str="<tab>";
-      }
-      
-      tab_char=tab_char_and_size.first;
-      tab_size=tab_char_and_size.second;
-    }
-  }
-  set_tab_char_and_size(tab_char, tab_size);
-  
   bracket_regex=boost::regex("^([ \\t]*).*\\{ *$");
   no_bracket_statement_regex=boost::regex("^([ \\t]*)(if|for|else if|while) *\\(.*[^;}] *$");
   no_bracket_no_para_statement_regex=boost::regex("^([ \\t]*)(else) *$");
@@ -299,7 +279,7 @@ Source::View::View(const boost::filesystem::path &file_path, Glib::RefPtr<Gsv::L
   if(language && (language->get_id()=="chdr" || language->get_id()=="cpphdr" || language->get_id()=="c" ||
                   language->get_id()=="cpp" || language->get_id()=="objc" || language->get_id()=="java" ||
                   language->get_id()=="js" || language->get_id()=="ts" || language->get_id()=="proto" ||
-                  language->get_id()=="c-sharp")) {
+                  language->get_id()=="c-sharp" || language->get_id()=="html")) {
     is_bracket_language=true;
     
     auto_indent=[this]() {
@@ -364,6 +344,26 @@ Source::View::View(const boost::filesystem::path &file_path, Glib::RefPtr<Gsv::L
       }
     };
   }
+  
+  set_tab_width(4); //Visual size of a \t hardcoded to be equal to visual size of 4 spaces
+  tab_char=Config::get().source.default_tab_char;
+  tab_size=Config::get().source.default_tab_size;
+  if(Config::get().source.auto_tab_char_and_size) {
+    auto tab_char_and_size=find_tab_char_and_size();
+    if(tab_char_and_size.first!=0) {
+      if(tab_char!=tab_char_and_size.first || tab_size!=tab_char_and_size.second) {
+        std::string tab_str;
+        if(tab_char_and_size.first==' ')
+          tab_str="<space>";
+        else
+          tab_str="<tab>";
+      }
+      
+      tab_char=tab_char_and_size.first;
+      tab_size=tab_char_and_size.second;
+    }
+  }
+  set_tab_char_and_size(tab_char, tab_size);
 }
 
 void Source::View::set_tab_char_and_size(char tab_char, unsigned tab_size) {
@@ -1538,9 +1538,7 @@ std::pair<char, unsigned> Source::View::find_tab_char_and_size() {
   bool single_quoted=false;
   bool double_quoted=false;
   //For bracket languages, TODO: add more language ids
-  if(language && (language->get_id()=="chdr" || language->get_id()=="cpphdr" || language->get_id()=="c" ||
-                     language->get_id()=="cpp" || language->get_id()=="objc" || language->get_id()=="java" ||
-                     language->get_id()=="javascript")) {
+  if(is_bracket_language) {
     bool line_comment=false;
     bool comment=false;
     bool bracket_last_line=false;
