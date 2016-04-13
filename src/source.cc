@@ -1538,7 +1538,7 @@ std::pair<char, unsigned> Source::View::find_tab_char_and_size() {
   bool single_quoted=false;
   bool double_quoted=false;
   //For bracket languages, TODO: add more language ids
-  if(is_bracket_language) {
+  if(is_bracket_language && !(language && language->get_id()=="html")) {
     bool line_comment=false;
     bool comment=false;
     bool bracket_last_line=false;
