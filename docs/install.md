@@ -139,12 +139,12 @@ make install
 ##Windows with MSYS2 (https://msys2.github.io/)
 **MSYS2 does not yet support lldb (see https://github.com/cppit/jucipp/issues/190), but you can still compile juCi++ without debug support.**
 
-Note that juCi++ must be run in a MinGW Shell (for instance MinGW-w64 Win64 Shell). 
-
 Install dependencies (replace `x86_64` with `i686` for 32-bit MSYS2 installs):
 ```sh
 pacman -S git mingw-w64-x86_64-cmake make mingw-w64-x86_64-toolchain mingw-w64-x86_64-clang mingw-w64-x86_64-gtkmm3 mingw-w64-x86_64-gtksourceviewmm3 mingw-w64-x86_64-boost mingw-w64-x86_64-aspell mingw-w64-x86_64-aspell-en
 ```
+
+Note that juCi++ must be built and run in a MinGW Shell (for instance MinGW-w64 Win64 Shell).
 
 Get juCi++ source, compile and install (replace `mingw64` with `mingw32` for 32-bit MSYS2 installs):
 ```sh
