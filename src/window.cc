@@ -222,6 +222,7 @@ void Window::set_menu_actions() {
       if(filesystem::write(cmakelists_path, cmakelists) && filesystem::write(cpp_main_path, cpp_main)) {
         Directories::get().open(project_path);
         notebook.open(cpp_main_path);
+        Directories::get().update();
         Terminal::get().print("C++ project "+project_name+" created.\n");
       }
       else
