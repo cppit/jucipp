@@ -6,6 +6,17 @@
 #include "menu.h"
 #include "directories.h"
 
+static wchar_t* DecodeLocale(const char* arg, size_t *size)
+{
+#ifndef PY_VERSION_HEX
+#error Python not included
+#elif PY_VERSION_HEX < 0x03050000
+  return _Py_char2wchar(arg, size);
+#else
+  return Py_DecodeLocale(arg, size);
+#endif
+}
+
 inline pybind11::module pyobject_from_gobj(gpointer ptr){
   auto obj=G_OBJECT(ptr);
   if(obj)
@@ -70,7 +81,7 @@ Python::Interpreter::Interpreter(){
   add_path(Config::get().python.site_packages);
   add_path(plugin_path);
   Py_Initialize();
-  argv=Py_DecodeLocale("",&size);
+  argv=DecodeLocale("",&size);
   PySys_SetArgv(0,&argv);
   auto sys=get_loaded_module("sys");
   auto exc_func=[](pybind11::object type,pybind11::object value,pybind11::object traceback){
