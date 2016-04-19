@@ -103,7 +103,7 @@ void Config::make_version_dependent_corrections(boost::property_tree::ptree &cfg
     std::cerr << "Error correcting preferences: " << e.what() << std::endl;
   }
   python.plugin_directory=cfg.get<std::string>("python.plugin_directory",(home_juci_path/"plugins").string());
-  python.site_packages=cfg.get<std::string>("python.site_packages","/usr/lib/python3.5/site-packages");
+  python.site_packages=cfg.get<std::string>("python.site_packages","");
 }
 
 bool Config::add_missing_nodes(boost::property_tree::ptree &cfg, const boost::property_tree::ptree &default_cfg, std::string parent_path) {

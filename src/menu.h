@@ -20,12 +20,10 @@ public:
   
   Glib::RefPtr<Gio::Menu> juci_menu;
   Glib::RefPtr<Gio::Menu> window_menu;
-
   std::unique_ptr<Gtk::Menu> right_click_line_menu;
   std::unique_ptr<Gtk::Menu> right_click_selected_menu;
   std::function<void()> toggle_menu_items = []{};
   Glib::RefPtr<Gio::Menu> plugin_menu;
-
 private:
   Glib::RefPtr<Gtk::Builder> builder;
 };
