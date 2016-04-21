@@ -178,8 +178,9 @@ void Source::ClangViewParse::soft_reparse() {
 
 std::vector<std::string> Source::ClangViewParse::get_compilation_commands() {
   auto build=Project::get_build(file_path);
+  auto default_build_path=build->get_default_build_path();
   build->update_default_build();
-  clang::CompilationDatabase db(build->get_default_build_path().string());
+  clang::CompilationDatabase db(default_build_path.string());
   clang::CompileCommands commands(file_path.string(), db);
   std::vector<clang::CompileCommand> cmds = commands.get_commands();
   std::vector<std::string> arguments;
@@ -208,6 +209,11 @@ std::vector<std::string> Source::ClangViewParse::get_compilation_commands() {
   arguments.emplace_back("-fretain-comments-from-system-headers");
   if(file_path.extension()==".h") //TODO: temporary fix for .h-files (parse as c++)
     arguments.emplace_back("-xc++");
+
+  if(!default_build_path.empty()) {
+    arguments.emplace_back("-working-directory");
+    arguments.emplace_back(default_build_path.string());
+  }
 
   return arguments;
 }

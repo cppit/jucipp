@@ -10,6 +10,9 @@ std::unique_ptr<Project::Build> Project::get_build(const boost::filesystem::path
 }
 
 boost::filesystem::path Project::Build::get_default_build_path() {
+  if(project_path.empty())
+    return boost::filesystem::path();
+    
   boost::filesystem::path default_build_path=Config::get().project.default_build_path;
   
   const std::string path_variable_project_directory_name="<project_directory_name>";
@@ -30,6 +33,9 @@ boost::filesystem::path Project::Build::get_default_build_path() {
 }
 
 boost::filesystem::path Project::Build::get_debug_build_path() {
+  if(project_path.empty())
+    return boost::filesystem::path();
+  
   boost::filesystem::path debug_build_path=Config::get().project.debug_build_path;
   
   const std::string path_variable_project_directory_name="<project_directory_name>";
