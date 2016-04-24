@@ -467,9 +467,16 @@ void Directories::select(const boost::filesystem::path &select_path) {
  JDEBUG("start");
   if(path=="")
     return;
-    
-  if(select_path.generic_string().substr(0, path.generic_string().size()+1)!=path.generic_string()+'/')
+  
+  if(!filesystem::file_in_path(select_path, path))
     return;
+  
+  //return if the select_path is already selected
+  auto iter=get_selection()->get_selected();
+  if(iter) {
+    if(iter->get_value(column_record.path)==select_path)
+      return;
+  }
   
   std::list<boost::filesystem::path> paths;
   boost::filesystem::path parent_path;
@@ -477,12 +484,34 @@ void Directories::select(const boost::filesystem::path &select_path) {
     parent_path=select_path;
   else
     parent_path=select_path.parent_path();
+  
+  //check if select_path is already expanded
+  size_t expanded;
+  {
+    std::unique_lock<std::mutex> lock(update_mutex);
+    expanded=last_write_times.find(parent_path.string())!=last_write_times.end();
+  }
+  if(expanded) {
+    //set cursor at select_path and return
+    tree_store->foreach_iter([this, &select_path](const Gtk::TreeModel::iterator &iter){
+      if(iter->get_value(column_record.path)==select_path) {
+        auto tree_path=Gtk::TreePath(iter);
+        expand_to_path(tree_path);
+        set_cursor(tree_path);
+        return true;
+      }
+      return false;
+    });
+    return;
+  }
+  
   paths.emplace_front(parent_path);
   while(parent_path!=path) {
     parent_path=parent_path.parent_path();
     paths.emplace_front(parent_path);
   }
 
+  //expand to select_path
   for(auto &a_path: paths) {
     tree_store->foreach_iter([this, &a_path](const Gtk::TreeModel::iterator &iter){
       if(iter->get_value(column_record.path)==a_path) {
@@ -494,6 +523,7 @@ void Directories::select(const boost::filesystem::path &select_path) {
     });
   }
   
+  //set cursor at select_path
   tree_store->foreach_iter([this, &select_path](const Gtk::TreeModel::iterator &iter){
     if(iter->get_value(column_record.path)==select_path) {
       auto tree_path=Gtk::TreePath(iter);
