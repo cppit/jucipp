@@ -14,7 +14,7 @@ const std::string configjson =
 "    \"gtk_theme\": {\n"
 "        \"name_comment\": \"Use \\\"\\\" for default theme, At least these two exist on all systems: Adwaita, Raleigh\",\n"
 "        \"name\": \"\",\n"
-"        \"variant_comment\": \"Use \\\"\\\" for default variant, and \\\"dark\\\" for dark theme variant\",\n"
+"        \"variant_comment\": \"Use \\\"\\\" for default variant, and \\\"dark\\\" for dark theme variant. Note that not all themes support dark variant, but for instance Adwaita does\",\n"
 "        \"variant\": \"\"\n"
 "    },\n"
 "    \"terminal\": {\n"
