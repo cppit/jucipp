@@ -28,6 +28,8 @@ private:
   Gtk::ScrolledWindow terminal_scrolled_window;
   Gtk::HBox info_and_status_hbox;
   Gtk::AboutDialog about;
+  
+  Glib::RefPtr<Gtk::CssProvider> css_provider;
 
   void configure();
   void set_menu_actions();

@@ -139,11 +139,17 @@ Window::Window() : notebook(Notebook::get()) {
 
 void Window::configure() {
   Config::get().load();
-  auto style_context = Gtk::StyleContext::create();
   auto screen = Gdk::Screen::get_default();
-  auto css_provider = Gtk::CssProvider::get_named(Config::get().window.theme_name, Config::get().window.theme_variant);
+  if(css_provider)
+    Gtk::StyleContext::remove_provider_for_screen(screen, css_provider);
+  if(Config::get().window.theme_name.empty()) {
+    css_provider=Gtk::CssProvider::create();
+    Gtk::Settings::get_default()->property_gtk_application_prefer_dark_theme()=(Config::get().window.theme_variant=="dark");
+  }
+  else
+    css_provider=Gtk::CssProvider::get_named(Config::get().window.theme_name, Config::get().window.theme_variant);
   //TODO: add check if theme exists, or else write error to terminal
-  style_context->add_provider_for_screen(screen, css_provider, GTK_STYLE_PROVIDER_PRIORITY_SETTINGS);
+  Gtk::StyleContext::add_provider_for_screen(screen, css_provider, GTK_STYLE_PROVIDER_PRIORITY_SETTINGS);
   Directories::get().update();
   Menu::get().set_keys();
   Terminal::get().configure();

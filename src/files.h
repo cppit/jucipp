@@ -13,7 +13,7 @@ const std::string configjson =
 "    },\n"
 "    \"gtk_theme\": {\n"
 "        \"name_comment\": \"Use \\\"\\\" for default theme, At least these two exist on all systems: Adwaita, Raleigh\",\n"
-"        \"name\": \"Adwaita\",\n"
+"        \"name\": \"\",\n"
 "        \"variant_comment\": \"Use \\\"\\\" for default variant, and \\\"dark\\\" for dark theme variant\",\n"
 "        \"variant\": \"\"\n"
 "    },\n"
