@@ -381,12 +381,15 @@ void Source::ClangViewParse::show_type_tooltips(const Gdk::Rectangle &rectangle)
     get_iter_at_location(iter, location_x, location_y);
     Gdk::Rectangle iter_rectangle;
     get_iter_location(iter, iter_rectangle);
+    if(iter.ends_line() && location_x>iter_rectangle.get_x())
+      return;
     if(iter_rectangle.get_x()>location_x) {
       if(!iter.starts_line()) {
         if(!iter.backward_char())
           return;
       }
     }
+    
     bool found_token=false;
     if(!((*iter>='a' && *iter<='z') || (*iter>='A' && *iter<='Z') || (*iter>='0' && *iter<='9') || *iter=='_')) {
       if(!iter.backward_char())
