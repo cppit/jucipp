@@ -13,7 +13,7 @@ towards libclang with speed and ease of use in mind.
 * C++ warnings and errors on the fly
 * C++ Fix-its
 * Debug integration through lldb
-* Automated CMake processing
+* Automated CMake processing, including support for external libraries
 * Fast C++ autocompletion
 * Keyword and buffer autocompletion for other file types
 * Tooltips showing type information and doxygen documentation (C++)
