@@ -1,6 +1,5 @@
 #include "terminal.h"
 #include <iostream>
-#include "logging.h"
 #include "config.h"
 #include "project.h"
 

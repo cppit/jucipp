@@ -1,5 +1,4 @@
 #include "directories.h"
-#include "logging.h"
 #include <algorithm>
 #include <unordered_set>
 #include "source.h"
@@ -422,7 +421,6 @@ Directories::~Directories() {
 }
 
 void Directories::open(const boost::filesystem::path &dir_path) {
-  JDEBUG("start");
   if(dir_path.empty())
     return;
   
@@ -448,23 +446,18 @@ void Directories::open(const boost::filesystem::path &dir_path) {
   }
     
   path=dir_path;
-  
- JDEBUG("end");
 }
 
 void Directories::update() {
- JDEBUG("start");
  {
    std::unique_lock<std::mutex> lock(update_mutex);
    for(auto &last_write_time: last_write_times) {
      add_path(last_write_time.first, last_write_time.second.first);
    }
  }
- JDEBUG("end");
 }
 
 void Directories::select(const boost::filesystem::path &select_path) {
- JDEBUG("start");
   if(path=="")
     return;
   
@@ -533,7 +526,6 @@ void Directories::select(const boost::filesystem::path &select_path) {
     }
     return false;
   });
- JDEBUG("end");
 }
 
 bool Directories::on_button_press_event(GdkEventButton* event) {

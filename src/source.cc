@@ -1,7 +1,6 @@
 #include "source.h"
 #include "config.h"
 #include <boost/property_tree/json_parser.hpp>
-#include "logging.h"
 #include <algorithm>
 #include <gtksourceview/gtksource.h>
 #include <iostream>

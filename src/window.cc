@@ -1,5 +1,4 @@
 #include "window.h"
-#include "logging.h"
 #include "config.h"
 #include "menu.h"
 #include "directories.h"
@@ -24,7 +23,6 @@ namespace sigc {
 }
 
 Window::Window() : notebook(Notebook::get()) {
-  JDEBUG("start");
   set_title("juCi++");
   set_events(Gdk::POINTER_MOTION_MASK|Gdk::FOCUS_CHANGE_MASK|Gdk::SCROLL_MASK|Gdk::LEAVE_NOTIFY_MASK);
   
@@ -134,7 +132,6 @@ Window::Window() : notebook(Notebook::get()) {
   about.set_comments("This is an open source IDE with high-end features to make your programming experience juicy");
   about.set_license_type(Gtk::License::LICENSE_MIT_X11);
   about.set_transient_for(*this);
-  JDEBUG("end");
 } // Window constructor
 
 void Window::configure() {

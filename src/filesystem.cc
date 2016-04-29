@@ -4,7 +4,6 @@
 #include <algorithm>
 
 #include "filesystem.h"
-#include "logging.h"
 
 const size_t buffer_size=131072;
 

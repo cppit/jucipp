@@ -1,5 +1,4 @@
 #include "config.h"
-#include "logging.h"
 #include <exception>
 #include "files.h"
 #include <iostream>

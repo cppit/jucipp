@@ -2,7 +2,6 @@
 #define JUCI_SELECTIONDIALOG_H_
 
 #include "gtkmm.h"
-#include "logging.h"
 #include <unordered_map>
 
 class ListViewText : public Gtk::TreeView {

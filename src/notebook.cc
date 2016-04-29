@@ -1,7 +1,6 @@
 #include "notebook.h"
 #include "config.h"
 #include "directories.h"
-#include "logging.h"
 #include <fstream>
 #include <regex>
 #include "project.h"
@@ -80,7 +79,6 @@ Source::View* Notebook::get_current_view() {
 }
 
 void Notebook::open(const boost::filesystem::path &file_path) {
-  JDEBUG("start");
   for(int c=0;c<size();c++) {
     if(file_path==get_view(c)->file_path) {
       set_current_page(c);
@@ -181,8 +179,6 @@ void Notebook::open(const boost::filesystem::path &file_path) {
       tab_label->set_tooltip_text(source_view->file_path.string());
     }
   });
-  
-  JDEBUG("end");
 }
 
 void Notebook::configure(int view_nr) {
@@ -200,11 +196,8 @@ void Notebook::configure(int view_nr) {
 }
 
 bool Notebook::save(int page) {
-  JDEBUG("start");
-  if(page>=size()) {
-    JDEBUG("end false");
+  if(page>=size())
     return false;
-  }
   auto view=get_view(page);
   if (view->file_path != "" && view->get_buffer()->get_modified()) {
     //Remove trailing whitespace characters on save, and add trailing newline if missing
@@ -249,12 +242,10 @@ bool Notebook::save(int page) {
       
       Project::on_save(page);
       
-      JDEBUG("end true");
       return true;
     }
     Terminal::get().print("Error: could not save file " +view->file_path.string()+"\n", true);
   }
-  JDEBUG("end false");
   return false;
 }
 
@@ -265,14 +256,11 @@ bool Notebook::save_current() {
 }
 
 bool Notebook::close(int page) {
-  JDEBUG("start");
   if (page!=-1) {
     auto view=get_view(page);
     if(view->get_buffer()->get_modified()){
-      if(!save_modified_dialog(page)) {
-        JDEBUG("end false");
+      if(!save_modified_dialog(page))
         return false;
-      }
     }
     auto index=get_index(page);
     if(page==get_current_page()) {
@@ -301,7 +289,6 @@ bool Notebook::close(int page) {
     hboxes.erase(hboxes.begin()+index);
     tab_labels.erase(tab_labels.begin()+index);
   }
-  JDEBUG("end true");
   return true;
 }
 

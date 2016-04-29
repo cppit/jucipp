@@ -39,8 +39,6 @@ See [enhancements](https://github.com/cppit/jucipp/labels/enhancement) for plann
 
 ## Dependencies
 * boost-filesystem
-* boost-log
-* boost-thread
 * boost-system
 * boost-regex
 * gtkmm-3.0
