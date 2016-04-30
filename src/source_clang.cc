@@ -122,6 +122,7 @@ void Source::ClangViewParse::parse_initialize() {
           auto expected=ParseProcessState::PROCESSING;
           if(parse_process_state.compare_exchange_strong(expected, ParseProcessState::POSTPROCESSING)) {
             clang_tokens=clang_tu->get_tokens(0, parse_thread_buffer.bytes()-1);
+            diagnostics=clang_tu->get_diagnostics();
             parse_lock.unlock();
             dispatcher.post([this] {
               std::unique_lock<std::mutex> parse_lock(parse_mutex, std::defer_lock);
@@ -257,7 +258,6 @@ void Source::ClangViewParse::update_diagnostics() {
   fix_its.clear();
   get_buffer()->remove_tag_by_name("def:warning_underline", get_buffer()->begin(), get_buffer()->end());
   get_buffer()->remove_tag_by_name("def:error_underline", get_buffer()->begin(), get_buffer()->end());
-  auto diagnostics=clang_tu->get_diagnostics();
   size_t num_warnings=0;
   size_t num_errors=0;
   size_t num_fix_its=0;
