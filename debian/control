@@ -1,0 +1,14 @@
+Source: jucipp
+Section: unknown
+Priority: optional
+Maintainer: Ole Christian Eidheim <eidheim@gmail.com>
+Build-Depends: debhelper (>= 9), cmake, make, g++, libclang-dev, liblldb-3.5-dev, clang-format-3.5, pkg-config, libboost-system-dev, libboost-thread-dev, libboost-filesystem-dev, libboost-log-dev, libboost-regex-dev, libgtksourceviewmm-3.0-dev, aspell-en, libaspell-dev
+Standards-Version: 3.9.5
+Homepage: https://github.com/cppit/jucipp
+
+Package: jucipp
+Architecture: any
+Depends: ${shlibs:Depends}, ${misc:Depends}
+Description: a lightweight, cross-platform C++11/14/17 IDE
+ a lightweight, platform independent C++-IDE with support for C++11, C++14,
+ and experimental C++17 features depending on libclang version.
