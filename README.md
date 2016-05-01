@@ -39,7 +39,6 @@ See [enhancements](https://github.com/cppit/jucipp/labels/enhancement) for plann
 
 ## Dependencies
 * boost-filesystem
-* boost-system
 * boost-regex
 * gtkmm-3.0
 * gtksourceviewmm-3.0
