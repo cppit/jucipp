@@ -141,3 +141,15 @@ target_link_libraries(${project_name} ${global_libraries})
 install(TARGETS ${project_name}
   RUNTIME DESTINATION bin
 )
+
+# add a target to generate API documentation with Doxygen
+find_package(Plantuml)
+find_package(Doxygen)
+if(DOXYGEN_FOUND)
+  configure_file(${CMAKE_CURRENT_SOURCE_DIR}/Doxyfile.in ${CMAKE_CURRENT_BINARY_DIR}/Doxyfile @ONLY)
+  add_custom_target(doc
+    ${DOXYGEN_EXECUTABLE} ${CMAKE_CURRENT_BINARY_DIR}/Doxyfile
+    WORKING_DIRECTORY ${CMAKE_CURRENT_BINARY_DIR}
+    COMMENT "Generating API documentation with Doxygen to ${CMAKE_CURRENT_BINARY_DIR}" VERBATIM
+  )
+endif(DOXYGEN_FOUND)

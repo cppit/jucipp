@@ -59,14 +59,11 @@ void Config::load() {
 void Config::find_or_create_config_files() {
   auto config_dir = home/"config";
   auto config_json = config_dir/"config.json";
-  auto plugins_py = config_dir/"plugins.py";
 
   boost::filesystem::create_directories(config_dir); // io exp captured by calling method
 
   if (!boost::filesystem::exists(config_json))
-    filesystem::write(config_json, configjson); // vars configjson and pluginspy
-  if (!boost::filesystem::exists(plugins_py))   // live in files.h
-    filesystem::write(plugins_py, pluginspy);
+    filesystem::write(config_json, configjson);
 
   auto juci_style_path = home/"styles";
   boost::filesystem::create_directories(juci_style_path); // io exp captured by calling method
