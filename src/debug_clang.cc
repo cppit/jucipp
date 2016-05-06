@@ -463,6 +463,7 @@ void Debug::Clang::remove_breakpoint(const boost::filesystem::path &file_path, i
             auto file_spec=line_entry.GetFileSpec();
             boost::filesystem::path breakpoint_path=file_spec.GetDirectory();
             breakpoint_path/=file_spec.GetFilename();
+            breakpoint_path = boost::filesystem::canonical(breakpoint_path);
             if(breakpoint_path==file_path) {
               if(!target.BreakpointDelete(breakpoint.GetID()))
                 Terminal::get().async_print("Error (debug): Could not delete breakpoint at: "+file_path.string()+":"+std::to_string(line_nr)+'\n', true);
