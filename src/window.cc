@@ -426,7 +426,7 @@ void Window::set_menu_actions() {
           boost::system::error_code ec;
           declaration_file=boost::filesystem::canonical(location.file_path, ec);
           if(ec)
-            declaration_file=location.file_path;
+            return;
           notebook.open(declaration_file);
           auto line=static_cast<int>(location.line)-1;
           auto index=static_cast<int>(location.index)-1;
@@ -441,6 +441,45 @@ void Window::set_menu_actions() {
             
             view->get_buffer()->place_cursor(view->get_buffer()->get_iter_at_line_index(line, index));
             view->scroll_to_cursor_delayed(view, true, false);
+          }
+        }
+      }
+    }
+  });
+  menu.add_action("source_goto_implementation", [this]() {
+    if(notebook.get_current_page()!=-1) {
+      auto current_view=notebook.get_current_view();
+      if(current_view->get_token) {
+        auto token=current_view->get_token();
+        if(token) {
+          for(int page=0;page<notebook.size();page++) {
+            auto view=notebook.get_view(page);
+            if(view->get_implementation_location) {
+              auto location=view->get_implementation_location(token);
+              if(!location.file_path.empty()) {
+                boost::filesystem::path implementation_path;
+                boost::system::error_code ec;
+                implementation_path=boost::filesystem::canonical(location.file_path, ec);
+                if(ec)
+                  return;
+                notebook.open(implementation_path);
+                auto line=static_cast<int>(location.line)-1;
+                auto index=static_cast<int>(location.index)-1;
+                auto view=notebook.get_current_view();
+                line=std::min(line, view->get_buffer()->get_line_count()-1);
+                if(line>=0) {
+                  auto iter=view->get_buffer()->get_iter_at_line(line);
+                  while(!iter.ends_line())
+                    iter.forward_char();
+                  auto end_line_index=iter.get_line_index();
+                  index=std::min(index, end_line_index);
+                  
+                  view->get_buffer()->place_cursor(view->get_buffer()->get_iter_at_line_index(line, index));
+                  view->scroll_to_cursor_delayed(view, true, false);
+                }
+                return;
+              }
+            }
           }
         }
       }
@@ -488,7 +527,7 @@ void Window::set_menu_actions() {
             boost::system::error_code ec;
             declaration_file=boost::filesystem::canonical(offset.file_path, ec);
             if(ec)
-              declaration_file=offset.file_path;
+              return;
             notebook.open(declaration_file);
             auto view=notebook.get_current_view();
             view->get_buffer()->place_cursor(view->get_buffer()->get_iter_at_line_index(offset.line, offset.index));
@@ -776,6 +815,7 @@ void Window::activate_menu_items(bool activate) {
   menu.actions["source_indentation_auto_indent_buffer"]->set_enabled(activate ? static_cast<bool>(notebook.get_current_view()->auto_indent) : false);
   menu.actions["source_find_documentation"]->set_enabled(activate ? static_cast<bool>(notebook.get_current_view()->get_token_data) : false);
   menu.actions["source_goto_declaration"]->set_enabled(activate ? static_cast<bool>(notebook.get_current_view()->get_declaration_location) : false);
+  menu.actions["source_goto_implementation"]->set_enabled(activate ? static_cast<bool>(notebook.get_current_view()->get_implementation_location) : false);
   menu.actions["source_goto_usage"]->set_enabled(activate ? static_cast<bool>(notebook.get_current_view()->get_usages) : false);
   menu.actions["source_goto_method"]->set_enabled(activate ? static_cast<bool>(notebook.get_current_view()->goto_method) : false);
   menu.actions["source_rename"]->set_enabled(activate ? static_cast<bool>(notebook.get_current_view()->rename_similar_tokens) : false);

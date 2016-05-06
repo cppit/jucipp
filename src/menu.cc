@@ -213,6 +213,11 @@ Menu::Menu() {
              +accels["source_goto_declaration"]+ //For Ubuntu...
   "        </item>"
   "        <item>"
+  "          <attribute name='label' translatable='yes'>_Go to Implementation</attribute>"
+  "          <attribute name='action'>app.source_goto_implementation</attribute>"
+             +accels["source_goto_implementation"]+ //For Ubuntu...
+  "        </item>"
+  "        <item>"
   "          <attribute name='label' translatable='yes'>_Go to Usage</attribute>"
   "          <attribute name='action'>app.source_goto_usage</attribute>"
              +accels["source_goto_usage"]+ //For Ubuntu...

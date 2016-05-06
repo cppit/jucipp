@@ -78,6 +78,7 @@ namespace Source {
     
     std::function<void()> auto_indent;
     std::function<Offset()> get_declaration_location;
+    std::function<Offset(const Token &token)> get_implementation_location;
     std::function<std::vector<std::pair<Offset, std::string> >(const Token &token)> get_usages;
     std::function<void()> goto_method;
     std::function<Token()> get_token;
