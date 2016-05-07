@@ -544,7 +544,9 @@ void Source::ClangViewAutocomplete::autocomplete_dialog_setup() {
   };
   autocomplete_dialog->on_select=[this](const std::string& selected, bool hide_window) {
     auto row = autocomplete_dialog_rows.at(selected).first;
+    //erase existing variable or function before insert iter
     get_buffer()->erase(autocomplete_dialog->start_mark->get_iter(), get_buffer()->get_insert()->get_iter());
+    //do not insert template argument or function parameters if they already exist
     auto iter=get_buffer()->get_insert()->get_iter();
     if(*iter=='<' || *iter=='(') {
       auto bracket_pos=row.find(*iter);
@@ -552,7 +554,18 @@ void Source::ClangViewAutocomplete::autocomplete_dialog_setup() {
         row=row.substr(0, bracket_pos);
       }
     }
+    //Fixes for the most commonly used stream manipulators
+    //TODO: feel free to add more
+    if(row=="endl(basic_ostream<_CharT, _Traits> &__os)")
+      row="endl";
+    else if(row=="flush(basic_ostream<_CharT, _Traits> &__os)")
+      row="flush";
+    else if(row=="hex(std::ios_base &__str)" || row=="hex(std::ios_base &__base)")
+      row="hex";
+    else if(row=="dec(std::ios_base &__str)" || row=="dec(std::ios_base &__base)")
+      row="dec";
     get_buffer()->insert(autocomplete_dialog->start_mark->get_iter(), row);
+    //if selection is finalized, select text inside template arguments or function parameters
     if(hide_window) {
       auto para_pos=row.find('(');
       auto angle_pos=row.find('<');
