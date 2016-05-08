@@ -89,6 +89,7 @@ namespace Source {
     Tooltips autocomplete_tooltips;
     std::string prefix;
     std::mutex prefix_mutex;
+    static std::unordered_map<std::string, std::string> autocomplete_manipulators_map();
     
     Glib::Dispatcher do_delete_object;
     std::thread delete_thread;

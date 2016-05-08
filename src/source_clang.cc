@@ -555,15 +555,10 @@ void Source::ClangViewAutocomplete::autocomplete_dialog_setup() {
       }
     }
     //Fixes for the most commonly used stream manipulators
-    //TODO: feel free to add more
-    if(row=="endl(basic_ostream<_CharT, _Traits> &__os)")
-      row="endl";
-    else if(row=="flush(basic_ostream<_CharT, _Traits> &__os)")
-      row="flush";
-    else if(row=="hex(std::ios_base &__str)" || row=="hex(std::ios_base &__base)")
-      row="hex";
-    else if(row=="dec(std::ios_base &__str)" || row=="dec(std::ios_base &__base)")
-      row="dec";
+    static auto manipulators_map=autocomplete_manipulators_map();
+    auto it=manipulators_map.find(row);
+    if(it!=manipulators_map.end())
+      row=it->second;
     get_buffer()->insert(autocomplete_dialog->start_mark->get_iter(), row);
     //if selection is finalized, select text inside template arguments or function parameters
     if(hide_window) {
@@ -785,6 +780,18 @@ std::vector<Source::ClangViewAutocomplete::AutoCompleteData> Source::ClangViewAu
     }
   }
   return suggestions;
+}
+
+std::unordered_map<std::string, std::string> Source::ClangViewAutocomplete::autocomplete_manipulators_map() {
+  std::unordered_map<std::string, std::string> map;
+  //TODO: feel free to add more
+  map["endl(basic_ostream<_CharT, _Traits> &__os)"]="endl";
+  map["flush(basic_ostream<_CharT, _Traits> &__os)"]="flush";
+  map["hex(std::ios_base &__str)"]="hex"; //clang++ headers
+  map["hex(std::ios_base &__base)"]="hex"; //g++ headers
+  map["dec(std::ios_base &__str)"]="dec";
+  map["dec(std::ios_base &__base)"]="dec";
+  return map;
 }
 
 void Source::ClangViewAutocomplete::async_delete() {
