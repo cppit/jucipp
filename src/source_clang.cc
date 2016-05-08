@@ -922,19 +922,20 @@ Source::ClangViewAutocomplete(file_path, language) {
   get_implementation_location=[this](const Token &token){
     Offset location;
     if(parsed && this->language && this->language->get_id()!="chdr" && this->language->get_id()!="cpphdr") {
-      for(auto &a_token: *clang_tokens) {
-        auto cursor=a_token.get_cursor();
+      for(auto token_it=clang_tokens->rbegin();token_it!=clang_tokens->rend();++token_it) {
+        auto cursor=token_it->get_cursor();
         auto kind=cursor.get_kind();
-        if((kind==clang::CursorKind::CXXMethod || kind==clang::CursorKind::Constructor || kind==clang::CursorKind::Destructor) &&
-           a_token.get_kind()==clang::Token_Identifier && cursor.has_type()) {
+        if((kind==clang::CursorKind::FunctionDecl || kind==clang::CursorKind::CXXMethod ||
+            kind==clang::CursorKind::Constructor || kind==clang::CursorKind::Destructor) &&
+           token_it->get_kind()==clang::Token_Identifier && cursor.has_type()) {
           auto referenced=cursor.get_referenced();
           if(referenced && static_cast<clang::CursorKind>(token.type)==referenced.get_kind() &&
-             token.spelling==a_token.get_spelling() && token.usr==referenced.get_usr()) {
+             token.spelling==token_it->get_spelling() && token.usr==referenced.get_usr()) {
             location.file_path=cursor.get_source_location().get_path();
             auto clang_offset=cursor.get_source_location().get_offset();
             location.line=clang_offset.line;
             location.index=clang_offset.index;
-            //do not break here, choose last occurrence in case declaration and implementation is in the same file
+            break;
           }
         }
       }
