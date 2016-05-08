@@ -61,7 +61,7 @@ Alternatively, follow the instructions below.
 
 Install dependencies:
 ```sh
-sudo pacman -S git cmake make clang gtksourceviewmm boost aspell aspell-en
+sudo pacman -S git cmake pkg-config make clang gtksourceviewmm boost aspell aspell-en
 ```
 
 Get juCi++ source, compile and install:
