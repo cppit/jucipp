@@ -2,7 +2,7 @@
 #define JUCI_FILES_H_
 #include <string>
 
-#define JUCI_VERSION "1.1.3"
+#define JUCI_VERSION "1.1.3-1"
 
 const std::string configjson =
 "{\n"
@@ -92,6 +92,7 @@ const std::string configjson =
 "        \"source_center_cursor\": \"<primary>l\",\n"
 "        \"source_find_documentation\": \"<primary><shift>d\",\n"
 "        \"source_goto_declaration\": \"<primary>d\",\n"
+"        \"source_goto_implementation\": \"<primary>i\",\n"
 "        \"source_goto_usage\": \"<primary>u\",\n"
 "        \"source_goto_method\": \"<primary>m\",\n"
 "        \"source_rename\": \"<primary>r\",\n"

@@ -20,7 +20,7 @@ towards libclang with speed and ease of use in mind.
 * Rename refactoring across files (C++)
 * Highlighting of similar types (C++)
 * Automated documentation search (C++)
-* Go to methods and usages (C++)
+* Go to declaration, implementation, methods and usages (C++)
 * Spell checking depending on file context
 * Run shell commands within JuCi++
 * Regex search and replace

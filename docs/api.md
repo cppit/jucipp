@@ -16,4 +16,4 @@ make doc
 ```
 
 ## Where is the generated API documentation
-Open jupicpp/build/src/html/index.html
+Open jucipp/build/src/html/index.html
