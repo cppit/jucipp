@@ -1,13 +1,27 @@
 sudo: required
-dist: trusty
+language: cpp
 
+env:
+  - distribution: ubuntu
+    version: 16.04
+    init: /sbin/init
+    run_opts: ""
+  - distribution: fedora
+    version: 23
+    init: /sbin/init
+    run_opts: ""
+
+services:
+  - docker
+  
 before_install:
-  - sudo apt-get -qq update
-  - sudo apt-get install -y git cmake make g++ libclang-3.5-dev liblldb-3.5-dev clang-format-3.5 pkg-config libboost-filesystem-dev libboost-regex-dev libgtksourceviewmm-3.0-dev aspell-en libaspell-dev
+  - sudo docker pull ${distribution}:${version}
+  - sudo docker build --rm=true --file=ci/${distribution}-${version}.docker --tag=${distribution}-${version}:jucipp ci
 
 script:
-  - git submodule update
-  - mkdir build
-  - cd build
-  - cmake -DCMAKE_CXX_COMPILER=g++ ..
-  - make
+  - container_id=$(mktemp)
+  - sudo docker run --detach --volume="${PWD}":/home/:rw ${run_opts} ${distribution}-${version}:jucipp "${init}" > "${container_id}"
+  
+  - sudo docker exec "$(cat ${container_id})" /home/ci/${distribution}-${version}.build
+  
+  - sudo docker stop "$(cat ${container_id})"
