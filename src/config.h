@@ -56,6 +56,7 @@ public:
     std::string spellcheck_language;
     
     bool cleanup_whitespace_characters;
+    std::string draw_spaces;
     
     bool show_map;
     std::string map_font_size;

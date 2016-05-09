@@ -1,11 +1,16 @@
-#include "source.h"
 #include "config.h"
-#include <boost/property_tree/json_parser.hpp>
-#include <algorithm>
-#include <gtksourceview/gtksource.h>
-#include <iostream>
 #include "filesystem.h"
+#include "source.h"
 #include "terminal.h"
+
+#include <boost/property_tree/json_parser.hpp>
+#include <boost/spirit/include/qi.hpp>
+
+#include <gtksourceview/gtksource.h>
+
+#include <algorithm>
+#include <iostream>
+#include <set>
 
 namespace sigc {
 #ifndef SIGC_FUNCTORS_DEDUCE_RESULT_TYPE_WITH_DECLTYPE
@@ -374,6 +379,34 @@ void Source::View::set_tab_char_and_size(char tab_char, unsigned tab_size) {
     tab+=tab_char;
 }
 
+Gsv::DrawSpacesFlags parse_draw_spaces(std::string text)
+{
+  namespace qi = boost::spirit::qi;
+  
+  qi::symbols<char, Gsv::DrawSpacesFlags> options;
+  options.add
+    ("space",    Gsv::DRAW_SPACES_SPACE)
+    ("tab",      Gsv::DRAW_SPACES_TAB)
+    ("newline",  Gsv::DRAW_SPACES_NEWLINE)
+    ("nbsp",     Gsv::DRAW_SPACES_NBSP)
+    ("leading",  Gsv::DRAW_SPACES_LEADING)
+    ("text",     Gsv::DRAW_SPACES_TEXT)
+    ("trailing", Gsv::DRAW_SPACES_TRAILING)
+    ("all",      Gsv::DRAW_SPACES_ALL);
+
+  auto begin = text.begin();
+  auto end = text.end();
+  
+  std::set<Gsv::DrawSpacesFlags> out;
+  
+  // parse comma-separated list of options
+  qi::phrase_parse(begin, end, options % ',', qi::space, out);
+  
+  return out.count(Gsv::DRAW_SPACES_ALL) ?
+    Gsv::DRAW_SPACES_ALL :
+    static_cast<Gsv::DrawSpacesFlags>(std::accumulate(out.begin(), out.end(), 0));
+}
+
 void Source::View::configure() {
   //TODO: Move this to notebook? Might take up too much memory doing this for every tab.
   auto style_scheme_manager=Gsv::StyleSchemeManager::get_default();
@@ -387,6 +420,8 @@ void Source::View::configure() {
     else
       Terminal::get().print("Error: Could not find gtksourceview style: "+Config::get().source.style+'\n', true);
   }
+  
+  set_draw_spaces(parse_draw_spaces(Config::get().source.draw_spaces));
   
   if(Config::get().source.wrap_lines)
     set_wrap_mode(Gtk::WrapMode::WRAP_CHAR);
