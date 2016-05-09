@@ -324,6 +324,7 @@ std::vector<std::string> CMake::get_function_parameters(std::string &data) {
 }
 
 std::vector<std::pair<boost::filesystem::path, std::vector<std::string> > > CMake::get_functions_parameters(const std::string &name) {
+  const boost::regex function_regex("^ *"+name+" *\\( *(.*)\\) *$", boost::regex::icase);
   if(!parsed)
     parse();
   std::vector<std::pair<boost::filesystem::path, std::vector<std::string> > > functions;
@@ -337,7 +338,6 @@ std::vector<std::pair<boost::filesystem::path, std::vector<std::string> > > CMak
         end_line=file.size();
       if(end_line>start_line) {
         auto line=file.substr(start_line, end_line-start_line);
-        const boost::regex function_regex("^ *"+name+" *\\( *(.*)\\) *$", boost::regex::icase);
         boost::smatch sm;
         if(boost::regex_match(line, sm, function_regex)) {
           auto data=sm[1].str();
