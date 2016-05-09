@@ -27,6 +27,9 @@ private:
   Gtk::ScrolledWindow directories_scrolled_window;
   Gtk::ScrolledWindow terminal_scrolled_window;
   Gtk::HBox info_and_status_hbox;
+  Gtk::VBox overlay_vbox;
+  Gtk::HBox overlay_hbox;
+  Gtk::Overlay overlay;
   Gtk::AboutDialog about;
   
   Glib::RefPtr<Gtk::CssProvider> css_provider;

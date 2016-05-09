@@ -7,6 +7,7 @@
 #include "filesystem.h"
 #include "project.h"
 #include "entrybox.h"
+#include "info.h"
 
 namespace sigc {
 #ifndef SIGC_FUNCTORS_DEDUCE_RESULT_TYPE_WITH_DECLTYPE
@@ -30,10 +31,6 @@ Window::Window() : notebook(Notebook::get()) {
     
   configure();
   set_default_size(Config::get().window.default_size.first, Config::get().window.default_size.second);
-  
-  //PluginApi(&this->notebook, &this->menu);
-  
-  add(vpaned);
   
   directories_scrolled_window.add(Directories::get());
   directory_and_notebook_panes.pack1(directories_scrolled_window, Gtk::SHRINK);
@@ -59,7 +56,16 @@ Window::Window() : notebook(Notebook::get()) {
   terminal_vbox.pack_end(info_and_status_hbox, Gtk::PACK_SHRINK);
   vpaned.pack2(terminal_vbox, true, true);
   
+  overlay_vbox.pack_start(Info::get(), Gtk::PACK_SHRINK, 20);
+  overlay_hbox.pack_end(overlay_vbox, Gtk::PACK_SHRINK, 20);
+  
+  overlay.add(vpaned);
+  overlay.add_overlay(overlay_hbox);
+  overlay.set_overlay_pass_through(overlay_hbox, true);
+  add(overlay);
+  
   show_all_children();
+  Info::get().hide();
 
   Directories::get().on_row_activated=[this](const boost::filesystem::path &path) {
     notebook.open(path);
@@ -481,6 +487,7 @@ void Window::set_menu_actions() {
               }
             }
           }
+          Info::get().print("Could not find implementation");
         }
       }
     }

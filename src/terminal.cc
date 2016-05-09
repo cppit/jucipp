@@ -2,6 +2,7 @@
 #include <iostream>
 #include "config.h"
 #include "project.h"
+#include "info.h"
 
 Terminal::InProgress::InProgress(const std::string& start_msg): stop(false) {
   start(start_msg);
@@ -138,7 +139,9 @@ void Terminal::async_process(const std::string &command, const boost::filesystem
 
 void Terminal::kill_last_async_process(bool force) {
   std::unique_lock<std::mutex> lock(processes_mutex);
-  if(processes.size()>0)
+  if(processes.empty())
+    Info::get().print("No running processes");
+  else
     processes.back()->kill(force);
 }
 
