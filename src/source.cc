@@ -4,7 +4,9 @@
 #include "terminal.h"
 
 #include <boost/property_tree/json_parser.hpp>
-#include <boost/spirit/include/qi.hpp>
+#include <boost/spirit/home/qi/char.hpp>
+#include <boost/spirit/home/qi/operator.hpp>
+#include <boost/spirit/home/qi/string.hpp>
 
 #include <gtksourceview/gtksource.h>
 
