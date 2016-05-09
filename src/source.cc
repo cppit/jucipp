@@ -79,6 +79,10 @@ std::string Source::FixIt::string(Glib::RefPtr<Gtk::TextBuffer> buffer) {
 //////////////
 //// View ////
 //////////////
+const boost::regex Source::View::bracket_regex("^([ \\t]*).*\\{ *$");
+const boost::regex Source::View::no_bracket_statement_regex("^([ \\t]*)(if|for|else if|while) *\\(.*[^;}] *$");
+const boost::regex Source::View::no_bracket_no_para_statement_regex("^([ \\t]*)(else) *$");
+
 AspellConfig* Source::View::spellcheck_config=NULL;
 
 Source::View::View(const boost::filesystem::path &file_path, Glib::RefPtr<Gsv::Language> language): file_path(file_path), language(language) {
@@ -270,10 +274,6 @@ Source::View::View(const boost::filesystem::path &file_path, Glib::RefPtr<Gsv::L
   });
   
   set_tooltip_and_dialog_events();
-  
-  bracket_regex=boost::regex("^([ \\t]*).*\\{ *$");
-  no_bracket_statement_regex=boost::regex("^([ \\t]*)(if|for|else if|while) *\\(.*[^;}] *$");
-  no_bracket_no_para_statement_regex=boost::regex("^([ \\t]*)(else) *$");
   
   if(language && (language->get_id()=="chdr" || language->get_id()=="cpphdr" || language->get_id()=="c" ||
                   language->get_id()=="cpp" || language->get_id()=="objc" || language->get_id()=="java" ||

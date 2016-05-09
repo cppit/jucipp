@@ -187,7 +187,7 @@ std::vector<std::string> Source::ClangViewParse::get_compilation_commands() {
     }
   }
   auto clang_version_string=clang::to_string(clang_getClangVersion());
-  const boost::regex clang_version_regex("^[A-Za-z ]+([0-9.]+).*$");
+  const static boost::regex clang_version_regex("^[A-Za-z ]+([0-9.]+).*$");
   boost::smatch sm;
   if(boost::regex_match(clang_version_string, sm, clang_version_regex)) {
     auto clang_version=sm[1].str();
@@ -634,8 +634,8 @@ void Source::ClangViewAutocomplete::autocomplete_check() {
                                                       get_source_buffer()->iter_has_context_class(iter, "comment")))
     return;
   std::string line=" "+get_line_before();
-  const boost::regex in_specified_namespace("^(.*[a-zA-Z0-9_\\)\\]\\>])(->|\\.|::)([a-zA-Z0-9_]*)$");
-  const boost::regex within_namespace("^(.*)([^a-zA-Z0-9_]+)([a-zA-Z0-9_]{3,})$");
+  const static boost::regex in_specified_namespace("^(.*[a-zA-Z0-9_\\)\\]\\>])(->|\\.|::)([a-zA-Z0-9_]*)$");
+  const static boost::regex within_namespace("^(.*)([^a-zA-Z0-9_]+)([a-zA-Z0-9_]{3,})$");
   boost::smatch sm;
   if(boost::regex_match(line, sm, in_specified_namespace)) {
     {

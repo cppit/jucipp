@@ -138,9 +138,9 @@ namespace Source {
     bool find_right_bracket_forward(Gtk::TextIter iter, Gtk::TextIter &found_iter);
     bool find_left_bracket_backward(Gtk::TextIter iter, Gtk::TextIter &found_iter);
     
-    boost::regex bracket_regex;
-    boost::regex no_bracket_statement_regex;
-    boost::regex no_bracket_no_para_statement_regex;
+    const static boost::regex bracket_regex;
+    const static boost::regex no_bracket_statement_regex;
+    const static boost::regex no_bracket_no_para_statement_regex;
     
     bool on_key_press_event(GdkEventKey* key) override;
     bool on_key_press_event_basic(GdkEventKey* key);
