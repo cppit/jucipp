@@ -187,9 +187,9 @@ std::vector<std::string> Source::ClangViewParse::get_compilation_commands() {
     }
   }
   auto clang_version_string=clang::to_string(clang_getClangVersion());
-  const static boost::regex clang_version_regex("^[A-Za-z ]+([0-9.]+).*$");
-  boost::smatch sm;
-  if(boost::regex_match(clang_version_string, sm, clang_version_regex)) {
+  const static REGEX_NS::regex clang_version_regex("^[A-Za-z ]+([0-9.]+).*$");
+  REGEX_NS::smatch sm;
+  if(REGEX_NS::regex_match(clang_version_string, sm, clang_version_regex)) {
     auto clang_version=sm[1].str();
     arguments.emplace_back("-I/usr/lib/clang/"+clang_version+"/include");
 #ifdef __APPLE__
@@ -634,10 +634,10 @@ void Source::ClangViewAutocomplete::autocomplete_check() {
                                                       get_source_buffer()->iter_has_context_class(iter, "comment")))
     return;
   std::string line=" "+get_line_before();
-  const static boost::regex in_specified_namespace("^(.*[a-zA-Z0-9_\\)\\]\\>])(->|\\.|::)([a-zA-Z0-9_]*)$");
-  const static boost::regex within_namespace("^(.*)([^a-zA-Z0-9_]+)([a-zA-Z0-9_]{3,})$");
-  boost::smatch sm;
-  if(boost::regex_match(line, sm, in_specified_namespace)) {
+  const static REGEX_NS::regex in_specified_namespace("^(.*[a-zA-Z0-9_\\)\\]\\>])(->|\\.|::)([a-zA-Z0-9_]*)$");
+  const static REGEX_NS::regex within_namespace("^(.*)([^a-zA-Z0-9_]+)([a-zA-Z0-9_]{3,})$");
+  REGEX_NS::smatch sm;
+  if(REGEX_NS::regex_match(line, sm, in_specified_namespace)) {
     {
       std::unique_lock<std::mutex> lock(prefix_mutex);
       prefix=sm[3].str();
@@ -645,7 +645,7 @@ void Source::ClangViewAutocomplete::autocomplete_check() {
     if(prefix.size()==0 || prefix[0]<'0' || prefix[0]>'9')
       autocomplete();
   }
-  else if(boost::regex_match(line, sm, within_namespace)) {
+  else if(REGEX_NS::regex_match(line, sm, within_namespace)) {
     {
       std::unique_lock<std::mutex> lock(prefix_mutex);
       prefix=sm[3].str();
