@@ -56,13 +56,16 @@ Window::Window() : notebook(Notebook::get()) {
   terminal_vbox.pack_end(info_and_status_hbox, Gtk::PACK_SHRINK);
   vpaned.pack2(terminal_vbox, true, true);
   
+#if GTKMM_MAJOR_VERSION>3 || (GTKMM_MAJOR_VERSION>=3 && GTKMM_MINOR_VERSION>=18)
   overlay_vbox.pack_start(Info::get(), Gtk::PACK_SHRINK, 20);
   overlay_hbox.pack_end(overlay_vbox, Gtk::PACK_SHRINK, 20);
-  
   overlay.add(vpaned);
   overlay.add_overlay(overlay_hbox);
   overlay.set_overlay_pass_through(overlay_hbox, true);
   add(overlay);
+#else
+  add(vpaned);
+#endif
   
   show_all_children();
   Info::get().hide();
