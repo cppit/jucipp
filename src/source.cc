@@ -561,7 +561,7 @@ void Source::View::set_tooltip_and_dialog_events() {
 }
 
 void Source::View::search_occurrences_updated(GtkWidget* widget, GParamSpec* property, gpointer data) {
-  auto view=(Source::View*)data;
+  auto view=static_cast<Source::View*>(data);
   if(view->update_search_occurrences)
     view->update_search_occurrences(gtk_source_search_context_get_occurrences_count(view->search_context));
 }
@@ -700,7 +700,7 @@ void Source::View::paste() {
         paste_line=false;
       }
     }
-    if(paste_line_tabs==(size_t)-1)
+    if(paste_line_tabs==static_cast<size_t>(-1))
       paste_line_tabs=0;
     start_line=0;
     end_line=0;

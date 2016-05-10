@@ -98,7 +98,7 @@ void Debug::Clang::start(const std::string &command, const boost::filesystem::pa
   }
   
   lldb::SBError error;
-  process = std::unique_ptr<lldb::SBProcess>(new lldb::SBProcess(target.Launch(*listener, argv, (const char**)environ, nullptr, nullptr, nullptr, path.string().c_str(), lldb::eLaunchFlagNone, false, error)));
+  process = std::unique_ptr<lldb::SBProcess>(new lldb::SBProcess(target.Launch(*listener, argv, const_cast<const char**>(environ), nullptr, nullptr, nullptr, path.string().c_str(), lldb::eLaunchFlagNone, false, error)));
   if(error.Fail()) {
     Terminal::get().async_print(std::string("Error (debug): ")+error.GetCString()+'\n', true);
     if(callback)

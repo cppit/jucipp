@@ -75,10 +75,10 @@ list_view_text(use_markup), start_mark(start_mark), show_search_entry(show_searc
   if(!show_search_entry)
     window->add(scrolled_window);
   else {
-    auto dialog=(Gtk::Dialog*)window.get();
+    auto dialog=static_cast<Gtk::Dialog*>(window.get());
     dialog->get_vbox()->pack_start(search_entry, false, false);
     dialog->get_vbox()->pack_start(scrolled_window, true, true);
-    dialog->set_transient_for((Gtk::Window&)(*text_view.get_toplevel()));
+    dialog->set_transient_for(*static_cast<Gtk::Window*>(text_view.get_toplevel()));
   }
 }
 
@@ -153,7 +153,7 @@ void SelectionDialogBase::resize() {
     else
       scrolled_window.set_policy(Gtk::PolicyType::POLICY_NEVER, Gtk::PolicyType::POLICY_AUTOMATIC);
 
-    int window_height=std::min(row_height*(int)list_view_text.get_model()->children().size(), row_height*10);
+    int window_height=std::min(row_height*static_cast<int>(list_view_text.get_model()->children().size()), row_height*10);
     if(show_search_entry)
       window_height+=search_entry.get_height();
     window->resize(row_width+1, window_height);
@@ -201,7 +201,7 @@ SelectionDialog::SelectionDialog(Gtk::TextView& text_view, Glib::RefPtr<Gtk::Tex
   
   search_entry.signal_event().connect([this](GdkEvent* event) {
     if(event->type==GDK_KEY_PRESS) {
-      auto key=(GdkEventKey*)event;
+      auto key=reinterpret_cast<GdkEventKey*>(event);
       if(key->keyval==GDK_KEY_Down && list_view_text.get_model()->children().size()>0) {
         auto it=list_view_text.get_selection()->get_selected();
         if(it) {

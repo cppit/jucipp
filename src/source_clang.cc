@@ -223,9 +223,9 @@ void Source::ClangViewParse::update_syntax() {
     if(token.get_kind()==1) // KeywordToken
       ranges.emplace_back(token.offsets, 702);
     else if(token.get_kind()==2) {// IdentifierToken 
-      auto kind=(int)token.get_cursor().get_kind();
+      auto kind=static_cast<int>(token.get_cursor().get_kind());
       if(kind==101 || kind==102)
-        kind=(int)token.get_cursor().get_referenced().get_kind();
+        kind=static_cast<int>(token.get_cursor().get_referenced().get_kind());
       if(kind!=500)
         ranges.emplace_back(token.offsets, kind);
     }
@@ -865,8 +865,8 @@ Source::ClangViewAutocomplete(file_path, language) {
       return Token();
     }
     auto iter=get_buffer()->get_insert()->get_iter();
-    auto line=(unsigned)iter.get_line();
-    auto index=(unsigned)iter.get_line_index();
+    auto line=static_cast<unsigned>(iter.get_line());
+    auto index=static_cast<unsigned>(iter.get_line_index());
     for(auto &token: *clang_tokens) {
       auto cursor=token.get_cursor();
       if(token.get_kind()==clang::Token_Identifier && cursor.has_type()) {
@@ -926,8 +926,8 @@ Source::ClangViewAutocomplete(file_path, language) {
       return location;
     }
     auto iter=get_buffer()->get_insert()->get_iter();
-    auto line=(unsigned)iter.get_line();
-    auto index=(unsigned)iter.get_line_index();
+    auto line=static_cast<unsigned>(iter.get_line());
+    auto index=static_cast<unsigned>(iter.get_line_index());
     for(auto &token: *clang_tokens) {
       auto cursor=token.get_cursor();
       if(token.get_kind()==clang::Token_Identifier && cursor.has_type()) {
@@ -1083,8 +1083,8 @@ Source::ClangViewAutocomplete(file_path, language) {
       return data;
     }
     auto iter=get_buffer()->get_insert()->get_iter();
-    auto line=(unsigned)iter.get_line();
-    auto index=(unsigned)iter.get_line_index();
+    auto line=static_cast<unsigned>(iter.get_line());
+    auto index=static_cast<unsigned>(iter.get_line_index());
     for(auto &token: *clang_tokens) {
       auto cursor=token.get_cursor();
       if(token.get_kind()==clang::Token_Identifier && cursor.has_type()) {

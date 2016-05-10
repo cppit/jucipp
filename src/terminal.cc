@@ -279,7 +279,7 @@ bool Terminal::on_key_press_event(GdkEventKey *event) {
   if(processes.size()>0 || debug_is_running) {
     get_buffer()->place_cursor(get_buffer()->end());
     auto unicode=gdk_keyval_to_unicode(event->keyval);
-    char chr=(char)unicode;
+    char chr=static_cast<char>(unicode);
     if(unicode>=32 && unicode<=126) {
       stdin_buffer+=chr;
       get_buffer()->insert_at_cursor(stdin_buffer.substr(stdin_buffer.size()-1));
