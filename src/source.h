@@ -7,7 +7,18 @@
 #include <string>
 #include <unordered_map>
 #include <vector>
+
+//Temporary fix for current Arch Linux boost linking problem
+#ifdef __GNUC_PREREQ
+#if __GNUC_PREREQ(5,1)
+#include <regex>
+#define REGEX_NS std
+#endif
+#endif
+#ifndef REGEX_NS
 #include <boost/regex.hpp>
+#define REGEX_NS boost
+#endif
 
 #include "selectiondialog.h"
 #include "tooltips.h"
@@ -138,9 +149,9 @@ namespace Source {
     bool find_right_bracket_forward(Gtk::TextIter iter, Gtk::TextIter &found_iter);
     bool find_left_bracket_backward(Gtk::TextIter iter, Gtk::TextIter &found_iter);
     
-    const static boost::regex bracket_regex;
-    const static boost::regex no_bracket_statement_regex;
-    const static boost::regex no_bracket_no_para_statement_regex;
+    const static REGEX_NS::regex bracket_regex;
+    const static REGEX_NS::regex no_bracket_statement_regex;
+    const static REGEX_NS::regex no_bracket_no_para_statement_regex;
     
     bool on_key_press_event(GdkEventKey* key) override;
     bool on_key_press_event_basic(GdkEventKey* key);
