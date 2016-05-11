@@ -600,8 +600,10 @@ void Window::set_menu_actions() {
     EntryBox::get().show();
   });
   menu.add_action("compile_and_run", [this]() {
-    if(Project::compiling || Project::debugging)
+    if(Project::compiling || Project::debugging) {
+      Info::get().print("Compile or debug in progress");
       return;
+    }
     
     Project::current_language=Project::get_language();
     
@@ -611,8 +613,10 @@ void Window::set_menu_actions() {
     Project::current_language->compile_and_run();
   });
   menu.add_action("compile", [this]() {
-    if(Project::compiling || Project::debugging)
+    if(Project::compiling || Project::debugging) {
+      Info::get().print("Compile or debug in progress");
       return;
+    }
             
     Project::current_language=Project::get_language();
     
@@ -683,8 +687,10 @@ void Window::set_menu_actions() {
     EntryBox::get().show();
   });
   menu.add_action("debug_start_continue", [this](){
-    if(Project::compiling)
+    if(Project::compiling) {
+      Info::get().print("Compile in progress");
       return;
+    }
     else if(Project::debugging) {
       Project::current_language->debug_continue();
       return;
