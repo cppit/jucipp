@@ -2,7 +2,7 @@
 #define JUCI_FILES_H_
 #include <string>
 
-#define JUCI_VERSION "1.1.3-1"
+#define JUCI_VERSION "1.1.3-2"
 
 const std::string configjson =
 "{\n"
@@ -37,6 +37,8 @@ const std::string configjson =
 #endif
 "        \"cleanup_whitespace_characters_comment\": \"Remove trailing whitespace characters on save, and add trailing newline if missing\",\n"
 "        \"cleanup_whitespace_characters\": false,\n"
+"        \"draw_spaces_comment\": \"Determines what kind of whitespaces should be drawn. Use comma-separated list of: space, tab, newline, nbsp, leading, text, trailing or all\",\n"
+"        \"draw_spaces\": \"\",\n"
 "        \"show_map\": true,\n"
 "        \"map_font_size\": \"1\",\n"
 "        \"spellcheck_language_comment\": \"Use \\\"\\\" to set language from your locale settings\",\n"
