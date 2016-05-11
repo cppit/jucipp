@@ -1,7 +1,8 @@
 #include "terminal.h"
-#include <iostream>
 #include "config.h"
 #include "project.h"
+#include "notebook.h"
+#include <iostream>
 
 Terminal::InProgress::InProgress(const std::string& start_msg): stop(false) {
   start(start_msg);
@@ -265,6 +266,55 @@ void Terminal::clear() {
   while(g_main_context_pending(NULL))
     g_main_context_iteration(NULL, false);
   get_buffer()->set_text("");
+}
+
+bool Terminal::on_button_press_event(GdkEventButton* button_event)
+{
+  bool result=Gtk::TextView::on_button_press_event(button_event);
+
+  try {
+    auto iter = get_buffer()->get_insert()->get_iter();
+    auto line_start_it=get_buffer()->get_iter_at_line(iter.get_line());
+    auto line_end_it=iter;
+    while(!line_end_it.ends_line() && line_end_it.forward_char()) {}
+    std::string line(get_buffer()->get_text(line_start_it, line_end_it));
+
+    for (std::size_t end=line.find(':'); end!=std::string::npos; end=line.find(':', end+1))
+    {
+      std::string file=line.substr(0, end);
+
+      boost::filesystem::path p(file);
+      if(boost::filesystem::exists(p)) {
+        p=boost::filesystem::canonical(p);
+        if(boost::filesystem::is_regular_file(p)) {
+          auto & notebook = Notebook::get();
+          notebook.open(p);
+
+          auto rest = line.substr(end+1);
+
+          std::size_t pos = 0;
+          int line = std::stoi(rest, &pos);
+          if (rest.at(pos)==':') {
+            ++pos;
+            rest = rest.substr(pos);
+            int offset=1;
+            try {
+              offset=std::stoi(rest, &pos);
+            }
+            catch (std::exception const &) {}
+
+            auto view=notebook.get_current_view();
+
+            view->get_buffer()->place_cursor(view->get_buffer()->get_iter_at_line_offset(line-1, offset-1));
+            view->scroll_to_cursor_delayed(view, true, false);
+          }
+        }
+      }
+    }
+  }
+  catch (std::exception const & e) {}
+
+  return result;
 }
 
 bool Terminal::on_key_press_event(GdkEventKey *event) {

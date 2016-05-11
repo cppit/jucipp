@@ -53,7 +53,8 @@ public:
   
   void clear();
 protected:
-  bool on_key_press_event(GdkEventKey *event);
+  bool on_button_press_event(GdkEventButton* button_event) override;
+  bool on_key_press_event(GdkEventKey *event) override;
 private:
   Dispatcher dispatcher;
   Glib::RefPtr<Gtk::TextTag> bold_tag;
