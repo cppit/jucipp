@@ -261,7 +261,8 @@ void CMake::parse_variable_parameters(std::string &data) {
       pos--;
     }
     
-    last_char=data[pos];
+    if(pos!=static_cast<size_t>(-1))
+      last_char=data[pos];
     pos++;
   }
   for(auto &var: variables) {
@@ -318,7 +319,8 @@ std::vector<std::string> CMake::get_function_parameters(std::string &data) {
         parameter_pos=pos+1;
     }
     
-    last_char=data[pos];
+    if(pos!=static_cast<size_t>(-1))
+      last_char=data[pos];
     pos++;
   }
   parameters.emplace_back(data.substr(parameter_pos));
