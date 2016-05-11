@@ -42,6 +42,12 @@ void Terminal::InProgress::cancel(const std::string& msg) {
 Terminal::Terminal() {
   bold_tag=get_buffer()->create_tag();
   bold_tag->property_weight()=PANGO_WEIGHT_BOLD;
+  
+  link_tag=get_buffer()->create_tag();
+  link_tag->property_underline()=Pango::Underline::UNDERLINE_SINGLE;
+  
+  link_mouse_cursor=Gdk::Cursor::create(Gdk::CursorType::HAND1);
+  default_mouse_cursor=Gdk::Cursor::create(Gdk::CursorType::XTERM);
 }
 
 int Terminal::process(const std::string &command, const boost::filesystem::path &path, bool use_pipes) {  
@@ -151,6 +157,45 @@ void Terminal::kill_async_processes(bool force) {
     process->kill(force);
 }
 
+bool Terminal::on_motion_notify_event(GdkEventMotion *motion_event) {
+  Gtk::TextIter iter;
+  int location_x, location_y;
+  window_to_buffer_coords(Gtk::TextWindowType::TEXT_WINDOW_TEXT, motion_event->x, motion_event->y, location_x, location_y);
+  get_iter_at_location(iter, location_x, location_y);
+  if(iter.has_tag(link_tag))
+    get_window(Gtk::TextWindowType::TEXT_WINDOW_TEXT)->set_cursor(link_mouse_cursor);
+  else
+    get_window(Gtk::TextWindowType::TEXT_WINDOW_TEXT)->set_cursor(default_mouse_cursor);
+  return false;
+}
+
+void Terminal::apply_link_tags(Gtk::TextIter start_iter, Gtk::TextIter end_iter) {
+  auto iter=start_iter;
+  size_t colons=0;
+  Gtk::TextIter start_path_iter;
+  bool possible_path=false;
+  do {
+    if(iter.starts_line()) {
+      start_path_iter=iter;
+      possible_path=true;
+      colons=0;
+    }
+    if(possible_path) {
+      if(*iter==' ' || *iter=='\t' || iter.ends_line())
+        possible_path=false;
+      if(*iter==':') {
+        colons++;
+#ifdef _WIN32
+        if(colons==4 && possible_path)
+#else
+        if(colons==3 && possible_path)
+#endif
+          get_buffer()->apply_tag(link_tag, start_path_iter, iter);
+      }
+    }
+  } while(iter.forward_char() && iter!=end_iter);
+}
+
 size_t Terminal::print(const std::string &message, bool bold){
 #ifdef _WIN32
   //Remove color codes
@@ -188,10 +233,16 @@ size_t Terminal::print(const std::string &message, bool bold){
     umessage.replace(iter, next_char_iter, "?");
   }
   
+  auto start_mark=get_buffer()->create_mark(get_buffer()->get_insert()->get_iter());
   if(bold)
     get_buffer()->insert_with_tag(get_buffer()->end(), umessage, bold_tag);
   else
     get_buffer()->insert(get_buffer()->end(), umessage);
+  auto start_iter=start_mark->get_iter();
+  get_buffer()->delete_mark(start_mark);
+  auto end_iter=get_buffer()->get_insert()->get_iter();
+  
+  apply_link_tags(start_iter, end_iter);
   
   if(get_buffer()->get_line_count()>Config::get().terminal.history_size) {
     int lines=get_buffer()->get_line_count()-Config::get().terminal.history_size;
@@ -243,6 +294,8 @@ void Terminal::async_print(size_t line_nr, const std::string &message) {
 }
 
 void Terminal::configure() {
+  link_tag->property_foreground_rgba()=get_style_context()->get_color(Gtk::STATE_FLAG_LINK);
+  
   if(Config::get().terminal.font.size()>0) {
     override_font(Pango::FontDescription(Config::get().terminal.font));
   }

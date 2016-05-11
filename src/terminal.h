@@ -53,16 +53,20 @@ public:
   
   void clear();
 protected:
-  bool on_key_press_event(GdkEventKey *event);
+  bool on_motion_notify_event (GdkEventMotion* motion_event) override;
+  bool on_key_press_event(GdkEventKey *event) override;
 private:
   Dispatcher dispatcher;
   Glib::RefPtr<Gtk::TextTag> bold_tag;
+  Glib::RefPtr<Gtk::TextTag> link_tag;
+  Glib::RefPtr<Gdk::Cursor> link_mouse_cursor;
+  Glib::RefPtr<Gdk::Cursor> default_mouse_cursor;
+  size_t deleted_lines=0;
+  void apply_link_tags(Gtk::TextIter start_iter, Gtk::TextIter end_iter);
 
   std::vector<std::shared_ptr<Process> > processes;
   std::mutex processes_mutex;
   std::string stdin_buffer;
-  
-  size_t deleted_lines=0;
   
   std::unordered_set<InProgress*> in_progresses;
   std::mutex in_progresses_mutex;
