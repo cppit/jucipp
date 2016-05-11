@@ -1,17 +1,14 @@
+#include "source.h"
 #include "config.h"
 #include "filesystem.h"
-#include "source.h"
 #include "terminal.h"
-
+#include <gtksourceview/gtksource.h>
 #include <boost/property_tree/json_parser.hpp>
 #include <boost/spirit/home/qi/char.hpp>
 #include <boost/spirit/home/qi/operator.hpp>
 #include <boost/spirit/home/qi/string.hpp>
-
-#include <gtksourceview/gtksource.h>
-
-#include <algorithm>
 #include <iostream>
+#include <numeric>
 #include <set>
 
 namespace sigc {
@@ -381,8 +378,7 @@ void Source::View::set_tab_char_and_size(char tab_char, unsigned tab_size) {
     tab+=tab_char;
 }
 
-Gsv::DrawSpacesFlags parse_draw_spaces(std::string text)
-{
+Gsv::DrawSpacesFlags Source::View::parse_show_whitespace_characters(const std::string &text) {
   namespace qi = boost::spirit::qi;
   
   qi::symbols<char, Gsv::DrawSpacesFlags> options;
@@ -396,15 +392,12 @@ Gsv::DrawSpacesFlags parse_draw_spaces(std::string text)
     ("trailing", Gsv::DRAW_SPACES_TRAILING)
     ("all",      Gsv::DRAW_SPACES_ALL);
 
-  auto begin = text.begin();
-  auto end = text.end();
-  
   std::set<Gsv::DrawSpacesFlags> out;
   
   // parse comma-separated list of options
-  qi::phrase_parse(begin, end, options % ',', qi::space, out);
+  qi::phrase_parse(text.begin(), text.end(), options % ',', qi::space, out);
   
-  return out.count(Gsv::DRAW_SPACES_ALL) ?
+  return out.count(Gsv::DRAW_SPACES_ALL)>0 ?
     Gsv::DRAW_SPACES_ALL :
     static_cast<Gsv::DrawSpacesFlags>(std::accumulate(out.begin(), out.end(), 0));
 }
@@ -423,7 +416,7 @@ void Source::View::configure() {
       Terminal::get().print("Error: Could not find gtksourceview style: "+Config::get().source.style+'\n', true);
   }
   
-  set_draw_spaces(parse_draw_spaces(Config::get().source.draw_spaces));
+  set_draw_spaces(parse_show_whitespace_characters(Config::get().source.show_whitespace_characters));
   
   if(Config::get().source.wrap_lines)
     set_wrap_mode(Gtk::WrapMode::WRAP_CHAR);

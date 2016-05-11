@@ -169,6 +169,8 @@ namespace Source {
     guint previous_non_modifier_keyval=0;
     guint last_keyval=0;
   private:
+    Gsv::DrawSpacesFlags parse_show_whitespace_characters(const std::string &text);
+    
     GtkSourceSearchContext *search_context;
     GtkSourceSearchSettings *search_settings;
     static void search_occurrences_updated(GtkWidget* widget, GParamSpec* property, gpointer data);
