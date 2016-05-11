@@ -2,6 +2,7 @@
 #include <iostream>
 #include "config.h"
 #include "project.h"
+#include "info.h"
 
 Terminal::InProgress::InProgress(const std::string& start_msg): stop(false) {
   start(start_msg);
@@ -138,7 +139,9 @@ void Terminal::async_process(const std::string &command, const boost::filesystem
 
 void Terminal::kill_last_async_process(bool force) {
   std::unique_lock<std::mutex> lock(processes_mutex);
-  if(processes.size()>0)
+  if(processes.empty())
+    Info::get().print("No running processes");
+  else
     processes.back()->kill(force);
 }
 
@@ -276,7 +279,7 @@ bool Terminal::on_key_press_event(GdkEventKey *event) {
   if(processes.size()>0 || debug_is_running) {
     get_buffer()->place_cursor(get_buffer()->end());
     auto unicode=gdk_keyval_to_unicode(event->keyval);
-    char chr=(char)unicode;
+    char chr=static_cast<char>(unicode);
     if(unicode>=32 && unicode<=126) {
       stdin_buffer+=chr;
       get_buffer()->insert_at_cursor(stdin_buffer.substr(stdin_buffer.size()-1));

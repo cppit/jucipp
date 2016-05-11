@@ -84,6 +84,8 @@ set(project_files
     files.h
     filesystem.cc
     filesystem.h
+    info.h
+    info.cc
     juci.cc
     juci.h
     menu.cc

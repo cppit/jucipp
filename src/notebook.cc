@@ -308,7 +308,7 @@ boost::filesystem::path Notebook::get_current_folder() {
 }
 
 bool Notebook::save_modified_dialog(int page) {
-  Gtk::MessageDialog dialog((Gtk::Window&)(*get_toplevel()), "Save file!", false, Gtk::MESSAGE_QUESTION, Gtk::BUTTONS_YES_NO);
+  Gtk::MessageDialog dialog(*static_cast<Gtk::Window*>(get_toplevel()), "Save file!", false, Gtk::MESSAGE_QUESTION, Gtk::BUTTONS_YES_NO);
   dialog.set_default_response(Gtk::RESPONSE_YES);
   dialog.set_secondary_text("Do you want to save: " + get_view(page)->file_path.string()+" ?");
   int result = dialog.run();

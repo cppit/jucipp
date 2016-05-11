@@ -5,6 +5,7 @@
 #ifdef JUCI_ENABLE_DEBUG
 #include "debug_clang.h"
 #endif
+#include "info.h"
 
 namespace sigc {
 #ifndef SIGC_FUNCTORS_DEDUCE_RESULT_TYPE_WITH_DECLTYPE
@@ -222,9 +223,9 @@ void Source::ClangViewParse::update_syntax() {
     if(token.get_kind()==1) // KeywordToken
       ranges.emplace_back(token.offsets, 702);
     else if(token.get_kind()==2) {// IdentifierToken 
-      auto kind=(int)token.get_cursor().get_kind();
+      auto kind=static_cast<int>(token.get_cursor().get_kind());
       if(kind==101 || kind==102)
-        kind=(int)token.get_cursor().get_referenced().get_kind();
+        kind=static_cast<int>(token.get_cursor().get_referenced().get_kind());
       if(kind!=500)
         ranges.emplace_back(token.offsets, kind);
     }
@@ -859,20 +860,22 @@ Source::ClangViewAutocomplete(file_path, language) {
   });
   
   get_token=[this]() -> Token {
-    if(parsed) {
-      auto iter=get_buffer()->get_insert()->get_iter();
-      auto line=(unsigned)iter.get_line();
-      auto index=(unsigned)iter.get_line_index();
-      for(auto &token: *clang_tokens) {
-        auto cursor=token.get_cursor();
-        if(token.get_kind()==clang::Token_Identifier && cursor.has_type()) {
-          if(line==token.offsets.first.line-1 && index>=token.offsets.first.index-1 && index <=token.offsets.second.index-1) {
-            if(static_cast<unsigned>(token.get_cursor().get_kind())==103) //These cursors are buggy
-              continue;
-            auto referenced=cursor.get_referenced();
-            if(referenced)
-              return Token(this->language, static_cast<int>(referenced.get_kind()), token.get_spelling(), referenced.get_usr());
-          }
+    if(!parsed) {
+      Info::get().print("Buffer is parsing");
+      return Token();
+    }
+    auto iter=get_buffer()->get_insert()->get_iter();
+    auto line=static_cast<unsigned>(iter.get_line());
+    auto index=static_cast<unsigned>(iter.get_line_index());
+    for(auto &token: *clang_tokens) {
+      auto cursor=token.get_cursor();
+      if(token.get_kind()==clang::Token_Identifier && cursor.has_type()) {
+        if(line==token.offsets.first.line-1 && index>=token.offsets.first.index-1 && index <=token.offsets.second.index-1) {
+          if(static_cast<unsigned>(token.get_cursor().get_kind())==103) //These cursors are buggy
+            continue;
+          auto referenced=cursor.get_referenced();
+          if(referenced)
+            return Token(this->language, static_cast<int>(referenced.get_kind()), token.get_spelling(), referenced.get_usr());
         }
       }
     }
@@ -907,7 +910,9 @@ Source::ClangViewAutocomplete(file_path, language) {
     if(mark->get_name()=="insert") {
       delayed_tag_similar_tokens_connection.disconnect();
       delayed_tag_similar_tokens_connection=Glib::signal_timeout().connect([this]() {
+        Info::get().enabled=false;
         auto token=get_token();
+        Info::get().enabled=true;
         tag_similar_tokens(token);
         return false;
       }, 100);
@@ -916,22 +921,24 @@ Source::ClangViewAutocomplete(file_path, language) {
   
   get_declaration_location=[this](){
     Offset location;
-    if(parsed) {
-      auto iter=get_buffer()->get_insert()->get_iter();
-      auto line=(unsigned)iter.get_line();
-      auto index=(unsigned)iter.get_line_index();
-      for(auto &token: *clang_tokens) {
-        auto cursor=token.get_cursor();
-        if(token.get_kind()==clang::Token_Identifier && cursor.has_type()) {
-          if(line==token.offsets.first.line-1 && index>=token.offsets.first.index-1 && index <=token.offsets.second.index-1) {
-            auto referenced=cursor.get_referenced();
-            if(referenced) {
-              location.file_path=referenced.get_source_location().get_path();
-              auto clang_offset=referenced.get_source_location().get_offset();
-              location.line=clang_offset.line;
-              location.index=clang_offset.index;
-              break;
-            }
+    if(!parsed) {
+      Info::get().print("Buffer is parsing");
+      return location;
+    }
+    auto iter=get_buffer()->get_insert()->get_iter();
+    auto line=static_cast<unsigned>(iter.get_line());
+    auto index=static_cast<unsigned>(iter.get_line_index());
+    for(auto &token: *clang_tokens) {
+      auto cursor=token.get_cursor();
+      if(token.get_kind()==clang::Token_Identifier && cursor.has_type()) {
+        if(line==token.offsets.first.line-1 && index>=token.offsets.first.index-1 && index <=token.offsets.second.index-1) {
+          auto referenced=cursor.get_referenced();
+          if(referenced) {
+            location.file_path=referenced.get_source_location().get_path();
+            auto clang_offset=referenced.get_source_location().get_offset();
+            location.line=clang_offset.line;
+            location.index=clang_offset.index;
+            break;
           }
         }
       }
@@ -965,7 +972,6 @@ Source::ClangViewAutocomplete(file_path, language) {
   
   get_usages=[this](const Token &token) {
     std::vector<std::pair<Offset, std::string> > usages;
-    
     if(parsed && token.language &&
      (token.language->get_id()=="chdr" || token.language->get_id()=="cpphdr" || token.language->get_id()=="c" || token.language->get_id()=="cpp" || token.language->get_id()=="objc")) {
       auto offsets=clang_tokens->get_similar_token_offsets(static_cast<clang::CursorKind>(token.type), token.spelling, token.usr);
@@ -1006,55 +1012,57 @@ Source::ClangViewAutocomplete(file_path, language) {
     return usages;
   };
   
-  goto_method=[this](){    
-    if(parsed) {
-      auto iter=get_iter_for_dialog();
-      selection_dialog=std::unique_ptr<SelectionDialog>(new SelectionDialog(*this, get_buffer()->create_mark(iter), true, true));
-      auto rows=std::make_shared<std::unordered_map<std::string, clang::Offset> >();
-      auto methods=clang_tokens->get_cxx_methods();
-      if(methods.size()==0)
-        return;
-      for(auto &method: methods) {
-        std::string row=std::to_string(method.second.line)+": "+Glib::Markup::escape_text(method.first);
-        //Add bold method token
-        size_t token_end_pos=row.find('(');
-        if(token_end_pos==0 || token_end_pos==std::string::npos)
-          continue;
-        if(token_end_pos>8 && row.substr(token_end_pos-4, 4)=="&gt;") {
-          token_end_pos-=8;
-          size_t angle_bracket_count=1;
-          do {
-            if(row.substr(token_end_pos-4, 4)=="&gt;") {
-              angle_bracket_count++;
-              token_end_pos-=4;
-            }
-            else if(row.substr(token_end_pos-4, 4)=="&lt;") {
-              angle_bracket_count--;
-              token_end_pos-=4;
-            }
-            else
-              token_end_pos--;
-          } while(angle_bracket_count>0 && token_end_pos>4);
-        }
-        auto pos=token_end_pos;
-        do {
-          pos--;
-        } while(((row[pos]>='a' && row[pos]<='z') ||
-               (row[pos]>='A' && row[pos]<='Z') ||
-               (row[pos]>='0' && row[pos]<='9') || row[pos]=='_' || row[pos]=='~') && pos>0);
-        row.insert(token_end_pos, "</b>");
-        row.insert(pos+1, "<b>");
-        (*rows)[row]=method.second;
-        selection_dialog->add_row(row);
-      }
-      selection_dialog->on_select=[this, rows](const std::string& selected, bool hide_window) {
-        auto offset=rows->at(selected);
-        get_buffer()->place_cursor(get_buffer()->get_iter_at_line_index(offset.line-1, offset.index-1));
-        scroll_to(get_buffer()->get_insert(), 0.0, 1.0, 0.5);
-        delayed_tooltips_connection.disconnect();
-      };
-      selection_dialog->show();
+  goto_method=[this](){
+    if(!parsed) {
+      Info::get().print("Buffer is parsing");
+      return;
     }
+    auto iter=get_iter_for_dialog();
+    selection_dialog=std::unique_ptr<SelectionDialog>(new SelectionDialog(*this, get_buffer()->create_mark(iter), true, true));
+    auto rows=std::make_shared<std::unordered_map<std::string, clang::Offset> >();
+    auto methods=clang_tokens->get_cxx_methods();
+    if(methods.size()==0)
+      return;
+    for(auto &method: methods) {
+      std::string row=std::to_string(method.second.line)+": "+Glib::Markup::escape_text(method.first);
+      //Add bold method token
+      size_t token_end_pos=row.find('(');
+      if(token_end_pos==0 || token_end_pos==std::string::npos)
+        continue;
+      if(token_end_pos>8 && row.substr(token_end_pos-4, 4)=="&gt;") {
+        token_end_pos-=8;
+        size_t angle_bracket_count=1;
+        do {
+          if(row.substr(token_end_pos-4, 4)=="&gt;") {
+            angle_bracket_count++;
+            token_end_pos-=4;
+          }
+          else if(row.substr(token_end_pos-4, 4)=="&lt;") {
+            angle_bracket_count--;
+            token_end_pos-=4;
+          }
+          else
+            token_end_pos--;
+        } while(angle_bracket_count>0 && token_end_pos>4);
+      }
+      auto pos=token_end_pos;
+      do {
+        pos--;
+      } while(((row[pos]>='a' && row[pos]<='z') ||
+             (row[pos]>='A' && row[pos]<='Z') ||
+             (row[pos]>='0' && row[pos]<='9') || row[pos]=='_' || row[pos]=='~') && pos>0);
+      row.insert(token_end_pos, "</b>");
+      row.insert(pos+1, "<b>");
+      (*rows)[row]=method.second;
+      selection_dialog->add_row(row);
+    }
+    selection_dialog->on_select=[this, rows](const std::string& selected, bool hide_window) {
+      auto offset=rows->at(selected);
+      get_buffer()->place_cursor(get_buffer()->get_iter_at_line_index(offset.line-1, offset.index-1));
+      scroll_to(get_buffer()->get_insert(), 0.0, 1.0, 0.5);
+      delayed_tooltips_connection.disconnect();
+    };
+    selection_dialog->show();
   };
   
   get_token_data=[this]() {
@@ -1070,85 +1078,87 @@ Source::ClangViewAutocomplete(file_path, language) {
     };
     
     std::vector<std::string> data;
-    if(parsed) {
-      auto iter=get_buffer()->get_insert()->get_iter();
-      auto line=(unsigned)iter.get_line();
-      auto index=(unsigned)iter.get_line_index();
-      for(auto &token: *clang_tokens) {
-        auto cursor=token.get_cursor();
-        if(token.get_kind()==clang::Token_Identifier && cursor.has_type()) {
-          if(line==token.offsets.first.line-1 && index>=token.offsets.first.index-1 && index <=token.offsets.second.index-1) {
-            auto referenced=cursor.get_referenced();
-            if(referenced) {
-              auto usr=referenced.get_usr();
-              
-              data.emplace_back("clang");
-              
-              //namespace
-              size_t pos1, pos2=0;
-              while((pos1=usr.find('@', pos2))!=std::string::npos && pos1+1<usr.size() && usr[pos1+1]=='N') {
-                pos1+=3;
-                pos2=find_non_word_char(usr, pos1);
-                if(pos2!=std::string::npos) {
-                  auto ns=usr.substr(pos1, pos2-pos1);
-                  if(ns=="__1")
-                    break;
-                  data.emplace_back(ns);
-                }
-                else
+    if(!parsed) {
+      Info::get().print("Buffer is parsing");
+      return data;
+    }
+    auto iter=get_buffer()->get_insert()->get_iter();
+    auto line=static_cast<unsigned>(iter.get_line());
+    auto index=static_cast<unsigned>(iter.get_line_index());
+    for(auto &token: *clang_tokens) {
+      auto cursor=token.get_cursor();
+      if(token.get_kind()==clang::Token_Identifier && cursor.has_type()) {
+        if(line==token.offsets.first.line-1 && index>=token.offsets.first.index-1 && index <=token.offsets.second.index-1) {
+          auto referenced=cursor.get_referenced();
+          if(referenced) {
+            auto usr=referenced.get_usr();
+            
+            data.emplace_back("clang");
+            
+            //namespace
+            size_t pos1, pos2=0;
+            while((pos1=usr.find('@', pos2))!=std::string::npos && pos1+1<usr.size() && usr[pos1+1]=='N') {
+              pos1+=3;
+              pos2=find_non_word_char(usr, pos1);
+              if(pos2!=std::string::npos) {
+                auto ns=usr.substr(pos1, pos2-pos1);
+                if(ns=="__1")
                   break;
+                data.emplace_back(ns);
               }
-              if(data.size()==1)
-                data.emplace_back("");
-              
-              //template arguments
-              size_t template_pos=usr.find('$');
-              
-              bool found_type_or_function=false;
-              //type
-              pos2=0;
-              while(((pos1=usr.find("T@", pos2))!=std::string::npos || (pos1=usr.find("S@", pos2))!=std::string::npos) && pos1<template_pos) {
-                found_type_or_function=true;
-                pos1+=2;
-                pos2=find_non_word_char(usr, pos1);
-                if(pos2!=std::string::npos)
-                  data.emplace_back(usr.substr(pos1, pos2-pos1));
-                else {
-                  data.emplace_back(usr.substr(pos1));
-                  break;
-                }
-              }
-              
-              //function/constant//variable
-              pos1=usr.find("F@");
-              if(pos1==std::string::npos)
-                pos1=usr.find("C@");
-              if(pos1==std::string::npos)
-                pos1=usr.find("I@");
-              if(pos1!=std::string::npos) {
-                pos1+=2;
-                pos2=find_non_word_char(usr, pos1);
-              }
-              if(pos1!=std::string::npos) {
-                found_type_or_function=true;
-                if(pos2!=std::string::npos)
-                  data.emplace_back(usr.substr(pos1, pos2-pos1));
-                else
-                  data.emplace_back(usr.substr(pos1));
-              }
-              
-              //Sometimes a method is at end without a identifier it seems:
-              if(!found_type_or_function && (pos1=usr.rfind('@'))!=std::string::npos) {
-                pos1++;
-                pos2=find_non_word_char(usr, pos1);
-                if(pos2!=std::string::npos)
-                  data.emplace_back(usr.substr(pos1, pos2-pos1));
-                else
-                  data.emplace_back(usr.substr(pos1));
-              }
-              
-              break;
+              else
+                break;
             }
+            if(data.size()==1)
+              data.emplace_back("");
+            
+            //template arguments
+            size_t template_pos=usr.find('$');
+            
+            bool found_type_or_function=false;
+            //type
+            pos2=0;
+            while(((pos1=usr.find("T@", pos2))!=std::string::npos || (pos1=usr.find("S@", pos2))!=std::string::npos) && pos1<template_pos) {
+              found_type_or_function=true;
+              pos1+=2;
+              pos2=find_non_word_char(usr, pos1);
+              if(pos2!=std::string::npos)
+                data.emplace_back(usr.substr(pos1, pos2-pos1));
+              else {
+                data.emplace_back(usr.substr(pos1));
+                break;
+              }
+            }
+            
+            //function/constant//variable
+            pos1=usr.find("F@");
+            if(pos1==std::string::npos)
+              pos1=usr.find("C@");
+            if(pos1==std::string::npos)
+              pos1=usr.find("I@");
+            if(pos1!=std::string::npos) {
+              pos1+=2;
+              pos2=find_non_word_char(usr, pos1);
+            }
+            if(pos1!=std::string::npos) {
+              found_type_or_function=true;
+              if(pos2!=std::string::npos)
+                data.emplace_back(usr.substr(pos1, pos2-pos1));
+              else
+                data.emplace_back(usr.substr(pos1));
+            }
+            
+            //Sometimes a method is at end without a identifier it seems:
+            if(!found_type_or_function && (pos1=usr.rfind('@'))!=std::string::npos) {
+              pos1++;
+              pos2=find_non_word_char(usr, pos1);
+              if(pos2!=std::string::npos)
+                data.emplace_back(usr.substr(pos1, pos2-pos1));
+              else
+                data.emplace_back(usr.substr(pos1));
+            }
+            
+            break;
           }
         }
       }
@@ -1157,52 +1167,56 @@ Source::ClangViewAutocomplete(file_path, language) {
   };
   
   goto_next_diagnostic=[this]() {
-    if(parsed) {
-      auto insert_offset=get_buffer()->get_insert()->get_iter().get_offset();
-      for(auto offset: diagnostic_offsets) {
-        if(offset>insert_offset) {
-          get_buffer()->place_cursor(get_buffer()->get_iter_at_offset(offset));
-          scroll_to(get_buffer()->get_insert(), 0.0, 1.0, 0.5);
-          return;
-        }
-      }
-      if(diagnostic_offsets.size()>0) {
-        auto iter=get_buffer()->get_iter_at_offset(*diagnostic_offsets.begin());
-        get_buffer()->place_cursor(iter);
+    if(!parsed) {
+      Info::get().print("Buffer is parsing");
+      return;
+    }
+    auto insert_offset=get_buffer()->get_insert()->get_iter().get_offset();
+    for(auto offset: diagnostic_offsets) {
+      if(offset>insert_offset) {
+        get_buffer()->place_cursor(get_buffer()->get_iter_at_offset(offset));
         scroll_to(get_buffer()->get_insert(), 0.0, 1.0, 0.5);
+        return;
       }
+    }
+    if(diagnostic_offsets.size()>0) {
+      auto iter=get_buffer()->get_iter_at_offset(*diagnostic_offsets.begin());
+      get_buffer()->place_cursor(iter);
+      scroll_to(get_buffer()->get_insert(), 0.0, 1.0, 0.5);
     }
   };
   
   apply_fix_its=[this]() {
-    std::vector<std::pair<Glib::RefPtr<Gtk::TextMark>, Glib::RefPtr<Gtk::TextMark> > > fix_it_marks;
-    if(parsed) {
-      for(auto &fix_it: fix_its) {
-        auto start_iter=get_buffer()->get_iter_at_line_index(fix_it.offsets.first.line-1, fix_it.offsets.first.index-1);
-        auto end_iter=get_buffer()->get_iter_at_line_index(fix_it.offsets.second.line-1, fix_it.offsets.second.index-1);
-        fix_it_marks.emplace_back(get_buffer()->create_mark(start_iter), get_buffer()->create_mark(end_iter));
-      }
-      size_t c=0;
-      get_source_buffer()->begin_user_action();
-      for(auto &fix_it: fix_its) {
-        if(fix_it.type==FixIt::Type::INSERT) {
-          get_buffer()->insert(fix_it_marks[c].first->get_iter(), fix_it.source);
-        }
-        if(fix_it.type==FixIt::Type::REPLACE) {
-          get_buffer()->erase(fix_it_marks[c].first->get_iter(), fix_it_marks[c].second->get_iter());
-          get_buffer()->insert(fix_it_marks[c].first->get_iter(), fix_it.source);
-        }
-        if(fix_it.type==FixIt::Type::ERASE) {
-          get_buffer()->erase(fix_it_marks[c].first->get_iter(), fix_it_marks[c].second->get_iter());
-        }
-        c++;
-      }
-      for(auto &mark_pair: fix_it_marks) {
-        get_buffer()->delete_mark(mark_pair.first);
-        get_buffer()->delete_mark(mark_pair.second);
-      }
-      get_source_buffer()->end_user_action();
+    if(!parsed) {
+      Info::get().print("Buffer is parsing");
+      return;
     }
+    std::vector<std::pair<Glib::RefPtr<Gtk::TextMark>, Glib::RefPtr<Gtk::TextMark> > > fix_it_marks;
+    for(auto &fix_it: fix_its) {
+      auto start_iter=get_buffer()->get_iter_at_line_index(fix_it.offsets.first.line-1, fix_it.offsets.first.index-1);
+      auto end_iter=get_buffer()->get_iter_at_line_index(fix_it.offsets.second.line-1, fix_it.offsets.second.index-1);
+      fix_it_marks.emplace_back(get_buffer()->create_mark(start_iter), get_buffer()->create_mark(end_iter));
+    }
+    size_t c=0;
+    get_source_buffer()->begin_user_action();
+    for(auto &fix_it: fix_its) {
+      if(fix_it.type==FixIt::Type::INSERT) {
+        get_buffer()->insert(fix_it_marks[c].first->get_iter(), fix_it.source);
+      }
+      if(fix_it.type==FixIt::Type::REPLACE) {
+        get_buffer()->erase(fix_it_marks[c].first->get_iter(), fix_it_marks[c].second->get_iter());
+        get_buffer()->insert(fix_it_marks[c].first->get_iter(), fix_it.source);
+      }
+      if(fix_it.type==FixIt::Type::ERASE) {
+        get_buffer()->erase(fix_it_marks[c].first->get_iter(), fix_it_marks[c].second->get_iter());
+      }
+      c++;
+    }
+    for(auto &mark_pair: fix_it_marks) {
+      get_buffer()->delete_mark(mark_pair.first);
+      get_buffer()->delete_mark(mark_pair.second);
+    }
+    get_source_buffer()->end_user_action();
   };
 }
 
