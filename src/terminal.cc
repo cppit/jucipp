@@ -375,7 +375,7 @@ bool Terminal::on_button_press_event(GdkEventButton* button_event) {
                 index=std::min(index, end_line_index);
                 
                 view->get_buffer()->place_cursor(view->get_buffer()->get_iter_at_line_index(line, index));
-                view->scroll_to_cursor_delayed(view, true, false);
+                view->scroll_to_cursor_delayed(view, true, true);
                 return true;
               }
             }
