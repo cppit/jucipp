@@ -54,6 +54,7 @@ public:
   void clear();
 protected:
   bool on_motion_notify_event (GdkEventMotion* motion_event) override;
+  bool on_button_press_event(GdkEventButton* button_event) override;
   bool on_key_press_event(GdkEventKey *event) override;
 private:
   Dispatcher dispatcher;

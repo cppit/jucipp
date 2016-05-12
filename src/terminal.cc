@@ -1,8 +1,20 @@
 #include "terminal.h"
-#include <iostream>
 #include "config.h"
 #include "project.h"
 #include "info.h"
+#include "notebook.h"
+#include <iostream>
+//Temporary fix for current Arch Linux boost linking problem
+#ifdef __GNUC_PREREQ
+#if __GNUC_PREREQ(5,1)
+#include <regex>
+#define REGEX_NS std
+#endif
+#endif
+#ifndef REGEX_NS
+#include <boost/regex.hpp>
+#define REGEX_NS boost
+#endif
 
 Terminal::InProgress::InProgress(const std::string& start_msg): stop(false) {
   start(start_msg);
@@ -166,7 +178,7 @@ bool Terminal::on_motion_notify_event(GdkEventMotion *motion_event) {
     get_window(Gtk::TextWindowType::TEXT_WINDOW_TEXT)->set_cursor(link_mouse_cursor);
   else
     get_window(Gtk::TextWindowType::TEXT_WINDOW_TEXT)->set_cursor(default_mouse_cursor);
-  return false;
+  return Gtk::TextView::on_motion_notify_event(motion_event);
 }
 
 void Terminal::apply_link_tags(Gtk::TextIter start_iter, Gtk::TextIter end_iter) {
@@ -174,6 +186,8 @@ void Terminal::apply_link_tags(Gtk::TextIter start_iter, Gtk::TextIter end_iter)
   size_t colons=0;
   Gtk::TextIter start_path_iter;
   bool possible_path=false;
+  //Search for path with line and index
+  //Simple implementation. Not sure if it is work the effort to make it work 100% on all platforms.
   do {
     if(iter.starts_line()) {
       start_path_iter=iter;
@@ -233,7 +247,7 @@ size_t Terminal::print(const std::string &message, bool bold){
     umessage.replace(iter, next_char_iter, "?");
   }
   
-  auto start_mark=get_buffer()->create_mark(get_buffer()->get_insert()->get_iter());
+  auto start_mark=get_buffer()->create_mark(get_buffer()->get_iter_at_line(get_buffer()->get_insert()->get_iter().get_line()));
   if(bold)
     get_buffer()->insert_with_tag(get_buffer()->end(), umessage, bold_tag);
   else
@@ -294,7 +308,9 @@ void Terminal::async_print(size_t line_nr, const std::string &message) {
 }
 
 void Terminal::configure() {
-  link_tag->property_foreground_rgba()=get_style_context()->get_color(Gtk::STATE_FLAG_LINK);
+#if GTKMM_MAJOR_VERSION>3 || (GTKMM_MAJOR_VERSION>=3 && GTKMM_MINOR_VERSION>=12)
+  link_tag->property_foreground_rgba()=get_style_context()->get_color(Gtk::StateFlags::STATE_FLAG_LINK);
+#endif
   
   if(Config::get().terminal.font.size()>0) {
     override_font(Pango::FontDescription(Config::get().terminal.font));
@@ -321,6 +337,51 @@ void Terminal::clear() {
   while(g_main_context_pending(NULL))
     g_main_context_iteration(NULL, false);
   get_buffer()->set_text("");
+}
+
+bool Terminal::on_button_press_event(GdkEventButton* button_event) {
+  if(button_event->type==GDK_BUTTON_PRESS && button_event->button==GDK_BUTTON_PRIMARY) {
+    Gtk::TextIter iter;
+    int location_x, location_y;
+    window_to_buffer_coords(Gtk::TextWindowType::TEXT_WINDOW_TEXT, button_event->x, button_event->y, location_x, location_y);
+    get_iter_at_location(iter, location_x, location_y);
+    auto start_iter=iter;
+    auto end_iter=iter;
+    if(iter.has_tag(link_tag) &&
+       start_iter.backward_to_tag_toggle(link_tag) && end_iter.forward_to_tag_toggle(link_tag)) {
+      std::string path_str=get_buffer()->get_text(start_iter, end_iter);
+      const static REGEX_NS::regex path_regex("^([^:]+):([0-9]+):([0-9]+)$");
+      REGEX_NS::smatch sm;
+      if(REGEX_NS::regex_match(path_str, sm, path_regex)) {
+        boost::system::error_code ec;
+        auto path=boost::filesystem::canonical(sm[1].str(), ec);
+        if(!ec && boost::filesystem::is_regular_file(path)) {
+          Notebook::get().open(path);
+          if(Notebook::get().get_current_page()!=-1) {
+            auto view=Notebook::get().get_current_view();
+            try {
+              int line = std::stoi(sm[2].str())-1;
+              int index = std::stoi(sm[3].str())-1;
+              line=std::min(line, view->get_buffer()->get_line_count()-1);
+              if(line>=0) {
+                auto iter=view->get_buffer()->get_iter_at_line(line);
+                while(!iter.ends_line())
+                  iter.forward_char();
+                auto end_line_index=iter.get_line_index();
+                index=std::min(index, end_line_index);
+                
+                view->get_buffer()->place_cursor(view->get_buffer()->get_iter_at_line_index(line, index));
+                view->scroll_to_cursor_delayed(view, true, false);
+                return true;
+              }
+            }
+            catch(const std::exception &) {}
+          }
+        }
+      }
+    }
+  }
+  return Gtk::TextView::on_button_press_event(button_event);
 }
 
 bool Terminal::on_key_press_event(GdkEventKey *event) {
