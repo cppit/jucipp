@@ -350,7 +350,11 @@ bool Terminal::on_button_press_event(GdkEventButton* button_event) {
     if(iter.has_tag(link_tag) &&
        start_iter.backward_to_tag_toggle(link_tag) && end_iter.forward_to_tag_toggle(link_tag)) {
       std::string path_str=get_buffer()->get_text(start_iter, end_iter);
+#ifdef _WIN32
+      const static REGEX_NS::regex path_regex("^([A-Z]:[^:]+):([0-9]+):([0-9]+)$");
+#else
       const static REGEX_NS::regex path_regex("^([^:]+):([0-9]+):([0-9]+)$");
+#endif
       REGEX_NS::smatch sm;
       if(REGEX_NS::regex_match(path_str, sm, path_regex)) {
         boost::system::error_code ec;
