@@ -357,8 +357,10 @@ bool Terminal::on_button_press_event(GdkEventButton* button_event) {
         auto path_str=sm[1].str()+sm[2].str();
         boost::system::error_code ec;
         auto path=boost::filesystem::canonical(path_str, ec);
-        if(ec)
-          path=boost::filesystem::canonical(Project::current_language->build->get_default_build_path()/path_str, ec);
+        if(ec) {
+          if(Project::current_language)
+            path=boost::filesystem::canonical(Project::current_language->build->get_default_build_path()/path_str, ec);
+        }
         if(!ec && boost::filesystem::is_regular_file(path)) {
           Notebook::get().open(path);
           if(Notebook::get().get_current_page()!=-1) {
