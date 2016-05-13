@@ -333,17 +333,8 @@ Source::View::View(const boost::filesystem::path &file_path, Glib::RefPtr<Gsv::L
         get_buffer()->set_text(stdout_stream.str());
         get_source_buffer()->end_user_action();
         
-        cursor_line_nr=std::min(cursor_line_nr, get_buffer()->get_line_count()-1);
-        if(cursor_line_nr>=0) {
-          iter=get_buffer()->get_iter_at_line(cursor_line_nr);
-          for(int c=0;c<cursor_line_offset;c++) {
-            if(iter.ends_line())
-              break;
-            iter.forward_char();
-          }
-          get_buffer()->place_cursor(iter);
-          scroll_to_cursor_delayed(this, true, false);
-        }
+        place_cursor_at_line_offset(cursor_line_nr, cursor_line_offset);
+        scroll_to_cursor_delayed(this, true, false);
       }
     };
   }
@@ -797,6 +788,28 @@ Gtk::TextIter Source::View::get_iter_for_dialog() {
     get_iter_at_location(iter, 0, visible_rect.get_y()+visible_rect.get_height()/3);
   }
   return iter;
+}
+
+void Source::View::place_cursor_at_line_offset(int line, int offset) {
+  line=std::min(line, get_buffer()->get_line_count()-1);
+  if(line<0)
+    line=0;
+  auto iter=get_buffer()->get_iter_at_line(line);
+  while(!iter.ends_line())
+    iter.forward_char();
+  offset=std::min(offset, iter.get_line_offset());
+  get_buffer()->place_cursor(get_buffer()->get_iter_at_line_offset(line, offset));
+}
+
+void Source::View::place_cursor_at_line_index(int line, int index) {
+  line=std::min(line, get_buffer()->get_line_count()-1);
+  if(line<0)
+    line=0;
+  auto iter=get_buffer()->get_iter_at_line(line);
+  while(!iter.ends_line())
+    iter.forward_char();
+  index=std::min(index, iter.get_line_index());
+  get_buffer()->place_cursor(get_buffer()->get_iter_at_line_index(line, index));
 }
 
 void Source::View::set_status(const std::string &status) {

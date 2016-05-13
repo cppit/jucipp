@@ -437,20 +437,11 @@ void Window::set_menu_actions() {
           if(ec)
             return;
           notebook.open(declaration_file);
+          auto view=notebook.get_current_view();
           auto line=static_cast<int>(location.line)-1;
           auto index=static_cast<int>(location.index)-1;
-          auto view=notebook.get_current_view();
-          line=std::min(line, view->get_buffer()->get_line_count()-1);
-          if(line>=0) {
-            auto iter=view->get_buffer()->get_iter_at_line(line);
-            while(!iter.ends_line())
-              iter.forward_char();
-            auto end_line_index=iter.get_line_index();
-            index=std::min(index, end_line_index);
-            
-            view->get_buffer()->place_cursor(view->get_buffer()->get_iter_at_line_index(line, index));
-            view->scroll_to_cursor_delayed(view, true, false);
-          }
+          view->place_cursor_at_line_index(line, index);
+          view->scroll_to_cursor_delayed(view, true, false);
         }
       }
     }
@@ -472,20 +463,11 @@ void Window::set_menu_actions() {
                 if(ec)
                   return;
                 notebook.open(implementation_path);
+                auto view=notebook.get_current_view();
                 auto line=static_cast<int>(location.line)-1;
                 auto index=static_cast<int>(location.index)-1;
-                auto view=notebook.get_current_view();
-                line=std::min(line, view->get_buffer()->get_line_count()-1);
-                if(line>=0) {
-                  auto iter=view->get_buffer()->get_iter_at_line(line);
-                  while(!iter.ends_line())
-                    iter.forward_char();
-                  auto end_line_index=iter.get_line_index();
-                  index=std::min(index, end_line_index);
-                  
-                  view->get_buffer()->place_cursor(view->get_buffer()->get_iter_at_line_index(line, index));
-                  view->scroll_to_cursor_delayed(view, true, false);
-                }
+                view->place_cursor_at_line_index(line, index);
+                view->scroll_to_cursor_delayed(view, true, false);
                 return;
               }
             }
@@ -540,7 +522,7 @@ void Window::set_menu_actions() {
               return;
             notebook.open(declaration_file);
             auto view=notebook.get_current_view();
-            view->get_buffer()->place_cursor(view->get_buffer()->get_iter_at_line_index(offset.line, offset.index));
+            view->place_cursor_at_line_index(offset.line, offset.index);
             view->scroll_to(view->get_buffer()->get_insert(), 0.0, 1.0, 0.5);
             view->delayed_tooltips_connection.disconnect();
           };
@@ -775,19 +757,10 @@ void Window::set_menu_actions() {
         if(notebook.get_current_page()!=-1) {
           auto view=notebook.get_current_view();
           
-          int line_nr=Project::debug_stop.second.first-1;
-          int line_index=Project::debug_stop.second.second-1;
-          if(line_nr<view->get_buffer()->get_line_count()) {
-            auto iter=view->get_buffer()->get_iter_at_line(line_nr);
-            auto end_line_iter=iter;
-            while(!iter.ends_line() && iter.forward_char()) {}
-            auto line=view->get_buffer()->get_text(iter, end_line_iter);
-            if(static_cast<size_t>(line_index)>=line.bytes())
-              line_index=0;
-            view->get_buffer()->place_cursor(view->get_buffer()->get_iter_at_line_index(line_nr, line_index));
-            
-            view->scroll_to_cursor_delayed(view, true, true);
-          }
+          int line=Project::debug_stop.second.first-1;
+          int index=Project::debug_stop.second.second-1;
+          view->place_cursor_at_line_index(line, index);
+          view->scroll_to_cursor_delayed(view, true, true);
           Project::debug_update_stop();
         }
       }
@@ -1089,13 +1062,8 @@ void Window::goto_line_entry() {
       if(notebook.get_current_page()!=-1) {
         auto view=notebook.get_current_view();
         try {
-          auto line = stoi(content);
-          if(line>0 && line<=view->get_buffer()->get_line_count()) {
-            line--;
-            
-            view->get_buffer()->place_cursor(view->get_buffer()->get_iter_at_line(line));
-            view->scroll_to_cursor_delayed(view, true, false);
-          }
+          view->place_cursor_at_line_index(stoi(content)-1, 0);
+          view->scroll_to_cursor_delayed(view, true, false);
         }
         catch(const std::exception &e) {}  
         EntryBox::get().hide();

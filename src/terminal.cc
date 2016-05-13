@@ -340,6 +340,7 @@ void Terminal::clear() {
 }
 
 bool Terminal::on_button_press_event(GdkEventButton* button_event) {
+  //open clicked link in terminal
   if(button_event->type==GDK_BUTTON_PRESS && button_event->button==GDK_BUTTON_PRIMARY) {
     Gtk::TextIter iter;
     int location_x, location_y;
@@ -350,34 +351,24 @@ bool Terminal::on_button_press_event(GdkEventButton* button_event) {
     if(iter.has_tag(link_tag) &&
        start_iter.backward_to_tag_toggle(link_tag) && end_iter.forward_to_tag_toggle(link_tag)) {
       std::string path_str=get_buffer()->get_text(start_iter, end_iter);
-#ifdef _WIN32
-      const static REGEX_NS::regex path_regex("^([A-Z]:[^:]+):([0-9]+):([0-9]+)$");
-#else
-      const static REGEX_NS::regex path_regex("^([^:]+):([0-9]+):([0-9]+)$");
-#endif
+      const static REGEX_NS::regex path_regex("^([A-Z]:)?([^:]+):([0-9]+):([0-9]+)$");
       REGEX_NS::smatch sm;
       if(REGEX_NS::regex_match(path_str, sm, path_regex)) {
+        auto path_str=sm[1].str()+sm[2].str();
         boost::system::error_code ec;
-        auto path=boost::filesystem::canonical(sm[1].str(), ec);
+        auto path=boost::filesystem::canonical(path_str, ec);
+        if(ec)
+          path=boost::filesystem::canonical(Project::current_language->build->get_default_build_path()/path_str, ec);
         if(!ec && boost::filesystem::is_regular_file(path)) {
           Notebook::get().open(path);
           if(Notebook::get().get_current_page()!=-1) {
             auto view=Notebook::get().get_current_view();
             try {
-              int line = std::stoi(sm[2].str())-1;
-              int index = std::stoi(sm[3].str())-1;
-              line=std::min(line, view->get_buffer()->get_line_count()-1);
-              if(line>=0) {
-                auto iter=view->get_buffer()->get_iter_at_line(line);
-                while(!iter.ends_line())
-                  iter.forward_char();
-                auto end_line_index=iter.get_line_index();
-                index=std::min(index, end_line_index);
-                
-                view->get_buffer()->place_cursor(view->get_buffer()->get_iter_at_line_index(line, index));
-                view->scroll_to_cursor_delayed(view, true, true);
-                return true;
-              }
+              int line = std::stoi(sm[3].str())-1;
+              int index = std::stoi(sm[4].str())-1;
+              view->place_cursor_at_line_index(line, index);
+              view->scroll_to_cursor_delayed(view, true, true);
+              return true;
             }
             catch(const std::exception &) {}
           }

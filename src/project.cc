@@ -380,12 +380,8 @@ void Project::Clang::debug_backtrace() {
           
           Debug::Clang::get().select_frame(frame.index);
           
-          view->get_buffer()->place_cursor(view->get_buffer()->get_iter_at_line_index(frame.line_nr-1, frame.line_index-1));
-          
-          while(g_main_context_pending(NULL))
-            g_main_context_iteration(NULL, false);
-          if(Notebook::get().get_current_page()!=-1 && Notebook::get().get_current_view()==view)
-            view->scroll_to(view->get_buffer()->get_insert(), 0.0, 1.0, 0.5);
+          view->place_cursor_at_line_index(frame.line_nr-1, frame.line_index-1);
+          view->scroll_to_cursor_delayed(view, true, true);
         }
       }
     };
@@ -420,12 +416,8 @@ void Project::Clang::debug_show_variables() {
           
           Debug::Clang::get().select_frame(variable.frame_index, variable.thread_index_id);
           
-          view->get_buffer()->place_cursor(view->get_buffer()->get_iter_at_line_index(variable.line_nr-1, variable.line_index-1));
-          
-          while(g_main_context_pending(NULL))
-            g_main_context_iteration(NULL, false);
-          if(Notebook::get().get_current_page()!=-1 && Notebook::get().get_current_view()==view)
-            view->scroll_to(view->get_buffer()->get_insert(), 0.0, 1.0, 0.5);
+          view->place_cursor_at_line_index(variable.line_nr-1, variable.line_index-1);
+          view->scroll_to_cursor_delayed(view, true, true);
         }
       }
     };
