@@ -12,26 +12,26 @@ namespace Project {
     
     boost::filesystem::path project_path;
     
-    boost::filesystem::path get_default_build_path();
-    virtual bool update_default_build(bool force=false) {return false;}
-    boost::filesystem::path get_debug_build_path();
-    virtual bool update_debug_build(bool force=false) {return false;}
+    boost::filesystem::path get_default_path();
+    virtual bool update_default(bool force=false) {return false;}
+    boost::filesystem::path get_debug_path();
+    virtual bool update_debug(bool force=false) {return false;}
     
     virtual boost::filesystem::path get_executable(const boost::filesystem::path &path) {return boost::filesystem::path();}
+    
+    static std::unique_ptr<Build> create(const boost::filesystem::path &path);
   };
   
-  class CMake : public Build {
+  class CMakeBuild : public Build {
     ::CMake cmake;
   public:
-    CMake(const boost::filesystem::path &path);
+    CMakeBuild(const boost::filesystem::path &path);
     
-    bool update_default_build(bool force=false) override;
-    bool update_debug_build(bool force=false) override;
+    bool update_default(bool force=false) override;
+    bool update_debug(bool force=false) override;
     
     boost::filesystem::path get_executable(const boost::filesystem::path &path) override;
   };
-  
-  std::unique_ptr<Build> get_build(const boost::filesystem::path &path);
 }
 
 #endif // JUCI_PROJECT_BUILD_H_

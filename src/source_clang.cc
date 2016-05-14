@@ -174,9 +174,9 @@ void Source::ClangViewParse::soft_reparse() {
 }
 
 std::vector<std::string> Source::ClangViewParse::get_compilation_commands() {
-  auto build=Project::get_build(file_path);
-  auto default_build_path=build->get_default_build_path();
-  build->update_default_build();
+  auto build=Project::Build::create(file_path);
+  auto default_build_path=build->get_default_path();
+  build->update_default();
   clang::CompilationDatabase db(default_build_path.string());
   clang::CompileCommands commands(file_path.string(), db);
   std::vector<clang::CompileCommand> cmds = commands.get_commands();

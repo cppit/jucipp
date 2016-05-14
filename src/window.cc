@@ -558,7 +558,7 @@ void Window::set_menu_actions() {
   });
   
   menu.add_action("project_set_run_arguments", [this]() {
-    auto project_language=Project::get_language();
+    auto project_language=Project::create();
     auto run_arguments=std::make_shared<std::pair<std::string, std::string> >(project_language->get_run_arguments());
     if(run_arguments->second.empty())
       return;
@@ -587,12 +587,12 @@ void Window::set_menu_actions() {
       return;
     }
     
-    Project::current_language=Project::get_language();
+    Project::current=Project::create();
     
     if(Config::get().project.save_on_compile_or_run)
-      Project::save_files(Project::current_language->build->project_path);
+      Project::save_files(Project::current->build->project_path);
     
-    Project::current_language->compile_and_run();
+    Project::current->compile_and_run();
   });
   menu.add_action("compile", [this]() {
     if(Project::compiling || Project::debugging) {
@@ -600,12 +600,12 @@ void Window::set_menu_actions() {
       return;
     }
             
-    Project::current_language=Project::get_language();
+    Project::current=Project::create();
     
     if(Config::get().project.save_on_compile_or_run)
-      Project::save_files(Project::current_language->build->project_path);
+      Project::save_files(Project::current->build->project_path);
     
-    Project::current_language->compile();
+    Project::current->compile();
   });
   
   menu.add_action("run_command", [this]() {
@@ -645,7 +645,7 @@ void Window::set_menu_actions() {
   
 #ifdef JUCI_ENABLE_DEBUG
   menu.add_action("debug_set_run_arguments", [this]() {
-    auto project_language=Project::get_language();
+    auto project_language=Project::create();
     auto run_arguments=std::make_shared<std::pair<std::string, std::string> >(project_language->debug_get_run_arguments());
     if(run_arguments->second.empty())
       return;
@@ -674,51 +674,51 @@ void Window::set_menu_actions() {
       return;
     }
     else if(Project::debugging) {
-      Project::current_language->debug_continue();
+      Project::current->debug_continue();
       return;
     }
         
-    Project::current_language=Project::get_language();
+    Project::current=Project::create();
     
     if(Config::get().project.save_on_compile_or_run)
-      Project::save_files(Project::current_language->build->project_path);
+      Project::save_files(Project::current->build->project_path);
     
-    Project::current_language->debug_start();
+    Project::current->debug_start();
   });
   menu.add_action("debug_stop", [this]() {
-    if(Project::current_language)
-      Project::current_language->debug_stop();
+    if(Project::current)
+      Project::current->debug_stop();
   });
   menu.add_action("debug_kill", [this]() {
-    if(Project::current_language)
-      Project::current_language->debug_kill();
+    if(Project::current)
+      Project::current->debug_kill();
   });
   menu.add_action("debug_step_over", [this]() {
-    if(Project::current_language)
-      Project::current_language->debug_step_over();
+    if(Project::current)
+      Project::current->debug_step_over();
   });
   menu.add_action("debug_step_into", [this]() {
-    if(Project::current_language)
-      Project::current_language->debug_step_into();
+    if(Project::current)
+      Project::current->debug_step_into();
   });
   menu.add_action("debug_step_out", [this]() {
-    if(Project::current_language)
-      Project::current_language->debug_step_out();
+    if(Project::current)
+      Project::current->debug_step_out();
   });
   menu.add_action("debug_backtrace", [this]() {
-    if(Project::current_language)
-      Project::current_language->debug_backtrace();
+    if(Project::current)
+      Project::current->debug_backtrace();
   });
   menu.add_action("debug_show_variables", [this]() {
-    if(Project::current_language)
-      Project::current_language->debug_show_variables();
+    if(Project::current)
+      Project::current->debug_show_variables();
   });
   menu.add_action("debug_run_command", [this]() {
     EntryBox::get().clear();
     EntryBox::get().entries.emplace_back(last_run_debug_command, [this](const std::string& content){
       if(content!="") {
-        if(Project::current_language)
-          Project::current_language->debug_run_command(content);
+        if(Project::current)
+          Project::current->debug_run_command(content);
         last_run_debug_command=content;
       }
       EntryBox::get().hide();
@@ -740,13 +740,13 @@ void Window::set_menu_actions() {
         auto end_iter=start_iter;
         while(!end_iter.ends_line() && end_iter.forward_char()) {}
         view->get_source_buffer()->remove_source_marks(start_iter, end_iter, "debug_breakpoint");
-        if(Project::current_language && Project::debugging)
-          Project::current_language->debug_remove_breakpoint(view->file_path, line_nr+1, view->get_buffer()->get_line_count()+1);
+        if(Project::current && Project::debugging)
+          Project::current->debug_remove_breakpoint(view->file_path, line_nr+1, view->get_buffer()->get_line_count()+1);
       }
       else {
         view->get_source_buffer()->create_source_mark("debug_breakpoint", view->get_buffer()->get_insert()->get_iter());
-        if(Project::current_language && Project::debugging)
-          Project::current_language->debug_add_breakpoint(view->file_path, line_nr+1);
+        if(Project::current && Project::debugging)
+          Project::current->debug_add_breakpoint(view->file_path, line_nr+1);
       }
     }
   });
@@ -880,8 +880,8 @@ bool Window::on_delete_event(GdkEventAny *event) {
   }
   Terminal::get().kill_async_processes();
 #ifdef JUCI_ENABLE_DEBUG
-  if(Project::current_language)
-    Project::current_language->debug_delete();
+  if(Project::current)
+    Project::current->debug_delete();
 #endif
   return false;
 }
