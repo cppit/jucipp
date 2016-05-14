@@ -32,13 +32,13 @@ namespace Project {
     
     std::unique_ptr<Build> build;
     
-    virtual std::pair<std::string, std::string> get_run_arguments() {return {"", ""};}
-    virtual void compile() {}
-    virtual void compile_and_run() {}
+    virtual std::pair<std::string, std::string> get_run_arguments();
+    virtual void compile();
+    virtual void compile_and_run();
     
-    virtual std::pair<std::string, std::string> debug_get_run_arguments() {return {"", ""};}
+    virtual std::pair<std::string, std::string> debug_get_run_arguments();
     Tooltips debug_variable_tooltips;
-    virtual void debug_start() {}
+    virtual void debug_start();
     virtual void debug_continue() {}
     virtual void debug_stop() {}
     virtual void debug_kill() {}

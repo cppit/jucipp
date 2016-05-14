@@ -1,15 +1,12 @@
 #include "project_build.h"
 #include "config.h"
-#include "info.h"
 
 std::unique_ptr<Project::Build> Project::Build::create(const boost::filesystem::path &path) {
   std::unique_ptr<Project::Build> cmake(new CMakeBuild(path));
   if(!cmake->project_path.empty())
     return cmake;
-  else {
-    Info::get().print("Could not find a supported project");
+  else
     return std::unique_ptr<Project::Build>(new Project::Build());
-  }
 }
 
 boost::filesystem::path Project::Build::get_default_path() {

@@ -9,6 +9,7 @@
 #ifdef JUCI_ENABLE_DEBUG
 #include "debug_clang.h"
 #endif
+#include "info.h"
 
 boost::filesystem::path Project::debug_last_stop_file_path;
 std::unordered_map<std::string, std::string> Project::run_arguments;
@@ -132,8 +133,31 @@ std::unique_ptr<Project::Base> Project::create() {
     return std::unique_ptr<Project::Base>(new Project::Base(std::move(build)));
 }
 
+std::pair<std::string, std::string> Project::Base::get_run_arguments() {
+  Info::get().print("Could not find a supported project");
+  return {"", ""};
+}
+
+void Project::Base::compile() {
+  Info::get().print("Could not find a supported project");
+}
+
+void Project::Base::compile_and_run() {
+  Info::get().print("Could not find a supported project");
+}
+
+std::pair<std::string, std::string> Project::Base::debug_get_run_arguments() {
+  Info::get().print("Could not find a supported project");
+  return {"", ""};
+}
+
+void Project::Base::debug_start() {
+  Info::get().print("Could not find a supported project");
+}
+
 std::pair<std::string, std::string> Project::Clang::get_run_arguments() {
-  if(build->get_default_path().empty() || !build->update_default())
+  auto build_path=build->get_default_path();
+  if(build_path.empty())
     return {"", ""};
   
   auto project_path=build->project_path.string();
@@ -146,13 +170,9 @@ std::pair<std::string, std::string> Project::Clang::get_run_arguments() {
     auto executable=build->get_executable(Notebook::get().get_current_page()!=-1?Notebook::get().get_current_view()->file_path:"").string();
     
     if(executable!="") {
-      auto project_path=build->project_path;
-      auto build_path=build->get_default_path();
-      if(!build_path.empty()) {
-        size_t pos=executable.find(project_path.string());
-        if(pos!=std::string::npos)
-          executable.replace(pos, project_path.string().size(), build_path.string());
-      }
+      size_t pos=executable.find(project_path);
+      if(pos!=std::string::npos)
+        executable.replace(pos, project_path.size(), build_path.string());
       arguments=filesystem::escape_argument(executable);
     }
     else
@@ -219,7 +239,8 @@ void Project::Clang::compile_and_run() {
 
 #ifdef JUCI_ENABLE_DEBUG
 std::pair<std::string, std::string> Project::Clang::debug_get_run_arguments() {
-  if(build->get_default_path().empty() || !build->update_default())
+  auto build_path=build->get_debug_path();
+  if(build_path.empty())
     return {"", ""};
   
   auto project_path=build->project_path.string();
@@ -232,13 +253,9 @@ std::pair<std::string, std::string> Project::Clang::debug_get_run_arguments() {
     auto executable=build->get_executable(Notebook::get().get_current_page()!=-1?Notebook::get().get_current_view()->file_path:"").string();
     
     if(executable!="") {
-      auto project_path=build->project_path;
-      auto build_path=build->get_debug_path();
-      if(!build_path.empty()) {
-        size_t pos=executable.find(project_path.string());
-        if(pos!=std::string::npos)
-          executable.replace(pos, project_path.string().size(), build_path.string());
-      }
+      size_t pos=executable.find(project_path);
+      if(pos!=std::string::npos)
+        executable.replace(pos, project_path.size(), build_path.string());
       arguments=filesystem::escape_argument(executable);
     }
     else
