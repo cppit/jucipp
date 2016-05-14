@@ -227,6 +227,7 @@ bool Notebook::save(int page) {
     }
     
     if(filesystem::write(view->file_path, view->get_buffer())) {
+      view->last_read_time=std::chrono::system_clock::to_time_t(std::chrono::system_clock::now());
       if(auto clang_view=dynamic_cast<Source::ClangView*>(view)) {
         if(clang_view->language->get_id()=="chdr" || clang_view->language->get_id()=="cpphdr") {
           for(auto a_view: source_views) {

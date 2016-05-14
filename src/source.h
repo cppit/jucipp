@@ -125,6 +125,7 @@ namespace Source {
     bool full_reparse_needed=false;
     virtual void soft_reparse() {soft_reparse_needed=false;}
     virtual bool full_reparse() {full_reparse_needed=false; return true;}
+    std::time_t last_read_time;
   protected:
     bool parsed=false;
     Tooltips diagnostic_tooltips;
@@ -161,6 +162,7 @@ namespace Source {
     bool on_key_press_event_bracket_language(GdkEventKey* key);
     bool is_bracket_language=false;
     bool on_button_press_event(GdkEventButton *event) override;
+    bool on_focus_in_event(GdkEventFocus* focus_event) override;
     
     std::pair<char, unsigned> find_tab_char_and_size();
     unsigned tab_size;

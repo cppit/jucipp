@@ -2,6 +2,7 @@
 #include "config.h"
 #include "filesystem.h"
 #include "terminal.h"
+#include "info.h"
 #include <gtksourceview/gtksource.h>
 #include <boost/property_tree/json_parser.hpp>
 #include <boost/spirit/home/qi/char.hpp>
@@ -91,6 +92,7 @@ AspellConfig* Source::View::spellcheck_config=NULL;
 
 Source::View::View(const boost::filesystem::path &file_path, Glib::RefPtr<Gsv::Language> language): file_path(file_path), language(language) {
   get_source_buffer()->begin_not_undoable_action();
+  last_read_time=std::chrono::system_clock::to_time_t(std::chrono::system_clock::now());
   if(language) {
     if(filesystem::read_non_utf8(file_path, get_buffer())==-1)
       Terminal::get().print("Warning: "+file_path.string()+" is not a valid UTF-8 file. Saving might corrupt the file.\n");
@@ -1570,6 +1572,12 @@ bool Source::View::on_button_press_event(GdkEventButton *event) {
   
   return Gsv::View::on_button_press_event(event);
 }
+
+bool Source::View::on_focus_in_event(GdkEventFocus* focus_event){
+  if(boost::filesystem::last_write_time(file_path)>last_read_time)
+    Info::get().print(file_path.filename().string() + " was changed outside juCi++, continue with caution.");
+  return Gtk::Widget::on_focus_in_event(focus_event);
+};
 
 std::pair<char, unsigned> Source::View::find_tab_char_and_size() {
   std::unordered_map<char, size_t> tab_chars;
