@@ -558,8 +558,8 @@ void Window::set_menu_actions() {
   });
   
   menu.add_action("project_set_run_arguments", [this]() {
-    auto project_language=Project::create();
-    auto run_arguments=std::make_shared<std::pair<std::string, std::string> >(project_language->get_run_arguments());
+    auto project=Project::create();
+    auto run_arguments=std::make_shared<std::pair<std::string, std::string> >(project->get_run_arguments());
     if(run_arguments->second.empty())
       return;
     
@@ -645,8 +645,8 @@ void Window::set_menu_actions() {
   
 #ifdef JUCI_ENABLE_DEBUG
   menu.add_action("debug_set_run_arguments", [this]() {
-    auto project_language=Project::create();
-    auto run_arguments=std::make_shared<std::pair<std::string, std::string> >(project_language->debug_get_run_arguments());
+    auto project=Project::create();
+    auto run_arguments=std::make_shared<std::pair<std::string, std::string> >(project->debug_get_run_arguments());
     if(run_arguments->second.empty())
       return;
     
