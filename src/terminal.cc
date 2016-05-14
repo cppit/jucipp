@@ -362,8 +362,8 @@ bool Terminal::on_button_press_event(GdkEventButton* button_event) {
         auto path=boost::filesystem::path(path_str);
         boost::system::error_code ec;
         if(path.is_relative()) {
-          if(Project::current_language)
-            path=boost::filesystem::canonical(Project::current_language->build->get_default_build_path()/path_str, ec);
+          if(Project::current)
+            path=boost::filesystem::canonical(Project::current->build->get_default_path()/path_str, ec);
           else
             return Gtk::TextView::on_button_press_event(button_event);
         }
@@ -393,7 +393,7 @@ bool Terminal::on_key_press_event(GdkEventKey *event) {
   std::unique_lock<std::mutex> lock(processes_mutex);
   bool debug_is_running=false;
 #ifdef JUCI_ENABLE_DEBUG
-  debug_is_running=Project::current_language?Project::current_language->debug_is_running():false;
+  debug_is_running=Project::current?Project::current->debug_is_running():false;
 #endif
   if(processes.size()>0 || debug_is_running) {
     get_buffer()->place_cursor(get_buffer()->end());
@@ -415,7 +415,7 @@ bool Terminal::on_key_press_event(GdkEventKey *event) {
       stdin_buffer+='\n';
       if(debug_is_running) {
 #ifdef JUCI_ENABLE_DEBUG
-        Project::current_language->debug_write(stdin_buffer);
+        Project::current->debug_write(stdin_buffer);
 #endif
       }
       else

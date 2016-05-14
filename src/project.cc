@@ -16,7 +16,7 @@ std::unordered_map<std::string, std::string> Project::debug_run_arguments;
 std::atomic<bool> Project::compiling(false);
 std::atomic<bool> Project::debugging(false);
 std::pair<boost::filesystem::path, std::pair<int, int> > Project::debug_stop;
-std::unique_ptr<Project::Language> Project::current_language;
+std::unique_ptr<Project::Base> Project::current;
 
 Gtk::Label &Project::debug_status_label() {
   static Gtk::Label label;
@@ -47,11 +47,11 @@ void Project::on_save(int page) {
       cmake_path=filesystem::find_file_in_path_parents("CMakeLists.txt", view->file_path.parent_path());
     
     if(!cmake_path.empty()) {
-      auto build=get_build(cmake_path);
-      if(dynamic_cast<CMake*>(build.get())) {
-        build->update_default_build(true);
-        if(boost::filesystem::exists(build->get_debug_build_path()))
-          build->update_debug_build(true);
+      auto build=Build::create(cmake_path);
+      if(dynamic_cast<CMakeBuild*>(build.get())) {
+        build->update_default(true);
+        if(boost::filesystem::exists(build->get_debug_path()))
+          build->update_debug(true);
         
         for(int c=0;c<Notebook::get().size();c++) {
           auto source_view=Notebook::get().get_view(c);
@@ -105,35 +105,35 @@ void Project::debug_update_stop() {
     Notebook::get().get_current_view()->get_buffer()->place_cursor(Notebook::get().get_current_view()->get_buffer()->get_insert()->get_iter());
 }
 
-std::unique_ptr<Project::Language> Project::get_language() {
+std::unique_ptr<Project::Base> Project::create() {
   std::unique_ptr<Project::Build> build;
   
   if(Notebook::get().get_current_page()!=-1) {
     auto view=Notebook::get().get_current_view();
-    build=get_build(view->file_path);
+    build=Build::create(view->file_path);
     if(view->language) {
       auto language_id=view->language->get_id();
       if(language_id=="markdown")
-        return std::unique_ptr<Project::Language>(new Project::Markdown(std::move(build)));
+        return std::unique_ptr<Project::Base>(new Project::Markdown(std::move(build)));
       if(language_id=="python")
-        return std::unique_ptr<Project::Language>(new Project::Python(std::move(build)));
+        return std::unique_ptr<Project::Base>(new Project::Python(std::move(build)));
       if(language_id=="js")
-        return std::unique_ptr<Project::Language>(new Project::JavaScript(std::move(build)));
+        return std::unique_ptr<Project::Base>(new Project::JavaScript(std::move(build)));
       if(language_id=="html")
-        return std::unique_ptr<Project::Language>(new Project::HTML(std::move(build)));
+        return std::unique_ptr<Project::Base>(new Project::HTML(std::move(build)));
     }
   }
   else
-    build=get_build(Directories::get().path);
+    build=Build::create(Directories::get().path);
   
-  if(dynamic_cast<CMake*>(build.get()))
-    return std::unique_ptr<Project::Language>(new Project::Clang(std::move(build)));
+  if(dynamic_cast<CMakeBuild*>(build.get()))
+    return std::unique_ptr<Project::Base>(new Project::Clang(std::move(build)));
   else
-    return std::unique_ptr<Project::Language>(new Project::Language(std::move(build)));
+    return std::unique_ptr<Project::Base>(new Project::Base(std::move(build)));
 }
 
 std::pair<std::string, std::string> Project::Clang::get_run_arguments() {
-  if(build->get_default_build_path().empty() || !build->update_default_build())
+  if(build->get_default_path().empty() || !build->update_default())
     return {"", ""};
   
   auto project_path=build->project_path.string();
@@ -147,7 +147,7 @@ std::pair<std::string, std::string> Project::Clang::get_run_arguments() {
     
     if(executable!="") {
       auto project_path=build->project_path;
-      auto build_path=build->get_default_build_path();
+      auto build_path=build->get_default_path();
       if(!build_path.empty()) {
         size_t pos=executable.find(project_path.string());
         if(pos!=std::string::npos)
@@ -156,15 +156,15 @@ std::pair<std::string, std::string> Project::Clang::get_run_arguments() {
       arguments=filesystem::escape_argument(executable);
     }
     else
-      arguments=filesystem::escape_argument(build->get_default_build_path());
+      arguments=filesystem::escape_argument(build->get_default_path());
   }
   
   return {project_path, arguments};
 }
 
 void Project::Clang::compile() {
-  auto default_build_path=build->get_default_build_path();
-  if(default_build_path.empty() || !build->update_default_build())
+  auto default_build_path=build->get_default_path();
+  if(default_build_path.empty() || !build->update_default())
     return;
   
   if(Config::get().project.clear_terminal_on_compile)
@@ -178,8 +178,8 @@ void Project::Clang::compile() {
 }
 
 void Project::Clang::compile_and_run() {
-  auto default_build_path=build->get_default_build_path();
-  if(default_build_path.empty() || !build->update_default_build())
+  auto default_build_path=build->get_default_path();
+  if(default_build_path.empty() || !build->update_default())
     return;
   
   auto project_path=build->project_path;
@@ -219,7 +219,7 @@ void Project::Clang::compile_and_run() {
 
 #ifdef JUCI_ENABLE_DEBUG
 std::pair<std::string, std::string> Project::Clang::debug_get_run_arguments() {
-  if(build->get_default_build_path().empty() || !build->update_default_build())
+  if(build->get_default_path().empty() || !build->update_default())
     return {"", ""};
   
   auto project_path=build->project_path.string();
@@ -233,7 +233,7 @@ std::pair<std::string, std::string> Project::Clang::debug_get_run_arguments() {
     
     if(executable!="") {
       auto project_path=build->project_path;
-      auto build_path=build->get_debug_build_path();
+      auto build_path=build->get_debug_path();
       if(!build_path.empty()) {
         size_t pos=executable.find(project_path.string());
         if(pos!=std::string::npos)
@@ -242,15 +242,15 @@ std::pair<std::string, std::string> Project::Clang::debug_get_run_arguments() {
       arguments=filesystem::escape_argument(executable);
     }
     else
-      arguments=filesystem::escape_argument(build->get_debug_build_path());
+      arguments=filesystem::escape_argument(build->get_debug_path());
   }
   
   return {project_path, arguments};
 }
 
 void Project::Clang::debug_start() {
-  auto debug_build_path=build->get_debug_build_path();
-  if(debug_build_path.empty() || !build->update_debug_build())
+  auto debug_build_path=build->get_debug_path();
+  if(debug_build_path.empty() || !build->update_debug())
     return;
   auto project_path=build->project_path;
   

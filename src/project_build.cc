@@ -2,8 +2,8 @@
 #include "config.h"
 #include "info.h"
 
-std::unique_ptr<Project::Build> Project::get_build(const boost::filesystem::path &path) {
-  std::unique_ptr<Project::Build> cmake(new CMake(path));
+std::unique_ptr<Project::Build> Project::Build::create(const boost::filesystem::path &path) {
+  std::unique_ptr<Project::Build> cmake(new CMakeBuild(path));
   if(!cmake->project_path.empty())
     return cmake;
   else {
@@ -12,7 +12,7 @@ std::unique_ptr<Project::Build> Project::get_build(const boost::filesystem::path
   }
 }
 
-boost::filesystem::path Project::Build::get_default_build_path() {
+boost::filesystem::path Project::Build::get_default_path() {
   if(project_path.empty())
     return boost::filesystem::path();
     
@@ -35,7 +35,7 @@ boost::filesystem::path Project::Build::get_default_build_path() {
   return default_build_path;
 }
 
-boost::filesystem::path Project::Build::get_debug_build_path() {
+boost::filesystem::path Project::Build::get_debug_path() {
   if(project_path.empty())
     return boost::filesystem::path();
   
@@ -69,18 +69,18 @@ boost::filesystem::path Project::Build::get_debug_build_path() {
   return debug_build_path;
 }
 
-Project::CMake::CMake(const boost::filesystem::path &path) : Project::Build(), cmake(path) {
+Project::CMakeBuild::CMakeBuild(const boost::filesystem::path &path) : Project::Build(), cmake(path) {
   project_path=cmake.project_path;
 }
 
-bool Project::CMake::update_default_build(bool force) {
-  return cmake.update_default_build(get_default_build_path(), force);
+bool Project::CMakeBuild::update_default(bool force) {
+  return cmake.update_default_build(get_default_path(), force);
 }
 
-bool Project::CMake::update_debug_build(bool force) {
-  return cmake.update_debug_build(get_debug_build_path(), force);
+bool Project::CMakeBuild::update_debug(bool force) {
+  return cmake.update_debug_build(get_debug_path(), force);
 }
 
-boost::filesystem::path Project::CMake::get_executable(const boost::filesystem::path &path) {
+boost::filesystem::path Project::CMakeBuild::get_executable(const boost::filesystem::path &path) {
   return cmake.get_executable(path);
 }
