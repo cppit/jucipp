@@ -183,6 +183,7 @@ bool Terminal::on_motion_notify_event(GdkEventMotion *motion_event) {
 
 void Terminal::apply_link_tags(Gtk::TextIter start_iter, Gtk::TextIter end_iter) {
   auto iter=start_iter;
+  int offset=0;
   size_t colons=0;
   Gtk::TextIter start_path_iter;
   bool possible_path=false;
@@ -190,21 +191,24 @@ void Terminal::apply_link_tags(Gtk::TextIter start_iter, Gtk::TextIter end_iter)
   //Simple implementation. Not sure if it is work the effort to make it work 100% on all platforms.
   do {
     if(iter.starts_line()) {
+      offset=0;
+      colons=0;
       start_path_iter=iter;
       possible_path=true;
-      colons=0;
     }
     if(possible_path) {
       if(*iter==' ' || *iter=='\t' || iter.ends_line())
         possible_path=false;
-      if(*iter==':') {
-        colons++;
+      else {
+        ++offset;
+        if(*iter==':') {
 #ifdef _WIN32
-        if(colons==4 && possible_path)
-#else
-        if(colons==3 && possible_path)
+          if(offset!=2)
 #endif
-          get_buffer()->apply_tag(link_tag, start_path_iter, iter);
+            ++colons;
+          if(colons==3 && possible_path)
+            get_buffer()->apply_tag(link_tag, start_path_iter, iter);
+        }
       }
     }
   } while(iter.forward_char() && iter!=end_iter);
@@ -355,12 +359,16 @@ bool Terminal::on_button_press_event(GdkEventButton* button_event) {
       REGEX_NS::smatch sm;
       if(REGEX_NS::regex_match(path_str, sm, path_regex)) {
         auto path_str=sm[1].str()+sm[2].str();
+        auto path=boost::filesystem::path(path_str);
         boost::system::error_code ec;
-        auto path=boost::filesystem::canonical(path_str, ec);
-        if(ec) {
+        if(path.is_relative()) {
           if(Project::current_language)
             path=boost::filesystem::canonical(Project::current_language->build->get_default_build_path()/path_str, ec);
+          else
+            return Gtk::TextView::on_button_press_event(button_event);
         }
+        else
+          path=boost::filesystem::canonical(path_str, ec);
         if(!ec && boost::filesystem::is_regular_file(path)) {
           Notebook::get().open(path);
           if(Notebook::get().get_current_page()!=-1) {
