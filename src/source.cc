@@ -1574,9 +1574,11 @@ bool Source::View::on_button_press_event(GdkEventButton *event) {
 }
 
 bool Source::View::on_focus_in_event(GdkEventFocus* focus_event){
-  if(boost::filesystem::last_write_time(file_path)>last_read_time)
+  boost::system::error_code ec;
+  auto last_write_time=boost::filesystem::last_write_time(file_path, ec);
+  if(!ec && last_write_time>last_read_time)
     Info::get().print(file_path.filename().string() + " was changed outside juCi++, continue with caution.");
-  return Gtk::Widget::on_focus_in_event(focus_event);
+  return Gsv::View::on_focus_in_event(focus_event);
 };
 
 std::pair<char, unsigned> Source::View::find_tab_char_and_size() {
