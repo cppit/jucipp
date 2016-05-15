@@ -38,9 +38,6 @@ Info::Info() {
 }
 
 void Info::print(const std::string &text) {
-  if(!enabled)
-    return;
-  
   timeout_connection.disconnect();
   //Timeout based on https://en.wikipedia.org/wiki/Words_per_minute
   //(average_words_per_minute*average_letters_per_word)/60 => (228*4.5)/60 = 17.1

@@ -12,7 +12,6 @@ public:
   }
   
   void print(const std::string &text);
-  bool enabled=true;
   
 private:
   Gtk::Label label;

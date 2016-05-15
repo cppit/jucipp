@@ -436,7 +436,7 @@ void Window::set_menu_actions() {
     if(notebook.get_current_page()!=-1) {
       if(notebook.get_current_view()->get_declaration_location) {
         auto location=notebook.get_current_view()->get_declaration_location();
-        if(!location.file_path.empty()) {
+        if(location) {
           boost::filesystem::path declaration_file;
           boost::system::error_code ec;
           declaration_file=boost::filesystem::canonical(location.file_path, ec);
@@ -454,72 +454,51 @@ void Window::set_menu_actions() {
   });
   menu.add_action("source_goto_implementation", [this]() {
     if(notebook.get_current_page()!=-1) {
-      auto current_view=notebook.get_current_view();
-      if(current_view->get_token) {
-        auto token=current_view->get_token();
-        if(token) {
-          for(int page=0;page<notebook.size();page++) {
-            auto view=notebook.get_view(page);
-            if(view->get_implementation_location) {
-              auto location=view->get_implementation_location(token);
-              if(!location.file_path.empty()) {
-                boost::filesystem::path implementation_path;
-                boost::system::error_code ec;
-                implementation_path=boost::filesystem::canonical(location.file_path, ec);
-                if(ec)
-                  return;
-                notebook.open(implementation_path);
-                auto view=notebook.get_current_view();
-                auto line=static_cast<int>(location.line)-1;
-                auto index=static_cast<int>(location.index)-1;
-                view->place_cursor_at_line_index(line, index);
-                view->scroll_to_cursor_delayed(view, true, false);
-                return;
-              }
-            }
-          }
-          Info::get().print("Could not find implementation");
+      auto view=notebook.get_current_view();
+      if(view->get_implementation_location) {
+        auto location=view->get_implementation_location(notebook.source_views);
+        if(location) {
+          boost::filesystem::path implementation_path;
+          boost::system::error_code ec;
+          implementation_path=boost::filesystem::canonical(location.file_path, ec);
+          if(ec)
+            return;
+          notebook.open(implementation_path);
+          auto view=notebook.get_current_view();
+          auto line=static_cast<int>(location.line)-1;
+          auto index=static_cast<int>(location.index)-1;
+          view->place_cursor_at_line_index(line, index);
+          view->scroll_to_cursor_delayed(view, true, false);
+          return;
         }
+        Info::get().print("Could not find implementation");
       }
     }
   });
+
   menu.add_action("source_goto_usage", [this]() {
     if(notebook.get_current_page()!=-1) {
-      auto current_view=notebook.get_current_view();
-      if(current_view->get_token && current_view->get_usages) {
-        auto token=current_view->get_token();
-        if(token) {
-          auto iter=current_view->get_iter_for_dialog();
-          current_view->selection_dialog=std::unique_ptr<SelectionDialog>(new SelectionDialog(*current_view, current_view->get_buffer()->create_mark(iter), true, true));
+      auto view=notebook.get_current_view();
+      if(view->get_usages) {
+        auto usages=view->get_usages(notebook.source_views);
+        if(!usages.empty()) {
+          auto iter=view->get_iter_for_dialog();
+          view->selection_dialog=std::unique_ptr<SelectionDialog>(new SelectionDialog(*view, view->get_buffer()->create_mark(iter), true, true));
           auto rows=std::make_shared<std::unordered_map<std::string, Source::Offset> >();
           
-          //First add usages in current file
-          auto usages=current_view->get_usages(token);
           for(auto &usage: usages) {
-            auto iter=current_view->get_buffer()->get_iter_at_line_index(usage.first.line, usage.first.index);
-            auto row=std::to_string(iter.get_line()+1)+':'+std::to_string(iter.get_line_offset()+1)+' '+usage.second;
+            std::string row;
+            //add file name if usage is not in current tab
+            if(view->file_path!=usage.first.file_path)
+              row=usage.first.file_path.filename().string()+":";
+            row+=std::to_string(usage.first.line+1)+": "+usage.second;
             (*rows)[row]=usage.first;
-            current_view->selection_dialog->add_row(row);
-          }
-          //Then the remaining opened files
-          for(int page=0;page<notebook.size();page++) {
-            auto view=notebook.get_view(page);
-            if(view!=current_view) {
-              if(view->get_usages) {
-                auto usages=view->get_usages(token);
-                for(auto &usage: usages) {
-                  auto iter=view->get_buffer()->get_iter_at_line_index(usage.first.line, usage.first.index);
-                  auto row=usage.first.file_path.filename().string()+":"+std::to_string(iter.get_line()+1)+':'+std::to_string(iter.get_line_offset()+1)+' '+usage.second;
-                  (*rows)[row]=usage.first;
-                  current_view->selection_dialog->add_row(row);
-                }
-              }
-            }
+            view->selection_dialog->add_row(row);
           }
           
           if(rows->size()==0)
             return;
-          current_view->selection_dialog->on_select=[this, rows](const std::string& selected, bool hide_window) {
+          view->selection_dialog->on_select=[this, rows](const std::string &selected, bool hide_window) {
             auto offset=rows->at(selected);
             boost::filesystem::path declaration_file;
             boost::system::error_code ec;
@@ -532,7 +511,7 @@ void Window::set_menu_actions() {
             view->scroll_to(view->get_buffer()->get_insert(), 0.0, 1.0, 0.5);
             view->delayed_tooltips_connection.disconnect();
           };
-          current_view->selection_dialog->show();
+          view->selection_dialog->show();
         }
       }
     }
@@ -1087,33 +1066,29 @@ void Window::goto_line_entry() {
 void Window::rename_token_entry() {
   EntryBox::get().clear();
   if(notebook.get_current_page()!=-1) {
-    if(notebook.get_current_view()->get_token) {
-      auto token=std::make_shared<Source::Token>(notebook.get_current_view()->get_token());
-      if(*token) {
+    auto view=notebook.get_current_view();
+    if(view->get_token_spelling && view->rename_similar_tokens) {
+      auto spelling=std::make_shared<std::string>(view->get_token_spelling());
+      if(!spelling->empty()) {
         EntryBox::get().labels.emplace_back();
         auto label_it=EntryBox::get().labels.begin();
         label_it->update=[label_it](int state, const std::string& message){
           label_it->set_text("Warning: only opened and parsed tabs will have its content renamed, and modified files will be saved");
         };
         label_it->update(0, "");
-        EntryBox::get().entries.emplace_back(token->spelling, [this, token](const std::string& content){
-          if(notebook.get_current_page()!=-1 && content!=token->spelling) {
-            std::vector<int> modified_pages;
-            for(int c=0;c<notebook.size();c++) {
-              auto view=notebook.get_view(c);
-              if(view->rename_similar_tokens) {
-                auto number=view->rename_similar_tokens(*token, content);
-                if(number>0) {
-                  Terminal::get().print("Replaced "+std::to_string(number)+" occurrences in file "+view->file_path.string()+"\n");
-                  notebook.save(c);
-                  modified_pages.emplace_back(c);
-                }
-              }
-            }
-            for(auto &page: modified_pages)
-              notebook.get_view(page)->soft_reparse_needed=false;
-            EntryBox::get().hide();
+        auto iter=std::make_shared<Gtk::TextIter>(view->get_buffer()->get_insert()->get_iter());
+        EntryBox::get().entries.emplace_back(*spelling, [this, view, spelling, iter](const std::string& content){
+          //TODO: gtk needs a way to check if iter is valid without dumping g_error message
+          //iter->get_buffer() will print such a message, but no segfault will occur
+          if(notebook.get_current_page()!=-1 && notebook.get_current_view()==view &&
+             content!=*spelling && iter->get_buffer() && view->get_buffer()->get_insert()->get_iter()==*iter) {
+            auto renamed_pairs=view->rename_similar_tokens(notebook.source_views, content);
+            for(auto &renamed: renamed_pairs)
+              Terminal::get().print("Replaced "+std::to_string(renamed.second)+" occurrences in file "+renamed.first.string()+"\n");
           }
+          else
+            Info::get().print("Operation canceled");
+          EntryBox::get().hide();
         });
         auto entry_it=EntryBox::get().entries.begin();
         entry_it->set_placeholder_text("New name");

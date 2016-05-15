@@ -15,7 +15,7 @@ namespace Source {
   protected:
     enum class ParseState {PROCESSING, RESTARTING, STOP};
     enum class ParseProcessState {IDLE, STARTING, PREPROCESSING, PROCESSING, POSTPROCESSING};
-  public:
+    
     class TokenRange {
     public:
       TokenRange(std::pair<clang::Offset, clang::Offset> offsets, int kind):
@@ -24,9 +24,10 @@ namespace Source {
       int kind;
     };
     
+  public:
     ClangViewParse(const boost::filesystem::path &file_path, Glib::RefPtr<Gsv::Language> language);
     
-    bool save(const std::vector<Source::View*> views) override;
+    bool save(const std::vector<Source::View*> &views) override;
     void configure() override;
     
     void soft_reparse() override;
@@ -99,11 +100,24 @@ namespace Source {
   };
 
   class ClangViewRefactor : public ClangViewAutocomplete {
+    class Token {
+    public:
+      Token(clang::CursorKind kind, const std::string &spelling, const std::string &usr) : kind(kind), spelling(spelling), usr(usr) {}
+      Token() : kind(static_cast<clang::CursorKind>(0)) {}
+      operator bool() const { return static_cast<int>(kind)!=0; }
+      bool operator==(const Token &other) const { return (kind==other.kind && spelling==other.spelling && usr==other.usr); }
+      bool operator!=(const Token &other) const { return !(*this==other); }
+      clang::CursorKind kind;
+      std::string spelling;
+      std::string usr;
+    };
   public:
     ClangViewRefactor(const boost::filesystem::path &file_path, Glib::RefPtr<Gsv::Language> language);
   protected:
     sigc::connection delayed_tag_similar_tokens_connection;
   private:
+    Token get_token();
+    
     std::list<std::pair<Glib::RefPtr<Gtk::TextMark>, Glib::RefPtr<Gtk::TextMark> > > similar_token_marks;
     void tag_similar_tokens(const Token &token);
     Glib::RefPtr<Gtk::TextTag> similar_tokens_tag;

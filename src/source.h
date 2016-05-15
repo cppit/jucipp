@@ -26,27 +26,11 @@
 namespace Source {
   Glib::RefPtr<Gsv::Language> guess_language(const boost::filesystem::path &file_path);
   
-  class Token {
-  public:
-    Token(): type(-1) {}
-    Token(Glib::RefPtr<Gsv::Language> language, int type, const std::string &spelling, const std::string &usr): 
-      language(language), type(type), spelling(spelling), usr(usr) {}
-    operator bool() const {return (type>=0 && spelling.size()>0 && usr.size()>0);}
-    bool operator==(const Token &o) const {return (type==o.type &&
-                                                   spelling==o.spelling &&
-                                                   usr==o.usr);}
-    bool operator!=(const Token &o) const {return !(*this==o);}
-    
-    Glib::RefPtr<Gsv::Language> language;
-    int type;
-    std::string spelling;
-    std::string usr;
-  };
-  
   class Offset {
   public:
     Offset() {}
     Offset(unsigned line, unsigned index, const boost::filesystem::path &file_path=""): line(line), index(index), file_path(file_path) {}
+    operator bool() { return !file_path.empty(); }
     bool operator==(const Offset &o) {return (line==o.line && index==o.index);}
     
     unsigned line;
@@ -72,7 +56,7 @@ namespace Source {
     View(const boost::filesystem::path &file_path, Glib::RefPtr<Gsv::Language> language);
     ~View();
     
-    virtual bool save(const std::vector<Source::View*> views);
+    virtual bool save(const std::vector<Source::View*> &views);
     virtual void configure();
     
     void search_highlight(const std::string &text, bool case_sensitive, bool regex);
@@ -90,12 +74,12 @@ namespace Source {
     
     std::function<void()> auto_indent;
     std::function<Offset()> get_declaration_location;
-    std::function<Offset(const Token &token)> get_implementation_location;
-    std::function<std::vector<std::pair<Offset, std::string> >(const Token &token)> get_usages;
+    std::function<Offset(const std::vector<Source::View*> &views)> get_implementation_location;
+    std::function<std::vector<std::pair<Offset, std::string> >(const std::vector<Source::View*> &views)> get_usages;
     std::function<void()> goto_method;
-    std::function<Token()> get_token;
     std::function<std::vector<std::string>()> get_token_data;
-    std::function<size_t(const Token &token, const std::string &text)> rename_similar_tokens;
+    std::function<std::string()> get_token_spelling;
+    std::function<std::vector<std::pair<boost::filesystem::path, size_t> >(const std::vector<Source::View*> &views, const std::string &text)> rename_similar_tokens;
     std::function<void()> goto_next_diagnostic;
     std::function<void()> apply_fix_its;
     

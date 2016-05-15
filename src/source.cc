@@ -395,7 +395,7 @@ Gsv::DrawSpacesFlags Source::View::parse_show_whitespace_characters(const std::s
     static_cast<Gsv::DrawSpacesFlags>(std::accumulate(out.begin(), out.end(), 0));
 }
 
-bool Source::View::save(const std::vector<Source::View*> views) {
+bool Source::View::save(const std::vector<Source::View*> &views) {
   if(file_path.empty() || !get_buffer()->get_modified())
     return false;
   //Remove trailing whitespace characters on save, and add trailing newline if missing
@@ -1617,7 +1617,7 @@ bool Source::View::on_focus_in_event(GdkEventFocus* focus_event){
   boost::system::error_code ec;
   auto last_write_time=boost::filesystem::last_write_time(file_path, ec);
   if(!ec && last_write_time>last_read_time)
-    Info::get().print(file_path.filename().string() + " was changed outside juCi++, continue with caution.");
+    Info::get().print("Caution: " + file_path.filename().string() + " was altered outside of juCi++");
   return Gsv::View::on_focus_in_event(focus_event);
 };
 
