@@ -395,6 +395,46 @@ Gsv::DrawSpacesFlags Source::View::parse_show_whitespace_characters(const std::s
     static_cast<Gsv::DrawSpacesFlags>(std::accumulate(out.begin(), out.end(), 0));
 }
 
+bool Source::View::save(const std::vector<Source::View*> views) {
+  if(file_path.empty() || !get_buffer()->get_modified())
+    return false;
+  //Remove trailing whitespace characters on save, and add trailing newline if missing
+  if(Config::get().source.cleanup_whitespace_characters) {
+    auto buffer=get_buffer();
+    buffer->begin_user_action();
+    for(int line=0;line<buffer->get_line_count();line++) {
+      auto iter=buffer->get_iter_at_line(line);
+      auto end_iter=iter;
+      while(!end_iter.ends_line())
+        end_iter.forward_char();
+      if(iter==end_iter)
+        continue;
+      iter=end_iter;
+      while(!iter.starts_line() && (*iter==' ' || *iter=='\t' || iter.ends_line()))
+        iter.backward_char();
+      if(*iter!=' ' && *iter!='\t')
+        iter.forward_char();
+      if(iter==end_iter)
+        continue;
+      buffer->erase(iter, end_iter);
+    }
+    auto iter=buffer->end();
+    if(!iter.starts_line())
+      buffer->insert(buffer->end(), "\n");
+    buffer->end_user_action();
+  }
+  
+  if(filesystem::write(file_path, get_buffer())) {
+    last_read_time=std::chrono::system_clock::to_time_t(std::chrono::system_clock::now());
+    get_buffer()->set_modified(false);
+    return true;
+  }
+  else {
+    Terminal::get().print("Error: could not save file "+file_path.string()+"\n", true);
+    return false;
+  }
+}
+
 void Source::View::configure() {
   //TODO: Move this to notebook? Might take up too much memory doing this for every tab.
   auto style_scheme_manager=Gsv::StyleSchemeManager::get_default();

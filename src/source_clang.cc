@@ -43,6 +43,21 @@ Source::View(file_path, language) {
   });
 }
 
+bool Source::ClangViewParse::save(const std::vector<Source::View*> views) {
+  if(!Source::View::save(views))
+     return false;
+  
+  if(language->get_id()=="chdr" || language->get_id()=="cpphdr") {
+    for(auto &view: views) {
+      if(auto clang_view=dynamic_cast<Source::ClangView*>(view)) {
+        if(this!=clang_view)
+          clang_view->soft_reparse_needed=true;
+      }
+    }
+  }
+  return true;
+}
+
 void Source::ClangViewParse::configure() {
   Source::View::configure();
   

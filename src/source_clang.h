@@ -26,6 +26,7 @@ namespace Source {
     
     ClangViewParse(const boost::filesystem::path &file_path, Glib::RefPtr<Gsv::Language> language);
     
+    bool save(const std::vector<Source::View*> views) override;
     void configure() override;
     
     void soft_reparse() override;

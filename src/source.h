@@ -72,6 +72,7 @@ namespace Source {
     View(const boost::filesystem::path &file_path, Glib::RefPtr<Gsv::Language> language);
     ~View();
     
+    virtual bool save(const std::vector<Source::View*> views);
     virtual void configure();
     
     void search_highlight(const std::string &text, bool case_sensitive, bool regex);
@@ -125,8 +126,8 @@ namespace Source {
     bool full_reparse_needed=false;
     virtual void soft_reparse() {soft_reparse_needed=false;}
     virtual bool full_reparse() {full_reparse_needed=false; return true;}
-    std::time_t last_read_time;
   protected:
+    std::time_t last_read_time;
     bool parsed=false;
     Tooltips diagnostic_tooltips;
     Tooltips type_tooltips;
