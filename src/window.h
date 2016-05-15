@@ -29,7 +29,7 @@ private:
   Gtk::HBox info_and_status_hbox;
   Gtk::VBox overlay_vbox;
   Gtk::HBox overlay_hbox;
-#if GTKMM_MAJOR_VERSION>3 || (GTKMM_MAJOR_VERSION>=3 && GTKMM_MINOR_VERSION>=18)
+#if GTKMM_MAJOR_VERSION>3 || (GTKMM_MAJOR_VERSION==3 && GTKMM_MINOR_VERSION>=14)
   Gtk::Overlay overlay;
 #endif
   Gtk::AboutDialog about;

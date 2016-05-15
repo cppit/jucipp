@@ -56,12 +56,18 @@ Window::Window() : notebook(Notebook::get()) {
   terminal_vbox.pack_end(info_and_status_hbox, Gtk::PACK_SHRINK);
   vpaned.pack2(terminal_vbox, true, true);
   
-#if GTKMM_MAJOR_VERSION>3 || (GTKMM_MAJOR_VERSION>=3 && GTKMM_MINOR_VERSION>=18)
+#if GTKMM_MAJOR_VERSION>3 || (GTKMM_MAJOR_VERSION==3 && GTKMM_MINOR_VERSION>=14)
+  overlay_vbox.set_hexpand(false);
+  overlay_vbox.set_halign(Gtk::Align::ALIGN_START);
+  overlay_hbox.set_hexpand(false);
+  overlay_hbox.set_halign(Gtk::Align::ALIGN_END);
   overlay_vbox.pack_start(Info::get(), Gtk::PACK_SHRINK, 20);
   overlay_hbox.pack_end(overlay_vbox, Gtk::PACK_SHRINK, 20);
   overlay.add(vpaned);
   overlay.add_overlay(overlay_hbox);
+#if GTKMM_MAJOR_VERSION>3 || (GTKMM_MAJOR_VERSION==3 && GTKMM_MINOR_VERSION>=18)
   overlay.set_overlay_pass_through(overlay_hbox, true);
+#endif
   add(overlay);
 #else
   add(vpaned);
