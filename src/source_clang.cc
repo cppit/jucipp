@@ -190,6 +190,8 @@ void Source::ClangViewParse::soft_reparse() {
 
 std::vector<std::string> Source::ClangViewParse::get_compilation_commands() {
   auto build=Project::Build::create(file_path);
+  if(build->project_path.empty())
+    Info::get().print("Could not find a supported build system");
   auto default_build_path=build->get_default_path();
   build->update_default();
   clang::CompilationDatabase db(default_build_path.string());
