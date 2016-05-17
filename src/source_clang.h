@@ -16,14 +16,6 @@ namespace Source {
     enum class ParseState {PROCESSING, RESTARTING, STOP};
     enum class ParseProcessState {IDLE, STARTING, PREPROCESSING, PROCESSING, POSTPROCESSING};
     
-    class TokenRange {
-    public:
-      TokenRange(std::pair<clang::Offset, clang::Offset> offsets, int kind):
-        offsets(offsets), kind(kind) {}
-      std::pair<clang::Offset, clang::Offset> offsets;
-      int kind;
-    };
-    
   public:
     ClangViewParse(const boost::filesystem::path &file_path, Glib::RefPtr<Gsv::Language> language);
     
