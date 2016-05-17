@@ -28,6 +28,10 @@ Dialog::Message::Message(const std::string &text): Gtk::MessageDialog(text, fals
     g_main_context_iteration(NULL, false);
 }
 
+bool Dialog::Message::on_delete_event(GdkEventAny *event) {
+  return true;
+}
+
 std::string Dialog::gtk_dialog(const boost::filesystem::path &path, const std::string &title,
                         const std::vector<std::pair<std::string, Gtk::ResponseType>> &buttons,
                         Gtk::FileChooserAction gtk_options) {

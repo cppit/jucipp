@@ -471,7 +471,6 @@ void Window::set_menu_actions() {
           view->scroll_to_cursor_delayed(view, true, false);
           return;
         }
-        Info::get().print("Could not find implementation");
       }
     }
   });
@@ -1073,7 +1072,7 @@ void Window::rename_token_entry() {
         EntryBox::get().labels.emplace_back();
         auto label_it=EntryBox::get().labels.begin();
         label_it->update=[label_it](int state, const std::string& message){
-          label_it->set_text("Warning: only opened and parsed tabs will have its content renamed, and modified files will be saved");
+          label_it->set_text("Warning: only opened files will be refactored, and altered files will be saved");
         };
         label_it->update(0, "");
         auto iter=std::make_shared<Gtk::TextIter>(view->get_buffer()->get_insert()->get_iter());

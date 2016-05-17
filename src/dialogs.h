@@ -16,6 +16,8 @@ public:
   class Message : public Gtk::MessageDialog {
   public:
     Message(const std::string &text);
+  protected:
+    bool on_delete_event(GdkEventAny *event) override;
   };
   
 private:

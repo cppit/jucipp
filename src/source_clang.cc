@@ -6,6 +6,7 @@
 #include "debug_clang.h"
 #endif
 #include "info.h"
+#include "dialogs.h"
 
 namespace sigc {
 #ifndef SIGC_FUNCTORS_DEDUCE_RESULT_TYPE_WITH_DECLTYPE
@@ -891,6 +892,7 @@ Source::ClangViewAutocomplete(file_path, language) {
     }
     auto token=get_token();
     if(token) {
+      wait_parsing(views);
       std::vector<Source::View*> renamed_views;
       for(auto &view: views) {
         if(auto clang_view=dynamic_cast<Source::ClangView*>(view)) {
@@ -968,28 +970,32 @@ Source::ClangViewAutocomplete(file_path, language) {
       return location;
     }
     auto token=get_token();
-    for(auto &view: views) {
-      if(auto clang_view=dynamic_cast<Source::ClangView*>(view)) {
-        if(clang_view->language && clang_view->language->get_id()!="chdr" && clang_view->language->get_id()!="cpphdr") {
-          for(auto token_it=clang_view->clang_tokens->rbegin();token_it!=clang_view->clang_tokens->rend();++token_it) {
-            auto cursor=token_it->get_cursor();
-            auto kind=cursor.get_kind();
-            if((kind==clang::CursorKind::FunctionDecl || kind==clang::CursorKind::CXXMethod ||
-                kind==clang::CursorKind::Constructor || kind==clang::CursorKind::Destructor) &&
-               token_it->get_kind()==clang::Token_Identifier && cursor.has_type()) {
-              auto referenced=cursor.get_referenced();
-              if(referenced && token.kind==referenced.get_kind() &&
-                 token.spelling==token_it->get_spelling() && token.usr==referenced.get_usr()) {
-                location.file_path=cursor.get_source_location().get_path();
-                auto clang_offset=cursor.get_source_location().get_offset();
-                location.line=clang_offset.line;
-                location.index=clang_offset.index;
-                return location;
+    if(token) {
+      wait_parsing(views);
+      for(auto &view: views) {
+        if(auto clang_view=dynamic_cast<Source::ClangView*>(view)) {
+          if(clang_view->language && clang_view->language->get_id()!="chdr" && clang_view->language->get_id()!="cpphdr") {
+            for(auto token_it=clang_view->clang_tokens->rbegin();token_it!=clang_view->clang_tokens->rend();++token_it) {
+              auto cursor=token_it->get_cursor();
+              auto kind=cursor.get_kind();
+              if((kind==clang::CursorKind::FunctionDecl || kind==clang::CursorKind::CXXMethod ||
+                  kind==clang::CursorKind::Constructor || kind==clang::CursorKind::Destructor) &&
+                 token_it->get_kind()==clang::Token_Identifier && cursor.has_type()) {
+                auto referenced=cursor.get_referenced();
+                if(referenced && token.kind==referenced.get_kind() &&
+                   token.spelling==token_it->get_spelling() && token.usr==referenced.get_usr()) {
+                  location.file_path=cursor.get_source_location().get_path();
+                  auto clang_offset=cursor.get_source_location().get_offset();
+                  location.line=clang_offset.line;
+                  location.index=clang_offset.index;
+                  return location;
+                }
               }
             }
           }
         }
       }
+      Info::get().print("Could not find implementation");
     }
     return location;
   };
@@ -1001,46 +1007,49 @@ Source::ClangViewAutocomplete(file_path, language) {
       return usages;
     }
     auto token=get_token();
-    std::vector<Source::View*> views_reordered;
-    views_reordered.emplace_back(this);
-    for(auto &view: views) {
-      if(view!=this)
-        views_reordered.emplace_back(view);
-    }
-    for(auto &view: views_reordered) {
-      if(auto clang_view=dynamic_cast<Source::ClangView*>(view)) {
-        auto offsets=clang_view->clang_tokens->get_similar_token_offsets(token.kind, token.spelling, token.usr);
-        for(auto &offset: offsets) {
-          size_t whitespaces_removed=0;
-          auto start_iter=clang_view->get_buffer()->get_iter_at_line(offset.first.line-1);
-          while(!start_iter.ends_line() && (*start_iter==' ' || *start_iter=='\t')) {
-            start_iter.forward_char();
-            whitespaces_removed++;
-          }
-          auto end_iter=start_iter;
-          while(!end_iter.ends_line())
-            end_iter.forward_char();
-          std::string line=Glib::Markup::escape_text(clang_view->get_buffer()->get_text(start_iter, end_iter));
-          
-          //markup token as bold
-          size_t token_start_pos=offset.first.index-1-whitespaces_removed;
-          size_t token_end_pos=offset.second.index-1-whitespaces_removed;
-          size_t pos=0;
-          while((pos=line.find('&', pos))!=std::string::npos) {
-            size_t pos2=line.find(';', pos+2);
-            if(token_start_pos>pos) {
-              token_start_pos+=pos2-pos;
-              token_end_pos+=pos2-pos;
+    if(token) {
+      wait_parsing(views);
+      std::vector<Source::View*> views_reordered;
+      views_reordered.emplace_back(this);
+      for(auto &view: views) {
+        if(view!=this)
+          views_reordered.emplace_back(view);
+      }
+      for(auto &view: views_reordered) {
+        if(auto clang_view=dynamic_cast<Source::ClangView*>(view)) {
+          auto offsets=clang_view->clang_tokens->get_similar_token_offsets(token.kind, token.spelling, token.usr);
+          for(auto &offset: offsets) {
+            size_t whitespaces_removed=0;
+            auto start_iter=clang_view->get_buffer()->get_iter_at_line(offset.first.line-1);
+            while(!start_iter.ends_line() && (*start_iter==' ' || *start_iter=='\t')) {
+              start_iter.forward_char();
+              whitespaces_removed++;
             }
-            else if(token_end_pos>pos)
-              token_end_pos+=pos2-pos;
-            else
-              break;
-            pos=pos2+1;
+            auto end_iter=start_iter;
+            while(!end_iter.ends_line())
+              end_iter.forward_char();
+            std::string line=Glib::Markup::escape_text(clang_view->get_buffer()->get_text(start_iter, end_iter));
+            
+            //markup token as bold
+            size_t token_start_pos=offset.first.index-1-whitespaces_removed;
+            size_t token_end_pos=offset.second.index-1-whitespaces_removed;
+            size_t pos=0;
+            while((pos=line.find('&', pos))!=std::string::npos) {
+              size_t pos2=line.find(';', pos+2);
+              if(token_start_pos>pos) {
+                token_start_pos+=pos2-pos;
+                token_end_pos+=pos2-pos;
+              }
+              else if(token_end_pos>pos)
+                token_end_pos+=pos2-pos;
+              else
+                break;
+              pos=pos2+1;
+            }
+            line.insert(token_end_pos, "</b>");
+            line.insert(token_start_pos, "<b>");
+            usages.emplace_back(Offset(offset.first.line-1, offset.first.index-1, clang_view->file_path), line);
           }
-          line.insert(token_end_pos, "</b>");
-          line.insert(token_start_pos, "<b>");
-          usages.emplace_back(Offset(offset.first.line-1, offset.first.index-1, clang_view->file_path), line);
         }
       }
     }
@@ -1275,6 +1284,36 @@ Source::ClangViewRefactor::Token Source::ClangViewRefactor::get_token() {
     }
   }
   return Token();
+}
+
+void Source::ClangViewRefactor::wait_parsing(const std::vector<Source::View*> &views) {
+  std::unique_ptr<Dialog::Message> message;
+  std::vector<Source::ClangView*> clang_views;
+  for(auto &view: views) {
+    if(auto clang_view=dynamic_cast<Source::ClangView*>(view)) {
+      if(!clang_view->parsed) {
+        clang_views.emplace_back(clang_view);
+        if(!message)
+          message=std::unique_ptr<Dialog::Message>(new Dialog::Message("Please wait while all buffers finish parsing"));
+      }
+    }
+  }
+  if(message) {
+    for(;;) {
+      while(g_main_context_pending(NULL))
+        g_main_context_iteration(NULL, false);
+      bool all_parsed=true;
+      for(auto &clang_view: clang_views) {
+        if(!clang_view->parsed) {
+          all_parsed=false;
+          break;
+        }
+      }
+      if(all_parsed)
+        break;
+    }
+    message->hide();
+  }
 }
 
 void Source::ClangViewRefactor::tag_similar_tokens(const Token &token) {

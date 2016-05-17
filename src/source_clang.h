@@ -109,6 +109,7 @@ namespace Source {
     sigc::connection delayed_tag_similar_tokens_connection;
   private:
     Token get_token();
+    void wait_parsing(const std::vector<Source::View*> &views);
     
     std::list<std::pair<Glib::RefPtr<Gtk::TextMark>, Glib::RefPtr<Gtk::TextMark> > > similar_token_marks;
     void tag_similar_tokens(const Token &token);
