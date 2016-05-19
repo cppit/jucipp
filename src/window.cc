@@ -1083,7 +1083,7 @@ void Window::rename_token_entry() {
              content!=*spelling && iter->get_buffer() && view->get_buffer()->get_insert()->get_iter()==*iter) {
             auto renamed_pairs=view->rename_similar_tokens(notebook.source_views, content);
             for(auto &renamed: renamed_pairs)
-              Terminal::get().print("Replaced "+std::to_string(renamed.second)+" occurrences in file "+renamed.first.string()+"\n");
+              Terminal::get().print("Replaced "+std::to_string(renamed.second)+" occurrence"+(renamed.second>1?"s":"")+" in file "+renamed.first.string()+"\n");
           }
           else
             Info::get().print("Operation canceled");

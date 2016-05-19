@@ -893,10 +893,39 @@ Source::ClangViewAutocomplete(file_path, language) {
     auto token=get_token();
     if(token) {
       wait_parsing(views);
+      
+      //If rename constructor or destructor, set token to class
+      if(token.kind==clang::CursorKind::Constructor || token.kind==clang::CursorKind::Destructor) {
+        auto parent_cursor=token.cursor.get_semantic_parent();
+        token=Token(parent_cursor.get_kind(), token.spelling, parent_cursor.get_usr(), parent_cursor);
+      }
+      
       std::vector<Source::View*> renamed_views;
       for(auto &view: views) {
         if(auto clang_view=dynamic_cast<Source::ClangView*>(view)) {
-          auto offsets=clang_view->clang_tokens->get_similar_token_offsets(token.kind, token.spelling, token.usr);
+          
+          //If rename class, also rename constructors and destructor
+          std::set<Token> tokens;
+          tokens.emplace(token);
+          if(token.cursor.get_kind()==clang::CursorKind::ClassDecl) {
+            for(auto &clang_token: *clang_view->clang_tokens) {
+              auto cursor=clang_token.get_cursor();
+              auto cursor_kind=cursor.get_kind();
+              auto parent_cursor=cursor.get_semantic_parent();
+              if(clang_token.get_kind()==clang::Token_Identifier &&
+                 (cursor_kind==clang::CursorKind::Constructor || cursor_kind==clang::CursorKind::Destructor) &&
+                 parent_cursor.get_usr()==token.cursor.get_usr() && cursor.has_type()) {
+                tokens.emplace(cursor.get_kind(), clang_token.get_spelling(), cursor.get_usr());
+              }
+            }
+          }
+          
+          std::vector<std::pair<clang::Offset, clang::Offset> > offsets;
+          for(auto &token: tokens) {
+            auto token_offsets=clang_view->clang_tokens->get_similar_token_offsets(token.kind, token.spelling, token.usr);
+            for(auto &token_offset: token_offsets)
+              offsets.emplace_back(token_offset);
+          }
           std::vector<std::pair<Glib::RefPtr<Gtk::TextMark>, Glib::RefPtr<Gtk::TextMark> > > marks;
           for(auto &offset: offsets) {
             marks.emplace_back(clang_view->get_buffer()->create_mark(clang_view->get_buffer()->get_iter_at_line_index(offset.first.line-1, offset.first.index-1)),
@@ -1279,7 +1308,7 @@ Source::ClangViewRefactor::Token Source::ClangViewRefactor::get_token() {
           continue;
         auto referenced=cursor.get_referenced();
         if(referenced)
-          return Token(referenced.get_kind(), token.get_spelling(), referenced.get_usr());
+          return Token(referenced.get_kind(), token.get_spelling(), referenced.get_usr(), referenced);
       }
     }
   }
@@ -1311,6 +1340,7 @@ void Source::ClangViewRefactor::wait_parsing(const std::vector<Source::View*> &v
       }
       if(all_parsed)
         break;
+      std::this_thread::sleep_for(std::chrono::milliseconds(10));
     }
     message->hide();
   }

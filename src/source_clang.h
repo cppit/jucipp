@@ -94,14 +94,18 @@ namespace Source {
   class ClangViewRefactor : public ClangViewAutocomplete {
     class Token {
     public:
-      Token(clang::CursorKind kind, const std::string &spelling, const std::string &usr) : kind(kind), spelling(spelling), usr(usr) {}
+      Token(clang::CursorKind kind, const std::string &spelling, const std::string &usr, const clang::Cursor &cursor=clang::Cursor()) :
+        kind(kind), spelling(spelling), usr(usr), cursor(cursor) {}
+      
       Token() : kind(static_cast<clang::CursorKind>(0)) {}
       operator bool() const { return static_cast<int>(kind)!=0; }
       bool operator==(const Token &other) const { return (kind==other.kind && spelling==other.spelling && usr==other.usr); }
       bool operator!=(const Token &other) const { return !(*this==other); }
+      bool operator<(const Token &other) const { return usr<other.usr; }
       clang::CursorKind kind;
       std::string spelling;
       std::string usr;
+      clang::Cursor cursor;
     };
   public:
     ClangViewRefactor(const boost::filesystem::path &file_path, Glib::RefPtr<Gsv::Language> language);
