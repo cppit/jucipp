@@ -861,18 +861,18 @@ bool Source::ClangViewAutocomplete::full_reparse() {
 ////////////////////////////
 Source::ClangViewRefactor::ClangViewRefactor(const boost::filesystem::path &file_path, Glib::RefPtr<Gsv::Language> language):
 Source::ClangViewAutocomplete(file_path, language) {
-  similar_tokens_tag=get_buffer()->create_tag();
-  similar_tokens_tag->property_weight()=1000; //TODO: replace with Pango::WEIGHT_ULTRAHEAVY in 2016 or so (when Ubuntu 14 is history)
+  similar_identifiers_tag=get_buffer()->create_tag();
+  similar_identifiers_tag->property_weight()=1000; //TODO: replace with Pango::WEIGHT_ULTRAHEAVY in 2016 or so (when Ubuntu 14 is history)
   
   get_buffer()->signal_changed().connect([this]() {
-    if(!renaming && last_tagged_token) {
-      for(auto &mark: similar_token_marks) {
-        get_buffer()->remove_tag(similar_tokens_tag, mark.first->get_iter(), mark.second->get_iter());
+    if(!renaming && last_tagged_identifier) {
+      for(auto &mark: similar_identifiers_marks) {
+        get_buffer()->remove_tag(similar_identifiers_tag, mark.first->get_iter(), mark.second->get_iter());
         get_buffer()->delete_mark(mark.first);
         get_buffer()->delete_mark(mark.second);
       }
-      similar_token_marks.clear();
-      last_tagged_token=Token();
+      similar_identifiers_marks.clear();
+      last_tagged_identifier=Identifier();
     }
   });
   
@@ -881,7 +881,7 @@ Source::ClangViewAutocomplete(file_path, language) {
       Info::get().print("Buffer is parsing");
       return std::string();
     }
-    return get_token().spelling;
+    return get_identifier().spelling;
   };
   
   rename_similar_tokens=[this](const std::vector<Source::View*> &views, const std::string &text) {
@@ -890,14 +890,14 @@ Source::ClangViewAutocomplete(file_path, language) {
       Info::get().print("Buffer is parsing");
       return renamed;
     }
-    auto token=get_token();
-    if(token) {
+    auto identifier=get_identifier();
+    if(identifier) {
       wait_parsing(views);
       
       //If rename constructor or destructor, set token to class
-      if(token.kind==clang::CursorKind::Constructor || token.kind==clang::CursorKind::Destructor) {
-        auto parent_cursor=token.cursor.get_semantic_parent();
-        token=Token(parent_cursor.get_kind(), token.spelling, parent_cursor.get_usr(), parent_cursor);
+      if(identifier.kind==clang::CursorKind::Constructor || identifier.kind==clang::CursorKind::Destructor) {
+        auto parent_cursor=identifier.cursor.get_semantic_parent();
+        identifier=Identifier(parent_cursor.get_kind(), identifier.spelling, parent_cursor.get_usr(), parent_cursor);
       }
       
       std::vector<Source::View*> renamed_views;
@@ -905,24 +905,24 @@ Source::ClangViewAutocomplete(file_path, language) {
         if(auto clang_view=dynamic_cast<Source::ClangView*>(view)) {
           
           //If rename class, also rename constructors and destructor
-          std::set<Token> tokens;
-          tokens.emplace(token);
-          if(token.cursor.get_kind()==clang::CursorKind::ClassDecl) {
-            for(auto &clang_token: *clang_view->clang_tokens) {
-              auto cursor=clang_token.get_cursor();
+          std::set<Identifier> identifiers;
+          identifiers.emplace(identifier);
+          if(identifier.cursor.get_kind()==clang::CursorKind::ClassDecl) {
+            for(auto &token: *clang_view->clang_tokens) {
+              auto cursor=token.get_cursor();
               auto cursor_kind=cursor.get_kind();
               auto parent_cursor=cursor.get_semantic_parent();
-              if(clang_token.get_kind()==clang::Token_Identifier &&
+              if(token.get_kind()==clang::Token_Identifier &&
                  (cursor_kind==clang::CursorKind::Constructor || cursor_kind==clang::CursorKind::Destructor) &&
-                 parent_cursor.get_usr()==token.cursor.get_usr() && cursor.has_type()) {
-                tokens.emplace(cursor.get_kind(), clang_token.get_spelling(), cursor.get_usr());
+                 parent_cursor.get_usr()==identifier.cursor.get_usr() && cursor.has_type()) {
+                identifiers.emplace(cursor.get_kind(), token.get_spelling(), cursor.get_usr());
               }
             }
           }
           
           std::vector<std::pair<clang::Offset, clang::Offset> > offsets;
-          for(auto &token: tokens) {
-            auto token_offsets=clang_view->clang_tokens->get_similar_token_offsets(token.kind, token.spelling, token.usr);
+          for(auto &identifier: identifiers) {
+            auto token_offsets=clang_view->clang_tokens->get_similar_token_offsets(identifier.kind, identifier.spelling, identifier.usr);
             for(auto &token_offset: token_offsets)
               offsets.emplace_back(token_offset);
           }
@@ -956,10 +956,10 @@ Source::ClangViewAutocomplete(file_path, language) {
   
   get_buffer()->signal_mark_set().connect([this](const Gtk::TextBuffer::iterator& iterator, const Glib::RefPtr<Gtk::TextBuffer::Mark>& mark){
     if(mark->get_name()=="insert") {
-      delayed_tag_similar_tokens_connection.disconnect();
-      delayed_tag_similar_tokens_connection=Glib::signal_timeout().connect([this]() {
-        auto token=get_token();
-        tag_similar_tokens(token);
+      delayed_tag_similar_identifiers_connection.disconnect();
+      delayed_tag_similar_identifiers_connection=Glib::signal_timeout().connect([this]() {
+        auto identifier=get_identifier();
+        tag_similar_identifiers(identifier);
         return false;
       }, 100);
     }
@@ -998,8 +998,8 @@ Source::ClangViewAutocomplete(file_path, language) {
       Info::get().print("Buffer is parsing");
       return location;
     }
-    auto token=get_token();
-    if(token) {
+    auto identifier=get_identifier();
+    if(identifier) {
       wait_parsing(views);
       for(auto &view: views) {
         if(auto clang_view=dynamic_cast<Source::ClangView*>(view)) {
@@ -1011,8 +1011,8 @@ Source::ClangViewAutocomplete(file_path, language) {
                   kind==clang::CursorKind::Constructor || kind==clang::CursorKind::Destructor) &&
                  token_it->get_kind()==clang::Token_Identifier && cursor.has_type()) {
                 auto referenced=cursor.get_referenced();
-                if(referenced && token.kind==referenced.get_kind() &&
-                   token.spelling==token_it->get_spelling() && token.usr==referenced.get_usr()) {
+                if(referenced && identifier.kind==referenced.get_kind() &&
+                   identifier.spelling==token_it->get_spelling() && identifier.usr==referenced.get_usr()) {
                   location.file_path=cursor.get_source_location().get_path();
                   auto clang_offset=cursor.get_source_location().get_offset();
                   location.line=clang_offset.line;
@@ -1035,8 +1035,8 @@ Source::ClangViewAutocomplete(file_path, language) {
       Info::get().print("Buffer is parsing");
       return usages;
     }
-    auto token=get_token();
-    if(token) {
+    auto identifier=get_identifier();
+    if(identifier) {
       wait_parsing(views);
       std::vector<Source::View*> views_reordered;
       views_reordered.emplace_back(this);
@@ -1046,7 +1046,7 @@ Source::ClangViewAutocomplete(file_path, language) {
       }
       for(auto &view: views_reordered) {
         if(auto clang_view=dynamic_cast<Source::ClangView*>(view)) {
-          auto offsets=clang_view->clang_tokens->get_similar_token_offsets(token.kind, token.spelling, token.usr);
+          auto offsets=clang_view->clang_tokens->get_similar_token_offsets(identifier.kind, identifier.spelling, identifier.usr);
           for(auto &offset: offsets) {
             size_t whitespaces_removed=0;
             auto start_iter=clang_view->get_buffer()->get_iter_at_line(offset.first.line-1);
@@ -1294,9 +1294,9 @@ Source::ClangViewAutocomplete(file_path, language) {
   };
 }
 
-Source::ClangViewRefactor::Token Source::ClangViewRefactor::get_token() {
+Source::ClangViewRefactor::Identifier Source::ClangViewRefactor::get_identifier() {
   if(!parsed)
-    return Token();
+    return Identifier();
   auto iter=get_buffer()->get_insert()->get_iter();
   auto line=static_cast<unsigned>(iter.get_line());
   auto index=static_cast<unsigned>(iter.get_line_index());
@@ -1308,11 +1308,11 @@ Source::ClangViewRefactor::Token Source::ClangViewRefactor::get_token() {
           continue;
         auto referenced=cursor.get_referenced();
         if(referenced)
-          return Token(referenced.get_kind(), token.get_spelling(), referenced.get_usr(), referenced);
+          return Identifier(referenced.get_kind(), token.get_spelling(), referenced.get_usr(), referenced);
       }
     }
   }
-  return Token();
+  return Identifier();
 }
 
 void Source::ClangViewRefactor::wait_parsing(const std::vector<Source::View*> &views) {
@@ -1346,33 +1346,33 @@ void Source::ClangViewRefactor::wait_parsing(const std::vector<Source::View*> &v
   }
 }
 
-void Source::ClangViewRefactor::tag_similar_tokens(const Token &token) {
+void Source::ClangViewRefactor::tag_similar_identifiers(const Identifier &identifier) {
   if(parsed) {
-    if(token && last_tagged_token!=token) {
-      for(auto &mark: similar_token_marks) {
-        get_buffer()->remove_tag(similar_tokens_tag, mark.first->get_iter(), mark.second->get_iter());
+    if(identifier && last_tagged_identifier!=identifier) {
+      for(auto &mark: similar_identifiers_marks) {
+        get_buffer()->remove_tag(similar_identifiers_tag, mark.first->get_iter(), mark.second->get_iter());
         get_buffer()->delete_mark(mark.first);
         get_buffer()->delete_mark(mark.second);
       }
-      similar_token_marks.clear();
-      auto offsets=clang_tokens->get_similar_token_offsets(token.kind, token.spelling, token.usr);
+      similar_identifiers_marks.clear();
+      auto offsets=clang_tokens->get_similar_token_offsets(identifier.kind, identifier.spelling, identifier.usr);
       for(auto &offset: offsets) {
         auto start_iter=get_buffer()->get_iter_at_line_index(offset.first.line-1, offset.first.index-1);
         auto end_iter=get_buffer()->get_iter_at_line_index(offset.second.line-1, offset.second.index-1);
-        get_buffer()->apply_tag(similar_tokens_tag, start_iter, end_iter);
-        similar_token_marks.emplace_back(get_buffer()->create_mark(start_iter), get_buffer()->create_mark(end_iter)); 
+        get_buffer()->apply_tag(similar_identifiers_tag, start_iter, end_iter);
+        similar_identifiers_marks.emplace_back(get_buffer()->create_mark(start_iter), get_buffer()->create_mark(end_iter)); 
       }
-      last_tagged_token=token;
+      last_tagged_identifier=identifier;
     }
   }
-  if(!token && last_tagged_token) {
-    for(auto &mark: similar_token_marks) {
-      get_buffer()->remove_tag(similar_tokens_tag, mark.first->get_iter(), mark.second->get_iter());
+  if(!identifier && last_tagged_identifier) {
+    for(auto &mark: similar_identifiers_marks) {
+      get_buffer()->remove_tag(similar_identifiers_tag, mark.first->get_iter(), mark.second->get_iter());
       get_buffer()->delete_mark(mark.first);
       get_buffer()->delete_mark(mark.second);
     }
-    similar_token_marks.clear();
-    last_tagged_token=Token();
+    similar_identifiers_marks.clear();
+    last_tagged_identifier=Identifier();
   }
 }
 
@@ -1386,7 +1386,7 @@ Source::ClangView::ClangView(const boost::filesystem::path &file_path, Glib::Ref
 void Source::ClangView::async_delete() {
   dispatcher.disconnect();
   delayed_reparse_connection.disconnect();
-  delayed_tag_similar_tokens_connection.disconnect();
+  delayed_tag_similar_identifiers_connection.disconnect();
   ClangViewAutocomplete::async_delete();
 }
 

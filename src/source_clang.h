@@ -92,16 +92,16 @@ namespace Source {
   };
 
   class ClangViewRefactor : public ClangViewAutocomplete {
-    class Token {
+    class Identifier {
     public:
-      Token(clang::CursorKind kind, const std::string &spelling, const std::string &usr, const clang::Cursor &cursor=clang::Cursor()) :
+      Identifier(clang::CursorKind kind, const std::string &spelling, const std::string &usr, const clang::Cursor &cursor=clang::Cursor()) :
         kind(kind), spelling(spelling), usr(usr), cursor(cursor) {}
       
-      Token() : kind(static_cast<clang::CursorKind>(0)) {}
+      Identifier() : kind(static_cast<clang::CursorKind>(0)) {}
       operator bool() const { return static_cast<int>(kind)!=0; }
-      bool operator==(const Token &other) const { return (kind==other.kind && spelling==other.spelling && usr==other.usr); }
-      bool operator!=(const Token &other) const { return !(*this==other); }
-      bool operator<(const Token &other) const { return usr<other.usr; }
+      bool operator==(const Identifier &rhs) const { return (kind==rhs.kind && spelling==rhs.spelling && usr==rhs.usr); }
+      bool operator!=(const Identifier &rhs) const { return !(*this==rhs); }
+      bool operator<(const Identifier &rhs) const { return usr<rhs.usr; }
       clang::CursorKind kind;
       std::string spelling;
       std::string usr;
@@ -110,15 +110,15 @@ namespace Source {
   public:
     ClangViewRefactor(const boost::filesystem::path &file_path, Glib::RefPtr<Gsv::Language> language);
   protected:
-    sigc::connection delayed_tag_similar_tokens_connection;
+    sigc::connection delayed_tag_similar_identifiers_connection;
   private:
-    Token get_token();
+    Identifier get_identifier();
     void wait_parsing(const std::vector<Source::View*> &views);
     
-    std::list<std::pair<Glib::RefPtr<Gtk::TextMark>, Glib::RefPtr<Gtk::TextMark> > > similar_token_marks;
-    void tag_similar_tokens(const Token &token);
-    Glib::RefPtr<Gtk::TextTag> similar_tokens_tag;
-    Token last_tagged_token;
+    std::list<std::pair<Glib::RefPtr<Gtk::TextMark>, Glib::RefPtr<Gtk::TextMark> > > similar_identifiers_marks;
+    void tag_similar_identifiers(const Identifier &identifier);
+    Glib::RefPtr<Gtk::TextTag> similar_identifiers_tag;
+    Identifier last_tagged_identifier;
     bool renaming=false;
   };
   
