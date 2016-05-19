@@ -422,7 +422,7 @@ void Source::ClangViewParse::show_type_tooltips(const Gdk::Rectangle &rectangle)
       type_tooltips.clear();
       for(auto &token: *tokens) {
         auto cursor=token.get_cursor();
-        if(token.get_kind()==clang::Token_Identifier && cursor.has_type()) {
+        if(token.get_kind()==clang::TokenKind::Token_Identifier && cursor.has_type()) {
           if(token.get_cursor().get_kind()==clang::CursorKind::CallExpr) //These cursors are buggy
             continue;
           auto start=get_buffer()->get_iter_at_line_index(token.offsets.first.line-1, token.offsets.first.index-1);
@@ -912,7 +912,7 @@ Source::ClangViewAutocomplete(file_path, language) {
               auto cursor=token.get_cursor();
               auto cursor_kind=cursor.get_kind();
               auto parent_cursor=cursor.get_semantic_parent();
-              if(token.get_kind()==clang::Token_Identifier &&
+              if(token.get_kind()==clang::TokenKind::Token_Identifier &&
                  (cursor_kind==clang::CursorKind::Constructor || cursor_kind==clang::CursorKind::Destructor) &&
                  parent_cursor.get_usr()==identifier.cursor.get_usr() && cursor.has_type()) {
                 identifiers.emplace(cursor.get_kind(), token.get_spelling(), cursor.get_usr());
@@ -976,7 +976,7 @@ Source::ClangViewAutocomplete(file_path, language) {
     auto index=static_cast<unsigned>(iter.get_line_index());
     for(auto &token: *clang_tokens) {
       auto cursor=token.get_cursor();
-      if(token.get_kind()==clang::Token_Identifier && cursor.has_type()) {
+      if(token.get_kind()==clang::TokenKind::Token_Identifier && cursor.has_type()) {
         if(line==token.offsets.first.line-1 && index>=token.offsets.first.index-1 && index <=token.offsets.second.index-1) {
           auto referenced=cursor.get_referenced();
           if(referenced) {
@@ -1009,7 +1009,7 @@ Source::ClangViewAutocomplete(file_path, language) {
               auto kind=cursor.get_kind();
               if((kind==clang::CursorKind::FunctionDecl || kind==clang::CursorKind::CXXMethod ||
                   kind==clang::CursorKind::Constructor || kind==clang::CursorKind::Destructor) &&
-                 token_it->get_kind()==clang::Token_Identifier && cursor.has_type()) {
+                 token_it->get_kind()==clang::TokenKind::Token_Identifier && cursor.has_type()) {
                 auto referenced=cursor.get_referenced();
                 if(referenced && identifier.kind==referenced.get_kind() &&
                    identifier.spelling==token_it->get_spelling() && identifier.usr==referenced.get_usr()) {
@@ -1161,7 +1161,7 @@ Source::ClangViewAutocomplete(file_path, language) {
     auto index=static_cast<unsigned>(iter.get_line_index());
     for(auto &token: *clang_tokens) {
       auto cursor=token.get_cursor();
-      if(token.get_kind()==clang::Token_Identifier && cursor.has_type()) {
+      if(token.get_kind()==clang::TokenKind::Token_Identifier && cursor.has_type()) {
         if(line==token.offsets.first.line-1 && index>=token.offsets.first.index-1 && index <=token.offsets.second.index-1) {
           auto referenced=cursor.get_referenced();
           if(referenced) {
@@ -1302,7 +1302,7 @@ Source::ClangViewRefactor::Identifier Source::ClangViewRefactor::get_identifier(
   auto index=static_cast<unsigned>(iter.get_line_index());
   for(auto &token: *clang_tokens) {
     auto cursor=token.get_cursor();
-    if(token.get_kind()==clang::Token_Identifier && cursor.has_type()) {
+    if(token.get_kind()==clang::TokenKind::Token_Identifier && cursor.has_type()) {
       if(line==token.offsets.first.line-1 && index>=token.offsets.first.index-1 && index <=token.offsets.second.index-1) {
         if(token.get_cursor().get_kind()==clang::CursorKind::CallExpr) //These cursors are buggy
           continue;
