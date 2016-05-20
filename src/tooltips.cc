@@ -37,6 +37,12 @@ void Tooltip::update() {
       activation_rectangle.join(rectangle);
     }
   }
+  
+  //Correct if activation_rectangle is left of text_view
+  Gdk::Rectangle visible_rect;
+  text_view.get_visible_rect(visible_rect);
+  activation_rectangle.set_x(std::max(activation_rectangle.get_x(), visible_rect.get_x()));
+  
   int location_window_x, location_window_y;
   text_view.buffer_to_window_coords(Gtk::TextWindowType::TEXT_WINDOW_TEXT, activation_rectangle.get_x(), activation_rectangle.get_y(), location_window_x, location_window_y);
   activation_rectangle.set_x(location_window_x);
@@ -80,14 +86,19 @@ void Tooltip::adjust(bool disregard_drawn) {
   text_view.get_window(Gtk::TextWindowType::TEXT_WINDOW_TEXT)->get_root_coords(activation_rectangle.get_x(), activation_rectangle.get_y(), root_x, root_y);
   Gdk::Rectangle rectangle;
   rectangle.set_x(root_x);
-  rectangle.set_y(root_y-tooltip_height);
+  rectangle.set_y(std::max(0, root_y-tooltip_height));
   rectangle.set_width(tooltip_width);
   rectangle.set_height(tooltip_height);
   
   if(!disregard_drawn) {
     if(Tooltips::drawn_tooltips_rectangle.get_width()!=0) {
-      if(rectangle.intersects(Tooltips::drawn_tooltips_rectangle))
-        rectangle.set_y(Tooltips::drawn_tooltips_rectangle.get_y()-tooltip_height);
+      if(rectangle.intersects(Tooltips::drawn_tooltips_rectangle)) {
+        int new_y=Tooltips::drawn_tooltips_rectangle.get_y()-tooltip_height;
+        if(new_y>=0)
+          rectangle.set_y(new_y);
+        else
+          rectangle.set_x(Tooltips::drawn_tooltips_rectangle.get_x()+Tooltips::drawn_tooltips_rectangle.get_width());
+      }
       Tooltips::drawn_tooltips_rectangle.join(rectangle);
     }
     else

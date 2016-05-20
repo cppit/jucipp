@@ -131,10 +131,12 @@ void SelectionDialogBase::hide() {
 }
 
 void SelectionDialogBase::move() {
-  Gdk::Rectangle rectangle;
-  text_view.get_iter_location(start_mark->get_iter(), rectangle);
-  int buffer_x=rectangle.get_x();
-  int buffer_y=rectangle.get_y()+rectangle.get_height();
+  Gdk::Rectangle iter_rect;
+  text_view.get_iter_location(start_mark->get_iter(), iter_rect);
+  Gdk::Rectangle visible_rect;
+  text_view.get_visible_rect(visible_rect);
+  int buffer_x=std::max(iter_rect.get_x(), visible_rect.get_x());
+  int buffer_y=iter_rect.get_y()+iter_rect.get_height();
   int window_x, window_y;
   text_view.buffer_to_window_coords(Gtk::TextWindowType::TEXT_WINDOW_TEXT, buffer_x, buffer_y, window_x, window_y);
   int root_x, root_y;
