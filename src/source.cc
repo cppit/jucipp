@@ -819,16 +819,17 @@ void Source::View::paste() {
 
 Gtk::TextIter Source::View::get_iter_for_dialog() {
   auto iter=get_buffer()->get_insert()->get_iter();
-  if(iter.get_line_offset()>=80)
-    iter=get_buffer()->get_iter_at_line(iter.get_line());
   Gdk::Rectangle visible_rect;
   get_visible_rect(visible_rect);
   Gdk::Rectangle iter_rect;
   get_iter_location(iter, iter_rect);
   iter_rect.set_width(1);
-  if(!visible_rect.intersects(iter_rect)) {
-    get_iter_at_location(iter, 0, visible_rect.get_y()+visible_rect.get_height()/3);
+  if(iter.get_line_offset()>=80) {
+    get_iter_at_location(iter, visible_rect.get_x(), iter_rect.get_y());
+    get_iter_location(iter, iter_rect);
   }
+  if(!visible_rect.intersects(iter_rect))
+    get_iter_at_location(iter, visible_rect.get_x(), visible_rect.get_y()+visible_rect.get_height()/3);
   return iter;
 }
 
@@ -1382,6 +1383,7 @@ bool Source::View::on_key_press_event_basic(GdkEventKey* key) {
     }
     get_buffer()->insert_at_cursor(Glib::ustring(1, unicode));
     get_source_buffer()->end_user_action();
+    scroll_to(get_buffer()->get_insert());
     
     //Trick to make the cursor visible right after insertion:
     set_cursor_visible(false);
