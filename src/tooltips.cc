@@ -37,12 +37,6 @@ void Tooltip::update() {
       activation_rectangle.join(rectangle);
     }
   }
-  
-  //Correct if activation_rectangle is left of text_view
-  Gdk::Rectangle visible_rect;
-  text_view.get_visible_rect(visible_rect);
-  activation_rectangle.set_x(std::max(activation_rectangle.get_x(), visible_rect.get_x()));
-  
   int location_window_x, location_window_y;
   text_view.buffer_to_window_coords(Gtk::TextWindowType::TEXT_WINDOW_TEXT, activation_rectangle.get_x(), activation_rectangle.get_y(), location_window_x, location_window_y);
   activation_rectangle.set_x(location_window_x);
@@ -82,8 +76,15 @@ void Tooltip::adjust(bool disregard_drawn) {
     tooltip_height+=2;
   }
   
+  //Adjust if tooltip is left of text_view
+  Gdk::Rectangle visible_rect;
+  text_view.get_visible_rect(visible_rect);
+  int visible_x, visible_y;
+  text_view.buffer_to_window_coords(Gtk::TextWindowType::TEXT_WINDOW_TEXT, visible_rect.get_x(), visible_rect.get_y(), visible_x, visible_y);
+  auto activation_rectangle_x=std::max(activation_rectangle.get_x(), visible_x);
+  
   int root_x, root_y;
-  text_view.get_window(Gtk::TextWindowType::TEXT_WINDOW_TEXT)->get_root_coords(activation_rectangle.get_x(), activation_rectangle.get_y(), root_x, root_y);
+  text_view.get_window(Gtk::TextWindowType::TEXT_WINDOW_TEXT)->get_root_coords(activation_rectangle_x, activation_rectangle.get_y(), root_x, root_y);
   Gdk::Rectangle rectangle;
   rectangle.set_x(root_x);
   rectangle.set_y(std::max(0, root_y-tooltip_height));
@@ -97,7 +98,7 @@ void Tooltip::adjust(bool disregard_drawn) {
         if(new_y>=0)
           rectangle.set_y(new_y);
         else
-          rectangle.set_x(Tooltips::drawn_tooltips_rectangle.get_x()+Tooltips::drawn_tooltips_rectangle.get_width());
+          rectangle.set_x(Tooltips::drawn_tooltips_rectangle.get_x()+Tooltips::drawn_tooltips_rectangle.get_width()+2);
       }
       Tooltips::drawn_tooltips_rectangle.join(rectangle);
     }
