@@ -49,6 +49,12 @@ list_view_text(use_markup), start_mark(start_mark), show_search_entry(show_searc
     window=std::unique_ptr<Gtk::Window>(new Gtk::Window(Gtk::WindowType::WINDOW_POPUP));
   else
     window=std::unique_ptr<Gtk::Dialog>(new Gtk::Dialog());
+  
+  auto g_application=g_application_get_default();
+  auto gio_application=Glib::wrap(g_application, true);
+  auto application=Glib::RefPtr<Gtk::Application>::cast_static(gio_application);
+  window->set_transient_for(*application->get_active_window());
+  
   list_view_text.set_search_entry(search_entry);
   
   window->set_default_size(0, 0);
@@ -78,7 +84,6 @@ list_view_text(use_markup), start_mark(start_mark), show_search_entry(show_searc
     auto dialog=static_cast<Gtk::Dialog*>(window.get());
     dialog->get_vbox()->pack_start(search_entry, false, false);
     dialog->get_vbox()->pack_start(scrolled_window, true, true);
-    dialog->set_transient_for(*static_cast<Gtk::Window*>(text_view.get_toplevel()));
   }
 }
 

@@ -51,6 +51,11 @@ void Tooltip::adjust(bool disregard_drawn) {
     //init window
     window=std::unique_ptr<Gtk::Window>(new Gtk::Window(Gtk::WindowType::WINDOW_POPUP));
     
+    auto g_application=g_application_get_default();
+    auto gio_application=Glib::wrap(g_application, true);
+    auto application=Glib::RefPtr<Gtk::Application>::cast_static(gio_application);
+    window->set_transient_for(*application->get_active_window());
+    
     window->set_events(Gdk::POINTER_MOTION_MASK);
     window->signal_motion_notify_event().connect([this](GdkEventMotion* event){
       window->hide();
