@@ -49,6 +49,12 @@ list_view_text(use_markup), start_mark(start_mark), show_search_entry(show_searc
     window=std::unique_ptr<Gtk::Window>(new Gtk::Window(Gtk::WindowType::WINDOW_POPUP));
   else
     window=std::unique_ptr<Gtk::Dialog>(new Gtk::Dialog());
+  
+  auto g_application=g_application_get_default();
+  auto gio_application=Glib::wrap(g_application, true);
+  auto application=Glib::RefPtr<Gtk::Application>::cast_static(gio_application);
+  window->set_transient_for(*application->get_active_window());
+  
   list_view_text.set_search_entry(search_entry);
   
   window->set_default_size(0, 0);
@@ -75,10 +81,9 @@ list_view_text(use_markup), start_mark(start_mark), show_search_entry(show_searc
   if(!show_search_entry)
     window->add(scrolled_window);
   else {
-    auto dialog=(Gtk::Dialog*)window.get();
+    auto dialog=static_cast<Gtk::Dialog*>(window.get());
     dialog->get_vbox()->pack_start(search_entry, false, false);
     dialog->get_vbox()->pack_start(scrolled_window, true, true);
-    dialog->set_transient_for((Gtk::Window&)(*text_view.get_toplevel()));
   }
 }
 
@@ -126,10 +131,12 @@ void SelectionDialogBase::hide() {
 }
 
 void SelectionDialogBase::move() {
-  Gdk::Rectangle rectangle;
-  text_view.get_iter_location(start_mark->get_iter(), rectangle);
-  int buffer_x=rectangle.get_x();
-  int buffer_y=rectangle.get_y()+rectangle.get_height();
+  Gdk::Rectangle iter_rect;
+  text_view.get_iter_location(start_mark->get_iter(), iter_rect);
+  Gdk::Rectangle visible_rect;
+  text_view.get_visible_rect(visible_rect);
+  int buffer_x=std::max(iter_rect.get_x(), visible_rect.get_x());
+  int buffer_y=iter_rect.get_y()+iter_rect.get_height();
   int window_x, window_y;
   text_view.buffer_to_window_coords(Gtk::TextWindowType::TEXT_WINDOW_TEXT, buffer_x, buffer_y, window_x, window_y);
   int root_x, root_y;
@@ -153,7 +160,7 @@ void SelectionDialogBase::resize() {
     else
       scrolled_window.set_policy(Gtk::PolicyType::POLICY_NEVER, Gtk::PolicyType::POLICY_AUTOMATIC);
 
-    int window_height=std::min(row_height*(int)list_view_text.get_model()->children().size(), row_height*10);
+    int window_height=std::min(row_height*static_cast<int>(list_view_text.get_model()->children().size()), row_height*10);
     if(show_search_entry)
       window_height+=search_entry.get_height();
     window->resize(row_width+1, window_height);
@@ -201,7 +208,7 @@ SelectionDialog::SelectionDialog(Gtk::TextView& text_view, Glib::RefPtr<Gtk::Tex
   
   search_entry.signal_event().connect([this](GdkEvent* event) {
     if(event->type==GDK_KEY_PRESS) {
-      auto key=(GdkEventKey*)event;
+      auto key=reinterpret_cast<GdkEventKey*>(event);
       if(key->keyval==GDK_KEY_Down && list_view_text.get_model()->children().size()>0) {
         auto it=list_view_text.get_selection()->get_selected();
         if(it) {

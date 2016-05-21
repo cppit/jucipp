@@ -7,6 +7,7 @@
 #include "filesystem.h"
 #include "project.h"
 #include "entrybox.h"
+#include "info.h"
 
 namespace sigc {
 #ifndef SIGC_FUNCTORS_DEDUCE_RESULT_TYPE_WITH_DECLTYPE
@@ -30,10 +31,6 @@ Window::Window() : notebook(Notebook::get()) {
     
   configure();
   set_default_size(Config::get().window.default_size.first, Config::get().window.default_size.second);
-  
-  //PluginApi(&this->notebook, &this->menu);
-  
-  add(vpaned);
   
   directories_scrolled_window.add(Directories::get());
   directory_and_notebook_panes.pack1(directories_scrolled_window, Gtk::SHRINK);
@@ -59,7 +56,25 @@ Window::Window() : notebook(Notebook::get()) {
   terminal_vbox.pack_end(info_and_status_hbox, Gtk::PACK_SHRINK);
   vpaned.pack2(terminal_vbox, true, true);
   
+#if GTKMM_MAJOR_VERSION>3 || (GTKMM_MAJOR_VERSION==3 && GTKMM_MINOR_VERSION>=14)
+  overlay_vbox.set_hexpand(false);
+  overlay_vbox.set_halign(Gtk::Align::ALIGN_START);
+  overlay_hbox.set_hexpand(false);
+  overlay_hbox.set_halign(Gtk::Align::ALIGN_END);
+  overlay_vbox.pack_start(Info::get(), Gtk::PACK_SHRINK, 20);
+  overlay_hbox.pack_end(overlay_vbox, Gtk::PACK_SHRINK, 20);
+  overlay.add(vpaned);
+  overlay.add_overlay(overlay_hbox);
+#if GTKMM_MAJOR_VERSION>3 || (GTKMM_MAJOR_VERSION==3 && GTKMM_MINOR_VERSION>=18)
+  overlay.set_overlay_pass_through(overlay_hbox, true);
+#endif
+  add(overlay);
+#else
+  add(vpaned);
+#endif
+  
   show_all_children();
+  Info::get().hide();
 
   Directories::get().on_row_activated=[this](const boost::filesystem::path &path) {
     notebook.open(path);
@@ -421,81 +436,81 @@ void Window::set_menu_actions() {
     if(notebook.get_current_page()!=-1) {
       if(notebook.get_current_view()->get_declaration_location) {
         auto location=notebook.get_current_view()->get_declaration_location();
-        if(!location.file_path.empty()) {
+        if(location) {
           boost::filesystem::path declaration_file;
           boost::system::error_code ec;
           declaration_file=boost::filesystem::canonical(location.file_path, ec);
           if(ec)
-            declaration_file=location.file_path;
+            return;
           notebook.open(declaration_file);
+          auto view=notebook.get_current_view();
           auto line=static_cast<int>(location.line)-1;
           auto index=static_cast<int>(location.index)-1;
-          auto view=notebook.get_current_view();
-          line=std::min(line, view->get_buffer()->get_line_count()-1);
-          if(line>=0) {
-            auto iter=view->get_buffer()->get_iter_at_line(line);
-            while(!iter.ends_line())
-              iter.forward_char();
-            auto end_line_index=iter.get_line_index();
-            index=std::min(index, end_line_index);
-            
-            view->get_buffer()->place_cursor(view->get_buffer()->get_iter_at_line_index(line, index));
-            view->scroll_to_cursor_delayed(view, true, false);
-          }
+          view->place_cursor_at_line_index(line, index);
+          view->scroll_to_cursor_delayed(view, true, false);
         }
       }
     }
   });
+  menu.add_action("source_goto_implementation", [this]() {
+    if(notebook.get_current_page()!=-1) {
+      auto view=notebook.get_current_view();
+      if(view->get_implementation_location) {
+        auto location=view->get_implementation_location(notebook.source_views);
+        if(location) {
+          boost::filesystem::path implementation_path;
+          boost::system::error_code ec;
+          implementation_path=boost::filesystem::canonical(location.file_path, ec);
+          if(ec)
+            return;
+          notebook.open(implementation_path);
+          auto view=notebook.get_current_view();
+          auto line=static_cast<int>(location.line)-1;
+          auto index=static_cast<int>(location.index)-1;
+          view->place_cursor_at_line_index(line, index);
+          view->scroll_to_cursor_delayed(view, true, false);
+          return;
+        }
+      }
+    }
+  });
+
   menu.add_action("source_goto_usage", [this]() {
     if(notebook.get_current_page()!=-1) {
-      auto current_view=notebook.get_current_view();
-      if(current_view->get_token && current_view->get_usages) {
-        auto token=current_view->get_token();
-        if(token) {
-          auto iter=current_view->get_iter_for_dialog();
-          current_view->selection_dialog=std::unique_ptr<SelectionDialog>(new SelectionDialog(*current_view, current_view->get_buffer()->create_mark(iter), true, true));
+      auto view=notebook.get_current_view();
+      if(view->get_usages) {
+        auto usages=view->get_usages(notebook.source_views);
+        if(!usages.empty()) {
+          auto iter=view->get_iter_for_dialog();
+          view->selection_dialog=std::unique_ptr<SelectionDialog>(new SelectionDialog(*view, view->get_buffer()->create_mark(iter), true, true));
           auto rows=std::make_shared<std::unordered_map<std::string, Source::Offset> >();
           
-          //First add usages in current file
-          auto usages=current_view->get_usages(token);
           for(auto &usage: usages) {
-            auto iter=current_view->get_buffer()->get_iter_at_line_index(usage.first.line, usage.first.index);
-            auto row=std::to_string(iter.get_line()+1)+':'+std::to_string(iter.get_line_offset()+1)+' '+usage.second;
+            std::string row;
+            //add file name if usage is not in current tab
+            if(view->file_path!=usage.first.file_path)
+              row=usage.first.file_path.filename().string()+":";
+            row+=std::to_string(usage.first.line+1)+": "+usage.second;
             (*rows)[row]=usage.first;
-            current_view->selection_dialog->add_row(row);
-          }
-          //Then the remaining opened files
-          for(int page=0;page<notebook.size();page++) {
-            auto view=notebook.get_view(page);
-            if(view!=current_view) {
-              if(view->get_usages) {
-                auto usages=view->get_usages(token);
-                for(auto &usage: usages) {
-                  auto iter=view->get_buffer()->get_iter_at_line_index(usage.first.line, usage.first.index);
-                  auto row=usage.first.file_path.filename().string()+":"+std::to_string(iter.get_line()+1)+':'+std::to_string(iter.get_line_offset()+1)+' '+usage.second;
-                  (*rows)[row]=usage.first;
-                  current_view->selection_dialog->add_row(row);
-                }
-              }
-            }
+            view->selection_dialog->add_row(row);
           }
           
           if(rows->size()==0)
             return;
-          current_view->selection_dialog->on_select=[this, rows](const std::string& selected, bool hide_window) {
+          view->selection_dialog->on_select=[this, rows](const std::string &selected, bool hide_window) {
             auto offset=rows->at(selected);
             boost::filesystem::path declaration_file;
             boost::system::error_code ec;
             declaration_file=boost::filesystem::canonical(offset.file_path, ec);
             if(ec)
-              declaration_file=offset.file_path;
+              return;
             notebook.open(declaration_file);
             auto view=notebook.get_current_view();
-            view->get_buffer()->place_cursor(view->get_buffer()->get_iter_at_line_index(offset.line, offset.index));
+            view->place_cursor_at_line_index(offset.line, offset.index);
             view->scroll_to(view->get_buffer()->get_insert(), 0.0, 1.0, 0.5);
             view->delayed_tooltips_connection.disconnect();
           };
-          current_view->selection_dialog->show();
+          view->selection_dialog->show();
         }
       }
     }
@@ -527,8 +542,8 @@ void Window::set_menu_actions() {
   });
   
   menu.add_action("project_set_run_arguments", [this]() {
-    auto project_language=Project::get_language();
-    auto run_arguments=std::make_shared<std::pair<std::string, std::string> >(project_language->get_run_arguments());
+    auto project=Project::create();
+    auto run_arguments=std::make_shared<std::pair<std::string, std::string> >(project->get_run_arguments());
     if(run_arguments->second.empty())
       return;
     
@@ -551,26 +566,30 @@ void Window::set_menu_actions() {
     EntryBox::get().show();
   });
   menu.add_action("compile_and_run", [this]() {
-    if(Project::compiling || Project::debugging)
+    if(Project::compiling || Project::debugging) {
+      Info::get().print("Compile or debug in progress");
       return;
+    }
     
-    Project::current_language=Project::get_language();
+    Project::current=Project::create();
     
     if(Config::get().project.save_on_compile_or_run)
-      Project::save_files(Project::current_language->build->project_path);
+      Project::save_files(Project::current->build->project_path);
     
-    Project::current_language->compile_and_run();
+    Project::current->compile_and_run();
   });
   menu.add_action("compile", [this]() {
-    if(Project::compiling || Project::debugging)
+    if(Project::compiling || Project::debugging) {
+      Info::get().print("Compile or debug in progress");
       return;
+    }
             
-    Project::current_language=Project::get_language();
+    Project::current=Project::create();
     
     if(Config::get().project.save_on_compile_or_run)
-      Project::save_files(Project::current_language->build->project_path);
+      Project::save_files(Project::current->build->project_path);
     
-    Project::current_language->compile();
+    Project::current->compile();
   });
   
   menu.add_action("run_command", [this]() {
@@ -610,8 +629,8 @@ void Window::set_menu_actions() {
   
 #ifdef JUCI_ENABLE_DEBUG
   menu.add_action("debug_set_run_arguments", [this]() {
-    auto project_language=Project::get_language();
-    auto run_arguments=std::make_shared<std::pair<std::string, std::string> >(project_language->debug_get_run_arguments());
+    auto project=Project::create();
+    auto run_arguments=std::make_shared<std::pair<std::string, std::string> >(project->debug_get_run_arguments());
     if(run_arguments->second.empty())
       return;
     
@@ -634,54 +653,56 @@ void Window::set_menu_actions() {
     EntryBox::get().show();
   });
   menu.add_action("debug_start_continue", [this](){
-    if(Project::compiling)
+    if(Project::compiling) {
+      Info::get().print("Compile in progress");
       return;
+    }
     else if(Project::debugging) {
-      Project::current_language->debug_continue();
+      Project::current->debug_continue();
       return;
     }
         
-    Project::current_language=Project::get_language();
+    Project::current=Project::create();
     
     if(Config::get().project.save_on_compile_or_run)
-      Project::save_files(Project::current_language->build->project_path);
+      Project::save_files(Project::current->build->project_path);
     
-    Project::current_language->debug_start();
+    Project::current->debug_start();
   });
   menu.add_action("debug_stop", [this]() {
-    if(Project::current_language)
-      Project::current_language->debug_stop();
+    if(Project::current)
+      Project::current->debug_stop();
   });
   menu.add_action("debug_kill", [this]() {
-    if(Project::current_language)
-      Project::current_language->debug_kill();
+    if(Project::current)
+      Project::current->debug_kill();
   });
   menu.add_action("debug_step_over", [this]() {
-    if(Project::current_language)
-      Project::current_language->debug_step_over();
+    if(Project::current)
+      Project::current->debug_step_over();
   });
   menu.add_action("debug_step_into", [this]() {
-    if(Project::current_language)
-      Project::current_language->debug_step_into();
+    if(Project::current)
+      Project::current->debug_step_into();
   });
   menu.add_action("debug_step_out", [this]() {
-    if(Project::current_language)
-      Project::current_language->debug_step_out();
+    if(Project::current)
+      Project::current->debug_step_out();
   });
   menu.add_action("debug_backtrace", [this]() {
-    if(Project::current_language)
-      Project::current_language->debug_backtrace();
+    if(Project::current)
+      Project::current->debug_backtrace();
   });
   menu.add_action("debug_show_variables", [this]() {
-    if(Project::current_language)
-      Project::current_language->debug_show_variables();
+    if(Project::current)
+      Project::current->debug_show_variables();
   });
   menu.add_action("debug_run_command", [this]() {
     EntryBox::get().clear();
     EntryBox::get().entries.emplace_back(last_run_debug_command, [this](const std::string& content){
       if(content!="") {
-        if(Project::current_language)
-          Project::current_language->debug_run_command(content);
+        if(Project::current)
+          Project::current->debug_run_command(content);
         last_run_debug_command=content;
       }
       EntryBox::get().hide();
@@ -703,13 +724,13 @@ void Window::set_menu_actions() {
         auto end_iter=start_iter;
         while(!end_iter.ends_line() && end_iter.forward_char()) {}
         view->get_source_buffer()->remove_source_marks(start_iter, end_iter, "debug_breakpoint");
-        if(Project::current_language && Project::debugging)
-          Project::current_language->debug_remove_breakpoint(view->file_path, line_nr+1, view->get_buffer()->get_line_count()+1);
+        if(Project::current && Project::debugging)
+          Project::current->debug_remove_breakpoint(view->file_path, line_nr+1, view->get_buffer()->get_line_count()+1);
       }
       else {
         view->get_source_buffer()->create_source_mark("debug_breakpoint", view->get_buffer()->get_insert()->get_iter());
-        if(Project::current_language && Project::debugging)
-          Project::current_language->debug_add_breakpoint(view->file_path, line_nr+1);
+        if(Project::current && Project::debugging)
+          Project::current->debug_add_breakpoint(view->file_path, line_nr+1);
       }
     }
   });
@@ -720,19 +741,10 @@ void Window::set_menu_actions() {
         if(notebook.get_current_page()!=-1) {
           auto view=notebook.get_current_view();
           
-          int line_nr=Project::debug_stop.second.first-1;
-          int line_index=Project::debug_stop.second.second-1;
-          if(line_nr<view->get_buffer()->get_line_count()) {
-            auto iter=view->get_buffer()->get_iter_at_line(line_nr);
-            auto end_line_iter=iter;
-            while(!iter.ends_line() && iter.forward_char()) {}
-            auto line=view->get_buffer()->get_text(iter, end_line_iter);
-            if(static_cast<size_t>(line_index)>=line.bytes())
-              line_index=0;
-            view->get_buffer()->place_cursor(view->get_buffer()->get_iter_at_line_index(line_nr, line_index));
-            
-            view->scroll_to_cursor_delayed(view, true, true);
-          }
+          int line=Project::debug_stop.second.first-1;
+          int index=Project::debug_stop.second.second-1;
+          view->place_cursor_at_line_index(line, index);
+          view->scroll_to_cursor_delayed(view, true, true);
           Project::debug_update_stop();
         }
       }
@@ -776,6 +788,7 @@ void Window::activate_menu_items(bool activate) {
   menu.actions["source_indentation_auto_indent_buffer"]->set_enabled(activate ? static_cast<bool>(notebook.get_current_view()->auto_indent) : false);
   menu.actions["source_find_documentation"]->set_enabled(activate ? static_cast<bool>(notebook.get_current_view()->get_token_data) : false);
   menu.actions["source_goto_declaration"]->set_enabled(activate ? static_cast<bool>(notebook.get_current_view()->get_declaration_location) : false);
+  menu.actions["source_goto_implementation"]->set_enabled(activate ? static_cast<bool>(notebook.get_current_view()->get_implementation_location) : false);
   menu.actions["source_goto_usage"]->set_enabled(activate ? static_cast<bool>(notebook.get_current_view()->get_usages) : false);
   menu.actions["source_goto_method"]->set_enabled(activate ? static_cast<bool>(notebook.get_current_view()->goto_method) : false);
   menu.actions["source_rename"]->set_enabled(activate ? static_cast<bool>(notebook.get_current_view()->rename_similar_tokens) : false);
@@ -851,8 +864,8 @@ bool Window::on_delete_event(GdkEventAny *event) {
   }
   Terminal::get().kill_async_processes();
 #ifdef JUCI_ENABLE_DEBUG
-  if(Project::current_language)
-    Project::current_language->debug_delete();
+  if(Project::current)
+    Project::current->debug_delete();
 #endif
   return false;
 }
@@ -1033,13 +1046,8 @@ void Window::goto_line_entry() {
       if(notebook.get_current_page()!=-1) {
         auto view=notebook.get_current_view();
         try {
-          auto line = stoi(content);
-          if(line>0 && line<=view->get_buffer()->get_line_count()) {
-            line--;
-            
-            view->get_buffer()->place_cursor(view->get_buffer()->get_iter_at_line(line));
-            view->scroll_to_cursor_delayed(view, true, false);
-          }
+          view->place_cursor_at_line_index(stoi(content)-1, 0);
+          view->scroll_to_cursor_delayed(view, true, false);
         }
         catch(const std::exception &e) {}  
         EntryBox::get().hide();
@@ -1057,33 +1065,29 @@ void Window::goto_line_entry() {
 void Window::rename_token_entry() {
   EntryBox::get().clear();
   if(notebook.get_current_page()!=-1) {
-    if(notebook.get_current_view()->get_token) {
-      auto token=std::make_shared<Source::Token>(notebook.get_current_view()->get_token());
-      if(*token) {
+    auto view=notebook.get_current_view();
+    if(view->get_token_spelling && view->rename_similar_tokens) {
+      auto spelling=std::make_shared<std::string>(view->get_token_spelling());
+      if(!spelling->empty()) {
         EntryBox::get().labels.emplace_back();
         auto label_it=EntryBox::get().labels.begin();
         label_it->update=[label_it](int state, const std::string& message){
-          label_it->set_text("Warning: only opened and parsed tabs will have its content renamed, and modified files will be saved");
+          label_it->set_text("Warning: only opened files will be refactored, and altered files will be saved");
         };
         label_it->update(0, "");
-        EntryBox::get().entries.emplace_back(token->spelling, [this, token](const std::string& content){
-          if(notebook.get_current_page()!=-1 && content!=token->spelling) {
-            std::vector<int> modified_pages;
-            for(int c=0;c<notebook.size();c++) {
-              auto view=notebook.get_view(c);
-              if(view->rename_similar_tokens) {
-                auto number=view->rename_similar_tokens(*token, content);
-                if(number>0) {
-                  Terminal::get().print("Replaced "+std::to_string(number)+" occurrences in file "+view->file_path.string()+"\n");
-                  notebook.save(c);
-                  modified_pages.emplace_back(c);
-                }
-              }
-            }
-            for(auto &page: modified_pages)
-              notebook.get_view(page)->soft_reparse_needed=false;
-            EntryBox::get().hide();
+        auto iter=std::make_shared<Gtk::TextIter>(view->get_buffer()->get_insert()->get_iter());
+        EntryBox::get().entries.emplace_back(*spelling, [this, view, spelling, iter](const std::string& content){
+          //TODO: gtk needs a way to check if iter is valid without dumping g_error message
+          //iter->get_buffer() will print such a message, but no segfault will occur
+          if(notebook.get_current_page()!=-1 && notebook.get_current_view()==view &&
+             content!=*spelling && iter->get_buffer() && view->get_buffer()->get_insert()->get_iter()==*iter) {
+            auto renamed_pairs=view->rename_similar_tokens(notebook.source_views, content);
+            for(auto &renamed: renamed_pairs)
+              Terminal::get().print("Replaced "+std::to_string(renamed.second)+" occurrence"+(renamed.second>1?"s":"")+" in file "+renamed.first.string()+"\n");
           }
+          else
+            Info::get().print("Operation canceled");
+          EntryBox::get().hide();
         });
         auto entry_it=EntryBox::get().entries.begin();
         entry_it->set_placeholder_text("New name");

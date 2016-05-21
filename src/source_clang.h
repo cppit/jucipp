@@ -15,17 +15,11 @@ namespace Source {
   protected:
     enum class ParseState {PROCESSING, RESTARTING, STOP};
     enum class ParseProcessState {IDLE, STARTING, PREPROCESSING, PROCESSING, POSTPROCESSING};
-  public:
-    class TokenRange {
-    public:
-      TokenRange(std::pair<clang::Offset, clang::Offset> offsets, int kind):
-        offsets(offsets), kind(kind) {}
-      std::pair<clang::Offset, clang::Offset> offsets;
-      int kind;
-    };
     
+  public:
     ClangViewParse(const boost::filesystem::path &file_path, Glib::RefPtr<Gsv::Language> language);
     
+    bool save(const std::vector<Source::View*> &views) override;
     void configure() override;
     
     void soft_reparse() override;
@@ -89,6 +83,7 @@ namespace Source {
     Tooltips autocomplete_tooltips;
     std::string prefix;
     std::mutex prefix_mutex;
+    static std::unordered_map<std::string, std::string> autocomplete_manipulators_map();
     
     Glib::Dispatcher do_delete_object;
     std::thread delete_thread;
@@ -97,15 +92,33 @@ namespace Source {
   };
 
   class ClangViewRefactor : public ClangViewAutocomplete {
+    class Identifier {
+    public:
+      Identifier(clang::CursorKind kind, const std::string &spelling, const std::string &usr, const clang::Cursor &cursor=clang::Cursor()) :
+        kind(kind), spelling(spelling), usr(usr), cursor(cursor) {}
+      
+      Identifier() : kind(static_cast<clang::CursorKind>(0)) {}
+      operator bool() const { return static_cast<int>(kind)!=0; }
+      bool operator==(const Identifier &rhs) const { return (kind==rhs.kind && spelling==rhs.spelling && usr==rhs.usr); }
+      bool operator!=(const Identifier &rhs) const { return !(*this==rhs); }
+      bool operator<(const Identifier &rhs) const { return usr<rhs.usr; }
+      clang::CursorKind kind;
+      std::string spelling;
+      std::string usr;
+      clang::Cursor cursor;
+    };
   public:
     ClangViewRefactor(const boost::filesystem::path &file_path, Glib::RefPtr<Gsv::Language> language);
   protected:
-    sigc::connection delayed_tag_similar_tokens_connection;
+    sigc::connection delayed_tag_similar_identifiers_connection;
   private:
-    std::list<std::pair<Glib::RefPtr<Gtk::TextMark>, Glib::RefPtr<Gtk::TextMark> > > similar_token_marks;
-    void tag_similar_tokens(const Token &token);
-    Glib::RefPtr<Gtk::TextTag> similar_tokens_tag;
-    Token last_tagged_token;
+    Identifier get_identifier();
+    void wait_parsing(const std::vector<Source::View*> &views);
+    
+    std::list<std::pair<Glib::RefPtr<Gtk::TextMark>, Glib::RefPtr<Gtk::TextMark> > > similar_identifiers_marks;
+    void tag_similar_identifiers(const Identifier &identifier);
+    Glib::RefPtr<Gtk::TextTag> similar_identifiers_tag;
+    Identifier last_tagged_identifier;
     bool renaming=false;
   };
   

@@ -199,54 +199,10 @@ bool Notebook::save(int page) {
   if(page>=size())
     return false;
   auto view=get_view(page);
-  if (view->file_path != "" && view->get_buffer()->get_modified()) {
-    //Remove trailing whitespace characters on save, and add trailing newline if missing
-    if(Config::get().source.cleanup_whitespace_characters) {
-      auto buffer=view->get_buffer();
-      buffer->begin_user_action();
-      for(int line=0;line<buffer->get_line_count();line++) {
-        auto iter=buffer->get_iter_at_line(line);
-        auto end_iter=iter;
-        while(!end_iter.ends_line())
-          end_iter.forward_char();
-        if(iter==end_iter)
-          continue;
-        iter=end_iter;
-        while(!iter.starts_line() && (*iter==' ' || *iter=='\t' || iter.ends_line()))
-          iter.backward_char();
-        if(*iter!=' ' && *iter!='\t')
-          iter.forward_char();
-        if(iter==end_iter)
-          continue;
-        buffer->erase(iter, end_iter);
-      }
-      auto iter=buffer->end();
-      if(!iter.starts_line())
-        buffer->insert(buffer->end(), "\n");
-      buffer->end_user_action();
-    }
-    
-    if(filesystem::write(view->file_path, view->get_buffer())) {
-      if(auto clang_view=dynamic_cast<Source::ClangView*>(view)) {
-        if(clang_view->language->get_id()=="chdr" || clang_view->language->get_id()=="cpphdr") {
-          for(auto a_view: source_views) {
-            if(auto a_clang_view=dynamic_cast<Source::ClangView*>(a_view)) {
-                if(clang_view!=a_clang_view)
-                  a_clang_view->soft_reparse_needed=true;
-            }
-          }
-        }
-      }
-      
-      view->get_buffer()->set_modified(false);
-      
-      Project::on_save(page);
-      
-      return true;
-    }
-    Terminal::get().print("Error: could not save file " +view->file_path.string()+"\n", true);
-  }
-  return false;
+  if(!view->save(source_views))
+    return false;
+  Project::on_save(page);
+  return true;
 }
 
 bool Notebook::save_current() {
@@ -308,7 +264,7 @@ boost::filesystem::path Notebook::get_current_folder() {
 }
 
 bool Notebook::save_modified_dialog(int page) {
-  Gtk::MessageDialog dialog((Gtk::Window&)(*get_toplevel()), "Save file!", false, Gtk::MESSAGE_QUESTION, Gtk::BUTTONS_YES_NO);
+  Gtk::MessageDialog dialog(*static_cast<Gtk::Window*>(get_toplevel()), "Save file!", false, Gtk::MESSAGE_QUESTION, Gtk::BUTTONS_YES_NO);
   dialog.set_default_response(Gtk::RESPONSE_YES);
   dialog.set_secondary_text("Do you want to save: " + get_view(page)->file_path.string()+" ?");
   int result = dialog.run();

@@ -98,7 +98,7 @@ void Debug::Clang::start(const std::string &command, const boost::filesystem::pa
   }
   
   lldb::SBError error;
-  process = std::unique_ptr<lldb::SBProcess>(new lldb::SBProcess(target.Launch(*listener, argv, (const char**)environ, nullptr, nullptr, nullptr, path.string().c_str(), lldb::eLaunchFlagNone, false, error)));
+  process = std::unique_ptr<lldb::SBProcess>(new lldb::SBProcess(target.Launch(*listener, argv, const_cast<const char**>(environ), nullptr, nullptr, nullptr, path.string().c_str(), lldb::eLaunchFlagNone, false, error)));
   if(error.Fail()) {
     Terminal::get().async_print(std::string("Error (debug): ")+error.GetCString()+'\n', true);
     if(callback)
@@ -463,7 +463,9 @@ void Debug::Clang::remove_breakpoint(const boost::filesystem::path &file_path, i
             auto file_spec=line_entry.GetFileSpec();
             boost::filesystem::path breakpoint_path=file_spec.GetDirectory();
             breakpoint_path/=file_spec.GetFilename();
-            if(breakpoint_path==file_path) {
+            boost::system::error_code ec;
+            breakpoint_path = boost::filesystem::canonical(breakpoint_path, ec);
+            if(!ec && breakpoint_path==file_path) {
               if(!target.BreakpointDelete(breakpoint.GetID()))
                 Terminal::get().async_print("Error (debug): Could not delete breakpoint at: "+file_path.string()+":"+std::to_string(line_nr)+'\n', true);
               return;

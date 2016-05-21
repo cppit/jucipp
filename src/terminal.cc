@@ -1,7 +1,9 @@
 #include "terminal.h"
-#include <iostream>
 #include "config.h"
 #include "project.h"
+#include "info.h"
+#include "notebook.h"
+#include <iostream>
 
 Terminal::InProgress::InProgress(const std::string& start_msg): stop(false) {
   start(start_msg);
@@ -38,9 +40,17 @@ void Terminal::InProgress::cancel(const std::string& msg) {
     Terminal::get().async_print(line_nr-1, msg);
 }
 
+const REGEX_NS::regex Terminal::link_regex("^([A-Z]:)?([^:]+):([0-9]+):([0-9]+)$");
+
 Terminal::Terminal() {
   bold_tag=get_buffer()->create_tag();
   bold_tag->property_weight()=PANGO_WEIGHT_BOLD;
+  
+  link_tag=get_buffer()->create_tag();
+  link_tag->property_underline()=Pango::Underline::UNDERLINE_SINGLE;
+  
+  link_mouse_cursor=Gdk::Cursor::create(Gdk::CursorType::HAND1);
+  default_mouse_cursor=Gdk::Cursor::create(Gdk::CursorType::XTERM);
 }
 
 int Terminal::process(const std::string &command, const boost::filesystem::path &path, bool use_pipes) {  
@@ -138,7 +148,9 @@ void Terminal::async_process(const std::string &command, const boost::filesystem
 
 void Terminal::kill_last_async_process(bool force) {
   std::unique_lock<std::mutex> lock(processes_mutex);
-  if(processes.size()>0)
+  if(processes.empty())
+    Info::get().print("No running processes");
+  else
     processes.back()->kill(force);
 }
 
@@ -146,6 +158,55 @@ void Terminal::kill_async_processes(bool force) {
   std::unique_lock<std::mutex> lock(processes_mutex);
   for(auto &process: processes)
     process->kill(force);
+}
+
+bool Terminal::on_motion_notify_event(GdkEventMotion *motion_event) {
+  Gtk::TextIter iter;
+  int location_x, location_y;
+  window_to_buffer_coords(Gtk::TextWindowType::TEXT_WINDOW_TEXT, motion_event->x, motion_event->y, location_x, location_y);
+  get_iter_at_location(iter, location_x, location_y);
+  if(iter.has_tag(link_tag))
+    get_window(Gtk::TextWindowType::TEXT_WINDOW_TEXT)->set_cursor(link_mouse_cursor);
+  else
+    get_window(Gtk::TextWindowType::TEXT_WINDOW_TEXT)->set_cursor(default_mouse_cursor);
+  return Gtk::TextView::on_motion_notify_event(motion_event);
+}
+
+void Terminal::apply_link_tags(Gtk::TextIter start_iter, Gtk::TextIter end_iter) {
+  auto iter=start_iter;
+  int offset=0;
+  size_t colons=0;
+  Gtk::TextIter start_path_iter;
+  bool possible_path=false;
+  //Search for path with line and index
+  //Simple implementation. Not sure if it is work the effort to make it work 100% on all platforms.
+  do {
+    if(iter.starts_line()) {
+      offset=0;
+      colons=0;
+      start_path_iter=iter;
+      possible_path=true;
+    }
+    if(possible_path) {
+      if(*iter==' ' || *iter=='\t' || iter.ends_line())
+        possible_path=false;
+      else {
+        ++offset;
+        if(*iter==':') {
+#ifdef _WIN32
+          if(offset!=2)
+#endif
+            ++colons;
+          if(colons==3 && possible_path) {
+            REGEX_NS::smatch sm;
+            if(REGEX_NS::regex_match(get_buffer()->get_text(start_path_iter, iter).raw(), sm, link_regex))
+              get_buffer()->apply_tag(link_tag, start_path_iter, iter);
+            possible_path=false;
+          }
+        }
+      }
+    }
+  } while(iter.forward_char() && iter!=end_iter);
 }
 
 size_t Terminal::print(const std::string &message, bool bold){
@@ -185,10 +246,16 @@ size_t Terminal::print(const std::string &message, bool bold){
     umessage.replace(iter, next_char_iter, "?");
   }
   
+  auto start_mark=get_buffer()->create_mark(get_buffer()->get_iter_at_line(get_buffer()->get_insert()->get_iter().get_line()));
   if(bold)
     get_buffer()->insert_with_tag(get_buffer()->end(), umessage, bold_tag);
   else
     get_buffer()->insert(get_buffer()->end(), umessage);
+  auto start_iter=start_mark->get_iter();
+  get_buffer()->delete_mark(start_mark);
+  auto end_iter=get_buffer()->get_insert()->get_iter();
+  
+  apply_link_tags(start_iter, end_iter);
   
   if(get_buffer()->get_line_count()>Config::get().terminal.history_size) {
     int lines=get_buffer()->get_line_count()-Config::get().terminal.history_size;
@@ -240,6 +307,10 @@ void Terminal::async_print(size_t line_nr, const std::string &message) {
 }
 
 void Terminal::configure() {
+#if GTKMM_MAJOR_VERSION>3 || (GTKMM_MAJOR_VERSION==3 && GTKMM_MINOR_VERSION>=12)
+  link_tag->property_foreground_rgba()=get_style_context()->get_color(Gtk::StateFlags::STATE_FLAG_LINK);
+#endif
+  
   if(Config::get().terminal.font.size()>0) {
     override_font(Pango::FontDescription(Config::get().terminal.font));
   }
@@ -267,16 +338,61 @@ void Terminal::clear() {
   get_buffer()->set_text("");
 }
 
+bool Terminal::on_button_press_event(GdkEventButton* button_event) {
+  //open clicked link in terminal
+  if(button_event->type==GDK_BUTTON_PRESS && button_event->button==GDK_BUTTON_PRIMARY) {
+    Gtk::TextIter iter;
+    int location_x, location_y;
+    window_to_buffer_coords(Gtk::TextWindowType::TEXT_WINDOW_TEXT, button_event->x, button_event->y, location_x, location_y);
+    get_iter_at_location(iter, location_x, location_y);
+    auto start_iter=iter;
+    auto end_iter=iter;
+    if(iter.has_tag(link_tag) &&
+       start_iter.backward_to_tag_toggle(link_tag) && end_iter.forward_to_tag_toggle(link_tag)) {
+      std::string path_str=get_buffer()->get_text(start_iter, end_iter);
+      REGEX_NS::smatch sm;
+      if(REGEX_NS::regex_match(path_str, sm, link_regex)) {
+        auto path_str=sm[1].str()+sm[2].str();
+        auto path=boost::filesystem::path(path_str);
+        boost::system::error_code ec;
+        if(path.is_relative()) {
+          if(Project::current)
+            path=boost::filesystem::canonical(Project::current->build->get_default_path()/path_str, ec);
+          else
+            return Gtk::TextView::on_button_press_event(button_event);
+        }
+        else
+          path=boost::filesystem::canonical(path_str, ec);
+        if(!ec && boost::filesystem::is_regular_file(path)) {
+          Notebook::get().open(path);
+          if(Notebook::get().get_current_page()!=-1) {
+            auto view=Notebook::get().get_current_view();
+            try {
+              int line = std::stoi(sm[3].str())-1;
+              int index = std::stoi(sm[4].str())-1;
+              view->place_cursor_at_line_index(line, index);
+              view->scroll_to_cursor_delayed(view, true, true);
+              return true;
+            }
+            catch(const std::exception &) {}
+          }
+        }
+      }
+    }
+  }
+  return Gtk::TextView::on_button_press_event(button_event);
+}
+
 bool Terminal::on_key_press_event(GdkEventKey *event) {
   std::unique_lock<std::mutex> lock(processes_mutex);
   bool debug_is_running=false;
 #ifdef JUCI_ENABLE_DEBUG
-  debug_is_running=Project::current_language?Project::current_language->debug_is_running():false;
+  debug_is_running=Project::current?Project::current->debug_is_running():false;
 #endif
   if(processes.size()>0 || debug_is_running) {
     get_buffer()->place_cursor(get_buffer()->end());
     auto unicode=gdk_keyval_to_unicode(event->keyval);
-    char chr=(char)unicode;
+    char chr=static_cast<char>(unicode);
     if(unicode>=32 && unicode<=126) {
       stdin_buffer+=chr;
       get_buffer()->insert_at_cursor(stdin_buffer.substr(stdin_buffer.size()-1));
@@ -293,7 +409,7 @@ bool Terminal::on_key_press_event(GdkEventKey *event) {
       stdin_buffer+='\n';
       if(debug_is_running) {
 #ifdef JUCI_ENABLE_DEBUG
-        Project::current_language->debug_write(stdin_buffer);
+        Project::current->debug_write(stdin_buffer);
 #endif
       }
       else

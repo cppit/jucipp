@@ -1,8 +1,5 @@
 #include "tooltips.h"
 
-#include <iostream> //TODO: remove
-using namespace std; //TODO: remove
-
 namespace sigc {
 #ifndef SIGC_FUNCTORS_DEDUCE_RESULT_TYPE_WITH_DECLTYPE
   template <typename Functor>
@@ -51,6 +48,11 @@ void Tooltip::adjust(bool disregard_drawn) {
     //init window
     window=std::unique_ptr<Gtk::Window>(new Gtk::Window(Gtk::WindowType::WINDOW_POPUP));
     
+    auto g_application=g_application_get_default();
+    auto gio_application=Glib::wrap(g_application, true);
+    auto application=Glib::RefPtr<Gtk::Application>::cast_static(gio_application);
+    window->set_transient_for(*application->get_active_window());
+    
     window->set_events(Gdk::POINTER_MOTION_MASK);
     window->signal_motion_notify_event().connect([this](GdkEventMotion* event){
       window->hide();
@@ -74,18 +76,30 @@ void Tooltip::adjust(bool disregard_drawn) {
     tooltip_height+=2;
   }
   
+  //Adjust if tooltip is left of text_view
+  Gdk::Rectangle visible_rect;
+  text_view.get_visible_rect(visible_rect);
+  int visible_x, visible_y;
+  text_view.buffer_to_window_coords(Gtk::TextWindowType::TEXT_WINDOW_TEXT, visible_rect.get_x(), visible_rect.get_y(), visible_x, visible_y);
+  auto activation_rectangle_x=std::max(activation_rectangle.get_x(), visible_x);
+  
   int root_x, root_y;
-  text_view.get_window(Gtk::TextWindowType::TEXT_WINDOW_TEXT)->get_root_coords(activation_rectangle.get_x(), activation_rectangle.get_y(), root_x, root_y);
+  text_view.get_window(Gtk::TextWindowType::TEXT_WINDOW_TEXT)->get_root_coords(activation_rectangle_x, activation_rectangle.get_y(), root_x, root_y);
   Gdk::Rectangle rectangle;
   rectangle.set_x(root_x);
-  rectangle.set_y(root_y-tooltip_height);
+  rectangle.set_y(std::max(0, root_y-tooltip_height));
   rectangle.set_width(tooltip_width);
   rectangle.set_height(tooltip_height);
   
   if(!disregard_drawn) {
     if(Tooltips::drawn_tooltips_rectangle.get_width()!=0) {
-      if(rectangle.intersects(Tooltips::drawn_tooltips_rectangle))
-        rectangle.set_y(Tooltips::drawn_tooltips_rectangle.get_y()-tooltip_height);
+      if(rectangle.intersects(Tooltips::drawn_tooltips_rectangle)) {
+        int new_y=Tooltips::drawn_tooltips_rectangle.get_y()-tooltip_height;
+        if(new_y>=0)
+          rectangle.set_y(new_y);
+        else
+          rectangle.set_x(Tooltips::drawn_tooltips_rectangle.get_x()+Tooltips::drawn_tooltips_rectangle.get_width()+2);
+      }
       Tooltips::drawn_tooltips_rectangle.join(rectangle);
     }
     else

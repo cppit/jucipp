@@ -365,7 +365,7 @@ Directories::Directories() : Gtk::TreeView(), stop_update_thread(false) {
   menu_item_delete.signal_activate().connect([this] {
     if(menu_popup_row_path.empty())
       return;
-    Gtk::MessageDialog dialog((Gtk::Window&)(*get_toplevel()), "Delete!", false, Gtk::MESSAGE_QUESTION, Gtk::BUTTONS_YES_NO);
+    Gtk::MessageDialog dialog(*static_cast<Gtk::Window*>(get_toplevel()), "Delete!", false, Gtk::MESSAGE_QUESTION, Gtk::BUTTONS_YES_NO);
     dialog.set_default_response(Gtk::RESPONSE_NO);
     dialog.set_secondary_text("Are you sure you want to delete "+menu_popup_row_path.string()+"?");
     int result = dialog.run();

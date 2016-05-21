@@ -3,14 +3,25 @@
 #include "dialogs.h"
 #include "config.h"
 #include "terminal.h"
+
+//Temporary fix for current Arch Linux boost linking problem
+#ifdef __GNUC_PREREQ
+#if __GNUC_PREREQ(5,1)
+#include <regex>
+#define REGEX_NS std
+#endif
+#endif
+#ifndef REGEX_NS
 #include <boost/regex.hpp>
+#define REGEX_NS boost
+#endif
 
 CMake::CMake(const boost::filesystem::path &path) {
   const auto find_cmake_project=[this](const boost::filesystem::path &cmake_path) {
     for(auto &line: filesystem::read_lines(cmake_path)) {
-      const boost::regex project_regex("^ *project *\\(.*$", boost::regex::icase);
-      boost::smatch sm;
-      if(boost::regex_match(line, sm, project_regex))
+      const static REGEX_NS::regex project_regex("^ *project *\\(.*$", REGEX_NS::regex::icase);
+      REGEX_NS::smatch sm;
+      if(REGEX_NS::regex_match(line, sm, project_regex))
         return true;
     }
     return false;
@@ -206,9 +217,9 @@ void CMake::find_variables() {
         end_line=file.size();
       if(end_line>start_line) {
         auto line=file.substr(start_line, end_line-start_line);
-        boost::smatch sm;
-        const boost::regex set_regex("^ *set *\\( *([A-Za-z_][A-Za-z_0-9]*) +(.*)\\) *$", boost::regex::icase);
-        if(boost::regex_match(line, sm, set_regex)) {
+        REGEX_NS::smatch sm;
+        const static REGEX_NS::regex set_regex("^ *set *\\( *([A-Za-z_][A-Za-z_0-9]*) +(.*)\\) *$", REGEX_NS::regex::icase);
+        if(REGEX_NS::regex_match(line, sm, set_regex)) {
           auto data=sm[2].str();
           while(data.size()>0 && data.back()==' ')
             data.pop_back();
@@ -216,8 +227,8 @@ void CMake::find_variables() {
           variables[sm[1].str()]=data;
         }
         else {
-          const boost::regex project_regex("^ *project *\\( *([^ ]+).*\\) *$", boost::regex::icase);
-          if(boost::regex_match(line, sm, project_regex)) {
+          const static REGEX_NS::regex project_regex("^ *project *\\( *([^ ]+).*\\) *$", REGEX_NS::regex::icase);
+          if(REGEX_NS::regex_match(line, sm, project_regex)) {
             auto data=sm[1].str();
             parse_variable_parameters(data);
             variables["CMAKE_PROJECT_NAME"]=data; //TODO: is this variable deprecated/non-standard?
@@ -250,7 +261,8 @@ void CMake::parse_variable_parameters(std::string &data) {
       pos--;
     }
     
-    last_char=data[pos];
+    if(pos!=static_cast<size_t>(-1))
+      last_char=data[pos];
     pos++;
   }
   for(auto &var: variables) {
@@ -307,7 +319,8 @@ std::vector<std::string> CMake::get_function_parameters(std::string &data) {
         parameter_pos=pos+1;
     }
     
-    last_char=data[pos];
+    if(pos!=static_cast<size_t>(-1))
+      last_char=data[pos];
     pos++;
   }
   parameters.emplace_back(data.substr(parameter_pos));
@@ -324,6 +337,7 @@ std::vector<std::string> CMake::get_function_parameters(std::string &data) {
 }
 
 std::vector<std::pair<boost::filesystem::path, std::vector<std::string> > > CMake::get_functions_parameters(const std::string &name) {
+  const REGEX_NS::regex function_regex("^ *"+name+" *\\( *(.*)\\) *$", REGEX_NS::regex::icase);
   if(!parsed)
     parse();
   std::vector<std::pair<boost::filesystem::path, std::vector<std::string> > > functions;
@@ -337,9 +351,8 @@ std::vector<std::pair<boost::filesystem::path, std::vector<std::string> > > CMak
         end_line=file.size();
       if(end_line>start_line) {
         auto line=file.substr(start_line, end_line-start_line);
-        const boost::regex function_regex("^ *"+name+" *\\( *(.*)\\) *$", boost::regex::icase);
-        boost::smatch sm;
-        if(boost::regex_match(line, sm, function_regex)) {
+        REGEX_NS::smatch sm;
+        if(REGEX_NS::regex_match(line, sm, function_regex)) {
           auto data=sm[1].str();
           while(data.size()>0 && data.back()==' ')
             data.pop_back();

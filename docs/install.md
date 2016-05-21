@@ -46,8 +46,6 @@ sudo make install
 ```
 
 ##Arch Linux/Manjaro Linux
-**Arch Linux's lldb package has an issue that is being worked on (see https://github.com/cppit/jucipp/issues/191), and for the time being you have to build juCi++ without debug support. If you have the lldb package installed, please remove this package before building juCi++.**
-
 Package available in the Arch User Repository:
 https://aur.archlinux.org/packages/jucipp-git/
 
@@ -56,12 +54,11 @@ If you have the arch package [yaourt](https://archlinux.fr/yaourt-en) installed:
 yaourt -S jucipp-git
 ```
 
-
 Alternatively, follow the instructions below.
 
 Install dependencies:
 ```sh
-sudo pacman -S git cmake make clang gtksourceviewmm boost aspell aspell-en
+sudo pacman -S git cmake pkg-config make clang lldb gtksourceviewmm boost aspell aspell-en
 ```
 
 Get juCi++ source, compile and install:

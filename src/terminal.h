@@ -11,6 +11,17 @@
 #include "process.hpp"
 #include "dispatcher.h"
 #include <unordered_set>
+//Temporary fix for current Arch Linux boost linking problem
+#ifdef __GNUC_PREREQ
+#if __GNUC_PREREQ(5,1)
+#include <regex>
+#define REGEX_NS std
+#endif
+#endif
+#ifndef REGEX_NS
+#include <boost/regex.hpp>
+#define REGEX_NS boost
+#endif
 
 class Terminal : public Gtk::TextView {
 public:
@@ -53,16 +64,22 @@ public:
   
   void clear();
 protected:
-  bool on_key_press_event(GdkEventKey *event);
+  bool on_motion_notify_event (GdkEventMotion* motion_event) override;
+  bool on_button_press_event(GdkEventButton* button_event) override;
+  bool on_key_press_event(GdkEventKey *event) override;
 private:
   Dispatcher dispatcher;
   Glib::RefPtr<Gtk::TextTag> bold_tag;
+  Glib::RefPtr<Gtk::TextTag> link_tag;
+  Glib::RefPtr<Gdk::Cursor> link_mouse_cursor;
+  Glib::RefPtr<Gdk::Cursor> default_mouse_cursor;
+  size_t deleted_lines=0;
+  const static REGEX_NS::regex link_regex;
+  void apply_link_tags(Gtk::TextIter start_iter, Gtk::TextIter end_iter);
 
   std::vector<std::shared_ptr<Process> > processes;
   std::mutex processes_mutex;
   std::string stdin_buffer;
-  
-  size_t deleted_lines=0;
   
   std::unordered_set<InProgress*> in_progresses;
   std::mutex in_progresses_mutex;

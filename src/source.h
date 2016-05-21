@@ -7,7 +7,18 @@
 #include <string>
 #include <unordered_map>
 #include <vector>
+
+//Temporary fix for current Arch Linux boost linking problem
+#ifdef __GNUC_PREREQ
+#if __GNUC_PREREQ(5,1)
+#include <regex>
+#define REGEX_NS std
+#endif
+#endif
+#ifndef REGEX_NS
 #include <boost/regex.hpp>
+#define REGEX_NS boost
+#endif
 
 #include "selectiondialog.h"
 #include "tooltips.h"
@@ -15,27 +26,11 @@
 namespace Source {
   Glib::RefPtr<Gsv::Language> guess_language(const boost::filesystem::path &file_path);
   
-  class Token {
-  public:
-    Token(): type(-1) {}
-    Token(Glib::RefPtr<Gsv::Language> language, int type, const std::string &spelling, const std::string &usr): 
-      language(language), type(type), spelling(spelling), usr(usr) {}
-    operator bool() const {return (type>=0 && spelling.size()>0 && usr.size()>0);}
-    bool operator==(const Token &o) const {return (type==o.type &&
-                                                   spelling==o.spelling &&
-                                                   usr==o.usr);}
-    bool operator!=(const Token &o) const {return !(*this==o);}
-    
-    Glib::RefPtr<Gsv::Language> language;
-    int type;
-    std::string spelling;
-    std::string usr;
-  };
-  
   class Offset {
   public:
     Offset() {}
     Offset(unsigned line, unsigned index, const boost::filesystem::path &file_path=""): line(line), index(index), file_path(file_path) {}
+    operator bool() { return !file_path.empty(); }
     bool operator==(const Offset &o) {return (line==o.line && index==o.index);}
     
     unsigned line;
@@ -61,6 +56,7 @@ namespace Source {
     View(const boost::filesystem::path &file_path, Glib::RefPtr<Gsv::Language> language);
     ~View();
     
+    virtual bool save(const std::vector<Source::View*> &views);
     virtual void configure();
     
     void search_highlight(const std::string &text, bool case_sensitive, bool regex);
@@ -78,11 +74,12 @@ namespace Source {
     
     std::function<void()> auto_indent;
     std::function<Offset()> get_declaration_location;
-    std::function<std::vector<std::pair<Offset, std::string> >(const Token &token)> get_usages;
+    std::function<Offset(const std::vector<Source::View*> &views)> get_implementation_location;
+    std::function<std::vector<std::pair<Offset, std::string> >(const std::vector<Source::View*> &views)> get_usages;
     std::function<void()> goto_method;
-    std::function<Token()> get_token;
     std::function<std::vector<std::string>()> get_token_data;
-    std::function<size_t(const Token &token, const std::string &text)> rename_similar_tokens;
+    std::function<std::string()> get_token_spelling;
+    std::function<std::vector<std::pair<boost::filesystem::path, size_t> >(const std::vector<Source::View*> &views, const std::string &text)> rename_similar_tokens;
     std::function<void()> goto_next_diagnostic;
     std::function<void()> apply_fix_its;
     
@@ -92,6 +89,9 @@ namespace Source {
     sigc::connection delayed_tooltips_connection;
     
     std::function<void(View* view, bool center, bool show_tooltips)> scroll_to_cursor_delayed=[](View* view, bool center, bool show_tooltips) {};
+    void place_cursor_at_line_offset(int line, int offset);
+    void place_cursor_at_line_index(int line, int index);
+    
     std::function<void(View* view, const std::string &status_text)> on_update_status;
     std::function<void(View* view, const std::string &info_text)> on_update_info;
     void set_status(const std::string &status);
@@ -111,6 +111,7 @@ namespace Source {
     virtual void soft_reparse() {soft_reparse_needed=false;}
     virtual bool full_reparse() {full_reparse_needed=false; return true;}
   protected:
+    std::time_t last_read_time;
     bool parsed=false;
     Tooltips diagnostic_tooltips;
     Tooltips type_tooltips;
@@ -137,15 +138,18 @@ namespace Source {
     bool find_right_bracket_forward(Gtk::TextIter iter, Gtk::TextIter &found_iter);
     bool find_left_bracket_backward(Gtk::TextIter iter, Gtk::TextIter &found_iter);
     
-    boost::regex bracket_regex;
-    boost::regex no_bracket_statement_regex;
-    boost::regex no_bracket_no_para_statement_regex;
+    std::string get_token(Gtk::TextIter iter);
+    
+    const static REGEX_NS::regex bracket_regex;
+    const static REGEX_NS::regex no_bracket_statement_regex;
+    const static REGEX_NS::regex no_bracket_no_para_statement_regex;
     
     bool on_key_press_event(GdkEventKey* key) override;
     bool on_key_press_event_basic(GdkEventKey* key);
     bool on_key_press_event_bracket_language(GdkEventKey* key);
     bool is_bracket_language=false;
     bool on_button_press_event(GdkEventButton *event) override;
+    bool on_focus_in_event(GdkEventFocus* focus_event) override;
     
     std::pair<char, unsigned> find_tab_char_and_size();
     unsigned tab_size;
@@ -157,6 +161,8 @@ namespace Source {
     guint previous_non_modifier_keyval=0;
     guint last_keyval=0;
   private:
+    Gsv::DrawSpacesFlags parse_show_whitespace_characters(const std::string &text);
+    
     GtkSourceSearchContext *search_context;
     GtkSourceSearchSettings *search_settings;
     static void search_occurrences_updated(GtkWidget* widget, GParamSpec* property, gpointer data);

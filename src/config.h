@@ -56,6 +56,7 @@ public:
     std::string spellcheck_language;
     
     bool cleanup_whitespace_characters;
+    std::string show_whitespace_characters;
     
     bool show_map;
     std::string map_font_size;
@@ -66,7 +67,7 @@ public:
     bool wrap_lines;
     bool highlight_current_line;
     bool show_line_numbers;
-    std::unordered_map<std::string, std::string> clang_types;
+    std::unordered_map<int, std::string> clang_types;
     std::string clang_format_style;
     
     std::unordered_map<std::string, DocumentationSearch> documentation_searches;
