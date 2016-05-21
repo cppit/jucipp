@@ -137,12 +137,16 @@ else()
 endif()
 
 include_directories(${global_includes})
-add_executable(${project_name} ${project_files})
-target_link_libraries(${project_name} ${global_libraries})
 
-install(TARGETS ${project_name}
-  RUNTIME DESTINATION bin
-)
+if(("${CMAKE_CXX_COMPILER_ID}" STREQUAL "Clang") AND (NOT $ENV{distribution} STREQUAL ""))
+  add_library(${project_name} OBJECT ${project_files})
+else()
+  add_executable(${project_name} ${project_files})
+  target_link_libraries(${project_name} ${global_libraries})
+  install(TARGETS ${project_name}
+    RUNTIME DESTINATION bin
+  )
+endif()
 
 # add a target to generate API documentation with Doxygen
 find_package(Plantuml)
