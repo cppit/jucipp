@@ -1,3 +1,0 @@
-FROM fedora:23
-
-RUN dnf install -y git cmake make gcc-c++ clang-devel clang lldb-devel boost-devel gtksourceviewmm3-devel gtkmm30-devel aspell-devel aspell-en
