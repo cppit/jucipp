@@ -262,10 +262,10 @@ Source::View::View(const boost::filesystem::path &file_path, Glib::RefPtr<Gsv::L
           for(auto &suggestion: suggestions)
             spellcheck_suggestions_dialog->add_row(suggestion);
           spellcheck_suggestions_dialog->on_select=[this, word](const std::string& selected, bool hide_window) {
-            get_source_buffer()->begin_user_action();
+            get_buffer()->begin_user_action();
             get_buffer()->erase(word.first, word.second);
             get_buffer()->insert(get_buffer()->get_insert()->get_iter(), selected);
-            get_source_buffer()->end_user_action();
+            get_buffer()->end_user_action();
             delayed_tooltips_connection.disconnect();
           };
           spellcheck_suggestions_dialog->show();
@@ -327,13 +327,13 @@ Source::View::View(const boost::filesystem::path &file_path, Glib::RefPtr<Gsv::L
       
       auto exit_status=Terminal::get().process(stdin_stream, stdout_stream, command, this->file_path.parent_path());
       if(exit_status==0) {
-        get_source_buffer()->begin_user_action();
+        get_buffer()->begin_user_action();
         auto iter=get_buffer()->get_insert()->get_iter();
         auto cursor_line_nr=iter.get_line();
         auto cursor_line_offset=iter.get_line_offset();
         
         get_buffer()->set_text(stdout_stream.str());
-        get_source_buffer()->end_user_action();
+        get_buffer()->end_user_action();
         
         place_cursor_at_line_offset(cursor_line_nr, cursor_line_offset);
         scroll_to_cursor_delayed(this, true, false);
@@ -769,7 +769,7 @@ void Source::View::paste() {
     end_line=0;
     paste_line=false;
     first_paste_line=true;
-    get_source_buffer()->begin_user_action();
+    get_buffer()->begin_user_action();
     for(size_t c=0;c<text.size();c++) {
       if(text[c]=='\n') {
         end_line=c;
@@ -807,7 +807,7 @@ void Source::View::paste() {
       }
     }
     get_buffer()->place_cursor(get_buffer()->get_insert()->get_iter());
-    get_source_buffer()->end_user_action();
+    get_buffer()->end_user_action();
     scroll_to_cursor_delayed(this, false, false);
   }
   else {
@@ -956,7 +956,7 @@ std::string Source::View::get_line(const Gtk::TextIter &iter) {
   auto line_start_it = get_buffer()->get_iter_at_line(iter.get_line());
   auto line_end_it = iter;
   while(!line_end_it.ends_line() && line_end_it.forward_char()) {}
-  std::string line(get_source_buffer()->get_text(line_start_it, line_end_it));
+  std::string line(get_buffer()->get_text(line_start_it, line_end_it));
   return line;
 }
 std::string Source::View::get_line(Glib::RefPtr<Gtk::TextBuffer::Mark> mark) {
@@ -970,8 +970,8 @@ std::string Source::View::get_line() {
 }
 
 std::string Source::View::get_line_before(const Gtk::TextIter &iter) {
-  auto line_it = get_source_buffer()->get_iter_at_line(iter.get_line());
-  std::string line(get_source_buffer()->get_text(line_it, iter));
+  auto line_it = get_buffer()->get_iter_at_line(iter.get_line());
+  std::string line(get_buffer()->get_text(line_it, iter));
   return line;
 }
 std::string Source::View::get_line_before(Glib::RefPtr<Gtk::TextBuffer::Mark> mark) {
@@ -988,7 +988,7 @@ Gtk::TextIter Source::View::get_tabs_end_iter(Glib::RefPtr<Gtk::TextBuffer::Mark
   return get_tabs_end_iter(mark->get_iter());
 }
 Gtk::TextIter Source::View::get_tabs_end_iter(int line_nr) {
-  auto sentence_iter = get_source_buffer()->get_iter_at_line(line_nr);
+  auto sentence_iter = get_buffer()->get_iter_at_line(line_nr);
   while((*sentence_iter==' ' || *sentence_iter=='\t') && !sentence_iter.ends_line() && sentence_iter.forward_char()) {}
   return sentence_iter;
 }
@@ -1178,7 +1178,7 @@ bool Source::View::on_key_press_event(GdkEventKey* key) {
 
 //Basic indentation
 bool Source::View::on_key_press_event_basic(GdkEventKey* key) {
-  get_source_buffer()->begin_user_action();
+  get_buffer()->begin_user_action();
   auto iter=get_buffer()->get_insert()->get_iter();
   //Indent as in next or previous line
   if(key->keyval==GDK_KEY_Return && !get_buffer()->get_has_selection() && !iter.starts_line()) {
@@ -1206,15 +1206,15 @@ bool Source::View::on_key_press_event_basic(GdkEventKey* key) {
       auto next_line_tabs_end_iter=get_tabs_end_iter(line_nr+1);
       auto next_line_tabs=get_line_before(next_line_tabs_end_iter);
       if(iter.ends_line() && next_line_tabs.size()>line_tabs.size()) {
-        get_source_buffer()->insert_at_cursor("\n"+next_line_tabs);
-        scroll_to(get_source_buffer()->get_insert());
-        get_source_buffer()->end_user_action();
+        get_buffer()->insert_at_cursor("\n"+next_line_tabs);
+        scroll_to(get_buffer()->get_insert());
+        get_buffer()->end_user_action();
         return true;
       }
     }
-    get_source_buffer()->insert_at_cursor("\n"+line_tabs);
-    scroll_to(get_source_buffer()->get_insert());
-    get_source_buffer()->end_user_action();
+    get_buffer()->insert_at_cursor("\n"+line_tabs);
+    scroll_to(get_buffer()->get_insert());
+    get_buffer()->end_user_action();
     return true;
   }
   //Indent right when clicking tab, no matter where in the line the cursor is. Also works on selected text.
@@ -1238,34 +1238,34 @@ bool Source::View::on_key_press_event_basic(GdkEventKey* key) {
         tabs=next_line_tabs;
       if(tabs.size()>=tab_size) {
         get_buffer()->insert_at_cursor(tabs);
-        get_source_buffer()->end_user_action();
+        get_buffer()->end_user_action();
         return true;
       }
     }
     
     Gtk::TextIter selection_start, selection_end;
-    get_source_buffer()->get_selection_bounds(selection_start, selection_end);
+    get_buffer()->get_selection_bounds(selection_start, selection_end);
     int line_start=selection_start.get_line();
     int line_end=selection_end.get_line();
     for(int line=line_start;line<=line_end;line++) {
-      Gtk::TextIter line_it = get_source_buffer()->get_iter_at_line(line);
+      Gtk::TextIter line_it = get_buffer()->get_iter_at_line(line);
       if(!get_buffer()->get_has_selection() || line_it!=selection_end)
-        get_source_buffer()->insert(line_it, tab);
+        get_buffer()->insert(line_it, tab);
     }
-    get_source_buffer()->end_user_action();
+    get_buffer()->end_user_action();
     return true;
   }
   //Indent left when clicking shift-tab, no matter where in the line the cursor is. Also works on selected text.
   else if((key->keyval==GDK_KEY_ISO_Left_Tab || key->keyval==GDK_KEY_Tab) && (key->state&GDK_SHIFT_MASK)>0) {
     Gtk::TextIter selection_start, selection_end;
-    get_source_buffer()->get_selection_bounds(selection_start, selection_end);
+    get_buffer()->get_selection_bounds(selection_start, selection_end);
     int line_start=selection_start.get_line();
     int line_end=selection_end.get_line();
     
     unsigned indent_left_steps=tab_size;
     std::vector<bool> ignore_line;
     for(int line_nr=line_start;line_nr<=line_end;line_nr++) {
-      auto line_it = get_source_buffer()->get_iter_at_line(line_nr);
+      auto line_it = get_buffer()->get_iter_at_line(line_nr);
       if(!get_buffer()->get_has_selection() || line_it!=selection_end) {        
         auto tabs_end_iter=get_tabs_end_iter(line_nr);
         if(tabs_end_iter.starts_line() && tabs_end_iter.ends_line())
@@ -1278,7 +1278,7 @@ bool Source::View::on_key_press_event_basic(GdkEventKey* key) {
             ignore_line.push_back(false);
           }
           else {
-            get_source_buffer()->end_user_action();
+            get_buffer()->end_user_action();
             return true;
           }
         }
@@ -1286,15 +1286,15 @@ bool Source::View::on_key_press_event_basic(GdkEventKey* key) {
     }
     
     for(int line_nr=line_start;line_nr<=line_end;line_nr++) {
-      Gtk::TextIter line_it = get_source_buffer()->get_iter_at_line(line_nr);
+      Gtk::TextIter line_it = get_buffer()->get_iter_at_line(line_nr);
       Gtk::TextIter line_plus_it=line_it;
       if(!get_buffer()->get_has_selection() || line_it!=selection_end) {
         line_plus_it.forward_chars(indent_left_steps);
         if(!ignore_line.at(line_nr-line_start))
-          get_source_buffer()->erase(line_it, line_plus_it);
+          get_buffer()->erase(line_it, line_plus_it);
       }
     }
-    get_source_buffer()->end_user_action();
+    get_buffer()->end_user_action();
     return true;
   }
   //"Smart" backspace key
@@ -1359,7 +1359,7 @@ bool Source::View::on_key_press_event_basic(GdkEventKey* key) {
         get_buffer()->place_cursor(end_line_iter);
     }
     scroll_to(get_buffer()->get_insert());
-    get_source_buffer()->end_user_action();
+    get_buffer()->end_user_action();
     return true;
   }
   else if(key->keyval==GDK_KEY_Home && (key->state&GDK_CONTROL_MASK)==0) {
@@ -1382,7 +1382,7 @@ bool Source::View::on_key_press_event_basic(GdkEventKey* key) {
         get_buffer()->place_cursor(start_line_iter);
     }
     scroll_to(get_buffer()->get_insert());
-    get_source_buffer()->end_user_action();
+    get_buffer()->end_user_action();
     return true;
   }
 
@@ -1399,7 +1399,7 @@ bool Source::View::on_key_press_event_basic(GdkEventKey* key) {
       get_buffer()->erase(selection_start, selection_end);
     }
     get_buffer()->insert_at_cursor(Glib::ustring(1, unicode));
-    get_source_buffer()->end_user_action();
+    get_buffer()->end_user_action();
     scroll_to(get_buffer()->get_insert());
     
     //Trick to make the cursor visible right after insertion:
@@ -1410,13 +1410,13 @@ bool Source::View::on_key_press_event_basic(GdkEventKey* key) {
   }
 
   auto stop=Gsv::View::on_key_press_event(key);
-  get_source_buffer()->end_user_action();
+  get_buffer()->end_user_action();
   return stop;
 }
 
 //Bracket language indentation
 bool Source::View::on_key_press_event_bracket_language(GdkEventKey* key) {
-  get_source_buffer()->begin_user_action();
+  get_buffer()->begin_user_action();
   auto iter=get_buffer()->get_insert()->get_iter();
   //Indent depending on if/else/etc and brackets
   if(key->keyval==GDK_KEY_Return && !iter.starts_line()) {
@@ -1454,13 +1454,13 @@ bool Source::View::on_key_press_event_bracket_language(GdkEventKey* key) {
             has_bracket=true;
         }
         if(*get_buffer()->get_insert()->get_iter()=='}') {
-          get_source_buffer()->insert_at_cursor("\n"+tabs+tab+"\n"+tabs);
-          auto insert_it = get_source_buffer()->get_insert()->get_iter();
+          get_buffer()->insert_at_cursor("\n"+tabs+tab+"\n"+tabs);
+          auto insert_it = get_buffer()->get_insert()->get_iter();
           if(insert_it.backward_chars(tabs.size()+1)) {
-            scroll_to(get_source_buffer()->get_insert());
-            get_source_buffer()->place_cursor(insert_it);
+            scroll_to(get_buffer()->get_insert());
+            get_buffer()->place_cursor(insert_it);
           }
-          get_source_buffer()->end_user_action();
+          get_buffer()->end_user_action();
           return true;
         }
         else if(!has_bracket) {
@@ -1478,19 +1478,19 @@ bool Source::View::on_key_press_event_bracket_language(GdkEventKey* key) {
             if(token=="class" || token=="struct")
               add_semicolon=true;
           }
-          get_source_buffer()->insert_at_cursor("\n"+tabs+tab+"\n"+tabs+(add_semicolon?"};":"}"));
-          auto insert_it = get_source_buffer()->get_insert()->get_iter();
+          get_buffer()->insert_at_cursor("\n"+tabs+tab+"\n"+tabs+(add_semicolon?"};":"}"));
+          auto insert_it = get_buffer()->get_insert()->get_iter();
           if(insert_it.backward_chars(tabs.size()+(add_semicolon?3:2))) {
-            scroll_to(get_source_buffer()->get_insert());
-            get_source_buffer()->place_cursor(insert_it);
+            scroll_to(get_buffer()->get_insert());
+            get_buffer()->place_cursor(insert_it);
           }
-          get_source_buffer()->end_user_action();
+          get_buffer()->end_user_action();
           return true;
         }
         else {
-          get_source_buffer()->insert_at_cursor("\n"+tabs+tab);
+          get_buffer()->insert_at_cursor("\n"+tabs+tab);
           scroll_to(get_buffer()->get_insert());
-          get_source_buffer()->end_user_action();
+          get_buffer()->end_user_action();
           return true;
         }
       }
@@ -1507,34 +1507,34 @@ bool Source::View::on_key_press_event_bracket_language(GdkEventKey* key) {
         }
       }
       else if(REGEX_NS::regex_match(line, sm, no_bracket_statement_regex)) {
-        get_source_buffer()->insert_at_cursor("\n"+tabs+tab);
-        scroll_to(get_source_buffer()->get_insert());
-        get_source_buffer()->end_user_action();
+        get_buffer()->insert_at_cursor("\n"+tabs+tab);
+        scroll_to(get_buffer()->get_insert());
+        get_buffer()->end_user_action();
         return true;
       }
       else if(REGEX_NS::regex_match(line, sm, no_bracket_no_para_statement_regex)) {
-        get_source_buffer()->insert_at_cursor("\n"+tabs+tab);
-        scroll_to(get_source_buffer()->get_insert());
-        get_source_buffer()->end_user_action();
+        get_buffer()->insert_at_cursor("\n"+tabs+tab);
+        scroll_to(get_buffer()->get_insert());
+        get_buffer()->end_user_action();
         return true;
       }
       //Indenting after for instance if(...)\n...;\n
       else if(iter.backward_char() && *iter==';') {
         REGEX_NS::smatch sm2;
-        size_t line_nr=get_source_buffer()->get_insert()->get_iter().get_line();
+        size_t line_nr=get_buffer()->get_insert()->get_iter().get_line();
         if(line_nr>0 && tabs.size()>=tab_size) {
           std::string previous_line=get_line(line_nr-1);
           if(!REGEX_NS::regex_match(previous_line, sm2, bracket_regex)) {
             if(REGEX_NS::regex_match(previous_line, sm2, no_bracket_statement_regex)) {
-              get_source_buffer()->insert_at_cursor("\n"+sm2[1].str());
-              scroll_to(get_source_buffer()->get_insert());
-              get_source_buffer()->end_user_action();
+              get_buffer()->insert_at_cursor("\n"+sm2[1].str());
+              scroll_to(get_buffer()->get_insert());
+              get_buffer()->end_user_action();
               return true;
             }
             else if(REGEX_NS::regex_match(previous_line, sm2, no_bracket_no_para_statement_regex)) {
-              get_source_buffer()->insert_at_cursor("\n"+sm2[1].str());
-              scroll_to(get_source_buffer()->get_insert());
-              get_source_buffer()->end_user_action();
+              get_buffer()->insert_at_cursor("\n"+sm2[1].str());
+              scroll_to(get_buffer()->get_insert());
+              get_buffer()->end_user_action();
               return true;
             }
           }
@@ -1559,17 +1559,17 @@ bool Source::View::on_key_press_event_bracket_language(GdkEventKey* key) {
               get_buffer()->erase(start_line_iter, start_line_plus_tab_size);
             }
             else {
-              get_source_buffer()->insert_at_cursor("\n"+tabs+tab);
-              scroll_to(get_source_buffer()->get_insert());
-              get_source_buffer()->end_user_action();
+              get_buffer()->insert_at_cursor("\n"+tabs+tab);
+              scroll_to(get_buffer()->get_insert());
+              get_buffer()->end_user_action();
               return true;
             }
           }
         }
       }
-      get_source_buffer()->insert_at_cursor("\n"+tabs);
-      scroll_to(get_source_buffer()->get_insert());
-      get_source_buffer()->end_user_action();
+      get_buffer()->insert_at_cursor("\n"+tabs);
+      scroll_to(get_buffer()->get_insert());
+      get_buffer()->end_user_action();
       return true;
     }
   }
@@ -1579,19 +1579,19 @@ bool Source::View::on_key_press_event_bracket_language(GdkEventKey* key) {
     if(line.size()>=tab_size) {
       for(auto c: line) {
         if(c!=tab_char) {
-          get_source_buffer()->insert_at_cursor("}");
-          get_source_buffer()->end_user_action();
+          get_buffer()->insert_at_cursor("}");
+          get_buffer()->end_user_action();
           return true;
         }
       }
-      Gtk::TextIter insert_it = get_source_buffer()->get_insert()->get_iter();
-      Gtk::TextIter line_it = get_source_buffer()->get_iter_at_line(insert_it.get_line());
+      Gtk::TextIter insert_it = get_buffer()->get_insert()->get_iter();
+      Gtk::TextIter line_it = get_buffer()->get_iter_at_line(insert_it.get_line());
       Gtk::TextIter line_plus_it=line_it;
       line_plus_it.forward_chars(tab_size);
-      get_source_buffer()->erase(line_it, line_plus_it);
+      get_buffer()->erase(line_it, line_plus_it);
     }
-    get_source_buffer()->insert_at_cursor("}");
-    get_source_buffer()->end_user_action();
+    get_buffer()->insert_at_cursor("}");
+    get_buffer()->end_user_action();
     return true;
   }
   //Indent left when writing { on a new line after for instance if(...)\n...
@@ -1620,7 +1620,7 @@ bool Source::View::on_key_press_event_bracket_language(GdkEventKey* key) {
     }
   }
   
-  get_source_buffer()->end_user_action();
+  get_buffer()->end_user_action();
   return on_key_press_event_basic(key);
 }
 

@@ -255,7 +255,7 @@ void Source::ClangViewParse::update_syntax() {
   }
   if (ranges.empty())
     return;
-  auto buffer = get_source_buffer();
+  auto buffer = get_buffer();
   for(auto &tag: last_syntax_tags)
     buffer->remove_tag_by_name(tag, buffer->begin(), buffer->end());
   last_syntax_tags.clear();
@@ -554,7 +554,7 @@ void Source::ClangViewAutocomplete::autocomplete_dialog_setup() {
   autocomplete_dialog=std::unique_ptr<CompletionDialog>(new CompletionDialog(*this, get_buffer()->create_mark(start_iter)));
   autocomplete_dialog_rows.clear();
   autocomplete_dialog->on_hide=[this](){
-    get_source_buffer()->end_user_action();
+    get_buffer()->end_user_action();
     autocomplete_tooltips.hide();
     autocomplete_tooltips.clear();
     parsed=false;
@@ -745,7 +745,7 @@ void Source::ClangViewAutocomplete::autocomplete() {
             set_status("");
             autocomplete_state=AutocompleteState::IDLE;
             if (!autocomplete_dialog_rows.empty()) {
-              get_source_buffer()->begin_user_action();
+              get_buffer()->begin_user_action();
               autocomplete_dialog->show();
             }
             else
@@ -933,14 +933,14 @@ Source::ClangViewAutocomplete(file_path, language) {
           }
           if(!marks.empty()) {
             clang_view->renaming=true;
-            clang_view->get_source_buffer()->begin_user_action();
+            clang_view->get_buffer()->begin_user_action();
             for(auto &mark: marks) {
               clang_view->get_buffer()->erase(mark.first->get_iter(), mark.second->get_iter());
               clang_view->get_buffer()->insert(mark.first->get_iter(), text);
               clang_view->get_buffer()->delete_mark(mark.first);
               clang_view->get_buffer()->delete_mark(mark.second);
             }
-            clang_view->get_source_buffer()->end_user_action();
+            clang_view->get_buffer()->end_user_action();
             clang_view->renaming=false;
             clang_view->save(views);
             renamed_views.emplace_back(clang_view);
@@ -1272,7 +1272,7 @@ Source::ClangViewAutocomplete(file_path, language) {
       fix_it_marks.emplace_back(get_buffer()->create_mark(start_iter), get_buffer()->create_mark(end_iter));
     }
     size_t c=0;
-    get_source_buffer()->begin_user_action();
+    get_buffer()->begin_user_action();
     for(auto &fix_it: fix_its) {
       if(fix_it.type==FixIt::Type::INSERT) {
         get_buffer()->insert(fix_it_marks[c].first->get_iter(), fix_it.source);
@@ -1290,7 +1290,7 @@ Source::ClangViewAutocomplete(file_path, language) {
       get_buffer()->delete_mark(mark_pair.first);
       get_buffer()->delete_mark(mark_pair.second);
     }
-    get_source_buffer()->end_user_action();
+    get_buffer()->end_user_action();
   };
 }
 
