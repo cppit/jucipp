@@ -1131,6 +1131,23 @@ bool Source::View::find_left_bracket_backward(Gtk::TextIter iter, Gtk::TextIter 
   return false;
 }
 
+std::string Source::View::get_token(Gtk::TextIter iter) {
+  auto start=iter;
+  auto end=iter;
+  
+  while((*iter>='A' && *iter<='Z') || (*iter>='a' && *iter<='z') || (*iter>='0' && *iter<='9') || *iter=='_') {
+    start=iter;
+    if(!iter.backward_char())
+      break;
+  }
+  while((*end>='A' && *end<='Z') || (*end>='a' && *end<='z') || (*end>='0' && *end<='9') || *end=='_') {
+    if(!end.forward_char())
+      break;
+  }
+  
+  return get_buffer()->get_text(start, end);
+}
+
 bool Source::View::on_key_press_event(GdkEventKey* key) {
   if(spellcheck_suggestions_dialog && spellcheck_suggestions_dialog->shown) {
     if(spellcheck_suggestions_dialog->on_key_press(key))
@@ -1448,9 +1465,22 @@ bool Source::View::on_key_press_event_bracket_language(GdkEventKey* key) {
         }
         else if(!has_bracket) {
           //Insert new lines with bracket end
-          get_source_buffer()->insert_at_cursor("\n"+tabs+tab+"\n"+tabs+"}");
+          bool add_semicolon=false;
+          if(language && (language->get_id()=="chdr" || language->get_id()=="cpphdr" ||
+                          language->get_id()=="c" || language->get_id()=="cpp")) {
+            auto token=get_token(start_of_sentence_iter);
+            if(token.empty()) {
+              auto iter=start_of_sentence_iter;
+              while(!iter.starts_line() && iter.backward_char()) {}
+              if(iter.backward_char() && find_start_of_closed_expression(iter, iter))
+                token=get_token(iter);
+            }
+            if(token=="class" || token=="struct")
+              add_semicolon=true;
+          }
+          get_source_buffer()->insert_at_cursor("\n"+tabs+tab+"\n"+tabs+(add_semicolon?"};":"}"));
           auto insert_it = get_source_buffer()->get_insert()->get_iter();
-          if(insert_it.backward_chars(tabs.size()+2)) {
+          if(insert_it.backward_chars(tabs.size()+(add_semicolon?3:2))) {
             scroll_to(get_source_buffer()->get_insert());
             get_source_buffer()->place_cursor(insert_it);
           }
@@ -1777,7 +1807,7 @@ std::pair<char, unsigned> Source::View::find_tab_char_and_size() {
 }
 
 bool Source::View::is_word_iter(const Gtk::TextIter& iter) {
-  return ((*iter>=65 && *iter<=90) || (*iter>=97 && *iter<=122) || *iter==39 || *iter>=128);
+  return ((*iter>='A' && *iter<='Z') || (*iter>='a' && *iter<='z') || *iter=='\'' || *iter>=128);
 }
 
 std::pair<Gtk::TextIter, Gtk::TextIter> Source::View::spellcheck_get_word(Gtk::TextIter iter) {

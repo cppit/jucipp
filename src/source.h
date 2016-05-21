@@ -138,6 +138,8 @@ namespace Source {
     bool find_right_bracket_forward(Gtk::TextIter iter, Gtk::TextIter &found_iter);
     bool find_left_bracket_backward(Gtk::TextIter iter, Gtk::TextIter &found_iter);
     
+    std::string get_token(Gtk::TextIter iter);
+    
     const static REGEX_NS::regex bracket_regex;
     const static REGEX_NS::regex no_bracket_statement_regex;
     const static REGEX_NS::regex no_bracket_no_para_statement_regex;
