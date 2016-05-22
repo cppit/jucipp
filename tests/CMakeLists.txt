@@ -1,7 +1,7 @@
 add_definitions(-DBOOST_LOG_DYN_LINK)
 set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -std=c++11 -pthread -Wall -Wextra -Wno-unused-parameter -Wno-reorder")
 
-set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -flto -DJUCI_TESTS_PATH=\\\"${CMAKE_CURRENT_SOURCE_DIR}\\\"")
+set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -DJUCI_TESTS_PATH=\\\"${CMAKE_CURRENT_SOURCE_DIR}\\\"")
 
 if(APPLE)
   set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -undefined dynamic_lookup")
