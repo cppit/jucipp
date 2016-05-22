@@ -9,3 +9,8 @@ if(${CMAKE_SYSTEM_NAME} MATCHES "Linux|FreeBSD|OpenBSD|NetBSD")
     install(FILES "${CMAKE_SOURCE_DIR}/share/juci.desktop"
         DESTINATION "${CMAKE_INSTALL_PREFIX}/share/applications")
 endif()
+
+if(ENABLE_TESTING)
+  enable_testing()
+  add_subdirectory(tests)
+endif()
