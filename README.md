@@ -1,4 +1,4 @@
-# juCi++
+# juCi++ [![Build Status](https://travis-ci.org/cppit/jucipp.svg?branch=master)](https://travis-ci.org/cppit/jucipp)
 ###### a lightweight, platform independent C++-IDE with support for C++11, C++14, and experimental C++17 features depending on libclang version.
 <!--<img src="https://github.com/cppit/jucipp/blob/master/docs/images/screenshot3.png"/>-->
 ## About
