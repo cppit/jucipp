@@ -22,4 +22,18 @@ function osx () {
   true
 }
 
+function windows () {
+  cd "$(dirname "$0")" || exit
+  if [ "${script}" == "clean" ]; then
+    sudo rm ./build -rf
+    return 0
+  fi
+  sh -c "./ci/${script}.sh"
+}
+
+
+if [ "$TRAVIS_OS_NAME" == "" ]; then
+  TRAVIS_OS_NAME=windows
+fi
+
 $TRAVIS_OS_NAME

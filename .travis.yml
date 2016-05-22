@@ -11,7 +11,7 @@ services:
   - docker
   
 before_install:
-  - ./ci/update_travis.sh
+  - ./ci/update_ci.sh
 
 script:
   - script=compile CXX=clang++ CC=clang ./ci/execute.sh
