@@ -4,9 +4,11 @@
 #include <boost/filesystem.hpp>
 
 int main() {
-  CMake cmake(JUCI_TESTS_PATH);
+  auto tests_path=boost::filesystem::canonical(JUCI_TESTS_PATH);
   
-  g_assert(cmake.project_path.filename()=="jucipp");
+  CMake cmake(tests_path);
+  
+  g_assert(cmake.project_path==boost::filesystem::canonical(tests_path/".."));
   
   auto functions_parameters=cmake.get_functions_parameters("project");
   g_assert(functions_parameters.at(0).second.at(0)=="juci");
