@@ -2,7 +2,10 @@
 
 function linux () {
   cd ci || exit
-  sudo rm ../build -rf
+  if [ "${script}" == "clean" ]; then
+    sudo rm ../build -rf
+    return 0
+  fi
   sudo docker run -it \
     -e "CXX=$CXX" \
     -e "CC=$CC" \
@@ -10,7 +13,7 @@ function linux () {
     -e "cmake_command=$cmake_command" \
     -e "distribution=$distribution" \
     -v "$PWD/../:/jucipp" \
-    --entrypoint="/jucipp/ci/entrypoint.sh" \
+    --entrypoint="/jucipp/ci/${script}.sh" \
     "cppit/jucipp:$distribution"
 }
 

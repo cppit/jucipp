@@ -14,6 +14,8 @@ before_install:
   - ./ci/update_travis.sh
 
 script:
-  - CXX=clang++ CC=clang ./ci/compile_container.sh
-  - ./ci/compile_container.sh
-  - ./ci/static_analysis.sh
+  - script=compile CXX=clang++ CC=clang ./ci/execute.sh
+  - script=clean ./ci/execute.sh
+  - script=compile ./ci/execute.sh
+  - script=static_analysis ./ci/execute.sh
+  - script=compile make_command="broadwayd & make test" ./ci/execute.sh

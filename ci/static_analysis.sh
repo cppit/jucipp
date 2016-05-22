@@ -1,16 +1,8 @@
 #!/bin/bash
 
-function linux () {
-  cd ci || exit
-  sudo docker run -it \
-    -v "${PWD}/../:/jucipp/" \
-    "cppit/jucipp:${distribution}" \
-    sh -c "cd jucipp/build && scan-build -o ../html_${distribution} --status-bugs make"
-}
+if [ "${make_command}" == "" ]; then
+  make_command="make -j 2"
+fi
 
-#TODO should do static analysis on build
-function osx () {
-  true
-}
-
-$TRAVIS_OS_NAME
+cd jucipp/build || exit
+exec sh -c "scan-build -o ../html_${distribution} --status-bugs ${make_command}"

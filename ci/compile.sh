@@ -1,7 +1,7 @@
 #!/bin/bash
 
 if [ "${cmake_command}" == "" ]; then
-  cmake_command="cmake -DCMAKE_CXX_FLAGS=\"-Werror\" .."
+  cmake_command="cmake -DENABLE_TESTING=1 -DCMAKE_CXX_FLAGS=-Werror .."
 fi
 
 if [ "${make_command}" == "" ]; then
