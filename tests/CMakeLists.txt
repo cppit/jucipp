@@ -1,12 +1,7 @@
 add_definitions(-DBOOST_LOG_DYN_LINK)
 set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -std=c++11 -pthread -Wall -Wextra -Wno-unused-parameter -Wno-reorder")
 
-if("${CMAKE_CXX_COMPILER_ID}" STREQUAL "GNU")
-  set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -DJUCI_TESTS_PATH=\\\"${CMAKE_CURRENT_SOURCE_DIR}\\\" -Wl,--unresolved-symbols=ignore-in-object-files")
-else()
-  message(WARNING "testing only supported for g++")
-  return()
-endif()
+set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -flto -DJUCI_TESTS_PATH=\\\"${CMAKE_CURRENT_SOURCE_DIR}\\\"")
 
 if(APPLE)
   set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -undefined dynamic_lookup")
@@ -36,18 +31,27 @@ set(global_libraries
   ${Boost_LIBRARIES}
 )
 
+set(stub_sources
+    stubs/config.cc
+    stubs/dialogs.cc
+    stubs/dispatcher.cc
+    stubs/info.cc
+    stubs/terminal.cc
+)
+
 include_directories(${global_includes})
+
+add_library(stubs_library ${stub_sources})
 
 add_executable(cmake_test cmake_test.cc
                ../src/filesystem.cc ../src/cmake.cc ../src/project_build.cc)
-target_link_libraries(cmake_test ${global_libraries})
+target_link_libraries(cmake_test ${global_libraries} stubs_library)
 add_test(cmake_test cmake_test)
 
 #Added for example only, and requires display server to work
 #However, it is possible to use the Broadway backend if the test is run in a pure terminal environment:
 #broadwayd&
 #make test
-add_executable(example_test example_test.cc
-               stubs/dispatcher.cc stubs/terminal.cc stubs/info.cc)
-target_link_libraries(example_test ${global_libraries})
+add_executable(example_test example_test.cc)
+target_link_libraries(example_test ${global_libraries} stubs_library)
 add_test(example_test example_test)
