@@ -25,7 +25,7 @@ int filesystem::read(const std::string &path, Glib::RefPtr<Gtk::TextBuffer> text
     //need to read the whole file to make this work...
     std::stringstream ss;
     ss << input.rdbuf();
-    Glib::ustring ustr=std::move(ss.str());
+    Glib::ustring ustr=ss.str();
     
     bool valid=true;
     
@@ -70,7 +70,7 @@ int filesystem::read_non_utf8(const std::string &path, Glib::RefPtr<Gtk::TextBuf
     //need to read the whole file to make this work...
     std::stringstream ss;
     ss << input.rdbuf();
-    Glib::ustring ustr=std::move(ss.str());
+    Glib::ustring ustr=ss.str();
     
     bool valid=true;
     Glib::ustring::iterator iter;
