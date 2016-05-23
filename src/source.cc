@@ -371,6 +371,31 @@ void Source::View::set_tab_char_and_size(char tab_char, unsigned tab_size) {
     tab+=tab_char;
 }
 
+void Source::View::cleanup_whitespace_characters() {
+  auto buffer=get_buffer();
+  buffer->begin_user_action();
+  for(int line=0;line<buffer->get_line_count();line++) {
+    auto iter=buffer->get_iter_at_line(line);
+    auto end_iter=iter;
+    while(!end_iter.ends_line())
+      end_iter.forward_char();
+    if(iter==end_iter)
+      continue;
+    iter=end_iter;
+    while(!iter.starts_line() && (*iter==' ' || *iter=='\t' || iter.ends_line()))
+      iter.backward_char();
+    if(*iter!=' ' && *iter!='\t')
+      iter.forward_char();
+    if(iter==end_iter)
+      continue;
+    buffer->erase(iter, end_iter);
+  }
+  auto iter=buffer->end();
+  if(!iter.starts_line())
+    buffer->insert(buffer->end(), "\n");
+  buffer->end_user_action();
+}
+
 Gsv::DrawSpacesFlags Source::View::parse_show_whitespace_characters(const std::string &text) {
   namespace qi = boost::spirit::qi;
   
@@ -398,31 +423,8 @@ Gsv::DrawSpacesFlags Source::View::parse_show_whitespace_characters(const std::s
 bool Source::View::save(const std::vector<Source::View*> &views) {
   if(file_path.empty() || !get_buffer()->get_modified())
     return false;
-  //Remove trailing whitespace characters on save, and add trailing newline if missing
-  if(Config::get().source.cleanup_whitespace_characters) {
-    auto buffer=get_buffer();
-    buffer->begin_user_action();
-    for(int line=0;line<buffer->get_line_count();line++) {
-      auto iter=buffer->get_iter_at_line(line);
-      auto end_iter=iter;
-      while(!end_iter.ends_line())
-        end_iter.forward_char();
-      if(iter==end_iter)
-        continue;
-      iter=end_iter;
-      while(!iter.starts_line() && (*iter==' ' || *iter=='\t' || iter.ends_line()))
-        iter.backward_char();
-      if(*iter!=' ' && *iter!='\t')
-        iter.forward_char();
-      if(iter==end_iter)
-        continue;
-      buffer->erase(iter, end_iter);
-    }
-    auto iter=buffer->end();
-    if(!iter.starts_line())
-      buffer->insert(buffer->end(), "\n");
-    buffer->end_user_action();
-  }
+  if(Config::get().source.cleanup_whitespace_characters)
+    cleanup_whitespace_characters();
   
   if(filesystem::write(file_path, get_buffer())) {
     last_read_time=std::chrono::system_clock::to_time_t(std::chrono::system_clock::now());

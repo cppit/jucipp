@@ -1,5 +1,5 @@
 add_definitions(-DBOOST_LOG_DYN_LINK)
-set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -std=c++11 -pthread -Wall -Wextra -Wno-unused-parameter -Wno-reorder")
+set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -fno-access-control -std=c++11 -pthread -Wall -Wextra -Wno-unused-parameter -Wno-reorder")
 
 set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -DJUCI_TESTS_PATH=\\\"${CMAKE_CURRENT_SOURCE_DIR}\\\"")
 
@@ -12,6 +12,7 @@ if(APPLE)
 endif()
 
 find_package(Boost 1.54 COMPONENTS regex system filesystem REQUIRED)
+find_package(ASPELL REQUIRED)
 set(LIBCLANGMM_INCLUDE_DIR ../libclangmm/src)
 
 include(FindPkgConfig)
@@ -21,6 +22,7 @@ set(global_includes
    ${Boost_INCLUDE_DIRS}
    ${GTKMM_INCLUDE_DIRS}
    ${GTKSVMM_INCLUDE_DIRS}
+   ${ASPELL_INCLUDE_DIR}
    ../src
    ../tiny-process-library
 )
@@ -29,6 +31,7 @@ set(global_libraries
   ${GTKMM_LIBRARIES}
   ${GTKSVMM_LIBRARIES}
   ${Boost_LIBRARIES}
+  ${ASPELL_LIBRARIES}
 )
 
 set(stub_sources
@@ -36,22 +39,21 @@ set(stub_sources
     stubs/dialogs.cc
     stubs/dispatcher.cc
     stubs/info.cc
+    stubs/selectiondialog.cc
     stubs/terminal.cc
+    stubs/tooltips.cc
 )
 
 include_directories(${global_includes})
 
 add_library(stubs_library ${stub_sources})
 
-add_executable(cmake_test cmake_test.cc
+add_executable(cmake_build_test cmake_build_test.cc
                ../src/filesystem.cc ../src/cmake.cc ../src/project_build.cc)
-target_link_libraries(cmake_test ${global_libraries} stubs_library)
-add_test(cmake_test cmake_test)
+target_link_libraries(cmake_build_test ${global_libraries} stubs_library)
+add_test(cmake_build_test cmake_build_test)
 
-#Added for example only, and requires display server to work
-#However, it is possible to use the Broadway backend if the test is run in a pure terminal environment:
-#broadwayd&
-#make test
-add_executable(example_test example_test.cc)
-target_link_libraries(example_test ${global_libraries} stubs_library)
-add_test(example_test example_test)
+add_executable(source_test source_test.cc
+               ../src/source.cc)
+target_link_libraries(source_test ${global_libraries} stubs_library)
+add_test(source_test source_test)

@@ -10,6 +10,10 @@ int Terminal::process(const std::string &command, const boost::filesystem::path 
   return 0;
 }
 
+int Terminal::process(std::istream &stdin_stream, std::ostream &stdout_stream, const std::string &command, const boost::filesystem::path &path) {
+  return 0;
+}
+
 size_t Terminal::print(const std::string &message, bool bold) {
   return 0;
 }
