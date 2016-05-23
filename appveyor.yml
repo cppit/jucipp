@@ -8,8 +8,8 @@ before_build:
   - C:\msys64\usr\bin\pacman --noconfirm --sync --refresh --refresh --sysupgrade --sysupgrade
 
 build_script:    
-  - C:\msys64\usr\bin\bash -lc "script=compile CXX=clang++ CC=clang                   $(cygpath ${APPVEYOR_BUILD_FOLDER})/ci/execute.sh"
-  - C:\msys64\usr\bin\bash -lc "script=clean                                          $(cygpath ${APPVEYOR_BUILD_FOLDER})/ci/execute.sh"
-  - C:\msys64\usr\bin\bash -lc "script=compile                                        $(cygpath ${APPVEYOR_BUILD_FOLDER})/ci/execute.sh"
-  - C:\msys64\usr\bin\bash -lc "script=static_analysis                                $(cygpath ${APPVEYOR_BUILD_FOLDER})/ci/execute.sh"
-  - C:\msys64\usr\bin\bash -lc "script=compile make_command=\"broadwayd & make test\" $(cygpath ${APPVEYOR_BUILD_FOLDER})/ci/execute.sh"
+  - C:\msys64\usr\bin\bash -lc "script=compile CXX=clang++ CC=clang                   C:\projects\jucipp\ci\execute.sh"
+  - C:\msys64\usr\bin\bash -lc "script=clean                                          C:\projects\jucipp\ci\execute.sh"
+  - C:\msys64\usr\bin\bash -lc "script=compile                                        C:\projects\jucipp\ci\execute.sh"
+  - C:\msys64\usr\bin\bash -lc "script=static_analysis                                C:\projects\jucipp\ci\execute.sh"
+  - C:\msys64\usr\bin\bash -lc "script=compile make_command=\"broadwayd & make test\" C:\projects\jucipp\ci\execute.sh"
