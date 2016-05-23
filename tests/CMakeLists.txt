@@ -1,22 +1,4 @@
-add_definitions(-DBOOST_LOG_DYN_LINK)
-set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -fno-access-control -std=c++11 -pthread -Wall -Wextra -Wno-unused-parameter -Wno-reorder")
-
-set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -DJUCI_TESTS_PATH=\\\"${CMAKE_CURRENT_SOURCE_DIR}\\\"")
-
-if(APPLE)
-  set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -undefined dynamic_lookup")
-  link_directories(/usr/local/lib /usr/local/opt/gettext/lib)
-  include_directories(/usr/local/opt/gettext/include)
-  set(CMAKE_MACOSX_RPATH 1)
-  set(ENV{PKG_CONFIG_PATH} "$ENV{PKG_CONFIG_PATH}:/usr/local/lib/pkgconfig:/opt/X11/lib/pkgconfig")
-endif()
-
-find_package(Boost 1.54 COMPONENTS regex system filesystem REQUIRED)
-find_package(ASPELL REQUIRED)
-set(LIBCLANGMM_INCLUDE_DIR ../libclangmm/src)
-
-include(FindPkgConfig)
-pkg_check_modules(GTKMM gtkmm-3.0 REQUIRED)
+set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -fno-access-control -DJUCI_TESTS_PATH=\\\"${CMAKE_CURRENT_SOURCE_DIR}\\\"")
 
 set(global_includes
    ${Boost_INCLUDE_DIRS}
