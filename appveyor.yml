@@ -6,10 +6,9 @@ before_build:
   - C:\msys64\usr\bin\pacman --noconfirm --sync --refresh --refresh pacman
   - C:\msys64\usr\bin\pacman --noconfirm --sync --refresh --refresh git
   - C:\msys64\usr\bin\pacman --noconfirm --sync --refresh --refresh --sysupgrade --sysupgrade
+  - C:\msys64\usr\bin\bash -lc "C:/projects/jucipp/ci/update_ci.sh"
 
 build_script:    
-  - C:\msys64\usr\bin\bash -lc "script=compile CXX=clang++ CC=clang                   C:\projects\jucipp\ci\execute.sh"
-  - C:\msys64\usr\bin\bash -lc "script=clean                                          C:\projects\jucipp\ci\execute.sh"
-  - C:\msys64\usr\bin\bash -lc "script=compile                                        C:\projects\jucipp\ci\execute.sh"
-  - C:\msys64\usr\bin\bash -lc "script=static_analysis                                C:\projects\jucipp\ci\execute.sh"
-  - C:\msys64\usr\bin\bash -lc "script=compile make_command=\"broadwayd & make test\" C:\projects\jucipp\ci\execute.sh"
+  - C:\msys64\usr\bin\bash -lc "script=compile C:/projects/jucipp/ci/execute.sh"
+  - C:\msys64\usr\bin\bash -lc "broadwayd & exit"
+  - C:\msys64\usr\bin\bash -lc "script=compile make_command='make test' C:/projects/jucipp/ci/execute.sh"
