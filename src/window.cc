@@ -435,7 +435,7 @@ void Window::set_menu_actions() {
   menu.add_action("source_goto_declaration", [this]() {
     if(notebook.get_current_page()!=-1) {
       if(notebook.get_current_view()->get_declaration_location) {
-        auto location=notebook.get_current_view()->get_declaration_location();
+        auto location=notebook.get_current_view()->get_declaration_location(notebook.source_views);
         if(location) {
           boost::filesystem::path declaration_file;
           boost::system::error_code ec;
