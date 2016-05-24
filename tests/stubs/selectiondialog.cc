@@ -17,4 +17,10 @@ SelectionDialog::SelectionDialog(Gtk::TextView& text_view, Glib::RefPtr<Gtk::Tex
 SelectionDialogBase::~SelectionDialogBase() {}
 
 bool SelectionDialog::on_key_press(GdkEventKey* key) { return true; }
+
+CompletionDialog::CompletionDialog(Gtk::TextView &text_view, Glib::RefPtr<Gtk::TextBuffer::Mark> start_mark):
+  SelectionDialogBase(text_view, start_mark, false, false) {}
+
 bool CompletionDialog::on_key_press(GdkEventKey* key) { return true;}
+
+bool CompletionDialog::on_key_release(GdkEventKey* key) {return true;}

@@ -4,38 +4,43 @@ set(global_includes
    ${Boost_INCLUDE_DIRS}
    ${GTKMM_INCLUDE_DIRS}
    ${GTKSVMM_INCLUDE_DIRS}
+   ${LIBCLANG_INCLUDE_DIRS}
    ${ASPELL_INCLUDE_DIR}
-   ../src
+   ../libclangmm/src
    ../tiny-process-library
+   ../src
 )
 
 set(global_libraries
   ${GTKMM_LIBRARIES}
   ${GTKSVMM_LIBRARIES}
   ${Boost_LIBRARIES}
+  ${LIBCLANG_LIBRARIES}
+  ${LIBLLDB_LIBRARIES}
   ${ASPELL_LIBRARIES}
 )
 
-set(stub_sources
+set(stub_files
     stubs/config.cc
     stubs/dialogs.cc
-    stubs/dispatcher.cc
     stubs/info.cc
     stubs/selectiondialog.cc
     stubs/terminal.cc
     stubs/tooltips.cc
 )
 
+add_library(stubs ${stub_files})
+
 include_directories(${global_includes})
 
-add_library(stubs_library ${stub_sources})
-
-add_executable(cmake_build_test cmake_build_test.cc
-               ../src/filesystem.cc ../src/cmake.cc ../src/project_build.cc)
-target_link_libraries(cmake_build_test ${global_libraries} stubs_library)
+add_executable(cmake_build_test cmake_build_test.cc)
+target_link_libraries(cmake_build_test ${global_libraries} project_shared stubs)
 add_test(cmake_build_test cmake_build_test)
 
-add_executable(source_test source_test.cc
-               ../src/source.cc)
-target_link_libraries(source_test ${global_libraries} stubs_library)
+add_executable(source_test source_test.cc)
+target_link_libraries(source_test ${global_libraries} project_shared stubs)
 add_test(source_test source_test)
+
+add_executable(source_clang_test source_clang_test.cc)
+target_link_libraries(source_clang_test ${global_libraries} project_shared stubs)
+add_test(source_clang_test source_clang_test)

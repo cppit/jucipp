@@ -2,18 +2,6 @@
 #include "source.h"
 #include "filesystem.h"
 
-int filesystem::read(const std::string &path, Glib::RefPtr<Gtk::TextBuffer> text_buffer) {
-  return 0;
-}
-
-int filesystem::read_non_utf8(const std::string &path, Glib::RefPtr<Gtk::TextBuffer> text_buffer) {
-  return 0;
-}
-
-bool filesystem::write(const std::string &path, Glib::RefPtr<Gtk::TextBuffer> text_buffer) {
-  return false;
-}
-
 std::string hello_world=R"(#include <iostream>  
     
 int main() {  

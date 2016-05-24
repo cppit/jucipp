@@ -13,20 +13,6 @@ if(MSYS)
   set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -DMSYS_PROCESS_USE_SH")
 endif()
 
-string(REPLACE libclang liblldb LIBLLDB_LIBRARIES "${LIBCLANG_LIBRARIES}")
-if(EXISTS "${LIBLLDB_LIBRARIES}")
-  set(LIBLLDB_FOUND TRUE)
-elseif(EXISTS "${LIBLLDB_LIBRARIES}.1")
-  set(LIBLLDB_LIBRARIES "${LIBLLDB_LIBRARIES}.1")
-  set(LIBLLDB_FOUND TRUE)
-endif()
-if(LIBLLDB_FOUND)
-  set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -DJUCI_ENABLE_DEBUG")
-else()
-  set(LIBLLDB_LIBRARIES "")
-  message("liblldb not found. Building juCi++ without debugging support")
-endif()
-
 set(global_includes
    ${Boost_INCLUDE_DIRS}
    ${GTKMM_INCLUDE_DIRS}
@@ -38,54 +24,40 @@ set(global_includes
 )
 
 set(global_libraries
-  ${LIBCLANG_LIBRARIES}
   ${GTKMM_LIBRARIES}
   ${GTKSVMM_LIBRARIES}
   ${Boost_LIBRARIES}
-  ${ASPELL_LIBRARIES}
+  ${LIBCLANG_LIBRARIES}
   ${LIBLLDB_LIBRARIES}
+  ${ASPELL_LIBRARIES}
 )
 
 set(project_files
-    cmake.cc
-    cmake.h
     config.cc
-    config.h
     dialogs.cc
-    dialogs.h
     directories.cc
-    directories.h
-    dispatcher.cc
-    dispatcher.h
     entrybox.cc
-    entrybox.h
-    files.h
-    filesystem.cc
-    filesystem.h
-    info.h
     info.cc
     juci.cc
-    juci.h
     menu.cc
-    menu.h
     notebook.cc
-    notebook.h
     project.cc
-    project.h
-    project_build.h
-    project_build.cc
     selectiondialog.cc
-    selectiondialog.h
-    source.cc
-    source.h
-    source_clang.cc
-    source_clang.h
     terminal.cc
-    terminal.h
     tooltips.cc
-    tooltips.h
     window.cc
-    window.h
+
+    ../tiny-process-library/process.cpp
+)
+
+#Files used both in ../src and ../tests
+set(project_shared_files
+    cmake.cc
+    dispatcher.cc
+    filesystem.cc
+    project_build.cc
+    source.cc
+    source_clang.cc
 
     ../libclangmm/src/CodeCompleteResults.cc
     ../libclangmm/src/CompilationDatabase.cc
@@ -101,11 +73,10 @@ set(project_files
     ../libclangmm/src/Tokens.cc
     ../libclangmm/src/TranslationUnit.cc
     ../libclangmm/src/Utility.cc
-
-    ../tiny-process-library/process.cpp)
+)
 
 if(LIBLLDB_FOUND)
-  list(APPEND project_files debug_clang.h debug_clang.cc)
+  list(APPEND project_shared_files debug_clang.cc)
 endif()
 
 if(MSYS)
@@ -116,11 +87,13 @@ endif()
 
 include_directories(${global_includes})
 
+add_library(project_shared ${project_shared_files})
+
 if(("${CMAKE_CXX_COMPILER_ID}" STREQUAL "Clang") AND (NOT $ENV{distribution} STREQUAL ""))
   add_library(${project_name} OBJECT ${project_files})
 else()
   add_executable(${project_name} ${project_files})
-  target_link_libraries(${project_name} ${global_libraries})
+  target_link_libraries(${project_name} ${global_libraries} project_shared)
   install(TARGETS ${project_name}
     RUNTIME DESTINATION bin
   )
