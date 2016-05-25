@@ -21,6 +21,7 @@ set(global_includes
    ${ASPELL_INCLUDE_DIR}
    ../libclangmm/src
    ../tiny-process-library
+   .
 )
 
 set(global_libraries
@@ -87,13 +88,13 @@ endif()
 
 include_directories(${global_includes})
 
-add_library(project_shared ${project_shared_files})
+add_library(project_shared OBJECT ${project_shared_files})
 
 if(("${CMAKE_CXX_COMPILER_ID}" STREQUAL "Clang") AND (NOT $ENV{distribution} STREQUAL ""))
   add_library(${project_name} OBJECT ${project_files})
 else()
-  add_executable(${project_name} ${project_files})
-  target_link_libraries(${project_name} ${global_libraries} project_shared)
+  add_executable(${project_name} ${project_files} $<TARGET_OBJECTS:project_shared>)
+  target_link_libraries(${project_name} ${global_libraries})
   install(TARGETS ${project_name}
     RUNTIME DESTINATION bin
   )

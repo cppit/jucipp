@@ -1,1 +1,1 @@
-set(project_name hello)
+project(hello)

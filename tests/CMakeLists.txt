@@ -29,18 +29,21 @@ set(stub_files
     stubs/tooltips.cc
 )
 
-add_library(stubs ${stub_files})
+add_library(stubs OBJECT ${stub_files})
 
 include_directories(${global_includes})
 
-add_executable(cmake_build_test cmake_build_test.cc)
-target_link_libraries(cmake_build_test ${global_libraries} project_shared stubs)
+add_executable(cmake_build_test cmake_build_test.cc
+               $<TARGET_OBJECTS:project_shared> $<TARGET_OBJECTS:stubs>)
+target_link_libraries(cmake_build_test ${global_libraries})
 add_test(cmake_build_test cmake_build_test)
 
-add_executable(source_test source_test.cc)
-target_link_libraries(source_test ${global_libraries} project_shared stubs)
+add_executable(source_test source_test.cc
+               $<TARGET_OBJECTS:project_shared> $<TARGET_OBJECTS:stubs>)
+target_link_libraries(source_test ${global_libraries})
 add_test(source_test source_test)
 
-add_executable(source_clang_test source_clang_test.cc)
-target_link_libraries(source_clang_test ${global_libraries} project_shared stubs)
+add_executable(source_clang_test source_clang_test.cc
+               $<TARGET_OBJECTS:project_shared> $<TARGET_OBJECTS:stubs>)
+target_link_libraries(source_clang_test ${global_libraries})
 add_test(source_clang_test source_clang_test)
