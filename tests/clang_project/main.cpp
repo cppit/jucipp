@@ -1,5 +1,11 @@
-#include <iostream>  
-    
-int main() {  
-  std::cout << "hello world\n";    
+class Test {
+public:
+  void function();
+};
+
+void Test::function() {}
+
+int main() {
+  Test test;
+  test.function();
 }

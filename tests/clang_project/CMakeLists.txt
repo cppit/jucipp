@@ -1,1 +1,1 @@
-project(hello)
+project(test)
