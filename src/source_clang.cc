@@ -1112,18 +1112,16 @@ Source::ClangViewAutocomplete(file_path, language) {
     return usages;
   };
   
-  goto_method=[this](){
+  get_methods=[this](){
+    std::vector<std::pair<Offset, std::string> > methods;
     if(!parsed) {
       Info::get().print("Buffer is parsing");
-      return;
+      return methods;
     }
-    auto iter=get_iter_for_dialog();
-    selection_dialog=std::unique_ptr<SelectionDialog>(new SelectionDialog(*this, get_buffer()->create_mark(iter), true, true));
-    auto rows=std::make_shared<std::unordered_map<std::string, clang::Offset> >();
-    auto methods=clang_tokens->get_cxx_methods();
-    if(methods.size()==0)
-      return;
-    for(auto &method: methods) {
+    auto cxx_methods=clang_tokens->get_cxx_methods();
+    if(cxx_methods.size()==0)
+      return methods;
+    for(auto &method: cxx_methods) {
       std::string row=std::to_string(method.second.line)+": "+Glib::Markup::escape_text(method.first);
       //Add bold method token
       size_t token_end_pos=row.find('(');
@@ -1153,16 +1151,9 @@ Source::ClangViewAutocomplete(file_path, language) {
              (row[pos]>='0' && row[pos]<='9') || row[pos]=='_' || row[pos]=='~') && pos>0);
       row.insert(token_end_pos, "</b>");
       row.insert(pos+1, "<b>");
-      (*rows)[row]=method.second;
-      selection_dialog->add_row(row);
+      methods.emplace_back(Offset(method.second.line, method.second.index), row);
     }
-    selection_dialog->on_select=[this, rows](const std::string& selected, bool hide_window) {
-      auto offset=rows->at(selected);
-      get_buffer()->place_cursor(get_buffer()->get_iter_at_line_index(offset.line-1, offset.index-1));
-      scroll_to(get_buffer()->get_insert(), 0.0, 1.0, 0.5);
-      delayed_tooltips_connection.disconnect();
-    };
-    selection_dialog->show();
+    return methods;
   };
   
   get_token_data=[this]() {

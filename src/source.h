@@ -76,7 +76,7 @@ namespace Source {
     std::function<Offset(const std::vector<Source::View*> &views)> get_declaration_location;
     std::function<Offset(const std::vector<Source::View*> &views)> get_implementation_location;
     std::function<std::vector<std::pair<Offset, std::string> >(const std::vector<Source::View*> &views)> get_usages;
-    std::function<void()> goto_method;
+    std::function<std::vector<std::pair<Offset, std::string> >()> get_methods;
     std::function<std::vector<std::string>()> get_token_data;
     std::function<std::string()> get_token_spelling;
     std::function<std::vector<std::pair<boost::filesystem::path, size_t> >(const std::vector<Source::View*> &views, const std::string &text)> rename_similar_tokens;

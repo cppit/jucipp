@@ -1,11 +1,15 @@
-class Test {
+class TestClass {
 public:
+  TestClass();
+  ~TestClass() {}
   void function();
 };
 
-void Test::function() {}
+TestClass::TestClass() {}
+
+void TestClass::function() {}
 
 int main() {
-  Test test;
+  TestClass test;
   test.function();
 }
