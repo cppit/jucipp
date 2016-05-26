@@ -1119,8 +1119,6 @@ Source::ClangViewAutocomplete(file_path, language) {
       return methods;
     }
     auto cxx_methods=clang_tokens->get_cxx_methods();
-    if(cxx_methods.size()==0)
-      return methods;
     for(auto &method: cxx_methods) {
       std::string row=std::to_string(method.second.line)+": "+Glib::Markup::escape_text(method.first);
       //Add bold method token
