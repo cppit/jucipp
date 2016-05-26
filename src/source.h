@@ -81,7 +81,7 @@ namespace Source {
     std::function<std::string()> get_token_spelling;
     std::function<std::vector<std::pair<boost::filesystem::path, size_t> >(const std::vector<Source::View*> &views, const std::string &text)> rename_similar_tokens;
     std::function<void()> goto_next_diagnostic;
-    std::function<void()> apply_fix_its;
+    std::function<std::vector<FixIt>()> get_fix_its;
     
     std::unique_ptr<CompletionDialog> autocomplete_dialog;
     std::unique_ptr<SelectionDialog> selection_dialog;

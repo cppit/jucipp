@@ -33,6 +33,11 @@ add_library(stubs OBJECT ${stub_files})
 
 include_directories(${global_includes})
 
+add_executable(process_test process_test.cc
+               $<TARGET_OBJECTS:project_shared> $<TARGET_OBJECTS:stubs>)
+target_link_libraries(process_test ${global_libraries})
+add_test(process_test process_test)
+
 add_executable(cmake_build_test cmake_build_test.cc
                $<TARGET_OBJECTS:project_shared> $<TARGET_OBJECTS:stubs>)
 target_link_libraries(cmake_build_test ${global_libraries})

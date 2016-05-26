@@ -73,6 +73,7 @@ int main() {
   while(!clang_view->parsed)
     flush_events();
   g_assert_cmpuint(clang_view->diagnostics.size(), >, 0);
+  g_assert_cmpuint(clang_view->get_fix_its().size(), >, 0);
   
   clang_view->async_delete();
   clang_view->delete_thread.join();

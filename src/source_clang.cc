@@ -1275,37 +1275,12 @@ Source::ClangViewAutocomplete(file_path, language) {
     }
   };
   
-  apply_fix_its=[this]() {
+  get_fix_its=[this]() {
     if(!parsed) {
       Info::get().print("Buffer is parsing");
-      return;
+      return std::vector<FixIt>();
     }
-    std::vector<std::pair<Glib::RefPtr<Gtk::TextMark>, Glib::RefPtr<Gtk::TextMark> > > fix_it_marks;
-    for(auto &fix_it: fix_its) {
-      auto start_iter=get_buffer()->get_iter_at_line_index(fix_it.offsets.first.line-1, fix_it.offsets.first.index-1);
-      auto end_iter=get_buffer()->get_iter_at_line_index(fix_it.offsets.second.line-1, fix_it.offsets.second.index-1);
-      fix_it_marks.emplace_back(get_buffer()->create_mark(start_iter), get_buffer()->create_mark(end_iter));
-    }
-    size_t c=0;
-    get_buffer()->begin_user_action();
-    for(auto &fix_it: fix_its) {
-      if(fix_it.type==FixIt::Type::INSERT) {
-        get_buffer()->insert(fix_it_marks[c].first->get_iter(), fix_it.source);
-      }
-      if(fix_it.type==FixIt::Type::REPLACE) {
-        get_buffer()->erase(fix_it_marks[c].first->get_iter(), fix_it_marks[c].second->get_iter());
-        get_buffer()->insert(fix_it_marks[c].first->get_iter(), fix_it.source);
-      }
-      if(fix_it.type==FixIt::Type::ERASE) {
-        get_buffer()->erase(fix_it_marks[c].first->get_iter(), fix_it_marks[c].second->get_iter());
-      }
-      c++;
-    }
-    for(auto &mark_pair: fix_it_marks) {
-      get_buffer()->delete_mark(mark_pair.first);
-      get_buffer()->delete_mark(mark_pair.second);
-    }
-    get_buffer()->end_user_action();
+    return fix_its;
   };
 }
 
