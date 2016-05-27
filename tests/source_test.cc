@@ -24,8 +24,19 @@ int main() {
   auto app=Gtk::Application::create();
   Gsv::init();
   
-  Source::View source_view("", Glib::RefPtr<Gsv::Language>());
-  source_view.get_buffer()->set_text(hello_world);
+  auto tests_path=boost::filesystem::canonical(JUCI_TESTS_PATH);
+  auto source_file=tests_path/"tmp"/"source_file.txt";
+  
+  {
+    Source::View source_view(source_file, Glib::RefPtr<Gsv::Language>());
+    source_view.get_buffer()->set_text(hello_world);
+    g_assert(source_view.save({&source_view}));
+  }
+  
+  Source::View source_view(source_file, Glib::RefPtr<Gsv::Language>());
   source_view.cleanup_whitespace_characters();
   g_assert(source_view.get_buffer()->get_text()==hello_world_cleaned);
+  
+  g_assert(boost::filesystem::remove(source_file));
+  g_assert(!boost::filesystem::exists(source_file));
 }
