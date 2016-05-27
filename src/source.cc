@@ -1219,8 +1219,13 @@ bool Source::View::on_key_press_event_basic(GdkEventKey* key) {
     get_buffer()->end_user_action();
     return true;
   }
-  //Indent right when clicking tab, no matter where in the line the cursor is. Also works on selected text.
-  else if(key->keyval==GDK_KEY_Tab) {
+  else if(key->keyval==GDK_KEY_Tab && (key->state&GDK_SHIFT_MASK)==0) {
+    if(!Config::get().source.tab_indents_line && !get_buffer()->get_has_selection()) {
+      get_buffer()->insert_at_cursor(tab);
+      get_buffer()->end_user_action();
+      return true;
+    }
+    //Indent right when clicking tab, no matter where in the line the cursor is. Also works on selected text.
     //Special case if insert is at beginning of empty line:
     if(iter.starts_line() && iter.ends_line() && !get_buffer()->get_has_selection()) {
       auto prev_line_iter=iter;
