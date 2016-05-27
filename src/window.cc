@@ -910,7 +910,7 @@ bool Window::on_delete_event(GdkEventAny *event) {
   Terminal::get().kill_async_processes();
 #ifdef JUCI_ENABLE_DEBUG
   if(Project::current)
-    Project::current->debug_delete();
+    Project::current->debug_cancel();
 #endif
   return false;
 }

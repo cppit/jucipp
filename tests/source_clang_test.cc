@@ -24,7 +24,7 @@ int main() {
   Gsv::init();
   
   Config::get().project.default_build_path="./build";
-  Source::ClangView *clang_view=new Source::ClangView(boost::filesystem::canonical(std::string(JUCI_TESTS_PATH)+"/clang_project/main.cpp"),
+  Source::ClangView *clang_view=new Source::ClangView(boost::filesystem::canonical(std::string(JUCI_TESTS_PATH)+"/source_clang_test_files/main.cpp"),
                                                       Gsv::LanguageManager::get_default()->get_language("cpp"));
   while(!clang_view->parsed)
     flush_events();

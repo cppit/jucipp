@@ -25,7 +25,7 @@ int main() {
   Gsv::init();
   
   auto tests_path=boost::filesystem::canonical(JUCI_TESTS_PATH);
-  auto source_file=tests_path/"tmp"/"source_file.txt";
+  auto source_file=tests_path/"tmp"/"source_file.cpp";
   
   {
     Source::View source_view(source_file, Glib::RefPtr<Gsv::Language>());
