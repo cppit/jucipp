@@ -34,6 +34,7 @@ int main() {
   }
   
   Source::View source_view(source_file, Glib::RefPtr<Gsv::Language>());
+  g_assert(source_view.get_buffer()->get_text()==hello_world);
   source_view.cleanup_whitespace_characters();
   g_assert(source_view.get_buffer()->get_text()==hello_world_cleaned);
   
