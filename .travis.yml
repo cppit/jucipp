@@ -18,4 +18,4 @@ script:
   - script=clean ./ci/execute.sh
   - script=compile ./ci/execute.sh
   - script=static_analysis ./ci/execute.sh
-  - script=compile make_command="broadwayd & make test" ./ci/execute.sh
+  - script=compile make_command="broadwayd & CTEST_OUTPUT_ON_FAILURE=1 make test" ./ci/execute.sh
