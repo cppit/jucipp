@@ -19,7 +19,12 @@ function linux () {
 
 #TODO Should run compile/install instructions for osx
 function osx () {
-  true
+  cd .. || (echo "Error changing directory";return 1)
+  if [ "${script}" == "clean" ]; then
+    sudo rm -rf "./jucipp/build"
+    return 0
+  fi
+  sh -c "./jucipp/ci/${script}.sh" || return 1
 }
 
 function windows () {

@@ -9,14 +9,22 @@ function linux () {
   sudo service docker start || exit
 }
 
-# TODO method should update osx, brew, packages etc needed for juCi++
+function brew_install() {
+  (brew outdated "$1" || brew install $1) || (echo "Error installing $1"; return 1)
+}
+
 function osx () {
-  brew update
-  brew rm llvm
-  brew doctor
-  brew upgrade
-  brew install --with-clang --with-lldb llvm
-  brew install cmake pkg-config boost homebrew/x11/gtksourceviewmm3 aspell clang-format
+  brew update || return 1
+  brew uninstall llvm --force || return 1
+  brew upgrade --all || return 1
+  brew update || return 1
+  brew upgrade --all || return 1
+  brew install --with-clang llvm
+  brew_install "boost" || return 1
+  brew_install "aspell" || return 1
+  brew_install "clang-format" || return 1
+  brew_install "pkg-config" || return 1
+  brew_install "gtksourceviewmm3" || return 1
 }
 
 function windows () {
