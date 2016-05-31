@@ -1,6 +1,8 @@
 platform:
-  - x86
   - x64
+  
+environment:
+  MSYSTEM: MSYS
 
 before_build:
   - C:\msys64\usr\bin\pacman --noconfirm --sync --refresh --refresh pacman
