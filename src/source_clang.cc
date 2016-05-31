@@ -965,11 +965,10 @@ Source::ClangViewAutocomplete(file_path, language) {
     }
   });
   
-  get_declaration_location=[this](){
-    Offset location;
+  get_declaration_location=[this](const std::vector<Source::View*> &views){
     if(!parsed) {
       Info::get().print("Buffer is parsing");
-      return location;
+      return Offset();
     }
     auto iter=get_buffer()->get_insert()->get_iter();
     auto line=static_cast<unsigned>(iter.get_line());
@@ -980,16 +979,43 @@ Source::ClangViewAutocomplete(file_path, language) {
         if(line==token.offsets.first.line-1 && index>=token.offsets.first.index-1 && index <=token.offsets.second.index-1) {
           auto referenced=cursor.get_referenced();
           if(referenced) {
-            location.file_path=referenced.get_source_location().get_path();
-            auto clang_offset=referenced.get_source_location().get_offset();
-            location.line=clang_offset.line;
-            location.index=clang_offset.index;
-            break;
+            auto file_path=referenced.get_source_location().get_path();
+            
+            //if declaration is implementation instead, attempt to find declaration
+            if(file_path==this->file_path && this->language && this->language->get_id()!="chdr" && this->language->get_id()!="cpphdr") {
+              auto identifier=Identifier(referenced.get_kind(), token.get_spelling(), referenced.get_usr());
+              
+              std::vector<Source::View*> search_views;
+              for(auto &view: views) {
+                if(view->language && (view->language->get_id()=="chdr" || view->language->get_id()=="cpphdr"))
+                  search_views.emplace_back(view);
+              }
+              search_views.emplace_back(this);
+              wait_parsing(search_views);
+              for(auto &view: search_views) {
+                if(auto clang_view=dynamic_cast<Source::ClangView*>(view)) {
+                  for(auto &token: *clang_view->clang_tokens) {
+                    auto cursor=token.get_cursor();
+                    if(token.get_kind()==clang::TokenKind::Token_Identifier && cursor.has_type()) {
+                      auto referenced=cursor.get_referenced();
+                      if(referenced && identifier.kind==referenced.get_kind() &&
+                         identifier.spelling==token.get_spelling() && identifier.usr==referenced.get_usr()) {
+                        auto offset=referenced.get_source_location().get_offset();
+                        return Offset(offset.line, offset.index, referenced.get_source_location().get_path());
+                      }
+                    }
+                  }
+                }
+              }
+            }
+            
+            auto offset=referenced.get_source_location().get_offset();
+            return Offset(offset.line, offset.index, file_path);
           }
         }
       }
     }
-    return location;
+    return Offset();
   };
   
   get_implementation_location=[this](const std::vector<Source::View*> &views){
@@ -1086,18 +1112,14 @@ Source::ClangViewAutocomplete(file_path, language) {
     return usages;
   };
   
-  goto_method=[this](){
+  get_methods=[this](){
+    std::vector<std::pair<Offset, std::string> > methods;
     if(!parsed) {
       Info::get().print("Buffer is parsing");
-      return;
+      return methods;
     }
-    auto iter=get_iter_for_dialog();
-    selection_dialog=std::unique_ptr<SelectionDialog>(new SelectionDialog(*this, get_buffer()->create_mark(iter), true, true));
-    auto rows=std::make_shared<std::unordered_map<std::string, clang::Offset> >();
-    auto methods=clang_tokens->get_cxx_methods();
-    if(methods.size()==0)
-      return;
-    for(auto &method: methods) {
+    auto cxx_methods=clang_tokens->get_cxx_methods();
+    for(auto &method: cxx_methods) {
       std::string row=std::to_string(method.second.line)+": "+Glib::Markup::escape_text(method.first);
       //Add bold method token
       size_t token_end_pos=row.find('(');
@@ -1127,16 +1149,9 @@ Source::ClangViewAutocomplete(file_path, language) {
              (row[pos]>='0' && row[pos]<='9') || row[pos]=='_' || row[pos]=='~') && pos>0);
       row.insert(token_end_pos, "</b>");
       row.insert(pos+1, "<b>");
-      (*rows)[row]=method.second;
-      selection_dialog->add_row(row);
+      methods.emplace_back(Offset(method.second.line, method.second.index), row);
     }
-    selection_dialog->on_select=[this, rows](const std::string& selected, bool hide_window) {
-      auto offset=rows->at(selected);
-      get_buffer()->place_cursor(get_buffer()->get_iter_at_line_index(offset.line-1, offset.index-1));
-      scroll_to(get_buffer()->get_insert(), 0.0, 1.0, 0.5);
-      delayed_tooltips_connection.disconnect();
-    };
-    selection_dialog->show();
+    return methods;
   };
   
   get_token_data=[this]() {
@@ -1260,37 +1275,12 @@ Source::ClangViewAutocomplete(file_path, language) {
     }
   };
   
-  apply_fix_its=[this]() {
+  get_fix_its=[this]() {
     if(!parsed) {
       Info::get().print("Buffer is parsing");
-      return;
+      return std::vector<FixIt>();
     }
-    std::vector<std::pair<Glib::RefPtr<Gtk::TextMark>, Glib::RefPtr<Gtk::TextMark> > > fix_it_marks;
-    for(auto &fix_it: fix_its) {
-      auto start_iter=get_buffer()->get_iter_at_line_index(fix_it.offsets.first.line-1, fix_it.offsets.first.index-1);
-      auto end_iter=get_buffer()->get_iter_at_line_index(fix_it.offsets.second.line-1, fix_it.offsets.second.index-1);
-      fix_it_marks.emplace_back(get_buffer()->create_mark(start_iter), get_buffer()->create_mark(end_iter));
-    }
-    size_t c=0;
-    get_buffer()->begin_user_action();
-    for(auto &fix_it: fix_its) {
-      if(fix_it.type==FixIt::Type::INSERT) {
-        get_buffer()->insert(fix_it_marks[c].first->get_iter(), fix_it.source);
-      }
-      if(fix_it.type==FixIt::Type::REPLACE) {
-        get_buffer()->erase(fix_it_marks[c].first->get_iter(), fix_it_marks[c].second->get_iter());
-        get_buffer()->insert(fix_it_marks[c].first->get_iter(), fix_it.source);
-      }
-      if(fix_it.type==FixIt::Type::ERASE) {
-        get_buffer()->erase(fix_it_marks[c].first->get_iter(), fix_it_marks[c].second->get_iter());
-      }
-      c++;
-    }
-    for(auto &mark_pair: fix_it_marks) {
-      get_buffer()->delete_mark(mark_pair.first);
-      get_buffer()->delete_mark(mark_pair.second);
-    }
-    get_buffer()->end_user_action();
+    return fix_its;
   };
 }
 

@@ -49,7 +49,7 @@ void Config::load() {
   catch(const std::exception &e) {
     ::Terminal::get().print("Error: could not parse "+config_json+": "+e.what()+"\n", true);
     std::stringstream ss;
-    ss << configjson;
+    ss << default_config_file;
     boost::property_tree::read_json(ss, cfg);
     retrieve_config();
   }
@@ -63,7 +63,7 @@ void Config::find_or_create_config_files() {
   boost::filesystem::create_directories(config_dir); // io exp captured by calling method
 
   if (!boost::filesystem::exists(config_json))
-    filesystem::write(config_json, configjson);
+    filesystem::write(config_json, default_config_file);
 
   auto juci_style_path = home/"styles";
   boost::filesystem::create_directories(juci_style_path); // io exp captured by calling method
@@ -160,7 +160,7 @@ void Config::update_config_file() {
   try {
     if(cfg.get<std::string>("version")!=JUCI_VERSION) {
       std::stringstream ss;
-      ss << configjson;
+      ss << default_config_file;
       boost::property_tree::read_json(ss, default_cfg);
       cfg_ok=false;
       if(cfg.count("version")>0)
@@ -196,6 +196,7 @@ void Config::get_source() {
   source.default_tab_char = source_json.get<char>("default_tab_char");
   source.default_tab_size = source_json.get<unsigned>("default_tab_size");
   source.auto_tab_char_and_size = source_json.get<bool>("auto_tab_char_and_size");
+  source.tab_indents_line = source_json.get<bool>("tab_indents_line");
 
   source.wrap_lines = source_json.get<bool>("wrap_lines");
 

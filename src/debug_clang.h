@@ -55,7 +55,7 @@ namespace Debug {
     std::vector<Variable> get_variables();
     void select_frame(uint32_t frame_index, uint32_t thread_index_id=0);
     
-    void delete_debug(); //can't use delete as function name
+    void cancel();
     
     std::string get_value(const std::string &variable, const boost::filesystem::path &file_path, unsigned int line_nr, unsigned int line_index);
     std::string get_return_value(const boost::filesystem::path &file_path, unsigned int line_nr, unsigned int line_index);

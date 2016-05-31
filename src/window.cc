@@ -435,7 +435,7 @@ void Window::set_menu_actions() {
   menu.add_action("source_goto_declaration", [this]() {
     if(notebook.get_current_page()!=-1) {
       if(notebook.get_current_view()->get_declaration_location) {
-        auto location=notebook.get_current_view()->get_declaration_location();
+        auto location=notebook.get_current_view()->get_declaration_location(notebook.source_views);
         if(location) {
           boost::filesystem::path declaration_file;
           boost::system::error_code ec;
@@ -517,8 +517,25 @@ void Window::set_menu_actions() {
   });
   menu.add_action("source_goto_method", [this]() {
     if(notebook.get_current_page()!=-1) {
-      if(notebook.get_current_view()->goto_method) {
-        notebook.get_current_view()->goto_method();
+      auto view=notebook.get_current_view();
+      if(view->get_methods) {
+        auto methods=notebook.get_current_view()->get_methods();
+        if(!methods.empty()) {
+          auto iter=view->get_iter_for_dialog();
+          view->selection_dialog=std::unique_ptr<SelectionDialog>(new SelectionDialog(*view, view->get_buffer()->create_mark(iter), true, true));
+          auto rows=std::make_shared<std::unordered_map<std::string, Source::Offset> >();
+          for(auto &method: methods) {
+            (*rows)[method.second]=method.first;
+            view->selection_dialog->add_row(method.second);
+          }
+          view->selection_dialog->on_select=[view, rows](const std::string& selected, bool hide_window) {
+            auto offset=rows->at(selected);
+            view->get_buffer()->place_cursor(view->get_buffer()->get_iter_at_line_index(offset.line-1, offset.index-1));
+            view->scroll_to(view->get_buffer()->get_insert(), 0.0, 1.0, 0.5);
+            view->delayed_tooltips_connection.disconnect();
+          };
+          view->selection_dialog->show();
+        }
       }
     }
   });
@@ -535,8 +552,36 @@ void Window::set_menu_actions() {
   });
   menu.add_action("source_apply_fix_its", [this]() {
     if(notebook.get_current_page()!=-1) {
-      if(notebook.get_current_view()->apply_fix_its) {
-        notebook.get_current_view()->apply_fix_its();
+      auto view=notebook.get_current_view();
+      if(view->get_fix_its) {
+        auto buffer=view->get_buffer();
+        auto fix_its=view->get_fix_its();
+        std::vector<std::pair<Glib::RefPtr<Gtk::TextMark>, Glib::RefPtr<Gtk::TextMark> > > fix_it_marks;
+        for(auto &fix_it: fix_its) {
+          auto start_iter=buffer->get_iter_at_line_index(fix_it.offsets.first.line-1, fix_it.offsets.first.index-1);
+          auto end_iter=buffer->get_iter_at_line_index(fix_it.offsets.second.line-1, fix_it.offsets.second.index-1);
+          fix_it_marks.emplace_back(buffer->create_mark(start_iter), buffer->create_mark(end_iter));
+        }
+        size_t c=0;
+        buffer->begin_user_action();
+        for(auto &fix_it: fix_its) {
+          if(fix_it.type==Source::FixIt::Type::INSERT) {
+            buffer->insert(fix_it_marks[c].first->get_iter(), fix_it.source);
+          }
+          if(fix_it.type==Source::FixIt::Type::REPLACE) {
+            buffer->erase(fix_it_marks[c].first->get_iter(), fix_it_marks[c].second->get_iter());
+            buffer->insert(fix_it_marks[c].first->get_iter(), fix_it.source);
+          }
+          if(fix_it.type==Source::FixIt::Type::ERASE) {
+            buffer->erase(fix_it_marks[c].first->get_iter(), fix_it_marks[c].second->get_iter());
+          }
+          c++;
+        }
+        for(auto &mark_pair: fix_it_marks) {
+          buffer->delete_mark(mark_pair.first);
+          buffer->delete_mark(mark_pair.second);
+        }
+        buffer->end_user_action();
       }
     }
   });
@@ -790,10 +835,10 @@ void Window::activate_menu_items(bool activate) {
   menu.actions["source_goto_declaration"]->set_enabled(activate ? static_cast<bool>(notebook.get_current_view()->get_declaration_location) : false);
   menu.actions["source_goto_implementation"]->set_enabled(activate ? static_cast<bool>(notebook.get_current_view()->get_implementation_location) : false);
   menu.actions["source_goto_usage"]->set_enabled(activate ? static_cast<bool>(notebook.get_current_view()->get_usages) : false);
-  menu.actions["source_goto_method"]->set_enabled(activate ? static_cast<bool>(notebook.get_current_view()->goto_method) : false);
+  menu.actions["source_goto_method"]->set_enabled(activate ? static_cast<bool>(notebook.get_current_view()->get_methods) : false);
   menu.actions["source_rename"]->set_enabled(activate ? static_cast<bool>(notebook.get_current_view()->rename_similar_tokens) : false);
   menu.actions["source_goto_next_diagnostic"]->set_enabled(activate ? static_cast<bool>(notebook.get_current_view()->goto_next_diagnostic) : false);
-  menu.actions["source_apply_fix_its"]->set_enabled(activate ? static_cast<bool>(notebook.get_current_view()->apply_fix_its) : false);
+  menu.actions["source_apply_fix_its"]->set_enabled(activate ? static_cast<bool>(notebook.get_current_view()->get_fix_its) : false);
 #ifdef JUCI_ENABLE_DEBUG
   if(notebook.get_current_page()!=-1) {
     auto view=notebook.get_current_view();
@@ -865,7 +910,7 @@ bool Window::on_delete_event(GdkEventAny *event) {
   Terminal::get().kill_async_processes();
 #ifdef JUCI_ENABLE_DEBUG
   if(Project::current)
-    Project::current->debug_delete();
+    Project::current->debug_cancel();
 #endif
   return false;
 }

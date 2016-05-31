@@ -73,15 +73,15 @@ namespace Source {
     Glib::RefPtr<Gsv::Language> language;
     
     std::function<void()> auto_indent;
-    std::function<Offset()> get_declaration_location;
+    std::function<Offset(const std::vector<Source::View*> &views)> get_declaration_location;
     std::function<Offset(const std::vector<Source::View*> &views)> get_implementation_location;
     std::function<std::vector<std::pair<Offset, std::string> >(const std::vector<Source::View*> &views)> get_usages;
-    std::function<void()> goto_method;
+    std::function<std::vector<std::pair<Offset, std::string> >()> get_methods;
     std::function<std::vector<std::string>()> get_token_data;
     std::function<std::string()> get_token_spelling;
     std::function<std::vector<std::pair<boost::filesystem::path, size_t> >(const std::vector<Source::View*> &views, const std::string &text)> rename_similar_tokens;
     std::function<void()> goto_next_diagnostic;
-    std::function<void()> apply_fix_its;
+    std::function<std::vector<FixIt>()> get_fix_its;
     
     std::unique_ptr<CompletionDialog> autocomplete_dialog;
     std::unique_ptr<SelectionDialog> selection_dialog;
@@ -161,6 +161,7 @@ namespace Source {
     guint previous_non_modifier_keyval=0;
     guint last_keyval=0;
   private:
+    void cleanup_whitespace_characters();
     Gsv::DrawSpacesFlags parse_show_whitespace_characters(const std::string &text);
     
     GtkSourceSearchContext *search_context;

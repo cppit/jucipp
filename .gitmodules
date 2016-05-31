@@ -1,7 +1,6 @@
-[submodule "tiny-process-library"]
-	path = tiny-process-library
-	url = https://github.com/eidheim/tiny-process-library
-	branch = v1.0.4
 [submodule "libclangmm"]
 	path = libclangmm
 	url = https://github.com/cppit/libclangmm
+[submodule "tiny-process-library"]
+	path = tiny-process-library
+	url = https://github.com/eidheim/tiny-process-library

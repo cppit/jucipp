@@ -504,9 +504,9 @@ void Project::Clang::debug_write(const std::string &buffer) {
   Debug::Clang::get().write(buffer);
 }
 
-void Project::Clang::debug_delete() {
+void Project::Clang::debug_cancel() {
   std::unique_lock<std::mutex> lock(debug_start_mutex);
-  Debug::Clang::get().delete_debug();
+  Debug::Clang::get().cancel();
 }
 #endif
 

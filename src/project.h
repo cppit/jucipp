@@ -52,7 +52,7 @@ namespace Project {
     virtual void debug_remove_breakpoint(const boost::filesystem::path &file_path, int line_nr, int line_count) {}
     virtual bool debug_is_running() { return false; }
     virtual void debug_write(const std::string &buffer) {}
-    virtual void debug_delete() {}
+    virtual void debug_cancel() {}
   };
   
   class Clang : public Base {
@@ -83,7 +83,7 @@ namespace Project {
     void debug_remove_breakpoint(const boost::filesystem::path &file_path, int line_nr, int line_count) override;
     bool debug_is_running() override;
     void debug_write(const std::string &buffer) override;
-    void debug_delete() override;
+    void debug_cancel() override;
   #endif
   };
   

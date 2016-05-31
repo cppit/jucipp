@@ -1,57 +1,62 @@
-add_definitions(-DBOOST_LOG_DYN_LINK)
-set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -std=c++11 -pthread -Wall -Wextra -Wno-unused-parameter -Wno-reorder")
-
-set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -DJUCI_TESTS_PATH=\\\"${CMAKE_CURRENT_SOURCE_DIR}\\\"")
-
-if(APPLE)
-  set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -undefined dynamic_lookup")
-  link_directories(/usr/local/lib /usr/local/opt/gettext/lib)
-  include_directories(/usr/local/opt/gettext/include)
-  set(CMAKE_MACOSX_RPATH 1)
-  set(ENV{PKG_CONFIG_PATH} "$ENV{PKG_CONFIG_PATH}:/usr/local/lib/pkgconfig:/opt/X11/lib/pkgconfig")
-endif()
-
-find_package(Boost 1.54 COMPONENTS regex system filesystem REQUIRED)
-set(LIBCLANGMM_INCLUDE_DIR ../libclangmm/src)
-
-include(FindPkgConfig)
-pkg_check_modules(GTKMM gtkmm-3.0 REQUIRED)
+set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -fno-access-control -DJUCI_BUILD_PATH=\\\"${CMAKE_BINARY_DIR}\\\" -DJUCI_TESTS_PATH=\\\"${CMAKE_CURRENT_SOURCE_DIR}\\\"")
 
 set(global_includes
    ${Boost_INCLUDE_DIRS}
    ${GTKMM_INCLUDE_DIRS}
    ${GTKSVMM_INCLUDE_DIRS}
-   ../src
+   ${LIBCLANG_INCLUDE_DIRS}
+   ${ASPELL_INCLUDE_DIR}
+   ../libclangmm/src
    ../tiny-process-library
+   ../src
 )
 
 set(global_libraries
   ${GTKMM_LIBRARIES}
   ${GTKSVMM_LIBRARIES}
   ${Boost_LIBRARIES}
+  ${LIBCLANG_LIBRARIES}
+  ${LIBLLDB_LIBRARIES}
+  ${ASPELL_LIBRARIES}
 )
 
-set(stub_sources
+set(stub_files
     stubs/config.cc
     stubs/dialogs.cc
-    stubs/dispatcher.cc
     stubs/info.cc
+    stubs/selectiondialog.cc
     stubs/terminal.cc
+    stubs/tooltips.cc
 )
+
+add_library(stubs OBJECT ${stub_files})
 
 include_directories(${global_includes})
 
-add_library(stubs_library ${stub_sources})
+add_executable(process_test process_test.cc
+               $<TARGET_OBJECTS:project_shared> $<TARGET_OBJECTS:stubs>)
+target_link_libraries(process_test ${global_libraries})
+add_test(process_test process_test)
 
-add_executable(cmake_test cmake_test.cc
-               ../src/filesystem.cc ../src/cmake.cc ../src/project_build.cc)
-target_link_libraries(cmake_test ${global_libraries} stubs_library)
-add_test(cmake_test cmake_test)
+add_executable(cmake_build_test cmake_build_test.cc
+               $<TARGET_OBJECTS:project_shared> $<TARGET_OBJECTS:stubs>)
+target_link_libraries(cmake_build_test ${global_libraries})
+add_test(cmake_build_test cmake_build_test)
 
-#Added for example only, and requires display server to work
-#However, it is possible to use the Broadway backend if the test is run in a pure terminal environment:
-#broadwayd&
-#make test
-add_executable(example_test example_test.cc)
-target_link_libraries(example_test ${global_libraries} stubs_library)
-add_test(example_test example_test)
+add_executable(source_test source_test.cc
+               $<TARGET_OBJECTS:project_shared> $<TARGET_OBJECTS:stubs>)
+target_link_libraries(source_test ${global_libraries})
+add_test(source_test source_test)
+
+add_executable(source_clang_test source_clang_test.cc
+               $<TARGET_OBJECTS:project_shared> $<TARGET_OBJECTS:stubs>)
+target_link_libraries(source_clang_test ${global_libraries})
+add_test(source_clang_test source_clang_test)
+
+if(LIBLLDB_FOUND)
+  add_executable(lldb_test lldb_test.cc
+                 $<TARGET_OBJECTS:project_shared> $<TARGET_OBJECTS:stubs>)
+  target_link_libraries(lldb_test ${global_libraries})
+  add_test(lldb_test lldb_test)
+  add_subdirectory("lldb_test_files")
+endif()

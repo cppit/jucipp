@@ -357,7 +357,7 @@ void Debug::Clang::select_frame(uint32_t frame_index, uint32_t thread_index_id) 
   }
 }
 
-void Debug::Clang::delete_debug() {
+void Debug::Clang::cancel() {
   kill();
   if(debug_thread.joinable())
     debug_thread.join();

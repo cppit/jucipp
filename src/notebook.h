@@ -10,11 +10,12 @@
 #include <sigc++/sigc++.h>
 
 class Notebook : public Gtk::Notebook {
-  class TabLabel : public Gtk::Box {
-  public:
-    TabLabel(const boost::filesystem::path &path);
-    Gtk::Label label;
+  class TabLabel : public Gtk::EventBox {
+    Gtk::HBox hbox;
     Gtk::Button button;
+  public:
+    TabLabel(const boost::filesystem::path &path, std::function<void()> on_close);
+    Gtk::Label label;
   };
   
 private:

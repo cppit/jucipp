@@ -15,7 +15,7 @@ int main() {
   auto functions_parameters=cmake.get_functions_parameters("project");
   g_assert(functions_parameters.at(0).second.at(0)=="juci");
   
-  g_assert(cmake.get_executable(tests_path/"cmake_test.cc").filename()=="cmake_test");
+  g_assert(cmake.get_executable(tests_path/"cmake_build_test.cc").filename()=="cmake_build_test");
   
   auto build=Project::Build::create(tests_path);
   g_assert(dynamic_cast<Project::CMakeBuild*>(build.get()));
