@@ -1,6 +1,6 @@
 platform:
   - x64
-  
+
 environment:
   MSYSTEM: MSYS
 
@@ -12,5 +12,4 @@ before_build:
 
 build_script:    
   - C:\msys64\usr\bin\bash -lc "script=compile C:/projects/jucipp/ci/execute.sh"
-  - C:\msys64\usr\bin\bash -lc "broadwayd & exit"
-  - C:\msys64\usr\bin\bash -lc "script=compile make_command='make test' C:/projects/jucipp/ci/execute.sh"
+  - C:\msys64\usr\bin\bash -lc "script=compile make_command='CTEST_OUTPUT_ON_FAILURE=1 make test' C:/projects/jucipp/ci/execute.sh"

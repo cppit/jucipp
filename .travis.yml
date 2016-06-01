@@ -8,14 +8,14 @@ env:
   - distribution: arch
   - distribution: debian-testing
   - distribution: debian
-  
+
 #matrix:
 #  include:
 #    - os: osx
 
 services:
   - docker
-  
+
 before_install:
   - ./ci/update_ci.sh #travis_wait 90 ./ci/update_ci.sh
 
