@@ -29,12 +29,13 @@ function osx () {
 
 function windows () {
   export PATH="/mingw64/bin:/usr/local/bin:/usr/bin:/bin:/c/WINDOWS/system32:/c/WINDOWS:/c/WINDOWS/System32/Wbem:/c/WINDOWS/System32/WindowsPowerShell/v1.0:/usr/bin/site_perl:/usr/bin/vendor_perl:/usr/bin/core_perl"
-  cd "C:/projects" || (echo "Error changing directory"; return 1)
+  bf=$(cygpath ${APPVEYOR_BUILD_FOLDER})
+  cd "$bf" || (echo "Error changing directory"; return 1)
   if [ "${script}" == "clean" ]; then
-    sudo rm "C:/projects/jucipp/build" -rf
+    sudo rm "./build" -rf
     return 0
   fi
-  sh -c "C:/projects/jucipp/ci/${script}.sh"
+  sh -c "${bf}/ci/${script}.sh"
 }
 
 
