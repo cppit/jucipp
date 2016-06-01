@@ -25,9 +25,7 @@ Gtk::Label &Project::debug_status_label() {
 }
 
 void Project::save_files(const boost::filesystem::path &path) {
-  if(Notebook::get().get_current_page()==-1)
-    return;
-  for(int c=0;c<Notebook::get().size();c++) {
+  for(size_t c=0;c<Notebook::get().size();c++) {
     auto view=Notebook::get().get_view(c);
     if(view->get_buffer()->get_modified()) {
       if(filesystem::file_in_path(view->file_path, path))
@@ -36,10 +34,10 @@ void Project::save_files(const boost::filesystem::path &path) {
   }
 }
 
-void Project::on_save(int page) {
-  if(page>=Notebook::get().size())
+void Project::on_save(size_t index) {
+  auto view=Notebook::get().get_view(index);
+  if(!view)
     return;
-  auto view=Notebook::get().get_view(page);
   if(view->language && view->language->get_id()=="cmake") {
     boost::filesystem::path cmake_path;
     if(view->file_path.filename()=="CMakeLists.txt")
@@ -54,7 +52,7 @@ void Project::on_save(int page) {
         if(boost::filesystem::exists(build->get_debug_path()))
           build->update_debug(true);
         
-        for(int c=0;c<Notebook::get().size();c++) {
+        for(size_t c=0;c<Notebook::get().size();c++) {
           auto source_view=Notebook::get().get_view(c);
           if(auto source_clang_view=dynamic_cast<Source::ClangView*>(source_view)) {
             if(filesystem::file_in_path(source_clang_view->file_path, build->project_path))
@@ -84,7 +82,7 @@ void Project::debug_update_status(const std::string &debug_status) {
 }
 
 void Project::debug_update_stop() {
-  for(int c=0;c<Notebook::get().size();c++) {
+  for(size_t c=0;c<Notebook::get().size();c++) {
     auto view=Notebook::get().get_view(c);
     if(view->file_path==debug_last_stop_file_path) {
       view->get_source_buffer()->remove_source_marks(view->get_buffer()->begin(), view->get_buffer()->end(), "debug_stop");
@@ -92,7 +90,7 @@ void Project::debug_update_stop() {
     }
   }
   //Add debug stop source mark
-  for(int c=0;c<Notebook::get().size();c++) {
+  for(size_t c=0;c<Notebook::get().size();c++) {
     auto view=Notebook::get().get_view(c);
     if(view->file_path==debug_stop.first) {
       if(debug_stop.second.first-1<view->get_buffer()->get_line_count()) {
@@ -102,15 +100,14 @@ void Project::debug_update_stop() {
       break;
     }
   }
-  if(Notebook::get().get_current_page()!=-1)
-    Notebook::get().get_current_view()->get_buffer()->place_cursor(Notebook::get().get_current_view()->get_buffer()->get_insert()->get_iter());
+  if(auto view=Notebook::get().get_current_view())
+    view->get_buffer()->place_cursor(view->get_buffer()->get_insert()->get_iter());
 }
 
 std::unique_ptr<Project::Base> Project::create() {
   std::unique_ptr<Project::Build> build;
   
-  if(Notebook::get().get_current_page()!=-1) {
-    auto view=Notebook::get().get_current_view();
+  if(auto view=Notebook::get().get_current_view()) {
     build=Build::create(view->file_path);
     if(view->language) {
       auto language_id=view->language->get_id();
@@ -167,7 +164,8 @@ std::pair<std::string, std::string> Project::Clang::get_run_arguments() {
     arguments=run_arguments_it->second;
   
   if(arguments.empty()) {
-    auto executable=build->get_executable(Notebook::get().get_current_page()!=-1?Notebook::get().get_current_view()->file_path:"").string();
+    auto view=Notebook::get().get_current_view();
+    auto executable=build->get_executable(view?view->file_path:"").string();
     
     if(executable!="") {
       size_t pos=executable.find(project_path);
@@ -210,7 +208,8 @@ void Project::Clang::compile_and_run() {
     arguments=run_arguments_it->second;
   
   if(arguments.empty()) {
-    arguments=build->get_executable(Notebook::get().get_current_page()!=-1?Notebook::get().get_current_view()->file_path:"").string();
+    auto view=Notebook::get().get_current_view();
+    arguments=build->get_executable(view?view->file_path:"").string();
     if(arguments.empty()) {
       Terminal::get().print("Warning: could not find executable.\n");
       Terminal::get().print("Solution: either use Project Set Run Arguments, or open a source file within a directory where add_executable is set.\n", true);
@@ -250,7 +249,8 @@ std::pair<std::string, std::string> Project::Clang::debug_get_run_arguments() {
     arguments=run_arguments_it->second;
   
   if(arguments.empty()) {
-    auto executable=build->get_executable(Notebook::get().get_current_page()!=-1?Notebook::get().get_current_view()->file_path:"").string();
+    auto view=Notebook::get().get_current_view();
+    auto executable=build->get_executable(view?view->file_path:"").string();
     
     if(executable!="") {
       size_t pos=executable.find(project_path);
@@ -277,7 +277,8 @@ void Project::Clang::debug_start() {
     run_arguments=run_arguments_it->second;
   
   if(run_arguments.empty()) {
-    run_arguments=build->get_executable(Notebook::get().get_current_page()!=-1?Notebook::get().get_current_view()->file_path:"").string();
+    auto view=Notebook::get().get_current_view();
+    run_arguments=build->get_executable(view?view->file_path:"").string();
     if(run_arguments.empty()) {
       Terminal::get().print("Warning: could not find executable.\n");
       Terminal::get().print("Solution: either use Debug Set Run Arguments, or open a source file within a directory where add_executable is set.\n", true);
@@ -290,7 +291,7 @@ void Project::Clang::debug_start() {
   }
   
   auto breakpoints=std::make_shared<std::vector<std::pair<boost::filesystem::path, int> > >();
-  for(int c=0;c<Notebook::get().size();c++) {
+  for(size_t c=0;c<Notebook::get().size();c++) {
     auto view=Notebook::get().get_view(c);
     if(filesystem::file_in_path(view->file_path, project_path)) {
       auto iter=view->get_buffer()->begin();
@@ -361,10 +362,10 @@ void Project::Clang::debug_step_out() {
 }
 
 void Project::Clang::debug_backtrace() {
-  if(debugging && Notebook::get().get_current_page()!=-1) {
+  auto view=Notebook::get().get_current_view();
+  if(view && debugging) {
     auto backtrace=Debug::Clang::get().get_backtrace();
     
-    auto view=Notebook::get().get_current_view();
     auto iter=view->get_iter_for_dialog();
     view->selection_dialog=std::unique_ptr<SelectionDialog>(new SelectionDialog(*view, view->get_buffer()->create_mark(iter), true, true));
     auto rows=std::make_shared<std::unordered_map<std::string, Debug::Clang::Frame> >();
@@ -392,9 +393,7 @@ void Project::Clang::debug_backtrace() {
       auto frame=rows->at(selected);
       if(!frame.file_path.empty()) {
         Notebook::get().open(frame.file_path);
-        if(Notebook::get().get_current_page()!=-1) {
-          auto view=Notebook::get().get_current_view();
-          
+        if(auto view=Notebook::get().get_current_view()) {
           Debug::Clang::get().select_frame(frame.index);
           
           view->place_cursor_at_line_index(frame.line_nr-1, frame.line_index-1);
@@ -407,10 +406,10 @@ void Project::Clang::debug_backtrace() {
 }
 
 void Project::Clang::debug_show_variables() {
-  if(debugging && Notebook::get().get_current_page()!=-1) {
+  auto view=Notebook::get().get_current_view();
+  if(debugging && view) {
     auto variables=Debug::Clang::get().get_variables();
     
-    auto view=Notebook::get().get_current_view();
     auto iter=view->get_iter_for_dialog();
     view->selection_dialog=std::unique_ptr<SelectionDialog>(new SelectionDialog(*view, view->get_buffer()->create_mark(iter), true, true));
     auto rows=std::make_shared<std::unordered_map<std::string, Debug::Clang::Variable> >();
@@ -428,9 +427,7 @@ void Project::Clang::debug_show_variables() {
       auto variable=rows->at(selected);
       if(!variable.file_path.empty()) {
         Notebook::get().open(variable.file_path);
-        if(Notebook::get().get_current_page()!=-1) {
-          auto view=Notebook::get().get_current_view();
-          
+        if(auto view=Notebook::get().get_current_view()) {
           Debug::Clang::get().select_frame(variable.frame_index, variable.thread_index_id);
           
           view->place_cursor_at_line_index(variable.line_nr-1, variable.line_index-1);
@@ -449,8 +446,7 @@ void Project::Clang::debug_show_variables() {
         debug_variable_tooltips.hide();
         return;
       }
-      if(Notebook::get().get_current_page()!=-1) {
-        auto view=Notebook::get().get_current_view();
+      if(auto view=Notebook::get().get_current_view()) {
         debug_variable_tooltips.clear();
         auto create_tooltip_buffer=[this, rows, view, selected]() {
           auto variable=rows->at(selected);

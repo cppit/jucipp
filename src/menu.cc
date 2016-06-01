@@ -382,6 +382,13 @@ Menu::Menu() {
              +accels["close_tab"]+ //For Ubuntu...
   "        </item>"
   "      </section>"
+  "      <section>"
+  "        <item>"
+  "          <attribute name='label' translatable='yes'>_Toggle _Split</attribute>"
+  "          <attribute name='action'>app.window_toggle_split</attribute>"
+             +accels["window_toggle_split"]+ //For Ubuntu...
+  "        </item>"
+  "      </section>"
   "    </submenu>"
   "  </menu>"
   "</interface>";

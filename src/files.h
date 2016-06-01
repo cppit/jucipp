@@ -2,7 +2,7 @@
 #define JUCI_FILES_H_
 #include <string>
 
-#define JUCI_VERSION "1.1.3-4"
+#define JUCI_VERSION "1.1.3-5"
 
 const std::string default_config_file = R"RAW({
     "version": ")RAW"+std::string(JUCI_VERSION)+R"RAW(",
@@ -132,7 +132,8 @@ R"RAW(
         "previous_tab": "<primary><alt>Left",)RAW"
 #endif
 R"RAW(
-        "close_tab": "<primary>w"
+        "close_tab": "<primary>w",
+        "window_toggle_split": ""
     },
     "project": {
         "default_build_path_comment": "Use <project_directory_name> to insert the project top level directory name",

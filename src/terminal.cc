@@ -365,8 +365,7 @@ bool Terminal::on_button_press_event(GdkEventButton* button_event) {
           path=boost::filesystem::canonical(path_str, ec);
         if(!ec && boost::filesystem::is_regular_file(path)) {
           Notebook::get().open(path);
-          if(Notebook::get().get_current_page()!=-1) {
-            auto view=Notebook::get().get_current_view();
+          if(auto view=Notebook::get().get_current_view()) {
             try {
               int line = std::stoi(sm[3].str())-1;
               int index = std::stoi(sm[4].str())-1;

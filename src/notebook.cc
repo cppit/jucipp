@@ -50,50 +50,88 @@ Notebook::TabLabel::TabLabel(const boost::filesystem::path &path, std::function<
   show_all();
 }
 
-Notebook::Notebook() : Gtk::Notebook(), last_index(-1) {
+Notebook::Notebook() : Gtk::HPaned(), notebooks(2) {
   Gsv::init();
   
-  set_scrollable();
-  
-  auto provider = Gtk::CssProvider::create();
-  //GtkNotebook-tab-overlap got removed in gtk 3.20, but margin works in 3.20
+  for(auto &notebook: notebooks) {
+    notebook.set_scrollable();
+    notebook.set_group_name("source_notebooks");
+    notebook.signal_switch_page().connect([this](Gtk::Widget *widget, guint) {
+      //Sometimes focus is lost when tabs are reordered
+      auto hbox=dynamic_cast<Gtk::HBox*>(widget);
+      for(size_t c=0;c<hboxes.size();++c) {
+        if(hboxes[c].get()==hbox) {
+          focus_view(source_views[c]);
+          break;
+        }
+      }
+      last_index=-1;
+      if(on_switch_page)
+        on_switch_page();
+    });
+    notebook.signal_page_removed().connect([this](Gtk::Widget*, guint) {
+      if(on_page_removed)
+        on_page_removed();
+    });
+    notebook.signal_page_added().connect([this](Gtk::Widget* widget, guint) {
+      auto hbox=dynamic_cast<Gtk::HBox*>(widget);
+      for(size_t c=0;c<hboxes.size();++c) {
+        if(hboxes[c].get()==hbox) {
+          focus_view(source_views[c]);
+          break;
+        }
+      }
+    });
+    
+    auto provider = Gtk::CssProvider::create();
+      //GtkNotebook-tab-overlap got removed in gtk 3.20, but margin works in 3.20
 #if GTK_VERSION_GE(3, 20)
-    provider->load_from_data("tab {border-radius: 5px 5px 0 0; padding: 0 4px; margin: 0;}");
+        provider->load_from_data("tab {border-radius: 5px 5px 0 0; padding: 0 4px; margin: 0;}");
 #else
-    provider->load_from_data(".notebook {-GtkNotebook-tab-overlap: 0px;} tab {border-radius: 5px 5px 0 0; padding: 4px 4px;}");
+        provider->load_from_data(".notebook {-GtkNotebook-tab-overlap: 0px;} tab {border-radius: 5px 5px 0 0; padding: 4px 4px;}");
 #endif
-  get_style_context()->add_provider(provider, GTK_STYLE_PROVIDER_PRIORITY_APPLICATION);
-  
-  signal_switch_page().connect([this](Gtk::Widget* page, guint page_num) {
-    last_index=-1;
-  });
-}
-
-int Notebook::size() {
-  return get_n_pages();
-}
-
-Source::View* Notebook::get_view(int page) {
-  return source_views.at(get_index(page));
-}
-
-size_t Notebook::get_index(int page) {
-  for(size_t c=0;c<hboxes.size();c++) {
-    if(page_num(*hboxes.at(c))==page)
-      return c;
+      notebook.get_style_context()->add_provider(provider, GTK_STYLE_PROVIDER_PRIORITY_APPLICATION);
   }
-  return -1;
+  pack1(notebooks[0], true, true);
+}
+
+size_t Notebook::size() {
+  return static_cast<int>(source_views.size());
+}
+
+Source::View* Notebook::get_view(size_t index) {
+  if(index>=size())
+    return nullptr;
+  return source_views[index];
 }
 
 Source::View* Notebook::get_current_view() {
-  return get_view(get_current_page());
+  for(auto &view: source_views) {
+    if(view->has_focus())
+      return view;
+  }
+  for(auto &view: source_views) {
+    if(view==last_focused_view)
+      return view;
+  }
+  if(!source_views.empty())
+    return source_views.back();
+  return nullptr;
 }
 
-void Notebook::open(const boost::filesystem::path &file_path) {
-  for(int c=0;c<size();c++) {
-    if(file_path==get_view(c)->file_path) {
-      set_current_page(c);
-      get_current_view()->grab_focus();
+std::vector<Source::View*> &Notebook::get_views() {
+  return source_views;
+}
+
+void Notebook::open(const boost::filesystem::path &file_path, size_t notebook_index) {
+  if(notebook_index==1 && !split)
+    toggle_split();
+  
+  for(size_t c=0;c<size();c++) {
+    if(file_path==source_views[c]->file_path) {
+      auto notebook_page=get_notebook_page(c);
+      notebooks[notebook_page.first].set_current_page(notebook_page.second);
+      focus_view(source_views[c]);
       return;
     }
   }
@@ -107,6 +145,8 @@ void Notebook::open(const boost::filesystem::path &file_path) {
     can_read.close();
   }
   
+  auto last_view=get_current_view();
+  
   auto language=Source::guess_language(file_path);
   if(language && (language->get_id()=="chdr" || language->get_id()=="cpphdr" || language->get_id()=="c" || language->get_id()=="cpp" || language->get_id()=="objc"))
     source_views.emplace_back(new Source::ClangView(file_path, language));
@@ -116,7 +156,7 @@ void Notebook::open(const boost::filesystem::path &file_path) {
   source_views.back()->scroll_to_cursor_delayed=[this](Source::View* view, bool center, bool show_tooltips) {
     while(g_main_context_pending(NULL))
       g_main_context_iteration(NULL, false);
-    if(get_current_page()!=-1 && get_current_view()==view) {
+    if(get_current_view()==view) {
       if(center)
         view->scroll_to(view->get_buffer()->get_insert(), 0.0, 1.0, 0.5);
       else
@@ -126,11 +166,11 @@ void Notebook::open(const boost::filesystem::path &file_path) {
     }
   };
   source_views.back()->on_update_status=[this](Source::View* view, const std::string &status_text) {
-    if(get_current_page()!=-1 && get_current_view()==view)
+    if(get_current_view()==view)
       status.set_text(status_text+" ");
   };
   source_views.back()->on_update_info=[this](Source::View* view, const std::string &info_text) {
-    if(get_current_page()!=-1 && get_current_view()==view)
+    if(get_current_view()==view)
       info.set_text(" "+info_text);
   };
   
@@ -147,92 +187,139 @@ void Notebook::open(const boost::filesystem::path &file_path) {
   
   //Set up tab label
   auto source_view=source_views.back();
-  tab_labels.emplace_back(new TabLabel(file_path, [this, source_view](){
-    for(int c=0;c<size();c++) {
-      if(get_view(c)==source_view) {
-        close(c);
-        break;
-      }
-    }
+  tab_labels.emplace_back(new TabLabel(file_path, [this, source_view]() {
+    auto index=get_index(source_view);
+    if(index!=static_cast<size_t>(-1))
+      close(index);
   }));
-  append_page(*hboxes.back(), *tab_labels.back());
   
-  set_tab_reorderable(*hboxes.back(), true);
-  show_all_children();
-  
-  size_t last_index_tmp=-1;
-  if(get_current_page()!=-1)
-    last_index_tmp=get_index(get_current_page());
-  set_current_page(size()-1);
-  last_index=last_index_tmp;
-  
-  set_focus_child(*source_views.back());
-  get_current_view()->get_buffer()->set_modified(false);
-  get_current_view()->grab_focus();
   //Add star on tab label when the page is not saved:
-  get_current_view()->get_buffer()->signal_modified_changed().connect([this, source_view]() {
+  source_view->get_buffer()->signal_modified_changed().connect([this, source_view]() {
     std::string title=source_view->file_path.filename().string();
     if(source_view->get_buffer()->get_modified())
       title+='*';
     else
       title+=' ';
-    int page=-1;
-    for(int c=0;c<size();c++) {
-      if(get_view(c)==source_view) {
-        page=c;
-        break;
+    
+    for(size_t c=0;c<size();c++) {
+      if(source_views[c]==source_view) {
+        auto &tab_label=tab_labels.at(c);
+        tab_label->label.set_text(title);
+        tab_label->set_tooltip_text(source_view->file_path.string());
+        return;
       }
     }
-    if(page!=-1) {
-      auto &tab_label=tab_labels.at(get_index(page));
-      tab_label->label.set_text(title);
-      tab_label->set_tooltip_text(source_view->file_path.string());
-    }
   });
+  
+  source_view->signal_focus_in_event().connect([this, source_view](GdkEventFocus *) {
+    if(source_view!=last_focused_view) {
+      last_focused_view=source_view;
+      if(on_switch_page)
+        on_switch_page();
+    }
+    else
+      last_focused_view=source_view;
+    return false;
+  });
+  
+  if(notebook_index==static_cast<size_t>(-1)) {
+    if(!split)
+      notebook_index=0;
+    else if(notebooks[0].get_n_pages()==0)
+      notebook_index=0;
+    else if(notebooks[1].get_n_pages()==0)
+      notebook_index=1;
+    else if(last_view)
+      notebook_index=get_notebook_page(get_index(last_view)).first;
+  }
+  auto &notebook=notebooks[notebook_index];
+  
+  notebook.append_page(*hboxes.back(), *tab_labels.back());
+  
+  notebook.set_tab_reorderable(*hboxes.back(), true);
+  notebook.set_tab_detachable(*hboxes.back(), true);
+  show_all_children();
+  
+  notebook.set_current_page(notebook.get_n_pages()-1);
+  last_index=-1;
+  if(last_view)
+    last_index=get_index(last_view);
+  
+  set_focus_child(*source_views.back());
+  source_view->get_buffer()->set_modified(false);
+  focus_view(source_view);
 }
 
-void Notebook::configure(int view_nr) {
+void Notebook::configure(size_t index) {
 #if GTKSOURCEVIEWMM_MAJOR_VERSION > 2 & GTKSOURCEVIEWMM_MINOR_VERSION > 17
   auto source_font_description=Pango::FontDescription(Config::get().source.font);
   auto source_map_font_desc=Pango::FontDescription(static_cast<std::string>(source_font_description.get_family())+" "+Config::get().source.map_font_size); 
-  source_maps.at(view_nr)->override_font(source_map_font_desc);
+  source_maps.at(index)->override_font(source_map_font_desc);
   if(Config::get().source.show_map) {
-    if(hboxes.at(view_nr)->get_children().size()==1)
-      hboxes.at(view_nr)->pack_end(*source_maps.at(view_nr), Gtk::PACK_SHRINK);
+    if(hboxes.at(index)->get_children().size()==1)
+      hboxes.at(index)->pack_end(*source_maps.at(index), Gtk::PACK_SHRINK);
   }
-  else if(hboxes.at(view_nr)->get_children().size()==2)
-    hboxes.at(view_nr)->remove(*source_maps.at(view_nr));
+  else if(hboxes.at(index)->get_children().size()==2)
+    hboxes.at(index)->remove(*source_maps.at(index));
 #endif
 }
 
-bool Notebook::save(int page) {
-  if(page>=size())
+bool Notebook::save(size_t index) {
+  if(!source_views[index]->save(source_views))
     return false;
-  auto view=get_view(page);
-  if(!view->save(source_views))
-    return false;
-  Project::on_save(page);
+  Project::on_save(index);
   return true;
 }
 
 bool Notebook::save_current() {
-  if(get_current_page()==-1)
-    return false;
-  return save(get_current_page());
+  if(auto view=get_current_view())
+    return save(get_index(view));
+  return false;
 }
 
-bool Notebook::close(int page) {
-  if (page!=-1) {
-    auto view=get_view(page);
+void Notebook::save_session() {
+  try {
+    boost::property_tree::ptree pt_root, pt_files;
+    pt_root.put("folder", Directories::get().path.string());
+    for(size_t notebook_index=0;notebook_index<notebooks.size();++notebook_index) {
+      for(int page=0;page<notebooks[notebook_index].get_n_pages();++page) {
+        auto view=get_view(notebook_index, page);
+        boost::property_tree::ptree pt_child;
+        pt_child.put("notebook", notebook_index);
+        pt_child.put("file", view->file_path.string());
+        pt_files.push_back(std::make_pair("", pt_child));
+      }
+    }
+    pt_root.add_child("files", pt_files);
+    if(auto view=Notebook::get().get_current_view())
+      pt_root.put("current_file", view->file_path.string());
+    boost::property_tree::write_json((Config::get().juci_home_path()/"last_session.json").string(), pt_root);
+  }
+  catch(const std::exception &) {}
+}
+
+bool Notebook::close(size_t index) {
+  if(auto view=get_view(index)) {
     if(view->get_buffer()->get_modified()){
-      if(!save_modified_dialog(page))
+      if(!save_modified_dialog(index))
         return false;
     }
-    auto index=get_index(page);
-    if(page==get_current_page()) {
+    if(view==get_current_view()) {
       if(last_index!=static_cast<size_t>(-1)) {
-        set_current_page(page_num(*hboxes.at(last_index)));
+        auto notebook_page=get_notebook_page(last_index);
+        focus_view(source_views[last_index]);
+        notebooks[notebook_page.first].set_current_page(notebook_page.second);
         last_index=-1;
+      }
+      else {
+        auto notebook_page=get_notebook_page(get_index(view));
+        if(notebook_page.second>0)
+          focus_view(get_view(notebook_page.first, notebook_page.second-1));
+        else {
+          size_t notebook_index=notebook_page.first==0?1:0;
+          if(notebooks[notebook_index].get_n_pages()>0)
+            focus_view(get_view(notebook_index, notebooks[notebook_index].get_current_page()));
+        }
       }
     }
     else if(index==last_index)
@@ -240,7 +327,8 @@ bool Notebook::close(int page) {
     else if(index<last_index && last_index!=static_cast<size_t>(-1))
       last_index--;
     
-    remove_page(page);
+    auto notebook_page=get_notebook_page(index);
+    notebooks[notebook_page.first].remove_page(notebook_page.second);
 #if GTKSOURCEVIEWMM_MAJOR_VERSION > 2 & GTKSOURCEVIEWMM_MINOR_VERSION > 17
     source_maps.erase(source_maps.begin()+index);
 #endif
@@ -258,28 +346,99 @@ bool Notebook::close(int page) {
   return true;
 }
 
-bool Notebook::close_current_page() {
-  if(get_current_page()==-1)
-    return false;
-  return close(get_current_page());
+bool Notebook::close_current() {
+  return close(get_index(get_current_view()));
+}
+
+void Notebook::next() {
+  if(auto view=get_current_view()) {
+    auto notebook_page=get_notebook_page(get_index(view));
+    int page=notebook_page.second+1;
+    if(page>=notebooks[notebook_page.first].get_n_pages())
+      notebooks[notebook_page.first].set_current_page(0);
+    else
+      notebooks[notebook_page.first].set_current_page(page);
+  }
+}
+
+void Notebook::previous() {
+  if(auto view=get_current_view()) {
+    auto notebook_page=get_notebook_page(get_index(view));
+    int page=notebook_page.second-1;
+    if(page<0)
+      notebooks[notebook_page.first].set_current_page(notebooks[notebook_page.first].get_n_pages()-1);
+    else
+      notebooks[notebook_page.first].set_current_page(page);
+  }
+}
+
+void Notebook::toggle_split() {
+  if(!split) {
+    pack2(notebooks[1], true, true);
+    set_position(get_width()/2);
+    show_all();
+  }
+  else {
+    for(size_t c=size();c!=static_cast<size_t>(-1);--c) {
+      auto notebook_index=get_notebook_page(c).first;
+      if(notebook_index==1 && !close(c))
+        return;
+    }
+    remove(notebooks[1]);
+  }
+  split=!split;
 }
 
 boost::filesystem::path Notebook::get_current_folder() {
   if(!Directories::get().path.empty())
     return Directories::get().path;
-  else if(get_current_page()!=-1)
-    return get_current_view()->file_path.parent_path();
+  else if(auto view=get_current_view())
+    return view->file_path.parent_path();
   else
     return boost::filesystem::path();
 }
 
-bool Notebook::save_modified_dialog(int page) {
+size_t Notebook::get_index(Source::View *view) {
+  for(size_t c=0;c<size();++c) {
+    if(source_views[c]==view)
+      return c;
+  }
+  return -1;
+}
+
+Source::View *Notebook::get_view(size_t notebook_index, int page) {
+  if(notebook_index==static_cast<size_t>(-1) || notebook_index>=notebooks.size() ||
+     page<0 || page>=notebooks[notebook_index].get_n_pages())
+    return nullptr;
+  auto hbox=dynamic_cast<Gtk::HBox*>(notebooks[notebook_index].get_nth_page(page));
+  auto scrolled_window=dynamic_cast<Gtk::ScrolledWindow*>(hbox->get_children()[0]);
+  return dynamic_cast<Source::View*>(scrolled_window->get_children()[0]);
+}
+
+void Notebook::focus_view(Source::View *view) {
+  if(!view)
+    return;
+  view->grab_focus();
+}
+
+std::pair<size_t, int> Notebook::get_notebook_page(size_t index) {
+  if(index>=hboxes.size())
+    return {-1, -1};
+  for(size_t c=0;c<notebooks.size();++c) {
+    auto page_num=notebooks[c].page_num(*hboxes[index]);
+    if(page_num>=0)
+      return {c, page_num};
+  }
+  return {-1, -1};
+}
+
+bool Notebook::save_modified_dialog(size_t index) {
   Gtk::MessageDialog dialog(*static_cast<Gtk::Window*>(get_toplevel()), "Save file!", false, Gtk::MESSAGE_QUESTION, Gtk::BUTTONS_YES_NO);
   dialog.set_default_response(Gtk::RESPONSE_YES);
-  dialog.set_secondary_text("Do you want to save: " + get_view(page)->file_path.string()+" ?");
+  dialog.set_secondary_text("Do you want to save: " + get_view(index)->file_path.string()+" ?");
   int result = dialog.run();
   if(result==Gtk::RESPONSE_YES) {
-    save(page);
+    save(index);
     return true;
   }
   else if(result==Gtk::RESPONSE_NO) {

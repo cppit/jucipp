@@ -9,7 +9,7 @@
 #include <map>
 #include <sigc++/sigc++.h>
 
-class Notebook : public Gtk::Notebook {
+class Notebook : public Gtk::HPaned {
   class TabLabel : public Gtk::EventBox {
     Gtk::HBox hbox;
     Gtk::Button button;
@@ -26,29 +26,46 @@ public:
     return singleton;
   }
   
-  Source::View* get_view(int page);
-  size_t get_index(int page);
-  int size();
+  //Source::View* get_view(int page);
+  size_t size();
+  Source::View* get_view(size_t index);
   Source::View* get_current_view();
-  bool close(int page);
-  bool close_current_page();
-  void open(const boost::filesystem::path &file_path);
-  bool save(int page);
+  std::vector<Source::View*> &get_views();
+  
+  void open(const boost::filesystem::path &file_path, size_t notebook_index=-1);
+  void configure(size_t index);
+  bool save(size_t index);
   bool save_current();
-  void configure(int view_nr);
+  void save_session();
+  bool close(size_t index);
+  bool close_current();
+  void next();
+  void previous();
+  void toggle_split();
   boost::filesystem::path get_current_folder();
-
-  std::vector<Source::View*> source_views; //Is NOT freed in destructor, this is intended for quick program exit.
 
   Gtk::Label info;
   Gtk::Label status;
+  
+  std::function<void()> on_switch_page;
+  std::function<void()> on_page_removed;
 private:
-  bool save_modified_dialog(int page);
+  size_t get_index(Source::View *view);
+  Source::View *get_view(size_t notebook_index, int page);
+  void focus_view(Source::View *view);
+  std::pair<size_t, int> get_notebook_page(size_t index);
+  
+  std::vector<Gtk::Notebook> notebooks;
+  std::vector<Source::View*> source_views; //Is NOT freed in destructor, this is intended for quick program exit.
   std::vector<std::unique_ptr<Gtk::Widget> > source_maps;
   std::vector<std::unique_ptr<Gtk::ScrolledWindow> > scrolled_windows;
   std::vector<std::unique_ptr<Gtk::HBox> > hboxes;
   std::vector<std::unique_ptr<TabLabel> > tab_labels;
   
-  size_t last_index;
+  bool split=false;
+  size_t last_index=-1;
+  Source::View* last_focused_view=nullptr;
+  
+  bool save_modified_dialog(size_t index);
 };
 #endif  // JUCI_NOTEBOOK_H_

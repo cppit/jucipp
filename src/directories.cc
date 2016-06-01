@@ -85,7 +85,7 @@ bool Directories::TreeStore::drag_data_received_vfunc(const TreeModel::Path &pat
       return false;
     }
     
-    for(int c=0;c<Notebook::get().size();c++) {
+    for(size_t c=0;c<Notebook::get().size();c++) {
       auto view=Notebook::get().get_view(c);
       if(is_directory) {
         if(filesystem::file_in_path(view->file_path, source_path)) {
@@ -320,7 +320,7 @@ Directories::Directories() : Gtk::TreeView(), stop_update_thread(false) {
       update();
       select(target_path);
       
-      for(int c=0;c<Notebook::get().size();c++) {
+      for(size_t c=0;c<Notebook::get().size();c++) {
         auto view=Notebook::get().get_view(c);
         if(is_directory) {
           if(filesystem::file_in_path(view->file_path, *source_path)) {
@@ -379,7 +379,7 @@ Directories::Directories() : Gtk::TreeView(), stop_update_thread(false) {
       else {
         update();
         
-        for(int c=0;c<Notebook::get().size();c++) {
+        for(size_t c=0;c<Notebook::get().size();c++) {
           auto view=Notebook::get().get_view(c);
           
           if(is_directory) {

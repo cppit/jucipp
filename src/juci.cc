@@ -19,7 +19,7 @@ int Application::on_command_line(const Glib::RefPtr<Gio::ApplicationCommandLine>
       if(boost::filesystem::exists(p)) {
         p=boost::filesystem::canonical(p);
         if(boost::filesystem::is_regular_file(p))
-          files.emplace_back(p);
+          files.emplace_back(p, 0);
         else if(boost::filesystem::is_directory(p))
           directories.emplace_back(p);
       }
@@ -29,7 +29,7 @@ int Application::on_command_line(const Glib::RefPtr<Gio::ApplicationCommandLine>
         auto new_p=boost::filesystem::canonical(parent_p, ec);
         if(!ec && boost::filesystem::is_directory(new_p)) {
           new_p/=p.filename();
-          files.emplace_back(new_p);
+          files.emplace_back(new_p, 0);
         }
         else
           errors.emplace_back("Error: folder path "+parent_p.string()+" does not exist.\n");
@@ -53,10 +53,11 @@ void Application::on_activate() {
       auto folder=pt.get<std::string>("folder");
       if(!folder.empty() && boost::filesystem::exists(folder) && boost::filesystem::is_directory(folder))
         directories.emplace_back(folder);
-      for(auto &v: pt.get_child("files")) {
-        std::string file=v.second.data();
+      for(auto &pt_file: pt.get_child("files")) {
+        auto notebook=pt_file.second.get<size_t>("notebook", -1);
+        auto file=pt_file.second.get<std::string>("file", "");
         if(!file.empty() && boost::filesystem::exists(file) && !boost::filesystem::is_directory(file))
-          files.emplace_back(file);
+          files.emplace_back(file, notebook);
       }
       last_current_file=pt.get<std::string>("current_file");
       if(!boost::filesystem::exists(last_current_file) || boost::filesystem::is_directory(last_current_file))
@@ -74,8 +75,8 @@ void Application::on_activate() {
     else {
       std::string files_in_directory;
       for(auto it=files.begin();it!=files.end();) {
-        if(it->generic_string().substr(0, directory.generic_string().size()+1)==directory.generic_string()+'/') {
-          files_in_directory+=" "+it->string();
+        if(it->first.generic_string().substr(0, directory.generic_string().size()+1)==directory.generic_string()+'/') {
+          files_in_directory+=" "+it->first.string();
           it=files.erase(it);
         }
         else
@@ -90,7 +91,7 @@ void Application::on_activate() {
   }
   
   for(auto &file: files)
-    Notebook::get().open(file);
+    Notebook::get().open(file.first, file.second);
   
   for(auto &error: errors)
     Terminal::get().print(error, true);
