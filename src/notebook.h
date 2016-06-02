@@ -64,7 +64,8 @@ private:
   
   bool split=false;
   size_t last_index=-1;
-  Source::View* last_focused_view=nullptr;
+  Source::View* current_view_pre_focused=nullptr;
+  Source::View* current_view_focused=nullptr;
   
   bool save_modified_dialog(size_t index);
 };

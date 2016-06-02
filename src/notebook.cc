@@ -106,16 +106,22 @@ Source::View* Notebook::get_view(size_t index) {
 }
 
 Source::View* Notebook::get_current_view() {
-  for(auto &view: source_views) {
-    if(view->has_focus())
+  if(current_view_pre_focused) {
+    for(auto view: source_views) {
+      if(view==current_view_pre_focused)
+        return view;
+    }
+  }
+  for(auto view: source_views) {
+    if(view==current_view_focused)
       return view;
   }
-  for(auto &view: source_views) {
-    if(view==last_focused_view)
-      return view;
+  //In case there exist a tab that has not yet received focus again in a different notebook
+  for(int notebook_index=0;notebook_index<2;++notebook_index) {
+    auto page=notebooks[notebook_index].get_current_page();
+    if(page>=0)
+      return get_view(notebook_index, page);
   }
-  if(!source_views.empty())
-    return source_views.back();
   return nullptr;
 }
 
@@ -212,13 +218,14 @@ void Notebook::open(const boost::filesystem::path &file_path, size_t notebook_in
   });
   
   source_view->signal_focus_in_event().connect([this, source_view](GdkEventFocus *) {
-    if(source_view!=last_focused_view) {
-      last_focused_view=source_view;
+    current_view_pre_focused=nullptr;
+    if(source_view!=current_view_focused) {
+      current_view_focused=source_view;
       if(on_switch_page)
         on_switch_page();
     }
     else
-      last_focused_view=source_view;
+      current_view_focused=source_view;
     return false;
   });
   
@@ -242,8 +249,11 @@ void Notebook::open(const boost::filesystem::path &file_path, size_t notebook_in
   
   notebook.set_current_page(notebook.get_n_pages()-1);
   last_index=-1;
-  if(last_view)
-    last_index=get_index(last_view);
+  if(last_view) {
+    auto notebook_page=get_notebook_page(get_index(last_view));
+    if(notebook_page.first==notebook_index)
+      last_index=notebook_page.second;
+  }
   
   set_focus_child(*source_views.back());
   source_view->get_buffer()->set_modified(false);
@@ -305,13 +315,17 @@ bool Notebook::close(size_t index) {
         return false;
     }
     if(view==get_current_view()) {
+      bool focused=false;
       if(last_index!=static_cast<size_t>(-1)) {
         auto notebook_page=get_notebook_page(last_index);
-        focus_view(source_views[last_index]);
-        notebooks[notebook_page.first].set_current_page(notebook_page.second);
-        last_index=-1;
+        if(notebook_page.first==get_notebook_page(get_index(view)).first) {
+          focus_view(source_views[last_index]);
+          notebooks[notebook_page.first].set_current_page(notebook_page.second);
+          last_index=-1;
+          focused=true;
+        }
       }
-      else {
+      if(!focused) {
         auto notebook_page=get_notebook_page(get_index(view));
         if(notebook_page.second>0)
           focus_view(get_view(notebook_page.first, notebook_page.second-1));
@@ -324,8 +338,6 @@ bool Notebook::close(size_t index) {
     }
     else if(index==last_index)
       last_index=-1;
-    else if(index<last_index && last_index!=static_cast<size_t>(-1))
-      last_index--;
     
     auto notebook_page=get_notebook_page(index);
     notebooks[notebook_page.first].remove_page(notebook_page.second);
@@ -418,6 +430,7 @@ Source::View *Notebook::get_view(size_t notebook_index, int page) {
 void Notebook::focus_view(Source::View *view) {
   if(!view)
     return;
+  current_view_pre_focused=view;
   view->grab_focus();
 }
 
