@@ -125,6 +125,14 @@ Window::Window() {
       
       view->set_status(view->status);
       view->set_info(view->info);
+      
+#ifdef JUCI_ENABLE_DEBUG
+      if(Project::debugging) {
+        if(view->file_path==Project::debug_stop.first &&
+           Project::debug_stop.second.first-1<view->get_buffer()->get_line_count())
+          view->get_source_buffer()->create_source_mark("debug_stop", view->get_buffer()->get_iter_at_line(Project::debug_stop.second.first-1));
+      }
+#endif
     }
   };
   Notebook::get().on_page_removed=[] {
