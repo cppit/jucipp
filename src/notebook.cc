@@ -250,9 +250,10 @@ void Notebook::open(const boost::filesystem::path &file_path, size_t notebook_in
   notebook.set_current_page(notebook.get_n_pages()-1);
   last_index=-1;
   if(last_view) {
-    auto notebook_page=get_notebook_page(get_index(last_view));
+    auto index=get_index(last_view);
+    auto notebook_page=get_notebook_page(index);
     if(notebook_page.first==notebook_index)
-      last_index=notebook_page.second;
+      last_index=index;
   }
   
   set_focus_child(*source_views.back());
