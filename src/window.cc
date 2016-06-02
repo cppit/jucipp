@@ -793,16 +793,17 @@ void Window::set_menu_actions() {
     Notebook::get().previous();
   });
   menu.add_action("close_tab", [this]() {
-    Notebook::get().close_current();
-    if(auto view=Notebook::get().get_current_view()) {
-      view->set_status(view->status);
-      view->set_info(view->info);
-    }
-    else {
-      Notebook::get().status.set_text("");
-      Notebook::get().info.set_text("");
-      
-      activate_menu_items(false);
+    if(Notebook::get().get_current_view() && Notebook::get().close_current()) {
+      if(auto view=Notebook::get().get_current_view()) {
+        view->set_status(view->status);
+        view->set_info(view->info);
+      }
+      else {
+        Notebook::get().status.set_text("");
+        Notebook::get().info.set_text("");
+        
+        activate_menu_items(false);
+      }
     }
   });
   menu.add_action("window_toggle_split", [this] {
@@ -871,9 +872,8 @@ bool Window::on_key_press_event(GdkEventKey *event) {
 bool Window::on_delete_event(GdkEventAny *event) {
   Notebook::get().save_session();
   
-  auto size=Notebook::get().size();
-  for(size_t c=0;c<size;c++) {
-    if(!Notebook::get().close_current())
+  for(size_t c=Notebook::get().size();c!=static_cast<size_t>(-1);--c) {
+    if(!Notebook::get().close(c))
       return true;
   }
   Terminal::get().kill_async_processes();
