@@ -872,7 +872,7 @@ bool Window::on_key_press_event(GdkEventKey *event) {
 bool Window::on_delete_event(GdkEventAny *event) {
   Notebook::get().save_session();
   
-  for(size_t c=Notebook::get().size();c!=static_cast<size_t>(-1);--c) {
+  for(size_t c=Notebook::get().size()-1;c!=static_cast<size_t>(-1);--c) {
     if(!Notebook::get().close(c))
       return true;
   }

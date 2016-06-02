@@ -379,7 +379,7 @@ void Notebook::toggle_split() {
     show_all();
   }
   else {
-    for(size_t c=size();c!=static_cast<size_t>(-1);--c) {
+    for(size_t c=size()-1;c!=static_cast<size_t>(-1);--c) {
       auto notebook_index=get_notebook_page(c).first;
       if(notebook_index==1 && !close(c))
         return;
