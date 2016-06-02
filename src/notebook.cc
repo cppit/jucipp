@@ -339,6 +339,8 @@ bool Notebook::close(size_t index) {
     }
     else if(index==last_index)
       last_index=-1;
+    else if(index<last_index && last_index!=static_cast<size_t>(-1))
+      last_index--;
     
     auto notebook_page=get_notebook_page(index);
     notebooks[notebook_page.first].remove_page(notebook_page.second);
