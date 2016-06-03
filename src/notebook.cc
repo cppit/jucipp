@@ -57,11 +57,11 @@ Notebook::Notebook() : Gtk::HPaned(), notebooks(2) {
     notebook.set_scrollable();
     notebook.set_group_name("source_notebooks");
     notebook.signal_switch_page().connect([this](Gtk::Widget *widget, guint) {
-      //Sometimes focus is lost when tabs are reordered
       auto hbox=dynamic_cast<Gtk::HBox*>(widget);
       for(size_t c=0;c<hboxes.size();++c) {
         if(hboxes[c].get()==hbox) {
           focus_view(source_views[c]);
+          set_current_view(source_views[c]);
           break;
         }
       }
@@ -72,6 +72,7 @@ Notebook::Notebook() : Gtk::HPaned(), notebooks(2) {
       for(size_t c=0;c<hboxes.size();++c) {
         if(hboxes[c].get()==hbox) {
           focus_view(source_views[c]);
+          set_current_view(source_views[c]);
           break;
         }
       }
@@ -100,14 +101,14 @@ Source::View* Notebook::get_view(size_t index) {
 }
 
 Source::View* Notebook::get_current_view() {
-  if(current_view_pre_focused) {
+  if(intermediate_view) {
     for(auto view: source_views) {
-      if(view==current_view_pre_focused)
+      if(view==intermediate_view)
         return view;
     }
   }
   for(auto view: source_views) {
-    if(view==current_view_focused)
+    if(view==current_view)
       return view;
   }
   //In case there exist a tab that has not yet received focus again in a different notebook
@@ -212,14 +213,7 @@ void Notebook::open(const boost::filesystem::path &file_path, size_t notebook_in
   });
   
   source_view->signal_focus_in_event().connect([this, source_view](GdkEventFocus *) {
-    current_view_pre_focused=nullptr;
-    if(source_view!=current_view_focused) {
-      current_view_focused=source_view;
-      if(on_change_page)
-        on_change_page(source_view);
-    }
-    else
-      current_view_focused=source_view;
+    set_current_view(source_view);
     return false;
   });
   
@@ -432,9 +426,7 @@ Source::View *Notebook::get_view(size_t notebook_index, int page) {
 }
 
 void Notebook::focus_view(Source::View *view) {
-  if(!view)
-    return;
-  current_view_pre_focused=view;
+  intermediate_view=view;
   view->grab_focus();
 }
 
@@ -447,6 +439,15 @@ std::pair<size_t, int> Notebook::get_notebook_page(size_t index) {
       return {c, page_num};
   }
   return {-1, -1};
+}
+
+void Notebook::set_current_view(Source::View *view) {
+  intermediate_view=nullptr;
+  if(current_view!=view) {
+    current_view=view;
+    if(on_change_page)
+      on_change_page(view);
+  }
 }
 
 bool Notebook::save_modified_dialog(size_t index) {
