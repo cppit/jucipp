@@ -215,8 +215,8 @@ void Notebook::open(const boost::filesystem::path &file_path, size_t notebook_in
     current_view_pre_focused=nullptr;
     if(source_view!=current_view_focused) {
       current_view_focused=source_view;
-      if(on_focus)
-        on_focus(source_view);
+      if(on_change_page)
+        on_change_page(source_view);
     }
     else
       current_view_focused=source_view;
@@ -342,8 +342,8 @@ bool Notebook::close(size_t index) {
     source_maps.erase(source_maps.begin()+index);
 #endif
 
-    if(on_close)
-      on_close(view);
+    if(on_close_page)
+      on_close_page(view);
     
     if(auto clang_view=dynamic_cast<Source::ClangView*>(view))
       clang_view->async_delete();

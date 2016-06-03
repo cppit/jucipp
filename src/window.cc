@@ -103,7 +103,7 @@ Window::Window() {
       view->grab_focus();
   });
 
-  Notebook::get().on_focus=[this](Source::View *view) {
+  Notebook::get().on_change_page=[this](Source::View *view) {
     if(search_entry_shown && EntryBox::get().labels.size()>0) {
       view->update_search_occurrences=[this](int number){
         EntryBox::get().labels.begin()->update(0, std::to_string(number));
@@ -130,7 +130,7 @@ Window::Window() {
       Project::debug_update_stop();
 #endif
   };
-  Notebook::get().on_close=[](Source::View *view) {
+  Notebook::get().on_close_page=[](Source::View *view) {
 #ifdef JUCI_ENABLE_DEBUG
     if(Project::current && Project::debugging) {
       auto iter=view->get_buffer()->begin();
