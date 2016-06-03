@@ -47,7 +47,7 @@ public:
   Gtk::Label info;
   Gtk::Label status;
   
-  std::function<void()> on_switch_page;
+  std::function<void(Source::View*)> on_focus;
   std::function<void(Source::View*)> on_close;
 private:
   size_t get_index(Source::View *view);

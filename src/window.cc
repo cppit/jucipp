@@ -103,34 +103,32 @@ Window::Window() {
       view->grab_focus();
   });
 
-  Notebook::get().on_switch_page=[this] {
-    if(auto view=Notebook::get().get_current_view()) {
-      if(search_entry_shown && EntryBox::get().labels.size()>0) {
-        view->update_search_occurrences=[this](int number){
-          EntryBox::get().labels.begin()->update(0, std::to_string(number));
-        };
-        view->search_highlight(last_search, case_sensitive_search, regex_search);
-      }
-
-      activate_menu_items();
-      
-      Directories::get().select(view->file_path);
-      
-      if(view->full_reparse_needed) {
-        if(!view->full_reparse())
-          Terminal::get().async_print("Error: failed to reparse "+view->file_path.string()+". Please reopen the file manually.\n", true);
-      }
-      else if(view->soft_reparse_needed)
-        view->soft_reparse();
-      
-      view->set_status(view->status);
-      view->set_info(view->info);
-      
-#ifdef JUCI_ENABLE_DEBUG
-      if(Project::debugging)
-        Project::debug_update_stop();
-#endif
+  Notebook::get().on_focus=[this](Source::View *view) {
+    if(search_entry_shown && EntryBox::get().labels.size()>0) {
+      view->update_search_occurrences=[this](int number){
+        EntryBox::get().labels.begin()->update(0, std::to_string(number));
+      };
+      view->search_highlight(last_search, case_sensitive_search, regex_search);
     }
+
+    activate_menu_items();
+    
+    Directories::get().select(view->file_path);
+    
+    if(view->full_reparse_needed) {
+      if(!view->full_reparse())
+        Terminal::get().async_print("Error: failed to reparse "+view->file_path.string()+". Please reopen the file manually.\n", true);
+    }
+    else if(view->soft_reparse_needed)
+      view->soft_reparse();
+    
+    view->set_status(view->status);
+    view->set_info(view->info);
+    
+#ifdef JUCI_ENABLE_DEBUG
+    if(Project::debugging)
+      Project::debug_update_stop();
+#endif
   };
   Notebook::get().on_close=[](Source::View *view) {
 #ifdef JUCI_ENABLE_DEBUG

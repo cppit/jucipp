@@ -66,8 +66,6 @@ Notebook::Notebook() : Gtk::HPaned(), notebooks(2) {
         }
       }
       last_index=-1;
-      if(on_switch_page)
-        on_switch_page();
     });
     notebook.signal_page_added().connect([this](Gtk::Widget* widget, guint) {
       auto hbox=dynamic_cast<Gtk::HBox*>(widget);
@@ -217,8 +215,8 @@ void Notebook::open(const boost::filesystem::path &file_path, size_t notebook_in
     current_view_pre_focused=nullptr;
     if(source_view!=current_view_focused) {
       current_view_focused=source_view;
-      if(on_switch_page)
-        on_switch_page();
+      if(on_focus)
+        on_focus(source_view);
     }
     else
       current_view_focused=source_view;
