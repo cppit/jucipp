@@ -1,0 +1,15 @@
+platform:
+  - x64
+
+environment:
+  MSYSTEM: MSYS
+
+before_build:
+  - C:\msys64\usr\bin\pacman --noconfirm --sync --refresh --refresh pacman
+  - C:\msys64\usr\bin\pacman --noconfirm --sync --refresh --refresh git
+  - C:\msys64\usr\bin\pacman --noconfirm --sync --refresh --refresh --sysupgrade --sysupgrade
+  - C:\msys64\usr\bin\bash -lc "$(cygpath ${APPVEYOR_BUILD_FOLDER})/ci/update_ci.sh"
+
+build_script:    
+  - C:\msys64\usr\bin\bash -lc "script=compile $(cygpath ${APPVEYOR_BUILD_FOLDER})/ci/execute.sh"
+  - C:\msys64\usr\bin\bash -lc "script=compile make_command='CTEST_OUTPUT_ON_FAILURE=1 make test' $(cygpath ${APPVEYOR_BUILD_FOLDER})/ci/execute.sh"

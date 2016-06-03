@@ -19,7 +19,28 @@ function linux () {
 
 #TODO Should run compile/install instructions for osx
 function osx () {
-  true
+  cd .. || (echo "Error changing directory";return 1)
+  if [ "${script}" == "clean" ]; then
+    sudo rm -rf "./jucipp/build"
+    return 0
+  fi
+  sh -c "./jucipp/ci/${script}.sh" || return 1
 }
+
+function windows () {
+  export PATH="/mingw64/bin:/usr/local/bin:/usr/bin:/bin:/c/WINDOWS/system32:/c/WINDOWS:/c/WINDOWS/System32/Wbem:/c/WINDOWS/System32/WindowsPowerShell/v1.0:/usr/bin/site_perl:/usr/bin/vendor_perl:/usr/bin/core_perl"
+  bf=$(cygpath ${APPVEYOR_BUILD_FOLDER})
+  cd "$bf" || (echo "Error changing directory"; return 1)
+  if [ "${script}" == "clean" ]; then
+    sudo rm "./build" -rf
+    return 0
+  fi
+  sh -c "${bf}/ci/${script}.sh"
+}
+
+
+if [ "$TRAVIS_OS_NAME" == "" ]; then
+  TRAVIS_OS_NAME=windows
+fi
 
 $TRAVIS_OS_NAME
