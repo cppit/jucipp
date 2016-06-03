@@ -69,9 +69,17 @@ Notebook::Notebook() : Gtk::HPaned(), notebooks(2) {
       if(on_switch_page)
         on_switch_page();
     });
-    notebook.signal_page_removed().connect([this](Gtk::Widget*, guint) {
-      if(on_page_removed)
-        on_page_removed();
+    notebook.signal_page_removed().connect([this](Gtk::Widget *widget, guint) {
+      if(on_page_removed) {
+        auto hbox=dynamic_cast<Gtk::HBox*>(widget);
+        for(size_t c=0;c<hboxes.size();++c) {
+          if(hboxes[c].get()==hbox) {
+            on_page_removed(source_views[c]);
+            return;
+          }
+        }
+        on_page_removed(nullptr);
+      }
     });
     notebook.signal_page_added().connect([this](Gtk::Widget* widget, guint) {
       auto hbox=dynamic_cast<Gtk::HBox*>(widget);

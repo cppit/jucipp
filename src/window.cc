@@ -132,7 +132,19 @@ Window::Window() {
 #endif
     }
   };
-  Notebook::get().on_page_removed=[] {
+  Notebook::get().on_page_removed=[](Source::View *removed_view) {
+#ifdef JUCI_ENABLE_DEBUG
+    if(Project::current && Project::debugging && removed_view) {
+      auto iter=removed_view->get_buffer()->begin();
+      while(removed_view->get_source_buffer()->forward_iter_to_source_mark(iter, "debug_breakpoint") ||
+         removed_view->get_source_buffer()->get_source_marks_at_iter(iter, "debug_breakpoint").size()) {
+        auto end_iter=iter;
+        while(!end_iter.ends_line() && end_iter.forward_char()) {}
+        removed_view->get_source_buffer()->remove_source_marks(iter, end_iter, "debug_breakpoint");
+        Project::current->debug_remove_breakpoint(removed_view->file_path, iter.get_line()+1, removed_view->get_buffer()->get_line_count()+1);
+      }
+    }
+#endif
     EntryBox::get().hide();
   };
   
