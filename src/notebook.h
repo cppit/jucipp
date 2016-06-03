@@ -48,7 +48,7 @@ public:
   Gtk::Label status;
   
   std::function<void()> on_switch_page;
-  std::function<void(Source::View*)> on_page_removed;
+  std::function<void(Source::View*)> on_close;
 private:
   size_t get_index(Source::View *view);
   Source::View *get_view(size_t notebook_index, int page);
