@@ -392,6 +392,11 @@ void Notebook::toggle_split() {
     pack2(notebooks[1], true, true);
     set_position(get_width()/2);
     show_all();
+    //Make sure the position is correct
+    //TODO: report bug to gtk if it is not fixed in gtk3.22
+    while(g_main_context_pending(NULL))
+      g_main_context_iteration(NULL, false);
+    set_position(get_width()/2);
   }
   else {
     for(size_t c=size()-1;c!=static_cast<size_t>(-1);--c) {
