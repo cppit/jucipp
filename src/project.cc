@@ -82,14 +82,17 @@ void Project::debug_update_status(const std::string &debug_status) {
 }
 
 void Project::debug_update_stop() {
-  for(size_t c=0;c<Notebook::get().size();c++) {
-    auto view=Notebook::get().get_view(c);
-    if(view->file_path==debug_last_stop_file_path) {
-      view->get_source_buffer()->remove_source_marks(view->get_buffer()->begin(), view->get_buffer()->end(), "debug_stop");
-      break;
+  if(!debug_last_stop_file_path.empty()) {
+    for(size_t c=0;c<Notebook::get().size();c++) {
+      auto view=Notebook::get().get_view(c);
+      if(view->file_path==debug_last_stop_file_path) {
+        view->get_source_buffer()->remove_source_marks(view->get_buffer()->begin(), view->get_buffer()->end(), "debug_stop");
+        break;
+      }
     }
   }
   //Add debug stop source mark
+  debug_last_stop_file_path.clear();
   for(size_t c=0;c<Notebook::get().size();c++) {
     auto view=Notebook::get().get_view(c);
     if(view->file_path==debug_stop.first) {
@@ -100,8 +103,6 @@ void Project::debug_update_stop() {
       break;
     }
   }
-  if(auto view=Notebook::get().get_current_view())
-    view->get_buffer()->place_cursor(view->get_buffer()->get_insert()->get_iter());
 }
 
 std::unique_ptr<Project::Base> Project::create() {
@@ -326,6 +327,8 @@ void Project::Clang::debug_start() {
           Project::debug_stop.second.second=line_index;
           
           debug_update_stop();
+          if(auto view=Notebook::get().get_current_view())
+            view->get_buffer()->place_cursor(view->get_buffer()->get_insert()->get_iter());
         });
       });
     }

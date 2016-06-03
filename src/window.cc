@@ -127,11 +127,8 @@ Window::Window() {
       view->set_info(view->info);
       
 #ifdef JUCI_ENABLE_DEBUG
-      if(Project::debugging) {
-        if(view->file_path==Project::debug_stop.first &&
-           Project::debug_stop.second.first-1<view->get_buffer()->get_line_count())
-          view->get_source_buffer()->create_source_mark("debug_stop", view->get_buffer()->get_iter_at_line(Project::debug_stop.second.first-1));
-      }
+      if(Project::debugging)
+        Project::debug_update_stop();
 #endif
     }
   };
@@ -785,7 +782,6 @@ void Window::set_menu_actions() {
           int index=Project::debug_stop.second.second-1;
           view->place_cursor_at_line_index(line, index);
           view->scroll_to_cursor_delayed(view, true, true);
-          Project::debug_update_stop();
         }
       }
     }
