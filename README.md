@@ -28,6 +28,7 @@ towards libclang with speed and ease of use in mind.
 * Smart paste, keys and indentation
 * Auto-indentation of C++ file buffers through [clang-format](http://clang.llvm.org/docs/ClangFormat.html)
 * Source minimap
+* Split view
 * Full UTF-8 support
 
 See [enhancements](https://github.com/cppit/jucipp/labels/enhancement) for planned features.
