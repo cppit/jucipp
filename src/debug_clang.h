@@ -16,7 +16,7 @@ namespace Debug {
     public:
       uint32_t index;
       std::string module_filename;
-      std::string file_path;
+      boost::filesystem::path file_path;
       std::string function_name;
       int line_nr;
       int line_index;

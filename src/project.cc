@@ -385,7 +385,7 @@ void Project::Clang::debug_backtrace() {
       if(frame.file_path.empty())
         row+=" - "+Glib::Markup::escape_text(frame.function_name);
       else {
-        auto file_path=boost::filesystem::path(frame.file_path).filename().string();
+        auto file_path=frame.file_path.filename().string();
         row+=":<b>"+Glib::Markup::escape_text(file_path)+":"+std::to_string(frame.line_nr)+"</b> - "+Glib::Markup::escape_text(frame.function_name);
       }
       (*rows)[row]=frame;
@@ -475,6 +475,7 @@ void Project::Clang::debug_show_variables() {
       }
     };
     
+    view->hide_tooltips();
     view->selection_dialog->show();
   }
 }

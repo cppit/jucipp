@@ -86,11 +86,13 @@ namespace Source {
     std::unique_ptr<CompletionDialog> autocomplete_dialog;
     std::unique_ptr<SelectionDialog> selection_dialog;
     Gtk::TextIter get_iter_for_dialog();
-    sigc::connection delayed_tooltips_connection;
     
     std::function<void(View* view, bool center, bool show_tooltips)> scroll_to_cursor_delayed=[](View* view, bool center, bool show_tooltips) {};
     void place_cursor_at_line_offset(int line, int offset);
     void place_cursor_at_line_index(int line, int index);
+    
+    void hide_tooltips();
+    void hide_dialogs();
     
     std::function<void(View* view, const std::string &status_text)> on_update_status;
     std::function<void(View* view, const std::string &info_text)> on_update_info;
@@ -115,6 +117,7 @@ namespace Source {
     bool parsed=false;
     Tooltips diagnostic_tooltips;
     Tooltips type_tooltips;
+    sigc::connection delayed_tooltips_connection;
     virtual void show_diagnostic_tooltips(const Gdk::Rectangle &rectangle) {}
     virtual void show_type_tooltips(const Gdk::Rectangle &rectangle) {}
     gdouble on_motion_last_x=0.0;

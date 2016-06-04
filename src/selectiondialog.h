@@ -44,8 +44,8 @@ protected:
   
   void resize();
   Gtk::TextView& text_view;
-  
-  std::unique_ptr<Gtk::Window> window;
+  Gtk::Window window;
+  Gtk::VBox vbox;
   Gtk::ScrolledWindow scrolled_window;
   ListViewText list_view_text;
   Gtk::Entry search_entry;

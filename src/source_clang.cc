@@ -39,8 +39,6 @@ Source::View(file_path, language) {
   
   get_buffer()->signal_changed().connect([this]() {
     soft_reparse();
-    type_tooltips.hide();
-    diagnostic_tooltips.hide();
   });
 }
 
@@ -85,8 +83,7 @@ void Source::ClangViewParse::configure() {
 }
 
 void Source::ClangViewParse::parse_initialize() {
-  type_tooltips.hide();
-  diagnostic_tooltips.hide();
+  hide_tooltips();
   parsed=false;
   if(parse_thread.joinable())
     parse_thread.join();
@@ -525,12 +522,12 @@ Source::ClangViewParse(file_path, language), autocomplete_state(AutocompleteStat
         autocomplete_state=AutocompleteState::CANCELED;
     }
   });
+  
   signal_key_release_event().connect([this](GdkEventKey* key){
     if(autocomplete_dialog && autocomplete_dialog->shown) {
       if(autocomplete_dialog->on_key_release(key))
         return true;
     }
-    
     return false;
   }, false);
 

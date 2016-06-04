@@ -31,5 +31,8 @@ public:
   
   static bool file_in_path(const boost::filesystem::path &file_path, const boost::filesystem::path &path);
   static boost::filesystem::path find_file_in_path_parents(const std::string &file_name, const boost::filesystem::path &path);
+  
+  ///Attempts to get canonical path, if not, return the path parameter
+  static boost::filesystem::path get_canonical_path(const boost::filesystem::path &path) noexcept;
 };
 #endif  // JUCI_FILESYSTEM_H_

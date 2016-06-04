@@ -163,7 +163,7 @@ void Notebook::open(const boost::filesystem::path &file_path, size_t notebook_in
       else
         view->scroll_to(view->get_buffer()->get_insert());
       if(!show_tooltips)
-        view->delayed_tooltips_connection.disconnect();
+        view->hide_tooltips();
     }
   };
   source_views.back()->on_update_status=[this](Source::View* view, const std::string &status_text) {
@@ -444,6 +444,8 @@ std::pair<size_t, int> Notebook::get_notebook_page(size_t index) {
 void Notebook::set_current_view(Source::View *view) {
   intermediate_view=nullptr;
   if(current_view!=view) {
+    if(auto view=get_current_view())
+      view->hide_dialogs();
     current_view=view;
     if(on_change_page)
       on_change_page(view);

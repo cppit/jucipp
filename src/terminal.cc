@@ -391,16 +391,15 @@ bool Terminal::on_key_press_event(GdkEventKey *event) {
   if(processes.size()>0 || debug_is_running) {
     get_buffer()->place_cursor(get_buffer()->end());
     auto unicode=gdk_keyval_to_unicode(event->keyval);
-    char chr=static_cast<char>(unicode);
-    if(unicode>=32 && unicode<=126) {
-      stdin_buffer+=chr;
+    if(unicode>=32 && unicode!=126) {
+      stdin_buffer+=unicode;
       get_buffer()->insert_at_cursor(stdin_buffer.substr(stdin_buffer.size()-1));
     }
     else if(event->keyval==GDK_KEY_BackSpace) {
       if(stdin_buffer.size()>0 && get_buffer()->get_char_count()>0) {
         auto iter=get_buffer()->end();
         iter--;
-        stdin_buffer.pop_back();
+        stdin_buffer.erase(stdin_buffer.size()-1);
         get_buffer()->erase(iter, get_buffer()->end());
       }
     }

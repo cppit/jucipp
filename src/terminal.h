@@ -79,7 +79,7 @@ private:
 
   std::vector<std::shared_ptr<Process> > processes;
   std::mutex processes_mutex;
-  std::string stdin_buffer;
+  Glib::ustring stdin_buffer;
   
   std::unordered_set<InProgress*> in_progresses;
   std::mutex in_progresses_mutex;

@@ -533,6 +533,10 @@ void Source::View::configure() {
 }
 
 void Source::View::set_tooltip_and_dialog_events() {
+  get_buffer()->signal_changed().connect([this] {
+    hide_tooltips();
+  });
+  
   signal_motion_notify_event().connect([this](GdkEventMotion* event) {
     if(on_motion_last_x!=event->x || on_motion_last_y!=event->y) {
       delayed_tooltips_connection.disconnect();
@@ -593,28 +597,14 @@ void Source::View::set_tooltip_and_dialog_events() {
   });
 
   signal_scroll_event().connect([this](GdkEventScroll* event) {
-    delayed_tooltips_connection.disconnect();
-    type_tooltips.hide();
-    diagnostic_tooltips.hide();
-    delayed_spellcheck_suggestions_connection.disconnect();
-    if(spellcheck_suggestions_dialog)
-      spellcheck_suggestions_dialog->hide();
-    if(autocomplete_dialog)
-      autocomplete_dialog->hide();
-    if(selection_dialog)
-      selection_dialog->hide();
+    hide_tooltips();
+    hide_dialogs();
     return false;
   });
   
   signal_focus_out_event().connect([this](GdkEventFocus* event) {
-    delayed_tooltips_connection.disconnect();
-    type_tooltips.hide();
-    diagnostic_tooltips.hide();
+    hide_tooltips();
     delayed_spellcheck_suggestions_connection.disconnect();
-    if(spellcheck_suggestions_dialog)
-      spellcheck_suggestions_dialog->hide();
-    if(autocomplete_dialog)
-      autocomplete_dialog->hide();
     return false;
   });
   
@@ -855,6 +845,22 @@ void Source::View::place_cursor_at_line_index(int line, int index) {
     iter.forward_char();
   index=std::min(index, iter.get_line_index());
   get_buffer()->place_cursor(get_buffer()->get_iter_at_line_index(line, index));
+}
+
+void Source::View::hide_tooltips() {
+  delayed_tooltips_connection.disconnect();
+  type_tooltips.hide();
+  diagnostic_tooltips.hide();
+}
+
+void Source::View::hide_dialogs() {
+  delayed_spellcheck_suggestions_connection.disconnect();
+  if(spellcheck_suggestions_dialog)
+    spellcheck_suggestions_dialog->hide();
+  if(selection_dialog)
+    selection_dialog->hide();
+  if(autocomplete_dialog)
+    autocomplete_dialog->hide();
 }
 
 void Source::View::set_status(const std::string &status) {
@@ -1155,7 +1161,10 @@ bool Source::View::on_key_press_event(GdkEventKey* key) {
     if(spellcheck_suggestions_dialog->on_key_press(key))
       return true;
   }
-  
+  if(selection_dialog && selection_dialog->shown) {
+    if(selection_dialog->on_key_press(key))
+      return true;
+  }
   if(autocomplete_dialog && autocomplete_dialog->shown) {
     if(autocomplete_dialog->on_key_press(key))
       return true;

@@ -30,6 +30,7 @@ towards libclang with speed and ease of use in mind.
 * Source minimap
 * Split view
 * Full UTF-8 support
+* Wayland supported with GTK+ 3.20 or newer
 
 See [enhancements](https://github.com/cppit/jucipp/labels/enhancement) for planned features.
 

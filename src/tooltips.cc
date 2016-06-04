@@ -53,11 +53,9 @@ void Tooltip::adjust(bool disregard_drawn) {
     auto application=Glib::RefPtr<Gtk::Application>::cast_static(gio_application);
     window->set_transient_for(*application->get_active_window());
     
+    window->set_type_hint(Gdk::WindowTypeHint::WINDOW_TYPE_HINT_TOOLTIP);
+    
     window->set_events(Gdk::POINTER_MOTION_MASK);
-    window->signal_motion_notify_event().connect([this](GdkEventMotion* event){
-      window->hide();
-      return false;
-    });
     window->property_decorated()=false;
     window->set_accept_focus(false);
     window->set_skip_taskbar_hint(true);

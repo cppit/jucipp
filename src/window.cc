@@ -146,6 +146,12 @@ Window::Window() {
     EntryBox::get().hide();
   };
   
+  signal_focus_out_event().connect([](GdkEventFocus *event) {
+    if(auto view=Notebook::get().get_current_view())
+      view->hide_dialogs();
+    return false;
+  });
+  
   about.signal_response().connect([this](int d){
     about.hide();
   });
@@ -525,7 +531,7 @@ void Window::set_menu_actions() {
             auto view=Notebook::get().get_current_view();
             view->place_cursor_at_line_index(offset.line, offset.index);
             view->scroll_to(view->get_buffer()->get_insert(), 0.0, 1.0, 0.5);
-            view->delayed_tooltips_connection.disconnect();
+            view->hide_tooltips();
           };
           view->selection_dialog->show();
         }
@@ -548,7 +554,7 @@ void Window::set_menu_actions() {
             auto offset=rows->at(selected);
             view->get_buffer()->place_cursor(view->get_buffer()->get_iter_at_line_index(offset.line-1, offset.index-1));
             view->scroll_to(view->get_buffer()->get_insert(), 0.0, 1.0, 0.5);
-            view->delayed_tooltips_connection.disconnect();
+            view->hide_tooltips();
           };
           view->selection_dialog->show();
         }
