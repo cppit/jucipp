@@ -115,7 +115,22 @@ void SelectionDialogBase::show() {
   window->show_all();
   
   if(list_view_text.get_model()->children().size()>0) {
-    list_view_text.set_cursor(list_view_text.get_model()->get_path(list_view_text.get_model()->children().begin()));
+    if(!list_view_text.get_selection()->get_selected()) {
+      list_view_text.set_cursor(list_view_text.get_model()->get_path(list_view_text.get_model()->children().begin()));
+      cursor_changed();
+    }
+    else if(list_view_text.get_model()->children().begin()!=list_view_text.get_selection()->get_selected()) {
+      while(g_main_context_pending(NULL))
+        g_main_context_iteration(NULL, false);
+      list_view_text.scroll_to_row(list_view_text.get_model()->get_path(list_view_text.get_selection()->get_selected()), 0.5);
+    }
+  }
+}
+
+void SelectionDialogBase::set_cursor_at_last_row() {
+  auto children=list_view_text.get_model()->children();
+  if(children.size()>0) {
+    list_view_text.set_cursor(list_view_text.get_model()->get_path(children[children.size()-1]));
     cursor_changed();
   }
 }

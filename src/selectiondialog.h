@@ -28,6 +28,7 @@ public:
   SelectionDialogBase(Gtk::TextView& text_view, Glib::RefPtr<Gtk::TextBuffer::Mark> start_mark, bool show_search_entry, bool use_markup);
   ~SelectionDialogBase();
   void add_row(const std::string& row);
+  void set_cursor_at_last_row();
   void show();
   void hide();
   void move();

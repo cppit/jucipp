@@ -488,18 +488,28 @@ void Window::set_menu_actions() {
       if(view->get_usages) {
         auto usages=view->get_usages(Notebook::get().get_views());
         if(!usages.empty()) {
-          auto iter=view->get_iter_for_dialog();
-          view->selection_dialog=std::unique_ptr<SelectionDialog>(new SelectionDialog(*view, view->get_buffer()->create_mark(iter), true, true));
+          auto dialog_iter=view->get_iter_for_dialog();
+          view->selection_dialog=std::unique_ptr<SelectionDialog>(new SelectionDialog(*view, view->get_buffer()->create_mark(dialog_iter), true, true));
           auto rows=std::make_shared<std::unordered_map<std::string, Source::Offset> >();
           
+          auto iter=view->get_buffer()->get_insert()->get_iter();
           for(auto &usage: usages) {
             std::string row;
-            //add file name if usage is not in current tab
-            if(view->file_path!=usage.first.file_path)
+            bool current_page=true;
+            //add file name if usage is not in current page
+            if(view->file_path!=usage.first.file_path) {
               row=usage.first.file_path.filename().string()+":";
+              current_page=false;
+            }
             row+=std::to_string(usage.first.line+1)+": "+usage.second;
             (*rows)[row]=usage.first;
             view->selection_dialog->add_row(row);
+            
+            //Set dialog cursor to the last row if the textview cursor is at the same line
+            if(current_page) {
+              if(iter.get_line()==static_cast<int>(usage.first.line) && iter.get_line_index()>=static_cast<int>(usage.first.index))
+                view->selection_dialog->set_cursor_at_last_row();
+            }
           }
           
           if(rows->size()==0)
