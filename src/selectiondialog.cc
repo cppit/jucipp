@@ -15,7 +15,7 @@ namespace sigc {
 #endif
 }
 
-ListViewText::ListViewText(bool use_markup) : Gtk::TreeView(), use_markup(use_markup) {
+SelectionDialogBase::ListViewText::ListViewText(bool use_markup) : Gtk::TreeView(), use_markup(use_markup) {
   list_store = Gtk::ListStore::create(column_record);
   set_model(list_store);
   append_column("", cell_renderer);
@@ -33,12 +33,12 @@ ListViewText::ListViewText(bool use_markup) : Gtk::TreeView(), use_markup(use_ma
   set_rules_hint(true);
 }
 
-void ListViewText::append(const std::string& value) {
+void SelectionDialogBase::ListViewText::append(const std::string& value) {
   auto new_row=list_store->append();
   new_row->set_value(column_record.text, value);
 }
 
-void ListViewText::clear() {
+void SelectionDialogBase::ListViewText::clear() {
   unset_model();
   list_store.reset();
 }
@@ -261,21 +261,9 @@ bool SelectionDialog::on_key_press(GdkEventKey* key) {
     hide();
     return false;
   }
-  else if(key->keyval==GDK_KEY_BackSpace) {
-    auto length=search_entry.get_text_length();
-    if(length>0)
-      search_entry.delete_text(length-1, length);
-    return true;
-  }
-  else {
-    gunichar unicode=gdk_keyval_to_unicode(key->keyval);
-    if(unicode>=32 && unicode!=126) {
-      int length=search_entry.get_text_length();
-      auto ustr=Glib::ustring(1, unicode);
-      search_entry.insert_text(ustr, ustr.bytes(), length);
-      return true;
-    }
-  }
+  else if(show_search_entry)
+    return search_entry.on_key_press_event(key);
+  hide();
   return false;
 }
 

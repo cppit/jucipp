@@ -4,26 +4,32 @@
 #include "gtkmm.h"
 #include <unordered_map>
 
-class ListViewText : public Gtk::TreeView {
-  class ColumnRecord : public Gtk::TreeModel::ColumnRecord {
-  public:
-    ColumnRecord() {
-      add(text);
-    }
-    Gtk::TreeModelColumn<std::string> text;
-  };
-public:
-  bool use_markup;
-  ListViewText(bool use_markup);
-  void append(const std::string& value);
-  void clear();
-private:
-  Glib::RefPtr<Gtk::ListStore> list_store;
-  ColumnRecord column_record;
-  Gtk::CellRendererText cell_renderer;
-};
-
 class SelectionDialogBase {
+  class ListViewText : public Gtk::TreeView {
+    class ColumnRecord : public Gtk::TreeModel::ColumnRecord {
+    public:
+      ColumnRecord() {
+        add(text);
+      }
+      Gtk::TreeModelColumn<std::string> text;
+    };
+  public:
+    bool use_markup;
+    ListViewText(bool use_markup);
+    void append(const std::string& value);
+    void clear();
+  private:
+    Glib::RefPtr<Gtk::ListStore> list_store;
+    ColumnRecord column_record;
+    Gtk::CellRendererText cell_renderer;
+  };
+  
+  class SearchEntry : public Gtk::Entry {
+  public:
+    SearchEntry() : Gtk::Entry() {}
+    bool on_key_press_event(GdkEventKey *event) override { return Gtk::Entry::on_key_press_event(event); };
+  };
+  
 public:
   SelectionDialogBase(Gtk::TextView& text_view, Glib::RefPtr<Gtk::TextBuffer::Mark> start_mark, bool show_search_entry, bool use_markup);
   ~SelectionDialogBase();
@@ -48,7 +54,7 @@ protected:
   Gtk::VBox vbox;
   Gtk::ScrolledWindow scrolled_window;
   ListViewText list_view_text;
-  Gtk::Entry search_entry;
+  SearchEntry search_entry;
   bool show_search_entry;
   
   std::string last_row;

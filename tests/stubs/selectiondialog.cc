@@ -1,6 +1,6 @@
 #include "selectiondialog.h"
 
-ListViewText::ListViewText(bool use_markup) {}
+SelectionDialogBase::ListViewText::ListViewText(bool use_markup) {}
 
 SelectionDialogBase::SelectionDialogBase(Gtk::TextView& text_view, Glib::RefPtr<Gtk::TextBuffer::Mark> start_mark, bool show_search_entry, bool use_markup):
   text_view(text_view), list_view_text(use_markup) {}
