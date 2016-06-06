@@ -261,8 +261,30 @@ bool SelectionDialog::on_key_press(GdkEventKey* key) {
     hide();
     return false;
   }
-  else if(show_search_entry)
-    return search_entry.on_key_press_event(key);
+  else if(show_search_entry) {
+#ifdef __APPLE__ //OS X bug most likely: Gtk::Entry will not work if window is of type POPUP
+    if(key->is_modifier)
+      return true;
+    else if(key->keyval==GDK_KEY_BackSpace) {
+      auto length=search_entry.get_text_length();
+      if(length>0)
+        search_entry.delete_text(length-1, length);
+      return true;
+    }
+    else {
+      gunichar unicode=gdk_keyval_to_unicode(key->keyval);
+      if(unicode>=32 && unicode!=126) {
+        int length=search_entry.get_text_length();
+        auto ustr=Glib::ustring(1, unicode);
+        search_entry.insert_text(ustr, ustr.bytes(), length);
+        return true;
+      }
+    }
+#else
+    search_entry.on_key_press_event(key);
+    return true;
+#endif
+  }
   hide();
   return false;
 }
