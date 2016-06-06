@@ -507,14 +507,14 @@ void Window::set_menu_actions() {
               row=usage.first.file_path.filename().string()+":";
               current_page=false;
             }
-            row+=std::to_string(usage.first.line+1)+": "+usage.second;
+            row+=std::to_string(usage.first.line)+": "+usage.second;
             (*rows)[row]=usage.first;
             view->selection_dialog->add_row(row);
             
             //Set dialog cursor to the last row if the textview cursor is at the same line
-            if(current_page) {
-              if(iter.get_line()==static_cast<int>(usage.first.line) && iter.get_line_index()>=static_cast<int>(usage.first.index))
-                view->selection_dialog->set_cursor_at_last_row();
+            if(current_page &&
+               iter.get_line()==static_cast<int>(usage.first.line-1) && iter.get_line_index()>=static_cast<int>(usage.first.index-1)) {
+              view->selection_dialog->set_cursor_at_last_row();
             }
           }
           
@@ -529,7 +529,7 @@ void Window::set_menu_actions() {
               return;
             Notebook::get().open(declaration_file);
             auto view=Notebook::get().get_current_view();
-            view->place_cursor_at_line_index(offset.line, offset.index);
+            view->place_cursor_at_line_index(offset.line-1, offset.index-1);
             view->scroll_to(view->get_buffer()->get_insert(), 0.0, 1.0, 0.5);
             view->hide_tooltips();
           };
@@ -544,12 +544,15 @@ void Window::set_menu_actions() {
       if(view->get_methods) {
         auto methods=Notebook::get().get_current_view()->get_methods();
         if(!methods.empty()) {
-          auto iter=view->get_iter_for_dialog();
-          view->selection_dialog=std::unique_ptr<SelectionDialog>(new SelectionDialog(*view, view->get_buffer()->create_mark(iter), true, true));
+          auto dialog_iter=view->get_iter_for_dialog();
+          view->selection_dialog=std::unique_ptr<SelectionDialog>(new SelectionDialog(*view, view->get_buffer()->create_mark(dialog_iter), true, true));
           auto rows=std::make_shared<std::unordered_map<std::string, Source::Offset> >();
+          auto iter=view->get_buffer()->get_insert()->get_iter();
           for(auto &method: methods) {
             (*rows)[method.second]=method.first;
             view->selection_dialog->add_row(method.second);
+            if(iter.get_line()>=static_cast<int>(method.first.line-1))
+              view->selection_dialog->set_cursor_at_last_row();
           }
           view->selection_dialog->on_select=[view, rows](const std::string& selected, bool hide_window) {
             auto offset=rows->at(selected);

@@ -375,6 +375,7 @@ void Project::Clang::debug_backtrace() {
     if(backtrace.size()==0)
       return;
     
+    bool cursor_set=false;
     for(auto &frame: backtrace) {
       std::string row="<i>"+frame.module_filename+"</i>";
       
@@ -390,6 +391,10 @@ void Project::Clang::debug_backtrace() {
       }
       (*rows)[row]=frame;
       view->selection_dialog->add_row(row);
+      if(!cursor_set && frame.file_path==view->file_path) {
+        view->selection_dialog->set_cursor_at_last_row();
+        cursor_set=true;
+      }
     }
     
     view->selection_dialog->on_select=[this, rows](const std::string& selected, bool hide_window) {

@@ -1101,7 +1101,7 @@ Source::ClangViewAutocomplete(file_path, language) {
             }
             line.insert(token_end_pos, "</b>");
             line.insert(token_start_pos, "<b>");
-            usages.emplace_back(Offset(offset.first.line-1, offset.first.index-1, clang_view->file_path), line);
+            usages.emplace_back(Offset(offset.first.line, offset.first.index, clang_view->file_path), line);
           }
         }
       }
