@@ -356,8 +356,11 @@ bool Terminal::on_button_press_event(GdkEventButton* button_event) {
         auto path=boost::filesystem::path(path_str);
         boost::system::error_code ec;
         if(path.is_relative()) {
-          if(Project::current)
+          if(Project::current) {
             path=boost::filesystem::canonical(Project::current->build->get_default_path()/path_str, ec);
+            if(ec)
+              path=boost::filesystem::canonical(Project::current->build->get_debug_path()/path_str, ec);
+          }
           else
             return Gtk::TextView::on_button_press_event(button_event);
         }
