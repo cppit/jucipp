@@ -743,6 +743,7 @@ void Source::ClangViewAutocomplete::autocomplete() {
             autocomplete_state=AutocompleteState::IDLE;
             if (!autocomplete_dialog_rows.empty()) {
               get_buffer()->begin_user_action();
+              hide_tooltips();
               autocomplete_dialog->show();
             }
             else

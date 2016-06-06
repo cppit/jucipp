@@ -404,6 +404,7 @@ void Project::Clang::debug_backtrace() {
         }
       }
     };
+    view->hide_tooltips();
     view->selection_dialog->show();
   }
 }

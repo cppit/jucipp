@@ -533,6 +533,7 @@ void Window::set_menu_actions() {
             view->scroll_to(view->get_buffer()->get_insert(), 0.0, 1.0, 0.5);
             view->hide_tooltips();
           };
+          view->hide_tooltips();
           view->selection_dialog->show();
         }
       }
@@ -556,6 +557,7 @@ void Window::set_menu_actions() {
             view->scroll_to(view->get_buffer()->get_insert(), 0.0, 1.0, 0.5);
             view->hide_tooltips();
           };
+          view->hide_tooltips();
           view->selection_dialog->show();
         }
       }

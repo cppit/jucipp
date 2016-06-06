@@ -12,6 +12,7 @@ namespace Source {
     
     virtual void configure();
     
+    virtual void hide_tooltips() {}
     virtual void hide_dialogs();
     
     void spellcheck();

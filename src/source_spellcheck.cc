@@ -147,6 +147,7 @@ Source::SpellCheckView::SpellCheckView() : Gsv::View() {
             get_buffer()->insert(get_buffer()->get_insert()->get_iter(), selected);
             get_buffer()->end_user_action();
           };
+          hide_tooltips();
           spellcheck_suggestions_dialog->show();
         }
         return false;

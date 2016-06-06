@@ -89,7 +89,7 @@ namespace Source {
     void place_cursor_at_line_offset(int line, int offset);
     void place_cursor_at_line_index(int line, int index);
     
-    void hide_tooltips();
+    void hide_tooltips() override;
     void hide_dialogs() override;
     
     std::function<void(View* view, const std::string &status_text)> on_update_status;
