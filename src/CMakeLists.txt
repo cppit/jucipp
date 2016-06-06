@@ -58,6 +58,7 @@ set(project_shared_files
     project_build.cc
     source.cc
     source_clang.cc
+    source_spellcheck.cc
 
     ../libclangmm/src/CodeCompleteResults.cc
     ../libclangmm/src/CompilationDatabase.cc

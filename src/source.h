@@ -1,9 +1,8 @@
 #ifndef JUCI_SOURCE_H_
 #define JUCI_SOURCE_H_
-#include <aspell.h>
+#include "source_spellcheck.h"
 #include <boost/property_tree/xml_parser.hpp>
 #include <boost/filesystem.hpp>
-#include <gtksourceviewmm.h>
 #include <string>
 #include <unordered_map>
 #include <vector>
@@ -20,7 +19,6 @@
 #define REGEX_NS boost
 #endif
 
-#include "selectiondialog.h"
 #include "tooltips.h"
 
 namespace Source {
@@ -51,13 +49,13 @@ namespace Source {
     std::pair<Offset, Offset> offsets;
   };
 
-  class View : public Gsv::View {
+  class View : public SpellCheckView {
   public:
     View(const boost::filesystem::path &file_path, Glib::RefPtr<Gsv::Language> language);
     ~View();
     
     virtual bool save(const std::vector<Source::View*> &views);
-    virtual void configure();
+    void configure() override;
     
     void search_highlight(const std::string &text, bool case_sensitive, bool regex);
     std::function<void(int number)> update_search_occurrences;
@@ -92,7 +90,7 @@ namespace Source {
     void place_cursor_at_line_index(int line, int index);
     
     void hide_tooltips();
-    void hide_dialogs();
+    void hide_dialogs() override;
     
     std::function<void(View* view, const std::string &status_text)> on_update_status;
     std::function<void(View* view, const std::string &info_text)> on_update_info;
@@ -100,10 +98,6 @@ namespace Source {
     void set_info(const std::string &info);
     std::string status;
     std::string info;
-    
-    void spellcheck();
-    void remove_spellcheck_errors();
-    void goto_next_spellcheck_error();
     
     void set_tab_char_and_size(char tab_char, unsigned tab_size);
     std::pair<char, unsigned> get_tab_char_and_size() {return {tab_char, tab_size};}
@@ -159,10 +153,7 @@ namespace Source {
     char tab_char;
     std::string tab;
     
-    bool spellcheck_all=false;
-    std::unique_ptr<SelectionDialog> spellcheck_suggestions_dialog;
     guint previous_non_modifier_keyval=0;
-    guint last_keyval=0;
   private:
     void cleanup_whitespace_characters();
     Gsv::DrawSpacesFlags parse_show_whitespace_characters(const std::string &text);
@@ -170,18 +161,6 @@ namespace Source {
     GtkSourceSearchContext *search_context;
     GtkSourceSearchSettings *search_settings;
     static void search_occurrences_updated(GtkWidget* widget, GParamSpec* property, gpointer data);
-        
-    static AspellConfig* spellcheck_config;
-    AspellCanHaveError *spellcheck_possible_err;
-    AspellSpeller *spellcheck_checker;
-    bool is_word_iter(const Gtk::TextIter& iter);
-    std::pair<Gtk::TextIter, Gtk::TextIter> spellcheck_get_word(Gtk::TextIter iter);
-    void spellcheck_word(const Gtk::TextIter& start, const Gtk::TextIter& end);
-    std::vector<std::string> spellcheck_get_suggestions(const Gtk::TextIter& start, const Gtk::TextIter& end);
-    sigc::connection delayed_spellcheck_suggestions_connection;
-    sigc::connection delayed_spellcheck_error_clear;
-    
-    void spellcheck(const Gtk::TextIter& start, const Gtk::TextIter& end);
   };
   
   class GenericView : public View {
