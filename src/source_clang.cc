@@ -487,7 +487,8 @@ void Source::ClangViewParse::show_type_tooltips(const Gdk::Rectangle &rectangle)
 }
 
 
-Source::ClangViewAutocomplete::ClangViewAutocomplete(): autocomplete_state(AutocompleteState::IDLE) {
+Source::ClangViewAutocomplete::ClangViewAutocomplete(const boost::filesystem::path &file_path, Glib::RefPtr<Gsv::Language> language):
+    Source::ClangViewParse(file_path, language), autocomplete_state(AutocompleteState::IDLE) {
   get_buffer()->signal_changed().connect([this](){
     if(autocomplete_dialog && autocomplete_dialog->shown)
       delayed_reparse_connection.disconnect();
@@ -848,7 +849,8 @@ bool Source::ClangViewAutocomplete::full_reparse() {
 }
 
 
-Source::ClangViewRefactor::ClangViewRefactor() {
+Source::ClangViewRefactor::ClangViewRefactor(const boost::filesystem::path &file_path, Glib::RefPtr<Gsv::Language> language) :
+    Source::ClangViewParse(file_path, language) {
   similar_identifiers_tag=get_buffer()->create_tag();
   similar_identifiers_tag->property_weight()=1000; //TODO: replace with Pango::WEIGHT_ULTRAHEAVY in 2016 or so (when Ubuntu 14 is history)
   
@@ -1356,7 +1358,7 @@ void Source::ClangViewRefactor::tag_similar_identifiers(const Identifier &identi
 
 
 Source::ClangView::ClangView(const boost::filesystem::path &file_path, Glib::RefPtr<Gsv::Language> language):
-    ClangViewParse(file_path, language), ClangViewAutocomplete(), ClangViewRefactor() {
+    ClangViewParse(file_path, language), ClangViewAutocomplete(file_path, language), ClangViewRefactor(file_path, language) {
   if(language) {
     get_source_buffer()->set_highlight_syntax(true);
     get_source_buffer()->set_language(language);

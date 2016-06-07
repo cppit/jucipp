@@ -24,7 +24,6 @@ namespace Source {
     
     void soft_reparse() override;
   protected:
-    ClangViewParse() : View("", Glib::RefPtr<Gsv::Language>()) {}
     Dispatcher dispatcher;
     void parse_initialize();
     std::unique_ptr<clang::TranslationUnit> clang_tu;
@@ -68,7 +67,7 @@ namespace Source {
       std::string brief_comments;
     };
     
-    ClangViewAutocomplete();
+    ClangViewAutocomplete(const boost::filesystem::path &file_path, Glib::RefPtr<Gsv::Language> language);
     
     virtual void async_delete();
     bool full_reparse() override;
@@ -109,7 +108,7 @@ namespace Source {
       clang::Cursor cursor;
     };
   public:
-    ClangViewRefactor();
+    ClangViewRefactor(const boost::filesystem::path &file_path, Glib::RefPtr<Gsv::Language> language);
   protected:
     sigc::connection delayed_tag_similar_identifiers_connection;
   private:
