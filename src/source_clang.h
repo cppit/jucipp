@@ -24,6 +24,7 @@ namespace Source {
     
     void soft_reparse() override;
   protected:
+    ClangViewParse() : View("", Glib::RefPtr<Gsv::Language>()) {}
     Dispatcher dispatcher;
     void parse_initialize();
     std::unique_ptr<clang::TranslationUnit> clang_tu;
@@ -55,7 +56,7 @@ namespace Source {
     std::vector<std::string> get_compilation_commands();
   };
     
-  class ClangViewAutocomplete : public ClangViewParse {
+  class ClangViewAutocomplete : public virtual ClangViewParse {
   protected:
     enum class AutocompleteState {IDLE, STARTING, RESTARTING, CANCELED};
   public:
@@ -67,7 +68,7 @@ namespace Source {
       std::string brief_comments;
     };
     
-    ClangViewAutocomplete(const boost::filesystem::path &file_path, Glib::RefPtr<Gsv::Language> language);
+    ClangViewAutocomplete();
     
     virtual void async_delete();
     bool full_reparse() override;
@@ -91,7 +92,7 @@ namespace Source {
     bool full_reparse_running=false;
   };
 
-  class ClangViewRefactor : public ClangViewAutocomplete {
+  class ClangViewRefactor : public virtual ClangViewParse {
     class Identifier {
     public:
       Identifier(clang::CursorKind kind, const std::string &spelling, const std::string &usr, const clang::Cursor &cursor=clang::Cursor()) :
@@ -108,7 +109,7 @@ namespace Source {
       clang::Cursor cursor;
     };
   public:
-    ClangViewRefactor(const boost::filesystem::path &file_path, Glib::RefPtr<Gsv::Language> language);
+    ClangViewRefactor();
   protected:
     sigc::connection delayed_tag_similar_identifiers_connection;
   private:
@@ -122,7 +123,7 @@ namespace Source {
     bool renaming=false;
   };
   
-  class ClangView : public ClangViewRefactor {
+  class ClangView : public ClangViewAutocomplete, public ClangViewRefactor {
   public:
     ClangView(const boost::filesystem::path &file_path, Glib::RefPtr<Gsv::Language> language);
     void async_delete() override;
