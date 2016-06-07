@@ -31,17 +31,17 @@ int main() {
   g_assert_cmpuint(clang_view->diagnostics.size(), ==, 0);
   
   //test get_declaration and get_implementation
-  clang_view->place_cursor_at_line_index(14-1, 8-1);
+  clang_view->place_cursor_at_line_index(13, 7);
   auto location=clang_view->get_declaration_location({clang_view});
-  g_assert_cmpuint(location.line, ==, 5);
+  g_assert_cmpuint(location.line, ==, 4);
   
-  clang_view->place_cursor_at_line_index(location.line-1, location.index-1);
+  clang_view->place_cursor_at_line_index(location.line, location.index);
   location=clang_view->get_implementation_location({clang_view});
-  g_assert_cmpuint(location.line, ==, 10);
+  g_assert_cmpuint(location.line, ==, 9);
   
-  clang_view->place_cursor_at_line_index(location.line-1, location.index-1);
+  clang_view->place_cursor_at_line_index(location.line, location.index);
   location=clang_view->get_declaration_location({clang_view});
-  g_assert_cmpuint(location.line, ==, 5);
+  g_assert_cmpuint(location.line, ==, 4);
   
   //test get_usages and get_methods
   auto locations=clang_view->get_usages({clang_view});
@@ -52,11 +52,11 @@ int main() {
   
   //Test rename class (error if not constructor and destructor is renamed as well)
   auto saved_main=clang_view->get_buffer()->get_text();
-  clang_view->place_cursor_at_line_index(1-1, 7-1);
+  clang_view->place_cursor_at_line_index(0, 6);
   auto token=clang_view->get_token(clang_view->get_buffer()->get_insert()->get_iter());
   g_assert_cmpstr(token.c_str(), ==, "TestClass");
   location=clang_view->get_declaration_location({clang_view});
-  g_assert_cmpuint(location.line, ==, 1);
+  g_assert_cmpuint(location.line, ==, 0);
   clang_view->rename_similar_tokens({clang_view}, "RenamedTestClass");
   while(!clang_view->parsed)
     flush_events();

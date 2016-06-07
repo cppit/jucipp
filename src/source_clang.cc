@@ -231,39 +231,38 @@ std::vector<std::string> Source::ClangViewParse::get_compilation_commands() {
 }
 
 void Source::ClangViewParse::update_syntax() {
-  std::vector<std::pair<std::pair<clang::Offset, clang::Offset>, int> > ranges;
+  auto buffer=get_buffer();
+  const auto apply_tag=[this, buffer](const std::pair<clang::Offset, clang::Offset> &offsets, int type) {
+    auto type_it=Config::get().source.clang_types.find(type);
+    if(type_it!=Config::get().source.clang_types.end()) {
+      last_syntax_tags.emplace(type_it->second);
+      Gtk::TextIter begin_iter = buffer->get_iter_at_line_index(offsets.first.line-1, offsets.first.index-1);
+      Gtk::TextIter end_iter  = buffer->get_iter_at_line_index(offsets.second.line-1, offsets.second.index-1);
+      buffer->apply_tag_by_name(type_it->second, begin_iter, end_iter);
+    }
+  };
+  
+  for(auto &tag: last_syntax_tags)
+    buffer->remove_tag_by_name(tag, buffer->begin(), buffer->end());
+  last_syntax_tags.clear();
+  
   for (auto &token : *clang_tokens) {
     //if(token.get_kind()==clang::TokenKind::Token_Punctuation)
       //ranges.emplace_back(token.offsets, static_cast<int>(token.get_cursor().get_kind()));
     auto token_kind=token.get_kind();
     if(token_kind==clang::TokenKind::Token_Keyword)
-      ranges.emplace_back(token.offsets, 702);
+      apply_tag(token.offsets, 702);
     else if(token_kind==clang::TokenKind::Token_Identifier) {
       auto cursor_kind=token.get_cursor().get_kind();
       if(cursor_kind==clang::CursorKind::DeclRefExpr || cursor_kind==clang::CursorKind::MemberRefExpr)
         cursor_kind=token.get_cursor().get_referenced().get_kind();
       if(cursor_kind!=clang::CursorKind::PreprocessingDirective)
-        ranges.emplace_back(token.offsets, static_cast<int>(cursor_kind));
+        apply_tag(token.offsets, static_cast<int>(cursor_kind));
     }
     else if(token_kind==clang::TokenKind::Token_Literal)
-      ranges.emplace_back(token.offsets, static_cast<int>(clang::CursorKind::StringLiteral));
+      apply_tag(token.offsets, static_cast<int>(clang::CursorKind::StringLiteral));
     else if(token_kind==clang::TokenKind::Token_Comment)
-      ranges.emplace_back(token.offsets, 705);
-  }
-  if (ranges.empty())
-    return;
-  auto buffer = get_buffer();
-  for(auto &tag: last_syntax_tags)
-    buffer->remove_tag_by_name(tag, buffer->begin(), buffer->end());
-  last_syntax_tags.clear();
-  for (auto &range : ranges) {
-    auto type_it=Config::get().source.clang_types.find(range.second);
-    if(type_it!=Config::get().source.clang_types.end()) {
-      last_syntax_tags.emplace(type_it->second);
-      Gtk::TextIter begin_iter = buffer->get_iter_at_line_index(range.first.first.line-1, range.first.first.index-1);
-      Gtk::TextIter end_iter  = buffer->get_iter_at_line_index(range.first.second.line-1, range.first.second.index-1);
-      buffer->apply_tag_by_name(type_it->second, begin_iter, end_iter);
-    }
+      apply_tag(token.offsets, 705);
   }
 }
 
