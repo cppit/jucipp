@@ -27,14 +27,9 @@ Config::Config() {
   }
   
 #ifdef _WIN32
-    auto env_WD=std::getenv("WD");
-    auto env_MSYSTEM=std::getenv("MSYSTEM");
-    if(env_WD!=NULL && env_MSYSTEM!=NULL) {
-      terminal.msys2_mingw_path=boost::filesystem::path(env_WD).parent_path().parent_path().parent_path();
-      std::string msystem=env_MSYSTEM;
-      std::transform(msystem.begin(), msystem.end(), msystem.begin(), ::tolower);
-      terminal.msys2_mingw_path/=msystem;
-    }
+     auto env_MSYSTEM_PREFIX=std::getenv("MSYSTEM_PREFIX");
+     if(env_MSYSTEM_PREFIX!=NULL)
+       terminal.msys2_mingw_path=boost::filesystem::path(env_MSYSTEM_PREFIX);
 #endif
 }
 
