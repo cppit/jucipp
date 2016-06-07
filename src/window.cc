@@ -459,8 +459,8 @@ void Window::set_menu_actions() {
             return;
           Notebook::get().open(declaration_file);
           auto view=Notebook::get().get_current_view();
-          auto line=static_cast<int>(location.line)-1;
-          auto index=static_cast<int>(location.index)-1;
+          auto line=static_cast<int>(location.line);
+          auto index=static_cast<int>(location.index);
           view->place_cursor_at_line_index(line, index);
           view->scroll_to_cursor_delayed(view, true, false);
         }
@@ -479,8 +479,8 @@ void Window::set_menu_actions() {
             return;
           Notebook::get().open(implementation_path);
           auto view=Notebook::get().get_current_view();
-          auto line=static_cast<int>(location.line)-1;
-          auto index=static_cast<int>(location.index)-1;
+          auto line=static_cast<int>(location.line);
+          auto index=static_cast<int>(location.index);
           view->place_cursor_at_line_index(line, index);
           view->scroll_to_cursor_delayed(view, true, false);
           return;
@@ -507,13 +507,13 @@ void Window::set_menu_actions() {
               row=usage.first.file_path.filename().string()+":";
               current_page=false;
             }
-            row+=std::to_string(usage.first.line)+": "+usage.second;
+            row+=std::to_string(usage.first.line+1)+": "+usage.second;
             (*rows)[row]=usage.first;
             view->selection_dialog->add_row(row);
             
             //Set dialog cursor to the last row if the textview cursor is at the same line
             if(current_page &&
-               iter.get_line()==static_cast<int>(usage.first.line-1) && iter.get_line_index()>=static_cast<int>(usage.first.index-1)) {
+               iter.get_line()==static_cast<int>(usage.first.line) && iter.get_line_index()>=static_cast<int>(usage.first.index)) {
               view->selection_dialog->set_cursor_at_last_row();
             }
           }
@@ -529,7 +529,7 @@ void Window::set_menu_actions() {
               return;
             Notebook::get().open(declaration_file);
             auto view=Notebook::get().get_current_view();
-            view->place_cursor_at_line_index(offset.line-1, offset.index-1);
+            view->place_cursor_at_line_index(offset.line, offset.index);
             view->scroll_to(view->get_buffer()->get_insert(), 0.0, 1.0, 0.5);
             view->hide_tooltips();
           };
@@ -551,12 +551,12 @@ void Window::set_menu_actions() {
           for(auto &method: methods) {
             (*rows)[method.second]=method.first;
             view->selection_dialog->add_row(method.second);
-            if(iter.get_line()>=static_cast<int>(method.first.line-1))
+            if(iter.get_line()>=static_cast<int>(method.first.line))
               view->selection_dialog->set_cursor_at_last_row();
           }
           view->selection_dialog->on_select=[view, rows](const std::string& selected, bool hide_window) {
             auto offset=rows->at(selected);
-            view->get_buffer()->place_cursor(view->get_buffer()->get_iter_at_line_index(offset.line-1, offset.index-1));
+            view->get_buffer()->place_cursor(view->get_buffer()->get_iter_at_line_index(offset.line, offset.index));
             view->scroll_to(view->get_buffer()->get_insert(), 0.0, 1.0, 0.5);
             view->hide_tooltips();
           };
@@ -584,8 +584,8 @@ void Window::set_menu_actions() {
         auto fix_its=view->get_fix_its();
         std::vector<std::pair<Glib::RefPtr<Gtk::TextMark>, Glib::RefPtr<Gtk::TextMark> > > fix_it_marks;
         for(auto &fix_it: fix_its) {
-          auto start_iter=buffer->get_iter_at_line_index(fix_it.offsets.first.line-1, fix_it.offsets.first.index-1);
-          auto end_iter=buffer->get_iter_at_line_index(fix_it.offsets.second.line-1, fix_it.offsets.second.index-1);
+          auto start_iter=buffer->get_iter_at_line_index(fix_it.offsets.first.line, fix_it.offsets.first.index);
+          auto end_iter=buffer->get_iter_at_line_index(fix_it.offsets.second.line, fix_it.offsets.second.index);
           fix_it_marks.emplace_back(buffer->create_mark(start_iter), buffer->create_mark(end_iter));
         }
         size_t c=0;
@@ -809,8 +809,8 @@ void Window::set_menu_actions() {
       if(!Project::debug_stop.first.empty()) {
         Notebook::get().open(Project::debug_stop.first);
         if(auto view=Notebook::get().get_current_view()) {
-          int line=Project::debug_stop.second.first-1;
-          int index=Project::debug_stop.second.second-1;
+          int line=Project::debug_stop.second.first;
+          int index=Project::debug_stop.second.second;
           view->place_cursor_at_line_index(line, index);
           view->scroll_to_cursor_delayed(view, true, true);
         }

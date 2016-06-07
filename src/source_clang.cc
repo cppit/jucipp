@@ -313,13 +313,12 @@ void Source::ClangViewParse::update_diagnostics() {
       std::string fix_its_string;
       unsigned fix_its_count=0;
       for(auto &fix_it: diagnostic.fix_its) {
-        //Convert line index to line offset for correct output:
         auto clang_offsets=fix_it.offsets;
         std::pair<Offset, Offset> offsets;
-        offsets.first.line=clang_offsets.first.line;
-        offsets.first.index=clang_offsets.first.index;
-        offsets.second.line=clang_offsets.second.line;
-        offsets.second.index=clang_offsets.second.index;
+        offsets.first.line=clang_offsets.first.line-1;
+        offsets.first.index=clang_offsets.first.index-1;
+        offsets.second.line=clang_offsets.second.line-1;
+        offsets.second.index=clang_offsets.second.index-1;
         
         fix_its.emplace_back(fix_it.source, offsets);
         
@@ -999,7 +998,7 @@ Source::ClangViewAutocomplete(file_path, language) {
                       if(referenced && identifier.kind==referenced.get_kind() &&
                          identifier.spelling==token.get_spelling() && identifier.usr==referenced.get_usr()) {
                         auto offset=referenced.get_source_location().get_offset();
-                        return Offset(offset.line, offset.index, referenced.get_source_location().get_path());
+                        return Offset(offset.line-1, offset.index-1, referenced.get_source_location().get_path());
                       }
                     }
                   }
@@ -1008,7 +1007,7 @@ Source::ClangViewAutocomplete(file_path, language) {
             }
             
             auto offset=referenced.get_source_location().get_offset();
-            return Offset(offset.line, offset.index, file_path);
+            return Offset(offset.line-1, offset.index-1, file_path);
           }
         }
       }
@@ -1039,8 +1038,8 @@ Source::ClangViewAutocomplete(file_path, language) {
                    identifier.spelling==token_it->get_spelling() && identifier.usr==referenced.get_usr()) {
                   location.file_path=cursor.get_source_location().get_path();
                   auto clang_offset=cursor.get_source_location().get_offset();
-                  location.line=clang_offset.line;
-                  location.index=clang_offset.index;
+                  location.line=clang_offset.line-1;
+                  location.index=clang_offset.index-1;
                   return location;
                 }
               }
@@ -1101,7 +1100,7 @@ Source::ClangViewAutocomplete(file_path, language) {
             }
             line.insert(token_end_pos, "</b>");
             line.insert(token_start_pos, "<b>");
-            usages.emplace_back(Offset(offset.first.line, offset.first.index, clang_view->file_path), line);
+            usages.emplace_back(Offset(offset.first.line-1, offset.first.index-1, clang_view->file_path), line);
           }
         }
       }
@@ -1147,7 +1146,7 @@ Source::ClangViewAutocomplete(file_path, language) {
              (row[pos]>='0' && row[pos]<='9') || row[pos]=='_' || row[pos]=='~') && pos>0);
       row.insert(token_end_pos, "</b>");
       row.insert(pos+1, "<b>");
-      methods.emplace_back(Offset(method.second.line, method.second.index), row);
+      methods.emplace_back(Offset(method.second.line-1, method.second.index-1), row);
     }
     return methods;
   };

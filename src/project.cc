@@ -96,8 +96,8 @@ void Project::debug_update_stop() {
   for(size_t c=0;c<Notebook::get().size();c++) {
     auto view=Notebook::get().get_view(c);
     if(view->file_path==debug_stop.first) {
-      if(debug_stop.second.first-1<view->get_buffer()->get_line_count()) {
-        view->get_source_buffer()->create_source_mark("debug_stop", view->get_buffer()->get_iter_at_line(debug_stop.second.first-1));
+      if(debug_stop.second.first<view->get_buffer()->get_line_count()) {
+        view->get_source_buffer()->create_source_mark("debug_stop", view->get_buffer()->get_iter_at_line(debug_stop.second.first));
         debug_last_stop_file_path=debug_stop.first;
       }
       break;
@@ -323,8 +323,8 @@ void Project::Clang::debug_start() {
       }, [this](const boost::filesystem::path &file_path, int line_nr, int line_index) {
         dispatcher.post([this, file_path, line_nr, line_index] {
           Project::debug_stop.first=file_path;
-          Project::debug_stop.second.first=line_nr;
-          Project::debug_stop.second.second=line_index;
+          Project::debug_stop.second.first=line_nr-1;
+          Project::debug_stop.second.second=line_index-1;
           
           debug_update_stop();
           if(auto view=Notebook::get().get_current_view())

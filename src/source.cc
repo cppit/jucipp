@@ -56,26 +56,26 @@ Source::FixIt::FixIt(const std::string &source, const std::pair<Offset, Offset> 
 }
 
 std::string Source::FixIt::string(Glib::RefPtr<Gtk::TextBuffer> buffer) {
-  auto iter=buffer->get_iter_at_line_index(offsets.first.line-1, offsets.first.index-1);
+  auto iter=buffer->get_iter_at_line_index(offsets.first.line, offsets.first.index);
   unsigned first_line_offset=iter.get_line_offset()+1;
-  iter=buffer->get_iter_at_line_index(offsets.second.line-1, offsets.second.index-1);
+  iter=buffer->get_iter_at_line_index(offsets.second.line, offsets.second.index);
   unsigned second_line_offset=iter.get_line_offset()+1;
   
   std::string text;
   if(type==Type::INSERT) {
     text+="Insert "+source+" at ";
-    text+=std::to_string(offsets.first.line)+":"+std::to_string(first_line_offset);
+    text+=std::to_string(offsets.first.line+1)+":"+std::to_string(first_line_offset);
   }
   else if(type==Type::REPLACE) {
     text+="Replace ";
-    text+=std::to_string(offsets.first.line)+":"+std::to_string(first_line_offset)+" - ";
-    text+=std::to_string(offsets.second.line)+":"+std::to_string(second_line_offset);
+    text+=std::to_string(offsets.first.line+1)+":"+std::to_string(first_line_offset)+" - ";
+    text+=std::to_string(offsets.second.line+1)+":"+std::to_string(second_line_offset);
     text+=" with "+source;
   }
   else {
     text+="Erase ";
-    text+=std::to_string(offsets.first.line)+":"+std::to_string(first_line_offset)+" - ";
-    text+=std::to_string(offsets.second.line)+":"+std::to_string(second_line_offset);
+    text+=std::to_string(offsets.first.line+1)+":"+std::to_string(first_line_offset)+" - ";
+    text+=std::to_string(offsets.second.line+1)+":"+std::to_string(second_line_offset);
   }
   
   return text;
