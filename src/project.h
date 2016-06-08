@@ -66,7 +66,7 @@ namespace Project {
       Gtk::VBox cross_compiling_vbox;
       Gtk::ComboBoxText platform_list_combo_box_text;
       Gtk::Entry url_entry;
-      Gtk::Label not_yet_implemented_label=Gtk::Label("Not yet implemented");
+      Gtk::Label not_yet_implemented_label;
     };
     static std::unordered_map<std::string, DebugOptionsPopover> debug_options_popovers;
     

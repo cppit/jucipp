@@ -174,6 +174,8 @@ Project::Clang::DebugOptionsPopover::DebugOptionsPopover() : Gtk::Popover() {
   cross_compiling_frame.add(cross_compiling_vbox);
   
   vbox.pack_start(cross_compiling_frame, true, true);
+  
+  not_yet_implemented_label.set_text("Not yet implemented");
   vbox.pack_end(not_yet_implemented_label, true, true);
   add(vbox);
   show_all();
