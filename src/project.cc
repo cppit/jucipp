@@ -155,8 +155,27 @@ void Project::Base::debug_start() {
 }
 
 Project::Clang::DebugOptionsPopover::DebugOptionsPopover() : Gtk::Popover() {
-  hbox.pack_start(test, true, true);
-  add(hbox);
+  auto platform_list=Debug::Clang::get_platform_list();
+  for(auto &platform: platform_list)
+    platform_list_combo_box_text.append(platform);
+  if(platform_list_combo_box_text.get_model()->children().size()>0)
+    platform_list_combo_box_text.set_active(0);
+  url_entry.set_sensitive(false);
+  platform_list_combo_box_text.signal_changed().connect([this]() {
+    url_entry.set_sensitive(platform_list_combo_box_text.get_active_row_number()>0);
+  });
+  
+  url_entry.set_placeholder_text("URL");
+  
+  cross_compiling_vbox.pack_start(platform_list_combo_box_text, true, true);
+  cross_compiling_vbox.pack_end(url_entry, true, true);
+  
+  cross_compiling_frame.set_label("Cross Compiling");
+  cross_compiling_frame.add(cross_compiling_vbox);
+  
+  vbox.pack_start(cross_compiling_frame, true, true);
+  vbox.pack_end(not_yet_implemented_label, true, true);
+  add(vbox);
   show_all();
   set_visible(false);
 }

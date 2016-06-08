@@ -68,4 +68,6 @@ int main() {
   }
   
   Debug::Clang::get().cancel();
+  
+  g_assert_cmpuint(Debug::Clang::get_platform_list().size(), >, 0);
 }

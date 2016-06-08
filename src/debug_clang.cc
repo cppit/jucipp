@@ -7,6 +7,7 @@
 #include <iostream>
 #include "terminal.h"
 #include "filesystem.h"
+#include "process.hpp"
 
 #include <lldb/API/SBTarget.h>
 #include <lldb/API/SBProcess.h>
@@ -480,4 +481,29 @@ void Debug::Clang::write(const std::string &buffer) {
   if(state==lldb::StateType::eStateRunning) {
     process->PutSTDIN(buffer.c_str(), buffer.size());
   }
+}
+
+std::vector<std::string> Debug::Clang::get_platform_list() {
+  //Could not find a way to do this through liblldb
+  std::stringstream stream;
+  Process process("lldb", "", [&stream](const char *bytes, size_t n) {
+    stream.write(bytes, n);
+  }, [](const char *bytes, size_t n) {}, true);
+  process.write("platform list");
+  process.close_stdin();
+  if(process.get_exit_status()!=0)
+    return {};
+  std::vector<std::string> platform_list;
+  std::string line;
+  while(std::getline(stream, line)) {
+    if(line.find("host")==0 || line.find("remote-")==0) {
+      size_t pos;
+      if((pos=line.find(": "))!=std::string::npos) {
+        line.replace(pos, 2, "\n");
+        platform_list.emplace_back(line);
+      }
+    }
+  }
+  
+  return platform_list;
 }

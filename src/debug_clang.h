@@ -68,6 +68,8 @@ namespace Debug {
     void remove_breakpoint(const boost::filesystem::path &file_path, int line_nr, int line_count);
     
     void write(const std::string &buffer);
+    
+    static std::vector<std::string> get_platform_list();
       
   private:
     std::unique_ptr<lldb::SBDebugger> debugger;

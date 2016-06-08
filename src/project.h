@@ -61,8 +61,12 @@ namespace Project {
     public:
       DebugOptionsPopover();
     private:
-      Gtk::HBox hbox;
-      Gtk::Label test=Gtk::Label("Not yet implemented");
+      Gtk::VBox vbox;
+      Gtk::Frame cross_compiling_frame;
+      Gtk::VBox cross_compiling_vbox;
+      Gtk::ComboBoxText platform_list_combo_box_text;
+      Gtk::Entry url_entry;
+      Gtk::Label not_yet_implemented_label=Gtk::Label("Not yet implemented");
     };
     static std::unordered_map<std::string, DebugOptionsPopover> debug_options_popovers;
     
