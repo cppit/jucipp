@@ -18,7 +18,9 @@ std::atomic<bool> Project::compiling(false);
 std::atomic<bool> Project::debugging(false);
 std::pair<boost::filesystem::path, std::pair<int, int> > Project::debug_stop;
 std::unique_ptr<Project::Base> Project::current;
+#ifdef JUCI_ENABLE_DEBUG
 std::unordered_map<std::string, Project::Clang::DebugOptionsPopover> Project::Clang::debug_options_popovers;
+#endif
 
 Gtk::Label &Project::debug_status_label() {
   static Gtk::Label label;
@@ -154,6 +156,7 @@ void Project::Base::debug_start() {
   Info::get().print("Could not find a supported project");
 }
 
+#ifdef JUCI_ENABLE_DEBUG
 Project::Clang::DebugOptionsPopover::DebugOptionsPopover() : Gtk::Popover() {
   auto platform_list=Debug::Clang::get_platform_list();
   for(auto &platform: platform_list)
@@ -181,6 +184,7 @@ Project::Clang::DebugOptionsPopover::DebugOptionsPopover() : Gtk::Popover() {
   show_all();
   set_visible(false);
 }
+#endif
 
 std::pair<std::string, std::string> Project::Clang::get_run_arguments() {
   auto build_path=build->get_default_path();

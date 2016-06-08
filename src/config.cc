@@ -97,11 +97,15 @@ void Config::retrieve_config() {
   
   terminal.history_size=cfg.get<int>("terminal.history_size");
   terminal.font=cfg.get<std::string>("terminal.font");
+  
   terminal.clang_format_command="clang-format";
+  terminal.lldb_command="lldb";
 #ifdef __linux
   if(terminal.clang_format_command=="clang-format" &&
      !boost::filesystem::exists("/usr/bin/clang-format") && !boost::filesystem::exists("/usr/local/bin/clang-format")) {
-    if(boost::filesystem::exists("/usr/bin/clang-format-3.8"))
+    if(boost::filesystem::exists("/usr/bin/clang-format-3.9"))
+      terminal.clang_format_command="/usr/bin/clang-format-3.9";
+    else if(boost::filesystem::exists("/usr/bin/clang-format-3.8"))
       terminal.clang_format_command="/usr/bin/clang-format-3.8";
     else if(boost::filesystem::exists("/usr/bin/clang-format-3.7"))
       terminal.clang_format_command="/usr/bin/clang-format-3.7";
@@ -109,6 +113,19 @@ void Config::retrieve_config() {
       terminal.clang_format_command="/usr/bin/clang-format-3.6";
     else if(boost::filesystem::exists("/usr/bin/clang-format-3.5"))
       terminal.clang_format_command="/usr/bin/clang-format-3.5";
+  }
+  if(terminal.lldb_command=="lldb" &&
+     !boost::filesystem::exists("/usr/bin/lldb") && !boost::filesystem::exists("/usr/local/bin/lldb")) {
+    if(boost::filesystem::exists("/usr/bin/lldb-3.9"))
+      terminal.lldb_command="/usr/bin/lldb-3.9";
+    else if(boost::filesystem::exists("/usr/bin/lldb-3.8"))
+      terminal.lldb_command="/usr/bin/lldb-3.8";
+    else if(boost::filesystem::exists("/usr/bin/lldb-3.7"))
+      terminal.lldb_command="/usr/bin/lldb-3.7";
+    else if(boost::filesystem::exists("/usr/bin/lldb-3.6"))
+      terminal.lldb_command="/usr/bin/lldb-3.6";
+    else if(boost::filesystem::exists("/usr/bin/lldb-3.5"))
+      terminal.lldb_command="/usr/bin/lldb-3.5";
   }
 #endif
 }

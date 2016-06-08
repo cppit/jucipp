@@ -8,6 +8,7 @@
 #include "terminal.h"
 #include "filesystem.h"
 #include "process.hpp"
+#include "config.h"
 
 #include <lldb/API/SBTarget.h>
 #include <lldb/API/SBProcess.h>
@@ -486,13 +487,16 @@ void Debug::Clang::write(const std::string &buffer) {
 std::vector<std::string> Debug::Clang::get_platform_list() {
   //Could not find a way to do this through liblldb
   std::stringstream stream;
-  Process process("lldb", "", [&stream](const char *bytes, size_t n) {
+  Process process(Config::get().terminal.lldb_command, "", [&stream](const char *bytes, size_t n) {
     stream.write(bytes, n);
   }, [](const char *bytes, size_t n) {}, true);
   process.write("platform list");
   process.close_stdin();
-  if(process.get_exit_status()!=0)
+  auto exit_status=process.get_exit_status();
+  if(exit_status!=0) {
+    Terminal::get().print("Error (debug): "+Config::get().terminal.lldb_command+" returned "+std::to_string(exit_status)+'\n');
     return {};
+  }
   std::vector<std::string> platform_list;
   std::string line;
   while(std::getline(stream, line)) {

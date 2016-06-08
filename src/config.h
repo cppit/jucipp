@@ -25,6 +25,7 @@ public:
   class Terminal {
   public:
     std::string clang_format_command;
+    std::string lldb_command;
     int history_size;
     std::string font;
     

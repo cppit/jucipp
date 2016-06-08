@@ -57,6 +57,7 @@ namespace Project {
   };
   
   class Clang : public Base {
+#ifdef JUCI_ENABLE_DEBUG
     class DebugOptionsPopover : public Gtk::Popover {
     public:
       DebugOptionsPopover();
@@ -69,6 +70,7 @@ namespace Project {
       Gtk::Label not_yet_implemented_label;
     };
     static std::unordered_map<std::string, DebugOptionsPopover> debug_options_popovers;
+#endif
     
     Dispatcher dispatcher;
   public:
@@ -80,7 +82,7 @@ namespace Project {
     void compile_and_run() override;
     
     std::mutex debug_start_mutex;
-  #ifdef JUCI_ENABLE_DEBUG
+#ifdef JUCI_ENABLE_DEBUG
     std::pair<std::string, std::string> debug_get_run_arguments() override;
     Gtk::Popover *debug_get_options_popover() override;
     void debug_start() override;
@@ -98,7 +100,7 @@ namespace Project {
     bool debug_is_running() override;
     void debug_write(const std::string &buffer) override;
     void debug_cancel() override;
-  #endif
+#endif
   };
   
   class Markdown : public Base {
