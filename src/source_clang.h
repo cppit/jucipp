@@ -68,13 +68,10 @@ namespace Source {
     };
     
     ClangViewAutocomplete(const boost::filesystem::path &file_path, Glib::RefPtr<Gsv::Language> language);
-    
-    virtual void async_delete();
-    bool full_reparse() override;
   protected:
+    std::atomic<AutocompleteState> autocomplete_state;
     std::thread autocomplete_thread;
   private:
-    std::atomic<AutocompleteState> autocomplete_state;
     void autocomplete_dialog_setup();
     void autocomplete_check();
     void autocomplete();
@@ -84,11 +81,6 @@ namespace Source {
     std::string prefix;
     std::mutex prefix_mutex;
     static std::unordered_map<std::string, std::string> autocomplete_manipulators_map();
-    
-    Glib::Dispatcher do_delete_object;
-    std::thread delete_thread;
-    std::thread full_reparse_thread;
-    bool full_reparse_running=false;
   };
 
   class ClangViewRefactor : public virtual ClangViewParse {
@@ -125,7 +117,15 @@ namespace Source {
   class ClangView : public ClangViewAutocomplete, public ClangViewRefactor {
   public:
     ClangView(const boost::filesystem::path &file_path, Glib::RefPtr<Gsv::Language> language);
-    void async_delete() override;
+    
+    bool full_reparse() override;
+    void async_delete();
+    
+  private:
+    Glib::Dispatcher do_delete_object;
+    std::thread delete_thread;
+    std::thread full_reparse_thread;
+    bool full_reparse_running=false;
   };
 }
 

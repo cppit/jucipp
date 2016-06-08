@@ -530,12 +530,6 @@ Source::ClangViewAutocomplete::ClangViewAutocomplete(const boost::filesystem::pa
       autocomplete_state=AutocompleteState::CANCELED;
     return false;
   });
-  
-  do_delete_object.connect([this](){
-    if(delete_thread.joinable())
-      delete_thread.join();
-    delete this;
-  });
 }
 
 void Source::ClangViewAutocomplete::autocomplete_dialog_setup() {
@@ -802,50 +796,6 @@ std::unordered_map<std::string, std::string> Source::ClangViewAutocomplete::auto
   map["dec(std::ios_base &__str)"]="dec";
   map["dec(std::ios_base &__base)"]="dec";
   return map;
-}
-
-void Source::ClangViewAutocomplete::async_delete() {
-  parsing_in_progress->cancel("canceled, freeing resources in the background");
-  parse_state=ParseState::STOP;
-  delete_thread=std::thread([this](){
-    //TODO: Is it possible to stop the clang-process in progress?
-    if(full_reparse_thread.joinable())
-      full_reparse_thread.join();
-    if(parse_thread.joinable())
-      parse_thread.join();
-    if(autocomplete_thread.joinable())
-      autocomplete_thread.join();
-    do_delete_object();
-  });
-}
-
-bool Source::ClangViewAutocomplete::full_reparse() {
-  full_reparse_needed=false;
-  if(!full_reparse_running) {
-    auto expected=ParseState::PROCESSING;
-    if(!parse_state.compare_exchange_strong(expected, ParseState::RESTARTING)) {
-      expected=ParseState::RESTARTING;
-      if(!parse_state.compare_exchange_strong(expected, ParseState::RESTARTING))
-        return false;
-    }
-    autocomplete_state=AutocompleteState::IDLE;
-    soft_reparse_needed=false;
-    full_reparse_running=true;
-    if(full_reparse_thread.joinable())
-      full_reparse_thread.join();
-    full_reparse_thread=std::thread([this](){
-      if(parse_thread.joinable())
-        parse_thread.join();
-      if(autocomplete_thread.joinable())
-        autocomplete_thread.join();
-      dispatcher.post([this] {
-        parse_initialize();
-        full_reparse_running=false;
-      });
-    });
-    return true;
-  }
-  return false;
 }
 
 
@@ -1363,12 +1313,57 @@ Source::ClangView::ClangView(const boost::filesystem::path &file_path, Glib::Ref
     get_source_buffer()->set_highlight_syntax(true);
     get_source_buffer()->set_language(language);
   }
+  
+  do_delete_object.connect([this]() {
+    if(delete_thread.joinable())
+      delete_thread.join();
+    delete this;
+  });
+}
+
+bool Source::ClangView::full_reparse() {
+  full_reparse_needed=false;
+  if(!full_reparse_running) {
+    auto expected=ParseState::PROCESSING;
+    if(!parse_state.compare_exchange_strong(expected, ParseState::RESTARTING)) {
+      expected=ParseState::RESTARTING;
+      if(!parse_state.compare_exchange_strong(expected, ParseState::RESTARTING))
+        return false;
+    }
+    autocomplete_state=AutocompleteState::IDLE;
+    soft_reparse_needed=false;
+    full_reparse_running=true;
+    if(full_reparse_thread.joinable())
+      full_reparse_thread.join();
+    full_reparse_thread=std::thread([this](){
+      if(parse_thread.joinable())
+        parse_thread.join();
+      if(autocomplete_thread.joinable())
+        autocomplete_thread.join();
+      dispatcher.post([this] {
+        parse_initialize();
+        full_reparse_running=false;
+      });
+    });
+    return true;
+  }
+  return false;
 }
 
 void Source::ClangView::async_delete() {
   dispatcher.disconnect();
   delayed_reparse_connection.disconnect();
   delayed_tag_similar_identifiers_connection.disconnect();
-  ClangViewAutocomplete::async_delete();
+  parsing_in_progress->cancel("canceled, freeing resources in the background");
+  parse_state=ParseState::STOP;
+  delete_thread=std::thread([this](){
+    //TODO: Is it possible to stop the clang-process in progress?
+    if(full_reparse_thread.joinable())
+      full_reparse_thread.join();
+    if(parse_thread.joinable())
+      parse_thread.join();
+    if(autocomplete_thread.joinable())
+      autocomplete_thread.join();
+    do_delete_object();
+  });
 }
-
