@@ -718,6 +718,17 @@ void Window::set_menu_actions() {
     }, 50);
     auto entry_it=EntryBox::get().entries.begin();
     entry_it->set_placeholder_text("Debug: Set Run Arguments");
+    
+    if(auto options_popover=project->debug_get_options_popover()) {
+      EntryBox::get().buttons.emplace_back("", [this, options_popover]() {
+        options_popover->set_visible(true);
+      });
+      EntryBox::get().buttons.back().set_image_from_icon_name("preferences-system");
+      EntryBox::get().buttons.back().set_always_show_image(true);
+      EntryBox::get().buttons.back().set_tooltip_text("Additional Options");
+      options_popover->set_relative_to(EntryBox::get().buttons.back());
+    }
+    
     EntryBox::get().buttons.emplace_back("Debug: set run arguments", [this, entry_it](){
       entry_it->activate();
     });

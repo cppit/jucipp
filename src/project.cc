@@ -18,6 +18,7 @@ std::atomic<bool> Project::compiling(false);
 std::atomic<bool> Project::debugging(false);
 std::pair<boost::filesystem::path, std::pair<int, int> > Project::debug_stop;
 std::unique_ptr<Project::Base> Project::current;
+std::unordered_map<std::string, Project::Clang::DebugOptionsPopover> Project::Clang::debug_options_popovers;
 
 Gtk::Label &Project::debug_status_label() {
   static Gtk::Label label;
@@ -153,6 +154,13 @@ void Project::Base::debug_start() {
   Info::get().print("Could not find a supported project");
 }
 
+Project::Clang::DebugOptionsPopover::DebugOptionsPopover() : Gtk::Popover() {
+  hbox.pack_start(test, true, true);
+  add(hbox);
+  show_all();
+  set_visible(false);
+}
+
 std::pair<std::string, std::string> Project::Clang::get_run_arguments() {
   auto build_path=build->get_default_path();
   if(build_path.empty())
@@ -264,6 +272,12 @@ std::pair<std::string, std::string> Project::Clang::debug_get_run_arguments() {
   }
   
   return {project_path, arguments};
+}
+
+Gtk::Popover *Project::Clang::debug_get_options_popover() {
+  if(!build->project_path.empty())
+    return &debug_options_popovers[build->project_path.string()];
+  return nullptr;
 }
 
 void Project::Clang::debug_start() {

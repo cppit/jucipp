@@ -37,6 +37,7 @@ namespace Project {
     virtual void compile_and_run();
     
     virtual std::pair<std::string, std::string> debug_get_run_arguments();
+    virtual Gtk::Popover *debug_get_options_popover() { return nullptr; }
     Tooltips debug_variable_tooltips;
     virtual void debug_start();
     virtual void debug_continue() {}
@@ -56,7 +57,15 @@ namespace Project {
   };
   
   class Clang : public Base {
-  private:
+    class DebugOptionsPopover : public Gtk::Popover {
+    public:
+      DebugOptionsPopover();
+    private:
+      Gtk::HBox hbox;
+      Gtk::Label test=Gtk::Label("Not yet implemented");
+    };
+    static std::unordered_map<std::string, DebugOptionsPopover> debug_options_popovers;
+    
     Dispatcher dispatcher;
   public:
     Clang(std::unique_ptr<Build> &&build) : Base(std::move(build)) {}
@@ -69,6 +78,7 @@ namespace Project {
     std::mutex debug_start_mutex;
   #ifdef JUCI_ENABLE_DEBUG
     std::pair<std::string, std::string> debug_get_run_arguments() override;
+    Gtk::Popover *debug_get_options_popover() override;
     void debug_start() override;
     void debug_continue() override;
     void debug_stop() override;
