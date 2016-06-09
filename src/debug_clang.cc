@@ -101,8 +101,26 @@ void Debug::Clang::start(const std::string &command, const boost::filesystem::pa
   }
   
   lldb::SBError error;
-  if(!plugin.empty() && plugin!="host")
-    process = std::unique_ptr<lldb::SBProcess>(new lldb::SBProcess(target.ConnectRemote(*listener, url.c_str(), plugin.c_str(), error)));
+  if(!plugin.empty() && plugin!="host") {
+    process = std::unique_ptr<lldb::SBProcess>(new lldb::SBProcess(target.ConnectRemote(*listener, url.c_str(), "gdb-remote", error)));
+    if(error.Fail()) {
+      Terminal::get().async_print(std::string("Error (debug): ")+error.GetCString()+'\n', true);
+      if(callback)
+        callback(-1);
+      return;
+    }
+    lldb::SBEvent event;
+    while(true) {
+      if(listener->GetNextEvent(event)) {
+        if((event.GetType() & lldb::SBProcess::eBroadcastBitStateChanged)>0) {
+          auto state=process->GetStateFromEvent(event);
+          if(state==lldb::StateType::eStateConnected)
+            break;
+        }
+      }
+    }
+    process->RemoteLaunch(nullptr, nullptr, nullptr, nullptr, nullptr, nullptr, lldb::eLaunchFlagNone, false, error);
+  }
   else
     process = std::unique_ptr<lldb::SBProcess>(new lldb::SBProcess(target.Launch(*listener, argv, const_cast<const char**>(environ), nullptr, nullptr, nullptr, path.string().c_str(), lldb::eLaunchFlagNone, false, error)));
   if(error.Fail()) {
