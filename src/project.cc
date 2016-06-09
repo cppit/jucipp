@@ -169,6 +169,7 @@ Project::Clang::DebugOptionsPopover::DebugOptionsPopover() : Gtk::Popover() {
   });
   
   url.set_placeholder_text("URL");
+  url.set_text("connect://host:port");
   
   cross_compiling_vbox.pack_start(platform_list, true, true);
   cross_compiling_vbox.pack_end(url, true, true);

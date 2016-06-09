@@ -102,6 +102,8 @@ void Debug::Clang::start(const std::string &command, const boost::filesystem::pa
   
   lldb::SBError error;
   if(!plugin.empty() && plugin!="host") {
+    //TODO: support other plugins as well
+    //Plugin names for SBTarget::ConnectRemote does not seem to correspond to the ones from running "platform list" in lldb
     process = std::unique_ptr<lldb::SBProcess>(new lldb::SBProcess(target.ConnectRemote(*listener, url.c_str(), "gdb-remote", error)));
     if(error.Fail()) {
       Terminal::get().async_print(std::string("Error (debug): ")+error.GetCString()+'\n', true);
@@ -528,7 +530,8 @@ std::vector<std::string> Debug::Clang::get_platform_list() {
   }
   std::string line;
   while(std::getline(stream, line)) {
-    if(line.find("host")==0 || line.find("remote-")==0) {
+    //TODO: support other plugins as well
+    if(line.find("host")==0 || line.find("remote-gdb-server")==0) {
       size_t pos;
       if((pos=line.find(": "))!=std::string::npos) {
         line.replace(pos, 2, "\n");
