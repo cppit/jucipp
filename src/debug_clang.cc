@@ -114,12 +114,15 @@ void Debug::Clang::start(const std::string &command, const boost::filesystem::pa
       if(listener->GetNextEvent(event)) {
         if((event.GetType() & lldb::SBProcess::eBroadcastBitStateChanged)>0) {
           auto state=process->GetStateFromEvent(event);
+          this->state=state;
           if(state==lldb::StateType::eStateConnected)
             break;
         }
       }
     }
     process->RemoteLaunch(nullptr, nullptr, nullptr, nullptr, nullptr, nullptr, lldb::eLaunchFlagNone, false, error);
+    if(!error.Fail())
+      process->Continue();
   }
   else
     process = std::unique_ptr<lldb::SBProcess>(new lldb::SBProcess(target.Launch(*listener, argv, const_cast<const char**>(environ), nullptr, nullptr, nullptr, path.string().c_str(), lldb::eLaunchFlagNone, false, error)));
