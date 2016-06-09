@@ -61,13 +61,12 @@ namespace Project {
     class DebugOptionsPopover : public Gtk::Popover {
     public:
       DebugOptionsPopover();
+      Gtk::ComboBoxText platform_list;
+      Gtk::Entry url;
     private:
       Gtk::VBox vbox;
       Gtk::Frame cross_compiling_frame;
       Gtk::VBox cross_compiling_vbox;
-      Gtk::ComboBoxText platform_list_combo_box_text;
-      Gtk::Entry url_entry;
-      Gtk::Label not_yet_implemented_label;
     };
     static std::unordered_map<std::string, DebugOptionsPopover> debug_options_popovers;
 #endif

@@ -147,8 +147,10 @@ Window::Window() {
   };
   
   signal_focus_out_event().connect([](GdkEventFocus *event) {
-    if(auto view=Notebook::get().get_current_view())
+    if(auto view=Notebook::get().get_current_view()) {
+      view->hide_tooltips();
       view->hide_dialogs();
+    }
     return false;
   });
   

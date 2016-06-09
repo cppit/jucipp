@@ -418,7 +418,7 @@ void Source::View::set_tooltip_and_dialog_events() {
       delayed_tooltips_connection.disconnect();
     
     if(mark->get_name()=="insert") {
-      delayed_tooltips_connection.disconnect();
+      hide_tooltips();
       delayed_tooltips_connection=Glib::signal_timeout().connect([this]() {
         Tooltips::init();
         Gdk::Rectangle rectangle;
@@ -434,8 +434,6 @@ void Source::View::set_tooltip_and_dialog_events() {
         }
         return false;
       }, 500);
-      type_tooltips.hide();
-      diagnostic_tooltips.hide();
       
       if(autocomplete_dialog)
         autocomplete_dialog->hide();
@@ -458,7 +456,7 @@ void Source::View::set_tooltip_and_dialog_events() {
   });
   
   signal_leave_notify_event().connect([this](GdkEventCrossing*) {
-    delayed_tooltips_connection.disconnect();
+    hide_tooltips();
     return false;
   });
 }

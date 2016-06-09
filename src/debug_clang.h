@@ -43,7 +43,8 @@ namespace Debug {
                const std::vector<std::pair<boost::filesystem::path, int> > &breakpoints={},
                std::function<void(int exit_status)> callback=nullptr,
                std::function<void(const std::string &status)> status_callback=nullptr,
-               std::function<void(const boost::filesystem::path &file_path, int line_nr, int line_index)> stop_callback=nullptr);
+               std::function<void(const boost::filesystem::path &file_path, int line_nr, int line_index)> stop_callback=nullptr,
+               const std::string &plugin="", const std::string &url="");
     void continue_debug(); //can't use continue as function name
     void stop();
     void kill();

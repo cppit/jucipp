@@ -158,28 +158,26 @@ void Project::Base::debug_start() {
 
 #ifdef JUCI_ENABLE_DEBUG
 Project::Clang::DebugOptionsPopover::DebugOptionsPopover() : Gtk::Popover() {
-  auto platform_list=Debug::Clang::get_platform_list();
-  for(auto &platform: platform_list)
-    platform_list_combo_box_text.append(platform);
-  if(platform_list_combo_box_text.get_model()->children().size()>0)
-    platform_list_combo_box_text.set_active(0);
-  url_entry.set_sensitive(false);
-  platform_list_combo_box_text.signal_changed().connect([this]() {
-    url_entry.set_sensitive(platform_list_combo_box_text.get_active_row_number()>0);
+  auto lldb_platform_list=Debug::Clang::get_platform_list();
+  for(auto &platform: lldb_platform_list)
+    platform_list.append(platform);
+  if(platform_list.get_model()->children().size()>0)
+    platform_list.set_active(0);
+  url.set_sensitive(false);
+  platform_list.signal_changed().connect([this]() {
+    url.set_sensitive(platform_list.get_active_row_number()>0);
   });
   
-  url_entry.set_placeholder_text("URL");
+  url.set_placeholder_text("URL");
   
-  cross_compiling_vbox.pack_start(platform_list_combo_box_text, true, true);
-  cross_compiling_vbox.pack_end(url_entry, true, true);
+  cross_compiling_vbox.pack_start(platform_list, true, true);
+  cross_compiling_vbox.pack_end(url, true, true);
   
   cross_compiling_frame.set_label("Cross Compiling");
   cross_compiling_frame.add(cross_compiling_vbox);
   
   vbox.pack_start(cross_compiling_frame, true, true);
   
-  not_yet_implemented_label.set_text("Not yet implemented");
-  vbox.pack_end(not_yet_implemented_label, true, true);
   add(vbox);
   show_all();
   set_visible(false);
@@ -351,6 +349,13 @@ void Project::Clang::debug_start() {
     if(exit_status!=EXIT_SUCCESS)
       debugging=false;
     else {
+      std::string plugin, url;
+      auto options_it=debug_options_popovers.find(project_path.string());
+      if(options_it!=debug_options_popovers.end()) {
+        auto plugin_selection=options_it->second.platform_list.get_active_text();
+        plugin=plugin_selection.substr(0, plugin_selection.find("\n"));
+        url=options_it->second.url.get_text();
+      }
       std::unique_lock<std::mutex> lock(debug_start_mutex);
       Debug::Clang::get().start(run_arguments, project_path, *breakpoints, [this, run_arguments](int exit_status){
         debugging=false;
@@ -369,7 +374,7 @@ void Project::Clang::debug_start() {
           if(auto view=Notebook::get().get_current_view())
             view->get_buffer()->place_cursor(view->get_buffer()->get_insert()->get_iter());
         });
-      });
+      }, plugin, url);
     }
   });
 }

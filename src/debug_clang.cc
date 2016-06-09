@@ -41,7 +41,8 @@ void Debug::Clang::start(const std::string &command, const boost::filesystem::pa
                   const std::vector<std::pair<boost::filesystem::path, int> > &breakpoints,
                   std::function<void(int exit_status)> callback,
                   std::function<void(const std::string &status)> status_callback,
-                  std::function<void(const boost::filesystem::path &file_path, int line_nr, int line_index)> stop_callback) {
+                  std::function<void(const boost::filesystem::path &file_path, int line_nr, int line_index)> stop_callback,
+                  const std::string &plugin, const std::string &url) {
   if(!debugger) {
     lldb::SBDebugger::Initialize();
     debugger=std::unique_ptr<lldb::SBDebugger>(new lldb::SBDebugger(lldb::SBDebugger::Create(true, log, nullptr)));
@@ -100,7 +101,10 @@ void Debug::Clang::start(const std::string &command, const boost::filesystem::pa
   }
   
   lldb::SBError error;
-  process = std::unique_ptr<lldb::SBProcess>(new lldb::SBProcess(target.Launch(*listener, argv, const_cast<const char**>(environ), nullptr, nullptr, nullptr, path.string().c_str(), lldb::eLaunchFlagNone, false, error)));
+  if(!plugin.empty() && plugin!="host")
+    process = std::unique_ptr<lldb::SBProcess>(new lldb::SBProcess(target.ConnectRemote(*listener, url.c_str(), plugin.c_str(), error)));
+  else
+    process = std::unique_ptr<lldb::SBProcess>(new lldb::SBProcess(target.Launch(*listener, argv, const_cast<const char**>(environ), nullptr, nullptr, nullptr, path.string().c_str(), lldb::eLaunchFlagNone, false, error)));
   if(error.Fail()) {
     Terminal::get().async_print(std::string("Error (debug): ")+error.GetCString()+'\n', true);
     if(callback)
@@ -486,6 +490,10 @@ void Debug::Clang::write(const std::string &buffer) {
 
 std::vector<std::string> Debug::Clang::get_platform_list() {
   //Could not find a way to do this through liblldb
+  static std::vector<std::string> platform_list;
+  if(!platform_list.empty())
+    return platform_list;
+  
   std::stringstream stream;
   Process process(Config::get().terminal.lldb_command, "", [&stream](const char *bytes, size_t n) {
     stream.write(bytes, n);
@@ -494,10 +502,9 @@ std::vector<std::string> Debug::Clang::get_platform_list() {
   process.close_stdin();
   auto exit_status=process.get_exit_status();
   if(exit_status!=0) {
-    Terminal::get().print("Error (debug): "+Config::get().terminal.lldb_command+" returned "+std::to_string(exit_status)+'\n');
+    Terminal::get().print("Error (debug): "+Config::get().terminal.lldb_command+" returned "+std::to_string(exit_status)+'\n', true);
     return {};
   }
-  std::vector<std::string> platform_list;
   std::string line;
   while(std::getline(stream, line)) {
     if(line.find("host")==0 || line.find("remote-")==0) {
