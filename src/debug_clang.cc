@@ -122,7 +122,9 @@ void Debug::Clang::start(const std::string &command, const boost::filesystem::pa
         }
       }
     }
-    process->RemoteLaunch(nullptr, nullptr, nullptr, nullptr, nullptr, nullptr, lldb::eLaunchFlagNone, false, error);
+    const char *empty_parameter[1];
+    empty_parameter[0]=nullptr;
+    process->RemoteLaunch(empty_parameter, empty_parameter, nullptr, nullptr, nullptr, nullptr, lldb::eLaunchFlagNone, false, error);
     if(!error.Fail())
       process->Continue();
   }
