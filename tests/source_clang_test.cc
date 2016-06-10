@@ -22,6 +22,10 @@ void flush_events() {
 int main() {
   auto app=Gtk::Application::create();
   Gsv::init();
+
+#ifdef _WIN32
+  g_assert_cmpstr(std::getenv("MSYSTEM_PREFIX"), !=, NULL);
+#endif
   
   Config::get().project.default_build_path="./build";
   Source::ClangView *clang_view=new Source::ClangView(boost::filesystem::canonical(std::string(JUCI_TESTS_PATH)+"/source_clang_test_files/main.cpp"),
