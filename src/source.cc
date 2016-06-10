@@ -456,7 +456,7 @@ void Source::View::set_tooltip_and_dialog_events() {
   });
   
   signal_leave_notify_event().connect([this](GdkEventCrossing*) {
-    hide_tooltips();
+    delayed_tooltips_connection.disconnect();
     return false;
   });
 }
