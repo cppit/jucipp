@@ -7,7 +7,7 @@
 #include "menu.h"
 #include "notebook.h"
 #ifdef JUCI_ENABLE_DEBUG
-#include "debug_clang.h"
+#include "debug_lldb.h"
 #endif
 #include "info.h"
 
@@ -19,7 +19,7 @@ std::atomic<bool> Project::debugging(false);
 std::pair<boost::filesystem::path, std::pair<int, int> > Project::debug_stop;
 std::unique_ptr<Project::Base> Project::current;
 #ifdef JUCI_ENABLE_DEBUG
-std::unordered_map<std::string, Project::Clang::DebugOptionsPopover> Project::Clang::debug_options_popovers;
+std::unordered_map<std::string, Project::Clang::DebugOptions> Project::Clang::debug_options;
 #endif
 
 Gtk::Label &Project::debug_status_label() {
@@ -157,29 +157,28 @@ void Project::Base::debug_start() {
 }
 
 #ifdef JUCI_ENABLE_DEBUG
-Project::Clang::DebugOptionsPopover::DebugOptionsPopover() : Gtk::Popover() {
-  auto lldb_platform_list=Debug::Clang::get_platform_list();
-  for(auto &platform: lldb_platform_list)
-    platform_list.append(platform);
-  if(platform_list.get_model()->children().size()>0)
-    platform_list.set_active(0);
-  url.set_sensitive(false);
-  platform_list.signal_changed().connect([this]() {
-    url.set_sensitive(platform_list.get_active_row_number()>0);
+Project::Clang::DebugOptions::DebugOptions() : Base::DebugOptions() {
+  remote_enabled.set_active(false);
+  remote_enabled.set_label("Enabled");
+  remote_enabled.signal_clicked().connect([this] {
+    remote_host.set_sensitive(remote_enabled.get_active());
+  });
+  remote_host.set_sensitive(false);
+  remote_host.set_placeholder_text("host:port");
+  remote_host.signal_activate().connect([this] {
+    set_visible(false);
   });
   
-  url.set_placeholder_text("URL");
-  url.set_text("connect://host:port");
+  auto remote_vbox=Gtk::manage(new Gtk::VBox());
+  remote_vbox->pack_start(remote_enabled, true, true);
+  remote_vbox->pack_end(remote_host, true, true);
   
-  cross_compiling_vbox.pack_start(platform_list, true, true);
-  cross_compiling_vbox.pack_end(url, true, true);
+  auto remote_frame=Gtk::manage(new Gtk::Frame());
+  remote_frame->set_label("Remote Debugging");
+  remote_frame->add(*remote_vbox);
   
-  cross_compiling_frame.set_label("Cross Compiling");
-  cross_compiling_frame.add(cross_compiling_vbox);
+  vbox.pack_end(*remote_frame, true, true);
   
-  vbox.pack_start(cross_compiling_frame, true, true);
-  
-  add(vbox);
   show_all();
   set_visible(false);
 }
@@ -298,9 +297,9 @@ std::pair<std::string, std::string> Project::Clang::debug_get_run_arguments() {
   return {project_path, arguments};
 }
 
-Gtk::Popover *Project::Clang::debug_get_options_popover() {
+Gtk::Popover *Project::Clang::debug_get_options() {
   if(!build->project_path.empty())
-    return &debug_options_popovers[build->project_path.string()];
+    return &debug_options[build->project_path.string()];
   return nullptr;
 }
 
@@ -350,15 +349,12 @@ void Project::Clang::debug_start() {
     if(exit_status!=EXIT_SUCCESS)
       debugging=false;
     else {
-      std::string plugin, url;
-      auto options_it=debug_options_popovers.find(project_path.string());
-      if(options_it!=debug_options_popovers.end()) {
-        auto plugin_selection=options_it->second.platform_list.get_active_text();
-        plugin=plugin_selection.substr(0, plugin_selection.find("\n"));
-        url=options_it->second.url.get_text();
-      }
+      std::string remote_host;
+      auto options_it=debug_options.find(project_path.string());
+      if(options_it!=debug_options.end() && options_it->second.remote_enabled.get_active())
+        remote_host=options_it->second.remote_host.get_text();
       std::unique_lock<std::mutex> lock(debug_start_mutex);
-      Debug::Clang::get().start(run_arguments, project_path, *breakpoints, [this, run_arguments](int exit_status){
+      Debug::LLDB::get().start(run_arguments, project_path, *breakpoints, [this, run_arguments](int exit_status){
         debugging=false;
         Terminal::get().async_print(run_arguments+" returned: "+std::to_string(exit_status)+'\n');
       }, [this](const std::string &status) {
@@ -375,48 +371,48 @@ void Project::Clang::debug_start() {
           if(auto view=Notebook::get().get_current_view())
             view->get_buffer()->place_cursor(view->get_buffer()->get_insert()->get_iter());
         });
-      }, plugin, url);
+      }, remote_host);
     }
   });
 }
 
 void Project::Clang::debug_continue() {
-  Debug::Clang::get().continue_debug();
+  Debug::LLDB::get().continue_debug();
 }
 
 void Project::Clang::debug_stop() {
   if(debugging)
-    Debug::Clang::get().stop();
+    Debug::LLDB::get().stop();
 }
 
 void Project::Clang::debug_kill() {
   if(debugging)
-    Debug::Clang::get().kill();
+    Debug::LLDB::get().kill();
 }
 
 void Project::Clang::debug_step_over() {
   if(debugging)
-    Debug::Clang::get().step_over();
+    Debug::LLDB::get().step_over();
 }
 
 void Project::Clang::debug_step_into() {
   if(debugging)
-    Debug::Clang::get().step_into();
+    Debug::LLDB::get().step_into();
 }
 
 void Project::Clang::debug_step_out() {
   if(debugging)
-    Debug::Clang::get().step_out();
+    Debug::LLDB::get().step_out();
 }
 
 void Project::Clang::debug_backtrace() {
   auto view=Notebook::get().get_current_view();
   if(view && debugging) {
-    auto backtrace=Debug::Clang::get().get_backtrace();
+    auto backtrace=Debug::LLDB::get().get_backtrace();
     
     auto iter=view->get_iter_for_dialog();
     view->selection_dialog=std::unique_ptr<SelectionDialog>(new SelectionDialog(*view, view->get_buffer()->create_mark(iter), true, true));
-    auto rows=std::make_shared<std::unordered_map<std::string, Debug::Clang::Frame> >();
+    auto rows=std::make_shared<std::unordered_map<std::string, Debug::LLDB::Frame> >();
     if(backtrace.size()==0)
       return;
     
@@ -447,7 +443,7 @@ void Project::Clang::debug_backtrace() {
       if(!frame.file_path.empty()) {
         Notebook::get().open(frame.file_path);
         if(auto view=Notebook::get().get_current_view()) {
-          Debug::Clang::get().select_frame(frame.index);
+          Debug::LLDB::get().select_frame(frame.index);
           
           view->place_cursor_at_line_index(frame.line_nr-1, frame.line_index-1);
           view->scroll_to_cursor_delayed(view, true, true);
@@ -462,11 +458,11 @@ void Project::Clang::debug_backtrace() {
 void Project::Clang::debug_show_variables() {
   auto view=Notebook::get().get_current_view();
   if(debugging && view) {
-    auto variables=Debug::Clang::get().get_variables();
+    auto variables=Debug::LLDB::get().get_variables();
     
     auto iter=view->get_iter_for_dialog();
     view->selection_dialog=std::unique_ptr<SelectionDialog>(new SelectionDialog(*view, view->get_buffer()->create_mark(iter), true, true));
-    auto rows=std::make_shared<std::unordered_map<std::string, Debug::Clang::Variable> >();
+    auto rows=std::make_shared<std::unordered_map<std::string, Debug::LLDB::Variable> >();
     if(variables.size()==0)
       return;
     
@@ -482,7 +478,7 @@ void Project::Clang::debug_show_variables() {
       if(!variable.file_path.empty()) {
         Notebook::get().open(variable.file_path);
         if(auto view=Notebook::get().get_current_view()) {
-          Debug::Clang::get().select_frame(variable.frame_index, variable.thread_index_id);
+          Debug::LLDB::get().select_frame(variable.frame_index, variable.thread_index_id);
           
           view->place_cursor_at_line_index(variable.line_nr-1, variable.line_index-1);
           view->scroll_to_cursor_delayed(view, true, true);
@@ -533,31 +529,31 @@ void Project::Clang::debug_show_variables() {
 
 void Project::Clang::debug_run_command(const std::string &command) {
   if(debugging) {
-    auto command_return=Debug::Clang::get().run_command(command);
+    auto command_return=Debug::LLDB::get().run_command(command);
     Terminal::get().async_print(command_return.first);
     Terminal::get().async_print(command_return.second, true);
   }
 }
 
 void Project::Clang::debug_add_breakpoint(const boost::filesystem::path &file_path, int line_nr) {
-  Debug::Clang::get().add_breakpoint(file_path, line_nr);
+  Debug::LLDB::get().add_breakpoint(file_path, line_nr);
 }
 
 void Project::Clang::debug_remove_breakpoint(const boost::filesystem::path &file_path, int line_nr, int line_count) {
-  Debug::Clang::get().remove_breakpoint(file_path, line_nr, line_count);
+  Debug::LLDB::get().remove_breakpoint(file_path, line_nr, line_count);
 }
 
 bool Project::Clang::debug_is_running() {
-  return Debug::Clang::get().is_running();
+  return Debug::LLDB::get().is_running();
 }
 
 void Project::Clang::debug_write(const std::string &buffer) {
-  Debug::Clang::get().write(buffer);
+  Debug::LLDB::get().write(buffer);
 }
 
 void Project::Clang::debug_cancel() {
   std::unique_lock<std::mutex> lock(debug_start_mutex);
-  Debug::Clang::get().cancel();
+  Debug::LLDB::get().cancel();
 }
 #endif
 

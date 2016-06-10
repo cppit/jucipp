@@ -1,4 +1,4 @@
-#include "debug_clang.h"
+#include "debug_lldb.h"
 #include <stdio.h>
 #ifdef __APPLE__
 #include <stdlib.h>
@@ -29,7 +29,7 @@ void log(const char *msg, void *) {
   std::cout << "debugger log: " << msg << std::endl;
 }
 
-Debug::Clang::Clang(): state(lldb::StateType::eStateInvalid), buffer_size(131072) {
+Debug::LLDB::LLDB(): state(lldb::StateType::eStateInvalid), buffer_size(131072) {
 #ifdef __APPLE__
   auto debugserver_path=boost::filesystem::path("/usr/local/opt/llvm/bin/debugserver");
   if(boost::filesystem::exists(debugserver_path))
@@ -37,12 +37,12 @@ Debug::Clang::Clang(): state(lldb::StateType::eStateInvalid), buffer_size(131072
 #endif
 }
 
-void Debug::Clang::start(const std::string &command, const boost::filesystem::path &path,
+void Debug::LLDB::start(const std::string &command, const boost::filesystem::path &path,
                   const std::vector<std::pair<boost::filesystem::path, int> > &breakpoints,
                   std::function<void(int exit_status)> callback,
                   std::function<void(const std::string &status)> status_callback,
                   std::function<void(const boost::filesystem::path &file_path, int line_nr, int line_index)> stop_callback,
-                  const std::string &plugin, const std::string &url) {
+                  const std::string &remote_host) {
   if(!debugger) {
     lldb::SBDebugger::Initialize();
     debugger=std::unique_ptr<lldb::SBDebugger>(new lldb::SBDebugger(lldb::SBDebugger::Create(true, log, nullptr)));
@@ -101,10 +101,9 @@ void Debug::Clang::start(const std::string &command, const boost::filesystem::pa
   }
   
   lldb::SBError error;
-  if(!plugin.empty() && plugin!="host") {
-    //TODO: support other plugins as well
-    //Plugin names for SBTarget::ConnectRemote does not seem to correspond to the ones from running "platform list" in lldb
-    process = std::unique_ptr<lldb::SBProcess>(new lldb::SBProcess(target.ConnectRemote(*listener, url.c_str(), "gdb-remote", error)));
+  if(!remote_host.empty()) {
+    auto connect_string="connect://"+remote_host;
+    process = std::unique_ptr<lldb::SBProcess>(new lldb::SBProcess(target.ConnectRemote(*listener, connect_string.c_str(), "gdb-remote", error)));
     if(error.Fail()) {
       Terminal::get().async_print(std::string("Error (debug): ")+error.GetCString()+'\n', true);
       if(callback)
@@ -124,7 +123,7 @@ void Debug::Clang::start(const std::string &command, const boost::filesystem::pa
     }
     const char *empty_parameter[1];
     empty_parameter[0]=nullptr;
-    process->RemoteLaunch(empty_parameter, empty_parameter, nullptr, nullptr, nullptr, nullptr, lldb::eLaunchFlagNone, false, error);
+    process->RemoteLaunch(argv, empty_parameter, nullptr, nullptr, nullptr, nullptr, lldb::eLaunchFlagNone, false, error);
     if(!error.Fail())
       process->Continue();
   }
@@ -243,13 +242,13 @@ void Debug::Clang::start(const std::string &command, const boost::filesystem::pa
   });
 }
 
-void Debug::Clang::continue_debug() {
+void Debug::LLDB::continue_debug() {
   std::unique_lock<std::mutex> lock(event_mutex);
   if(state==lldb::StateType::eStateStopped)
     process->Continue();
 }
 
-void Debug::Clang::stop() {
+void Debug::LLDB::stop() {
   std::unique_lock<std::mutex> lock(event_mutex);
   if(state==lldb::StateType::eStateRunning) {
     auto error=process->Stop();
@@ -258,7 +257,7 @@ void Debug::Clang::stop() {
   }
 }
 
-void Debug::Clang::kill() {
+void Debug::LLDB::kill() {
   std::unique_lock<std::mutex> lock(event_mutex);
   if(process) {
     auto error=process->Kill();
@@ -267,28 +266,28 @@ void Debug::Clang::kill() {
   }
 }
 
-void Debug::Clang::step_over() {
+void Debug::LLDB::step_over() {
   std::unique_lock<std::mutex> lock(event_mutex);
   if(state==lldb::StateType::eStateStopped) {
     process->GetSelectedThread().StepOver();
   }
 }
 
-void Debug::Clang::step_into() {
+void Debug::LLDB::step_into() {
   std::unique_lock<std::mutex> lock(event_mutex);
   if(state==lldb::StateType::eStateStopped) {
     process->GetSelectedThread().StepInto();
   }
 }
 
-void Debug::Clang::step_out() {
+void Debug::LLDB::step_out() {
   std::unique_lock<std::mutex> lock(event_mutex);
   if(state==lldb::StateType::eStateStopped) {
     process->GetSelectedThread().StepOut();
   }
 }
 
-std::pair<std::string, std::string> Debug::Clang::run_command(const std::string &command) {
+std::pair<std::string, std::string> Debug::LLDB::run_command(const std::string &command) {
   std::pair<std::string, std::string> command_return;
   std::unique_lock<std::mutex> lock(event_mutex);
   if(state==lldb::StateType::eStateStopped || state==lldb::StateType::eStateRunning) {
@@ -300,7 +299,7 @@ std::pair<std::string, std::string> Debug::Clang::run_command(const std::string 
   return command_return;
 }
 
-std::vector<Debug::Clang::Frame> Debug::Clang::get_backtrace() {
+std::vector<Debug::LLDB::Frame> Debug::LLDB::get_backtrace() {
   std::vector<Frame> backtrace;
   std::unique_lock<std::mutex> lock(event_mutex);
   if(state==lldb::StateType::eStateStopped) {
@@ -336,8 +335,8 @@ std::vector<Debug::Clang::Frame> Debug::Clang::get_backtrace() {
   return backtrace;
 }
 
-std::vector<Debug::Clang::Variable> Debug::Clang::get_variables() {
-  std::vector<Debug::Clang::Variable> variables;
+std::vector<Debug::LLDB::Variable> Debug::LLDB::get_variables() {
+  std::vector<Debug::LLDB::Variable> variables;
   std::unique_lock<std::mutex> lock(event_mutex);
   if(state==lldb::StateType::eStateStopped) {
     for(uint32_t c_t=0;c_t<process->GetNumThreads();c_t++) {
@@ -351,7 +350,7 @@ std::vector<Debug::Clang::Variable> Debug::Clang::get_variables() {
         
           auto declaration=value.GetDeclaration();
           if(declaration.IsValid()) {
-            Debug::Clang::Variable variable;
+            Debug::LLDB::Variable variable;
             
             variable.thread_index_id=thread.GetIndexID();
             variable.frame_index=c_f;
@@ -379,7 +378,7 @@ std::vector<Debug::Clang::Variable> Debug::Clang::get_variables() {
   return variables;
 }
 
-void Debug::Clang::select_frame(uint32_t frame_index, uint32_t thread_index_id) {
+void Debug::LLDB::select_frame(uint32_t frame_index, uint32_t thread_index_id) {
   std::unique_lock<std::mutex> lock(event_mutex);
   if(state==lldb::StateType::eStateStopped) {
     if(thread_index_id!=0)
@@ -388,13 +387,13 @@ void Debug::Clang::select_frame(uint32_t frame_index, uint32_t thread_index_id) 
   }
 }
 
-void Debug::Clang::cancel() {
+void Debug::LLDB::cancel() {
   kill();
   if(debug_thread.joinable())
     debug_thread.join();
 }
 
-std::string Debug::Clang::get_value(const std::string &variable, const boost::filesystem::path &file_path, unsigned int line_nr, unsigned int line_index) {
+std::string Debug::LLDB::get_value(const std::string &variable, const boost::filesystem::path &file_path, unsigned int line_nr, unsigned int line_index) {
   std::string variable_value;
   std::unique_lock<std::mutex> lock(event_mutex);
   if(state==lldb::StateType::eStateStopped) {
@@ -435,7 +434,7 @@ std::string Debug::Clang::get_value(const std::string &variable, const boost::fi
   return variable_value;
 }
 
-std::string Debug::Clang::get_return_value(const boost::filesystem::path &file_path, unsigned int line_nr, unsigned int line_index) {
+std::string Debug::LLDB::get_return_value(const boost::filesystem::path &file_path, unsigned int line_nr, unsigned int line_index) {
   std::string return_value;
   std::unique_lock<std::mutex> lock(event_mutex);
   if(state==lldb::StateType::eStateStopped) {
@@ -458,22 +457,22 @@ std::string Debug::Clang::get_return_value(const boost::filesystem::path &file_p
   return return_value;
 }
 
-bool Debug::Clang::is_invalid() {
+bool Debug::LLDB::is_invalid() {
   std::unique_lock<std::mutex> lock(event_mutex);
   return state==lldb::StateType::eStateInvalid;
 }
 
-bool Debug::Clang::is_stopped() {
+bool Debug::LLDB::is_stopped() {
   std::unique_lock<std::mutex> lock(event_mutex);
   return state==lldb::StateType::eStateStopped;
 }
 
-bool Debug::Clang::is_running() {
+bool Debug::LLDB::is_running() {
   std::unique_lock<std::mutex> lock(event_mutex);
   return state==lldb::StateType::eStateRunning;
 }
 
-void Debug::Clang::add_breakpoint(const boost::filesystem::path &file_path, int line_nr) {
+void Debug::LLDB::add_breakpoint(const boost::filesystem::path &file_path, int line_nr) {
   std::unique_lock<std::mutex> lock(event_mutex);
   if(state==lldb::eStateStopped || state==lldb::eStateRunning) {
     if(!(process->GetTarget().BreakpointCreateByLocation(file_path.string().c_str(), line_nr)).IsValid())
@@ -481,7 +480,7 @@ void Debug::Clang::add_breakpoint(const boost::filesystem::path &file_path, int 
   }
 }
 
-void Debug::Clang::remove_breakpoint(const boost::filesystem::path &file_path, int line_nr, int line_count) {
+void Debug::LLDB::remove_breakpoint(const boost::filesystem::path &file_path, int line_nr, int line_count) {
   std::unique_lock<std::mutex> lock(event_mutex);
   if(state==lldb::eStateStopped || state==lldb::eStateRunning) {
     auto target=process->GetTarget();
@@ -506,41 +505,9 @@ void Debug::Clang::remove_breakpoint(const boost::filesystem::path &file_path, i
   }
 }
 
-void Debug::Clang::write(const std::string &buffer) {
+void Debug::LLDB::write(const std::string &buffer) {
   std::unique_lock<std::mutex> lock(event_mutex);
   if(state==lldb::StateType::eStateRunning) {
     process->PutSTDIN(buffer.c_str(), buffer.size());
   }
-}
-
-std::vector<std::string> Debug::Clang::get_platform_list() {
-  //Could not find a way to do this through liblldb
-  static std::vector<std::string> platform_list;
-  if(!platform_list.empty())
-    return platform_list;
-  
-  std::stringstream stream;
-  Process process(Config::get().terminal.lldb_command, "", [&stream](const char *bytes, size_t n) {
-    stream.write(bytes, n);
-  }, [](const char *bytes, size_t n) {}, true);
-  process.write("platform list");
-  process.close_stdin();
-  auto exit_status=process.get_exit_status();
-  if(exit_status!=0) {
-    Terminal::get().print("Error (debug): "+Config::get().terminal.lldb_command+" returned "+std::to_string(exit_status)+'\n', true);
-    return {};
-  }
-  std::string line;
-  while(std::getline(stream, line)) {
-    //TODO: support other plugins as well
-    if(line.find("host")==0 || line.find("remote-gdb-server")==0) {
-      size_t pos;
-      if((pos=line.find(": "))!=std::string::npos) {
-        line.replace(pos, 2, "\n");
-        platform_list.emplace_back(line);
-      }
-    }
-  }
-  
-  return platform_list;
 }

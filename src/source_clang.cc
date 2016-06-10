@@ -3,7 +3,7 @@
 #include "terminal.h"
 #include "project_build.h"
 #ifdef JUCI_ENABLE_DEBUG
-#include "debug_clang.h"
+#include "debug_lldb.h"
 #endif
 #include "info.h"
 #include "dialogs.h"
@@ -430,7 +430,7 @@ void Source::ClangViewParse::show_type_tooltips(const Gdk::Rectangle &rectangle)
               tooltip_buffer->insert_with_tag(tooltip_buffer->get_insert()->get_iter(), "\n\n"+brief_comment, "def:note");
 
 #ifdef JUCI_ENABLE_DEBUG
-            if(Debug::Clang::get().is_stopped()) {
+            if(Debug::LLDB::get().is_stopped()) {
               auto location=token.get_cursor().get_referenced().get_source_location();
               Glib::ustring value_type="Value";
               
@@ -452,12 +452,12 @@ void Source::ClangViewParse::show_type_tooltips(const Gdk::Rectangle &rectangle)
               }
               auto spelling=get_buffer()->get_text(start, end).raw();
               
-              Glib::ustring debug_value=Debug::Clang::get().get_value(spelling, location.get_path(), location.get_offset().line, location.get_offset().index);
+              Glib::ustring debug_value=Debug::LLDB::get().get_value(spelling, location.get_path(), location.get_offset().line, location.get_offset().index);
               if(debug_value.empty()) {
                 value_type="Return value";
                 auto cursor=token.get_cursor();
                 auto offsets=cursor.get_source_range().get_offsets();
-                debug_value=Debug::Clang::get().get_return_value(cursor.get_source_location().get_path(), offsets.first.line, offsets.first.index);
+                debug_value=Debug::LLDB::get().get_return_value(cursor.get_source_location().get_path(), offsets.first.line, offsets.first.index);
               }
               if(!debug_value.empty()) {
                 size_t pos=debug_value.find(" = ");

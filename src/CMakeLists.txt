@@ -79,7 +79,7 @@ set(project_shared_files
 )
 
 if(LIBLLDB_FOUND)
-  list(APPEND project_shared_files debug_clang.cc)
+  list(APPEND project_shared_files debug_lldb.cc)
 endif()
 
 if(MSYS)

@@ -26,6 +26,15 @@ namespace Project {
   void debug_update_status(const std::string &debug_status);
   
   class Base {
+  protected:
+#ifdef JUCI_ENABLE_DEBUG
+    class DebugOptions : public Gtk::Popover {
+    public:
+      DebugOptions() : Gtk::Popover() { add(vbox); }
+    protected:
+      Gtk::VBox vbox;
+    };
+#endif
   public:
     Base(std::unique_ptr<Build> &&build): build(std::move(build)) {}
     virtual ~Base() {}
@@ -37,7 +46,7 @@ namespace Project {
     virtual void compile_and_run();
     
     virtual std::pair<std::string, std::string> debug_get_run_arguments();
-    virtual Gtk::Popover *debug_get_options_popover() { return nullptr; }
+    virtual Gtk::Popover *debug_get_options() { return nullptr; }
     Tooltips debug_variable_tooltips;
     virtual void debug_start();
     virtual void debug_continue() {}
@@ -58,17 +67,13 @@ namespace Project {
   
   class Clang : public Base {
 #ifdef JUCI_ENABLE_DEBUG
-    class DebugOptionsPopover : public Gtk::Popover {
+    class DebugOptions : public Base::DebugOptions {
     public:
-      DebugOptionsPopover();
-      Gtk::ComboBoxText platform_list;
-      Gtk::Entry url;
-    private:
-      Gtk::VBox vbox;
-      Gtk::Frame cross_compiling_frame;
-      Gtk::VBox cross_compiling_vbox;
+      DebugOptions();
+      Gtk::CheckButton remote_enabled;
+      Gtk::Entry remote_host;
     };
-    static std::unordered_map<std::string, DebugOptionsPopover> debug_options_popovers;
+    static std::unordered_map<std::string, DebugOptions> debug_options;
 #endif
     
     Dispatcher dispatcher;
@@ -83,7 +88,7 @@ namespace Project {
     std::mutex debug_start_mutex;
 #ifdef JUCI_ENABLE_DEBUG
     std::pair<std::string, std::string> debug_get_run_arguments() override;
-    Gtk::Popover *debug_get_options_popover() override;
+    Gtk::Popover *debug_get_options() override;
     void debug_start() override;
     void debug_continue() override;
     void debug_stop() override;

@@ -10,7 +10,7 @@
 #include <mutex>
 
 namespace Debug {
-  class Clang {
+  class LLDB {
   public:
     class Frame {
     public:
@@ -32,10 +32,10 @@ namespace Debug {
       int line_index;
     };
   private:
-    Clang();
+    LLDB();
   public:
-    static Clang &get() {
-      static Clang singleton;
+    static LLDB &get() {
+      static LLDB singleton;
       return singleton;
     }
     
@@ -44,7 +44,7 @@ namespace Debug {
                std::function<void(int exit_status)> callback=nullptr,
                std::function<void(const std::string &status)> status_callback=nullptr,
                std::function<void(const boost::filesystem::path &file_path, int line_nr, int line_index)> stop_callback=nullptr,
-               const std::string &plugin="", const std::string &url="");
+               const std::string &remote_host="");
     void continue_debug(); //can't use continue as function name
     void stop();
     void kill();
@@ -70,8 +70,6 @@ namespace Debug {
     
     void write(const std::string &buffer);
     
-    static std::vector<std::string> get_platform_list();
-      
   private:
     std::unique_ptr<lldb::SBDebugger> debugger;
     std::unique_ptr<lldb::SBListener> listener;
