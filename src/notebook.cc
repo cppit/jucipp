@@ -384,8 +384,8 @@ void Notebook::toggle_split() {
     show_all();
     //Make sure the position is correct
     //TODO: report bug to gtk if it is not fixed in gtk3.22
-    while(g_main_context_pending(NULL))
-      g_main_context_iteration(NULL, false);
+    //while(g_main_context_pending(NULL)) //Caused freeze on OS X sometimes
+      //g_main_context_iteration(NULL, false);
     set_position(get_width()/2);
   }
   else {
