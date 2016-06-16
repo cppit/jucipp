@@ -387,7 +387,7 @@ void Notebook::toggle_split() {
     Glib::signal_timeout().connect([this] {
       set_position(get_width()/2);
       return false;
-    }, 50);
+    }, 200);
   }
   else {
     for(size_t c=size()-1;c!=static_cast<size_t>(-1);--c) {
