@@ -43,7 +43,7 @@ void Tooltip::update() {
   activation_rectangle.set_y(location_window_y);
 }
 
-void Tooltip::adjust(bool disregard_drawn) {
+void Tooltip::show(bool disregard_drawn) {
   if(!window) {
     //init window
     window=std::unique_ptr<Gtk::Window>(new Gtk::Window(Gtk::WindowType::WINDOW_POPUP));
@@ -70,8 +70,8 @@ void Tooltip::adjust(bool disregard_drawn) {
 
     auto layout=Pango::Layout::create(tooltip_widget->get_pango_context());
     layout->set_text(tooltip_widget->get_buffer()->get_text());
-    layout->get_pixel_size(tooltip_width, tooltip_height);
-    tooltip_height+=2;
+    layout->get_pixel_size(size.first, size.second);
+    size.second+=2;
   }
   
   //Adjust if tooltip is left of text_view
@@ -85,14 +85,14 @@ void Tooltip::adjust(bool disregard_drawn) {
   text_view.get_window(Gtk::TextWindowType::TEXT_WINDOW_TEXT)->get_root_coords(activation_rectangle_x, activation_rectangle.get_y(), root_x, root_y);
   Gdk::Rectangle rectangle;
   rectangle.set_x(root_x);
-  rectangle.set_y(std::max(0, root_y-tooltip_height));
-  rectangle.set_width(tooltip_width);
-  rectangle.set_height(tooltip_height);
+  rectangle.set_y(std::max(0, root_y-size.second));
+  rectangle.set_width(size.first);
+  rectangle.set_height(size.second);
   
   if(!disregard_drawn) {
     if(Tooltips::drawn_tooltips_rectangle.get_width()!=0) {
       if(rectangle.intersects(Tooltips::drawn_tooltips_rectangle)) {
-        int new_y=Tooltips::drawn_tooltips_rectangle.get_y()-tooltip_height;
+        int new_y=Tooltips::drawn_tooltips_rectangle.get_y()-size.second;
         if(new_y>=0)
           rectangle.set_y(new_y);
         else
@@ -104,7 +104,14 @@ void Tooltip::adjust(bool disregard_drawn) {
       Tooltips::drawn_tooltips_rectangle=rectangle;
   }
 
-  window->move(rectangle.get_x(), rectangle.get_y());
+  window->move(rectangle.get_x(), rectangle.get_y()); //Added since selectiondialog gets positioned wrong on Wayland unless move is placed before show_all
+  window->show_all();
+  window->move(rectangle.get_x(), rectangle.get_y()); //Need both since some VM's disregards moves before show_all
+}
+
+void Tooltip::hide() {
+  if(window)
+    window->hide();
 }
 
 void Tooltip::wrap_lines(Glib::RefPtr<Gtk::TextBuffer> text_buffer) {
@@ -153,28 +160,24 @@ void Tooltips::show(const Gdk::Rectangle& rectangle, bool disregard_drawn) {
   for(auto &tooltip : tooltip_list) {
     tooltip.update();
     if(rectangle.intersects(tooltip.activation_rectangle)) {
-      tooltip.adjust(disregard_drawn);
-      tooltip.window->show_all();
+      tooltip.show(disregard_drawn);
       shown=true;
     }
-    else if(tooltip.window)
-      tooltip.window->hide();
+    else
+      tooltip.hide();
   }
 }
 
 void Tooltips::show(bool disregard_drawn) {
   for(auto &tooltip : tooltip_list) {
     tooltip.update();
-    tooltip.adjust(disregard_drawn);
-    tooltip.window->show_all();
+    tooltip.show(disregard_drawn);
     shown=true;
   }
 }
 
 void Tooltips::hide() {
-  for(auto &tooltip : tooltip_list) {
-    if(tooltip.window)
-      tooltip.window->hide();
-  }
+  for(auto &tooltip : tooltip_list)
+    tooltip.hide();
   shown=false;
 }

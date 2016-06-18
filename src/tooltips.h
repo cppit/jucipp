@@ -10,19 +10,20 @@ public:
   ~Tooltip();
   
   void update();
-  void adjust(bool disregard_drawn=false);
+  void show(bool disregard_drawn=false);
+  void hide();
   
   Gdk::Rectangle activation_rectangle;
-  std::unique_ptr<Gtk::Window> window;
   Glib::RefPtr<Gtk::TextBuffer::Mark> start_mark;
   Glib::RefPtr<Gtk::TextBuffer::Mark> end_mark;
 private:
+  std::unique_ptr<Gtk::Window> window;
   void wrap_lines(Glib::RefPtr<Gtk::TextBuffer> text_buffer);
   
   std::function<Glib::RefPtr<Gtk::TextBuffer>()> create_tooltip_buffer;
   std::unique_ptr<Gtk::TextView> tooltip_widget;
   Gtk::TextView& text_view;
-  int tooltip_width, tooltip_height;
+  std::pair<int, int> size;
 };
 
 class Tooltips {

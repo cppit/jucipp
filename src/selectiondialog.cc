@@ -99,8 +99,24 @@ void SelectionDialogBase::add_row(const std::string& row) {
 
 void SelectionDialogBase::show() {
   shown=true;
-  move();
+  
+  //Move
+  Gdk::Rectangle iter_rect;
+  text_view.get_iter_location(start_mark->get_iter(), iter_rect);
+  Gdk::Rectangle visible_rect;
+  text_view.get_visible_rect(visible_rect);
+  int buffer_x=std::max(iter_rect.get_x(), visible_rect.get_x());
+  int buffer_y=iter_rect.get_y()+iter_rect.get_height();
+  int window_x, window_y;
+  text_view.buffer_to_window_coords(Gtk::TextWindowType::TEXT_WINDOW_TEXT, buffer_x, buffer_y, window_x, window_y);
+  int root_x, root_y;
+  text_view.get_window(Gtk::TextWindowType::TEXT_WINDOW_TEXT)->get_root_coords(window_x, window_y, root_x, root_y);
+  window.move(root_x, root_y+1); //TODO: replace 1 with some margin
+  
   window.show_all();
+  //Need to move before and after show all. Some WM's disregards moves before show_all,
+  //and Wayland does not position correctly unless move is called before show_all
+  window.move(root_x, root_y+1);
   
   if(list_view_text.get_model()->children().size()>0) {
     if(!list_view_text.get_selection()->get_selected()) {
@@ -131,20 +147,6 @@ void SelectionDialogBase::hide() {
   if(on_hide)
     on_hide();
   list_view_text.clear();
-}
-
-void SelectionDialogBase::move() {
-  Gdk::Rectangle iter_rect;
-  text_view.get_iter_location(start_mark->get_iter(), iter_rect);
-  Gdk::Rectangle visible_rect;
-  text_view.get_visible_rect(visible_rect);
-  int buffer_x=std::max(iter_rect.get_x(), visible_rect.get_x());
-  int buffer_y=iter_rect.get_y()+iter_rect.get_height();
-  int window_x, window_y;
-  text_view.buffer_to_window_coords(Gtk::TextWindowType::TEXT_WINDOW_TEXT, buffer_x, buffer_y, window_x, window_y);
-  int root_x, root_y;
-  text_view.get_window(Gtk::TextWindowType::TEXT_WINDOW_TEXT)->get_root_coords(window_x, window_y, root_x, root_y);
-  window.move(root_x, root_y+1); //TODO: replace 1 with some margin
 }
 
 void SelectionDialogBase::resize() {

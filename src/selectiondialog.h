@@ -37,7 +37,6 @@ public:
   void set_cursor_at_last_row();
   void show();
   void hide();
-  void move();
   
   std::function<void()> on_hide;
   std::function<void(const std::string& selected, bool hide_window)> on_select;
