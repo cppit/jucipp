@@ -72,6 +72,10 @@ void Tooltip::show(bool disregard_drawn) {
     layout->set_text(tooltip_widget->get_buffer()->get_text());
     layout->get_pixel_size(size.first, size.second);
     size.second+=2;
+    
+    window->signal_realize().connect([this] {
+      window->move(position.first, position.second);
+    });
   }
   
   //Adjust if tooltip is left of text_view
@@ -104,9 +108,8 @@ void Tooltip::show(bool disregard_drawn) {
       Tooltips::drawn_tooltips_rectangle=rectangle;
   }
 
-  window->move(rectangle.get_x(), rectangle.get_y()); //Added since selectiondialog gets positioned wrong on Wayland unless move is placed before show_all
+  position={rectangle.get_x(), rectangle.get_y()};
   window->show_all();
-  window->move(rectangle.get_x(), rectangle.get_y()); //Need both since some VM's disregards moves before show_all
 }
 
 void Tooltip::hide() {

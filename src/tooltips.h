@@ -24,6 +24,7 @@ private:
   std::unique_ptr<Gtk::TextView> tooltip_widget;
   Gtk::TextView& text_view;
   std::pair<int, int> size;
+  std::pair<int, int> position;
 };
 
 class Tooltips {
