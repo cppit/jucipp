@@ -116,6 +116,7 @@ bool Directories::TreeStore::drag_data_received_vfunc(const TreeModel::Path &pat
     
     Directories::get().update();
     directories.select(target_path);
+    Directories::get().on_save_file(target_path);
   }
   
   EntryBox::get().hide();
@@ -180,6 +181,7 @@ Directories::Directories() : Gtk::TreeView() {
         if(filesystem::write(target_path, "")) {
           update();
           Notebook::get().open(target_path);
+          on_save_file(target_path);
         }
         else {
           Terminal::get().print("Error: could not create "+target_path.string()+'\n', true);

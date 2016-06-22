@@ -215,6 +215,8 @@ void Window::set_menu_actions() {
           if(Directories::get().path!="")
             Directories::get().update();
           Notebook::get().open(path);
+          if(Directories::get().path!="")
+            Directories::get().on_save_file(path);
           Terminal::get().print("New file "+path.string()+" created.\n");
         }
         else
