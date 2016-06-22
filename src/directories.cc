@@ -115,8 +115,8 @@ bool Directories::TreeStore::drag_data_received_vfunc(const TreeModel::Path &pat
     }
     
     Directories::get().update();
-    directories.select(target_path);
     Directories::get().on_save_file(target_path);
+    directories.select(target_path);
   }
   
   EntryBox::get().hide();
@@ -283,6 +283,7 @@ Directories::Directories() : Gtk::TreeView() {
         return;
       }
       update();
+      on_save_file(target_path);
       select(target_path);
       
       for(size_t c=0;c<Notebook::get().size();c++) {
