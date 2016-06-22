@@ -322,6 +322,8 @@ bool Notebook::close(size_t index) {
           size_t notebook_index=notebook_page.first==0?1:0;
           if(notebooks[notebook_index].get_n_pages()>0)
             focus_view(get_view(notebook_index, notebooks[notebook_index].get_current_page()));
+          else
+            set_current_view(nullptr);
         }
       }
     }
@@ -450,7 +452,7 @@ void Notebook::set_current_view(Source::View *view) {
       view->hide_dialogs();
     }
     current_view=view;
-    if(on_change_page)
+    if(view && on_change_page)
       on_change_page(view);
   }
 }

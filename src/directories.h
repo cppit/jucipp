@@ -9,10 +9,21 @@
 #include <mutex>
 #include <atomic>
 #include <unordered_map>
+#include <unordered_set>
+#include "git.h"
 #include "dispatcher.h"
 
 class Directories : public Gtk::TreeView {
-public:
+  class DirectoryData {
+  public:
+    Gtk::TreeModel::Row row;
+    Glib::RefPtr<Gio::FileMonitor> monitor;
+    std::shared_ptr<Git::Repository> repository;
+    std::shared_ptr<sigc::connection> connection;
+  };
+  
+  enum class PathType {KNOWN, UNKNOWN};
+  
   class TreeStore : public Gtk::TreeStore {
   protected:
     TreeStore() {}
@@ -28,18 +39,19 @@ public:
         add(id);
         add(name);
         add(path);
+        add(type);
         add(color);
       }
       Gtk::TreeModelColumn<std::string> id;
       Gtk::TreeModelColumn<std::string> name;
       Gtk::TreeModelColumn<boost::filesystem::path> path;
+      Gtk::TreeModelColumn<PathType> type;
       Gtk::TreeModelColumn<Gdk::RGBA> color;
     };
     
     static Glib::RefPtr<TreeStore> create() {return Glib::RefPtr<TreeStore>(new TreeStore());}
   };
 
-private:
   Directories();
 public:
   static Directories &get() {
@@ -47,8 +59,10 @@ public:
     return singleton;
   }
   ~Directories();
+  
   void open(const boost::filesystem::path &dir_path="");
   void update();
+  void on_save_file(boost::filesystem::path file_path);
   void select(const boost::filesystem::path &path);
   
   std::function<void(const boost::filesystem::path &path)> on_row_activated;
@@ -58,14 +72,14 @@ protected:
   bool on_button_press_event(GdkEventButton *event) override;
   
 private:
-  void add_path(const boost::filesystem::path &dir_path, const Gtk::TreeModel::Row &row, time_t last_write_time=0);
+  void add_or_update_path(const boost::filesystem::path &dir_path, const Gtk::TreeModel::Row &row, bool include_parent_paths);
+  void colorize_path(const boost::filesystem::path &dir_path, bool include_parent_paths);
+  
   Glib::RefPtr<Gtk::TreeStore> tree_store;
   TreeStore::ColumnRecord column_record;
   
-  std::unordered_map<std::string, std::pair<Gtk::TreeModel::Row, std::time_t> > last_write_times;
-  std::mutex update_mutex;
-  std::thread update_thread;
-  std::atomic<bool> stop_update_thread;
+  std::unordered_map<std::string, DirectoryData> directories;
+  
   Dispatcher dispatcher;
   
   Gtk::Menu menu;

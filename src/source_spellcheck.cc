@@ -283,7 +283,7 @@ void Source::SpellCheckView::goto_next_spellcheck_error() {
   auto insert_iter=iter;
   bool wrapped=false;
   iter.forward_char();
-  while(iter && (!wrapped || iter<insert_iter)) {
+  while(!wrapped || iter<insert_iter) {
     auto toggled_tags=iter.get_toggled_tags();
     for(auto &toggled_tag: toggled_tags) {
       if(toggled_tag->property_name()=="spellcheck_error") {
@@ -322,18 +322,20 @@ std::pair<Gtk::TextIter, Gtk::TextIter> Source::SpellCheckView::spellcheck_get_w
 }
 
 void Source::SpellCheckView::spellcheck_word(const Gtk::TextIter& start, const Gtk::TextIter& end) {
-  auto spellcheck_start=start;
-  auto spellcheck_end=end;
-  if((spellcheck_end.get_offset()-spellcheck_start.get_offset())>=2) {
-    auto last_char=spellcheck_end;
-    last_char.backward_char();
-    if(*spellcheck_start=='\'' && *last_char=='\'') {
-      spellcheck_start.forward_char();
-      spellcheck_end.backward_char();
-    }
+  if((end.get_offset()-start.get_offset())==2) {
+    auto before_end=end;
+    before_end.backward_char();
+    if(*before_end=='\'' || *start=='\'')
+      return;
+  }
+  else if((end.get_offset()-start.get_offset())==3) {
+    auto before_end=end;
+    before_end.backward_char();
+    if(*before_end=='\'' && *start=='\'')
+      return;
   }
   
-  auto word=get_buffer()->get_text(spellcheck_start, spellcheck_end);
+  auto word=get_buffer()->get_text(start, end);
   if(word.size()>0) {
     auto correct = aspell_speller_check(spellcheck_checker, word.data(), word.bytes());
     if(correct==0)

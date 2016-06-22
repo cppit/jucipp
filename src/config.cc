@@ -163,6 +163,11 @@ void Config::update_config_file() {
       cfg_ok=false;
       if(cfg.count("version")>0)
         cfg.find("version")->second.data()=default_cfg.get<std::string>("version");
+      
+      auto style_path=home/"styles";
+      filesystem::write(style_path/"juci-light.xml", juci_light_style);
+      filesystem::write(style_path/"juci-dark.xml", juci_dark_style);
+      filesystem::write(style_path/"juci-dark-blue.xml", juci_dark_blue_style);
     }
     else
       return;
@@ -188,6 +193,8 @@ void Config::get_source() {
 
   source.show_map = source_json.get<bool>("show_map");
   source.map_font_size = source_json.get<std::string>("map_font_size");
+  
+  source.show_git_diff = source_json.get<bool>("show_git_diff");
 
   source.spellcheck_language = source_json.get<std::string>("spellcheck_language");
 

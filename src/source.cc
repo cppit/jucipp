@@ -3,6 +3,7 @@
 #include "filesystem.h"
 #include "terminal.h"
 #include "info.h"
+#include "directories.h"
 #include <gtksourceview/gtksource.h>
 #include <boost/property_tree/json_parser.hpp>
 #include <boost/spirit/home/qi/char.hpp>
@@ -88,7 +89,7 @@ const REGEX_NS::regex Source::View::bracket_regex("^([ \\t]*).*\\{ *$");
 const REGEX_NS::regex Source::View::no_bracket_statement_regex("^([ \\t]*)(if|for|else if|while) *\\(.*[^;}] *$");
 const REGEX_NS::regex Source::View::no_bracket_no_para_statement_regex("^([ \\t]*)(else) *$");
 
-Source::View::View(const boost::filesystem::path &file_path, Glib::RefPtr<Gsv::Language> language): SpellCheckView(), file_path(file_path), language(language) {
+Source::View::View(const boost::filesystem::path &file_path, Glib::RefPtr<Gsv::Language> language): Gsv::View(), SpellCheckView(), DiffView(file_path), language(language) {
   get_source_buffer()->begin_not_undoable_action();
   last_read_time=std::chrono::system_clock::to_time_t(std::chrono::system_clock::now());
   if(language) {
@@ -293,6 +294,7 @@ bool Source::View::save(const std::vector<Source::View*> &views) {
   if(filesystem::write(file_path, get_buffer())) {
     last_read_time=std::chrono::system_clock::to_time_t(std::chrono::system_clock::now());
     get_buffer()->set_modified(false);
+    Directories::get().on_save_file(file_path);
     return true;
   }
   else {
@@ -303,6 +305,7 @@ bool Source::View::save(const std::vector<Source::View*> &views) {
 
 void Source::View::configure() {
   SpellCheckView::configure();
+  DiffView::configure();
   
   //TODO: Move this to notebook? Might take up too much memory doing this for every tab.
   auto style_scheme_manager=Gsv::StyleSchemeManager::get_default();

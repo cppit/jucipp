@@ -1,6 +1,7 @@
 #include "window.h"
 #include "config.h"
 #include "menu.h"
+#include "notebook.h"
 #include "directories.h"
 //#include "api.h"
 #include "dialogs.h"
@@ -391,6 +392,35 @@ void Window::set_menu_actions() {
       view->goto_next_spellcheck_error();
   });
   
+  menu.add_action("source_git_next_diff", [this]() {
+    if(auto view=Notebook::get().get_current_view())
+      view->git_goto_next_diff();
+  });
+  menu.add_action("source_git_show_diff", [this]() {
+    if(auto view=Notebook::get().get_current_view()) {
+      auto diff_details=view->git_get_diff_details();
+      if(diff_details.empty()) {
+        Info::get().print("Could not find any changes at the current line");
+        return;
+      }
+      std::string postfix;
+      if(diff_details.size()>2) {
+        size_t pos=diff_details.find("@@", 2);
+        if(pos!=std::string::npos)
+          postfix=diff_details.substr(0, pos+2);
+      }
+      Notebook::get().open(view->file_path.string()+postfix+".diff");
+      if(auto new_view=Notebook::get().get_current_view()) {
+        if(new_view->get_buffer()->get_text().empty()) {
+          new_view->get_source_buffer()->begin_not_undoable_action();
+          new_view->get_buffer()->set_text(diff_details);
+          new_view->get_source_buffer()->end_not_undoable_action();
+          new_view->get_buffer()->set_modified(false);
+        }
+      }
+    }
+  });
+  
   menu.add_action("source_indentation_set_buffer_tab", [this]() {
     set_tab_entry();
   });
@@ -570,6 +600,34 @@ void Window::set_menu_actions() {
   });
   menu.add_action("source_rename", [this]() {
     rename_token_entry();
+  });
+  menu.add_action("source_implement_method", [this]() {
+    const static std::string button_text="Insert Method Implementation";
+    
+    if(auto view=Notebook::get().get_current_view()) {
+      if(view->get_method) {
+        auto iter=view->get_buffer()->get_insert()->get_iter();
+        if(!EntryBox::get().buttons.empty() && EntryBox::get().buttons.back().get_label()==button_text &&
+           iter.ends_line() && iter.starts_line()) {
+          EntryBox::get().buttons.back().activate();
+          return;
+        }
+        auto method=std::make_shared<std::string>(view->get_method());
+        if(method->empty())
+          return;
+        
+        EntryBox::get().clear();
+        EntryBox::get().labels.emplace_back();
+        EntryBox::get().labels.back().set_text(*method);
+        EntryBox::get().buttons.emplace_back(button_text, [this, method](){
+          if(auto view=Notebook::get().get_current_view()) {
+            view->get_buffer()->insert_at_cursor(*method);
+            EntryBox::get().clear();
+          }
+        });
+        EntryBox::get().show();
+      }
+    }
   });
   
   menu.add_action("source_goto_next_diagnostic", [this]() {
@@ -869,6 +927,7 @@ void Window::activate_menu_items(bool activate) {
   menu.actions["source_goto_usage"]->set_enabled(activate ? static_cast<bool>(notebook.get_current_view()->get_usages) : false);
   menu.actions["source_goto_method"]->set_enabled(activate ? static_cast<bool>(notebook.get_current_view()->get_methods) : false);
   menu.actions["source_rename"]->set_enabled(activate ? static_cast<bool>(notebook.get_current_view()->rename_similar_tokens) : false);
+  menu.actions["source_implement_method"]->set_enabled(activate ? static_cast<bool>(notebook.get_current_view()->get_method) : false);
   menu.actions["source_goto_next_diagnostic"]->set_enabled(activate ? static_cast<bool>(notebook.get_current_view()->goto_next_diagnostic) : false);
   menu.actions["source_apply_fix_its"]->set_enabled(activate ? static_cast<bool>(notebook.get_current_view()->get_fix_its) : false);
 #ifdef JUCI_ENABLE_DEBUG

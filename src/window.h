@@ -2,7 +2,6 @@
 #define JUCI_WINDOW_H_
 
 #include <gtkmm.h>
-#include "notebook.h"
 #include <atomic>
 
 class Window : public Gtk::ApplicationWindow {

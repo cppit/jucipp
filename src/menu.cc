@@ -174,6 +174,21 @@ Menu::Menu() {
   "      </section>"
   "      <section>"
   "        <submenu>"
+  "          <attribute name='label' translatable='yes'>_Git</attribute>"
+  "          <item>"
+  "            <attribute name='label' translatable='yes'>_Go _to _Next _Diff</attribute>"
+  "            <attribute name='action'>app.source_git_next_diff</attribute>"
+               +accels["source_git_next_diff"]+ //For Ubuntu...
+  "          </item>"
+  "          <item>"
+  "            <attribute name='label' translatable='yes'>_Show _Diff</attribute>"
+  "            <attribute name='action'>app.source_git_show_diff</attribute>"
+               +accels["source_git_show_diff"]+ //For Ubuntu...
+  "          </item>"
+  "        </submenu>"
+  "      </section>"
+  "      <section>"
+  "        <submenu>"
   "          <attribute name='label' translatable='yes'>_Indentation</attribute>"
   "          <item>"
   "            <attribute name='label' translatable='yes'>_Set _Current _Buffer _Tab</attribute>"
@@ -231,6 +246,11 @@ Menu::Menu() {
   "          <attribute name='label' translatable='yes'>_Rename</attribute>"
   "          <attribute name='action'>app.source_rename</attribute>"
              +accels["source_rename"]+ //For Ubuntu...
+  "        </item>"
+  "        <item>"
+  "          <attribute name='label' translatable='yes'>_Implement _Method</attribute>"
+  "          <attribute name='action'>app.source_implement_method</attribute>"
+             +accels["source_implement_method"]+ //For Ubuntu...
   "        </item>"
   "      </section>"
   "      <section>"

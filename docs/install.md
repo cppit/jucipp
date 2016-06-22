@@ -16,7 +16,7 @@
 ## Debian testing/Linux Mint/Ubuntu
 Install dependencies:
 ```sh
-sudo apt-get install git cmake make g++ libclang-3.6-dev liblldb-3.6-dev clang-format-3.6 pkg-config libboost-filesystem-dev libboost-regex-dev libgtksourceviewmm-3.0-dev aspell-en libaspell-dev
+sudo apt-get install git cmake make g++ libclang-3.6-dev liblldb-3.6-dev clang-format-3.6 pkg-config libboost-filesystem-dev libboost-regex-dev libgtksourceviewmm-3.0-dev aspell-en libaspell-dev libgit2-dev
 ```
 
 Get juCi++ source, compile and install:
@@ -32,7 +32,7 @@ sudo make install
 ## Debian stable/Linux Mint Debian Edition/Raspbian
 Install dependencies:
 ```sh
-sudo apt-get install git cmake make g++ libclang-3.5-dev liblldb-3.5-dev clang-format-3.5 pkg-config libboost-filesystem-dev libboost-regex-dev libgtksourceviewmm-3.0-dev aspell-en libaspell-dev
+sudo apt-get install git cmake make g++ libclang-3.5-dev liblldb-3.5-dev clang-format-3.5 pkg-config libboost-filesystem-dev libboost-regex-dev libgtksourceviewmm-3.0-dev aspell-en libaspell-dev libgit2-dev
 ```
 
 Get juCi++ source, compile and install:
@@ -58,7 +58,7 @@ Alternatively, follow the instructions below.
 
 Install dependencies:
 ```sh
-sudo pacman -S git cmake pkg-config make clang lldb gtksourceviewmm boost aspell aspell-en
+sudo pacman -S git cmake pkg-config make clang lldb gtksourceviewmm boost aspell aspell-en libgit2
 ```
 
 Get juCi++ source, compile and install:
@@ -74,7 +74,7 @@ sudo make install
 ## Fedora 23
 Install dependencies:
 ```sh
-sudo dnf install git cmake make gcc-c++ clang-devel clang lldb-devel boost-devel gtksourceviewmm3-devel gtkmm30-devel aspell-devel aspell-en
+sudo dnf install git cmake make gcc-c++ clang-devel clang lldb-devel boost-devel gtksourceviewmm3-devel gtkmm30-devel aspell-devel aspell-en libgit2-devel
 ```
 
 Get juCi++ source, compile and install:
@@ -96,12 +96,12 @@ Install dependencies:
 32-bit:
 
 ```sh
-sudo urpmi git cmake make gcc-c++ clang libclang-devel libboost-devel libgtkmm3.0-devel libgtksourceviewmm3.0-devel libaspell-devel aspell-en
+sudo urpmi git cmake make gcc-c++ clang libclang-devel libboost-devel libgtkmm3.0-devel libgtksourceviewmm3.0-devel libaspell-devel aspell-en libgit2-devel
 ```
 
 64-bit:
 ```sh
-sudo urpmi git cmake make gcc-c++ clang lib64clang-devel lib64boost-devel lib64gtkmm3.0-devel lib64gtksourceviewmm3.0-devel lib64aspell-devel aspell-en
+sudo urpmi git cmake make gcc-c++ clang lib64clang-devel lib64boost-devel lib64gtkmm3.0-devel lib64gtksourceviewmm3.0-devel lib64aspell-devel aspell-en libgit2-devel
 ```
 
 Get juCi++ source, compile and install:
@@ -120,7 +120,7 @@ sudo make install
 Install dependencies:
 ```sh
 brew install --with-clang --with-lldb llvm
-brew install cmake pkg-config boost homebrew/x11/gtksourceviewmm3 aspell clang-format
+brew install cmake pkg-config boost homebrew/x11/gtksourceviewmm3 aspell clang-format libgit2
 ```
 
 Get juCi++ source, compile and install:
@@ -138,7 +138,7 @@ make install
 
 Install dependencies (replace `x86_64` with `i686` for 32-bit MSYS2 installs):
 ```sh
-pacman -S git mingw-w64-x86_64-cmake make mingw-w64-x86_64-toolchain mingw-w64-x86_64-clang mingw-w64-x86_64-gtkmm3 mingw-w64-x86_64-gtksourceviewmm3 mingw-w64-x86_64-boost mingw-w64-x86_64-aspell mingw-w64-x86_64-aspell-en
+pacman -S git mingw-w64-x86_64-cmake make mingw-w64-x86_64-toolchain mingw-w64-x86_64-clang mingw-w64-x86_64-gtkmm3 mingw-w64-x86_64-gtksourceviewmm3 mingw-w64-x86_64-boost mingw-w64-x86_64-aspell mingw-w64-x86_64-aspell-en mingw-w64-x86_64-libgit2
 ```
 
 Note that juCi++ must be built and run in a MinGW Shell (for instance MinGW-w64 Win64 Shell).

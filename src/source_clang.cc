@@ -1052,6 +1052,73 @@ Source::ClangViewRefactor::ClangViewRefactor(const boost::filesystem::path &file
     return usages;
   };
   
+  get_method=[this] {
+    if(!parsed) {
+      Info::get().print("Buffer is parsing");
+      return std::string();
+    }
+    auto iter=get_buffer()->get_insert()->get_iter();
+    auto line=static_cast<unsigned>(iter.get_line());
+    auto index=static_cast<unsigned>(iter.get_line_index());
+    for(auto &token: *clang_tokens) {
+      auto cursor=token.get_cursor();
+      if(token.get_kind()==clang::TokenKind::Token_Identifier && cursor.has_type()) {
+        if(line==token.offsets.first.line-1 && index>=token.offsets.first.index-1 && index <=token.offsets.second.index-1) {
+          auto kind=cursor.get_kind();
+          if(kind==clang::CursorKind::CXXMethod || kind==clang::CursorKind::Constructor || kind==clang::CursorKind::Destructor) {
+            auto referenced=cursor.get_referenced();
+            if(referenced && referenced==cursor) {
+              std::string result;
+              std::string specifier;
+              if(kind==clang::CursorKind::CXXMethod) {
+                auto type=clang_getResultType(clang_getCursorType(cursor.cx_cursor));
+                result=clang::to_string(clang_getTypeSpelling(type));
+                
+                if(!result.empty() && result.back()!='*' && result.back()!='&')
+                  result+=' ';
+                
+                if(clang_CXXMethod_isConst(cursor.cx_cursor))
+                  specifier=" const";
+              }
+              
+              auto name=cursor.get_spelling();
+              auto parent=cursor.get_semantic_parent();
+              std::vector<std::string> semantic_parents;
+              while(parent && parent.get_kind()!=clang::CursorKind::TranslationUnit) {
+                auto spelling=parent.get_spelling()+"::";
+                semantic_parents.emplace_back(spelling);
+                name.insert(0, spelling);
+                parent=parent.get_semantic_parent();
+              }
+              
+              std::string arguments;
+              auto arg_size=clang_Cursor_getNumArguments(cursor.cx_cursor);
+              for(int c=0;c<arg_size;c++) {
+                auto argument_cursor=clang::Cursor(clang_Cursor_getArgument(cursor.cx_cursor, c));
+                auto type=clang_getCursorType(argument_cursor.cx_cursor);
+                auto argument_type=clang::to_string(clang_getTypeSpelling(type));
+                for(auto it=semantic_parents.rbegin();it!=semantic_parents.rend();++it) {
+                  size_t pos=argument_type.find(' '+*it);
+                  if(pos!=std::string::npos)
+                    argument_type.erase(pos+1, it->size());
+                }
+                auto argument=argument_cursor.get_spelling();
+                if(!arguments.empty())
+                  arguments+=", ";
+                arguments+=argument_type;
+                if(!arguments.empty() && arguments.back()!='*' && arguments.back()!='&')
+                  arguments+=' ';
+                arguments+=argument;
+              }
+              return result+name+'('+arguments+")"+specifier+" {}";
+            }
+          }
+        }
+      }
+    }
+    return std::string();
+  };
+  
   get_methods=[this](){
     std::vector<std::pair<Offset, std::string> > methods;
     if(!parsed) {

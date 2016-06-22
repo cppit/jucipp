@@ -15,6 +15,7 @@ towards libclang with speed and ease of use in mind.
 * C++ Fix-its
 * Debug integration, both local and remote, through lldb
 * Automated CMake processing, including support for external libraries
+* Git support through libgit2
 * Fast C++ autocompletion
 * Keyword and buffer autocompletion for other file types
 * Tooltips showing type information and doxygen documentation (C++)
@@ -48,6 +49,7 @@ See [enhancements](https://github.com/cppit/jucipp/labels/enhancement) for plann
 * aspell
 * libclang
 * lldb
+* libgit2
 * [libclangmm](http://github.com/cppit/libclangmm/) (downloaded directly with git --recursive, no need to install)
 * [tiny-process-library](http://github.com/eidheim/tiny-process-library/) (downloaded directly with git --recursive, no need to install)
 

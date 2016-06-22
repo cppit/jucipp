@@ -114,6 +114,7 @@ void SelectionDialogBase::add_row(const std::string& row) {
 void SelectionDialogBase::show() {
   shown=true;
   window.show_all();
+  text_view.grab_focus();
   
   if(list_view_text.get_model()->children().size()>0) {
     if(!list_view_text.get_selection()->get_selected()) {

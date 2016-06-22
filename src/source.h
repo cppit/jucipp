@@ -1,6 +1,7 @@
 #ifndef JUCI_SOURCE_H_
 #define JUCI_SOURCE_H_
 #include "source_spellcheck.h"
+#include "source_diff.h"
 #include <boost/property_tree/xml_parser.hpp>
 #include <boost/filesystem.hpp>
 #include <string>
@@ -49,7 +50,7 @@ namespace Source {
     std::pair<Offset, Offset> offsets;
   };
 
-  class View : public SpellCheckView {
+  class View : public SpellCheckView, public DiffView {
   public:
     View(const boost::filesystem::path &file_path, Glib::RefPtr<Gsv::Language> language);
     ~View();
@@ -66,14 +67,14 @@ namespace Source {
     void replace_all(const std::string &replacement);
     
     void paste();
-        
-    boost::filesystem::path file_path;
+    
     Glib::RefPtr<Gsv::Language> language;
     
     std::function<void()> auto_indent;
     std::function<Offset(const std::vector<Source::View*> &views)> get_declaration_location;
     std::function<Offset(const std::vector<Source::View*> &views)> get_implementation_location;
     std::function<std::vector<std::pair<Offset, std::string> >(const std::vector<Source::View*> &views)> get_usages;
+    std::function<std::string()> get_method;
     std::function<std::vector<std::pair<Offset, std::string> >()> get_methods;
     std::function<std::vector<std::string>()> get_token_data;
     std::function<std::string()> get_token_spelling;

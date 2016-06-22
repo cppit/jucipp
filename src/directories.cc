@@ -1,6 +1,5 @@
 #include "directories.h"
 #include <algorithm>
-#include <unordered_set>
 #include "source.h"
 #include "terminal.h"
 #include "notebook.h"
@@ -95,12 +94,18 @@ bool Directories::TreeStore::drag_data_received_vfunc(const TreeModel::Path &pat
           auto new_file_path=target_path;
           for(;file_it!=view->file_path.end();file_it++)
             new_file_path/=*file_it;
-          view->file_path=new_file_path;
+          {
+            std::unique_lock<std::mutex> lock(view->file_path_mutex);
+            view->file_path=new_file_path;
+          }
           g_signal_emit_by_name(view->get_buffer()->gobj(), "modified_changed");
         }
       }
       else if(view->file_path==source_path) {
-        view->file_path=target_path;
+        {
+          std::unique_lock<std::mutex> lock(view->file_path_mutex);
+          view->file_path=target_path;
+        }
         g_signal_emit_by_name(view->get_buffer()->gobj(), "modified_changed");
         break;
       }
@@ -118,7 +123,7 @@ bool Directories::TreeStore::drag_data_delete_vfunc (const Gtk::TreeModel::Path 
   return false;
 }
 
-Directories::Directories() : Gtk::TreeView(), stop_update_thread(false) {
+Directories::Directories() : Gtk::TreeView() {
   this->set_enable_tree_lines(true);
   
   tree_store = TreeStore::create();
@@ -148,22 +153,17 @@ Directories::Directories() : Gtk::TreeView(), stop_update_thread(false) {
   });
   
   signal_test_expand_row().connect([this](const Gtk::TreeModel::iterator &iter, const Gtk::TreeModel::Path &path){
-    if(iter->children().begin()->get_value(column_record.path)=="") {
-      std::unique_lock<std::mutex> lock(update_mutex);
-      add_path(iter->get_value(column_record.path), *iter);
-    }
+    if(iter->children().begin()->get_value(column_record.path)=="")
+      add_or_update_path(iter->get_value(column_record.path), *iter, true);
     return false;
   });
   signal_row_collapsed().connect([this](const Gtk::TreeModel::iterator &iter, const Gtk::TreeModel::Path &path){
-    {
-      std::unique_lock<std::mutex> lock(update_mutex);
-      auto directory_str=iter->get_value(column_record.path).string();
-      for(auto it=last_write_times.begin();it!=last_write_times.end();) {
-        if(directory_str==it->first.substr(0, directory_str.size()))
-          it=last_write_times.erase(it);
-        else
-          it++;
-      }
+    auto directory_str=iter->get_value(column_record.path).string();
+    for(auto it=directories.begin();it!=directories.end();) {
+      if(directory_str==it->first.substr(0, directory_str.size()))
+        it=directories.erase(it);
+      else
+        it++;
     }
     auto children=iter->children();
     if(children) {
@@ -172,35 +172,7 @@ Directories::Directories() : Gtk::TreeView(), stop_update_thread(false) {
       }
       auto child=tree_store->append(iter->children());
       child->set_value(column_record.name, std::string("(empty)"));
-      Gdk::RGBA rgba;
-      rgba.set_rgba(0.5, 0.5, 0.5);
-      child->set_value(column_record.color, rgba);
-    }
-  });
-    
-  update_thread=std::thread([this](){
-    while(!stop_update_thread) {
-      std::this_thread::sleep_for(std::chrono::milliseconds(1000));
-      std::unique_lock<std::mutex> lock(update_mutex);
-      for(auto it=last_write_times.begin();it!=last_write_times.end();) {
-        boost::system::error_code ec;
-        auto last_write_time=boost::filesystem::last_write_time(it->first, ec);
-        auto now = std::chrono::system_clock::to_time_t(std::chrono::system_clock::now());
-        if(!ec) {
-          if(last_write_time!=now && it->second.second<last_write_time) {
-            auto path=std::make_shared<std::string>(it->first);
-            dispatcher.post([this, path, last_write_time] {
-              std::unique_lock<std::mutex> lock(update_mutex);
-              auto it=last_write_times.find(*path);
-              if(it!=last_write_times.end())
-                add_path(*path, it->second.first, last_write_time);
-            });
-          }
-          it++;
-        }
-        else
-          it=last_write_times.erase(it);
-      }
+      child->set_value(column_record.type, PathType::UNKNOWN);
     }
   });
   
@@ -330,12 +302,18 @@ Directories::Directories() : Gtk::TreeView(), stop_update_thread(false) {
             auto new_file_path=target_path;
             for(;file_it!=view->file_path.end();file_it++)
               new_file_path/=*file_it;
-            view->file_path=new_file_path;
+            {
+              std::unique_lock<std::mutex> lock(view->file_path_mutex);
+              view->file_path=new_file_path;
+            }
             g_signal_emit_by_name(view->get_buffer()->gobj(), "modified_changed");
           }
         }
         else if(view->file_path==*source_path) {
-          view->file_path=target_path;
+          {
+            std::unique_lock<std::mutex> lock(view->file_path_mutex);
+            view->file_path=target_path;
+          }
           g_signal_emit_by_name(view->get_buffer()->gobj(), "modified_changed");
           
           std::string old_language_id;
@@ -415,8 +393,6 @@ Directories::Directories() : Gtk::TreeView(), stop_update_thread(false) {
 }
 
 Directories::~Directories() {
-  stop_update_thread=true;
-  update_thread.join();
   dispatcher.disconnect();
 }
 
@@ -425,11 +401,6 @@ void Directories::open(const boost::filesystem::path &dir_path) {
     return;
   
   tree_store->clear();
-  {
-    std::unique_lock<std::mutex> lock(update_mutex);
-    last_write_times.clear();
-  }
-    
   
   //TODO: report that set_title does not handle '_' correctly?
   auto title=dir_path.filename().string();
@@ -440,21 +411,31 @@ void Directories::open(const boost::filesystem::path &dir_path) {
   }
   get_column(0)->set_title(title);
 
-  {
-    std::unique_lock<std::mutex> lock(update_mutex);
-    add_path(dir_path, Gtk::TreeModel::Row());
+  for(auto &directory: directories) {
+    if(directory.second.repository)
+      directory.second.repository->clear_saved_status();
   }
-    
+  directories.clear();
+  add_or_update_path(dir_path, Gtk::TreeModel::Row(), true);
+  
   path=dir_path;
 }
 
 void Directories::update() {
- {
-   std::unique_lock<std::mutex> lock(update_mutex);
-   for(auto &last_write_time: last_write_times) {
-     add_path(last_write_time.first, last_write_time.second.first);
-   }
- }
+  std::vector<std::pair<std::string, Gtk::TreeModel::Row> > saved_directories;
+  for(auto &directory: directories)
+    saved_directories.emplace_back(directory.first, directory.second.row);
+  for(auto &directory: saved_directories)
+    add_or_update_path(directory.first, directory.second, false);
+}
+
+void Directories::on_save_file(boost::filesystem::path file_path) {
+  auto it=directories.find(file_path.parent_path().string());
+  if(it!=directories.end()) {
+    if(it->second.repository)
+      it->second.repository->clear_saved_status();
+    colorize_path(it->first, true);
+  }
 }
 
 void Directories::select(const boost::filesystem::path &select_path) {
@@ -479,12 +460,7 @@ void Directories::select(const boost::filesystem::path &select_path) {
     parent_path=select_path.parent_path();
   
   //check if select_path is already expanded
-  size_t expanded;
-  {
-    std::unique_lock<std::mutex> lock(update_mutex);
-    expanded=last_write_times.find(parent_path.string())!=last_write_times.end();
-  }
-  if(expanded) {
+  if(directories.find(parent_path.string())!=directories.end()) {
     //set cursor at select_path and return
     tree_store->foreach_iter([this, &select_path](const Gtk::TreeModel::iterator &iter){
       if(iter->get_value(column_record.path)==select_path) {
@@ -508,8 +484,7 @@ void Directories::select(const boost::filesystem::path &select_path) {
   for(auto &a_path: paths) {
     tree_store->foreach_iter([this, &a_path](const Gtk::TreeModel::iterator &iter){
       if(iter->get_value(column_record.path)==a_path) {
-        std::unique_lock<std::mutex> lock(update_mutex);
-        add_path(a_path, *iter);
+        add_or_update_path(a_path, *iter, true);
         return true;
       }
       return false;
@@ -557,16 +532,71 @@ bool Directories::on_button_press_event(GdkEventButton* event) {
   return Gtk::TreeView::on_button_press_event(event);
 }
 
-void Directories::add_path(const boost::filesystem::path &dir_path, const Gtk::TreeModel::Row &parent, time_t last_write_time) {
-  boost::system::error_code ec;
-  if(last_write_time==0)
-    last_write_time=boost::filesystem::last_write_time(dir_path, ec);
-  if(ec)
+void Directories::add_or_update_path(const boost::filesystem::path &dir_path, const Gtk::TreeModel::Row &row, bool include_parent_paths) {
+  auto path_it=directories.find(dir_path.string());
+  if(!boost::filesystem::exists(dir_path)) {
+    if(path_it!=directories.end())
+      directories.erase(path_it);
     return;
-  last_write_times[dir_path.string()]={parent, last_write_time};
+  }
+  
+  if(path_it==directories.end()) {
+    auto g_file=Glib::wrap(g_file_new_for_path(dir_path.string().c_str())); //TODO: report missing constructor in giomm
+    
+#if GLIB_CHECK_VERSION(2, 44, 0)
+    auto monitor=g_file->monitor_directory(Gio::FileMonitorFlags::FILE_MONITOR_WATCH_MOVES);
+#else
+    auto monitor=g_file->monitor_directory(Gio::FileMonitorFlags::FILE_MONITOR_SEND_MOVED);
+#endif
+    auto path_and_row=std::make_shared<std::pair<boost::filesystem::path, Gtk::TreeModel::Row> >(dir_path, row);
+    auto connection=std::make_shared<sigc::connection>();
+    
+    std::shared_ptr<Git::Repository> repository;
+    try {
+      repository=Git::get().get_repository(dir_path);
+    }
+    catch(const std::exception &) {}
+    
+    monitor->signal_changed().connect([this, connection, path_and_row, repository] (const Glib::RefPtr<Gio::File> &file,
+                                                                        const Glib::RefPtr<Gio::File>&,
+                                                                        Gio::FileMonitorEvent monitor_event) {
+      if(monitor_event!=Gio::FileMonitorEvent::FILE_MONITOR_EVENT_CHANGES_DONE_HINT) {
+        if(repository)
+          repository->clear_saved_status();
+        connection->disconnect();
+        *connection=Glib::signal_timeout().connect([path_and_row, this]() {
+          add_or_update_path(path_and_row->first, path_and_row->second, true);
+          return false;
+        }, 500);
+      }
+    });
+    
+    std::shared_ptr<sigc::connection> repository_connection(new sigc::connection(), [](sigc::connection *connection) {
+      connection->disconnect();
+      delete connection;
+    });
+    
+    if(repository) {
+      auto connection=std::make_shared<sigc::connection>();
+      *repository_connection=repository->monitor->signal_changed().connect([this, connection, path_and_row](const Glib::RefPtr<Gio::File> &file,
+                                                                                                            const Glib::RefPtr<Gio::File>&,
+                                                                                                            Gio::FileMonitorEvent monitor_event) {
+        if(monitor_event!=Gio::FileMonitorEvent::FILE_MONITOR_EVENT_CHANGES_DONE_HINT) {
+          connection->disconnect();
+          *connection=Glib::signal_timeout().connect([this, path_and_row] {
+            if(directories.find(path_and_row->first.string())!=directories.end())
+              colorize_path(path_and_row->first, false);
+            return false;
+          }, 500);
+        }
+      });
+    }
+    directories[dir_path.string()]={row, monitor, repository, repository_connection};
+  }
+  
   std::unique_ptr<Gtk::TreeNodeChildren> children; //Gtk::TreeNodeChildren is missing default constructor...
-  if(parent)
-    children=std::unique_ptr<Gtk::TreeNodeChildren>(new Gtk::TreeNodeChildren(parent.children()));
+  if(row)
+    children=std::unique_ptr<Gtk::TreeNodeChildren>(new Gtk::TreeNodeChildren(row.children()));
   else
     children=std::unique_ptr<Gtk::TreeNodeChildren>(new Gtk::TreeNodeChildren(tree_store->children()));
   if(*children) {
@@ -596,19 +626,14 @@ void Directories::add_path(const boost::filesystem::path &dir_path, const Gtk::T
         child->set_value(column_record.id, "a"+filename);
         auto grandchild=tree_store->append(child->children());
         grandchild->set_value(column_record.name, std::string("(empty)"));
-        Gdk::RGBA rgba;
-        rgba.set_rgba(0.5, 0.5, 0.5);
-        grandchild->set_value(column_record.color, rgba);
+        grandchild->set_value(column_record.type, PathType::UNKNOWN);
       }
       else {
         child->set_value(column_record.id, "b"+filename);
         
         auto language=Source::guess_language(it->path().filename());
-        if(!language) {
-          Gdk::RGBA rgba;
-          rgba.set_rgba(0.5, 0.5, 0.5);
-          child->set_value(column_record.color, rgba);
-        }
+        if(!language)
+          child->set_value(column_record.type, PathType::UNKNOWN);
       }
     }
   }
@@ -624,8 +649,87 @@ void Directories::add_path(const boost::filesystem::path &dir_path, const Gtk::T
   if(!*children) {
     auto child=tree_store->append(*children);
     child->set_value(column_record.name, std::string("(empty)"));
-    Gdk::RGBA rgba;
-    rgba.set_rgba(0.5, 0.5, 0.5);
-    child->set_value(column_record.color, rgba);
+    child->set_value(column_record.type, PathType::UNKNOWN);
+  }
+  
+  colorize_path(dir_path, include_parent_paths);
+}
+
+void Directories::colorize_path(const boost::filesystem::path &dir_path_, bool include_parent_paths) {
+  auto it=directories.find(dir_path_.string());
+  if(it==directories.end())
+    return;
+  
+  if(it!=directories.end() && it->second.repository) {
+    auto dir_path=std::make_shared<boost::filesystem::path>(dir_path_);
+    auto repository=it->second.repository;
+    std::thread git_status_thread([this, dir_path, repository, include_parent_paths] {
+      auto status=std::make_shared<Git::Repository::Status>();
+      try {
+        *status=repository->get_status();
+      }
+      catch(const std::exception &e) {
+        Terminal::get().async_print(std::string("Error (git): ")+e.what()+'\n', true);
+      }
+      
+      dispatcher.post([this, dir_path, include_parent_paths, status] {
+        auto it=directories.find(dir_path->string());
+        if(it==directories.end())
+          return;
+        
+        auto normal_color=get_style_context()->get_color(Gtk::StateFlags::STATE_FLAG_NORMAL);
+        Gdk::RGBA gray;
+        gray.set_rgba(0.5, 0.5, 0.5);
+        Gdk::RGBA yellow;
+        yellow.set_rgba(1.0, 1.0, 0.2);
+        double factor=0.5;
+        yellow.set_red(normal_color.get_red()+factor*(yellow.get_red()-normal_color.get_red()));
+        yellow.set_green(normal_color.get_green()+factor*(yellow.get_green()-normal_color.get_green()));
+        yellow.set_blue(normal_color.get_blue()+factor*(yellow.get_blue()-normal_color.get_blue()));
+        Gdk::RGBA green;
+        green.set_rgba(0.0, 1.0, 0.0);
+        factor=0.4;
+        green.set_red(normal_color.get_red()+factor*(green.get_red()-normal_color.get_red()));
+        green.set_green(normal_color.get_green()+factor*(green.get_green()-normal_color.get_green()));
+        green.set_blue(normal_color.get_blue()+factor*(green.get_blue()-normal_color.get_blue()));
+        
+        do {
+          std::unique_ptr<Gtk::TreeNodeChildren> children; //Gtk::TreeNodeChildren is missing default constructor...
+          if(it->second.row)
+            children=std::unique_ptr<Gtk::TreeNodeChildren>(new Gtk::TreeNodeChildren(it->second.row.children()));
+          else
+            children=std::unique_ptr<Gtk::TreeNodeChildren>(new Gtk::TreeNodeChildren(tree_store->children()));
+          if(!*children)
+            return;
+          
+          for(auto &child: *children) {
+            auto path=child.get_value(column_record.path);
+            if(status->modified.find(path.generic_string())!=status->modified.end())
+              child.set_value(column_record.color, yellow);
+            else if(status->added.find(path.generic_string())!=status->added.end())
+              child.set_value(column_record.color, green);
+            else {
+              auto type=child.get_value(column_record.type);
+              if(type==PathType::UNKNOWN)
+                child.set_value(column_record.color, gray);
+              else
+                child.set_value(column_record.color, normal_color);
+            }
+          }
+          
+          if(!include_parent_paths)
+            break;
+          
+          auto path=boost::filesystem::path(it->first);
+          if(boost::filesystem::exists(path/".git"))
+            break;
+          if(path==path.root_directory())
+            break;
+          auto parent_path=boost::filesystem::path(it->first).parent_path();
+          it=directories.find(parent_path.string());
+        } while(it!=directories.end());
+      });
+    });
+    git_status_thread.detach();
   }
 }

@@ -2,7 +2,7 @@
 #define JUCI_FILES_H_
 #include <string>
 
-#define JUCI_VERSION "1.1.3-5"
+#define JUCI_VERSION "1.2.0-rc3"
 
 const std::string default_config_file = R"RAW({
     "version": ")RAW"+std::string(JUCI_VERSION)+R"RAW(",
@@ -44,6 +44,7 @@ R"RAW(
         "show_whitespace_characters": "",
         "show_map": true,
         "map_font_size": "1",
+        "show_git_diff": true,
         "spellcheck_language_comment": "Use \"\" to set language from your locale settings",
         "spellcheck_language": "en_US",
         "auto_tab_char_and_size_comment": "Use false to always use default tab char and size",
@@ -92,6 +93,8 @@ R"RAW(
         "source_spellcheck": "",
         "source_spellcheck_clear": "",
         "source_spellcheck_next_error": "<primary><shift>e",
+        "source_git_next_diff": "<primary>k",
+        "source_git_show_diff": "",
         "source_indentation_set_buffer_tab": "",
         "source_indentation_auto_indent_buffer": "<primary><shift>i",
         "source_goto_line": "<primary>g",
@@ -102,6 +105,7 @@ R"RAW(
         "source_goto_usage": "<primary>u",
         "source_goto_method": "<primary>m",
         "source_rename": "<primary>r",
+        "source_implement_method": "",
         "source_goto_next_diagnostic": "<primary>e",
         "source_apply_fix_its": "<control>space",
         "project_set_run_arguments": "",
@@ -223,6 +227,13 @@ const std::string juci_light_style = R"RAW(<?xml version="1.0" encoding="UTF-8"?
   <style name="def:warning"                 foreground="orange"/>
   <style name="def:note"                    foreground="black" background="light-yellow"/>
 
+  <style name="diff:added-line"             foreground="green"/>
+  <style name="diff:removed-line"           foreground="red"/>
+  <style name="diff:changed-line"           foreground="orange"/>
+  <style name="diff:diff-file"              use-style="def:type"/>
+  <style name="diff:location"               use-style="def:statement"/>
+  <style name="diff:special-case"           use-style="def:constant"/>
+
 </style-scheme>
 )RAW";
 
@@ -278,6 +289,13 @@ const std::string juci_dark_style = R"RAW(<?xml version="1.0" encoding="UTF-8"?>
   <style name="def:error"                   foreground="#FF6666"/>
   <style name="def:warning"                 foreground="#FFE100"/>
   <style name="def:note"                    foreground="white" background="#444444"/>
+
+  <style name="diff:added-line"             foreground="green"/>
+  <style name="diff:removed-line"           foreground="red"/>
+  <style name="diff:changed-line"           foreground="orange"/>
+  <style name="diff:diff-file"              use-style="def:type"/>
+  <style name="diff:location"               use-style="def:statement"/>
+  <style name="diff:special-case"           use-style="def:constant"/>
 
 </style-scheme>
 )RAW";
@@ -337,6 +355,13 @@ const std::string juci_dark_blue_style = R"RAW(<?xml version="1.0" encoding="UTF
   <style name="def:error"                   foreground="red"/>
   <style name="def:warning"                 foreground="yellow"/>
   <style name="def:note"                    foreground="white" background="#404466"/>
+
+  <style name="diff:added-line"             foreground="green"/>
+  <style name="diff:removed-line"           foreground="red"/>
+  <style name="diff:changed-line"           foreground="orange"/>
+  <style name="diff:diff-file"              use-style="def:type"/>
+  <style name="diff:location"               use-style="def:statement"/>
+  <style name="diff:special-case"           use-style="def:constant"/>
 
 </style-scheme>
 )RAW";

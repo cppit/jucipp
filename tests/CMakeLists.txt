@@ -6,23 +6,29 @@ set(global_includes
    ${GTKSVMM_INCLUDE_DIRS}
    ${LIBCLANG_INCLUDE_DIRS}
    ${ASPELL_INCLUDE_DIR}
+   ${LIBGIT2_INCLUDE_DIRS}
    ../libclangmm/src
    ../tiny-process-library
    ../src
 )
 
-set(global_libraries
+if(MSYS)
+  set(global_libraries winpthread)
+endif()
+set(global_libraries ${global_libraries}
   ${GTKMM_LIBRARIES}
   ${GTKSVMM_LIBRARIES}
   ${Boost_LIBRARIES}
   ${LIBCLANG_LIBRARIES}
   ${LIBLLDB_LIBRARIES}
   ${ASPELL_LIBRARIES}
+  ${LIBGIT2_LIBRARIES}
 )
 
 set(stub_files
     stubs/config.cc
     stubs/dialogs.cc
+    stubs/directories.cc
     stubs/info.cc
     stubs/selectiondialog.cc
     stubs/terminal.cc
@@ -60,3 +66,8 @@ if(LIBLLDB_FOUND AND (NOT LIBCLANG_LIBRARIES STREQUAL "/usr/lib/llvm-3.5/lib/lib
   add_test(lldb_test lldb_test)
   add_subdirectory("lldb_test_files")
 endif()
+
+add_executable(git_test git_test.cc
+               $<TARGET_OBJECTS:project_shared> $<TARGET_OBJECTS:stubs>)
+target_link_libraries(git_test ${global_libraries})
+add_test(git_test git_test)

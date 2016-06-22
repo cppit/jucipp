@@ -39,6 +39,7 @@ find_package(ASPELL REQUIRED)
 include(FindPkgConfig)
 pkg_check_modules(GTKMM gtkmm-3.0 REQUIRED)
 pkg_check_modules(GTKSVMM gtksourceviewmm-3.0 REQUIRED)
+pkg_check_modules(LIBGIT2 libgit2 REQUIRED)
 
 add_subdirectory("src")
 

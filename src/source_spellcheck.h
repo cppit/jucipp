@@ -5,7 +5,7 @@
 #include "selectiondialog.h"
 
 namespace Source {
-  class SpellCheckView : public Gsv::View {
+  class SpellCheckView : virtual public Gsv::View {
   public:
     SpellCheckView();
     ~SpellCheckView();

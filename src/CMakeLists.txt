@@ -19,18 +19,23 @@ set(global_includes
    ${GTKSVMM_INCLUDE_DIRS}
    ${LIBCLANG_INCLUDE_DIRS}
    ${ASPELL_INCLUDE_DIR}
+   ${LIBGIT2_INCLUDE_DIRS}
    ../libclangmm/src
    ../tiny-process-library
    .
 )
 
-set(global_libraries
+if(MSYS)
+  set(global_libraries winpthread)
+endif()
+set(global_libraries ${global_libraries}
   ${GTKMM_LIBRARIES}
   ${GTKSVMM_LIBRARIES}
   ${Boost_LIBRARIES}
   ${LIBCLANG_LIBRARIES}
   ${LIBLLDB_LIBRARIES}
   ${ASPELL_LIBRARIES}
+  ${LIBGIT2_LIBRARIES}
 )
 
 set(project_files
@@ -55,9 +60,11 @@ set(project_shared_files
     cmake.cc
     dispatcher.cc
     filesystem.cc
+    git.cc
     project_build.cc
     source.cc
     source_clang.cc
+    source_diff.cc
     source_spellcheck.cc
 
     ../libclangmm/src/CodeCompleteResults.cc
