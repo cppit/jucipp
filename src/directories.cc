@@ -77,6 +77,9 @@ bool Directories::TreeStore::drag_data_received_vfunc(const TreeModel::Path &pat
     
     bool is_directory=boost::filesystem::is_directory(source_path);
     
+    if(is_directory)
+      Directories::get().remove_path(source_path);
+    
     boost::system::error_code ec;
     boost::filesystem::rename(source_path, target_path, ec);
     if(ec) {
@@ -158,22 +161,7 @@ Directories::Directories() : Gtk::TreeView() {
     return false;
   });
   signal_row_collapsed().connect([this](const Gtk::TreeModel::iterator &iter, const Gtk::TreeModel::Path &path){
-    auto directory_str=iter->get_value(column_record.path).string();
-    for(auto it=directories.begin();it!=directories.end();) {
-      if(directory_str==it->first.substr(0, directory_str.size()))
-        it=directories.erase(it);
-      else
-        it++;
-    }
-    auto children=iter->children();
-    if(children) {
-      while(children) {
-        tree_store->erase(children.begin());
-      }
-      auto child=tree_store->append(iter->children());
-      child->set_value(column_record.name, std::string("(empty)"));
-      child->set_value(column_record.type, PathType::UNKNOWN);
-    }
+    this->remove_path(iter->get_value(column_record.path));
   });
   
   enable_model_drag_source();
@@ -282,6 +270,9 @@ Directories::Directories() : Gtk::TreeView() {
         Terminal::get().print("Error: could not rename to "+target_path.string()+": already exists\n", true);
         return;
       }
+      
+      if(is_directory)
+        this->remove_path(*source_path);
       
       boost::system::error_code ec;
       boost::filesystem::rename(*source_path, target_path, ec);
@@ -653,6 +644,29 @@ void Directories::add_or_update_path(const boost::filesystem::path &dir_path, co
   }
   
   colorize_path(dir_path, include_parent_paths);
+}
+
+void Directories::remove_path(const boost::filesystem::path &dir_path) {
+  auto it=directories.find(dir_path.string());
+  if(it==directories.end())
+    return;
+  auto children=it->second.row->children();
+  
+  for(auto it=directories.begin();it!=directories.end();) {
+    if(filesystem::file_in_path(it->first, dir_path))
+      it=directories.erase(it);
+    else
+      it++;
+  }
+  
+  if(children) {
+    while(children) {
+      tree_store->erase(children.begin());
+    }
+    auto child=tree_store->append(children);
+    child->set_value(column_record.name, std::string("(empty)"));
+    child->set_value(column_record.type, PathType::UNKNOWN);
+  }
 }
 
 void Directories::colorize_path(const boost::filesystem::path &dir_path_, bool include_parent_paths) {
