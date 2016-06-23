@@ -2,7 +2,7 @@
 #define JUCI_FILES_H_
 #include <string>
 
-#define JUCI_VERSION "1.2.0-rc3"
+#define JUCI_VERSION "1.2.0-rc4"
 
 const std::string default_config_file = R"RAW({
     "version": ")RAW"+std::string(JUCI_VERSION)+R"RAW(",
@@ -45,6 +45,7 @@ R"RAW(
         "show_map": true,
         "map_font_size": "1",
         "show_git_diff": true,
+        "show_background_pattern": true,
         "spellcheck_language_comment": "Use \"\" to set language from your locale settings",
         "spellcheck_language": "en_US",
         "auto_tab_char_and_size_comment": "Use false to always use default tab char and size",

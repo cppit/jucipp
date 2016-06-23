@@ -195,6 +195,8 @@ void Config::get_source() {
   source.map_font_size = source_json.get<std::string>("map_font_size");
   
   source.show_git_diff = source_json.get<bool>("show_git_diff");
+  
+  source.show_background_pattern = source_json.get<bool>("show_background_pattern");
 
   source.spellcheck_language = source_json.get<std::string>("spellcheck_language");
 

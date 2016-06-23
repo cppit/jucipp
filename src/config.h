@@ -61,6 +61,7 @@ public:
     bool show_map;
     std::string map_font_size;
     bool show_git_diff;
+    bool show_background_pattern;
     
     bool auto_tab_char_and_size;
     char default_tab_char;

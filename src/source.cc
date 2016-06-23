@@ -331,7 +331,10 @@ void Source::View::configure() {
   if(Config::get().source.font.size()>0)
     override_font(Pango::FontDescription(Config::get().source.font));
 #if GTKSOURCEVIEWMM_MAJOR_VERSION > 2 & GTKSOURCEVIEWMM_MINOR_VERSION > 15
-  gtk_source_view_set_background_pattern(this->gobj(), GTK_SOURCE_BACKGROUND_PATTERN_TYPE_GRID);
+  if(Config::get().source.show_background_pattern)
+    gtk_source_view_set_background_pattern(this->gobj(), GTK_SOURCE_BACKGROUND_PATTERN_TYPE_GRID);
+  else
+    gtk_source_view_set_background_pattern(this->gobj(), GTK_SOURCE_BACKGROUND_PATTERN_TYPE_NONE);
 #endif
   
   //Create tags for diagnostic warnings and errors:
