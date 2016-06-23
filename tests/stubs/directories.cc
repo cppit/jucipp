@@ -1,6 +1,6 @@
 #include "directories.h"
 
-Directories::Directories() {}
+Directories::Directories() : ListViewText(1) {}
 
 Directories::~Directories() {}
 

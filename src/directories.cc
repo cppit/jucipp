@@ -6,9 +6,6 @@
 #include "filesystem.h"
 #include "entrybox.h"
 
-#include <iostream> //TODO: remove
-using namespace std; //TODO: remove
-
 namespace sigc {
 #ifndef SIGC_FUNCTORS_DEDUCE_RESULT_TYPE_WITH_DECLTYPE
   template <typename Functor>
@@ -127,15 +124,21 @@ bool Directories::TreeStore::drag_data_delete_vfunc (const Gtk::TreeModel::Path 
   return false;
 }
 
-Directories::Directories() : Gtk::TreeView() {
+Directories::Directories() : Gtk::ListViewText(1) {
   this->set_enable_tree_lines(true);
   
   tree_store = TreeStore::create();
   tree_store->set_column_types(column_record);
   set_model(tree_store);
-  append_column("", column_record.name);
+  
   auto renderer=dynamic_cast<Gtk::CellRendererText*>(get_column(0)->get_first_cell());
-  get_column(0)->add_attribute(renderer->property_foreground_rgba(), column_record.color);
+  get_column(0)->set_cell_data_func(*renderer, [this] (Gtk::CellRenderer *renderer, const Gtk::TreeModel::iterator &iter) {
+    if(auto renderer_text=dynamic_cast<Gtk::CellRendererText*>(renderer))
+      renderer_text->property_markup()=iter->get_value(column_record.markup);
+  });
+  auto provider = Gtk::CssProvider::create();
+  provider->load_from_data("*:selected {border-left-color: inherit; border-top-color: inherit; color: inherit; background-color: rgba(128, 128, 128 , 0.2);}");
+  get_style_context()->add_provider(provider, GTK_STYLE_PROVIDER_PRIORITY_APPLICATION);
   
   tree_store->set_sort_column(column_record.id, Gtk::SortType::SORT_ASCENDING);
   set_enable_search(true); //TODO: why does this not work in OS X?
@@ -615,11 +618,13 @@ void Directories::add_or_update_path(const boost::filesystem::path &dir_path, co
       auto child = tree_store->append(*children);
       not_deleted.emplace(filename);
       child->set_value(column_record.name, filename);
+      child->set_value(column_record.markup, Glib::Markup::escape_text(filename));
       child->set_value(column_record.path, it->path());
       if (boost::filesystem::is_directory(it->path())) {
         child->set_value(column_record.id, "a"+filename);
         auto grandchild=tree_store->append(child->children());
         grandchild->set_value(column_record.name, std::string("(empty)"));
+        grandchild->set_value(column_record.markup, Glib::Markup::escape_text("(empty)"));
         grandchild->set_value(column_record.type, PathType::UNKNOWN);
       }
       else {
@@ -643,6 +648,7 @@ void Directories::add_or_update_path(const boost::filesystem::path &dir_path, co
   if(!*children) {
     auto child=tree_store->append(*children);
     child->set_value(column_record.name, std::string("(empty)"));
+    child->set_value(column_record.markup, Glib::Markup::escape_text("(empty)"));
     child->set_value(column_record.type, PathType::UNKNOWN);
   }
   
@@ -668,6 +674,7 @@ void Directories::remove_path(const boost::filesystem::path &dir_path) {
     }
     auto child=tree_store->append(children);
     child->set_value(column_record.name, std::string("(empty)"));
+    child->set_value(column_record.markup, Glib::Markup::escape_text("(empty)"));
     child->set_value(column_record.type, PathType::UNKNOWN);
   }
 }
@@ -720,18 +727,26 @@ void Directories::colorize_path(const boost::filesystem::path &dir_path_, bool i
             return;
           
           for(auto &child: *children) {
+            auto name=Glib::Markup::escape_text(child.get_value(column_record.name));
             auto path=child.get_value(column_record.path);
+            Gdk::RGBA *color;
             if(status->modified.find(path.generic_string())!=status->modified.end())
-              child.set_value(column_record.color, yellow);
+              color=&yellow;
             else if(status->added.find(path.generic_string())!=status->added.end())
-              child.set_value(column_record.color, green);
-            else {
-              auto type=child.get_value(column_record.type);
-              if(type==PathType::UNKNOWN)
-                child.set_value(column_record.color, gray);
-              else
-                child.set_value(column_record.color, normal_color);
-            }
+              color=&green;
+            else
+              color=&normal_color;
+            
+            std::stringstream ss;
+            ss << '#' << std::setfill('0') << std::hex;
+            ss << std::setw(2) << std::hex << (color->get_red_u()>>8);
+            ss << std::setw(2) << std::hex << (color->get_green_u()>>8);
+            ss << std::setw(2) << std::hex << (color->get_blue_u()>>8);
+            child.set_value(column_record.markup, "<span foreground=\""+ss.str()+"\">"+name+"</span>");
+            
+            auto type=child.get_value(column_record.type);
+            if(type==PathType::UNKNOWN)
+              child.set_value(column_record.markup, "<i>"+child.get_value(column_record.markup)+"</i>");
           }
           
           if(!include_parent_paths)

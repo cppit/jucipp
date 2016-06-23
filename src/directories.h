@@ -13,7 +13,7 @@
 #include "git.h"
 #include "dispatcher.h"
 
-class Directories : public Gtk::TreeView {
+class Directories : public Gtk::ListViewText {
   class DirectoryData {
   public:
     Gtk::TreeModel::Row row;
@@ -38,15 +38,15 @@ class Directories : public Gtk::TreeView {
       ColumnRecord() {
         add(id);
         add(name);
+        add(markup);
         add(path);
         add(type);
-        add(color);
       }
       Gtk::TreeModelColumn<std::string> id;
       Gtk::TreeModelColumn<std::string> name;
+      Gtk::TreeModelColumn<Glib::ustring> markup;
       Gtk::TreeModelColumn<boost::filesystem::path> path;
       Gtk::TreeModelColumn<PathType> type;
-      Gtk::TreeModelColumn<Gdk::RGBA> color;
     };
     
     static Glib::RefPtr<TreeStore> create() {return Glib::RefPtr<TreeStore>(new TreeStore());}
