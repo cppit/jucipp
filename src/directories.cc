@@ -137,7 +137,7 @@ Directories::Directories() : Gtk::ListViewText(1) {
       renderer_text->property_markup()=iter->get_value(column_record.markup);
   });
   auto provider = Gtk::CssProvider::create();
-  provider->load_from_data("*:selected {border-left-color: inherit; border-top-color: inherit; color: inherit; background-color: rgba(128, 128, 128 , 0.2);}");
+  provider->load_from_data("*:selected {border-left-color: inherit; color: inherit; background-color: rgba(128, 128, 128 , 0.2); background-image: inherit;}");
   get_style_context()->add_provider(provider, GTK_STYLE_PROVIDER_PRIORITY_APPLICATION);
   
   tree_store->set_sort_column(column_record.id, Gtk::SortType::SORT_ASCENDING);
