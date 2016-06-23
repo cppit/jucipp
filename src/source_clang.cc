@@ -276,26 +276,28 @@ void Source::ClangViewParse::update_diagnostics() {
   size_t num_errors=0;
   size_t num_fix_its=0;
   for(auto &diagnostic: diagnostics) {
-    if(diagnostic.path==file_path.string()) {
-      auto start_line=get_line(diagnostic.offsets.first.line-1); //index is sometimes off the line
-      auto start_line_index=diagnostic.offsets.first.index-1;
-      if(start_line_index>=start_line.size()) {
-        if(start_line.size()==0)
-          start_line_index=0;
-        else
-          start_line_index=start_line.size()-1;
+    if(diagnostic.path==file_path.string()) {      
+      int line=diagnostic.offsets.first.line-1;
+      if(line<0 || line>=get_buffer()->get_line_count())
+        line=get_buffer()->get_line_count()-1;
+      auto start=get_iter_at_line_end(line);
+      int index=diagnostic.offsets.first.index-1;
+      if(index>=0 && index<start.get_line_index())
+        start=get_buffer()->get_iter_at_line_index(line, index);
+      if(start.ends_line()) {
+        while(!start.is_start() && start.ends_line())
+          start.backward_char();
       }
-      auto end_line=get_line(diagnostic.offsets.second.line-1); //index is sometimes off the line
-      auto end_line_index=diagnostic.offsets.second.index-1;
-      if(end_line_index>end_line.size()) {
-        if(end_line.size()==0)
-          end_line_index=0;
-        else
-          end_line_index=end_line.size();
-      }
-      auto start=get_buffer()->get_iter_at_line_index(diagnostic.offsets.first.line-1, start_line_index);
       diagnostic_offsets.emplace(start.get_offset());
-      auto end=get_buffer()->get_iter_at_line_index(diagnostic.offsets.second.line-1, end_line_index);
+      
+      line=diagnostic.offsets.second.line-1;
+      if(line<0 || line>=get_buffer()->get_line_count())
+        line=get_buffer()->get_line_count()-1;
+      auto end=get_iter_at_line_end(line);
+      index=diagnostic.offsets.second.index-1;
+      if(index>=0 && index<end.get_line_index())
+        end=get_buffer()->get_iter_at_line_index(line, index);
+            
       std::string diagnostic_tag_name;
       if(diagnostic.severity<=CXDiagnostic_Warning) {
         diagnostic_tag_name="def:warning";
