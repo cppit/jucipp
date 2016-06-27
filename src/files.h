@@ -2,7 +2,7 @@
 #define JUCI_FILES_H_
 #include <string>
 
-#define JUCI_VERSION "1.2.0-rc4"
+#define JUCI_VERSION "1.2.0-rc5"
 
 const std::string default_config_file = R"RAW({
     "version": ")RAW"+std::string(JUCI_VERSION)+R"RAW(",
@@ -19,7 +19,8 @@ const std::string default_config_file = R"RAW({
     "terminal": {
         "history_size": 1000,
         "font_comment": "Use \"\" to use source.font with slightly smaller size",
-        "font": ""
+        "font": "",
+        "show_progress": true
     },
     "source": {
         "style_comment": "Use \"\" for default style, and for instance juci-dark or juci-dark-blue together with dark gtk_theme variant. Styles from normal gtksourceview install: classic, cobalt, kate, oblivion, solarized-dark, solarized-light, tango",

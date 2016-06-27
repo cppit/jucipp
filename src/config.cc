@@ -98,6 +98,8 @@ void Config::retrieve_config() {
   terminal.history_size=cfg.get<int>("terminal.history_size");
   terminal.font=cfg.get<std::string>("terminal.font");
   
+  terminal.show_progress=cfg.get<bool>("terminal.show_progress");
+  
   terminal.clang_format_command="clang-format";
 #ifdef __linux
   if(terminal.clang_format_command=="clang-format" &&

@@ -6,7 +6,10 @@
 #include <iostream>
 
 Terminal::InProgress::InProgress(const std::string& start_msg): stop(false) {
-  start(start_msg);
+  if(Config::get().terminal.show_progress)
+    start(start_msg);
+  else
+    stop=true;
 }
 
 Terminal::InProgress::~InProgress() {
