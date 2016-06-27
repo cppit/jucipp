@@ -3,7 +3,6 @@
 #include "menu.h"
 #include "notebook.h"
 #include "directories.h"
-//#include "api.h"
 #include "dialogs.h"
 #include "filesystem.h"
 #include "project.h"
@@ -34,43 +33,54 @@ Window::Window() {
   
   set_default_size(Config::get().window.default_size.first, Config::get().window.default_size.second);
   
-  directories_scrolled_window.add(Directories::get());
-  directory_and_notebook_panes.pack1(directories_scrolled_window, Gtk::SHRINK);
+  auto directories_scrolled_window=Gtk::manage(new Gtk::ScrolledWindow());
+  directories_scrolled_window->add(Directories::get());
+  
   notebook_vbox.pack_start(Notebook::get());
   notebook_vbox.pack_end(EntryBox::get(), Gtk::PACK_SHRINK);
+  
+  directory_and_notebook_panes.pack1(*directories_scrolled_window, Gtk::SHRINK);
   directory_and_notebook_panes.pack2(notebook_vbox, Gtk::SHRINK);
   directory_and_notebook_panes.set_position(static_cast<int>(0.2*Config::get().window.default_size.first));
-  vpaned.set_position(static_cast<int>(0.75*Config::get().window.default_size.second));
-  vpaned.pack1(directory_and_notebook_panes, true, false);
   
-  terminal_scrolled_window.add(Terminal::get());
-  terminal_vbox.pack_start(terminal_scrolled_window);
-    
-  info_and_status_hbox.pack_start(Notebook::get().info, Gtk::PACK_SHRINK);
+  auto info_and_status_hbox=Gtk::manage(new Gtk::HBox());
+  info_and_status_hbox->pack_start(Notebook::get().info, Gtk::PACK_SHRINK);
   
 #if GTK_VERSION_GE(3, 12)
-  info_and_status_hbox.set_center_widget(Project::debug_status_label());
+  info_and_status_hbox->set_center_widget(Project::debug_status_label());
 #else
   Project::debug_status_label().set_halign(Gtk::Align::ALIGN_CENTER);
-  info_and_status_hbox.pack_start(Project::debug_status_label());
+  info_and_status_hbox->pack_start(Project::debug_status_label());
 #endif
-  info_and_status_hbox.pack_end(Notebook::get().status, Gtk::PACK_SHRINK);
-  terminal_vbox.pack_end(info_and_status_hbox, Gtk::PACK_SHRINK);
-  vpaned.pack2(terminal_vbox, true, true);
+  info_and_status_hbox->pack_end(Notebook::get().status, Gtk::PACK_SHRINK);
+  
+  terminal_scrolled_window.add(Terminal::get());
+  
+  auto terminal_vbox=Gtk::manage(new Gtk::VBox());
+  terminal_vbox->pack_start(terminal_scrolled_window);
+  terminal_vbox->pack_end(*info_and_status_hbox, Gtk::PACK_SHRINK);
+  
+  vpaned.set_position(static_cast<int>(0.75*Config::get().window.default_size.second));
+  vpaned.pack1(directory_and_notebook_panes, true, false);
+  vpaned.pack2(*terminal_vbox, true, true);
   
 #if GTKMM_MAJOR_VERSION>3 || (GTKMM_MAJOR_VERSION==3 && GTKMM_MINOR_VERSION>=14)
-  overlay_vbox.set_hexpand(false);
-  overlay_vbox.set_halign(Gtk::Align::ALIGN_START);
-  overlay_hbox.set_hexpand(false);
-  overlay_hbox.set_halign(Gtk::Align::ALIGN_END);
-  overlay_vbox.pack_start(Info::get(), Gtk::PACK_SHRINK, 20);
-  overlay_hbox.pack_end(overlay_vbox, Gtk::PACK_SHRINK, 20);
-  overlay.add(vpaned);
-  overlay.add_overlay(overlay_hbox);
+  auto overlay_vbox=Gtk::manage(new Gtk::VBox());
+  auto overlay_hbox=Gtk::manage(new Gtk::HBox());
+  overlay_vbox->set_hexpand(false);
+  overlay_vbox->set_halign(Gtk::Align::ALIGN_START);
+  overlay_vbox->pack_start(Info::get(), Gtk::PACK_SHRINK, 20);
+  overlay_hbox->set_hexpand(false);
+  overlay_hbox->set_halign(Gtk::Align::ALIGN_END);
+  overlay_hbox->pack_end(*overlay_vbox, Gtk::PACK_SHRINK, 20);
+  
+  auto overlay=Gtk::manage(new Gtk::Overlay());
+  overlay->add(vpaned);
+  overlay->add_overlay(*overlay_hbox);
 #if GTKMM_MAJOR_VERSION>3 || (GTKMM_MAJOR_VERSION==3 && GTKMM_MINOR_VERSION>=18)
-  overlay.set_overlay_pass_through(overlay_hbox, true);
+  overlay->set_overlay_pass_through(*overlay_hbox, true);
 #endif
-  add(overlay);
+  add(*overlay);
 #else
   add(vpaned);
 #endif
