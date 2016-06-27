@@ -241,9 +241,7 @@ void Source::View::cleanup_whitespace_characters() {
   buffer->begin_user_action();
   for(int line=0;line<buffer->get_line_count();line++) {
     auto iter=buffer->get_iter_at_line(line);
-    auto end_iter=iter;
-    while(!end_iter.ends_line())
-      end_iter.forward_char();
+    auto end_iter=get_iter_at_line_end(line);
     if(iter==end_iter)
       continue;
     iter=end_iter;
@@ -676,9 +674,7 @@ void Source::View::place_cursor_at_line_offset(int line, int offset) {
   line=std::min(line, get_buffer()->get_line_count()-1);
   if(line<0)
     line=0;
-  auto iter=get_buffer()->get_iter_at_line(line);
-  while(!iter.ends_line())
-    iter.forward_char();
+  auto iter=get_iter_at_line_end(line);
   offset=std::min(offset, iter.get_line_offset());
   get_buffer()->place_cursor(get_buffer()->get_iter_at_line_offset(line, offset));
 }
@@ -687,9 +683,7 @@ void Source::View::place_cursor_at_line_index(int line, int index) {
   line=std::min(line, get_buffer()->get_line_count()-1);
   if(line<0)
     line=0;
-  auto iter=get_buffer()->get_iter_at_line(line);
-  while(!iter.ends_line())
-    iter.forward_char();
+  auto iter=get_iter_at_line_end(line);
   index=std::min(index, iter.get_line_index());
   get_buffer()->place_cursor(get_buffer()->get_iter_at_line_index(line, index));
 }
@@ -724,8 +718,7 @@ void Source::View::set_info(const std::string &info) {
 
 std::string Source::View::get_line(const Gtk::TextIter &iter) {
   auto line_start_it = get_buffer()->get_iter_at_line(iter.get_line());
-  auto line_end_it = iter;
-  while(!line_end_it.ends_line() && line_end_it.forward_char()) {}
+  auto line_end_it = get_iter_at_line_end(iter.get_line());
   std::string line(get_buffer()->get_text(line_start_it, line_end_it));
   return line;
 }
@@ -1112,8 +1105,7 @@ bool Source::View::on_key_press_event_basic(GdkEventKey* key) {
   //Next two are smart home/end keys that works with wrapped lines
   //Note that smart end goes FIRST to end of line to avoid hiding empty chars after expressions
   else if(key->keyval==GDK_KEY_End && (key->state&GDK_CONTROL_MASK)==0) {
-    auto end_line_iter=iter;
-    while(!end_line_iter.ends_line() && end_line_iter.forward_char()) {}
+    auto end_line_iter=get_iter_at_line_end(iter.get_line());
     auto end_sentence_iter=end_line_iter;
     while(!end_sentence_iter.starts_line() && 
           (*end_sentence_iter==' ' || *end_sentence_iter=='\t' || end_sentence_iter.ends_line()) &&

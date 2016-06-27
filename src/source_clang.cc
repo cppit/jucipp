@@ -1022,9 +1022,7 @@ Source::ClangViewRefactor::ClangViewRefactor(const boost::filesystem::path &file
               start_iter.forward_char();
               whitespaces_removed++;
             }
-            auto end_iter=start_iter;
-            while(!end_iter.ends_line())
-              end_iter.forward_char();
+            auto end_iter=clang_view->get_iter_at_line_end(offset.first.line-1);
             std::string line=Glib::Markup::escape_text(clang_view->get_buffer()->get_text(start_iter, end_iter));
             
             //markup token as bold

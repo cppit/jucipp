@@ -137,8 +137,7 @@ Window::Window() {
       auto iter=view->get_buffer()->begin();
       while(view->get_source_buffer()->forward_iter_to_source_mark(iter, "debug_breakpoint") ||
          view->get_source_buffer()->get_source_marks_at_iter(iter, "debug_breakpoint").size()) {
-        auto end_iter=iter;
-        while(!end_iter.ends_line() && end_iter.forward_char()) {}
+        auto end_iter=view->get_iter_at_line_end(iter.get_line());
         view->get_source_buffer()->remove_source_marks(iter, end_iter, "debug_breakpoint");
         Project::current->debug_remove_breakpoint(view->file_path, iter.get_line()+1, view->get_buffer()->get_line_count()+1);
       }
@@ -864,8 +863,7 @@ void Window::set_menu_actions() {
       
       if(view->get_source_buffer()->get_source_marks_at_line(line_nr, "debug_breakpoint").size()>0) {
         auto start_iter=view->get_buffer()->get_iter_at_line(line_nr);
-        auto end_iter=start_iter;
-        while(!end_iter.ends_line() && end_iter.forward_char()) {}
+        auto end_iter=view->get_iter_at_line_end(line_nr);
         view->get_source_buffer()->remove_source_marks(start_iter, end_iter, "debug_breakpoint");
         if(Project::current && Project::debugging)
           Project::current->debug_remove_breakpoint(view->file_path, line_nr+1, view->get_buffer()->get_line_count()+1);
