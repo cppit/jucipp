@@ -125,11 +125,13 @@ bool Directories::TreeStore::drag_data_delete_vfunc (const Gtk::TreeModel::Path 
 }
 
 Directories::Directories() : Gtk::ListViewText(1) {
-  this->set_enable_tree_lines(true);
+  set_enable_tree_lines(true);
   
   tree_store = TreeStore::create();
   tree_store->set_column_types(column_record);
   set_model(tree_store);
+  
+  get_column(0)->set_title("");
   
   auto renderer=dynamic_cast<Gtk::CellRendererText*>(get_column(0)->get_first_cell());
   get_column(0)->set_cell_data_func(*renderer, [this] (Gtk::CellRenderer *renderer, const Gtk::TreeModel::iterator &iter) {
