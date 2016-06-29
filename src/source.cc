@@ -188,6 +188,9 @@ Source::View::View(const boost::filesystem::path &file_path, Glib::RefPtr<Gsv::L
         command+="}\"";
       }
       
+      auto iter=get_buffer()->get_iter_at_line(get_buffer()->get_line_count()-1);
+      if(iter!=get_buffer()->end())
+        get_buffer()->insert(get_buffer()->end(), "\n");
       std::stringstream stdin_stream(get_buffer()->get_text()), stdout_stream;
       
       auto exit_status=Terminal::get().process(stdin_stream, stdout_stream, command, this->file_path.parent_path());
@@ -197,11 +200,35 @@ Source::View::View(const boost::filesystem::path &file_path, Glib::RefPtr<Gsv::L
         auto cursor_line_nr=iter.get_line();
         auto cursor_line_offset=iter.get_line_offset();
         
-        get_buffer()->set_text(stdout_stream.str());
+        //Insert new text without moving scrolled window
+        auto new_text=stdout_stream.str();
+        size_t start_line_index=0;
+        int line_nr=0;
+        for(size_t c=0;c<new_text.size();++c) {
+          if(new_text[c]=='\n') {
+            if(line_nr<get_buffer()->get_line_count()) {
+              auto start_iter=get_buffer()->get_iter_at_line(line_nr);
+              auto end_iter=get_iter_at_line_end(line_nr);
+              get_buffer()->erase(start_iter, end_iter);
+            }
+            else
+              get_buffer()->insert(get_buffer()->end(), "\n");
+            auto iter=get_buffer()->get_iter_at_line(line_nr);
+            get_buffer()->insert(iter, new_text.substr(start_line_index, c-start_line_index));
+            ++line_nr;
+            start_line_index=c+1;
+          }
+        }
+        iter=get_buffer()->get_iter_at_line(get_buffer()->get_line_count()-1);
+        if(iter!=get_buffer()->end())
+          get_buffer()->insert(get_buffer()->end(), "\n");
+        if(line_nr<get_buffer()->get_line_count()-1) {
+          auto iter=get_buffer()->get_iter_at_line(line_nr);
+          get_buffer()->erase(iter, get_buffer()->end());
+        }
         get_buffer()->end_user_action();
         
         place_cursor_at_line_offset(cursor_line_nr, cursor_line_offset);
-        scroll_to_cursor_delayed(this, true, false);
       }
     };
   }
