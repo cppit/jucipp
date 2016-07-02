@@ -40,6 +40,7 @@ set(global_libraries ${global_libraries}
 
 set(project_files
     config.cc
+    ctags.cc
     dialogs.cc
     dialogs_unix.cc
     directories.cc
