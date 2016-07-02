@@ -2,7 +2,7 @@
 #define JUCI_FILES_H_
 #include <string>
 
-#define JUCI_VERSION "1.2.0"
+#define JUCI_VERSION "1.2.0-1"
 
 const std::string default_config_file = R"RAW({
     "version": ")RAW"+std::string(JUCI_VERSION)+R"RAW(",
@@ -101,6 +101,7 @@ R"RAW(
         "source_indentation_auto_indent_buffer": "<primary><shift>i",
         "source_goto_line": "<primary>g",
         "source_center_cursor": "<primary>l",
+        "source_find_symbol_ctags": "<primary><shift>f",
         "source_find_documentation": "<primary><shift>d",
         "source_goto_declaration": "<primary>d",
         "source_goto_implementation": "<primary>i",
@@ -156,7 +157,8 @@ R"RAW(
 R"RAW(
         "make_command": "cmake --build .",
         "save_on_compile_or_run": true,
-        "clear_terminal_on_compile": true
+        "clear_terminal_on_compile": true,
+        "ctags_command": "ctags"
     },
     "documentation_searches": {
         "clang": {

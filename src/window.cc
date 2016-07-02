@@ -449,6 +449,120 @@ void Window::set_menu_actions() {
       view->scroll_to_cursor_delayed(view, true, false);
   });
   
+  menu.add_action("source_find_symbol_ctags", [this]() {
+    if(auto view=Notebook::get().get_current_view()) {
+      auto build=Project::Build::create(view->file_path);
+      auto run_path=std::make_shared<boost::filesystem::path>(build->project_path);
+      std::string exclude;
+      if(!run_path->empty()) {
+        auto relative_path=filesystem::get_relative_path(build->get_default_path(), build->project_path);
+        if(!relative_path.empty())
+          exclude+=" --exclude="+relative_path.string();
+        relative_path=filesystem::get_relative_path(build->get_debug_path(), build->project_path);
+        if(!relative_path.empty())
+          exclude+=" --exclude="+relative_path.string();
+      }
+      else {
+        if(!Directories::get().path.empty())
+          *run_path=Directories::get().path;
+        else
+          *run_path=view->file_path.parent_path();
+      }
+      std::stringstream stdin_stream, stdout_stream;
+      auto command=Config::get().project.ctags_command+exclude+" --fields=n --sort=foldcase -f- -R *";
+      auto exit_status=Terminal::get().process(stdin_stream, stdout_stream, command, *run_path);
+      if(exit_status==0) {
+        auto dialog_iter=view->get_iter_for_dialog();
+        view->selection_dialog=std::unique_ptr<SelectionDialog>(new SelectionDialog(*view, view->get_buffer()->create_mark(dialog_iter), true, true));
+        auto rows=std::make_shared<std::unordered_map<std::string, Source::Offset> >();
+        
+        std::string line;
+        while(std::getline(stdout_stream, line)) {
+          std::string symbol, file, source_line;
+          unsigned long line_nr;
+          size_t last_pos=-1, pos;
+          
+          pos=line.find("\t", last_pos+1);
+          if(pos==std::string::npos || last_pos+1>=line.size()) {
+            Terminal::get().print("Warning (ctags): failed to parse symbol\n", true);
+            continue;
+          }
+          symbol=line.substr(last_pos+1, pos-last_pos-1);
+          last_pos=pos;
+          
+          pos=line.find("\t", last_pos+1);
+          if(pos==std::string::npos || last_pos+1>=line.size()) {
+            Terminal::get().print("Warning (ctags): failed to parse file\n", true);
+            continue;
+          }
+          file=line.substr(last_pos+1, pos-last_pos-1);
+          last_pos=pos;
+          
+          pos=line.find("/;\"\t", last_pos+1);
+          if(pos==std::string::npos || last_pos+3>=line.size()) {
+            //Skipping defines
+            continue;
+          }
+          pos+=3;
+          source_line=line.substr(last_pos+3, pos-last_pos-7);
+          size_t line_index=0;
+          for(;line_index<source_line.size();++line_index) {
+            if(source_line[line_index]!=' ' && source_line[line_index]!='\t')
+              break;
+          }
+          if(line_index>0)
+            source_line=source_line.substr(line_index);
+          size_t line_index_add=source_line.find(symbol);
+          if(line_index_add!=std::string::npos)
+            line_index+=line_index_add;
+          
+          source_line=Glib::Markup::escape_text(source_line);
+          size_t bold_pos=-1;
+          while((bold_pos=source_line.find(symbol, bold_pos+1))!=std::string::npos) {
+            source_line.insert(bold_pos+symbol.size(), "</b>");
+            source_line.insert(bold_pos, "<b>");
+            bold_pos+=7+symbol.size();
+          }
+          last_pos=pos;
+          
+          if(last_pos+6>=line.size()) {
+            Terminal::get().print("Warning (ctags): failed to parse line number\n", true);
+            continue;
+          }
+          try {
+            line_nr=std::stoul(line.substr(last_pos+6, line.size()-last_pos-6));
+          }
+          catch(const std::exception &) {
+            Terminal::get().print("Warning (ctags): failed to parse line number\n", true);
+            continue;
+          }
+          
+          std::string row=file+":"+std::to_string(line_nr)+": "+source_line;
+          (*rows)[row]=Source::Offset(line_nr-1, line_index, file);
+          view->selection_dialog->add_row(row);
+        }
+        
+        if(rows->size()==0)
+          return;
+        view->selection_dialog->on_select=[this, rows, run_path](const std::string &selected, bool hide_window) {
+          auto offset=rows->at(selected);
+          boost::filesystem::path declaration_file;
+          boost::system::error_code ec;
+          declaration_file=boost::filesystem::canonical(*run_path/offset.file_path, ec);
+          if(ec)
+            return;
+          Notebook::get().open(declaration_file);
+          auto view=Notebook::get().get_current_view();
+          view->place_cursor_at_line_index(offset.line, offset.index);
+          view->scroll_to_cursor_delayed(view, true, false);
+          view->hide_tooltips();
+        };
+        view->hide_tooltips();
+        view->selection_dialog->show();
+      }
+    }
+  });
+  
   menu.add_action("source_find_documentation", [this]() {
     if(auto view=Notebook::get().get_current_view()) {
       if(view->get_token_data) {
@@ -931,6 +1045,7 @@ void Window::activate_menu_items(bool activate) {
   auto &menu = Menu::get();
   auto &notebook = Notebook::get();
   menu.actions["source_indentation_auto_indent_buffer"]->set_enabled(activate ? static_cast<bool>(notebook.get_current_view()->auto_indent) : false);
+  menu.actions["source_find_symbol_ctags"]->set_enabled(activate);
   menu.actions["source_find_documentation"]->set_enabled(activate ? static_cast<bool>(notebook.get_current_view()->get_token_data) : false);
   menu.actions["source_goto_declaration"]->set_enabled(activate ? static_cast<bool>(notebook.get_current_view()->get_declaration_location) : false);
   menu.actions["source_goto_implementation"]->set_enabled(activate ? static_cast<bool>(notebook.get_current_view()->get_implementation_location) : false);

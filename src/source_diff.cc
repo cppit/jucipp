@@ -1,6 +1,7 @@
 #include "source_diff.h"
 #include "config.h"
 #include "terminal.h"
+#include "filesystem.h"
 #include <boost/version.hpp>
 
 namespace sigc {
@@ -303,23 +304,9 @@ std::unique_ptr<Git::Repository::Diff> Source::DiffView::get_diff() {
   boost::filesystem::path relative_path;
   {
     std::unique_lock<std::mutex> lock(file_path_mutex);
-#if BOOST_VERSION>=106000
-    relative_path=boost::filesystem::relative(file_path, work_path);
-#else
-    if(std::distance(file_path.begin(), file_path.end())<std::distance(work_path.begin(), work_path.end()))
+    relative_path=filesystem::get_relative_path(file_path, work_path);
+    if(relative_path.empty())
       throw std::runtime_error("not a relative path");
-    
-    auto work_path_it=work_path.begin();
-    auto file_path_it=file_path.begin();
-    while(file_path_it!=file_path.end() && work_path_it!=work_path.end()) {
-      if(*file_path_it!=*work_path_it)
-        throw std::runtime_error("not a relative path");
-      ++file_path_it;
-      ++work_path_it;
-    }
-    for(;file_path_it!=file_path.end();++file_path_it)
-      relative_path/=*file_path_it;
-#endif
   }
   return std::unique_ptr<Git::Repository::Diff>(new Git::Repository::Diff(repository->get_diff(relative_path)));
 }

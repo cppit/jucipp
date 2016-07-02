@@ -216,6 +216,13 @@ Menu::Menu() {
   "      </section>"
   "      <section>"
   "        <item>"
+  "          <attribute name='label' translatable='yes'>_Find _Symbol (Ctags)</attribute>"
+  "          <attribute name='action'>app.source_find_symbol_ctags</attribute>"
+             +accels["source_find_symbol_ctags"]+ //For Ubuntu...
+  "        </item>"
+  "      </section>"
+  "      <section>"
+  "        <item>"
   "          <attribute name='label' translatable='yes'>_Find _Documentation</attribute>"
   "          <attribute name='action'>app.source_find_documentation</attribute>"
              +accels["source_find_documentation"]+ //For Ubuntu...

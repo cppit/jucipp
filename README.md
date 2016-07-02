@@ -23,6 +23,7 @@ towards libclang with speed and ease of use in mind.
 * Highlighting of similar types (C++)
 * Automated documentation search (C++)
 * Go to declaration, implementation, methods and usages (C++)
+* Find symbol through ctags
 * Spell checking depending on file context
 * Run shell commands within JuCi++
 * Regex search and replace

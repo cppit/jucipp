@@ -198,3 +198,28 @@ boost::filesystem::path filesystem::get_canonical_path(const boost::filesystem::
     return path;
   return canonical_path;
 }
+
+boost::filesystem::path filesystem::get_relative_path(const boost::filesystem::path &path, const boost::filesystem::path &base) noexcept {
+  boost::filesystem::path relative_path;
+  boost::system::error_code ec;
+#if BOOST_VERSION>=106000
+  relative_path=boost::filesystem::relative(path, base, ec);
+  if(ec)
+    return boost::filesystem::path();
+#else
+  if(std::distance(path.begin(), path.end())<std::distance(base.begin(), base.end()))
+    return boost::filesystem::path();
+  
+  auto base_it=base.begin();
+  auto path_it=path.begin();
+  while(path_it!=path.end() && base_it!=base.end()) {
+    if(*path_it!=*base_it)
+      return boost::filesystem::path();
+    ++path_it;
+    ++base_it;
+  }
+  for(;path_it!=path.end();++path_it)
+    relative_path/=*path_it;
+#endif
+  return relative_path;
+}

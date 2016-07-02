@@ -42,6 +42,7 @@ public:
     std::string make_command;
     bool save_on_compile_or_run;
     bool clear_terminal_on_compile;
+    std::string ctags_command;
   };
   
   class Source {
