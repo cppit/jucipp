@@ -993,6 +993,16 @@ Source::ClangViewRefactor::ClangViewRefactor(const boost::filesystem::path &file
           }
         }
       }
+      //If no implementation was found, try using clang_getCursorDefinition
+      auto definition=clang::Cursor(clang_getCursorDefinition(identifier.cursor.cx_cursor));
+      if(definition) {
+        auto definition_location=definition.get_source_location();
+        location.file_path=definition_location.get_path();
+        auto offset=definition_location.get_offset();
+        location.line=offset.line-1;
+        location.index=offset.index-1;
+        return location;
+      }
       
       //If no implementation was found, try using Ctags
       auto name=identifier.cursor.get_spelling();
