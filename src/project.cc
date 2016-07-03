@@ -307,71 +307,73 @@ void Project::Clang::debug_start() {
   auto debug_build_path=build->get_debug_path();
   if(debug_build_path.empty() || !build->update_debug())
     return;
-  auto project_path=build->project_path;
+  auto project_path=std::make_shared<boost::filesystem::path>(build->project_path);
   
-  auto run_arguments_it=debug_run_arguments.find(project_path.string());
-  std::string run_arguments;
+  auto run_arguments_it=debug_run_arguments.find(project_path->string());
+  auto run_arguments=std::make_shared<std::string>();
   if(run_arguments_it!=debug_run_arguments.end())
-    run_arguments=run_arguments_it->second;
+    *run_arguments=run_arguments_it->second;
   
-  if(run_arguments.empty()) {
+  if(run_arguments->empty()) {
     auto view=Notebook::get().get_current_view();
-    run_arguments=build->get_executable(view?view->file_path:"").string();
-    if(run_arguments.empty()) {
+    *run_arguments=build->get_executable(view?view->file_path:"").string();
+    if(run_arguments->empty()) {
       Terminal::get().print("Warning: could not find executable.\n");
       Terminal::get().print("Solution: either use Debug Set Run Arguments, or open a source file within a directory where add_executable is set.\n", true);
       return;
     }
-    size_t pos=run_arguments.find(project_path.string());
+    size_t pos=run_arguments->find(project_path->string());
     if(pos!=std::string::npos)
-      run_arguments.replace(pos, project_path.string().size(), debug_build_path.string());
-    run_arguments=filesystem::escape_argument(run_arguments);
-  }
-  
-  auto breakpoints=std::make_shared<std::vector<std::pair<boost::filesystem::path, int> > >();
-  for(size_t c=0;c<Notebook::get().size();c++) {
-    auto view=Notebook::get().get_view(c);
-    if(filesystem::file_in_path(view->file_path, project_path)) {
-      auto iter=view->get_buffer()->begin();
-      if(view->get_source_buffer()->get_source_marks_at_iter(iter, "debug_breakpoint").size()>0)
-        breakpoints->emplace_back(view->file_path, iter.get_line()+1);
-      while(view->get_source_buffer()->forward_iter_to_source_mark(iter, "debug_breakpoint"))
-        breakpoints->emplace_back(view->file_path, iter.get_line()+1);
-    }
+      run_arguments->replace(pos, project_path->string().size(), debug_build_path.string());
+    *run_arguments=filesystem::escape_argument(*run_arguments);
   }
   
   if(Config::get().project.clear_terminal_on_compile)
     Terminal::get().clear();
   
   debugging=true;
-  Terminal::get().print("Compiling and debugging "+run_arguments+"\n");
-  Terminal::get().async_process(Config::get().project.make_command, debug_build_path, [this, breakpoints, run_arguments, project_path](int exit_status){
+  Terminal::get().print("Compiling and debugging "+*run_arguments+"\n");
+  Terminal::get().async_process(Config::get().project.make_command, debug_build_path, [this, run_arguments, project_path](int exit_status){
     if(exit_status!=EXIT_SUCCESS)
       debugging=false;
     else {
-      std::string remote_host;
-      auto options_it=debug_options.find(project_path.string());
-      if(options_it!=debug_options.end() && options_it->second.remote_enabled.get_active())
-        remote_host=options_it->second.remote_host.get_text();
-      std::unique_lock<std::mutex> lock(debug_start_mutex);
-      Debug::LLDB::get().start(run_arguments, project_path, *breakpoints, [this, run_arguments](int exit_status){
-        debugging=false;
-        Terminal::get().async_print(run_arguments+" returned: "+std::to_string(exit_status)+'\n');
-      }, [this](const std::string &status) {
-        dispatcher.post([this, status] {
-          debug_update_status(status);
-        });
-      }, [this](const boost::filesystem::path &file_path, int line_nr, int line_index) {
-        dispatcher.post([this, file_path, line_nr, line_index] {
-          Project::debug_stop.first=file_path;
-          Project::debug_stop.second.first=line_nr-1;
-          Project::debug_stop.second.second=line_index-1;
-          
-          debug_update_stop();
-          if(auto view=Notebook::get().get_current_view())
-            view->get_buffer()->place_cursor(view->get_buffer()->get_insert()->get_iter());
-        });
-      }, remote_host);
+      dispatcher.post([this, run_arguments, project_path] {
+        std::vector<std::pair<boost::filesystem::path, int> > breakpoints;
+        for(size_t c=0;c<Notebook::get().size();c++) {
+          auto view=Notebook::get().get_view(c);
+          if(filesystem::file_in_path(view->file_path, *project_path)) {
+            auto iter=view->get_buffer()->begin();
+            if(view->get_source_buffer()->get_source_marks_at_iter(iter, "debug_breakpoint").size()>0)
+              breakpoints.emplace_back(view->file_path, iter.get_line()+1);
+            while(view->get_source_buffer()->forward_iter_to_source_mark(iter, "debug_breakpoint"))
+              breakpoints.emplace_back(view->file_path, iter.get_line()+1);
+          }
+        }
+        
+        std::string remote_host;
+        auto options_it=debug_options.find(project_path->string());
+        if(options_it!=debug_options.end() && options_it->second.remote_enabled.get_active())
+          remote_host=options_it->second.remote_host.get_text();
+        std::unique_lock<std::mutex> lock(debug_start_mutex);
+        Debug::LLDB::get().start(*run_arguments, *project_path, breakpoints, [this, run_arguments](int exit_status){
+          debugging=false;
+          Terminal::get().async_print(*run_arguments+" returned: "+std::to_string(exit_status)+'\n');
+        }, [this](const std::string &status) {
+          dispatcher.post([this, status] {
+            debug_update_status(status);
+          });
+        }, [this](const boost::filesystem::path &file_path, int line_nr, int line_index) {
+          dispatcher.post([this, file_path, line_nr, line_index] {
+            Project::debug_stop.first=file_path;
+            Project::debug_stop.second.first=line_nr-1;
+            Project::debug_stop.second.second=line_index-1;
+            
+            debug_update_stop();
+            if(auto view=Notebook::get().get_current_view())
+              view->get_buffer()->place_cursor(view->get_buffer()->get_insert()->get_iter());
+          });
+        }, remote_host);
+      });
     }
   });
 }

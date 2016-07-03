@@ -40,7 +40,6 @@ set(global_libraries ${global_libraries}
 
 set(project_files
     config.cc
-    ctags.cc
     dialogs.cc
     dialogs_unix.cc
     directories.cc
@@ -59,6 +58,7 @@ set(project_files
 #Files used both in ../src and ../tests
 set(project_shared_files
     cmake.cc
+    ctags.cc
     dispatcher.cc
     filesystem.cc
     git.cc

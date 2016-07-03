@@ -7,6 +7,7 @@
 #endif
 #include "info.h"
 #include "dialogs.h"
+#include "ctags.h"
 
 namespace sigc {
 #ifndef SIGC_FUNCTORS_DEDUCE_RESULT_TYPE_WITH_DECLTYPE
@@ -992,6 +993,23 @@ Source::ClangViewRefactor::ClangViewRefactor(const boost::filesystem::path &file
           }
         }
       }
+      
+      //If no implementation was found, try using Ctags
+      auto name=identifier.cursor.get_spelling();
+      auto parent=identifier.cursor.get_semantic_parent();
+      while(parent && parent.get_kind()!=clang::CursorKind::TranslationUnit) {
+        auto spelling=parent.get_spelling()+"::";
+        name.insert(0, spelling);
+        parent=parent.get_semantic_parent();
+      }
+      auto ctags_location=Ctags::get_location(this->file_path, name, identifier.cursor.get_type());
+      if(ctags_location) {
+        location.file_path=ctags_location.file_path;
+        location.line=ctags_location.line;
+        location.index=ctags_location.index;
+        return location;
+      }
+      
       Info::get().print("Could not find implementation");
     }
     return location;

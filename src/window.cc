@@ -452,23 +452,11 @@ void Window::set_menu_actions() {
   
   menu.add_action("source_find_symbol_ctags", [this]() {
     if(auto view=Notebook::get().get_current_view()) {
-      auto build=Project::Build::create(view->file_path);
-      auto run_path=std::make_shared<boost::filesystem::path>(build->project_path);
-      std::vector<boost::filesystem::path> exclude_paths;
-      if(!run_path->empty()) {
-        exclude_paths.emplace_back(filesystem::get_relative_path(build->get_default_path(), build->project_path));
-        exclude_paths.emplace_back(filesystem::get_relative_path(build->get_debug_path(), build->project_path));
-      }
-      else {
-        if(!Directories::get().path.empty())
-          *run_path=Directories::get().path;
-        else
-          *run_path=view->file_path.parent_path();
-      }
-      auto stream=Ctags::get_result(*run_path, exclude_paths);
+      auto pair=Ctags::get_result(view->file_path.parent_path());
+      auto path=std::move(pair.first);
+      auto stream=std::move(pair.second);
       stream->seekg(0, std::ios::end);
-      auto length=stream->tellg();
-      if(length==0)
+      if(stream->tellg()==0)
         return;
       stream->seekg(0, std::ios::beg);
       
@@ -478,20 +466,20 @@ void Window::set_menu_actions() {
         
       std::string line;
       while(std::getline(*stream, line)) {
-        auto data=Ctags::parse_line(line);
+        auto location=Ctags::parse_line(line, true);
         
-        std::string row=data.path+":"+std::to_string(data.line+1)+": "+data.source;
-        (*rows)[row]=Source::Offset(data.line, data.index, data.path);
+        std::string row=location.file_path.string()+":"+std::to_string(location.line+1)+": "+location.source;
+        (*rows)[row]=Source::Offset(location.line, location.index, location.file_path);
         view->selection_dialog->add_row(row);
       }
         
       if(rows->size()==0)
         return;
-      view->selection_dialog->on_select=[this, rows, run_path](const std::string &selected, bool hide_window) {
+      view->selection_dialog->on_select=[this, rows, path](const std::string &selected, bool hide_window) {
         auto offset=rows->at(selected);
         boost::filesystem::path declaration_file;
         boost::system::error_code ec;
-        declaration_file=boost::filesystem::canonical(*run_path/offset.file_path, ec);
+        declaration_file=boost::filesystem::canonical(path/offset.file_path, ec);
         if(ec)
           return;
         Notebook::get().open(declaration_file);
