@@ -354,7 +354,6 @@ void Project::Clang::debug_start() {
         auto options_it=debug_options.find(project_path->string());
         if(options_it!=debug_options.end() && options_it->second.remote_enabled.get_active())
           remote_host=options_it->second.remote_host.get_text();
-        std::unique_lock<std::mutex> lock(debug_start_mutex);
         Debug::LLDB::get().start(*run_arguments, *project_path, breakpoints, [this, run_arguments](int exit_status){
           debugging=false;
           Terminal::get().async_print(*run_arguments+" returned: "+std::to_string(exit_status)+'\n');
@@ -554,7 +553,6 @@ void Project::Clang::debug_write(const std::string &buffer) {
 }
 
 void Project::Clang::debug_cancel() {
-  std::unique_lock<std::mutex> lock(debug_start_mutex);
   Debug::LLDB::get().cancel();
 }
 #endif

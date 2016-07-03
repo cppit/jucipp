@@ -4,7 +4,6 @@
 #include <gtkmm.h>
 #include <boost/filesystem.hpp>
 #include <atomic>
-#include <mutex>
 #include <unordered_map>
 #include "tooltips.h"
 #include "dispatcher.h"
@@ -85,7 +84,6 @@ namespace Project {
     void compile() override;
     void compile_and_run() override;
     
-    std::mutex debug_start_mutex;
 #ifdef JUCI_ENABLE_DEBUG
     std::pair<std::string, std::string> debug_get_run_arguments() override;
     Gtk::Popover *debug_get_options() override;
