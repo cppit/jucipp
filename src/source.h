@@ -2,25 +2,13 @@
 #define JUCI_SOURCE_H_
 #include "source_spellcheck.h"
 #include "source_diff.h"
+#include "tooltips.h"
 #include <boost/property_tree/xml_parser.hpp>
 #include <boost/filesystem.hpp>
 #include <string>
 #include <unordered_map>
 #include <vector>
-
-//Temporary fix for current Arch Linux boost linking problem
-#ifdef __GNUC_PREREQ
-#if __GNUC_PREREQ(5,1)
 #include <regex>
-#define REGEX_NS std
-#endif
-#endif
-#ifndef REGEX_NS
-#include <boost/regex.hpp>
-#define REGEX_NS boost
-#endif
-
-#include "tooltips.h"
 
 namespace Source {
   Glib::RefPtr<Gsv::Language> guess_language(const boost::filesystem::path &file_path);
@@ -138,9 +126,9 @@ namespace Source {
     
     std::string get_token(Gtk::TextIter iter);
     
-    const static REGEX_NS::regex bracket_regex;
-    const static REGEX_NS::regex no_bracket_statement_regex;
-    const static REGEX_NS::regex no_bracket_no_para_statement_regex;
+    const static std::regex bracket_regex;
+    const static std::regex no_bracket_statement_regex;
+    const static std::regex no_bracket_no_para_statement_regex;
     
     bool on_key_press_event(GdkEventKey* key) override;
     bool on_key_press_event_basic(GdkEventKey* key);

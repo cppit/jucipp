@@ -85,9 +85,9 @@ std::string Source::FixIt::string(Glib::RefPtr<Gtk::TextBuffer> buffer) {
 //////////////
 //// View ////
 //////////////
-const REGEX_NS::regex Source::View::bracket_regex("^([ \\t]*).*\\{ *$");
-const REGEX_NS::regex Source::View::no_bracket_statement_regex("^([ \\t]*)(if|for|else if|while) *\\(.*[^;}] *$");
-const REGEX_NS::regex Source::View::no_bracket_no_para_statement_regex("^([ \\t]*)(else) *$");
+const std::regex Source::View::bracket_regex("^([ \\t]*).*\\{ *$");
+const std::regex Source::View::no_bracket_statement_regex("^([ \\t]*)(if|for|else if|while) *\\(.*[^;}] *$");
+const std::regex Source::View::no_bracket_no_para_statement_regex("^([ \\t]*)(else) *$");
 
 Source::View::View(const boost::filesystem::path &file_path, Glib::RefPtr<Gsv::Language> language): Gsv::View(), SpellCheckView(), DiffView(file_path), language(language) {
   get_source_buffer()->begin_not_undoable_action();
@@ -1234,7 +1234,7 @@ bool Source::View::on_key_press_event_bracket_language(GdkEventKey* key) {
       auto start_sentence_tabs_end_iter=get_tabs_end_iter(start_of_sentence_iter);
       auto tabs=get_line_before(start_sentence_tabs_end_iter);
       
-      REGEX_NS::smatch sm;
+      std::smatch sm;
       if(iter.backward_char() && *iter=='{') {
         auto found_iter=iter;
         bool found_right_bracket=find_right_bracket_forward(iter, found_iter);
@@ -1299,13 +1299,13 @@ bool Source::View::on_key_press_event_bracket_language(GdkEventKey* key) {
           iter.forward_char();
         }
       }
-      else if(REGEX_NS::regex_match(line, sm, no_bracket_statement_regex)) {
+      else if(std::regex_match(line, sm, no_bracket_statement_regex)) {
         get_buffer()->insert_at_cursor("\n"+tabs+tab);
         scroll_to(get_buffer()->get_insert());
         get_buffer()->end_user_action();
         return true;
       }
-      else if(REGEX_NS::regex_match(line, sm, no_bracket_no_para_statement_regex)) {
+      else if(std::regex_match(line, sm, no_bracket_no_para_statement_regex)) {
         get_buffer()->insert_at_cursor("\n"+tabs+tab);
         scroll_to(get_buffer()->get_insert());
         get_buffer()->end_user_action();
@@ -1313,18 +1313,18 @@ bool Source::View::on_key_press_event_bracket_language(GdkEventKey* key) {
       }
       //Indenting after for instance if(...)\n...;\n
       else if(iter.backward_char() && *iter==';') {
-        REGEX_NS::smatch sm2;
+        std::smatch sm2;
         size_t line_nr=get_buffer()->get_insert()->get_iter().get_line();
         if(line_nr>0 && tabs.size()>=tab_size) {
           std::string previous_line=get_line(line_nr-1);
-          if(!REGEX_NS::regex_match(previous_line, sm2, bracket_regex)) {
-            if(REGEX_NS::regex_match(previous_line, sm2, no_bracket_statement_regex)) {
+          if(!std::regex_match(previous_line, sm2, bracket_regex)) {
+            if(std::regex_match(previous_line, sm2, no_bracket_statement_regex)) {
               get_buffer()->insert_at_cursor("\n"+sm2[1].str());
               scroll_to(get_buffer()->get_insert());
               get_buffer()->end_user_action();
               return true;
             }
-            else if(REGEX_NS::regex_match(previous_line, sm2, no_bracket_no_para_statement_regex)) {
+            else if(std::regex_match(previous_line, sm2, no_bracket_no_para_statement_regex)) {
               get_buffer()->insert_at_cursor("\n"+sm2[1].str());
               scroll_to(get_buffer()->get_insert());
               get_buffer()->end_user_action();
@@ -1341,7 +1341,7 @@ bool Source::View::on_key_press_event_bracket_language(GdkEventKey* key) {
             left_bracket_iter.forward_char();
           Gtk::TextIter start_of_left_bracket_sentence_iter;
           if(find_start_of_closed_expression(left_bracket_iter, start_of_left_bracket_sentence_iter)) {
-            REGEX_NS::smatch sm;
+            std::smatch sm;
             auto tabs_end_iter=get_tabs_end_iter(start_of_left_bracket_sentence_iter);
             auto tabs_start_of_sentence=get_line_before(tabs_end_iter);
             if(tabs.size()==(tabs_start_of_sentence.size()+tab_size)) {
@@ -1395,12 +1395,12 @@ bool Source::View::on_key_press_event_bracket_language(GdkEventKey* key) {
     size_t line_nr=iter.get_line();
     if(line_nr>0 && tabs.size()>=tab_size && iter==tabs_end_iter) {
       std::string previous_line=get_line(line_nr-1);
-      REGEX_NS::smatch sm;
-      if(!REGEX_NS::regex_match(previous_line, sm, bracket_regex)) {
+      std::smatch sm;
+      if(!std::regex_match(previous_line, sm, bracket_regex)) {
         auto start_iter=iter;
         start_iter.backward_chars(tab_size);
-        if(REGEX_NS::regex_match(previous_line, sm, no_bracket_statement_regex) ||
-           REGEX_NS::regex_match(previous_line, sm, no_bracket_no_para_statement_regex)) {
+        if(std::regex_match(previous_line, sm, no_bracket_statement_regex) ||
+           std::regex_match(previous_line, sm, no_bracket_no_para_statement_regex)) {
           if((tabs.size()-tab_size)==sm[1].str().size()) {
             get_buffer()->erase(start_iter, iter);
             get_buffer()->insert_at_cursor("{");

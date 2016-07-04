@@ -6,18 +6,7 @@
 #include "directories.h"
 #include <iostream>
 #include <vector>
-
-//Temporary fix for current Arch Linux boost linking problem
-#ifdef __GNUC_PREREQ
-#if __GNUC_PREREQ(5,1)
 #include <regex>
-#define REGEX_NS std
-#endif
-#endif
-#ifndef REGEX_NS
-#include <boost/regex.hpp>
-#define REGEX_NS boost
-#endif
 
 std::pair<boost::filesystem::path, std::unique_ptr<std::stringstream> > Ctags::get_result(const boost::filesystem::path &path) {
   auto build=Project::Build::create(path);
@@ -49,9 +38,9 @@ std::pair<boost::filesystem::path, std::unique_ptr<std::stringstream> > Ctags::g
 Ctags::Location Ctags::parse_line(const std::string &line, bool markup) {
   Location location;
   
-  const static REGEX_NS::regex regex("^([^\t]+)\t([^\t]+)\t(?:/\\^)?([ \t]*)(.+)$");
-  REGEX_NS::smatch sm;
-  if(REGEX_NS::regex_match(line, sm, regex)) {
+  const static std::regex regex("^([^\t]+)\t([^\t]+)\t(?:/\\^)?([ \t]*)(.+)$");
+  std::smatch sm;
+  if(std::regex_match(line, sm, regex)) {
     location.source=sm[4].str();
     size_t pos=location.source.find(";\"\tline:");
     if(pos==std::string::npos)

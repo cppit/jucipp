@@ -43,7 +43,7 @@ void Terminal::InProgress::cancel(const std::string& msg) {
     Terminal::get().async_print(line_nr-1, msg);
 }
 
-const REGEX_NS::regex Terminal::link_regex("^([A-Z]:)?([^:]+):([0-9]+):([0-9]+)$");
+const std::regex Terminal::link_regex("^([A-Z]:)?([^:]+):([0-9]+):([0-9]+)$");
 
 Terminal::Terminal() {
   bold_tag=get_buffer()->create_tag();
@@ -201,8 +201,8 @@ void Terminal::apply_link_tags(Gtk::TextIter start_iter, Gtk::TextIter end_iter)
 #endif
             ++colons;
           if(colons==3 && possible_path) {
-            REGEX_NS::smatch sm;
-            if(REGEX_NS::regex_match(get_buffer()->get_text(start_path_iter, iter).raw(), sm, link_regex))
+            std::smatch sm;
+            if(std::regex_match(get_buffer()->get_text(start_path_iter, iter).raw(), sm, link_regex))
               get_buffer()->apply_tag(link_tag, start_path_iter, iter);
             possible_path=false;
           }
@@ -353,8 +353,8 @@ bool Terminal::on_button_press_event(GdkEventButton* button_event) {
     if(iter.has_tag(link_tag) &&
        start_iter.backward_to_tag_toggle(link_tag) && end_iter.forward_to_tag_toggle(link_tag)) {
       std::string path_str=get_buffer()->get_text(start_iter, end_iter);
-      REGEX_NS::smatch sm;
-      if(REGEX_NS::regex_match(path_str, sm, link_regex)) {
+      std::smatch sm;
+      if(std::regex_match(path_str, sm, link_regex)) {
         auto path_str=sm[1].str()+sm[2].str();
         auto path=boost::filesystem::path(path_str);
         boost::system::error_code ec;

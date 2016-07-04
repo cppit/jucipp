@@ -34,7 +34,7 @@ else()
   message("liblldb not found. Building juCi++ without debugging support")
 endif()
 
-find_package(Boost 1.54 COMPONENTS regex system filesystem REQUIRED)
+find_package(Boost 1.54 COMPONENTS system filesystem REQUIRED)
 find_package(ASPELL REQUIRED)
 include(FindPkgConfig)
 pkg_check_modules(GTKMM gtkmm-3.0 REQUIRED)
