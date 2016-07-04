@@ -908,55 +908,17 @@ Source::ClangViewRefactor::ClangViewRefactor(const boost::filesystem::path &file
     }
   });
   
-  get_declaration_location=[this](const std::vector<Source::View*> &views){
+  get_declaration_location=[this](){
     if(!parsed) {
       Info::get().print("Buffer is parsing");
       return Offset();
     }
-    auto iter=get_buffer()->get_insert()->get_iter();
-    auto line=static_cast<unsigned>(iter.get_line());
-    auto index=static_cast<unsigned>(iter.get_line_index());
-    for(auto &token: *clang_tokens) {
-      auto cursor=token.get_cursor();
-      if(token.get_kind()==clang::TokenKind::Token_Identifier && cursor.has_type()) {
-        if(line==token.offsets.first.line-1 && index>=token.offsets.first.index-1 && index <=token.offsets.second.index-1) {
-          auto referenced=cursor.get_referenced();
-          if(referenced) {
-            auto file_path=referenced.get_source_location().get_path();
-            
-            //if declaration is implementation instead, attempt to find declaration
-            if(file_path==this->file_path && this->language && this->language->get_id()!="chdr" && this->language->get_id()!="cpphdr") {
-              auto identifier=Identifier(referenced.get_kind(), token.get_spelling(), referenced.get_usr());
-              
-              std::vector<Source::View*> search_views;
-              for(auto &view: views) {
-                if(view->language && (view->language->get_id()=="chdr" || view->language->get_id()=="cpphdr"))
-                  search_views.emplace_back(view);
-              }
-              search_views.emplace_back(this);
-              wait_parsing(search_views);
-              for(auto &view: search_views) {
-                if(auto clang_view=dynamic_cast<Source::ClangView*>(view)) {
-                  for(auto &token: *clang_view->clang_tokens) {
-                    auto cursor=token.get_cursor();
-                    if(token.get_kind()==clang::TokenKind::Token_Identifier && cursor.has_type()) {
-                      auto referenced=cursor.get_referenced();
-                      if(referenced && identifier.kind==referenced.get_kind() &&
-                         identifier.spelling==token.get_spelling() && identifier.usr==referenced.get_usr()) {
-                        auto offset=referenced.get_source_location().get_offset();
-                        return Offset(offset.line-1, offset.index-1, referenced.get_source_location().get_path());
-                      }
-                    }
-                  }
-                }
-              }
-            }
-            
-            auto offset=referenced.get_source_location().get_offset();
-            return Offset(offset.line-1, offset.index-1, file_path);
-          }
-        }
-      }
+    auto identifier=get_identifier();
+    if(identifier) {
+      auto canonical=clang::Cursor(clang_getCanonicalCursor(identifier.cursor.cx_cursor));
+      auto source_location=canonical.get_source_location();
+      auto offset=source_location.get_offset();
+      return Offset(offset.line-1, offset.index-1, source_location.get_path());
     }
     return Offset();
   };

@@ -36,7 +36,7 @@ int main() {
   
   //test get_declaration and get_implementation
   clang_view->place_cursor_at_line_index(13, 7);
-  auto location=clang_view->get_declaration_location({clang_view});
+  auto location=clang_view->get_declaration_location();
   g_assert_cmpuint(location.line, ==, 4);
   
   clang_view->place_cursor_at_line_index(location.line, location.index);
@@ -44,7 +44,7 @@ int main() {
   g_assert_cmpuint(location.line, ==, 9);
   
   clang_view->place_cursor_at_line_index(location.line, location.index);
-  location=clang_view->get_declaration_location({clang_view});
+  location=clang_view->get_declaration_location();
   g_assert_cmpuint(location.line, ==, 4);
   
   //test get_usages and get_methods
@@ -59,7 +59,7 @@ int main() {
   clang_view->place_cursor_at_line_index(0, 6);
   auto token=clang_view->get_token(clang_view->get_buffer()->get_insert()->get_iter());
   g_assert_cmpstr(token.c_str(), ==, "TestClass");
-  location=clang_view->get_declaration_location({clang_view});
+  location=clang_view->get_declaration_location();
   g_assert_cmpuint(location.line, ==, 0);
   clang_view->rename_similar_tokens({clang_view}, "RenamedTestClass");
   while(!clang_view->parsed)
