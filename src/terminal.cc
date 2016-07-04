@@ -310,9 +310,7 @@ void Terminal::async_print(size_t line_nr, const std::string &message) {
 }
 
 void Terminal::configure() {
-#if GTKMM_MAJOR_VERSION>3 || (GTKMM_MAJOR_VERSION==3 && GTKMM_MINOR_VERSION>=12)
   link_tag->property_foreground_rgba()=get_style_context()->get_color(Gtk::StateFlags::STATE_FLAG_LINK);
-#endif
   
   if(Config::get().terminal.font.size()>0) {
     override_font(Pango::FontDescription(Config::get().terminal.font));

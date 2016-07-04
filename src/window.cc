@@ -47,12 +47,7 @@ Window::Window() {
   auto info_and_status_hbox=Gtk::manage(new Gtk::HBox());
   info_and_status_hbox->pack_start(Notebook::get().info, Gtk::PACK_SHRINK);
   
-#if GTK_VERSION_GE(3, 12)
   info_and_status_hbox->set_center_widget(Project::debug_status_label());
-#else
-  Project::debug_status_label().set_halign(Gtk::Align::ALIGN_CENTER);
-  info_and_status_hbox->pack_start(Project::debug_status_label());
-#endif
   info_and_status_hbox->pack_end(Notebook::get().status, Gtk::PACK_SHRINK);
   
   terminal_scrolled_window.add(Terminal::get());
@@ -65,7 +60,6 @@ Window::Window() {
   vpaned.pack1(directory_and_notebook_panes, true, false);
   vpaned.pack2(*terminal_vbox, true, true);
   
-#if GTKMM_MAJOR_VERSION>3 || (GTKMM_MAJOR_VERSION==3 && GTKMM_MINOR_VERSION>=14)
   auto overlay_vbox=Gtk::manage(new Gtk::VBox());
   auto overlay_hbox=Gtk::manage(new Gtk::HBox());
   overlay_vbox->set_hexpand(false);
@@ -82,9 +76,6 @@ Window::Window() {
   overlay->set_overlay_pass_through(*overlay_hbox, true);
 #endif
   add(*overlay);
-#else
-  add(vpaned);
-#endif
   
   show_all_children();
   Info::get().hide();

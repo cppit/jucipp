@@ -435,13 +435,8 @@ void Menu::set_keys() {
   auto application=Glib::RefPtr<Gtk::Application>::cast_static(gio_application);
            
   for(auto &key: Config::get().menu.keys) {
-    if(key.second.size()>0 && actions.find(key.first)!=actions.end()) {
-#if GTK_VERSION_GE(3, 12)
-      application->set_accel_for_action("app."+key.first, key.second); 
-#else
-      application->add_accelerator(key.second, "app."+key.first); //For Ubuntu 14...
-#endif
-    }
+    if(key.second.size()>0 && actions.find(key.first)!=actions.end())
+      application->set_accel_for_action("app."+key.first, key.second);
   }
 }
 
