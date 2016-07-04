@@ -72,16 +72,18 @@ bool CMake::update_default_build(const boost::filesystem::path &default_build_pa
   if(exit_status==EXIT_SUCCESS) {
 #ifdef _WIN32 //Temporary fix to MSYS2's libclang
     auto compile_commands_file=filesystem::read(compile_commands_path);
-    size_t pos=0;
-    while((pos=compile_commands_file.find("-I/", pos))!=std::string::npos) {
-      if(pos+3<compile_commands_file.size()) {
-        std::string drive;
-        drive+=compile_commands_file[pos+3];
-        compile_commands_file.replace(pos, 4, "-I"+drive+":");
+    auto replace_drive = [&compile_commands_file](const std::string& param) {
+      size_t pos=0;
+      auto param_size = param.length();
+      while((pos=compile_commands_file.find(param+"/", pos))!=std::string::npos) {
+        if(pos+param_size+1<compile_commands_file.size())
+          compile_commands_file.replace(pos, param_size+2, param+compile_commands_file[pos+param_size+1]+":");
+        else
+          break;
       }
-      else
-        break;
-    }
+    };
+    replace_drive("-I");
+    replace_drive("-isystem ");
     filesystem::write(compile_commands_path, compile_commands_file);
 #endif
     return true;
