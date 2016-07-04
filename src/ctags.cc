@@ -44,10 +44,18 @@ std::pair<boost::filesystem::path, std::unique_ptr<std::stringstream> > Ctags::g
 
 Ctags::Location Ctags::get_location(const std::string &line, bool markup) {
   Location location;
-  
+
+#ifdef _WIN32
+  auto line_fixed=line;
+  if(!line_fixed.empty() && line_fixed.back()=='\r')
+    line_fixed.pop_back();
+#else
+  auto &line_fixed=line;
+#endif
+
   const static std::regex regex("^([^\t]+)\t([^\t]+)\t(?:/\\^)?([ \t]*)(.+)$");
   std::smatch sm;
-  if(std::regex_match(line, sm, regex)) {
+  if(std::regex_match(line_fixed, sm, regex)) {
     location.source=sm[4].str();
     size_t pos=location.source.find(";\"\tline:");
     if(pos==std::string::npos)
