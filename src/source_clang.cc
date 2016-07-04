@@ -805,7 +805,7 @@ std::unordered_map<std::string, std::string> Source::ClangViewAutocomplete::auto
 Source::ClangViewRefactor::ClangViewRefactor(const boost::filesystem::path &file_path, Glib::RefPtr<Gsv::Language> language) :
     Source::ClangViewParse(file_path, language) {
   similar_identifiers_tag=get_buffer()->create_tag();
-  similar_identifiers_tag->property_weight()=1000; //TODO: replace with Pango::WEIGHT_ULTRAHEAVY in 2016 or so (when Ubuntu 14 is history)
+  similar_identifiers_tag->property_weight()=1000; //TODO: Replace 1000 with Pango::WEIGHT_ULTRAHEAVY when debian stable gets updated in 2017
   
   get_buffer()->signal_changed().connect([this]() {
     if(!renaming && last_tagged_identifier) {

@@ -13,12 +13,19 @@ std::pair<boost::filesystem::path, std::unique_ptr<std::stringstream> > Ctags::g
   auto run_path=build->project_path;
   std::string exclude;
   if(!run_path.empty()) {
-    auto path=filesystem::get_relative_path(build->get_default_path(), build->project_path);
-    if(!path.empty())
-      exclude+=" --exclude="+path.string();
-    path=filesystem::get_relative_path(build->get_debug_path(), build->project_path);
-    if(!path.empty())
-      exclude+=" --exclude="+path.string();
+    boost::system::error_code ec;
+    auto default_path=boost::filesystem::canonical(build->get_default_path(), ec);
+    if(!ec) {
+      auto path=filesystem::get_relative_path(default_path, build->project_path);
+      if(!path.empty())
+        exclude+=" --exclude="+path.string();
+    }
+    auto debug_path=boost::filesystem::canonical(build->get_debug_path(), ec);
+    if(!ec) {
+      auto path=filesystem::get_relative_path(debug_path, build->project_path);
+      if(!path.empty())
+        exclude+=" --exclude="+path.string();
+    }
   }
   else {
     if(!Directories::get().path.empty())
@@ -30,12 +37,12 @@ std::pair<boost::filesystem::path, std::unique_ptr<std::stringstream> > Ctags::g
   std::stringstream stdin_stream;
   //TODO: when debian stable gets newer g++ version that supports move on streams, remove unique_ptr below
   std::unique_ptr<std::stringstream> stdout_stream(new std::stringstream());
-  auto command=Config::get().project.ctags_command+exclude+" --fields=n --sort=foldcase -I \"override noexcept\" -f- -R *";
+  auto command=Config::get().project.ctags_command+exclude+" --fields=n --sort=foldcase -I \"override noexcept\" -f - -R *";
   Terminal::get().process(stdin_stream, *stdout_stream, command, run_path);
   return {run_path, std::move(stdout_stream)};
 }
 
-Ctags::Location Ctags::parse_line(const std::string &line, bool markup) {
+Ctags::Location Ctags::get_location(const std::string &line, bool markup) {
   Location location;
   
   const static std::regex regex("^([^\t]+)\t([^\t]+)\t(?:/\\^)?([ \t]*)(.+)$");
@@ -133,7 +140,7 @@ Ctags::Location Ctags::get_location(const boost::filesystem::path &path, const s
   while(std::getline(*result.second, line)) {
     if(line.find(name)==std::string::npos)
       continue;
-    auto location=Ctags::parse_line(line, false);
+    auto location=Ctags::get_location(line, false);
     location.file_path=result.first/location.file_path;
     
     //Find match score

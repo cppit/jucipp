@@ -457,7 +457,7 @@ void Window::set_menu_actions() {
         
       std::string line;
       while(std::getline(*stream, line)) {
-        auto location=Ctags::parse_line(line, true);
+        auto location=Ctags::get_location(line, true);
         
         std::string row=location.file_path.string()+":"+std::to_string(location.line+1)+": "+location.source;
         (*rows)[row]=Source::Offset(location.line, location.index, location.file_path);

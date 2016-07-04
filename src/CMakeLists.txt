@@ -1,14 +1,3 @@
-if(UNIX) #Checking if compiling on Ubuntu that for instance has a buggy menu system
-  find_program(LSB_RELEASE_BIN lsb_release)
-  if(LSB_RELEASE_BIN)
-    execute_process(COMMAND ${LSB_RELEASE_BIN} -is
-      OUTPUT_VARIABLE DISTRIBUTION OUTPUT_STRIP_TRAILING_WHITESPACE)
-    if((DISTRIBUTION STREQUAL Ubuntu) OR (DISTRIBUTION STREQUAL LinuxMint))
-      set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -DJUCI_UBUNTU")
-    endif()
-  endif()
-endif()
-
 if(MSYS)
   set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -DMSYS_PROCESS_USE_SH")
 endif()
