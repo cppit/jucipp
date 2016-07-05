@@ -21,6 +21,8 @@ public:
   static Location get_location(const std::string &line, bool markup);
   
   static std::vector<Location> get_locations(const boost::filesystem::path &path, const std::string &name, const std::string &type);
+private:
+  static std::vector<std::string> get_type_parts(const std::string type);
 };
 
 #endif //JUCI_CTAGS_H_

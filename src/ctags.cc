@@ -7,6 +7,7 @@
 #include <iostream>
 #include <vector>
 #include <regex>
+#include <climits>
 
 std::pair<boost::filesystem::path, std::unique_ptr<std::stringstream> > Ctags::get_result(const boost::filesystem::path &path) {
   auto build=Project::Build::create(path);
@@ -103,7 +104,35 @@ Ctags::Location Ctags::get_location(const std::string &line, bool markup) {
   return location;
 }
 
+///Split up a type into its various significant parts
+std::vector<std::string> Ctags::get_type_parts(const std::string type) {
+  std::vector<std::string> parts;
+  size_t text_start=-1;
+  for(size_t c=0;c<type.size();++c) {
+    auto &chr=type[c];
+    if((chr>='0' && chr<='9') || (chr>='a' && chr<='z') || (chr>='A' && chr<='Z') || chr=='_' || chr=='~') {
+      if(text_start==static_cast<size_t>(-1))
+        text_start=c;
+    }
+    else {
+      if(text_start!=static_cast<size_t>(-1)) {
+        parts.emplace_back(type.substr(text_start, c-text_start));
+        text_start=-1;
+      }
+      if(chr=='*' || chr=='&')
+        parts.emplace_back(std::string()+chr);
+    }
+  }
+  return parts;
+}
+
 std::vector<Ctags::Location> Ctags::get_locations(const boost::filesystem::path &path, const std::string &name, const std::string &type) {
+  auto result=get_result(path);
+  result.second->seekg(0, std::ios::end);
+  if(result.second->tellg()==0)
+    return std::vector<Location>();
+  result.second->seekg(0, std::ios::beg);
+  
   //insert name into type
   size_t c=0;
   size_t bracket_count=0;
@@ -118,49 +147,65 @@ std::vector<Ctags::Location> Ctags::get_locations(const boost::filesystem::path 
   auto full_type=type;
   full_type.insert(c, name);
   
-  //Split up full_type
-  std::vector<std::string> parts;
-  size_t text_start=-1;
-  for(size_t c=0;c<full_type.size();++c) {
-    auto &chr=full_type[c];
-    if((chr>='0' && chr<='9') || (chr>='a' && chr<='z') || (chr>='A' && chr<='Z') || chr=='_' || chr=='~') {
-      if(text_start==static_cast<size_t>(-1))
-        text_start=c;
-    }
-    else {
-      if(text_start!=static_cast<size_t>(-1))
-        parts.emplace_back(full_type.substr(text_start, c-text_start));
-      text_start=-1;
-      if(chr=='*' || chr=='&')
-        parts.emplace_back(std::string()+chr);
-    }
-  }
+  auto parts=get_type_parts(full_type);
   
-  auto result=get_result(path);
-  result.second->seekg(0, std::ios::end);
-  if(result.second->tellg()==0)
-    return std::vector<Location>();
-  result.second->seekg(0, std::ios::beg);
+  //Get short name
+  std::string short_name;
+  auto pos=name.rfind(':');
+  if(pos!=std::string::npos && pos+1<name.size())
+    short_name=name.substr(pos+1);
+  else
+    short_name=name;
   
   std::string line;
-  size_t best_score=0;
+  long best_score=LONG_MIN;
   std::vector<Location> best_locations;
   while(std::getline(*result.second, line)) {
-    if(line.find(name)==std::string::npos)
+    //Find function name
+    auto pos=line.find('\t');
+    if(pos==std::string::npos)
       continue;
+    auto line_function_name=line.substr(0, pos);
+    
+    if(line_function_name!=short_name || line.find(name)==std::string::npos)
+      continue;
+    
     auto location=Ctags::get_location(line, false);
     location.file_path=result.first/location.file_path;
     
+    auto source_parts=get_type_parts(location.source);
+    
     //Find match score
-    size_t score=0;
-    size_t pos=0;
+    long score=0;
+    size_t source_index=0;
     for(auto &part: parts) {
-      auto find_pos=location.source.find(part, pos);
-      if(find_pos!=std::string::npos) {
-        pos=find_pos+1;
-        ++score;
+      bool found=false;
+      for(auto c=source_index;c<source_parts.size();++c) {
+        if(part==source_parts[c]) {
+          source_index=c+1;
+          ++score;
+          found=true;
+          break;
+        }
       }
+      if(!found)
+        --score;
     }
+    size_t index=0;
+    for(auto &source_part: source_parts) {
+      bool found=false;
+      for(auto c=index;c<parts.size();++c) {
+        if(source_part==parts[c]) {
+          index=c+1;
+          ++score;
+          found=true;
+          break;
+        }
+      }
+      if(!found)
+        --score;
+    }
+    
     if(score>best_score) {
       best_score=score;
       best_locations.clear();
