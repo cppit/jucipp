@@ -547,21 +547,56 @@ void Window::set_menu_actions() {
   });
   menu.add_action("source_goto_implementation", [this]() {
     if(auto view=Notebook::get().get_current_view()) {
-      if(view->get_implementation_location) {
-        auto location=view->get_implementation_location(Notebook::get().get_views());
-        if(location) {
-          boost::filesystem::path implementation_path;
-          boost::system::error_code ec;
-          implementation_path=boost::filesystem::canonical(location.file_path, ec);
-          if(ec)
+      if(view->get_implementation_locations) {
+        auto locations=view->get_implementation_locations(Notebook::get().get_views());
+        if(!locations.empty()) {
+          auto dialog_iter=view->get_iter_for_dialog();
+          view->selection_dialog=std::unique_ptr<SelectionDialog>(new SelectionDialog(*view, view->get_buffer()->create_mark(dialog_iter), true, true));
+          auto rows=std::make_shared<std::unordered_map<std::string, Source::Offset> >();
+          auto project_path=Project::Build::create(view->file_path)->project_path;
+          if(project_path.empty()) {
+            if(!Directories::get().path.empty())
+              project_path=Directories::get().path;
+            else
+              project_path=view->file_path.parent_path();
+          }
+          for(auto &location: locations) {
+            boost::filesystem::path implementation_path;
+            boost::system::error_code ec;
+            implementation_path=boost::filesystem::canonical(location.file_path, ec);
+            if(!ec) {
+              location.file_path=implementation_path;
+              auto path=filesystem::get_relative_path(location.file_path, project_path);
+              if(path.empty())
+                path=location.file_path.filename();
+              auto row=path.string()+":"+std::to_string(location.line+1);
+              (*rows)[row]=location;
+              view->selection_dialog->add_row(row);
+            }
+          }
+          
+          if(rows->size()==0)
             return;
-          Notebook::get().open(implementation_path);
-          auto view=Notebook::get().get_current_view();
-          auto line=static_cast<int>(location.line);
-          auto index=static_cast<int>(location.index);
-          view->place_cursor_at_line_index(line, index);
-          view->scroll_to_cursor_delayed(view, true, false);
-          return;
+          else if(rows->size()==1) {
+            auto location=*rows->begin();
+            Notebook::get().open(location.second.file_path);
+            auto view=Notebook::get().get_current_view();
+            auto line=static_cast<int>(location.second.line);
+            auto index=static_cast<int>(location.second.index);
+            view->place_cursor_at_line_index(line, index);
+            view->scroll_to_cursor_delayed(view, true, false);
+            return;
+          }
+          view->selection_dialog->on_select=[this, rows](const std::string &selected, bool hide_window) {
+            auto location=rows->at(selected);
+            Notebook::get().open(location.file_path);
+            auto view=Notebook::get().get_current_view();
+            view->place_cursor_at_line_index(location.line, location.index);
+            view->scroll_to_cursor_delayed(view, true, false);
+            view->hide_tooltips();
+          };
+          view->hide_tooltips();
+          view->selection_dialog->show();
         }
       }
     }
@@ -969,7 +1004,7 @@ void Window::activate_menu_items(bool activate) {
   menu.actions["source_find_symbol_ctags"]->set_enabled(activate);
   menu.actions["source_find_documentation"]->set_enabled(activate ? static_cast<bool>(notebook.get_current_view()->get_token_data) : false);
   menu.actions["source_goto_declaration"]->set_enabled(activate ? static_cast<bool>(notebook.get_current_view()->get_declaration_location) : false);
-  menu.actions["source_goto_implementation"]->set_enabled(activate ? static_cast<bool>(notebook.get_current_view()->get_implementation_location) : false);
+  menu.actions["source_goto_implementation"]->set_enabled(activate ? static_cast<bool>(notebook.get_current_view()->get_implementation_locations) : false);
   menu.actions["source_goto_usage"]->set_enabled(activate ? static_cast<bool>(notebook.get_current_view()->get_usages) : false);
   menu.actions["source_goto_method"]->set_enabled(activate ? static_cast<bool>(notebook.get_current_view()->get_methods) : false);
   menu.actions["source_rename"]->set_enabled(activate ? static_cast<bool>(notebook.get_current_view()->rename_similar_tokens) : false);

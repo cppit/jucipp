@@ -103,7 +103,7 @@ Ctags::Location Ctags::get_location(const std::string &line, bool markup) {
   return location;
 }
 
-Ctags::Location Ctags::get_location(const boost::filesystem::path &path, const std::string &name, const std::string &type) {
+std::vector<Ctags::Location> Ctags::get_locations(const boost::filesystem::path &path, const std::string &name, const std::string &type) {
   //insert name into type
   size_t c=0;
   size_t bracket_count=0;
@@ -139,12 +139,12 @@ Ctags::Location Ctags::get_location(const boost::filesystem::path &path, const s
   auto result=get_result(path);
   result.second->seekg(0, std::ios::end);
   if(result.second->tellg()==0)
-    return Location();
+    return std::vector<Location>();
   result.second->seekg(0, std::ios::beg);
   
   std::string line;
   size_t best_score=0;
-  Location best_location;
+  std::vector<Location> best_locations;
   while(std::getline(*result.second, line)) {
     if(line.find(name)==std::string::npos)
       continue;
@@ -163,9 +163,12 @@ Ctags::Location Ctags::get_location(const boost::filesystem::path &path, const s
     }
     if(score>best_score) {
       best_score=score;
-      best_location=location;
+      best_locations.clear();
+      best_locations.emplace_back(location);
     }
+    else if(score==best_score)
+      best_locations.emplace_back(location);
   }
   
-  return best_location;
+  return best_locations;
 }

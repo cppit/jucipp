@@ -923,47 +923,53 @@ Source::ClangViewRefactor::ClangViewRefactor(const boost::filesystem::path &file
     return Offset();
   };
   
-  get_implementation_location=[this](const std::vector<Source::View*> &views){
-    Offset location;
+  get_implementation_locations=[this](const std::vector<Source::View*> &views){
+    std::vector<Offset> locations;
     if(!parsed) {
       Info::get().print("Buffer is parsing");
-      return location;
+      return locations;
     }
     auto identifier=get_identifier();
     if(identifier) {
       wait_parsing(views);
       for(auto &view: views) {
         if(auto clang_view=dynamic_cast<Source::ClangView*>(view)) {
-          if(clang_view->language && clang_view->language->get_id()!="chdr" && clang_view->language->get_id()!="cpphdr") {
-            for(auto token_it=clang_view->clang_tokens->rbegin();token_it!=clang_view->clang_tokens->rend();++token_it) {
-              auto cursor=token_it->get_cursor();
-              auto kind=cursor.get_kind();
-              if((kind==clang::CursorKind::FunctionDecl || kind==clang::CursorKind::CXXMethod ||
-                  kind==clang::CursorKind::Constructor || kind==clang::CursorKind::Destructor) &&
-                 token_it->get_kind()==clang::TokenKind::Token_Identifier && cursor.has_type()) {
-                auto referenced=cursor.get_referenced();
-                if(referenced && identifier.kind==referenced.get_kind() &&
-                   identifier.spelling==token_it->get_spelling() && identifier.usr==referenced.get_usr()) {
+          for(auto &token: *clang_view->clang_tokens) {
+            auto cursor=token.get_cursor();
+            auto kind=cursor.get_kind();
+            if((kind==clang::CursorKind::FunctionDecl || kind==clang::CursorKind::CXXMethod ||
+                kind==clang::CursorKind::Constructor || kind==clang::CursorKind::Destructor) &&
+               token.get_kind()==clang::TokenKind::Token_Identifier && cursor.has_type()) {
+              auto referenced=cursor.get_referenced();
+              if(referenced && identifier.kind==referenced.get_kind() &&
+                 identifier.spelling==token.get_spelling() && identifier.usr==referenced.get_usr()) {
+                if(clang_isCursorDefinition(referenced.cx_cursor)) {
+                  Offset location;
                   location.file_path=cursor.get_source_location().get_path();
                   auto clang_offset=cursor.get_source_location().get_offset();
                   location.line=clang_offset.line-1;
                   location.index=clang_offset.index-1;
-                  return location;
+                  locations.emplace_back(location);
                 }
               }
             }
           }
         }
       }
+      if(!locations.empty())
+        return locations;
+      
       //If no implementation was found, try using clang_getCursorDefinition
       auto definition=clang::Cursor(clang_getCursorDefinition(identifier.cursor.cx_cursor));
       if(definition) {
         auto definition_location=definition.get_source_location();
+        Offset location;
         location.file_path=definition_location.get_path();
         auto offset=definition_location.get_offset();
         location.line=offset.line-1;
         location.index=offset.index-1;
-        return location;
+        locations.emplace_back(location);
+        return locations;
       }
       
       //If no implementation was found, try using Ctags
@@ -974,17 +980,21 @@ Source::ClangViewRefactor::ClangViewRefactor(const boost::filesystem::path &file
         name.insert(0, spelling);
         parent=parent.get_semantic_parent();
       }
-      auto ctags_location=Ctags::get_location(this->file_path, name, identifier.cursor.get_type());
-      if(ctags_location) {
-        location.file_path=ctags_location.file_path;
-        location.line=ctags_location.line;
-        location.index=ctags_location.index;
-        return location;
+      auto ctags_locations=Ctags::get_locations(this->file_path, name, identifier.cursor.get_type());
+      if(!ctags_locations.empty()) {
+        for(auto &ctags_location: ctags_locations) {
+          Offset location;
+          location.file_path=ctags_location.file_path;
+          location.line=ctags_location.line;
+          location.index=ctags_location.index;
+          locations.emplace_back(location);
+        }
+        return locations;
       }
       
       Info::get().print("Could not find implementation");
     }
-    return location;
+    return locations;
   };
   
   get_usages=[this](const std::vector<Source::View*> &views) {

@@ -40,8 +40,9 @@ int main() {
   g_assert_cmpuint(location.line, ==, 4);
   
   clang_view->place_cursor_at_line_index(location.line, location.index);
-  location=clang_view->get_implementation_location({clang_view});
-  g_assert_cmpuint(location.line, ==, 9);
+  auto impl_locations=clang_view->get_implementation_locations({clang_view});
+  g_assert_cmpuint(impl_locations.size(), ==, 1);
+  g_assert_cmpuint(impl_locations[0].line, ==, 9);
   
   clang_view->place_cursor_at_line_index(location.line, location.index);
   location=clang_view->get_declaration_location();

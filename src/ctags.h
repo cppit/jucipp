@@ -20,7 +20,7 @@ public:
   
   static Location get_location(const std::string &line, bool markup);
   
-  static Location get_location(const boost::filesystem::path &path, const std::string &name, const std::string &type);
+  static std::vector<Location> get_locations(const boost::filesystem::path &path, const std::string &name, const std::string &type);
 };
 
 #endif //JUCI_CTAGS_H_
