@@ -38,7 +38,7 @@ std::pair<boost::filesystem::path, std::unique_ptr<std::stringstream> > Ctags::g
   std::stringstream stdin_stream;
   //TODO: when debian stable gets newer g++ version that supports move on streams, remove unique_ptr below
   std::unique_ptr<std::stringstream> stdout_stream(new std::stringstream());
-  auto command=Config::get().project.ctags_command+exclude+" --fields=n --sort=foldcase -I \"override noexcept\" -f - -R *";
+  auto command=Config::get().project.ctags_command+exclude+" --fields=ns --sort=foldcase -I \"override noexcept\" -f - -R *";
   Terminal::get().process(stdin_stream, *stdout_stream, command, run_path);
   return {run_path, std::move(stdout_stream)};
 }
@@ -54,46 +54,39 @@ Ctags::Location Ctags::get_location(const std::string &line, bool markup) {
   auto &line_fixed=line;
 #endif
 
-  const static std::regex regex("^([^\t]+)\t([^\t]+)\t(?:/\\^)?([ \t]*)(.+)$");
+  const static std::regex regex("^([^\t]+)\t([^\t]+)\t(?:/\\^)?([ \t]*)(.+?)(\\$/)?;\"\tline:([0-9]+)\t?[a-zA-Z]*:?(.*)$");
   std::smatch sm;
   if(std::regex_match(line_fixed, sm, regex)) {
+    location.symbol=sm[1].str();
+    location.file_path=sm[2].str();
     location.source=sm[4].str();
-    size_t pos=location.source.find(";\"\tline:");
-    if(pos==std::string::npos)
-      return location;
     try {
-      location.line=std::stoul(location.source.substr(pos+8))-1;
+      location.line=std::stoul(sm[6])-1;
     }
     catch(const std::exception&) {
       location.line=0;
     }
-    location.source.erase(pos);
-    if(location.source.size()>1 && location.source[location.source.size()-1]=='/' && location.source[location.source.size()-2]!='\\') {
-      location.source.pop_back();
-      if(location.source.size()>1 && location.source[location.source.size()-1]=='$' && location.source[location.source.size()-2]!='\\')
-        location.source.pop_back();
-      auto symbol=sm[1].str();
-      location.file_path=sm[2].str();
+    location.scope=sm[7].str();
+    if(!sm[5].str().empty()) {
       location.index=sm[3].str().size();
       
-      size_t pos=location.source.find(symbol);
+      size_t pos=location.source.find(location.symbol);
       if(pos!=std::string::npos)
         location.index+=pos;
       
       if(markup) {
         location.source=Glib::Markup::escape_text(location.source);
         pos=-1;
-        while((pos=location.source.find(symbol, pos+1))!=std::string::npos) {
-          location.source.insert(pos+symbol.size(), "</b>");
+        while((pos=location.source.find(location.symbol, pos+1))!=std::string::npos) {
+          location.source.insert(pos+location.symbol.size(), "</b>");
           location.source.insert(pos, "<b>");
-          pos+=7+symbol.size();
+          pos+=7+location.symbol.size();
         }
       }
     }
     else {
-      location.file_path=sm[2].str();
       location.index=0;
-      location.source=sm[1].str();
+      location.source=location.symbol;
       if(markup)
         location.source="<b>"+Glib::Markup::escape_text(location.source)+"</b>";
     }
@@ -149,28 +142,18 @@ std::vector<Ctags::Location> Ctags::get_locations(const boost::filesystem::path 
   
   auto parts=get_type_parts(full_type);
   
-  //Get short name
-  std::string short_name;
-  auto pos=name.rfind(':');
-  if(pos!=std::string::npos && pos+1<name.size())
-    short_name=name.substr(pos+1);
-  else
-    short_name=name;
-  
   std::string line;
   long best_score=LONG_MIN;
   std::vector<Location> best_locations;
   while(std::getline(*result.second, line)) {
-    //Find function name
-    auto pos=line.find('\t');
-    if(pos==std::string::npos)
-      continue;
-    auto line_function_name=line.substr(0, pos);
-    
-    if(line_function_name!=short_name || line.find(name)==std::string::npos)
-      continue;
-    
     auto location=Ctags::get_location(line, false);
+    if(!location.scope.empty()) {
+      if(location.scope+"::"+location.symbol!=name)
+        continue;
+    }
+    else if(location.symbol!=name)
+      continue;
+    
     location.file_path=result.first/location.file_path;
     
     auto source_parts=get_type_parts(location.source);

@@ -12,6 +12,8 @@ public:
     boost::filesystem::path file_path;
     unsigned long line;
     unsigned long index;
+    std::string symbol;
+    std::string scope;
     std::string source;
     operator bool() const { return !file_path.empty(); }
   };
