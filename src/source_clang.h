@@ -86,15 +86,15 @@ namespace Source {
   class ClangViewRefactor : public virtual ClangViewParse {
     class Identifier {
     public:
-      Identifier(clang::CursorKind kind, const std::string &spelling, const std::string &usr, const clang::Cursor &cursor=clang::Cursor()) :
+      Identifier(clang::Cursor::Kind kind, const std::string &spelling, const std::string &usr, const clang::Cursor &cursor=clang::Cursor()) :
         kind(kind), spelling(spelling), usr(usr), cursor(cursor) {}
       
-      Identifier() : kind(static_cast<clang::CursorKind>(0)) {}
+      Identifier() : kind(static_cast<clang::Cursor::Kind>(0)) {}
       operator bool() const { return static_cast<int>(kind)!=0; }
       bool operator==(const Identifier &rhs) const { return (kind==rhs.kind && spelling==rhs.spelling && usr==rhs.usr); }
       bool operator!=(const Identifier &rhs) const { return !(*this==rhs); }
       bool operator<(const Identifier &rhs) const { return usr<rhs.usr; }
-      clang::CursorKind kind;
+      clang::Cursor::Kind kind;
       std::string spelling;
       std::string usr;
       clang::Cursor cursor;

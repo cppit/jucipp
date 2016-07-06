@@ -248,21 +248,21 @@ void Source::ClangViewParse::update_syntax() {
   last_syntax_tags.clear();
   
   for (auto &token : *clang_tokens) {
-    //if(token.get_kind()==clang::TokenKind::Token_Punctuation)
+    //if(token.get_kind()==clang::Token::Kind::Token_Punctuation)
       //ranges.emplace_back(token.offsets, static_cast<int>(token.get_cursor().get_kind()));
     auto token_kind=token.get_kind();
-    if(token_kind==clang::TokenKind::Token_Keyword)
+    if(token_kind==clang::Token::Kind::Keyword)
       apply_tag(token.offsets, 702);
-    else if(token_kind==clang::TokenKind::Token_Identifier) {
+    else if(token_kind==clang::Token::Kind::Identifier) {
       auto cursor_kind=token.get_cursor().get_kind();
-      if(cursor_kind==clang::CursorKind::DeclRefExpr || cursor_kind==clang::CursorKind::MemberRefExpr)
+      if(cursor_kind==clang::Cursor::Kind::DeclRefExpr || cursor_kind==clang::Cursor::Kind::MemberRefExpr)
         cursor_kind=token.get_cursor().get_referenced().get_kind();
-      if(cursor_kind!=clang::CursorKind::PreprocessingDirective)
+      if(cursor_kind!=clang::Cursor::Kind::PreprocessingDirective)
         apply_tag(token.offsets, static_cast<int>(cursor_kind));
     }
-    else if(token_kind==clang::TokenKind::Token_Literal)
-      apply_tag(token.offsets, static_cast<int>(clang::CursorKind::StringLiteral));
-    else if(token_kind==clang::TokenKind::Token_Comment)
+    else if(token_kind==clang::Token::Kind::Literal)
+      apply_tag(token.offsets, static_cast<int>(clang::Cursor::Kind::StringLiteral));
+    else if(token_kind==clang::Token::Kind::Comment)
       apply_tag(token.offsets, 705);
   }
 }
@@ -420,14 +420,14 @@ void Source::ClangViewParse::show_type_tooltips(const Gdk::Rectangle &rectangle)
       type_tooltips.clear();
       for(auto &token: *tokens) {
         auto cursor=token.get_cursor();
-        if(token.get_kind()==clang::TokenKind::Token_Identifier && cursor.has_type()) {
-          if(token.get_cursor().get_kind()==clang::CursorKind::CallExpr) //These cursors are buggy
+        if(token.get_kind()==clang::Token::Kind::Identifier && cursor.has_type_description()) {
+          if(token.get_cursor().get_kind()==clang::Cursor::Kind::CallExpr) //These cursors are buggy
             continue;
           auto start=get_buffer()->get_iter_at_line_index(token.offsets.first.line-1, token.offsets.first.index-1);
           auto end=get_buffer()->get_iter_at_line_index(token.offsets.second.line-1, token.offsets.second.index-1);
           auto create_tooltip_buffer=[this, &token]() {
             auto tooltip_buffer=Gtk::TextBuffer::create(get_buffer()->get_tag_table());
-            tooltip_buffer->insert_with_tag(tooltip_buffer->get_insert()->get_iter(), "Type: "+token.get_cursor().get_type(), "def:note");
+            tooltip_buffer->insert_with_tag(tooltip_buffer->get_insert()->get_iter(), "Type: "+token.get_cursor().get_type_description(), "def:note");
             auto brief_comment=token.get_cursor().get_brief_comments();
             if(brief_comment!="")
               tooltip_buffer->insert_with_tag(tooltip_buffer->get_insert()->get_iter(), "\n\n"+brief_comment, "def:note");
@@ -838,7 +838,7 @@ Source::ClangViewRefactor::ClangViewRefactor(const boost::filesystem::path &file
       wait_parsing(views);
       
       //If rename constructor or destructor, set token to class
-      if(identifier.kind==clang::CursorKind::Constructor || identifier.kind==clang::CursorKind::Destructor) {
+      if(identifier.kind==clang::Cursor::Kind::Constructor || identifier.kind==clang::Cursor::Kind::Destructor) {
         auto parent_cursor=identifier.cursor.get_semantic_parent();
         identifier=Identifier(parent_cursor.get_kind(), identifier.spelling, parent_cursor.get_usr(), parent_cursor);
       }
@@ -850,14 +850,14 @@ Source::ClangViewRefactor::ClangViewRefactor(const boost::filesystem::path &file
           //If rename class, also rename constructors and destructor
           std::set<Identifier> identifiers;
           identifiers.emplace(identifier);
-          if(identifier.cursor.get_kind()==clang::CursorKind::ClassDecl) {
+          if(identifier.cursor.get_kind()==clang::Cursor::Kind::ClassDecl) {
             for(auto &token: *clang_view->clang_tokens) {
               auto cursor=token.get_cursor();
               auto cursor_kind=cursor.get_kind();
               auto parent_cursor=cursor.get_semantic_parent();
-              if(token.get_kind()==clang::TokenKind::Token_Identifier &&
-                 (cursor_kind==clang::CursorKind::Constructor || cursor_kind==clang::CursorKind::Destructor) &&
-                 parent_cursor.get_usr()==identifier.cursor.get_usr() && cursor.has_type()) {
+              if(token.get_kind()==clang::Token::Kind::Identifier &&
+                 (cursor_kind==clang::Cursor::Kind::Constructor || cursor_kind==clang::Cursor::Kind::Destructor) &&
+                 parent_cursor.get_usr()==identifier.cursor.get_usr() && cursor.has_type_description()) {
                 identifiers.emplace(cursor.get_kind(), token.get_spelling(), cursor.get_usr());
               }
             }
@@ -915,8 +915,7 @@ Source::ClangViewRefactor::ClangViewRefactor(const boost::filesystem::path &file
     }
     auto identifier=get_identifier();
     if(identifier) {
-      auto canonical=clang::Cursor(clang_getCanonicalCursor(identifier.cursor.cx_cursor));
-      auto source_location=canonical.get_source_location();
+      auto source_location=identifier.cursor.get_canonical().get_source_location();
       auto offset=source_location.get_offset();
       return Offset(offset.line-1, offset.index-1, source_location.get_path());
     }
@@ -937,9 +936,9 @@ Source::ClangViewRefactor::ClangViewRefactor(const boost::filesystem::path &file
           for(auto &token: *clang_view->clang_tokens) {
             auto cursor=token.get_cursor();
             auto kind=cursor.get_kind();
-            if((kind==clang::CursorKind::FunctionDecl || kind==clang::CursorKind::CXXMethod ||
-                kind==clang::CursorKind::Constructor || kind==clang::CursorKind::Destructor) &&
-               token.get_kind()==clang::TokenKind::Token_Identifier && cursor.has_type()) {
+            if((kind==clang::Cursor::Kind::FunctionDecl || kind==clang::Cursor::Kind::CXXMethod ||
+                kind==clang::Cursor::Kind::Constructor || kind==clang::Cursor::Kind::Destructor) &&
+               token.get_kind()==clang::Token::Kind::Identifier && cursor.has_type_description()) {
               auto referenced=cursor.get_referenced();
               if(referenced && identifier.kind==referenced.get_kind() &&
                  identifier.spelling==token.get_spelling() && identifier.usr==referenced.get_usr()) {
@@ -960,7 +959,7 @@ Source::ClangViewRefactor::ClangViewRefactor(const boost::filesystem::path &file
         return locations;
       
       //If no implementation was found, try using clang_getCursorDefinition
-      auto definition=clang::Cursor(clang_getCursorDefinition(identifier.cursor.cx_cursor));
+      auto definition=identifier.cursor.get_definition();
       if(definition) {
         auto definition_location=definition.get_source_location();
         Offset location;
@@ -975,12 +974,12 @@ Source::ClangViewRefactor::ClangViewRefactor(const boost::filesystem::path &file
       //If no implementation was found, try using Ctags
       auto name=identifier.cursor.get_spelling();
       auto parent=identifier.cursor.get_semantic_parent();
-      while(parent && parent.get_kind()!=clang::CursorKind::TranslationUnit) {
+      while(parent && parent.get_kind()!=clang::Cursor::Kind::TranslationUnit) {
         auto spelling=parent.get_spelling()+"::";
         name.insert(0, spelling);
         parent=parent.get_semantic_parent();
       }
-      auto ctags_locations=Ctags::get_locations(this->file_path, name, identifier.cursor.get_type());
+      auto ctags_locations=Ctags::get_locations(this->file_path, name, identifier.cursor.get_type_description());
       if(!ctags_locations.empty()) {
         for(auto &ctags_location: ctags_locations) {
           Offset location;
@@ -1062,17 +1061,16 @@ Source::ClangViewRefactor::ClangViewRefactor(const boost::filesystem::path &file
     auto index=static_cast<unsigned>(iter.get_line_index());
     for(auto &token: *clang_tokens) {
       auto cursor=token.get_cursor();
-      if(token.get_kind()==clang::TokenKind::Token_Identifier && cursor.has_type()) {
+      if(token.get_kind()==clang::Token::Kind::Identifier && cursor.has_type_description()) {
         if(line==token.offsets.first.line-1 && index>=token.offsets.first.index-1 && index <=token.offsets.second.index-1) {
           auto kind=cursor.get_kind();
-          if(kind==clang::CursorKind::CXXMethod || kind==clang::CursorKind::Constructor || kind==clang::CursorKind::Destructor) {
+          if(kind==clang::Cursor::Kind::CXXMethod || kind==clang::Cursor::Kind::Constructor || kind==clang::Cursor::Kind::Destructor) {
             auto referenced=cursor.get_referenced();
             if(referenced && referenced==cursor) {
               std::string result;
               std::string specifier;
-              if(kind==clang::CursorKind::CXXMethod) {
-                auto type=clang_getResultType(clang_getCursorType(cursor.cx_cursor));
-                result=clang::to_string(clang_getTypeSpelling(type));
+              if(kind==clang::Cursor::Kind::CXXMethod) {
+                result=cursor.get_type().get_result().get_spelling();
                 
                 if(!result.empty() && result.back()!='*' && result.back()!='&')
                   result+=' ';
@@ -1084,7 +1082,7 @@ Source::ClangViewRefactor::ClangViewRefactor(const boost::filesystem::path &file
               auto name=cursor.get_spelling();
               auto parent=cursor.get_semantic_parent();
               std::vector<std::string> semantic_parents;
-              while(parent && parent.get_kind()!=clang::CursorKind::TranslationUnit) {
+              while(parent && parent.get_kind()!=clang::Cursor::Kind::TranslationUnit) {
                 auto spelling=parent.get_spelling()+"::";
                 semantic_parents.emplace_back(spelling);
                 name.insert(0, spelling);
@@ -1092,11 +1090,8 @@ Source::ClangViewRefactor::ClangViewRefactor(const boost::filesystem::path &file
               }
               
               std::string arguments;
-              auto arg_size=clang_Cursor_getNumArguments(cursor.cx_cursor);
-              for(int c=0;c<arg_size;c++) {
-                auto argument_cursor=clang::Cursor(clang_Cursor_getArgument(cursor.cx_cursor, c));
-                auto type=clang_getCursorType(argument_cursor.cx_cursor);
-                auto argument_type=clang::to_string(clang_getTypeSpelling(type));
+              for(auto &argument_cursor: cursor.get_arguments()) {
+                auto argument_type=argument_cursor.get_type().get_spelling();
                 for(auto it=semantic_parents.rbegin();it!=semantic_parents.rend();++it) {
                   size_t pos=argument_type.find(' '+*it);
                   if(pos!=std::string::npos)
@@ -1183,7 +1178,7 @@ Source::ClangViewRefactor::ClangViewRefactor(const boost::filesystem::path &file
     auto index=static_cast<unsigned>(iter.get_line_index());
     for(auto &token: *clang_tokens) {
       auto cursor=token.get_cursor();
-      if(token.get_kind()==clang::TokenKind::Token_Identifier && cursor.has_type()) {
+      if(token.get_kind()==clang::Token::Kind::Identifier && cursor.has_type_description()) {
         if(line==token.offsets.first.line-1 && index>=token.offsets.first.index-1 && index <=token.offsets.second.index-1) {
           auto referenced=cursor.get_referenced();
           if(referenced) {
@@ -1299,9 +1294,9 @@ Source::ClangViewRefactor::Identifier Source::ClangViewRefactor::get_identifier(
   auto index=static_cast<unsigned>(iter.get_line_index());
   for(auto &token: *clang_tokens) {
     auto cursor=token.get_cursor();
-    if(token.get_kind()==clang::TokenKind::Token_Identifier && cursor.has_type()) {
+    if(token.get_kind()==clang::Token::Kind::Identifier && cursor.has_type_description()) {
       if(line==token.offsets.first.line-1 && index>=token.offsets.first.index-1 && index <=token.offsets.second.index-1) {
-        if(token.get_cursor().get_kind()==clang::CursorKind::CallExpr) //These cursors are buggy
+        if(token.get_cursor().get_kind()==clang::Cursor::Kind::CallExpr) //These cursors are buggy
           continue;
         auto referenced=cursor.get_referenced();
         if(referenced)
