@@ -476,17 +476,16 @@ void Project::Clang::debug_show_variables() {
     
     view->selection_dialog->on_select=[this, rows](const std::string& selected, bool hide_window) {
       auto variable=rows->at(selected);
+      Debug::LLDB::get().select_frame(variable.frame_index, variable.thread_index_id);
       if(!variable.file_path.empty()) {
         Notebook::get().open(variable.file_path);
         if(auto view=Notebook::get().get_current_view()) {
-          Debug::LLDB::get().select_frame(variable.frame_index, variable.thread_index_id);
-          
           view->place_cursor_at_line_index(variable.line_nr-1, variable.line_index-1);
           view->scroll_to_cursor_delayed(view, true, true);
         }
       }
-      else
-        Info::get().print("Debugger did not report declaration for the variable: "+variable.name);
+      if(!variable.declaration_found)
+        Info::get().print("Debugger did not find declaration for the variable: "+variable.name);
     };
     
     view->selection_dialog->on_hide=[this]() {

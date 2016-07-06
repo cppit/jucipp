@@ -358,6 +358,7 @@ std::vector<Debug::LLDB::Variable> Debug::LLDB::get_variables() {
           
           auto declaration=value.GetDeclaration();
           if(declaration.IsValid()) {
+            variable.declaration_found=true;
             variable.line_nr=declaration.GetLine();
             variable.line_index=declaration.GetColumn();
             if(variable.line_index==0)
@@ -366,6 +367,20 @@ std::vector<Debug::LLDB::Variable> Debug::LLDB::get_variables() {
             auto file_spec=declaration.GetFileSpec();
             variable.file_path=filesystem::get_canonical_path(file_spec.GetDirectory());
             variable.file_path/=file_spec.GetFilename();
+          }
+          else {
+            variable.declaration_found=false;
+            auto line_entry=frame.GetLineEntry();
+            if(line_entry.IsValid()) {
+              variable.line_nr=line_entry.GetLine();
+              variable.line_index=line_entry.GetColumn();
+              if(variable.line_index==0)
+                variable.line_index=1;
+              
+              auto file_spec=line_entry.GetFileSpec();
+              variable.file_path=filesystem::get_canonical_path(file_spec.GetDirectory());
+              variable.file_path/=file_spec.GetFilename();
+            }
           }
           variables.emplace_back(variable);
         }
