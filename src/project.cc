@@ -485,6 +485,8 @@ void Project::Clang::debug_show_variables() {
           view->scroll_to_cursor_delayed(view, true, true);
         }
       }
+      else
+        Info::get().print("Debugger did not report declaration for the variable: "+variable.name);
     };
     
     view->selection_dialog->on_hide=[this]() {

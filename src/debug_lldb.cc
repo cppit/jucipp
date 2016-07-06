@@ -348,15 +348,16 @@ std::vector<Debug::LLDB::Variable> Debug::LLDB::get_variables() {
           lldb::SBStream stream;
           auto value=values.GetValueAtIndex(value_index);
         
+          Debug::LLDB::Variable variable;
+          variable.thread_index_id=thread.GetIndexID();
+          variable.frame_index=c_f;
+          if(value.GetName()!=NULL)
+            variable.name=value.GetName();
+          value.GetDescription(stream);
+          variable.value=stream.GetData();
+          
           auto declaration=value.GetDeclaration();
           if(declaration.IsValid()) {
-            Debug::LLDB::Variable variable;
-            
-            variable.thread_index_id=thread.GetIndexID();
-            variable.frame_index=c_f;
-            if(value.GetName()!=NULL)
-              variable.name=value.GetName();
-            
             variable.line_nr=declaration.GetLine();
             variable.line_index=declaration.GetColumn();
             if(variable.line_index==0)
@@ -365,12 +366,8 @@ std::vector<Debug::LLDB::Variable> Debug::LLDB::get_variables() {
             auto file_spec=declaration.GetFileSpec();
             variable.file_path=filesystem::get_canonical_path(file_spec.GetDirectory());
             variable.file_path/=file_spec.GetFilename();
-            
-            value.GetDescription(stream);
-            variable.value=stream.GetData();
-            
-            variables.emplace_back(variable);
           }
+          variables.emplace_back(variable);
         }
       }
     }
