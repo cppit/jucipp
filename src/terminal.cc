@@ -59,13 +59,13 @@ Terminal::Terminal() {
 int Terminal::process(const std::string &command, const boost::filesystem::path &path, bool use_pipes) {  
   std::unique_ptr<Process> process;
   if(use_pipes)
-    process=std::unique_ptr<Process>(new Process(command, path.string(), [this](const char* bytes, size_t n) {
+    process=std::make_unique<Process>(command, path.string(), [this](const char* bytes, size_t n) {
       async_print(std::string(bytes, n));
     }, [this](const char* bytes, size_t n) {
       async_print(std::string(bytes, n), true);
-    }));
+    });
   else
-    process=std::unique_ptr<Process>(new Process(command, path.string()));
+    process=std::make_unique<Process>(command, path.string());
     
   if(process->get_id()<=0) {
     async_print("Error: failed to run command: " + command + "\n", true);
@@ -113,11 +113,11 @@ void Terminal::async_process(const std::string &command, const boost::filesystem
   std::thread async_execute_thread([this, command, path, callback](){
     std::unique_lock<std::mutex> processes_lock(processes_mutex);
     stdin_buffer.clear();
-    std::shared_ptr<Process> process(new Process(command, path.string(), [this](const char* bytes, size_t n) {
+    auto process=std::make_shared<Process>(command, path.string(), [this](const char* bytes, size_t n) {
       async_print(std::string(bytes, n));
     }, [this](const char* bytes, size_t n) {
       async_print(std::string(bytes, n), true);
-    }, true));
+    }, true);
     auto pid=process->get_id();
     if (pid<=0) {
       processes_lock.unlock();

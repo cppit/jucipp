@@ -6,7 +6,7 @@ std::unique_ptr<Project::Build> Project::Build::create(const boost::filesystem::
   if(!cmake->project_path.empty())
     return cmake;
   else
-    return std::unique_ptr<Project::Build>(new Project::Build());
+    return std::make_unique<Project::Build>();
 }
 
 boost::filesystem::path Project::Build::get_default_path() {

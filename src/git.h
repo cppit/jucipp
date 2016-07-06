@@ -11,6 +11,7 @@
 #include <boost/filesystem.hpp>
 
 class Git {
+  friend class Repository;
 public:
   class Error {
     friend class Git;
@@ -74,7 +75,7 @@ public:
     
     boost::filesystem::path get_work_path() noexcept;
     boost::filesystem::path get_path() noexcept;
-    static boost::filesystem::path root_path(const boost::filesystem::path &path);
+    static boost::filesystem::path get_root_path(const boost::filesystem::path &path);
     
     Diff get_diff(const boost::filesystem::path &path);
     
@@ -82,21 +83,19 @@ public:
   };
   
 private:
+  static bool initialized;
+  
   ///Mutex for thread safe operations
   static std::mutex mutex;
-  bool initialized=false;
-  std::unordered_map<std::string, std::pair<std::unique_ptr<Repository>, size_t> > *repositories; //Freed by OS at program exit
+  
+  static std::unordered_map<std::string, std::pair<std::unique_ptr<Git::Repository>, size_t> > repositories;
   static std::mutex repositories_mutex;
   
-  Git();
+  ///Call initialize in public static methods
+  static void initialize() noexcept;
   
   static boost::filesystem::path path(const char *cpath, size_t cpath_length=static_cast<size_t>(-1)) noexcept;
-  
 public:
-  static Git &get() noexcept {
-    static Git instance;
-    return instance;
-  }
-  std::shared_ptr<Repository> get_repository(const boost::filesystem::path &path);
+  static std::shared_ptr<Repository> get_repository(const boost::filesystem::path &path);
 };
 #endif //JUCI_GIT_H_

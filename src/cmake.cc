@@ -101,8 +101,7 @@ bool CMake::update_debug_build(const boost::filesystem::path &debug_build_path, 
   if(!force && boost::filesystem::exists(debug_build_path/"CMakeCache.txt"))
     return true;
   
-  std::unique_ptr<Dialog::Message> message;
-  message=std::unique_ptr<Dialog::Message>(new Dialog::Message("Creating/updating debug build"));
+  auto message=std::make_unique<Dialog::Message>("Creating/updating debug build");
   auto exit_status=Terminal::get().process(Config::get().project.cmake_command+" "+
                                            filesystem::escape_argument(project_path)+" -DCMAKE_BUILD_TYPE=Debug", debug_build_path);
   if(message)

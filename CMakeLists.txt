@@ -3,7 +3,7 @@ cmake_minimum_required (VERSION 2.8.8)
 set(project_name juci)
 project (${project_name})
 
-set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -std=c++11 -pthread -Wall -Wextra -Wno-unused-parameter -Wno-reorder")
+set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -std=c++1y -pthread -Wall -Wextra -Wno-unused-parameter -Wno-reorder")
 if(CMAKE_BUILD_TYPE STREQUAL "")
   set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -O3")
 endif()

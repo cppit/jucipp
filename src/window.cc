@@ -452,7 +452,7 @@ void Window::set_menu_actions() {
       stream->seekg(0, std::ios::beg);
       
       auto dialog_iter=view->get_iter_for_dialog();
-      view->selection_dialog=std::unique_ptr<SelectionDialog>(new SelectionDialog(*view, view->get_buffer()->create_mark(dialog_iter), true, true));
+      view->selection_dialog=std::make_unique<SelectionDialog>(*view, view->get_buffer()->create_mark(dialog_iter), true, true);
       auto rows=std::make_shared<std::unordered_map<std::string, Source::Offset> >();
         
       std::string line;
@@ -551,7 +551,7 @@ void Window::set_menu_actions() {
         auto locations=view->get_implementation_locations(Notebook::get().get_views());
         if(!locations.empty()) {
           auto dialog_iter=view->get_iter_for_dialog();
-          view->selection_dialog=std::unique_ptr<SelectionDialog>(new SelectionDialog(*view, view->get_buffer()->create_mark(dialog_iter), true, true));
+          view->selection_dialog=std::make_unique<SelectionDialog>(*view, view->get_buffer()->create_mark(dialog_iter), true, true);
           auto rows=std::make_shared<std::unordered_map<std::string, Source::Offset> >();
           auto project_path=Project::Build::create(view->file_path)->project_path;
           if(project_path.empty()) {
@@ -608,7 +608,7 @@ void Window::set_menu_actions() {
         auto usages=view->get_usages(Notebook::get().get_views());
         if(!usages.empty()) {
           auto dialog_iter=view->get_iter_for_dialog();
-          view->selection_dialog=std::unique_ptr<SelectionDialog>(new SelectionDialog(*view, view->get_buffer()->create_mark(dialog_iter), true, true));
+          view->selection_dialog=std::make_unique<SelectionDialog>(*view, view->get_buffer()->create_mark(dialog_iter), true, true);
           auto rows=std::make_shared<std::unordered_map<std::string, Source::Offset> >();
           
           auto iter=view->get_buffer()->get_insert()->get_iter();
@@ -658,7 +658,7 @@ void Window::set_menu_actions() {
         auto methods=Notebook::get().get_current_view()->get_methods();
         if(!methods.empty()) {
           auto dialog_iter=view->get_iter_for_dialog();
-          view->selection_dialog=std::unique_ptr<SelectionDialog>(new SelectionDialog(*view, view->get_buffer()->create_mark(dialog_iter), true, true));
+          view->selection_dialog=std::make_unique<SelectionDialog>(*view, view->get_buffer()->create_mark(dialog_iter), true, true);
           auto rows=std::make_shared<std::unordered_map<std::string, Source::Offset> >();
           auto iter=view->get_buffer()->get_insert()->get_iter();
           for(auto &method: methods) {

@@ -552,7 +552,7 @@ void Directories::add_or_update_path(const boost::filesystem::path &dir_path, co
     
     std::shared_ptr<Git::Repository> repository;
     try {
-      repository=Git::get().get_repository(dir_path);
+      repository=Git::get_repository(dir_path);
     }
     catch(const std::exception &) {}
     
@@ -593,22 +593,18 @@ void Directories::add_or_update_path(const boost::filesystem::path &dir_path, co
     directories[dir_path.string()]={row, monitor, repository, repository_connection};
   }
   
-  std::unique_ptr<Gtk::TreeNodeChildren> children; //Gtk::TreeNodeChildren is missing default constructor...
-  if(row)
-    children=std::unique_ptr<Gtk::TreeNodeChildren>(new Gtk::TreeNodeChildren(row.children()));
-  else
-    children=std::unique_ptr<Gtk::TreeNodeChildren>(new Gtk::TreeNodeChildren(tree_store->children()));
-  if(*children) {
-    if(children->begin()->get_value(column_record.path)=="")
-      tree_store->erase(children->begin());
+  Gtk::TreeNodeChildren children(row?row.children():tree_store->children());
+  if(children) {
+    if(children.begin()->get_value(column_record.path)=="")
+      tree_store->erase(children.begin());
   }
   std::unordered_set<std::string> not_deleted;
   boost::filesystem::directory_iterator end_it;
   for(boost::filesystem::directory_iterator it(dir_path);it!=end_it;it++) {
     auto filename=it->path().filename().string();
     bool already_added=false;
-    if(*children) {
-      for(auto &child: *children) {
+    if(children) {
+      for(auto &child: children) {
         if(child->get_value(column_record.name)==filename) {
           not_deleted.emplace(filename);
           already_added=true;
@@ -617,7 +613,7 @@ void Directories::add_or_update_path(const boost::filesystem::path &dir_path, co
       }
     }
     if(!already_added) {
-      auto child = tree_store->append(*children);
+      auto child = tree_store->append(children);
       not_deleted.emplace(filename);
       child->set_value(column_record.name, filename);
       child->set_value(column_record.markup, Glib::Markup::escape_text(filename));
@@ -638,8 +634,8 @@ void Directories::add_or_update_path(const boost::filesystem::path &dir_path, co
       }
     }
   }
-  if(*children) {
-    for(auto it=children->begin();it!=children->end();) {
+  if(children) {
+    for(auto it=children.begin();it!=children.end();) {
       if(not_deleted.count(it->get_value(column_record.name))==0) {
         it=tree_store->erase(it);
       }
@@ -647,8 +643,8 @@ void Directories::add_or_update_path(const boost::filesystem::path &dir_path, co
         it++;
     }
   }
-  if(!*children) {
-    auto child=tree_store->append(*children);
+  if(!children) {
+    auto child=tree_store->append(children);
     child->set_value(column_record.name, std::string("(empty)"));
     child->set_value(column_record.markup, Glib::Markup::escape_text("(empty)"));
     child->set_value(column_record.type, PathType::UNKNOWN);
@@ -720,15 +716,11 @@ void Directories::colorize_path(const boost::filesystem::path &dir_path_, bool i
         green.set_blue(normal_color.get_blue()+factor*(green.get_blue()-normal_color.get_blue()));
         
         do {
-          std::unique_ptr<Gtk::TreeNodeChildren> children; //Gtk::TreeNodeChildren is missing default constructor...
-          if(it->second.row)
-            children=std::unique_ptr<Gtk::TreeNodeChildren>(new Gtk::TreeNodeChildren(it->second.row.children()));
-          else
-            children=std::unique_ptr<Gtk::TreeNodeChildren>(new Gtk::TreeNodeChildren(tree_store->children()));
-          if(!*children)
+          Gtk::TreeNodeChildren children(it->second.row?it->second.row.children():tree_store->children());
+          if(!children)
             return;
           
-          for(auto &child: *children) {
+          for(auto &child: children) {
             auto name=Glib::Markup::escape_text(child.get_value(column_record.name));
             auto path=child.get_value(column_record.path);
             Gdk::RGBA *color;

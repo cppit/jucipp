@@ -412,7 +412,7 @@ void Project::Clang::debug_backtrace() {
     auto backtrace=Debug::LLDB::get().get_backtrace();
     
     auto iter=view->get_iter_for_dialog();
-    view->selection_dialog=std::unique_ptr<SelectionDialog>(new SelectionDialog(*view, view->get_buffer()->create_mark(iter), true, true));
+    view->selection_dialog=std::make_unique<SelectionDialog>(*view, view->get_buffer()->create_mark(iter), true, true);
     auto rows=std::make_shared<std::unordered_map<std::string, Debug::LLDB::Frame> >();
     if(backtrace.size()==0)
       return;
@@ -462,7 +462,7 @@ void Project::Clang::debug_show_variables() {
     auto variables=Debug::LLDB::get().get_variables();
     
     auto iter=view->get_iter_for_dialog();
-    view->selection_dialog=std::unique_ptr<SelectionDialog>(new SelectionDialog(*view, view->get_buffer()->create_mark(iter), true, true));
+    view->selection_dialog=std::make_unique<SelectionDialog>(*view, view->get_buffer()->create_mark(iter), true, true);
     auto rows=std::make_shared<std::unordered_map<std::string, Debug::LLDB::Variable> >();
     if(variables.size()==0)
       return;

@@ -98,7 +98,7 @@ void Source::DiffView::configure() {
     return;
   
   try {
-    repository=Git::get().get_repository(this->file_path.parent_path());
+    repository=Git::get_repository(this->file_path.parent_path());
   }
   catch(const std::exception &) {
     return;
@@ -308,7 +308,7 @@ std::unique_ptr<Git::Repository::Diff> Source::DiffView::get_diff() {
     if(relative_path.empty())
       throw std::runtime_error("not a relative path");
   }
-  return std::unique_ptr<Git::Repository::Diff>(new Git::Repository::Diff(repository->get_diff(relative_path)));
+  return std::make_unique<Git::Repository::Diff>(repository->get_diff(relative_path));
 }
 
 void Source::DiffView::update_lines() {

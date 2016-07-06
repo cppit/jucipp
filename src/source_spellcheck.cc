@@ -148,7 +148,7 @@ Source::SpellCheckView::SpellCheckView() : Gsv::View() {
           }
         }
         if(need_suggestions) {
-          spellcheck_suggestions_dialog=std::unique_ptr<SelectionDialog>(new SelectionDialog(*this, get_buffer()->create_mark(get_buffer()->get_insert()->get_iter()), false));
+          spellcheck_suggestions_dialog=std::make_unique<SelectionDialog>(*this, get_buffer()->create_mark(get_buffer()->get_insert()->get_iter()), false);
           auto word=spellcheck_get_word(get_buffer()->get_insert()->get_iter());
           auto suggestions=spellcheck_get_suggestions(word.first, word.second);
           if(suggestions.size()==0)

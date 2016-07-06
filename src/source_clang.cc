@@ -104,7 +104,7 @@ void Source::ClangViewParse::parse_initialize() {
     }
     pos++;
   }
-  clang_tu = std::unique_ptr<clang::TranslationUnit>(new clang::TranslationUnit(clang_index, file_path.string(), get_compilation_commands(), buffer.raw()));
+  clang_tu = std::make_unique<clang::TranslationUnit>(clang_index, file_path.string(), get_compilation_commands(), buffer.raw());
   clang_tokens=clang_tu->get_tokens(0, buffer.bytes()-1);
   update_syntax();
   
@@ -539,7 +539,7 @@ void Source::ClangViewAutocomplete::autocomplete_dialog_setup() {
   auto start_iter=get_buffer()->get_insert()->get_iter();
   if(prefix.size()>0 && !start_iter.backward_chars(prefix.size()))
     return;
-  autocomplete_dialog=std::unique_ptr<CompletionDialog>(new CompletionDialog(*this, get_buffer()->create_mark(start_iter)));
+  autocomplete_dialog=std::make_unique<CompletionDialog>(*this, get_buffer()->create_mark(start_iter));
   autocomplete_dialog_rows.clear();
   autocomplete_dialog->on_hide=[this](){
     get_buffer()->end_user_action();
@@ -1315,7 +1315,7 @@ void Source::ClangViewRefactor::wait_parsing(const std::vector<Source::View*> &v
       if(!clang_view->parsed) {
         clang_views.emplace_back(clang_view);
         if(!message)
-          message=std::unique_ptr<Dialog::Message>(new Dialog::Message("Please wait while all buffers finish parsing"));
+          message=std::make_unique<Dialog::Message>("Please wait while all buffers finish parsing");
       }
     }
   }

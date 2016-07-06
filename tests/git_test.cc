@@ -11,7 +11,7 @@ int main() {
   auto git_path=jucipp_path/".git";
   
   try {
-    auto repository=Git::get().get_repository(tests_path);
+    auto repository=Git::get_repository(tests_path);
     
     g_assert(repository->get_path()==git_path);
     g_assert(repository->get_work_path()==jucipp_path);
@@ -30,7 +30,7 @@ int main() {
   }
   
   try {
-    g_assert(Git::Repository::root_path(tests_path)==git_path);
+    g_assert(Git::Repository::get_root_path(tests_path)==git_path);
   }
   catch(const std::exception &e) {
     std::cerr << e.what() << std::endl;

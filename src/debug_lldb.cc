@@ -45,8 +45,8 @@ void Debug::LLDB::start(const std::string &command, const boost::filesystem::pat
                   const std::string &remote_host) {
   if(!debugger) {
     lldb::SBDebugger::Initialize();
-    debugger=std::unique_ptr<lldb::SBDebugger>(new lldb::SBDebugger(lldb::SBDebugger::Create(true, log, nullptr)));
-    listener=std::unique_ptr<lldb::SBListener>(new lldb::SBListener("juCi++ lldb listener"));
+    debugger=std::make_unique<lldb::SBDebugger>(lldb::SBDebugger::Create(true, log, nullptr));
+    listener=std::make_unique<lldb::SBListener>("juCi++ lldb listener");
   }
   
   //Create executable string and argument array
@@ -103,7 +103,7 @@ void Debug::LLDB::start(const std::string &command, const boost::filesystem::pat
   lldb::SBError error;
   if(!remote_host.empty()) {
     auto connect_string="connect://"+remote_host;
-    process = std::unique_ptr<lldb::SBProcess>(new lldb::SBProcess(target.ConnectRemote(*listener, connect_string.c_str(), "gdb-remote", error)));
+    process = std::make_unique<lldb::SBProcess>(target.ConnectRemote(*listener, connect_string.c_str(), "gdb-remote", error));
     if(error.Fail()) {
       Terminal::get().async_print(std::string("Error (debug): ")+error.GetCString()+'\n', true);
       if(callback)
@@ -128,7 +128,7 @@ void Debug::LLDB::start(const std::string &command, const boost::filesystem::pat
       process->Continue();
   }
   else
-    process = std::unique_ptr<lldb::SBProcess>(new lldb::SBProcess(target.Launch(*listener, argv, const_cast<const char**>(environ), nullptr, nullptr, nullptr, path.string().c_str(), lldb::eLaunchFlagNone, false, error)));
+    process = std::make_unique<lldb::SBProcess>(target.Launch(*listener, argv, const_cast<const char**>(environ), nullptr, nullptr, nullptr, path.string().c_str(), lldb::eLaunchFlagNone, false, error));
   if(error.Fail()) {
     Terminal::get().async_print(std::string("Error (debug): ")+error.GetCString()+'\n', true);
     if(callback)

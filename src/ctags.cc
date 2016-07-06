@@ -37,7 +37,7 @@ std::pair<boost::filesystem::path, std::unique_ptr<std::stringstream> > Ctags::g
   
   std::stringstream stdin_stream;
   //TODO: when debian stable gets newer g++ version that supports move on streams, remove unique_ptr below
-  std::unique_ptr<std::stringstream> stdout_stream(new std::stringstream());
+  auto stdout_stream=std::make_unique<std::stringstream>();
   auto command=Config::get().project.ctags_command+exclude+" --fields=ns --sort=foldcase -I \"override noexcept\" -f - -R *";
   Terminal::get().process(stdin_stream, *stdout_stream, command, run_path);
   return {run_path, std::move(stdout_stream)};

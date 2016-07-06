@@ -5,7 +5,7 @@
 ## About
 Current IDEs struggle with C++ support due to the complexity of
 the programming language. juCI++, however, is designed especially 
-towards libclang with speed and ease of use in mind. 
+towards libclang with speed, stability, and ease of use in mind. 
 
 ## Features
 * Platform independent

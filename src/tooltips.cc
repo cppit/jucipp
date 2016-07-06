@@ -46,7 +46,7 @@ void Tooltip::update() {
 void Tooltip::show(bool disregard_drawn) {
   if(!window) {
     //init window
-    window=std::unique_ptr<Gtk::Window>(new Gtk::Window(Gtk::WindowType::WINDOW_POPUP));
+    window=std::make_unique<Gtk::Window>(Gtk::WindowType::WINDOW_POPUP);
     
     auto g_application=g_application_get_default();
     auto gio_application=Glib::wrap(g_application, true);
@@ -61,7 +61,7 @@ void Tooltip::show(bool disregard_drawn) {
     window->set_skip_taskbar_hint(true);
     window->set_default_size(0, 0);
 
-    tooltip_widget=std::unique_ptr<Gtk::TextView>(new Gtk::TextView(create_tooltip_buffer()));
+    tooltip_widget=std::make_unique<Gtk::TextView>(create_tooltip_buffer());
     wrap_lines(tooltip_widget->get_buffer());
     tooltip_widget->set_editable(false);
     auto tag=text_view.get_buffer()->get_tag_table()->lookup("def:note_background");

@@ -1,7 +1,9 @@
 #include "git.h"
 #include <cstring>
 
+bool Git::initialized=false;
 std::mutex Git::mutex;
+std::unordered_map<std::string, std::pair<std::unique_ptr<Git::Repository>, size_t> > Git::repositories;
 std::mutex Git::repositories_mutex;
 
 std::string Git::Error::message() noexcept {
@@ -179,23 +181,23 @@ Git::Repository::Status Git::Repository::get_status() {
   Status status;
   bool first=true;
   std::unique_lock<std::mutex> status_saved_lock(saved_status_mutex, std::defer_lock);
-  std::function<void(const char *path, STATUS status)> callback=[this, &status, &first, &status_saved_lock](const char *path_cstr, Git::Repository::STATUS status_enum) {
+  std::function<void(const char *path, STATUS status)> callback=[this, &status, &first, &status_saved_lock](const char *path_cstr, STATUS status_enum) {
     if(first) {
       status_saved_lock.lock();
       first=false;
     }
     boost::filesystem::path rel_path(path_cstr);
     do {
-      if(status_enum==Git::Repository::STATUS::MODIFIED)
+      if(status_enum==STATUS::MODIFIED)
         status.modified.emplace((work_path/rel_path).generic_string());
-      if(status_enum==Git::Repository::STATUS::NEW)
+      if(status_enum==STATUS::NEW)
         status.added.emplace((work_path/rel_path).generic_string());
       rel_path=rel_path.parent_path();
     } while(!rel_path.empty());
   };
   Error error;
   std::lock_guard<std::mutex> lock(mutex);
-  error.code = git_status_foreach(repository.get(), Repository::status_callback, &callback);
+  error.code = git_status_foreach(repository.get(), status_callback, &callback);
   if(error)
     throw std::runtime_error(error.message());
   saved_status=status;
@@ -222,7 +224,8 @@ boost::filesystem::path Git::Repository::get_path() noexcept {
   return Git::path(git_repository_path(repository.get()));
 }
 
-boost::filesystem::path Git::Repository::root_path(const boost::filesystem::path &path) {
+boost::filesystem::path Git::Repository::get_root_path(const boost::filesystem::path &path) {
+  initialize();
   git_buf root = {0, 0, 0};
   {
     Error error;
@@ -241,7 +244,8 @@ Git::Repository::Diff Git::Repository::get_diff(const boost::filesystem::path &p
   return Diff(path, repository.get());
 }
 
-Git::Git() : repositories(new std::unordered_map<std::string, std::pair<std::unique_ptr<Repository>, size_t> >()) {
+void Git::initialize() noexcept {
+  std::lock_guard<std::mutex> lock(mutex);
   if(!initialized) {
 #if LIBGIT2_SOVERSION>=22
     git_libgit2_init();
@@ -253,24 +257,25 @@ Git::Git() : repositories(new std::unordered_map<std::string, std::pair<std::uni
 }
 
 std::shared_ptr<Git::Repository> Git::get_repository(const boost::filesystem::path &path) {
+  initialize();
   std::lock_guard<std::mutex> lock(repositories_mutex);
-  auto root_path=std::make_shared<std::string>(Repository::root_path(path).generic_string());
-  auto it=repositories->find(*root_path);
+  auto root_path=std::make_shared<std::string>(Repository::get_root_path(path).generic_string());
+  auto it=repositories.find(*root_path);
   Repository *repository_ptr;
-  if(it!=repositories->end()) {
+  if(it!=repositories.end()) {
     it->second.second++;
     repository_ptr=it->second.first.get();
   }
   else {
-    it=repositories->emplace(*root_path, std::pair<std::unique_ptr<Repository>, size_t>(std::unique_ptr<Repository>(new Repository(*root_path)), 1)).first;
+    it=repositories.emplace(*root_path, std::make_pair(std::unique_ptr<Repository>(new Repository(*root_path)), 1)).first;
     repository_ptr=it->second.first.get();
   }
-  return std::shared_ptr<Repository>(repository_ptr, [this, root_path](Repository *) {
+  return std::shared_ptr<Repository>(repository_ptr, [root_path](Repository *) {
     std::lock_guard<std::mutex> lock(repositories_mutex);
-    auto it=repositories->find(*root_path);
+    auto it=repositories.find(*root_path);
     it->second.second--;
     if(it->second.second==0)
-      repositories->erase(it);
+      repositories.erase(it);
   });
 }
 
