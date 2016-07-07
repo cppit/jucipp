@@ -9,7 +9,7 @@ towards libclang with speed, stability, and ease of use in mind.
 
 ## Features
 * Platform independent
-* Fast and responsive (written in C++)
+* Fast, responsive and stable (written extensively using C++11/14 features)
 * Syntax highlighting for more than 100 different file types
 * C++ warnings and errors on the fly
 * C++ Fix-its
