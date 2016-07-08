@@ -90,11 +90,11 @@ include_directories(${global_includes})
 add_library(project_shared OBJECT ${project_shared_files})
 
 if(("${CMAKE_CXX_COMPILER_ID}" STREQUAL "Clang") AND (NOT $ENV{distribution} STREQUAL ""))
-  add_library(${project_name} OBJECT ${project_files})
+  add_library(${CMAKE_PROJECT_NAME} OBJECT ${project_files})
 else()
-  add_executable(${project_name} ${project_files} $<TARGET_OBJECTS:project_shared>)
-  target_link_libraries(${project_name} ${global_libraries})
-  install(TARGETS ${project_name}
+  add_executable(${CMAKE_PROJECT_NAME} ${project_files} $<TARGET_OBJECTS:project_shared>)
+  target_link_libraries(${CMAKE_PROJECT_NAME} ${global_libraries})
+  install(TARGETS ${CMAKE_PROJECT_NAME}
     RUNTIME DESTINATION bin
   )
 endif()

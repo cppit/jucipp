@@ -2,8 +2,6 @@
 #define JUCI_FILES_H_
 #include <string>
 
-#define JUCI_VERSION "1.2.0-1"
-
 const std::string default_config_file = R"RAW({
     "version": ")RAW"+std::string(JUCI_VERSION)+R"RAW(",
     "default_window_size": {

@@ -2,7 +2,7 @@ Source: jucipp
 Section: unknown
 Priority: optional
 Maintainer: Ole Christian Eidheim <eidheim@gmail.com>
-Build-Depends: debhelper (>= 9), cmake, make, g++, libclang-dev, liblldb-3.5-dev, clang-format-3.5, pkg-config, libboost-system-dev, libboost-thread-dev, libboost-filesystem-dev, libboost-log-dev, libboost-regex-dev, libgtksourceviewmm-3.0-dev, aspell-en, libaspell-dev
+Build-Depends: debhelper (>= 9), cmake, make, g++, libclang-dev, liblldb-3.5-dev, clang-format-3.5, pkg-config, libboost-system-dev, libboost-filesystem-dev, libgtksourceviewmm-3.0-dev, aspell-en, libaspell-dev, libgit2-dev, exuberant-ctags
 Standards-Version: 3.9.5
 Homepage: https://github.com/cppit/jucipp
 
