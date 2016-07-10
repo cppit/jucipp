@@ -60,6 +60,7 @@ endforeach()
 find_path(LIBCLANG_INCLUDE_DIR clang-c/Index.h
   PATHS ${libclang_llvm_header_search_paths}
   PATH_SUFFIXES LLVM/include #Windows package from http://llvm.org/releases/
+    llvm33/include llvm34/include llvm35/include llvm36/include llvm37/include llvm38/include llvm39/include # FreeBSD
   DOC "The path to the directory that contains clang-c/Index.h")
 
 # On Windows with MSVC, the import library uses the ".imp" file extension
@@ -73,6 +74,7 @@ endif()
 find_library(LIBCLANG_LIBRARY NAMES libclang.imp libclang clang
   PATHS ${libclang_llvm_lib_search_paths}
   PATH_SUFFIXES LLVM/lib #Windows package from http://llvm.org/releases/
+    llvm33/lib llvm34/lib llvm35/lib llvm36/lib llvm37/lib llvm38/lib llvm39/lib # FreeBSD
   DOC "The file that corresponds to the libclang library.")
 
 get_filename_component(LIBCLANG_LIBRARY_DIR ${LIBCLANG_LIBRARY} PATH)
