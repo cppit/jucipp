@@ -27,6 +27,13 @@ set(global_libraries ${global_libraries}
   ${LIBGIT2_LIBRARIES}
 )
 
+if (${CMAKE_SYSTEM_NAME} MATCHES FreeBSD)
+  set(global_link_directories /usr/local/lib)
+endif()
+set(global_link_directories
+  ${Boost_LIBRARY_DIRS}
+)
+
 set(project_files
     config.cc
     dialogs.cc
@@ -86,6 +93,7 @@ else()
 endif()
 
 include_directories(${global_includes})
+link_directories(${global_link_directories})
 
 add_library(project_shared OBJECT ${project_shared_files})
 
