@@ -28,6 +28,9 @@ if(APPLE)
   set(CMAKE_MACOSX_RPATH 1)
   set(ENV{PKG_CONFIG_PATH} "$ENV{PKG_CONFIG_PATH}:/usr/local/lib/pkgconfig:/opt/X11/lib/pkgconfig")
 endif()
+if(${CMAKE_SYSTEM_NAME} MATCHES FreeBSD)
+  link_directories(/usr/local/lib)
+endif()
 
 set(CMAKE_MODULE_PATH ${CMAKE_MODULE_PATH} "${CMAKE_SOURCE_DIR}/cmake_modules/")
 find_package(LibClang REQUIRED)
@@ -53,6 +56,19 @@ include(FindPkgConfig)
 pkg_check_modules(GTKMM gtkmm-3.0 REQUIRED)
 pkg_check_modules(GTKSVMM gtksourceviewmm-3.0 REQUIRED)
 pkg_check_modules(LIBGIT2 libgit2 REQUIRED)
+
+if(MSYS)
+  set(global_libraries winpthread)
+endif()
+set(global_libraries ${global_libraries}
+  ${GTKMM_LIBRARIES}
+  ${GTKSVMM_LIBRARIES}
+  ${Boost_LIBRARIES}
+  ${LIBCLANG_LIBRARIES}
+  ${LIBLLDB_LIBRARIES}
+  ${ASPELL_LIBRARIES}
+  ${LIBGIT2_LIBRARIES}
+)
 
 add_subdirectory("src")
 

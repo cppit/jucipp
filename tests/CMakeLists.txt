@@ -12,19 +12,6 @@ set(global_includes
    ../src
 )
 
-if(MSYS)
-  set(global_libraries winpthread)
-endif()
-set(global_libraries ${global_libraries}
-  ${GTKMM_LIBRARIES}
-  ${GTKSVMM_LIBRARIES}
-  ${Boost_LIBRARIES}
-  ${LIBCLANG_LIBRARIES}
-  ${LIBLLDB_LIBRARIES}
-  ${ASPELL_LIBRARIES}
-  ${LIBGIT2_LIBRARIES}
-)
-
 set(stub_files
     stubs/config.cc
     stubs/dialogs.cc
