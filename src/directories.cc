@@ -542,7 +542,7 @@ void Directories::add_or_update_path(const boost::filesystem::path &dir_path, co
   if(path_it==directories.end()) {
     auto g_file=Glib::wrap(g_file_new_for_path(dir_path.string().c_str())); //TODO: report missing constructor in giomm
     
-#if GLIBMM_MAJOR_VERSION>2 || (GLIBMM_MAJOR_VERSION==2 && GLIBMM_MINOR_VERSION>=44)
+#if GIOMM_MAJOR_VERSION>2 || (GIOMM_MAJOR_VERSION==2 && GIOMM_MINOR_VERSION>=44)
     auto monitor=g_file->monitor_directory(Gio::FileMonitorFlags::FILE_MONITOR_WATCH_MOVES);
 #else
     auto monitor=g_file->monitor_directory(Gio::FileMonitorFlags::FILE_MONITOR_SEND_MOVED);
