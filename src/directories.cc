@@ -151,12 +151,10 @@ Directories::Directories() : Gtk::ListViewText(1) {
     if (iter) {
       auto filesystem_path=iter->get_value(column_record.path);
       if(filesystem_path!="") {
-        if (boost::filesystem::is_directory(boost::filesystem::path(filesystem_path))) {
+        if (boost::filesystem::is_directory(boost::filesystem::path(filesystem_path)))
           row_expanded(path) ? collapse_row(path) : expand_row(path, false);
-        } else {
-          if(on_row_activated)
-            on_row_activated(filesystem_path);
-        }
+        else
+          Notebook::get().open(filesystem_path);
       }
     }
   });

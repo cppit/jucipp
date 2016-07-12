@@ -80,10 +80,6 @@ Window::Window() {
   show_all_children();
   Info::get().hide();
 
-  Directories::get().on_row_activated=[this](const boost::filesystem::path &path) {
-    Notebook::get().open(path);
-  };
-
   //Scroll to end of terminal whenever info is printed
   Terminal::get().signal_size_allocate().connect([this](Gtk::Allocation& allocation){
     auto adjustment=terminal_scrolled_window.get_vadjustment();

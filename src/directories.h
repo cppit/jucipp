@@ -65,7 +65,6 @@ public:
   void on_save_file(boost::filesystem::path file_path);
   void select(const boost::filesystem::path &path);
   
-  std::function<void(const boost::filesystem::path &path)> on_row_activated;
   boost::filesystem::path path;
   
 protected:
