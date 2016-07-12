@@ -24,7 +24,7 @@ int main() {
   Gsv::init();
 
 #ifdef _WIN32
-  g_assert_cmpstr(std::getenv("MSYSTEM_PREFIX"), !=, NULL);
+  g_assert_cmpstr(std::getenv("MSYSTEM_PREFIX"), !=, nullptr);
 #endif
   
   Config::get().project.default_build_path="./build";

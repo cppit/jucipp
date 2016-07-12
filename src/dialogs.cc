@@ -24,8 +24,8 @@ Dialog::Message::Message(const std::string &text): Gtk::MessageDialog(text, fals
   
   show_now();
   
-  while(g_main_context_pending(nullptr))
-    g_main_context_iteration(nullptr, false);
+  while(Gtk::Main::events_pending())
+    Gtk::Main::iteration(false);
 }
 
 bool Dialog::Message::on_delete_event(GdkEventAny *event) {

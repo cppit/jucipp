@@ -95,7 +95,7 @@ Notebook::Notebook() : Gtk::HPaned(), notebooks(2) {
 }
 
 size_t Notebook::size() {
-  return static_cast<int>(source_views.size());
+  return source_views.size();
 }
 
 Source::View* Notebook::get_view(size_t index) {
@@ -159,8 +159,8 @@ void Notebook::open(const boost::filesystem::path &file_path, size_t notebook_in
     source_views.emplace_back(new Source::GenericView(file_path, language));
   
   source_views.back()->scroll_to_cursor_delayed=[this](Source::View* view, bool center, bool show_tooltips) {
-    while(g_main_context_pending(nullptr))
-      g_main_context_iteration(nullptr, false);
+    while(Gtk::Main::events_pending())
+      Gtk::Main::iteration(false);
     if(get_current_view()==view) {
       if(center)
         view->scroll_to(view->get_buffer()->get_insert(), 0.0, 1.0, 0.5);

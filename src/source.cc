@@ -111,7 +111,7 @@ Source::View::View(const boost::filesystem::path &file_path, Glib::RefPtr<Gsv::L
   //TODO: why does this not work?: Might be best to use the styles from sourceview. These has to be read from file, search-matches got style "search-match"
   //TODO: in header if trying again: GtkSourceStyle* search_match_style;
   //TODO: We can drop this, only work on newer versions of gtksourceview.
-  //search_match_style=(GtkSourceStyle*)g_object_new(GTK_SOURCE_TYPE_STYLE, "background-set", 1, "background", "#00FF00", NULL);
+  //search_match_style=(GtkSourceStyle*)g_object_new(GTK_SOURCE_TYPE_STYLE, "background-set", 1, "background", "#00FF00", nullptr);
   //gtk_source_search_context_set_match_style(search_context, search_match_style);
   
   //TODO: either use lambda if possible or create a gtkmm wrapper around search_context (including search_settings):

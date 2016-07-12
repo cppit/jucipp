@@ -1321,8 +1321,8 @@ void Source::ClangViewRefactor::wait_parsing(const std::vector<Source::View*> &v
   }
   if(message) {
     for(;;) {
-      while(g_main_context_pending(nullptr))
-        g_main_context_iteration(nullptr, false);
+      while(Gtk::Main::events_pending())
+        Gtk::Main::iteration(false);
       bool all_parsed=true;
       for(auto &clang_view: clang_views) {
         if(!clang_view->parsed) {

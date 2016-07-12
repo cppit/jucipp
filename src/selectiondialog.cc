@@ -122,8 +122,8 @@ void SelectionDialogBase::show() {
       cursor_changed();
     }
     else if(list_view_text.get_model()->children().begin()!=list_view_text.get_selection()->get_selected()) {
-      while(g_main_context_pending(nullptr))
-        g_main_context_iteration(nullptr, false);
+      while(Gtk::Main::events_pending())
+        Gtk::Main::iteration(false);
       list_view_text.scroll_to_row(list_view_text.get_model()->get_path(list_view_text.get_selection()->get_selected()), 0.5);
     }
   }

@@ -334,8 +334,8 @@ void Terminal::clear() {
     for(auto &in_progress: in_progresses)
       in_progress->stop=true;
   }
-  while(g_main_context_pending(nullptr))
-    g_main_context_iteration(nullptr, false);
+  while(Gtk::Main::events_pending())
+    Gtk::Main::iteration(false);
   get_buffer()->set_text("");
 }
 
