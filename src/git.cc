@@ -8,7 +8,7 @@ std::mutex Git::repositories_mutex;
 
 std::string Git::Error::message() noexcept {
   const git_error *last_error = giterr_last();
-  if(last_error==NULL)
+  if(last_error==nullptr)
     return std::string();
   else
     return last_error->message;
@@ -49,9 +49,9 @@ Git::Repository::Diff::Lines Git::Repository::Diff::get_lines(const std::string 
   Error error;
   std::lock_guard<std::mutex> lock(mutex);
 #if LIBGIT2_SOVERSION>=23
-  error.code=git_diff_blob_to_buffer(blob.get(), NULL, buffer.c_str(), buffer.size(), NULL, &options, NULL, NULL, hunk_cb, NULL, &lines);
+  error.code=git_diff_blob_to_buffer(blob.get(), nullptr, buffer.c_str(), buffer.size(), nullptr, &options, nullptr, nullptr, hunk_cb, nullptr, &lines);
 #else
-  error.code=git_diff_blob_to_buffer(blob.get(), NULL, buffer.c_str(), buffer.size(), NULL, &options, NULL, hunk_cb, NULL, &lines);
+  error.code=git_diff_blob_to_buffer(blob.get(), nullptr, buffer.c_str(), buffer.size(), nullptr, &options, nullptr, hunk_cb, nullptr, &lines);
 #endif
   if(error)
     throw std::runtime_error(error.message());
@@ -77,9 +77,9 @@ std::string Git::Repository::Diff::get_details(const std::string &buffer, int li
   Error error;
   std::lock_guard<std::mutex> lock(mutex);
 #if LIBGIT2_SOVERSION>=23
-  error.code=git_diff_blob_to_buffer(blob.get(), NULL, buffer.c_str(), buffer.size(), NULL, &options, NULL, NULL, NULL, line_cb, &details);
+  error.code=git_diff_blob_to_buffer(blob.get(), nullptr, buffer.c_str(), buffer.size(), nullptr, &options, nullptr, nullptr, nullptr, line_cb, &details);
 #else
-  error.code=git_diff_blob_to_buffer(blob.get(), NULL, buffer.c_str(), buffer.size(), NULL, &options, NULL, NULL, line_cb, &details);
+  error.code=git_diff_blob_to_buffer(blob.get(), nullptr, buffer.c_str(), buffer.size(), nullptr, &options, nullptr, nullptr, line_cb, &details);
 #endif
   if(error)
     throw std::runtime_error(error.message());
@@ -92,7 +92,7 @@ Git::Repository::Repository(const boost::filesystem::path &path) {
     Error error;
     std::lock_guard<std::mutex> lock(mutex);
     auto path_str=path.generic_string();
-    error.code = git_repository_open_ext(&repository_ptr, path_str.c_str(), 0, NULL);
+    error.code = git_repository_open_ext(&repository_ptr, path_str.c_str(), 0, nullptr);
     if(error)
       throw std::runtime_error(error.message());
   }
@@ -235,7 +235,7 @@ boost::filesystem::path Git::Repository::get_root_path(const boost::filesystem::
     Error error;
     std::lock_guard<std::mutex> lock(mutex);
     auto path_str=path.generic_string();
-    error.code = git_repository_discover(&root, path_str.c_str(), 0, NULL);
+    error.code = git_repository_discover(&root, path_str.c_str(), 0, nullptr);
     if(error)
       throw std::runtime_error(error.message());
   }

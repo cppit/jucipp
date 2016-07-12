@@ -756,7 +756,7 @@ void Source::ClangViewAutocomplete::autocomplete() {
 std::vector<Source::ClangViewAutocomplete::AutoCompleteData> Source::ClangViewAutocomplete::autocomplete_get_suggestions(const std::string &buffer, int line_number, int column) {
   std::vector<AutoCompleteData> suggestions;
   auto results=clang_tu->get_code_completions(buffer, line_number, column);
-  if(results.cx_results==NULL) {
+  if(results.cx_results==nullptr) {
     auto expected=ParseState::PROCESSING;
     parse_state.compare_exchange_strong(expected, ParseState::RESTARTING);
     return suggestions;
@@ -1321,8 +1321,8 @@ void Source::ClangViewRefactor::wait_parsing(const std::vector<Source::View*> &v
   }
   if(message) {
     for(;;) {
-      while(g_main_context_pending(NULL))
-        g_main_context_iteration(NULL, false);
+      while(g_main_context_pending(nullptr))
+        g_main_context_iteration(nullptr, false);
       bool all_parsed=true;
       for(auto &clang_view: clang_views) {
         if(!clang_view->parsed) {

@@ -16,12 +16,12 @@ namespace sigc {
 #endif
 }
 
-AspellConfig* Source::SpellCheckView::spellcheck_config=NULL;
+AspellConfig* Source::SpellCheckView::spellcheck_config=nullptr;
 
 Source::SpellCheckView::SpellCheckView() : Gsv::View() {
-  if(spellcheck_config==NULL)
+  if(spellcheck_config==nullptr)
     spellcheck_config=new_aspell_config();
-  spellcheck_checker=NULL;
+  spellcheck_checker=nullptr;
   auto tag=get_buffer()->create_tag("spellcheck_error");
   tag->property_underline()=Pango::Underline::UNDERLINE_ERROR;
   
@@ -41,7 +41,7 @@ Source::SpellCheckView::SpellCheckView() : Gsv::View() {
   });
   
   get_buffer()->signal_changed().connect([this](){
-    if(spellcheck_checker==NULL)
+    if(spellcheck_checker==nullptr)
       return;
     
     delayed_spellcheck_suggestions_connection.disconnect();
@@ -131,7 +131,7 @@ Source::SpellCheckView::SpellCheckView() : Gsv::View() {
   });
   
   get_buffer()->signal_mark_set().connect([this](const Gtk::TextBuffer::iterator& iter, const Glib::RefPtr<Gtk::TextBuffer::Mark>& mark) {
-    if(spellcheck_checker==NULL)
+    if(spellcheck_checker==nullptr)
       return;
     
     if(mark->get_name()=="insert") {
@@ -191,7 +191,7 @@ Source::SpellCheckView::~SpellCheckView() {
   delayed_spellcheck_suggestions_connection.disconnect();
   delayed_spellcheck_error_clear.disconnect();
   
-  if(spellcheck_checker!=NULL)
+  if(spellcheck_checker!=nullptr)
     delete_aspell_speller(spellcheck_checker);//asd
 }
 
@@ -201,9 +201,9 @@ void Source::SpellCheckView::configure() {
     aspell_config_replace(spellcheck_config, "encoding", "utf-8");
   }
   spellcheck_possible_err=new_aspell_speller(spellcheck_config);
-  if(spellcheck_checker!=NULL)
+  if(spellcheck_checker!=nullptr)
     delete_aspell_speller(spellcheck_checker);
-  spellcheck_checker=NULL;
+  spellcheck_checker=nullptr;
   if (aspell_error_number(spellcheck_possible_err) != 0)
     std::cerr << "Spell check error: " << aspell_error_message(spellcheck_possible_err) << std::endl;
   else
@@ -218,7 +218,7 @@ void Source::SpellCheckView::hide_dialogs() {
 }
 
 void Source::SpellCheckView::spellcheck(const Gtk::TextIter& start, const Gtk::TextIter& end) {
-  if(spellcheck_checker==NULL)
+  if(spellcheck_checker==nullptr)
     return;
   auto iter=start;
   while(iter && iter<end) {
@@ -353,7 +353,7 @@ std::vector<std::string> Source::SpellCheckView::spellcheck_get_suggestions(cons
   
   std::vector<std::string> words;
   const char *word;
-  while ((word = aspell_string_enumeration_next(elements))!= NULL) {
+  while ((word = aspell_string_enumeration_next(elements))!= nullptr) {
     words.emplace_back(word);
   }
   delete_aspell_string_enumeration(elements);

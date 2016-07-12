@@ -30,7 +30,7 @@ namespace sigc {
 Glib::RefPtr<Gsv::Language> Source::guess_language(const boost::filesystem::path &file_path) {
   auto language_manager=Gsv::LanguageManager::get_default();
   bool result_uncertain = false;
-  auto content_type = Gio::content_type_guess(file_path.string(), NULL, 0, result_uncertain);
+  auto content_type = Gio::content_type_guess(file_path.string(), nullptr, 0, result_uncertain);
   if(result_uncertain) {
     content_type.clear();
   }
@@ -380,7 +380,7 @@ void Source::View::configure() {
     diagnostic_tag_underline->property_underline()=Pango::Underline::UNDERLINE_ERROR;
     auto tag_class=G_OBJECT_GET_CLASS(diagnostic_tag_underline->gobj()); //For older GTK+ 3 versions:
     auto param_spec=g_object_class_find_property(tag_class, "underline-rgba");
-    if(param_spec!=NULL) {
+    if(param_spec!=nullptr) {
       diagnostic_tag_underline->set_property("underline-rgba", Gdk::RGBA(warning_property));
     }
   }
@@ -509,7 +509,7 @@ void Source::View::search_highlight(const std::string &text, bool case_sensitive
   gtk_source_search_settings_set_case_sensitive(search_settings, case_sensitive);
   gtk_source_search_settings_set_regex_enabled(search_settings, regex);
   gtk_source_search_settings_set_search_text(search_settings, text.c_str());
-  search_occurrences_updated(NULL, NULL, this);
+  search_occurrences_updated(nullptr, nullptr, this);
 }
 
 void Source::View::search_forward() {
@@ -541,7 +541,7 @@ void Source::View::replace_forward(const std::string &replacement) {
   Gtk::TextIter match_start, match_end;
   if(gtk_source_search_context_forward(search_context, start.gobj(), match_start.gobj(), match_end.gobj())) {
     auto offset=match_start.get_offset();
-    gtk_source_search_context_replace(search_context, match_start.gobj(), match_end.gobj(), replacement.c_str(), replacement.size(), NULL);
+    gtk_source_search_context_replace(search_context, match_start.gobj(), match_end.gobj(), replacement.c_str(), replacement.size(), nullptr);
     
     Glib::ustring replacement_ustring=replacement;
     get_buffer()->select_range(get_buffer()->get_iter_at_offset(offset), get_buffer()->get_iter_at_offset(offset+replacement_ustring.size()));
@@ -556,7 +556,7 @@ void Source::View::replace_backward(const std::string &replacement) {
   Gtk::TextIter match_start, match_end;
   if(gtk_source_search_context_backward(search_context, start.gobj(), match_start.gobj(), match_end.gobj())) {
     auto offset=match_start.get_offset();
-    gtk_source_search_context_replace(search_context, match_start.gobj(), match_end.gobj(), replacement.c_str(), replacement.size(), NULL);
+    gtk_source_search_context_replace(search_context, match_start.gobj(), match_end.gobj(), replacement.c_str(), replacement.size(), nullptr);
 
     get_buffer()->select_range(get_buffer()->get_iter_at_offset(offset), get_buffer()->get_iter_at_offset(offset+replacement.size()));
     scroll_to(get_buffer()->get_insert());
@@ -564,7 +564,7 @@ void Source::View::replace_backward(const std::string &replacement) {
 }
 
 void Source::View::replace_all(const std::string &replacement) {
-  gtk_source_search_context_replace_all(search_context, replacement.c_str(), replacement.size(), NULL);
+  gtk_source_search_context_replace_all(search_context, replacement.c_str(), replacement.size(), nullptr);
 }
 
 void Source::View::paste() {

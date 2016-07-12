@@ -80,7 +80,7 @@ void Debug::LLDB::start(const std::string &command, const boost::filesystem::pat
   const char *argv[arguments.size()+1];
   for(size_t c=0;c<arguments.size();c++)
     argv[c]=arguments[c].c_str();
-  argv[arguments.size()]=NULL;
+  argv[arguments.size()]=nullptr;
   
   auto target=debugger->CreateTarget(executable.c_str());
   if(!target.IsValid()) {
@@ -310,11 +310,11 @@ std::vector<Debug::LLDB::Frame> Debug::LLDB::get_backtrace() {
       
       backtrace_frame.index=c_f;
       
-      if(frame.GetFunctionName()!=NULL)
+      if(frame.GetFunctionName()!=nullptr)
         backtrace_frame.function_name=frame.GetFunctionName();
       
       auto module_filename=frame.GetModule().GetFileSpec().GetFilename();
-      if(module_filename!=NULL) {
+      if(module_filename!=nullptr) {
         backtrace_frame.module_filename=module_filename;
       }
       
@@ -351,7 +351,7 @@ std::vector<Debug::LLDB::Variable> Debug::LLDB::get_variables() {
           Debug::LLDB::Variable variable;
           variable.thread_index_id=thread.GetIndexID();
           variable.frame_index=c_f;
-          if(value.GetName()!=NULL)
+          if(value.GetName()!=nullptr)
             variable.name=value.GetName();
           value.GetDescription(stream);
           variable.value=stream.GetData();
@@ -417,7 +417,7 @@ std::string Debug::LLDB::get_value(const std::string &variable, const boost::fil
       lldb::SBStream stream;
       auto value=values.GetValueAtIndex(value_index);
 
-      if(value.GetName()!=NULL && value.GetName()==variable) {
+      if(value.GetName()!=nullptr && value.GetName()==variable) {
         auto declaration=value.GetDeclaration();
         if(declaration.IsValid()) {
           if(declaration.GetLine()==line_nr && (declaration.GetColumn()==0 || declaration.GetColumn()==line_index)) {

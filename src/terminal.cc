@@ -334,8 +334,8 @@ void Terminal::clear() {
     for(auto &in_progress: in_progresses)
       in_progress->stop=true;
   }
-  while(g_main_context_pending(NULL))
-    g_main_context_iteration(NULL, false);
+  while(g_main_context_pending(nullptr))
+    g_main_context_iteration(nullptr, false);
   get_buffer()->set_text("");
 }
 

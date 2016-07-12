@@ -513,8 +513,8 @@ void Window::set_menu_actions() {
 #ifdef __APPLE__
                 Terminal::get().process("open \""+uri+"\"");
 #else
-                GError* error=NULL;
-                gtk_show_uri(NULL, uri.c_str(), GDK_CURRENT_TIME, &error);
+                GError* error=nullptr;
+                gtk_show_uri(nullptr, uri.c_str(), GDK_CURRENT_TIME, &error);
                 g_clear_error(&error);
 #endif
               }

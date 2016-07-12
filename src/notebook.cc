@@ -159,8 +159,8 @@ void Notebook::open(const boost::filesystem::path &file_path, size_t notebook_in
     source_views.emplace_back(new Source::GenericView(file_path, language));
   
   source_views.back()->scroll_to_cursor_delayed=[this](Source::View* view, bool center, bool show_tooltips) {
-    while(g_main_context_pending(NULL))
-      g_main_context_iteration(NULL, false);
+    while(g_main_context_pending(nullptr))
+      g_main_context_iteration(nullptr, false);
     if(get_current_view()==view) {
       if(center)
         view->scroll_to(view->get_buffer()->get_insert(), 0.0, 1.0, 0.5);

@@ -28,7 +28,7 @@ Config::Config() {
   
 #ifdef _WIN32
      auto env_MSYSTEM_PREFIX=std::getenv("MSYSTEM_PREFIX");
-     if(env_MSYSTEM_PREFIX!=NULL)
+     if(env_MSYSTEM_PREFIX!=nullptr)
        terminal.msys2_mingw_path=boost::filesystem::path(env_MSYSTEM_PREFIX);
 #endif
 }
