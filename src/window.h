@@ -17,10 +17,6 @@ protected:
   bool on_delete_event(GdkEventAny *event) override;
 
 private:
-  Gtk::VPaned vpaned;
-  Gtk::Paned directory_and_notebook_panes;
-  Gtk::VBox notebook_vbox;
-  Gtk::ScrolledWindow terminal_scrolled_window;
   Gtk::AboutDialog about;
   
   Glib::RefPtr<Gtk::CssProvider> css_provider;

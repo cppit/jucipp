@@ -37,28 +37,31 @@ Window::Window() {
   auto directories_scrolled_window=Gtk::manage(new Gtk::ScrolledWindow());
   directories_scrolled_window->add(Directories::get());
   
-  notebook_vbox.pack_start(Notebook::get());
-  notebook_vbox.pack_end(EntryBox::get(), Gtk::PACK_SHRINK);
+  auto notebook_vbox=Gtk::manage(new Gtk::VBox());
+  notebook_vbox->pack_start(Notebook::get());
+  notebook_vbox->pack_end(EntryBox::get(), Gtk::PACK_SHRINK);
   
-  directory_and_notebook_panes.pack1(*directories_scrolled_window, Gtk::SHRINK);
-  directory_and_notebook_panes.pack2(notebook_vbox, Gtk::SHRINK);
-  directory_and_notebook_panes.set_position(static_cast<int>(0.2*Config::get().window.default_size.first));
+  auto terminal_scrolled_window=Gtk::manage(new Gtk::ScrolledWindow());
+  terminal_scrolled_window->add(Terminal::get());
+  
+  auto notebook_and_terminal_vpaned=Gtk::manage(new Gtk::VPaned());
+  notebook_and_terminal_vpaned->set_position(static_cast<int>(0.75*Config::get().window.default_size.second));
+  notebook_and_terminal_vpaned->pack1(*notebook_vbox, Gtk::SHRINK);
+  notebook_and_terminal_vpaned->pack2(*terminal_scrolled_window, Gtk::SHRINK);
+  
+  auto hpaned=Gtk::manage(new Gtk::HPaned());
+  hpaned->set_position(static_cast<int>(0.2*Config::get().window.default_size.first));
+  hpaned->pack1(*directories_scrolled_window, Gtk::SHRINK);
+  hpaned->pack2(*notebook_and_terminal_vpaned, Gtk::SHRINK);
   
   auto info_and_status_hbox=Gtk::manage(new Gtk::HBox());
   info_and_status_hbox->pack_start(Notebook::get().info, Gtk::PACK_SHRINK);
-  
   info_and_status_hbox->set_center_widget(Project::debug_status_label());
   info_and_status_hbox->pack_end(Notebook::get().status, Gtk::PACK_SHRINK);
   
-  terminal_scrolled_window.add(Terminal::get());
-  
-  auto terminal_vbox=Gtk::manage(new Gtk::VBox());
-  terminal_vbox->pack_start(terminal_scrolled_window);
-  terminal_vbox->pack_end(*info_and_status_hbox, Gtk::PACK_SHRINK);
-  
-  vpaned.set_position(static_cast<int>(0.75*Config::get().window.default_size.second));
-  vpaned.pack1(directory_and_notebook_panes, true, false);
-  vpaned.pack2(*terminal_vbox, true, true);
+  auto vbox=Gtk::manage(new Gtk::VBox());
+  vbox->pack_start(*hpaned);
+  vbox->pack_start(*info_and_status_hbox, Gtk::PACK_SHRINK);
   
   auto overlay_vbox=Gtk::manage(new Gtk::VBox());
   auto overlay_hbox=Gtk::manage(new Gtk::HBox());
@@ -70,7 +73,7 @@ Window::Window() {
   overlay_hbox->pack_end(*overlay_vbox, Gtk::PACK_SHRINK, 20);
   
   auto overlay=Gtk::manage(new Gtk::Overlay());
-  overlay->add(vpaned);
+  overlay->add(*vbox);
   overlay->add_overlay(*overlay_hbox);
 #if GTKMM_MAJOR_VERSION>3 || (GTKMM_MAJOR_VERSION==3 && GTKMM_MINOR_VERSION>=18)
   overlay->set_overlay_pass_through(*overlay_hbox, true);
@@ -81,21 +84,21 @@ Window::Window() {
   Info::get().hide();
 
   //Scroll to end of terminal whenever info is printed
-  Terminal::get().signal_size_allocate().connect([this](Gtk::Allocation& allocation){
-    auto adjustment=terminal_scrolled_window.get_vadjustment();
+  Terminal::get().signal_size_allocate().connect([terminal_scrolled_window](Gtk::Allocation& allocation){
+    auto adjustment=terminal_scrolled_window->get_vadjustment();
     adjustment->set_value(adjustment->get_upper()-adjustment->get_page_size());
     Terminal::get().queue_draw();
   });
 
-  EntryBox::get().signal_show().connect([this](){
-    vpaned.set_focus_chain({&directory_and_notebook_panes});
-    directory_and_notebook_panes.set_focus_chain({&notebook_vbox});
-    notebook_vbox.set_focus_chain({&EntryBox::get()});
+  EntryBox::get().signal_show().connect([this, hpaned, notebook_and_terminal_vpaned, notebook_vbox](){
+    hpaned->set_focus_chain({notebook_and_terminal_vpaned});
+    notebook_and_terminal_vpaned->set_focus_chain({notebook_vbox});
+    notebook_vbox->set_focus_chain({&EntryBox::get()});
   });
-  EntryBox::get().signal_hide().connect([this](){
-    vpaned.unset_focus_chain();
-    directory_and_notebook_panes.unset_focus_chain();
-    notebook_vbox.unset_focus_chain();
+  EntryBox::get().signal_hide().connect([this, hpaned, notebook_and_terminal_vpaned, notebook_vbox](){
+    hpaned->unset_focus_chain();
+    notebook_and_terminal_vpaned->unset_focus_chain();
+    notebook_vbox->unset_focus_chain();
   });
   EntryBox::get().signal_hide().connect([this]() {
     if(auto view=Notebook::get().get_current_view())
