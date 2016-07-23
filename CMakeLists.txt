@@ -80,7 +80,7 @@ if(NOT (("${CMAKE_CXX_COMPILER_ID}" STREQUAL "Clang") AND (NOT $ENV{distribution
   endif()
 endif()
 
-if(${CMAKE_SYSTEM_NAME} MATCHES "Linux|FreeBSD|OpenBSD|NetBSD")
+if(${CMAKE_SYSTEM_NAME} MATCHES Linux|.*BSD|DragonFly)
     install(FILES "${CMAKE_SOURCE_DIR}/share/juci.desktop"
         DESTINATION "${CMAKE_INSTALL_PREFIX}/share/applications")
 endif()
