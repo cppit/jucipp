@@ -104,7 +104,7 @@ Git::Repository::Repository(const boost::filesystem::path &path) {
   
   auto git_path_str=boost::filesystem::canonical(get_path()).string();
   auto git_directory=Glib::wrap(g_file_new_for_path(git_path_str.c_str())); //TODO: report missing constructor in giomm
-#if defined(__FreeBSD__)
+#if defined(__OpenBSD__) || defined(__NetBSD__) || defined(__FreeBSD__) || defined(__Darwin__) || defined(__DragonFly__)
   monitor=git_directory->monitor_directory(Gio::FileMonitorFlags::FILE_MONITOR_SEND_MOVED);
 #else
 #if GLIBMM_MAJOR_VERSION>2 || (GLIBMM_MAJOR_VERSION==2 && GLIBMM_MINOR_VERSION>=44)
