@@ -109,6 +109,8 @@ void Tooltip::show(bool disregard_drawn) {
   }
 
   position={rectangle.get_x(), rectangle.get_y()};
+  if(window->get_realized())
+    window->move(position.first, position.second);
   window->show_all();
 }
 
