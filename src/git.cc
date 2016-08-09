@@ -3,8 +3,6 @@
 
 bool Git::initialized=false;
 std::mutex Git::mutex;
-std::unordered_map<std::string, std::pair<std::unique_ptr<Git::Repository>, size_t> > Git::repositories;
-std::mutex Git::repositories_mutex;
 
 std::string Git::Error::message() noexcept {
   const git_error *last_error = giterr_last();
@@ -262,25 +260,18 @@ void Git::initialize() noexcept {
 
 std::shared_ptr<Git::Repository> Git::get_repository(const boost::filesystem::path &path) {
   initialize();
-  std::lock_guard<std::mutex> lock(repositories_mutex);
-  auto root_path=std::make_shared<std::string>(Repository::get_root_path(path).generic_string());
-  auto it=repositories.find(*root_path);
-  Repository *repository_ptr;
-  if(it!=repositories.end()) {
-    it->second.second++;
-    repository_ptr=it->second.first.get();
-  }
-  else {
-    it=repositories.emplace(*root_path, std::make_pair(std::unique_ptr<Repository>(new Repository(*root_path)), 1)).first;
-    repository_ptr=it->second.first.get();
-  }
-  return std::shared_ptr<Repository>(repository_ptr, [root_path](Repository *) {
-    std::lock_guard<std::mutex> lock(repositories_mutex);
-    auto it=repositories.find(*root_path);
-    it->second.second--;
-    if(it->second.second==0)
-      repositories.erase(it);
-  });
+  static std::unordered_map<std::string, std::weak_ptr<Git::Repository> > cache;
+  static std::mutex mutex;
+  
+  std::lock_guard<std::mutex> lock(mutex);
+  auto root_path=Repository::get_root_path(path).generic_string();
+  auto it=cache.find(root_path);
+  if(it==cache.end())
+    it=cache.emplace(root_path, std::weak_ptr<Git::Repository>()).first;
+  auto instance=it->second.lock();
+  if(!instance)
+    it->second=instance=std::shared_ptr<Repository>(new Repository(root_path));
+  return instance;
 }
 
 boost::filesystem::path Git::path(const char *cpath, size_t cpath_length) noexcept {

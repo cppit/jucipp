@@ -88,9 +88,6 @@ private:
   ///Mutex for thread safe operations
   static std::mutex mutex;
   
-  static std::unordered_map<std::string, std::pair<std::unique_ptr<Git::Repository>, size_t> > repositories;
-  static std::mutex repositories_mutex;
-  
   ///Call initialize in public static methods
   static void initialize() noexcept;
   
