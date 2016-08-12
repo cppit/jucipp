@@ -1064,12 +1064,13 @@ Source::ClangViewRefactor::ClangViewRefactor(const boost::filesystem::path &file
       if(token.get_kind()==clang::Token::Kind::Identifier && cursor.has_type_description()) {
         if(line==token.offsets.first.line-1 && index>=token.offsets.first.index-1 && index <=token.offsets.second.index-1) {
           auto kind=cursor.get_kind();
-          if(kind==clang::Cursor::Kind::CXXMethod || kind==clang::Cursor::Kind::Constructor || kind==clang::Cursor::Kind::Destructor) {
+          if(kind==clang::Cursor::Kind::FunctionDecl || kind==clang::Cursor::Kind::CXXMethod ||
+             kind==clang::Cursor::Kind::Constructor || kind==clang::Cursor::Kind::Destructor) {
             auto referenced=cursor.get_referenced();
             if(referenced && referenced==cursor) {
               std::string result;
               std::string specifier;
-              if(kind==clang::Cursor::Kind::CXXMethod) {
+              if(kind==clang::Cursor::Kind::FunctionDecl || kind==clang::Cursor::Kind::CXXMethod) {
                 result=cursor.get_type().get_result().get_spelling();
                 
                 if(!result.empty() && result.back()!='*' && result.back()!='&')
@@ -1120,38 +1121,63 @@ Source::ClangViewRefactor::ClangViewRefactor(const boost::filesystem::path &file
       Info::get().print("Buffer is parsing");
       return methods;
     }
-    auto cxx_methods=clang_tokens->get_cxx_methods();
-    for(auto &method: cxx_methods) {
-      std::string row=std::to_string(method.second.line)+": "+Glib::Markup::escape_text(method.first);
-      //Add bold method token
-      size_t token_end_pos=row.find('(');
-      if(token_end_pos==0 || token_end_pos==std::string::npos)
-        continue;
-      if(token_end_pos>8 && row.substr(token_end_pos-4, 4)=="&gt;") {
-        token_end_pos-=8;
-        size_t angle_bracket_count=1;
-        do {
-          if(row.substr(token_end_pos-4, 4)=="&gt;") {
-            angle_bracket_count++;
-            token_end_pos-=4;
+    for(auto &token: *clang_tokens) {
+      auto cursor=token.get_cursor();
+      if(token.get_kind()==clang::Token::Kind::Identifier && cursor.has_type_description()) {
+        auto kind=cursor.get_kind();
+        if(kind==clang::Cursor::Kind::FunctionDecl || kind==clang::Cursor::Kind::CXXMethod ||
+           kind==clang::Cursor::Kind::Constructor || kind==clang::Cursor::Kind::Destructor) {
+          auto offset=cursor.get_source_location().get_offset();
+          std::string method;
+          if(kind==clang::Cursor::Kind::FunctionDecl || kind==clang::Cursor::Kind::CXXMethod) {
+            method+=cursor.get_type().get_result().get_spelling();
+            auto pos=method.find(" ");
+            if(pos!=std::string::npos)
+              method.erase(pos, 1);
+            method+=" ";
           }
-          else if(row.substr(token_end_pos-4, 4)=="&lt;") {
-            angle_bracket_count--;
-            token_end_pos-=4;
+          
+          std::string parent_str;
+          auto parent=cursor.get_semantic_parent();
+          while(parent && parent.get_kind()!=clang::Cursor::Kind::TranslationUnit) {
+            parent_str.insert(0, parent.get_display_name()+"::");
+            parent=parent.get_semantic_parent();
           }
-          else
-            token_end_pos--;
-        } while(angle_bracket_count>0 && token_end_pos>4);
+          
+          method+=parent_str+cursor.get_display_name();
+          
+          std::string row=std::to_string(offset.line)+": "+Glib::Markup::escape_text(method);
+          //Add bold method token
+          size_t token_end_pos=row.find('(');
+          if(token_end_pos==0 || token_end_pos==std::string::npos)
+            continue;
+          if(token_end_pos>8 && row.substr(token_end_pos-4, 4)=="&gt;") {
+            token_end_pos-=8;
+            size_t angle_bracket_count=1;
+            do {
+              if(row.substr(token_end_pos-4, 4)=="&gt;") {
+                angle_bracket_count++;
+                token_end_pos-=4;
+              }
+              else if(row.substr(token_end_pos-4, 4)=="&lt;") {
+                angle_bracket_count--;
+                token_end_pos-=4;
+              }
+              else
+                token_end_pos--;
+            } while(angle_bracket_count>0 && token_end_pos>4);
+          }
+          auto pos=token_end_pos;
+          do {
+            pos--;
+          } while(((row[pos]>='a' && row[pos]<='z') ||
+                 (row[pos]>='A' && row[pos]<='Z') ||
+                 (row[pos]>='0' && row[pos]<='9') || row[pos]=='_' || row[pos]=='~') && pos>0);
+          row.insert(token_end_pos, "</b>");
+          row.insert(pos+1, "<b>");
+          methods.emplace_back(Offset(offset.line-1, offset.index-1), row);
+        }
       }
-      auto pos=token_end_pos;
-      do {
-        pos--;
-      } while(((row[pos]>='a' && row[pos]<='z') ||
-             (row[pos]>='A' && row[pos]<='Z') ||
-             (row[pos]>='0' && row[pos]<='9') || row[pos]=='_' || row[pos]=='~') && pos>0);
-      row.insert(token_end_pos, "</b>");
-      row.insert(pos+1, "<b>");
-      methods.emplace_back(Offset(method.second.line-1, method.second.index-1), row);
     }
     return methods;
   };
