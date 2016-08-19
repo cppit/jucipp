@@ -540,14 +540,10 @@ void Directories::add_or_update_path(const boost::filesystem::path &dir_path, co
   if(path_it==directories.end()) {
     auto g_file=Glib::wrap(g_file_new_for_path(dir_path.string().c_str())); //TODO: report missing constructor in giomm
 
-#if defined(__OpenBSD__) || defined(__NetBSD__) || defined(__FreeBSD__) || defined(__Darwin__) || defined(__DragonFly__)
-    auto monitor=g_file->monitor_directory(Gio::FileMonitorFlags::FILE_MONITOR_SEND_MOVED);
-#else
-#if GLIBMM_MAJOR_VERSION>2 || (GLIBMM_MAJOR_VERSION==2 && GLIBMM_MINOR_VERSION>=44)
+#if GLIBMM_MAJOR_VERSION>2 || (GLIBMM_MAJOR_VERSION==2 && GLIBMM_MINOR_VERSION>=45)
     auto monitor=g_file->monitor_directory(Gio::FileMonitorFlags::FILE_MONITOR_WATCH_MOVES);
 #else
     auto monitor=g_file->monitor_directory(Gio::FileMonitorFlags::FILE_MONITOR_SEND_MOVED);
-#endif
 #endif
     auto path_and_row=std::make_shared<std::pair<boost::filesystem::path, Gtk::TreeModel::Row> >(dir_path, row);
     auto connection=std::make_shared<sigc::connection>();
