@@ -233,7 +233,9 @@ Source::View::View(const boost::filesystem::path &file_path, Glib::RefPtr<Gsv::L
     };
   }
   
-  set_tab_width(4); //Visual size of a \t hardcoded to be equal to visual size of 4 spaces
+#ifndef __APPLE__
+  set_tab_width(4); //Visual size of a \t hardcoded to be equal to visual size of 4 spaces. Buggy on OS X
+#endif
   tab_char=Config::get().source.default_tab_char;
   tab_size=Config::get().source.default_tab_size;
   if(Config::get().source.auto_tab_char_and_size) {
