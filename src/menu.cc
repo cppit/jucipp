@@ -42,6 +42,10 @@ Menu::Menu() {
         <submenu>
           <attribute name='label' translatable='yes'>_New _Project</attribute>
           <item>
+            <attribute name='label' translatable='no'>C</attribute>
+            <attribute name='action'>app.new_project_c</attribute>
+          </item>
+          <item>
             <attribute name='label' translatable='no'>C++</attribute>
             <attribute name='action'>app.new_project_cpp</attribute>
           </item>

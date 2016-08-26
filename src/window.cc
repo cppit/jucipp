@@ -240,6 +240,38 @@ void Window::set_menu_actions() {
       Directories::get().select(path);
     }
   });
+  menu.add_action("new_project_c", [this]() {
+    boost::filesystem::path project_path = Dialog::new_folder(Notebook::get().get_current_folder());
+    if(project_path!="") {
+      auto project_name=project_path.filename().string();
+      for(size_t c=0;c<project_name.size();c++) {
+        if(project_name[c]==' ')
+          project_name[c]='_';
+      }
+      auto cmakelists_path=project_path;
+      cmakelists_path/="CMakeLists.txt";
+      auto c_main_path=project_path;
+      c_main_path/="main.c";
+      if(boost::filesystem::exists(cmakelists_path)) {
+        Terminal::get().print("Error: "+cmakelists_path.string()+" already exists.\n", true);
+        return;
+      }
+      if(boost::filesystem::exists(c_main_path)) {
+        Terminal::get().print("Error: "+c_main_path.string()+" already exists.\n", true);
+        return;
+      }
+      std::string cmakelists="cmake_minimum_required(VERSION 2.8)\n\nproject("+project_name+")\n\nset(CMAKE_C_FLAGS \"${CMAKE_C_FLAGS} -std=c11 -Wall -Wextra\")\n\nadd_executable("+project_name+" main.c)\n";
+      std::string c_main="#include <stdio.h>\n\nint main() {\n  printf(\"Hello World!\\n\");\n}\n";
+      if(filesystem::write(cmakelists_path, cmakelists) && filesystem::write(c_main_path, c_main)) {
+        Directories::get().open(project_path);
+        Notebook::get().open(c_main_path);
+        Directories::get().update();
+        Terminal::get().print("C project "+project_name+" created.\n");
+      }
+      else
+        Terminal::get().print("Error: Could not create project "+project_path.string()+"\n", true);
+    }
+  });
   menu.add_action("new_project_cpp", [this]() {
     boost::filesystem::path project_path = Dialog::new_folder(Notebook::get().get_current_folder());
     if(project_path!="") {
