@@ -515,6 +515,20 @@ void Window::set_menu_actions() {
     }
   });
   
+  menu.add_action("source_comments_toggle", [this]() {
+    if(auto view=Notebook::get().get_current_view()) {
+      if(view->toggle_comments) {
+        view->toggle_comments();
+      }
+    }
+  });
+  menu.add_action("source_comments_add_documentation", [this]() {
+    if(auto view=Notebook::get().get_current_view()) {
+      if(view->add_documentation) {
+        view->add_documentation();
+      }
+    }
+  });
   menu.add_action("source_find_documentation", [this]() {
     if(auto view=Notebook::get().get_current_view()) {
       if(view->get_token_data) {
@@ -1033,6 +1047,8 @@ void Window::activate_menu_items(bool activate) {
   auto &notebook = Notebook::get();
   menu.actions["source_indentation_auto_indent_buffer"]->set_enabled(activate ? static_cast<bool>(notebook.get_current_view()->auto_indent) : false);
   menu.actions["source_find_symbol_ctags"]->set_enabled(activate);
+  menu.actions["source_comments_toggle"]->set_enabled(activate ? static_cast<bool>(notebook.get_current_view()->toggle_comments) : false);
+  menu.actions["source_comments_add_documentation"]->set_enabled(activate ? static_cast<bool>(notebook.get_current_view()->add_documentation) : false);
   menu.actions["source_find_documentation"]->set_enabled(activate ? static_cast<bool>(notebook.get_current_view()->get_token_data) : false);
   menu.actions["source_goto_declaration"]->set_enabled(activate ? static_cast<bool>(notebook.get_current_view()->get_declaration_location) : false);
   menu.actions["source_goto_implementation"]->set_enabled(activate ? static_cast<bool>(notebook.get_current_view()->get_implementation_locations) : false);

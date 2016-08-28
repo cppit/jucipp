@@ -149,7 +149,9 @@ Source::View::View(const boost::filesystem::path &file_path, Glib::RefPtr<Gsv::L
   if(language && (language->get_id()=="chdr" || language->get_id()=="cpphdr" || language->get_id()=="c" ||
                   language->get_id()=="cpp" || language->get_id()=="objc" || language->get_id()=="java" ||
                   language->get_id()=="js" || language->get_id()=="ts" || language->get_id()=="proto" ||
-                  language->get_id()=="c-sharp" || language->get_id()=="html" || language->get_id()=="cuda")) {
+                  language->get_id()=="c-sharp" || language->get_id()=="html" || language->get_id()=="cuda" ||
+                  language->get_id()=="php" || language->get_id()=="rust" || language->get_id()=="swift" ||
+                  language->get_id()=="go" || language->get_id()=="scala" || language->get_id()=="opencl")) {
     is_bracket_language=true;
     
     auto_indent=[this]() {
@@ -254,6 +256,109 @@ Source::View::View(const boost::filesystem::path &file_path, Glib::RefPtr<Gsv::L
     }
   }
   set_tab_char_and_size(tab_char, tab_size);
+  
+  std::shared_ptr<std::string> comment_characters;
+  if(is_bracket_language)
+    comment_characters=std::make_shared<std::string>("//");
+  else if(language) {
+    if(language->get_id()=="cmake" || language->get_id()=="makefile" || language->get_id()=="python" ||
+       language->get_id()=="python3" || language->get_id()=="sh" || language->get_id()=="perl" ||
+       language->get_id()=="ruby" || language->get_id()=="r" || language->get_id()=="asm" ||
+       language->get_id()=="automake")
+      comment_characters=std::make_shared<std::string>("#");
+    else if(language->get_id()=="latex" || language->get_id()=="matlab" || language->get_id()=="octave" ||
+            language->get_id()=="bibtex")
+      comment_characters=std::make_shared<std::string>("%");
+    else if(language->get_id()=="fortran")
+      comment_characters=std::make_shared<std::string>("!");
+    else if(language->get_id()=="pascal")
+      comment_characters=std::make_shared<std::string>("//");
+    else if(language->get_id()=="lua")
+      comment_characters=std::make_shared<std::string>("--");
+  }
+  if(comment_characters) {
+    toggle_comments=[this, comment_characters] {
+      std::vector<int> lines;
+      Gtk::TextIter selection_start, selection_end;
+      get_buffer()->get_selection_bounds(selection_start, selection_end);
+      auto line_start=selection_start.get_line();
+      auto line_end=selection_end.get_line();
+      if(line_start!=line_end && selection_end.starts_line())
+        --line_end;
+      bool lines_commented=true;
+      bool extra_spaces=true;
+      int min_indentation=-1;
+      for(auto line=line_start;line<=line_end;++line) {
+        auto iter=get_buffer()->get_iter_at_line(line);
+        bool line_added=false;
+        bool line_commented=false;
+        bool extra_space=false;
+        int indentation=0;
+        for(;;) {
+          if(iter.ends_line())
+            break;
+          else if(*iter==' ' || *iter=='\t') {
+            ++indentation;
+            iter.forward_char();
+            continue;
+          }
+          else {
+            lines.emplace_back(line);
+            line_added=true;
+            for(size_t c=0;c<comment_characters->size();++c) {
+              if(iter.ends_line()) {
+                break;
+              }
+              else if(*iter==static_cast<unsigned int>((*comment_characters)[c])) {
+                if(c<comment_characters->size()-1) {
+                  iter.forward_char();
+                  continue;
+                }
+                else {
+                  line_commented=true;
+                  if(!iter.ends_line()) {
+                    iter.forward_char();
+                    if(*iter==' ')
+                      extra_space=true;
+                  }
+                  break;
+                }
+              }
+              else
+                break;
+            }
+            break;
+          }
+        }
+        if(line_added) {
+          lines_commented&=line_commented;
+          extra_spaces&=extra_space;
+          if(min_indentation==-1 || indentation<min_indentation)
+            min_indentation=indentation;
+        }
+      }
+      if(lines.size()) {
+        auto comment_characters_and_space=*comment_characters+' ';
+        get_buffer()->begin_user_action();
+        for(auto &line: lines) {
+          auto iter=get_buffer()->get_iter_at_line(line);
+          iter.forward_chars(min_indentation);
+          if(lines_commented) {
+            auto end_iter=iter;
+            end_iter.forward_chars(comment_characters->size()+static_cast<int>(extra_spaces));
+            while(*iter==' ' || *iter=='\t') {
+              iter.forward_char();
+              end_iter.forward_char();
+            }
+            get_buffer()->erase(iter, end_iter);
+          }
+          else
+            get_buffer()->insert(iter, comment_characters_and_space);
+        }
+        get_buffer()->end_user_action();
+      }
+    };
+  }
 }
 
 void Source::View::set_tab_char_and_size(char tab_char, unsigned tab_size) {

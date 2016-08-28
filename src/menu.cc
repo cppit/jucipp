@@ -175,6 +175,17 @@ Menu::Menu() {
         </item>
       </section>
       <section>
+        <submenu>
+          <attribute name='label' translatable='yes'>_Comments</attribute>
+          <item>
+            <attribute name='label' translatable='yes'>_Toggle _Comments</attribute>
+            <attribute name='action'>app.source_comments_toggle</attribute>
+          </item>
+          <item>
+            <attribute name='label' translatable='yes'>_Add _Documentation (not yet implemented)</attribute>
+            <attribute name='action'>app.source_comments_add_documentation</attribute>
+          </item>
+        </submenu>
         <item>
           <attribute name='label' translatable='yes'>_Find _Documentation</attribute>
           <attribute name='action'>app.source_find_documentation</attribute>

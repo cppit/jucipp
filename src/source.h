@@ -69,6 +69,8 @@ namespace Source {
     std::function<std::vector<std::pair<boost::filesystem::path, size_t> >(const std::vector<Source::View*> &views, const std::string &text)> rename_similar_tokens;
     std::function<void()> goto_next_diagnostic;
     std::function<std::vector<FixIt>()> get_fix_its;
+    std::function<void()> toggle_comments;
+    std::function<void()> add_documentation;
     
     std::unique_ptr<CompletionDialog> autocomplete_dialog;
     std::unique_ptr<SelectionDialog> selection_dialog;
