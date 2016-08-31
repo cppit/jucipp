@@ -244,6 +244,10 @@ Menu::Menu() {
           <attribute name='label' translatable='yes'>_Compile</attribute>
           <attribute name='action'>app.compile</attribute>
         </item>
+        <item>
+          <attribute name='label' translatable='yes'>_Clean _Project</attribute>
+          <attribute name='action'>app.clean_project</attribute>
+        </item>
       </section>
       <section>
         <item>
@@ -363,7 +367,7 @@ void Menu::add_action(const std::string &name, std::function<void()> action) {
   auto g_application=g_application_get_default();
   auto gio_application=Glib::wrap(g_application, true);
   auto application=Glib::RefPtr<Gtk::Application>::cast_static(gio_application);
-  
+
   actions[name]=application->add_action(name, action);
 }
 
@@ -371,7 +375,7 @@ void Menu::set_keys() {
   auto g_application=g_application_get_default();
   auto gio_application=Glib::wrap(g_application, true);
   auto application=Glib::RefPtr<Gtk::Application>::cast_static(gio_application);
-           
+
   for(auto &key: Config::get().menu.keys) {
     if(key.second.size()>0 && actions.find(key.first)!=actions.end())
       application->set_accel_for_action("app."+key.first, key.second);
@@ -380,7 +384,7 @@ void Menu::set_keys() {
 
 void Menu::build() {
   builder = Gtk::Builder::create();
-  
+
   try {
     builder->add_from_string(ui_xml);
     auto object = Menu::get().builder->get_object("juci-menu");

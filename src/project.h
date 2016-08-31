@@ -14,7 +14,7 @@ namespace Project {
   Gtk::Label &debug_status_label();
   void save_files(const boost::filesystem::path &path);
   void on_save(size_t index);
-  
+
   extern boost::filesystem::path debug_last_stop_file_path;
   extern std::unordered_map<std::string, std::string> run_arguments;
   extern std::unordered_map<std::string, std::string> debug_run_arguments;
@@ -23,7 +23,7 @@ namespace Project {
   extern std::pair<boost::filesystem::path, std::pair<int, int> > debug_stop;
   void debug_update_stop();
   void debug_update_status(const std::string &debug_status);
-  
+
   class Base {
   protected:
 #ifdef JUCI_ENABLE_DEBUG
@@ -37,13 +37,14 @@ namespace Project {
   public:
     Base(std::unique_ptr<Build> &&build): build(std::move(build)) {}
     virtual ~Base() {}
-    
+
     std::unique_ptr<Build> build;
-    
+
     virtual std::pair<std::string, std::string> get_run_arguments();
     virtual void compile();
     virtual void compile_and_run();
-    
+    virtual void clean_project();
+
     virtual std::pair<std::string, std::string> debug_get_run_arguments();
     virtual Gtk::Popover *debug_get_options() { return nullptr; }
     Tooltips debug_variable_tooltips;
@@ -63,7 +64,7 @@ namespace Project {
     virtual void debug_write(const std::string &buffer) {}
     virtual void debug_cancel() {}
   };
-  
+
   class Clang : public Base {
 #ifdef JUCI_ENABLE_DEBUG
     class DebugOptions : public Base::DebugOptions {
@@ -74,16 +75,16 @@ namespace Project {
     };
     static std::unordered_map<std::string, DebugOptions> debug_options;
 #endif
-    
+
     Dispatcher dispatcher;
   public:
     Clang(std::unique_ptr<Build> &&build) : Base(std::move(build)) {}
     ~Clang() { dispatcher.disconnect(); }
-    
+
     std::pair<std::string, std::string> get_run_arguments() override;
     void compile() override;
     void compile_and_run() override;
-    
+
 #ifdef JUCI_ENABLE_DEBUG
     std::pair<std::string, std::string> debug_get_run_arguments() override;
     Gtk::Popover *debug_get_options() override;
@@ -104,37 +105,37 @@ namespace Project {
     void debug_cancel() override;
 #endif
   };
-  
+
   class Markdown : public Base {
   public:
     Markdown(std::unique_ptr<Build> &&build) : Base(std::move(build)) {}
     ~Markdown();
-    
+
     boost::filesystem::path last_temp_path;
     void compile_and_run() override;
   };
-  
+
   class Python : public Base {
   public:
     Python(std::unique_ptr<Build> &&build) : Base(std::move(build)) {}
-    
+
     void compile_and_run() override;
   };
-  
+
   class JavaScript : public Base {
   public:
     JavaScript(std::unique_ptr<Build> &&build) : Base(std::move(build)) {}
-    
+
     void compile_and_run() override;
   };
-  
+
   class HTML : public Base {
   public:
     HTML(std::unique_ptr<Build> &&build) : Base(std::move(build)) {}
-    
+
     void compile_and_run() override;
   };
-  
+
   std::unique_ptr<Base> create();
   extern std::unique_ptr<Base> current;
 };
