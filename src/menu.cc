@@ -244,6 +244,10 @@ Menu::Menu() {
           <attribute name='label' translatable='yes'>_Compile</attribute>
           <attribute name='action'>app.compile</attribute>
         </item>
+        <item>
+          <attribute name='label' translatable='yes'>_Clean _Project</attribute>
+          <attribute name='action'>app.clean_project</attribute>
+        </item>
       </section>
       <section>
         <item>

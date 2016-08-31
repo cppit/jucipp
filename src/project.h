@@ -43,6 +43,7 @@ namespace Project {
     virtual std::pair<std::string, std::string> get_run_arguments();
     virtual void compile();
     virtual void compile_and_run();
+    virtual void clean_project();
     
     virtual std::pair<std::string, std::string> debug_get_run_arguments();
     virtual Gtk::Popover *debug_get_options() { return nullptr; }

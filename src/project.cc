@@ -147,6 +147,19 @@ void Project::Base::compile_and_run() {
   Info::get().print("Could not find a supported project");
 }
 
+void Project::Base::clean_project() {
+  auto default_build_path=build->get_default_path();
+  if(default_build_path.empty() || !build->update_default())
+    return;
+  
+  if(Config::get().project.clear_terminal_on_compile)
+    Terminal::get().clear();
+  Terminal::get().print("Cleaning build directory\n");
+  boost::filesystem::remove_all(default_build_path);
+  boost::filesystem::create_directory(default_build_path);
+  Terminal::get().print("Build directory cleaned!\n");
+}
+
 std::pair<std::string, std::string> Project::Base::debug_get_run_arguments() {
   Info::get().print("Could not find a supported project");
   return {"", ""};

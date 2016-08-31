@@ -855,6 +855,19 @@ void Window::set_menu_actions() {
     
     Project::current->compile();
   });
+  menu.add_action("clean_project", [this]() {
+    if(Project::compiling || Project::debugging) {
+      Info::get().print("Compile or debug in progress");
+      return;
+    }
+    
+    Project::current=Project::create();
+    
+    if(Config::get().project.save_on_compile_or_run)
+      Project::save_files(Project::current->build->project_path);
+
+    Project::current->clean_project();
+  });
   
   menu.add_action("run_command", [this]() {
     EntryBox::get().clear();
