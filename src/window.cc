@@ -414,8 +414,10 @@ void Window::set_menu_actions() {
   });
   
   menu.add_action("source_spellcheck", [this]() {
-    if(auto view=Notebook::get().get_current_view())
+    if(auto view=Notebook::get().get_current_view()) {
+      view->remove_spellcheck_errors();
       view->spellcheck();
+    }
   });
   menu.add_action("source_spellcheck_clear", [this]() {
     if(auto view=Notebook::get().get_current_view())
