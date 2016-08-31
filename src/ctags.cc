@@ -146,6 +146,8 @@ std::vector<Ctags::Location> Ctags::get_locations(const boost::filesystem::path 
   long best_score=LONG_MIN;
   std::vector<Location> best_locations;
   while(std::getline(*result.second, line)) {
+    if(line.size()>2048)
+      continue;
     auto location=Ctags::get_location(line, false);
     if(!location.scope.empty()) {
       if(location.scope+"::"+location.symbol!=name)
