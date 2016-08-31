@@ -47,14 +47,14 @@ void Project::on_save(size_t index) {
       cmake_path=view->file_path;
     else
       cmake_path=filesystem::find_file_in_path_parents("CMakeLists.txt", view->file_path.parent_path());
-
+    
     if(!cmake_path.empty()) {
       auto build=Build::create(cmake_path);
       if(dynamic_cast<CMakeBuild*>(build.get())) {
         build->update_default(true);
         if(boost::filesystem::exists(build->get_debug_path()))
           build->update_debug(true);
-
+        
         for(size_t c=0;c<Notebook::get().size();c++) {
           auto source_view=Notebook::get().get_view(c);
           if(auto source_clang_view=dynamic_cast<Source::ClangView*>(source_view)) {
@@ -110,7 +110,7 @@ void Project::debug_update_stop() {
 
 std::unique_ptr<Project::Base> Project::create() {
   std::unique_ptr<Project::Build> build;
-
+  
   if(auto view=Notebook::get().get_current_view()) {
     build=Build::create(view->file_path);
     if(view->language) {
@@ -127,7 +127,7 @@ std::unique_ptr<Project::Base> Project::create() {
   }
   else
     build=Build::create(Directories::get().path);
-
+  
   if(dynamic_cast<CMakeBuild*>(build.get()))
     return std::unique_ptr<Project::Base>(new Project::Clang(std::move(build)));
   else
@@ -145,21 +145,6 @@ void Project::Base::compile() {
 
 void Project::Base::compile_and_run() {
   Info::get().print("Could not find a supported project");
-}
-
-void Project::Base::clean_project() {
-  auto default_build_path=build->get_default_path();
-  if(default_build_path.empty() || !build->update_default())
-    return;
-
-  if(Config::get().project.clear_terminal_on_compile)
-    Terminal::get().clear();
-  Terminal::get().print("Cleaning build directory: ");
-  Terminal::get().print(default_build_path.c_str());
-  Terminal::get().print("\n");
-  boost::filesystem::remove_all(default_build_path);
-  boost::filesystem::create_directory(default_build_path);
-  Terminal::get().print("Build directory cleaned!\n");
 }
 
 std::pair<std::string, std::string> Project::Base::debug_get_run_arguments() {
@@ -183,17 +168,17 @@ Project::Clang::DebugOptions::DebugOptions() : Base::DebugOptions() {
   remote_host.signal_activate().connect([this] {
     set_visible(false);
   });
-
+  
   auto remote_vbox=Gtk::manage(new Gtk::VBox());
   remote_vbox->pack_start(remote_enabled, true, true);
   remote_vbox->pack_end(remote_host, true, true);
-
+  
   auto remote_frame=Gtk::manage(new Gtk::Frame());
   remote_frame->set_label("Remote Debugging");
   remote_frame->add(*remote_vbox);
-
+  
   vbox.pack_end(*remote_frame, true, true);
-
+  
   show_all();
   set_visible(false);
 }
@@ -203,17 +188,17 @@ std::pair<std::string, std::string> Project::Clang::get_run_arguments() {
   auto build_path=build->get_default_path();
   if(build_path.empty())
     return {"", ""};
-
+  
   auto project_path=build->project_path.string();
   auto run_arguments_it=run_arguments.find(project_path);
   std::string arguments;
   if(run_arguments_it!=run_arguments.end())
     arguments=run_arguments_it->second;
-
+  
   if(arguments.empty()) {
     auto view=Notebook::get().get_current_view();
     auto executable=build->get_executable(view?view->file_path:"").string();
-
+    
     if(executable!="") {
       size_t pos=executable.find(project_path);
       if(pos!=std::string::npos)
@@ -223,7 +208,7 @@ std::pair<std::string, std::string> Project::Clang::get_run_arguments() {
     else
       arguments=filesystem::escape_argument(build->get_default_path());
   }
-
+  
   return {project_path, arguments};
 }
 
@@ -231,10 +216,10 @@ void Project::Clang::compile() {
   auto default_build_path=build->get_default_path();
   if(default_build_path.empty() || !build->update_default())
     return;
-
+  
   if(Config::get().project.clear_terminal_on_compile)
     Terminal::get().clear();
-
+  
   compiling=true;
   Terminal::get().print("Compiling project "+build->project_path.string()+"\n");
   Terminal::get().async_process(Config::get().project.make_command, default_build_path, [this](int exit_status) {
@@ -246,14 +231,14 @@ void Project::Clang::compile_and_run() {
   auto default_build_path=build->get_default_path();
   if(default_build_path.empty() || !build->update_default())
     return;
-
+  
   auto project_path=build->project_path;
-
+  
   auto run_arguments_it=run_arguments.find(project_path.string());
   std::string arguments;
   if(run_arguments_it!=run_arguments.end())
     arguments=run_arguments_it->second;
-
+  
   if(arguments.empty()) {
     auto view=Notebook::get().get_current_view();
     arguments=build->get_executable(view?view->file_path:"").string();
@@ -267,10 +252,10 @@ void Project::Clang::compile_and_run() {
       arguments.replace(pos, project_path.string().size(), default_build_path.string());
     arguments=filesystem::escape_argument(arguments);
   }
-
+  
   if(Config::get().project.clear_terminal_on_compile)
     Terminal::get().clear();
-
+  
   compiling=true;
   Terminal::get().print("Compiling and running "+arguments+"\n");
   Terminal::get().async_process(Config::get().project.make_command, default_build_path, [this, arguments, project_path](int exit_status){
@@ -288,17 +273,17 @@ std::pair<std::string, std::string> Project::Clang::debug_get_run_arguments() {
   auto build_path=build->get_debug_path();
   if(build_path.empty())
     return {"", ""};
-
+  
   auto project_path=build->project_path.string();
   auto run_arguments_it=debug_run_arguments.find(project_path);
   std::string arguments;
   if(run_arguments_it!=debug_run_arguments.end())
     arguments=run_arguments_it->second;
-
+  
   if(arguments.empty()) {
     auto view=Notebook::get().get_current_view();
     auto executable=build->get_executable(view?view->file_path:"").string();
-
+    
     if(executable!="") {
       size_t pos=executable.find(project_path);
       if(pos!=std::string::npos)
@@ -308,7 +293,7 @@ std::pair<std::string, std::string> Project::Clang::debug_get_run_arguments() {
     else
       arguments=filesystem::escape_argument(build->get_debug_path());
   }
-
+  
   return {project_path, arguments};
 }
 
@@ -323,12 +308,12 @@ void Project::Clang::debug_start() {
   if(debug_build_path.empty() || !build->update_debug())
     return;
   auto project_path=std::make_shared<boost::filesystem::path>(build->project_path);
-
+  
   auto run_arguments_it=debug_run_arguments.find(project_path->string());
   auto run_arguments=std::make_shared<std::string>();
   if(run_arguments_it!=debug_run_arguments.end())
     *run_arguments=run_arguments_it->second;
-
+  
   if(run_arguments->empty()) {
     auto view=Notebook::get().get_current_view();
     *run_arguments=build->get_executable(view?view->file_path:"").string();
@@ -342,10 +327,10 @@ void Project::Clang::debug_start() {
       run_arguments->replace(pos, project_path->string().size(), debug_build_path.string());
     *run_arguments=filesystem::escape_argument(*run_arguments);
   }
-
+  
   if(Config::get().project.clear_terminal_on_compile)
     Terminal::get().clear();
-
+  
   debugging=true;
   Terminal::get().print("Compiling and debugging "+*run_arguments+"\n");
   Terminal::get().async_process(Config::get().project.make_command, debug_build_path, [this, run_arguments, project_path](int exit_status){
@@ -364,7 +349,7 @@ void Project::Clang::debug_start() {
               breakpoints.emplace_back(view->file_path, iter.get_line()+1);
           }
         }
-
+        
         std::string remote_host;
         auto options_it=debug_options.find(project_path->string());
         if(options_it!=debug_options.end() && options_it->second.remote_enabled.get_active())
@@ -381,7 +366,7 @@ void Project::Clang::debug_start() {
             Project::debug_stop.first=file_path;
             Project::debug_stop.second.first=line_nr-1;
             Project::debug_stop.second.second=line_index-1;
-
+            
             debug_update_stop();
             if(auto view=Notebook::get().get_current_view())
               view->get_buffer()->place_cursor(view->get_buffer()->get_insert()->get_iter());
@@ -425,17 +410,17 @@ void Project::Clang::debug_backtrace() {
   auto view=Notebook::get().get_current_view();
   if(view && debugging) {
     auto backtrace=Debug::LLDB::get().get_backtrace();
-
+    
     auto iter=view->get_iter_for_dialog();
     view->selection_dialog=std::make_unique<SelectionDialog>(*view, view->get_buffer()->create_mark(iter), true, true);
     auto rows=std::make_shared<std::unordered_map<std::string, Debug::LLDB::Frame> >();
     if(backtrace.size()==0)
       return;
-
+    
     bool cursor_set=false;
     for(auto &frame: backtrace) {
       std::string row="<i>"+frame.module_filename+"</i>";
-
+      
       //Shorten frame.function_name if it is too long
       if(frame.function_name.size()>120) {
         frame.function_name=frame.function_name.substr(0, 58)+"...."+frame.function_name.substr(frame.function_name.size()-58);
@@ -453,14 +438,14 @@ void Project::Clang::debug_backtrace() {
         cursor_set=true;
       }
     }
-
+    
     view->selection_dialog->on_select=[this, rows](const std::string& selected, bool hide_window) {
       auto frame=rows->at(selected);
       if(!frame.file_path.empty()) {
         Notebook::get().open(frame.file_path);
         if(auto view=Notebook::get().get_current_view()) {
           Debug::LLDB::get().select_frame(frame.index);
-
+          
           view->place_cursor_at_line_index(frame.line_nr-1, frame.line_index-1);
           view->scroll_to_cursor_delayed(view, true, true);
         }
@@ -475,20 +460,20 @@ void Project::Clang::debug_show_variables() {
   auto view=Notebook::get().get_current_view();
   if(debugging && view) {
     auto variables=Debug::LLDB::get().get_variables();
-
+    
     auto iter=view->get_iter_for_dialog();
     view->selection_dialog=std::make_unique<SelectionDialog>(*view, view->get_buffer()->create_mark(iter), true, true);
     auto rows=std::make_shared<std::unordered_map<std::string, Debug::LLDB::Variable> >();
     if(variables.size()==0)
       return;
-
+    
     for(auto &variable: variables) {
       std::string row="#"+std::to_string(variable.thread_index_id)+":#"+std::to_string(variable.frame_index)+":"+variable.file_path.filename().string()+":"+std::to_string(variable.line_nr)+" - <b>"+Glib::Markup::escape_text(variable.name)+"</b>";
-
+      
       (*rows)[row]=variable;
       view->selection_dialog->add_row(row);
     }
-
+    
     view->selection_dialog->on_select=[this, rows](const std::string& selected, bool hide_window) {
       auto variable=rows->at(selected);
       Debug::LLDB::get().select_frame(variable.frame_index, variable.thread_index_id);
@@ -502,12 +487,12 @@ void Project::Clang::debug_show_variables() {
       if(!variable.declaration_found)
         Info::get().print("Debugger did not find declaration for the variable: "+variable.name);
     };
-
+    
     view->selection_dialog->on_hide=[this]() {
       debug_variable_tooltips.hide();
       debug_variable_tooltips.clear();
     };
-
+    
     view->selection_dialog->on_changed=[this, rows, iter](const std::string &selected) {
       if(selected.empty()) {
         debug_variable_tooltips.hide();
@@ -518,7 +503,7 @@ void Project::Clang::debug_show_variables() {
         auto create_tooltip_buffer=[this, rows, view, selected]() {
           auto variable=rows->at(selected);
           auto tooltip_buffer=Gtk::TextBuffer::create(view->get_buffer()->get_tag_table());
-
+          
           Glib::ustring value=variable.value;
           if(!value.empty()) {
             Glib::ustring::iterator iter;
@@ -526,19 +511,19 @@ void Project::Clang::debug_show_variables() {
               auto next_char_iter=iter;
               next_char_iter++;
               value.replace(iter, next_char_iter, "?");
-            }
+            } 
             tooltip_buffer->insert_with_tag(tooltip_buffer->get_insert()->get_iter(), value.substr(0, value.size()-1), "def:note");
           }
-
+          
           return tooltip_buffer;
         };
-
+        
         debug_variable_tooltips.emplace_back(create_tooltip_buffer, *view, view->get_buffer()->create_mark(iter), view->get_buffer()->create_mark(iter));
-
+    
         debug_variable_tooltips.show(true);
       }
     };
-
+    
     view->hide_tooltips();
     view->selection_dialog->show();
   }
@@ -585,7 +570,7 @@ void Project::Markdown::compile_and_run() {
     boost::filesystem::remove(last_temp_path);
     last_temp_path=boost::filesystem::path();
   }
-
+  
   std::stringstream stdin_stream, stdout_stream;
   auto exit_status=Terminal::get().process(stdin_stream, stdout_stream, "markdown "+filesystem::escape_argument(Notebook::get().get_current_view()->file_path.string()));
   if(exit_status==0) {
@@ -599,7 +584,7 @@ void Project::Markdown::compile_and_run() {
         std::ofstream file_stream(temp_path.string(), std::fstream::binary);
         file_stream << stdout_stream.rdbuf();
         file_stream.close();
-
+        
         auto uri=temp_path.string();
 #ifdef __APPLE__
         Terminal::get().process("open "+filesystem::escape_argument(uri));
