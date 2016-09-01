@@ -336,8 +336,6 @@ Menu::Menu() {
           <attribute name='label' translatable='yes'>_Previous _Tab</attribute>
           <attribute name='action'>app.previous_tab</attribute>
         </item>
-      </section>
-      <section>
         <item>
           <attribute name='label' translatable='yes'>_Close _Tab</attribute>
           <attribute name='action'>app.close_tab</attribute>
