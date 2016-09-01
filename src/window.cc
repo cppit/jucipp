@@ -306,7 +306,12 @@ void Window::set_menu_actions() {
   });
   
   menu.add_action("open_file", [this]() {
-    auto path=Dialog::open_file(Notebook::get().get_current_folder());
+    auto folder_path=Notebook::get().get_current_folder();
+    if(auto view=Notebook::get().get_current_view()) {
+      if(!Directories::get().path.empty() && !filesystem::file_in_path(view->file_path, Directories::get().path))
+        folder_path=view->file_path.parent_path();
+    }
+    auto path=Dialog::open_file(folder_path);
     if(path!="")
       Notebook::get().open(path);
   });
