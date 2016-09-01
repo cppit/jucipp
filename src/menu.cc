@@ -245,8 +245,8 @@ Menu::Menu() {
           <attribute name='action'>app.compile</attribute>
         </item>
         <item>
-          <attribute name='label' translatable='yes'>_Clean _Project</attribute>
-          <attribute name='action'>app.clean_project</attribute>
+          <attribute name='label' translatable='yes'>_Recreate _Build</attribute>
+          <attribute name='action'>app.project_recreate_build</attribute>
         </item>
       </section>
       <section>

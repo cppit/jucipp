@@ -147,17 +147,8 @@ void Project::Base::compile_and_run() {
   Info::get().print("Could not find a supported project");
 }
 
-void Project::Base::clean_project() {
-  auto default_build_path=build->get_default_path();
-  if(default_build_path.empty() || !build->update_default())
-    return;
-  
-  if(Config::get().project.clear_terminal_on_compile)
-    Terminal::get().clear();
-  Terminal::get().print("Cleaning build directory\n");
-  boost::filesystem::remove_all(default_build_path);
-  boost::filesystem::create_directory(default_build_path);
-  Terminal::get().print("Build directory cleaned!\n");
+void Project::Base::recreate_build() {
+  Info::get().print("Could not find a supported project");
 }
 
 std::pair<std::string, std::string> Project::Base::debug_get_run_arguments() {
@@ -279,6 +270,59 @@ void Project::Clang::compile_and_run() {
       });
     }
   });
+}
+
+void Project::Clang::recreate_build() {
+  auto default_build_path=build->get_default_path();
+  if(default_build_path.empty())
+    return;
+  
+  auto debug_build_path=build->get_debug_path();
+  bool has_default_build=boost::filesystem::exists(default_build_path);
+  bool has_debug_build=!debug_build_path.empty() && boost::filesystem::exists(debug_build_path);
+  
+  if(has_default_build || has_debug_build) {
+    Gtk::MessageDialog dialog(*static_cast<Gtk::Window*>(Notebook::get().get_toplevel()), "Recreate Build", false, Gtk::MESSAGE_QUESTION, Gtk::BUTTONS_YES_NO);
+    dialog.set_default_response(Gtk::RESPONSE_NO);
+    std::string message="Are you sure you want to recreate ";
+    if(has_default_build)
+      message+=default_build_path.string();
+    if(has_debug_build) {
+      if(has_default_build)
+        message+=" and ";
+      message+=debug_build_path.string();
+    }
+    dialog.set_secondary_text(message+"?");
+    if(dialog.run()!=Gtk::RESPONSE_YES)
+      return;
+    try {
+      if(has_default_build)
+        boost::filesystem::remove_all(default_build_path);
+      if(has_debug_build)
+        boost::filesystem::remove_all(debug_build_path);
+    }
+    catch(const std::exception &e) {
+      Terminal::get().print(std::string("Error: could remove build: ")+e.what()+"\n", true);
+      return;
+    }
+  }
+  
+  build->update_default(true);
+  if(has_debug_build)
+    build->update_debug(true);
+  
+  for(size_t c=0;c<Notebook::get().size();c++) {
+    auto source_view=Notebook::get().get_view(c);
+    if(auto source_clang_view=dynamic_cast<Source::ClangView*>(source_view)) {
+      if(filesystem::file_in_path(source_clang_view->file_path, build->project_path))
+        source_clang_view->full_reparse_needed=true;
+    }
+  }
+  
+  if(auto view=Notebook::get().get_current_view()) {
+    if(view->full_reparse_needed)
+      view->full_reparse();
+  }
 }
 
 #ifdef JUCI_ENABLE_DEBUG

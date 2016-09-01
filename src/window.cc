@@ -117,10 +117,8 @@ Window::Window() {
     
     Directories::get().select(view->file_path);
     
-    if(view->full_reparse_needed) {
-      if(!view->full_reparse())
-        Terminal::get().async_print("Error: failed to reparse "+view->file_path.string()+". Please reopen the file manually.\n", true);
-    }
+    if(view->full_reparse_needed)
+      view->full_reparse();
     else if(view->soft_reparse_needed)
       view->soft_reparse();
     
@@ -855,18 +853,15 @@ void Window::set_menu_actions() {
     
     Project::current->compile();
   });
-  menu.add_action("clean_project", [this]() {
+  menu.add_action("project_recreate_build", [this]() {
     if(Project::compiling || Project::debugging) {
       Info::get().print("Compile or debug in progress");
       return;
     }
     
     Project::current=Project::create();
-    
-    if(Config::get().project.save_on_compile_or_run)
-      Project::save_files(Project::current->build->project_path);
 
-    Project::current->clean_project();
+    Project::current->recreate_build();
   });
   
   menu.add_action("run_command", [this]() {

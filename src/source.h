@@ -96,7 +96,7 @@ namespace Source {
     bool soft_reparse_needed=false;
     bool full_reparse_needed=false;
     virtual void soft_reparse() {soft_reparse_needed=false;}
-    virtual bool full_reparse() {full_reparse_needed=false; return true;}
+    virtual void full_reparse() {full_reparse_needed=false;}
   protected:
     std::time_t last_read_time;
     bool parsed=false;

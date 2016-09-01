@@ -43,7 +43,7 @@ namespace Project {
     virtual std::pair<std::string, std::string> get_run_arguments();
     virtual void compile();
     virtual void compile_and_run();
-    virtual void clean_project();
+    virtual void recreate_build();
     
     virtual std::pair<std::string, std::string> debug_get_run_arguments();
     virtual Gtk::Popover *debug_get_options() { return nullptr; }
@@ -84,6 +84,7 @@ namespace Project {
     std::pair<std::string, std::string> get_run_arguments() override;
     void compile() override;
     void compile_and_run() override;
+    void recreate_build() override;
     
 #ifdef JUCI_ENABLE_DEBUG
     std::pair<std::string, std::string> debug_get_run_arguments() override;

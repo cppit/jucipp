@@ -118,7 +118,7 @@ namespace Source {
   public:
     ClangView(const boost::filesystem::path &file_path, Glib::RefPtr<Gsv::Language> language);
     
-    bool full_reparse() override;
+    void full_reparse() override;
     void async_delete();
     
   private:

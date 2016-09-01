@@ -1409,14 +1409,23 @@ Source::ClangView::ClangView(const boost::filesystem::path &file_path, Glib::Ref
   });
 }
 
-bool Source::ClangView::full_reparse() {
+void Source::ClangView::full_reparse() {
+  auto print_error=[this] {
+    Terminal::get().async_print("Error: failed to reparse "+file_path.string()+". Please reopen the file manually.\n", true);
+  };
   full_reparse_needed=false;
-  if(!full_reparse_running) {
+  if(full_reparse_running) {
+    print_error();
+    return;
+  }
+  else {
     auto expected=ParseState::PROCESSING;
     if(!parse_state.compare_exchange_strong(expected, ParseState::RESTARTING)) {
       expected=ParseState::RESTARTING;
-      if(!parse_state.compare_exchange_strong(expected, ParseState::RESTARTING))
-        return false;
+      if(!parse_state.compare_exchange_strong(expected, ParseState::RESTARTING)) {
+        print_error();
+        return;
+      }
     }
     autocomplete_state=AutocompleteState::IDLE;
     soft_reparse_needed=false;
@@ -1433,9 +1442,7 @@ bool Source::ClangView::full_reparse() {
         full_reparse_running=false;
       });
     });
-    return true;
   }
-  return false;
 }
 
 void Source::ClangView::async_delete() {
