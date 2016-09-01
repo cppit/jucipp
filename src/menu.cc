@@ -351,7 +351,7 @@ Menu::Menu() {
       </section>
       <section>
         <item>
-          <attribute name='label' translatable='yes'>_Clear _Console</attribute>
+          <attribute name='label' translatable='yes'>_Clear _Terminal</attribute>
           <attribute name='action'>app.window_clear_terminal</attribute>
         </item>
       </section>
