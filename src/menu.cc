@@ -349,6 +349,12 @@ Menu::Menu() {
           <attribute name='action'>app.window_toggle_split</attribute>
         </item>
       </section>
+      <section>
+        <item>
+          <attribute name='label' translatable='yes'>_Clear _Console</attribute>
+          <attribute name='action'>app.clear_console</attribute>
+        </item>
+      </section>
     </submenu>
   </menu>
 </interface>

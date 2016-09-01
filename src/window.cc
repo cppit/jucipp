@@ -1047,6 +1047,9 @@ void Window::set_menu_actions() {
   menu.add_action("window_toggle_split", [this] {
     Notebook::get().toggle_split();
   });
+  menu.add_action("clear_console", [this] {
+    Terminal::get().clear();
+  });
 }
 
 void Window::activate_menu_items(bool activate) {
