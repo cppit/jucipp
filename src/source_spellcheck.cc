@@ -56,10 +56,10 @@ Source::SpellCheckView::SpellCheckView() : Gsv::View() {
       if(backward_success) {
         if(last_keyval==GDK_KEY_BackSpace && !is_word_iter(iter) && iter.forward_char()) {} //backspace fix
         if((spellcheck_all && !get_source_buffer()->iter_has_context_class(context_iter, "no-spell-check")) || get_source_buffer()->iter_has_context_class(context_iter, "comment") || get_source_buffer()->iter_has_context_class(context_iter, "string")) {
-          if(!is_word_iter(iter) || last_keyval==GDK_KEY_Return) { //Might have used space or - to split two words
+          if(!is_word_iter(iter) || (last_keyval==GDK_KEY_Return || last_keyval==GDK_KEY_KP_Enter)) { //Might have used space or - to split two words
             auto first=iter;
             auto second=iter;
-            if(last_keyval==GDK_KEY_Return) {
+            if(last_keyval==GDK_KEY_Return || last_keyval==GDK_KEY_KP_Enter) {
               while(first && !first.ends_line() && first.backward_char()) {}
               if(first.backward_char() && second.forward_char()) {
                 get_buffer()->remove_tag_by_name("spellcheck_error", first, second);

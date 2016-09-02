@@ -407,7 +407,7 @@ bool Terminal::on_key_press_event(GdkEventKey *event) {
         get_buffer()->erase(iter, get_buffer()->end());
       }
     }
-    else if(event->keyval==GDK_KEY_Return) {
+    else if(event->keyval==GDK_KEY_Return || event->keyval==GDK_KEY_KP_Enter) {
       stdin_buffer+='\n';
       if(debug_is_running) {
 #ifdef JUCI_ENABLE_DEBUG

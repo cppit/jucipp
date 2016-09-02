@@ -1169,7 +1169,7 @@ void Window::search_and_replace_entry() {
     view->search_highlight(search_entry_it->get_text(), case_sensitive_search, regex_search);
   }
   search_entry_it->signal_key_press_event().connect([this](GdkEventKey* event){
-    if(event->keyval==GDK_KEY_Return && (event->state&GDK_SHIFT_MASK)>0) {
+    if((event->keyval==GDK_KEY_Return || event->keyval==GDK_KEY_KP_Enter) && (event->state&GDK_SHIFT_MASK)>0) {
       if(auto view=Notebook::get().get_current_view())
         view->search_backward();
     }
@@ -1189,7 +1189,7 @@ void Window::search_and_replace_entry() {
   replace_entry_it++;
   replace_entry_it->set_placeholder_text("Replace");
   replace_entry_it->signal_key_press_event().connect([this, replace_entry_it](GdkEventKey* event){
-    if(event->keyval==GDK_KEY_Return && (event->state&GDK_SHIFT_MASK)>0) {
+    if((event->keyval==GDK_KEY_Return || event->keyval==GDK_KEY_KP_Enter) && (event->state&GDK_SHIFT_MASK)>0) {
       if(auto view=Notebook::get().get_current_view())
         view->replace_backward(replace_entry_it->get_text());
     }

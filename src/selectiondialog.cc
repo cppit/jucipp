@@ -247,7 +247,7 @@ bool SelectionDialog::on_key_press(GdkEventKey* key) {
     }
     return true;
   }
-  else if(key->keyval==GDK_KEY_Return || key->keyval==GDK_KEY_ISO_Left_Tab || key->keyval==GDK_KEY_Tab) {
+  else if(key->keyval==GDK_KEY_Return || key-> keyval==GDK_KEY_KP_Enter || key->keyval==GDK_KEY_ISO_Left_Tab || key->keyval==GDK_KEY_Tab) {
     auto it=list_view_text.get_selection()->get_selected();
     auto column=list_view_text.get_column(0);
     list_view_text.row_activated(list_view_text.get_model()->get_path(it), *column);
@@ -413,7 +413,7 @@ bool CompletionDialog::on_key_press(GdkEventKey* key) {
     select(false);
     return true;
   }
-  if(key->keyval==GDK_KEY_Return || key->keyval==GDK_KEY_ISO_Left_Tab || key->keyval==GDK_KEY_Tab) {
+  if(key->keyval==GDK_KEY_Return || key->keyval==GDK_KEY_KP_Enter || key->keyval==GDK_KEY_ISO_Left_Tab || key->keyval==GDK_KEY_Tab) {
     select();
     return true;
   }
