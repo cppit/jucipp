@@ -1077,7 +1077,7 @@ bool Source::View::on_key_press_event_basic(GdkEventKey* key) {
   get_buffer()->begin_user_action();
   auto iter=get_buffer()->get_insert()->get_iter();
   //Indent as in next or previous line
-  if(key->keyval==GDK_KEY_Return && !get_buffer()->get_has_selection() && !iter.starts_line()) {
+  if((key->keyval==GDK_KEY_Return || key->keyval==GDK_KEY_KP_Enter) && !get_buffer()->get_has_selection() && !iter.starts_line()) {
     //First remove spaces or tabs around cursor
     auto start_blank_iter=iter;
     auto end_blank_iter=iter;
@@ -1319,7 +1319,7 @@ bool Source::View::on_key_press_event_bracket_language(GdkEventKey* key) {
   get_buffer()->begin_user_action();
   auto iter=get_buffer()->get_insert()->get_iter();
   //Indent depending on if/else/etc and brackets
-  if(key->keyval==GDK_KEY_Return && !iter.starts_line()) {
+  if((key->keyval==GDK_KEY_Return || key->keyval==GDK_KEY_KP_Enter) && !iter.starts_line()) {
     //First remove spaces or tabs around cursor
     auto start_blank_iter=iter;
     auto end_blank_iter=iter;
