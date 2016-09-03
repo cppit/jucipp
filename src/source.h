@@ -46,6 +46,8 @@ namespace Source {
     virtual bool save(const std::vector<Source::View*> &views);
     void configure() override;
     
+    void toggle_breakpoint(int line_nr);
+    
     void search_highlight(const std::string &text, bool case_sensitive, bool regex);
     std::function<void(int number)> update_search_occurrences;
     void search_forward();
