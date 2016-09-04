@@ -1139,7 +1139,7 @@ bool Source::View::on_key_press_event(GdkEventKey* key) {
     return on_key_press_event_basic(key);
   
   auto iter=get_buffer()->get_insert()->get_iter();
-  if(iter.backward_char() && (get_source_buffer()->iter_has_context_class(iter, "comment") || get_source_buffer()->iter_has_context_class(iter, "string")))
+  if(get_source_buffer()->iter_has_context_class(iter, "comment") || get_source_buffer()->iter_has_context_class(iter, "string"))
     return on_key_press_event_basic(key);
   
   if(is_bracket_language)
@@ -1592,6 +1592,63 @@ bool Source::View::on_key_press_event_bracket_language(GdkEventKey* key) {
             return true;
           }
         }
+      }
+    }
+  }
+  //Move after ')' if closed expression
+  else if(key->keyval==GDK_KEY_parenright) {
+    if(*iter==')') {
+      Gtk::TextIter found_iter;
+      auto bracket_count=[this](Gtk::TextIter iter) {
+        int para_count=0;
+        int curly_count=0;
+        auto iter_stored=iter;
+        
+        do {
+          if(!get_source_buffer()->iter_has_context_class(iter, "comment") && !get_source_buffer()->iter_has_context_class(iter, "string")) {
+            if(*iter==')')
+              para_count++;
+            else if(*iter=='(')
+              para_count--;
+            else if(*iter=='}')
+              curly_count++;
+            else if(*iter=='{')
+              curly_count--;
+            
+            if(curly_count<0)
+              break;
+          }
+        } while(iter.backward_char());
+        
+        iter=iter_stored;
+        if(!iter.forward_char()) {
+          return para_count;
+        }
+        curly_count=0;
+        do {
+          if(!get_source_buffer()->iter_has_context_class(iter, "comment") && !get_source_buffer()->iter_has_context_class(iter, "string")) {
+            if(*iter==')')
+              para_count++;
+            else if(*iter=='(')
+              para_count--;
+            else if(*iter=='}')
+              curly_count++;
+            else if(*iter=='{')
+              curly_count--;
+            
+            if(curly_count>0)
+              break;
+          }
+        } while(iter.forward_char());
+        
+        return para_count;
+      };
+      if(bracket_count(iter)==0) {
+        iter.forward_char();
+        get_buffer()->place_cursor(iter);
+        scroll_to(get_buffer()->get_insert());
+        get_buffer()->end_user_action();
+        return true;
       }
     }
   }
