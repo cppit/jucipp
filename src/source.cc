@@ -1378,16 +1378,12 @@ bool Source::View::on_key_press_event_bracket_language(GdkEventKey* key) {
             if(token=="class" || token=="struct")
               add_semicolon=true;
           }
-          get_buffer()->insert_at_cursor("\n"+tabs+tab);
-          auto mark=get_buffer()->create_mark(get_buffer()->get_insert()->get_iter());
-          if(!mark->get_iter().ends_line()) {
-            auto iter=get_iter_at_line_end(get_buffer()->get_insert()->get_iter().get_line());
-            get_buffer()->place_cursor(iter);
+          get_buffer()->insert_at_cursor("\n"+tabs+tab+"\n"+tabs+(add_semicolon?"};":"}"));
+          auto insert_it = get_buffer()->get_insert()->get_iter();
+          if(insert_it.backward_chars(tabs.size()+(add_semicolon?3:2))) {
+            scroll_to(get_buffer()->get_insert());
+            get_buffer()->place_cursor(insert_it);
           }
-          get_buffer()->insert_at_cursor("\n"+tabs+(add_semicolon?"};":"}"));
-          scroll_to(mark);
-          get_buffer()->place_cursor(mark->get_iter());
-          get_buffer()->delete_mark(mark);
           get_buffer()->end_user_action();
           return true;
         }
