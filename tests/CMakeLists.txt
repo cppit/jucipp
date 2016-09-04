@@ -1,17 +1,5 @@
 set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -fno-access-control -DJUCI_BUILD_PATH=\\\"${CMAKE_BINARY_DIR}\\\" -DJUCI_TESTS_PATH=\\\"${CMAKE_CURRENT_SOURCE_DIR}\\\"")
 
-set(global_includes
-   ${Boost_INCLUDE_DIRS}
-   ${GTKMM_INCLUDE_DIRS}
-   ${GTKSVMM_INCLUDE_DIRS}
-   ${LIBCLANG_INCLUDE_DIRS}
-   ${ASPELL_INCLUDE_DIR}
-   ${LIBGIT2_INCLUDE_DIRS}
-   ../libclangmm/src
-   ../tiny-process-library
-   ../src
-)
-
 set(stub_files
     stubs/config.cc
     stubs/dialogs.cc

@@ -2,18 +2,6 @@ if(MSYS)
   set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -DMSYS_PROCESS_USE_SH")
 endif()
 
-set(global_includes
-   ${Boost_INCLUDE_DIRS}
-   ${GTKMM_INCLUDE_DIRS}
-   ${GTKSVMM_INCLUDE_DIRS}
-   ${LIBCLANG_INCLUDE_DIRS}
-   ${ASPELL_INCLUDE_DIR}
-   ${LIBGIT2_INCLUDE_DIRS}
-   ../libclangmm/src
-   ../tiny-process-library
-   .
-)
-
 set(project_files
     config.cc
     dialogs.cc

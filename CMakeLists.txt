@@ -68,6 +68,18 @@ set(global_libraries ${global_libraries}
   ${LIBLLDB_LIBRARIES}
   ${ASPELL_LIBRARIES}
   ${LIBGIT2_LIBRARIES}
+  )
+
+set(global_includes
+   ${Boost_INCLUDE_DIRS}
+   ${GTKMM_INCLUDE_DIRS}
+   ${GTKSVMM_INCLUDE_DIRS}
+   ${LIBCLANG_INCLUDE_DIRS}
+   ${ASPELL_INCLUDE_DIR}
+   ${LIBGIT2_INCLUDE_DIRS}
+   ../libclangmm/src
+   ../tiny-process-library
+   .
 )
 
 add_subdirectory("src")
