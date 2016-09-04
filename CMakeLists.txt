@@ -77,9 +77,9 @@ set(global_includes
    ${LIBCLANG_INCLUDE_DIRS}
    ${ASPELL_INCLUDE_DIR}
    ${LIBGIT2_INCLUDE_DIRS}
-   ../libclangmm/src
-   ../tiny-process-library
-   .
+   ${PROJECT_SOURCE_DIR}/libclangmm/src
+   ${PROJECT_SOURCE_DIR}/tiny-process-library
+   ${PROJECT_SOURCE_DIR}/src
 )
 
 add_subdirectory("src")

@@ -32,22 +32,22 @@ set(project_shared_files
     source_diff.cc
     source_spellcheck.cc
 
-    ../libclangmm/src/CodeCompleteResults.cc
-    ../libclangmm/src/CompilationDatabase.cc
-    ../libclangmm/src/CompileCommand.cc     
-    ../libclangmm/src/CompileCommands.cc    
-    ../libclangmm/src/CompletionString.cc   
-    ../libclangmm/src/Cursor.cc
-    ../libclangmm/src/Diagnostic.cc
-    ../libclangmm/src/Index.cc
-    ../libclangmm/src/SourceLocation.cc
-    ../libclangmm/src/SourceRange.cc
-    ../libclangmm/src/Token.cc
-    ../libclangmm/src/Tokens.cc
-    ../libclangmm/src/TranslationUnit.cc
-    ../libclangmm/src/Utility.cc
+    ${PROJECT_SOURCE_DIR}/libclangmm/src/CodeCompleteResults.cc
+    ${PROJECT_SOURCE_DIR}/libclangmm/src/CompilationDatabase.cc
+    ${PROJECT_SOURCE_DIR}/libclangmm/src/CompileCommand.cc
+    ${PROJECT_SOURCE_DIR}/libclangmm/src/CompileCommands.cc
+    ${PROJECT_SOURCE_DIR}/libclangmm/src/CompletionString.cc
+    ${PROJECT_SOURCE_DIR}/libclangmm/src/Cursor.cc
+    ${PROJECT_SOURCE_DIR}/libclangmm/src/Diagnostic.cc
+    ${PROJECT_SOURCE_DIR}/libclangmm/src/Index.cc
+    ${PROJECT_SOURCE_DIR}/libclangmm/src/SourceLocation.cc
+    ${PROJECT_SOURCE_DIR}/libclangmm/src/SourceRange.cc
+    ${PROJECT_SOURCE_DIR}/libclangmm/src/Token.cc
+    ${PROJECT_SOURCE_DIR}/libclangmm/src/Tokens.cc
+    ${PROJECT_SOURCE_DIR}/libclangmm/src/TranslationUnit.cc
+    ${PROJECT_SOURCE_DIR}/libclangmm/src/Utility.cc
     
-    ../tiny-process-library/process.cpp
+    ${PROJECT_SOURCE_DIR}/tiny-process-library/process.cpp
 )
 
 if(LIBLLDB_FOUND)
@@ -55,9 +55,9 @@ if(LIBLLDB_FOUND)
 endif()
 
 if(MSYS)
-  list(APPEND project_shared_files ../tiny-process-library/process_win.cpp)
+  list(APPEND project_shared_files ${PROJECT_SOURCE_DIR}/tiny-process-library/process_win.cpp)
 else()
-  list(APPEND project_shared_files ../tiny-process-library/process_unix.cpp)
+  list(APPEND project_shared_files ${PROJECT_SOURCE_DIR}/tiny-process-library/process_unix.cpp)
 endif()
 
 include_directories(${global_includes})
