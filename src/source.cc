@@ -1072,6 +1072,69 @@ bool Source::View::on_key_press_event(GdkEventKey* key) {
     previous_non_modifier_keyval=last_keyval;
   last_keyval=key->keyval;
   
+  //Move cursor one paragraph down
+  if(key->keyval==GDK_KEY_Down && (key->state&GDK_CONTROL_MASK)>0) {
+    get_buffer()->begin_user_action();
+    auto selection_start_iter=get_buffer()->get_selection_bound()->get_iter();
+    auto iter=get_buffer()->get_iter_at_line(get_buffer()->get_insert()->get_iter().get_line());
+    bool empty_line=false;
+    bool text_found=false;
+    for(;;) {
+      if(!iter)
+        break;
+      if(iter.starts_line())
+        empty_line=true;
+      if(empty_line && !iter.ends_line() && *iter!=' ' && *iter!='\t')
+        empty_line=false;
+      if(!text_found && !iter.ends_line() && *iter!=' ' && *iter!='\t')
+        text_found=true;
+      if(empty_line && text_found && iter.ends_line())
+        break;
+      iter.forward_char();
+    }
+    iter=get_buffer()->get_iter_at_line(iter.get_line());
+    if((key->state&GDK_SHIFT_MASK)>0)
+      get_buffer()->select_range(iter, selection_start_iter);
+    else
+      get_buffer()->place_cursor(iter);
+    scroll_to(get_buffer()->get_insert());
+    get_buffer()->end_user_action();
+    return true;
+  }
+  //Move cursor one paragraph up
+  else if(key->keyval==GDK_KEY_Up && (key->state&GDK_CONTROL_MASK)>0) {
+    get_buffer()->begin_user_action();
+    auto selection_start_iter=get_buffer()->get_selection_bound()->get_iter();
+    auto iter=get_buffer()->get_iter_at_line(get_buffer()->get_insert()->get_iter().get_line());
+    iter.backward_char();
+    bool empty_line=false;
+    bool text_found=false;
+    for(;;) {
+      if(!iter || iter.is_start())
+        break;
+      if(iter.ends_line())
+        empty_line=true;
+      if(empty_line && !iter.ends_line() && *iter!=' ' && *iter!='\t')
+        empty_line=false;
+      if(!text_found && !iter.ends_line() && *iter!=' ' && *iter!='\t')
+        text_found=true;
+      if(empty_line && text_found && iter.starts_line())
+        break;
+      iter.backward_char();
+    }
+    if(empty_line) {
+      iter=get_iter_at_line_end(iter.get_line());
+      iter.forward_char();
+    }
+    if((key->state&GDK_SHIFT_MASK)>0)
+      get_buffer()->select_range(iter, selection_start_iter);
+    else
+      get_buffer()->place_cursor(iter);
+    scroll_to(get_buffer()->get_insert());
+    get_buffer()->end_user_action();
+    return true;
+  }
+  
   if(get_buffer()->get_has_selection())
     return on_key_press_event_basic(key);
   
