@@ -53,7 +53,7 @@ Source::DiffView::DiffView(const boost::filesystem::path &file_path) : Gsv::View
   renderer->tag_removed=get_buffer()->create_tag("git_removed");
   renderer->tag_removed_below=get_buffer()->create_tag();
   renderer->tag_removed_above=get_buffer()->create_tag();
- 
+  
   configure();
 }
 
