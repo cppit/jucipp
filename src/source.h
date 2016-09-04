@@ -46,8 +46,6 @@ namespace Source {
     virtual bool save(const std::vector<Source::View*> &views);
     void configure() override;
     
-    void toggle_breakpoint(int line_nr);
-    
     void search_highlight(const std::string &text, bool case_sensitive, bool regex);
     std::function<void(int number)> update_search_occurrences;
     void search_forward();
@@ -73,6 +71,7 @@ namespace Source {
     std::function<std::vector<FixIt>()> get_fix_its;
     std::function<void()> toggle_comments;
     std::function<void()> add_documentation;
+    std::function<void(int)> toggle_breakpoint;
     
     std::unique_ptr<CompletionDialog> autocomplete_dialog;
     std::unique_ptr<SelectionDialog> selection_dialog;
@@ -154,6 +153,8 @@ namespace Source {
     GtkSourceSearchContext *search_context;
     GtkSourceSearchSettings *search_settings;
     static void search_occurrences_updated(GtkWidget* widget, GParamSpec* property, gpointer data);
+    
+    sigc::connection renderer_activate_connection;
   };
   
   class GenericView : public View {

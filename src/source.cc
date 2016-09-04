@@ -4,7 +4,6 @@
 #include "terminal.h"
 #include "info.h"
 #include "directories.h"
-#include "project.h"
 #include <gtksourceview/gtksource.h>
 #include <boost/property_tree/json_parser.hpp>
 #include <boost/spirit/home/qi/char.hpp>
@@ -147,11 +146,14 @@ Source::View::View(const boost::filesystem::path &file_path, Glib::RefPtr<Gsv::L
   
   signal_realize().connect([this] {
     auto gutter=get_gutter(Gtk::TextWindowType::TEXT_WINDOW_LEFT);
-    auto render=gutter->get_renderer_at_pos(30, 0);
-    if(render)
-      render->signal_activate().connect([this](const Gtk::TextIter& iter, const Gdk::Rectangle&, GdkEvent*) {
-          Source::View::toggle_breakpoint(iter.get_line());
+    auto renderer=gutter->get_renderer_at_pos(15, 0);
+    if(renderer) {
+      renderer_activate_connection.disconnect();
+      renderer_activate_connection=renderer->signal_activate().connect([this](const Gtk::TextIter& iter, const Gdk::Rectangle&, GdkEvent*) {
+        if(toggle_breakpoint)
+          toggle_breakpoint(iter.get_line());
       });
+    }
   });
   
   set_tooltip_and_dialog_events();
@@ -532,21 +534,6 @@ void Source::View::configure() {
   }
 }
 
-void Source::View::toggle_breakpoint(int line_nr){
-  if(get_source_buffer()->get_source_marks_at_line(line_nr, "debug_breakpoint").size()>0) {
-    auto start_iter=get_buffer()->get_iter_at_line(line_nr);
-    auto end_iter=get_iter_at_line_end(line_nr);
-    get_source_buffer()->remove_source_marks(start_iter, end_iter, "debug_breakpoint");
-    if(Project::current && Project::debugging)
-      Project::current->debug_remove_breakpoint(file_path, line_nr+1, get_buffer()->get_line_count()+1);
-  }
-  else {
-    get_source_buffer()->create_source_mark("debug_breakpoint", get_buffer()->get_iter_at_line(line_nr));
-    if(Project::current && Project::debugging)
-      Project::current->debug_add_breakpoint(file_path, line_nr+1);
-  }
-}
-
 void Source::View::set_tooltip_and_dialog_events() {
   get_buffer()->signal_changed().connect([this] {
     hide_tooltips();
@@ -635,6 +622,7 @@ Source::View::~View() {
   g_clear_object(&search_settings);
   
   delayed_tooltips_connection.disconnect();
+  renderer_activate_connection.disconnect();
 }
 
 void Source::View::search_highlight(const std::string &text, bool case_sensitive, bool regex) {

@@ -221,6 +221,25 @@ void Notebook::open(const boost::filesystem::path &file_path, size_t notebook_in
     return false;
   });
   
+#ifdef JUCI_ENABLE_DEBUG
+  if(dynamic_cast<Source::ClangView*>(source_view)) {
+    source_view->toggle_breakpoint=[source_view](int line_nr) {
+      if(source_view->get_source_buffer()->get_source_marks_at_line(line_nr, "debug_breakpoint").size()>0) {
+        auto start_iter=source_view->get_buffer()->get_iter_at_line(line_nr);
+        auto end_iter=source_view->get_iter_at_line_end(line_nr);
+        source_view->get_source_buffer()->remove_source_marks(start_iter, end_iter, "debug_breakpoint");
+        if(Project::current && Project::debugging)
+          Project::current->debug_remove_breakpoint(source_view->file_path, line_nr+1, source_view->get_buffer()->get_line_count()+1);
+      }
+      else {
+        source_view->get_source_buffer()->create_source_mark("debug_breakpoint", source_view->get_buffer()->get_iter_at_line(line_nr));
+        if(Project::current && Project::debugging)
+          Project::current->debug_add_breakpoint(source_view->file_path, line_nr+1);
+      }
+    };
+  }
+#endif
+  
   if(notebook_index==static_cast<size_t>(-1)) {
     if(!split)
       notebook_index=0;

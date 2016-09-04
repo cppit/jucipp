@@ -999,20 +999,8 @@ void Window::set_menu_actions() {
   });
   menu.add_action("debug_toggle_breakpoint", [this](){
     if(auto view=Notebook::get().get_current_view()) {
-      auto line_nr=view->get_buffer()->get_insert()->get_iter().get_line();
-      
-      if(view->get_source_buffer()->get_source_marks_at_line(line_nr, "debug_breakpoint").size()>0) {
-        auto start_iter=view->get_buffer()->get_iter_at_line(line_nr);
-        auto end_iter=view->get_iter_at_line_end(line_nr);
-        view->get_source_buffer()->remove_source_marks(start_iter, end_iter, "debug_breakpoint");
-        if(Project::current && Project::debugging)
-          Project::current->debug_remove_breakpoint(view->file_path, line_nr+1, view->get_buffer()->get_line_count()+1);
-      }
-      else {
-        view->get_source_buffer()->create_source_mark("debug_breakpoint", view->get_buffer()->get_insert()->get_iter());
-        if(Project::current && Project::debugging)
-          Project::current->debug_add_breakpoint(view->file_path, line_nr+1);
-      }
+      if(view->toggle_breakpoint)
+        view->toggle_breakpoint(view->get_buffer()->get_insert()->get_iter().get_line());
     }
   });
   menu.add_action("debug_goto_stop", [this](){
@@ -1077,14 +1065,7 @@ void Window::activate_menu_items(bool activate) {
   menu.actions["source_goto_next_diagnostic"]->set_enabled(activate ? static_cast<bool>(notebook.get_current_view()->goto_next_diagnostic) : false);
   menu.actions["source_apply_fix_its"]->set_enabled(activate ? static_cast<bool>(notebook.get_current_view()->get_fix_its) : false);
 #ifdef JUCI_ENABLE_DEBUG
-  if(auto view=notebook.get_current_view()) {
-    if(view->language && (view->language->get_id()=="c" || view->language->get_id()=="cpp" || view->language->get_id()=="objc" || view->language->get_id()=="chdr" || view->language->get_id()=="cpphdr"))
-      menu.actions["debug_toggle_breakpoint"]->set_enabled(true);
-    else
-      menu.actions["debug_toggle_breakpoint"]->set_enabled(false);
-  }
-  else
-    menu.actions["debug_toggle_breakpoint"]->set_enabled(false);
+  menu.actions["debug_toggle_breakpoint"]->set_enabled(activate ? static_cast<bool>(notebook.get_current_view()->toggle_breakpoint) : false);
 #endif
 }
 
