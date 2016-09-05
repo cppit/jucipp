@@ -254,7 +254,7 @@ Source::View::View(const boost::filesystem::path &file_path, Glib::RefPtr<Gsv::L
   tab_size=Config::get().source.default_tab_size;
   if(Config::get().source.auto_tab_char_and_size) {
     auto tab_char_and_size=find_tab_char_and_size();
-    if(tab_char_and_size.first!=0) {
+    if(tab_char_and_size.second!=0) {
       if(tab_char!=tab_char_and_size.first || tab_size!=tab_char_and_size.second) {
         std::string tab_str;
         if(tab_char_and_size.first==' ')
@@ -1074,7 +1074,6 @@ bool Source::View::on_key_press_event(GdkEventKey* key) {
   
   //Move cursor one paragraph down
   if(key->keyval==GDK_KEY_Down && (key->state&GDK_CONTROL_MASK)>0) {
-    get_buffer()->begin_user_action();
     auto selection_start_iter=get_buffer()->get_selection_bound()->get_iter();
     auto iter=get_buffer()->get_iter_at_line(get_buffer()->get_insert()->get_iter().get_line());
     bool empty_line=false;
@@ -1098,12 +1097,10 @@ bool Source::View::on_key_press_event(GdkEventKey* key) {
     else
       get_buffer()->place_cursor(iter);
     scroll_to(get_buffer()->get_insert());
-    get_buffer()->end_user_action();
     return true;
   }
   //Move cursor one paragraph up
   else if(key->keyval==GDK_KEY_Up && (key->state&GDK_CONTROL_MASK)>0) {
-    get_buffer()->begin_user_action();
     auto selection_start_iter=get_buffer()->get_selection_bound()->get_iter();
     auto iter=get_buffer()->get_iter_at_line(get_buffer()->get_insert()->get_iter().get_line());
     iter.backward_char();
@@ -1131,7 +1128,6 @@ bool Source::View::on_key_press_event(GdkEventKey* key) {
     else
       get_buffer()->place_cursor(iter);
     scroll_to(get_buffer()->get_insert());
-    get_buffer()->end_user_action();
     return true;
   }
   
