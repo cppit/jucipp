@@ -122,10 +122,11 @@ namespace Source {
     Gtk::TextIter get_tabs_end_iter(int line_nr);
     Gtk::TextIter get_tabs_end_iter();
     
-    bool find_start_of_closed_expression(Gtk::TextIter iter, Gtk::TextIter &found_iter);
-    bool find_open_expression_symbol(Gtk::TextIter iter, const Gtk::TextIter &until_iter, Gtk::TextIter &found_iter);
-    bool find_right_bracket_forward(Gtk::TextIter iter, Gtk::TextIter &found_iter);
-    bool find_left_bracket_backward(Gtk::TextIter iter, Gtk::TextIter &found_iter);
+    Gtk::TextIter find_start_of_sentence(Gtk::TextIter iter);
+    bool find_open_non_curly_bracket_backward(Gtk::TextIter iter, Gtk::TextIter &found_iter);
+    bool find_open_curly_bracket_backward(Gtk::TextIter iter, Gtk::TextIter &found_iter);
+    bool find_close_curly_bracket_forward(Gtk::TextIter iter, Gtk::TextIter &found_iter);
+    long open_close_paranthesis_count(Gtk::TextIter iter);
     
     std::string get_token(Gtk::TextIter iter);
     

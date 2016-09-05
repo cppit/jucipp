@@ -20,6 +20,7 @@ namespace Source {
     void goto_next_spellcheck_error();
     
   protected:
+    bool is_code_iter(const Gtk::TextIter &iter);
     bool spellcheck_all=false;
     guint last_keyval=0;
   private:

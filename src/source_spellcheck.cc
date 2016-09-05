@@ -55,7 +55,7 @@ Source::SpellCheckView::SpellCheckView() : Gsv::View() {
         backward_success=context_iter.backward_char();
       if(backward_success) {
         if(last_keyval==GDK_KEY_BackSpace && !is_word_iter(iter) && iter.forward_char()) {} //backspace fix
-        if((spellcheck_all && !get_source_buffer()->iter_has_context_class(context_iter, "no-spell-check")) || get_source_buffer()->iter_has_context_class(context_iter, "comment") || get_source_buffer()->iter_has_context_class(context_iter, "string")) {
+        if((spellcheck_all && !get_source_buffer()->iter_has_context_class(context_iter, "no-spell-check")) || !is_code_iter(context_iter)) {
           if(!is_word_iter(iter) || (last_keyval==GDK_KEY_Return || last_keyval==GDK_KEY_KP_Enter)) { //Might have used space or - to split two words
             auto first=iter;
             auto second=iter;
@@ -105,7 +105,7 @@ Source::SpellCheckView::SpellCheckView() : Gsv::View() {
         return false;
       }
       
-      bool spell_check=get_source_buffer()->iter_has_context_class(iter, "string") || get_source_buffer()->iter_has_context_class(iter, "comment");
+      bool spell_check=!is_code_iter(iter);
       if(!spell_check)
         begin_no_spellcheck_iter=iter;
       while(iter!=get_buffer()->end()) {
@@ -250,7 +250,7 @@ void Source::SpellCheckView::spellcheck() {
     }
   }
   else {
-    bool spell_check=get_source_buffer()->iter_has_context_class(iter, "string") || get_source_buffer()->iter_has_context_class(iter, "comment");
+    bool spell_check=!is_code_iter(iter);
     if(spell_check)
       begin_spellcheck_iter=iter;
     while(iter!=get_buffer()->end()) {
@@ -298,6 +298,10 @@ void Source::SpellCheckView::goto_next_spellcheck_error() {
       wrapped=true;
     }
   }
+}
+
+bool Source::SpellCheckView::is_code_iter(const Gtk::TextIter &iter) {
+  return !get_source_buffer()->iter_has_context_class(iter, "comment") && !get_source_buffer()->iter_has_context_class(iter, "string");
 }
 
 bool Source::SpellCheckView::is_word_iter(const Gtk::TextIter& iter) {

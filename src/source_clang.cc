@@ -636,8 +636,7 @@ void Source::ClangViewAutocomplete::autocomplete_dialog_setup() {
 
 void Source::ClangViewAutocomplete::autocomplete_check() {
   auto iter=get_buffer()->get_insert()->get_iter();
-  if(iter.backward_char() && iter.backward_char() && (get_source_buffer()->iter_has_context_class(iter, "string") ||
-                                                      get_source_buffer()->iter_has_context_class(iter, "comment")))
+  if(iter.backward_char() && iter.backward_char() && !is_code_iter(iter))
     return;
   std::string line=" "+get_line_before();
   const static std::regex in_specified_namespace("^(.*[a-zA-Z0-9_\\)\\]\\>])(->|\\.|::)([a-zA-Z0-9_]*)$");
