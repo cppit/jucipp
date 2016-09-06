@@ -1016,16 +1016,16 @@ bool Source::View::find_close_curly_bracket_forward(Gtk::TextIter iter, Gtk::Tex
   return false;
 }
 
-long Source::View::open_close_paranthesis_count(Gtk::TextIter iter) {
-  long para_count=0;
-  long curly_count=0;
+long Source::View::open_close_bracket_count(Gtk::TextIter iter, unsigned int left_bracket, unsigned int right_bracket) {
   auto iter_stored=iter;
+  long bracket_count=0;
+  long curly_count=0;
   
   do {
-    if(*iter=='(' && is_code_iter(iter))
-      para_count++;
-    else if(*iter==')' && is_code_iter(iter))
-      para_count--;
+    if(*iter==left_bracket && is_code_iter(iter))
+      bracket_count++;
+    else if(*iter==right_bracket && is_code_iter(iter))
+      bracket_count--;
     else if(*iter=='{' && is_code_iter(iter))
       curly_count++;
     else if(*iter=='}' && is_code_iter(iter))
@@ -1037,14 +1037,15 @@ long Source::View::open_close_paranthesis_count(Gtk::TextIter iter) {
   
   iter=iter_stored;
   if(!iter.forward_char()) {
-    return para_count;
+    return bracket_count;
   }
+  
   curly_count=0;
   do {
-    if(*iter=='(' && is_code_iter(iter))
-      para_count++;
-    else if(*iter==')' && is_code_iter(iter))
-      para_count--;
+    if(*iter==left_bracket && is_code_iter(iter))
+      bracket_count++;
+    else if(*iter==right_bracket && is_code_iter(iter))
+      bracket_count--;
     else if(*iter=='{' && is_code_iter(iter))
       curly_count++;
     else if(*iter=='}' && is_code_iter(iter))
@@ -1054,7 +1055,60 @@ long Source::View::open_close_paranthesis_count(Gtk::TextIter iter) {
       break;
   } while(iter.forward_char());
   
-  return para_count;
+  return bracket_count;
+}
+
+bool Source::View::is_templated_function(Gtk::TextIter iter, Gtk::TextIter &parenthesis_end_iter) {
+  auto iter_stored=iter;
+  long bracket_count=0;
+  long curly_count=0;
+  
+  if(!(iter.backward_char() && *iter=='>' && *iter_stored=='('))
+    return false;
+  
+  do {
+    if(*iter=='<' && is_code_iter(iter))
+      bracket_count++;
+    else if(*iter=='>' && is_code_iter(iter))
+      bracket_count--;
+    else if(*iter=='{' && is_code_iter(iter))
+      curly_count++;
+    else if(*iter=='}' && is_code_iter(iter))
+      curly_count--;
+    
+    if(bracket_count==0)
+      break;
+    
+    if(curly_count>0)
+      break;
+  } while(iter.backward_char());
+  
+  if(bracket_count!=0)
+    return false;
+  
+  iter=iter_stored;
+  bracket_count=0;
+  curly_count=0;
+  do {
+    if(*iter=='(' && is_code_iter(iter))
+      bracket_count++;
+    else if(*iter==')' && is_code_iter(iter))
+      bracket_count--;
+    else if(*iter=='{' && is_code_iter(iter))
+      curly_count++;
+    else if(*iter=='}' && is_code_iter(iter))
+      curly_count--;
+    
+    if(bracket_count==0) {
+      parenthesis_end_iter=iter;
+      return true;
+    }
+    
+    if(curly_count<0)
+      return false;
+  } while(iter.forward_char());
+  
+  return false;
 }
 
 std::string Source::View::get_token(Gtk::TextIter iter) {
@@ -1627,11 +1681,38 @@ bool Source::View::on_key_press_event_bracket_language(GdkEventKey* key) {
   //Move after ')' if closed expression
   else if(key->keyval==GDK_KEY_parenright) {
     if(*iter==')') {
-      Gtk::TextIter found_iter;
-      if(open_close_paranthesis_count(iter)==0) {
+      if(open_close_bracket_count(iter, '(', ')')==0) {
         iter.forward_char();
         get_buffer()->place_cursor(iter);
         scroll_to(get_buffer()->get_insert());
+        get_buffer()->end_user_action();
+        return true;
+      }
+    }
+  }
+  //Move after '>' if >( and closed expression
+  else if(key->keyval==GDK_KEY_greater) {
+    if(*iter=='>') {
+      iter.forward_char();
+      Gtk::TextIter parenthesis_end_iter;
+      if(*iter=='(' && is_templated_function(iter, parenthesis_end_iter)) {
+        get_buffer()->place_cursor(iter);
+        scroll_to(get_buffer()->get_insert());
+        get_buffer()->end_user_action();
+        return true;
+      }
+    }
+  }
+  //Move after '(' if >( and select text inside parentheses
+  else if(key->keyval==GDK_KEY_parenleft) {
+    auto previous_iter=iter;
+    previous_iter.backward_char();
+    if(*previous_iter=='>') {
+      Gtk::TextIter parenthesis_end_iter;
+      if(*iter=='(' && is_templated_function(iter, parenthesis_end_iter)) {
+        iter.forward_char();
+        get_buffer()->select_range(iter, parenthesis_end_iter);
+        scroll_to(iter);
         get_buffer()->end_user_action();
         return true;
       }
