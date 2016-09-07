@@ -1021,18 +1021,23 @@ long Source::View::open_close_bracket_count(Gtk::TextIter iter, unsigned int lef
   long bracket_count=0;
   long curly_count=0;
   
+  Gtk::TextIter previous_iter;
   do {
-    if(*iter==left_bracket && is_code_iter(iter))
-      bracket_count++;
-    else if(*iter==right_bracket && is_code_iter(iter))
-      bracket_count--;
-    else if(*iter=='{' && is_code_iter(iter))
-      curly_count++;
-    else if(*iter=='}' && is_code_iter(iter))
-      curly_count--;
-    
-    if(curly_count>0)
-      break;
+    previous_iter=iter;
+    previous_iter.backward_char();
+    if(!(*previous_iter=='\'' && is_code_iter(previous_iter))) {
+      if(*iter==left_bracket && is_code_iter(iter))
+        bracket_count++;
+      else if(*iter==right_bracket && is_code_iter(iter))
+        bracket_count--;
+      else if(*iter=='{' && is_code_iter(iter))
+        curly_count++;
+      else if(*iter=='}' && is_code_iter(iter))
+        curly_count--;
+      
+      if(curly_count>0)
+        break;
+    }
   } while(iter.backward_char());
   
   iter=iter_stored;
