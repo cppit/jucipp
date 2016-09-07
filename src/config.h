@@ -60,6 +60,8 @@ public:
     bool cleanup_whitespace_characters;
     std::string show_whitespace_characters;
     
+    bool smart_brackets;
+    
     bool show_map;
     std::string map_font_size;
     bool show_git_diff;

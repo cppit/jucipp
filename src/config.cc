@@ -193,6 +193,8 @@ void Config::get_source() {
 
   source.cleanup_whitespace_characters=source_json.get<bool>("cleanup_whitespace_characters");
   source.show_whitespace_characters=source_json.get<std::string>("show_whitespace_characters");
+  
+  source.smart_brackets=source_json.get<bool>("smart_brackets");
 
   source.show_map = source_json.get<bool>("show_map");
   source.map_font_size = source_json.get<std::string>("map_font_size");

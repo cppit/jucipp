@@ -41,6 +41,8 @@ R"RAW(
         "cleanup_whitespace_characters": false,
         "show_whitespace_characters_comment": "Determines what kind of whitespaces should be drawn. Use comma-separated list of: space, tab, newline, nbsp, leading, text, trailing or all",
         "show_whitespace_characters": "",
+        "smart_brackets_comment": "When inserting an already closed bracket, the cursor might instead be moved, avoiding the need of arrow keys after autocomplete",
+        "smart_brackets": true,
         "show_map": true,
         "map_font_size": "1",
         "show_git_diff": true,

@@ -1683,43 +1683,45 @@ bool Source::View::on_key_press_event_bracket_language(GdkEventKey* key) {
       }
     }
   }
-  //Move after ')' if closed expression
-  else if(key->keyval==GDK_KEY_parenright) {
-    if(*iter==')') {
-      if(open_close_bracket_count(iter, '(', ')')==0) {
-        iter.forward_char();
-        get_buffer()->place_cursor(iter);
-        scroll_to(get_buffer()->get_insert());
-        get_buffer()->end_user_action();
-        return true;
+  if(Config::get().source.smart_brackets) {
+    //Move after ')' if closed expression
+    if(key->keyval==GDK_KEY_parenright) {
+      if(*iter==')') {
+        if(open_close_bracket_count(iter, '(', ')')==0) {
+          iter.forward_char();
+          get_buffer()->place_cursor(iter);
+          scroll_to(get_buffer()->get_insert());
+          get_buffer()->end_user_action();
+          return true;
+        }
       }
     }
-  }
-  //Move after '>' if >( and closed expression
-  else if(key->keyval==GDK_KEY_greater) {
-    if(*iter=='>') {
-      iter.forward_char();
-      Gtk::TextIter parenthesis_end_iter;
-      if(*iter=='(' && is_templated_function(iter, parenthesis_end_iter)) {
-        get_buffer()->place_cursor(iter);
-        scroll_to(get_buffer()->get_insert());
-        get_buffer()->end_user_action();
-        return true;
+    //Move after '>' if >( and closed expression
+    else if(key->keyval==GDK_KEY_greater) {
+      if(*iter=='>') {
+        iter.forward_char();
+        Gtk::TextIter parenthesis_end_iter;
+        if(*iter=='(' && is_templated_function(iter, parenthesis_end_iter)) {
+          get_buffer()->place_cursor(iter);
+          scroll_to(get_buffer()->get_insert());
+          get_buffer()->end_user_action();
+          return true;
+        }
       }
     }
-  }
-  //Move after '(' if >( and select text inside parentheses
-  else if(key->keyval==GDK_KEY_parenleft) {
-    auto previous_iter=iter;
-    previous_iter.backward_char();
-    if(*previous_iter=='>') {
-      Gtk::TextIter parenthesis_end_iter;
-      if(*iter=='(' && is_templated_function(iter, parenthesis_end_iter)) {
-        iter.forward_char();
-        get_buffer()->select_range(iter, parenthesis_end_iter);
-        scroll_to(iter);
-        get_buffer()->end_user_action();
-        return true;
+    //Move after '(' if >( and select text inside parentheses
+    else if(key->keyval==GDK_KEY_parenleft) {
+      auto previous_iter=iter;
+      previous_iter.backward_char();
+      if(*previous_iter=='>') {
+        Gtk::TextIter parenthesis_end_iter;
+        if(*iter=='(' && is_templated_function(iter, parenthesis_end_iter)) {
+          iter.forward_char();
+          get_buffer()->select_range(iter, parenthesis_end_iter);
+          scroll_to(iter);
+          get_buffer()->end_user_action();
+          return true;
+        }
       }
     }
   }
