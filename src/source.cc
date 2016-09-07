@@ -1016,51 +1016,81 @@ bool Source::View::find_close_curly_bracket_forward(Gtk::TextIter iter, Gtk::Tex
   return false;
 }
 
-long Source::View::open_close_bracket_count(Gtk::TextIter iter, unsigned int left_bracket, unsigned int right_bracket) {
+long Source::View::symbol_count(Gtk::TextIter iter, unsigned int positive_char, unsigned int negative_char) {
   auto iter_stored=iter;
-  long bracket_count=0;
+  long symbol_count=0;
   long curly_count=0;
+  bool break_on_curly=true;
+  if(positive_char=='{' || negative_char=='}')
+    break_on_curly=false;
+  bool check_if_previous_or_next_iter_is_code_iter=false;
+  if(positive_char=='\'' || negative_char=='\'' || positive_char=='"' || negative_char=='"')
+    check_if_previous_or_next_iter_is_code_iter=true;
   
   Gtk::TextIter previous_iter;
   do {
     previous_iter=iter;
     previous_iter.backward_char();
     if(!(*previous_iter=='\'' && is_code_iter(previous_iter))) {
-      if(*iter==left_bracket && is_code_iter(iter))
-        bracket_count++;
-      else if(*iter==right_bracket && is_code_iter(iter))
-        bracket_count--;
+      if(*iter==positive_char && is_code_iter(iter))
+        symbol_count++;
+      else if(*iter==negative_char && is_code_iter(iter))
+        symbol_count--;
       else if(*iter=='{' && is_code_iter(iter))
         curly_count++;
       else if(*iter=='}' && is_code_iter(iter))
         curly_count--;
+      else if(check_if_previous_or_next_iter_is_code_iter) {
+        auto next_iter=iter;
+        next_iter.forward_char();
+        if(*iter==positive_char && is_code_iter(previous_iter))
+          symbol_count++;
+        else if(*iter==negative_char && is_code_iter(previous_iter))
+          symbol_count--;
+        else if(*iter==positive_char && is_code_iter(next_iter))
+          symbol_count++;
+        else if(*iter==negative_char && is_code_iter(next_iter))
+          symbol_count--;
+      }
       
-      if(curly_count>0)
+      if(break_on_curly && curly_count>0)
         break;
     }
   } while(iter.backward_char());
   
   iter=iter_stored;
   if(!iter.forward_char()) {
-    return bracket_count;
+    return symbol_count;
   }
   
   curly_count=0;
   do {
-    if(*iter==left_bracket && is_code_iter(iter))
-      bracket_count++;
-    else if(*iter==right_bracket && is_code_iter(iter))
-      bracket_count--;
+    if(*iter==positive_char && is_code_iter(iter))
+      symbol_count++;
+    else if(*iter==negative_char && is_code_iter(iter))
+      symbol_count--;
     else if(*iter=='{' && is_code_iter(iter))
       curly_count++;
     else if(*iter=='}' && is_code_iter(iter))
       curly_count--;
+    else if(check_if_previous_or_next_iter_is_code_iter) {
+      auto next_iter=iter;
+      next_iter.forward_char();
+      if(*iter==positive_char && is_code_iter(previous_iter))
+        symbol_count++;
+      else if(*iter==negative_char && is_code_iter(previous_iter))
+        symbol_count--;
+      else if(*iter==positive_char && is_code_iter(next_iter))
+        symbol_count++;
+      else if(*iter==negative_char && is_code_iter(next_iter))
+        symbol_count--;
+    }
     
-    if(curly_count<0)
+    if(break_on_curly && curly_count<0)
       break;
   } while(iter.forward_char());
   
-  return bracket_count;
+  return symbol_count;
 }
 
 bool Source::View::is_templated_function(Gtk::TextIter iter, Gtk::TextIter &parenthesis_end_iter) {
@@ -1210,6 +1240,64 @@ bool Source::View::on_key_press_event(GdkEventKey* key) {
     return on_key_press_event_basic(key);
   
   auto iter=get_buffer()->get_insert()->get_iter();
+  
+  if(is_bracket_language && Config::get().source.smart_insertions) {
+    auto previous_iter=iter;
+    previous_iter.backward_char();
+    if(key->keyval==GDK_KEY_apostrophe && !is_code_iter(iter)) {
+      if(*previous_iter!='\\' && *iter=='\'') {
+        auto next_iter=iter;
+        next_iter.forward_char();
+        get_buffer()->place_cursor(next_iter);
+        scroll_to(get_buffer()->get_insert());
+        return true;
+      }
+    }
+    else if(key->keyval==GDK_KEY_quotedbl && *iter=='\"' && !is_code_iter(iter)) {
+      bool perform_move=false;
+      if(*previous_iter!='\\')
+        perform_move=true;
+      else {
+        auto it=previous_iter;
+        long backslash_count=1;
+        while(it.backward_char() && *it=='\\') {
+          ++backslash_count;
+        }
+        if(backslash_count%2==0)
+          perform_move=true;
+      }
+      if(perform_move) {
+        auto next_iter=iter;
+        next_iter.forward_char();
+        get_buffer()->place_cursor(next_iter);
+        scroll_to(get_buffer()->get_insert());
+        return true;
+      }
+    }
+    else if(key->keyval==GDK_KEY_BackSpace || key->keyval==GDK_KEY_Delete) {
+      auto previous_previous_iter=previous_iter;
+      previous_previous_iter.backward_char();
+      if(*previous_iter=='\'' && *iter=='\'' && is_code_iter(previous_previous_iter)) {
+        auto next_iter=iter;
+        next_iter.forward_char();
+        get_buffer()->begin_user_action();
+        get_buffer()->erase(previous_iter, next_iter);
+        scroll_to(get_buffer()->get_insert());
+        get_buffer()->end_user_action();
+        return true;
+      }
+      else if(*previous_iter=='"' && *iter=='"' && !is_code_iter(iter) && is_code_iter(previous_previous_iter)) {
+        auto next_iter=iter;
+        next_iter.forward_char();
+        get_buffer()->begin_user_action();
+        get_buffer()->erase(previous_iter, next_iter);
+        scroll_to(get_buffer()->get_insert());
+        get_buffer()->end_user_action();
+        return true;
+      }
+    }
+  }
+  
   if(!is_code_iter(iter))
     return on_key_press_event_basic(key);
   
@@ -1640,23 +1728,25 @@ bool Source::View::on_key_press_event_bracket_language(GdkEventKey* key) {
   //Indent left when writing } on a new line
   else if(key->keyval==GDK_KEY_braceright) {
     std::string line=get_line_before();
-    if(line.size()>=tab_size) {
+    if(line.size()>=tab_size && iter.ends_line()) {
+      bool indent_left=true;
       for(auto c: line) {
         if(c!=tab_char) {
-          get_buffer()->insert_at_cursor("}");
-          get_buffer()->end_user_action();
-          return true;
+          indent_left=false;
+          break;
         }
       }
-      Gtk::TextIter insert_it = get_buffer()->get_insert()->get_iter();
-      Gtk::TextIter line_it = get_buffer()->get_iter_at_line(insert_it.get_line());
-      Gtk::TextIter line_plus_it=line_it;
-      line_plus_it.forward_chars(tab_size);
-      get_buffer()->erase(line_it, line_plus_it);
+      if(indent_left) {
+        Gtk::TextIter insert_it = get_buffer()->get_insert()->get_iter();
+        Gtk::TextIter line_it = get_buffer()->get_iter_at_line(insert_it.get_line());
+        Gtk::TextIter line_plus_it=line_it;
+        line_plus_it.forward_chars(tab_size);
+        get_buffer()->erase(line_it, line_plus_it);
+        get_buffer()->insert_at_cursor("}");
+        get_buffer()->end_user_action();
+        return true;
+      }
     }
-    get_buffer()->insert_at_cursor("}");
-    get_buffer()->end_user_action();
-    return true;
   }
   //Indent left when writing { on a new line after for instance if(...)\n...
   else if(key->keyval==GDK_KEY_braceleft) {
@@ -1683,17 +1773,16 @@ bool Source::View::on_key_press_event_bracket_language(GdkEventKey* key) {
       }
     }
   }
+  
   if(Config::get().source.smart_brackets) {
     //Move after ')' if closed expression
     if(key->keyval==GDK_KEY_parenright) {
-      if(*iter==')') {
-        if(open_close_bracket_count(iter, '(', ')')==0) {
-          iter.forward_char();
-          get_buffer()->place_cursor(iter);
-          scroll_to(get_buffer()->get_insert());
-          get_buffer()->end_user_action();
-          return true;
-        }
+      if(*iter==')' && symbol_count(iter, '(', ')')==0) {
+        iter.forward_char();
+        get_buffer()->place_cursor(iter);
+        scroll_to(get_buffer()->get_insert());
+        get_buffer()->end_user_action();
+        return true;
       }
     }
     //Move after '>' if >( and closed expression
@@ -1723,6 +1812,131 @@ bool Source::View::on_key_press_event_bracket_language(GdkEventKey* key) {
           return true;
         }
       }
+    }
+  }
+  
+  auto previous_iter=iter;
+  previous_iter.backward_char();
+  if(Config::get().source.smart_insertions && *previous_iter!='\'' && *iter!='\'') {
+    if(key->keyval==GDK_KEY_parenleft) {
+      if(symbol_count(iter, '(', ')')==0) {
+        get_buffer()->insert_at_cursor("()");
+        auto iter=get_buffer()->get_insert()->get_iter();
+        iter.backward_char();
+        get_buffer()->place_cursor(iter);
+        scroll_to(get_buffer()->get_insert());
+        get_buffer()->end_user_action();
+        return true;
+      }
+    }
+    else if(key->keyval==GDK_KEY_bracketleft) {
+      if(symbol_count(iter, '[', ']')==0) {
+        get_buffer()->insert_at_cursor("[]");
+        auto iter=get_buffer()->get_insert()->get_iter();
+        iter.backward_char();
+        get_buffer()->place_cursor(iter);
+        scroll_to(get_buffer()->get_insert());
+        get_buffer()->end_user_action();
+        return true;
+      }
+    }
+    else if(key->keyval==GDK_KEY_bracketright) {
+      if(*iter==']' && symbol_count(iter, '[', ']')==0) {
+        iter.forward_char();
+        get_buffer()->place_cursor(iter);
+        scroll_to(get_buffer()->get_insert());
+        get_buffer()->end_user_action();
+        return true;
+      }
+    }
+    // else if(key->keyval==GDK_KEY_braceleft) {
+    //   if(symbol_count(iter, '{', '}')==0) {
+    //     get_buffer()->insert_at_cursor("{}");
+    //     auto iter=get_buffer()->get_insert()->get_iter();
+    //     iter.backward_char();
+    //     get_buffer()->place_cursor(iter);
+    //     scroll_to(get_buffer()->get_insert());
+    //     get_buffer()->end_user_action();
+    //     return true;
+    //   }
+    // }
+    // else if(key->keyval==GDK_KEY_braceright) {
+    //   if(*iter=='}') {
+    //     if(symbol_count(iter, '{', '}')==0) {
+    //       iter.forward_char();
+    //       get_buffer()->place_cursor(iter);
+    //       scroll_to(get_buffer()->get_insert());
+    //       get_buffer()->end_user_action();
+    //       return true;
+    //     }
+    //   }
+    // }
+    
+    if(key->keyval==GDK_KEY_apostrophe && symbol_count(iter, '\'', '\0')%2==0) {
+      get_buffer()->insert_at_cursor("''");
+      auto iter=get_buffer()->get_insert()->get_iter();
+      iter.backward_char();
+      get_buffer()->place_cursor(iter);
+      scroll_to(get_buffer()->get_insert());
+      get_buffer()->end_user_action();
+      return true;
+    }
+    else if(key->keyval==GDK_KEY_quotedbl && symbol_count(iter, '"', '\0')%2==0) {
+      get_buffer()->insert_at_cursor("\"\"");
+      auto iter=get_buffer()->get_insert()->get_iter();
+      iter.backward_char();
+      get_buffer()->place_cursor(iter);
+      scroll_to(get_buffer()->get_insert());
+      get_buffer()->end_user_action();
+      return true;
+    }
+    else if(key->keyval==GDK_KEY_semicolon) {
+      if(*iter==')' && symbol_count(iter, '(', ')')==0) {
+        auto next_iter=iter;
+        next_iter.forward_char();
+        if(next_iter.ends_line()) {
+          Gtk::TextIter open_non_curly_bracket_iter;
+          if(find_open_non_curly_bracket_backward(previous_iter, open_non_curly_bracket_iter)) {
+            open_non_curly_bracket_iter.backward_char();
+            if(*open_non_curly_bracket_iter==' ')
+              open_non_curly_bracket_iter.backward_char();
+            if(get_token(open_non_curly_bracket_iter)!="for") {
+              iter.forward_char();
+              get_buffer()->place_cursor(iter);
+              get_buffer()->insert_at_cursor(";");
+              scroll_to(get_buffer()->get_insert());
+              get_buffer()->end_user_action();
+              return true;
+            }
+          }
+        }
+      }
+    }
+    else if(key->keyval==GDK_KEY_BackSpace || key->keyval==GDK_KEY_Delete) {
+      if(*previous_iter=='(' && *iter==')' && symbol_count(iter, '(', ')')==0) {
+        auto next_iter=iter;
+        next_iter.forward_char();
+        get_buffer()->erase(previous_iter, next_iter);
+        scroll_to(get_buffer()->get_insert());
+        get_buffer()->end_user_action();
+        return true;
+      }
+      else if(*previous_iter=='[' && *iter==']' && symbol_count(iter, '[', ']')==0) {
+        auto next_iter=iter;
+        next_iter.forward_char();
+        get_buffer()->erase(previous_iter, next_iter);
+        scroll_to(get_buffer()->get_insert());
+        get_buffer()->end_user_action();
+        return true;
+      }
+      // else if(*previous_iter=='{' && *iter=='}' && symbol_count(iter, '{', '}')==0) {
+      //   auto next_iter=iter;
+      //   next_iter.forward_char();
+      //   get_buffer()->erase(previous_iter, next_iter);
+      //   scroll_to(get_buffer()->get_insert());
+      //   get_buffer()->end_user_action();
+      //   return true;
+      // }
     }
   }
   

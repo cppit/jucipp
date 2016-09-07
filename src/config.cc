@@ -195,6 +195,9 @@ void Config::get_source() {
   source.show_whitespace_characters=source_json.get<std::string>("show_whitespace_characters");
   
   source.smart_brackets=source_json.get<bool>("smart_brackets");
+  source.smart_insertions=source_json.get<bool>("smart_insertions");
+  if(source.smart_insertions)
+    source.smart_brackets=true;
 
   source.show_map = source_json.get<bool>("show_map");
   source.map_font_size = source_json.get<std::string>("map_font_size");

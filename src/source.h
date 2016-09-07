@@ -126,7 +126,7 @@ namespace Source {
     bool find_open_non_curly_bracket_backward(Gtk::TextIter iter, Gtk::TextIter &found_iter);
     bool find_open_curly_bracket_backward(Gtk::TextIter iter, Gtk::TextIter &found_iter);
     bool find_close_curly_bracket_forward(Gtk::TextIter iter, Gtk::TextIter &found_iter);
-    long open_close_bracket_count(Gtk::TextIter iter, unsigned int left_bracket, unsigned int right_bracket);
+    long symbol_count(Gtk::TextIter iter, unsigned int positive_char, unsigned int negative_char);
     bool is_templated_function(Gtk::TextIter iter, Gtk::TextIter &parenthesis_end_iter);
     
     std::string get_token(Gtk::TextIter iter);
