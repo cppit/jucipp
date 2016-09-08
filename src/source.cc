@@ -1228,15 +1228,13 @@ bool Source::View::on_key_press_event(GdkEventKey* key) {
   
   get_buffer()->begin_user_action();
   
-  if(!spellcheck_all) {
-    if(Config::get().source.smart_brackets && on_key_press_event_smart_brackets(key)) {
-      get_buffer()->end_user_action();
-      return true;
-    }
-    if(Config::get().source.smart_insertions && on_key_press_event_smart_insertions(key)) {
-      get_buffer()->end_user_action();
-      return true;
-    }
+  if(Config::get().source.smart_brackets && on_key_press_event_smart_brackets(key)) {
+    get_buffer()->end_user_action();
+    return true;
+  }
+  if(Config::get().source.smart_insertions && on_key_press_event_smart_insertions(key)) {
+    get_buffer()->end_user_action();
+    return true;
   }
 
   if(get_buffer()->get_has_selection()) {
@@ -1797,6 +1795,12 @@ bool Source::View::on_key_press_event_smart_insertions(GdkEventKey *key) {
   auto next_iter=iter;
   next_iter.forward_char();
   
+  auto allow_insertion=[](const Gtk::TextIter &iter) {
+    if(iter.ends_line() || *iter==' ' || *iter=='\t' || *iter==';' || *iter==')' || *iter==']' || *iter=='[' || *iter=='{' || *iter=='}')
+      return true;
+    return false;
+  };
+  
   // Move right when clicking ' before a ' or when clicking " before a "
   if(((key->keyval==GDK_KEY_apostrophe && *iter=='\'') ||
       (key->keyval==GDK_KEY_quotedbl && *iter=='\"')) && is_code_iter(next_iter)) {
@@ -1830,31 +1834,25 @@ bool Source::View::on_key_press_event_smart_insertions(GdkEventKey *key) {
   
   if(is_code_iter(iter)) {
     // Insert ()
-    if(key->keyval==GDK_KEY_parenleft) {
-      //Allowed symbols
-      if(iter.ends_line() || *iter==' ' || *iter=='\t' || *iter==';' || *iter==')' || *iter==']' || *iter=='[' || *iter=='{' || *iter=='}') {
-        if(symbol_count(iter, '(', ')')==0) {
-          get_buffer()->insert_at_cursor("()");
-          auto iter=get_buffer()->get_insert()->get_iter();
-          iter.backward_char();
-          get_buffer()->place_cursor(iter);
-          scroll_to(get_buffer()->get_insert());
-          return true;
-        }
+    if(key->keyval==GDK_KEY_parenleft && allow_insertion(iter)) {
+      if(symbol_count(iter, '(', ')')==0) {
+        get_buffer()->insert_at_cursor("()");
+        auto iter=get_buffer()->get_insert()->get_iter();
+        iter.backward_char();
+        get_buffer()->place_cursor(iter);
+        scroll_to(get_buffer()->get_insert());
+        return true;
       }
     }
     // Insert []
-    else if(key->keyval==GDK_KEY_bracketleft) {
-      //Allowed symbols
-      if(iter.ends_line() || *iter==' ' || *iter=='\t' || *iter==';' || *iter==')' || *iter==']' || *iter=='[' || *iter=='{' || *iter=='}') {
-        if(symbol_count(iter, '[', ']')==0) {
-          get_buffer()->insert_at_cursor("[]");
-          auto iter=get_buffer()->get_insert()->get_iter();
-          iter.backward_char();
-          get_buffer()->place_cursor(iter);
-          scroll_to(get_buffer()->get_insert());
-          return true;
-        }
+    else if(key->keyval==GDK_KEY_bracketleft && allow_insertion(iter)) {
+      if(symbol_count(iter, '[', ']')==0) {
+        get_buffer()->insert_at_cursor("[]");
+        auto iter=get_buffer()->get_insert()->get_iter();
+        iter.backward_char();
+        get_buffer()->place_cursor(iter);
+        scroll_to(get_buffer()->get_insert());
+        return true;
       }
     }
     // Move left on ] in []
@@ -1889,7 +1887,7 @@ bool Source::View::on_key_press_event_smart_insertions(GdkEventKey *key) {
     //   }
     // }
     // Insert ''
-    else if(key->keyval==GDK_KEY_apostrophe && symbol_count(iter, '\'', -1)%2==0) {
+    else if(key->keyval==GDK_KEY_apostrophe && allow_insertion(iter) && symbol_count(iter, '\'', -1)%2==0) {
       get_buffer()->insert_at_cursor("''");
       auto iter=get_buffer()->get_insert()->get_iter();
       iter.backward_char();
@@ -1898,7 +1896,7 @@ bool Source::View::on_key_press_event_smart_insertions(GdkEventKey *key) {
       return true;
     }
     // Insert ""
-    else if(key->keyval==GDK_KEY_quotedbl && symbol_count(iter, '"', -1)%2==0) {
+    else if(key->keyval==GDK_KEY_quotedbl && allow_insertion(iter) && symbol_count(iter, '"', -1)%2==0) {
       get_buffer()->insert_at_cursor("\"\"");
       auto iter=get_buffer()->get_insert()->get_iter();
       iter.backward_char();

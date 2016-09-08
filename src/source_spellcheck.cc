@@ -308,6 +308,8 @@ void Source::SpellCheckView::goto_next_spellcheck_error() {
 }
 
 bool Source::SpellCheckView::is_code_iter(const Gtk::TextIter &iter) {
+  if(spellcheck_all)
+    return false;
   if(*iter=='\'') {
     auto previous_iter=iter;
     if(!iter.starts_line() && previous_iter.backward_char() && *previous_iter=='\'')
