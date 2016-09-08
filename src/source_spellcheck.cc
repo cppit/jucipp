@@ -186,11 +186,21 @@ Source::SpellCheckView::SpellCheckView() : Gsv::View() {
     return false;
   });
   
-  get_buffer()->get_tag_table()->signal_tag_added().connect([this](const Glib::RefPtr<Gtk::TextTag> &tag) {
+  signal_tag_added_connection=get_buffer()->get_tag_table()->signal_tag_added().connect([this](const Glib::RefPtr<Gtk::TextTag> &tag) {
     if(tag->property_name()=="gtksourceview:context-classes:comment")
       comment_tag=tag;
     else if(tag->property_name()=="gtksourceview:context-classes:string")
       string_tag=tag;
+    else if(tag->property_name()=="gtksourceview:context-classes:no-spell-check")
+      no_spell_check_tag=tag;
+  });
+  signal_tag_removed_connection=get_buffer()->get_tag_table()->signal_tag_removed().connect([this](const Glib::RefPtr<Gtk::TextTag> &tag) {
+    if(tag->property_name()=="gtksourceview:context-classes:comment")
+      comment_tag.reset();
+    else if(tag->property_name()=="gtksourceview:context-classes:string")
+      string_tag.reset();
+    else if(tag->property_name()=="gtksourceview:context-classes:no-spell-check")
+      no_spell_check_tag.reset();
   });
 }
 
@@ -200,6 +210,9 @@ Source::SpellCheckView::~SpellCheckView() {
   
   if(spellcheck_checker!=nullptr)
     delete_aspell_speller(spellcheck_checker);
+  
+  signal_tag_added_connection.disconnect();
+  signal_tag_removed_connection.disconnect();
 }
 
 void Source::SpellCheckView::configure() {
@@ -308,12 +321,15 @@ void Source::SpellCheckView::goto_next_spellcheck_error() {
 }
 
 bool Source::SpellCheckView::is_code_iter(const Gtk::TextIter &iter) {
-  if(spellcheck_all)
-    return false;
   if(*iter=='\'') {
     auto previous_iter=iter;
     if(!iter.starts_line() && previous_iter.backward_char() && *previous_iter=='\'')
       return false;
+  }
+  if(spellcheck_all) {
+    if(no_spell_check_tag && (iter.has_tag(no_spell_check_tag) || iter.begins_tag(no_spell_check_tag) || iter.ends_tag(no_spell_check_tag)))
+      return true;
+    return false;
   }
   if(comment_tag && ((iter.has_tag(comment_tag) && !iter.begins_tag(comment_tag)) || iter.ends_tag(comment_tag)))
     return false;
