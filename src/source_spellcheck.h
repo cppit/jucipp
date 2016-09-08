@@ -26,6 +26,9 @@ namespace Source {
   private:
     std::unique_ptr<SelectionDialog> spellcheck_suggestions_dialog;
     
+    Glib::RefPtr<Gtk::TextTag> comment_tag;
+    Glib::RefPtr<Gtk::TextTag> string_tag;
+    
     static AspellConfig* spellcheck_config;
     AspellCanHaveError *spellcheck_possible_err;
     AspellSpeller *spellcheck_checker;
