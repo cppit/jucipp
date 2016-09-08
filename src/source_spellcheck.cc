@@ -192,7 +192,7 @@ Source::SpellCheckView::~SpellCheckView() {
   delayed_spellcheck_error_clear.disconnect();
   
   if(spellcheck_checker!=nullptr)
-    delete_aspell_speller(spellcheck_checker);//asd
+    delete_aspell_speller(spellcheck_checker);
 }
 
 void Source::SpellCheckView::configure() {
@@ -301,7 +301,47 @@ void Source::SpellCheckView::goto_next_spellcheck_error() {
 }
 
 bool Source::SpellCheckView::is_code_iter(const Gtk::TextIter &iter) {
-  return !get_source_buffer()->iter_has_context_class(iter, "comment") && !get_source_buffer()->iter_has_context_class(iter, "string");
+  auto is_comment=[this](const Gtk::TextIter &iter) {
+    return get_source_buffer()->iter_has_context_class(iter, "comment");
+  };
+  auto is_string=[this](const Gtk::TextIter &iter) {
+    return get_source_buffer()->iter_has_context_class(iter, "string");
+  };
+  
+  if(*iter=='\'') {
+    auto previous_iter=iter;
+    if(!iter.starts_line() && previous_iter.backward_char() && *previous_iter=='\'')
+      return false;
+  }
+  if(is_comment(iter))
+    return false;
+  if(is_string(iter)) {
+    //Add exception for in front of " and '
+    if(*iter=='\'' || *iter=='"') {
+      auto previous_iter=iter;
+      if(previous_iter.backward_char()) {
+        if(!is_string(previous_iter))
+          return true;
+      }
+      else
+        return true;
+    }
+    return false;
+  }
+  //Iters after '...' and "..." should be code iters at the end of line
+  if(iter.ends_line() && !iter.starts_line()) {
+    auto previous_iter=iter;
+    if(previous_iter.backward_char()) {
+      if(is_comment(previous_iter))
+        return false;
+      if(is_string(previous_iter) && *previous_iter!='\'' && *previous_iter!='"') {
+        auto next_iter=iter;
+        if(next_iter.forward_char() && !is_string(next_iter))
+          return false;
+      }
+    }
+  }
+  return true;
 }
 
 bool Source::SpellCheckView::is_word_iter(const Gtk::TextIter& iter) {

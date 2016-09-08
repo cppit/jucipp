@@ -135,10 +135,12 @@ namespace Source {
     const static std::regex no_bracket_statement_regex;
     const static std::regex no_bracket_no_para_statement_regex;
     
+    bool is_bracket_language=false;
     bool on_key_press_event(GdkEventKey* key) override;
     bool on_key_press_event_basic(GdkEventKey* key);
     bool on_key_press_event_bracket_language(GdkEventKey* key);
-    bool is_bracket_language=false;
+    bool on_key_press_event_smart_brackets(GdkEventKey* key);
+    bool on_key_press_event_smart_insertions(GdkEventKey* key);
     bool on_button_press_event(GdkEventButton *event) override;
     bool on_focus_in_event(GdkEventFocus* focus_event) override;
     
