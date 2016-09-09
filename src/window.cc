@@ -321,7 +321,6 @@ void Window::set_menu_actions() {
   
   menu.add_action("reload_file", [this]() {
     auto path = Notebook::get().get_current_view()->file_path;
-    std::cout<<"Path: "<<path<<std::endl;
     Notebook::get().close_current();
     Notebook::get().open(path);
   });
