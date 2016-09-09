@@ -22,8 +22,8 @@ Source::SpellCheckView::SpellCheckView() : Gsv::View() {
   if(spellcheck_config==nullptr)
     spellcheck_config=new_aspell_config();
   spellcheck_checker=nullptr;
-  auto tag=get_buffer()->create_tag("spellcheck_error");
-  tag->property_underline()=Pango::Underline::UNDERLINE_ERROR;
+  spellcheck_error_tag=get_buffer()->create_tag("spellcheck_error");
+  spellcheck_error_tag->property_underline()=Pango::Underline::UNDERLINE_ERROR;
   
   signal_key_press_event().connect([this](GdkEventKey *event) {
     if(spellcheck_suggestions_dialog && spellcheck_suggestions_dialog->shown) {
@@ -40,47 +40,44 @@ Source::SpellCheckView::SpellCheckView() : Gsv::View() {
     return false;
   });
   
-  get_buffer()->signal_changed().connect([this](){
+  get_buffer()->signal_changed().connect([this]() {
     if(spellcheck_checker==nullptr)
       return;
     
     delayed_spellcheck_suggestions_connection.disconnect();
     
     auto iter=get_buffer()->get_insert()->get_iter();
-    bool ends_line=iter.ends_line();
-    if(iter.backward_char()) {
-      auto context_iter=iter;
-      bool backward_success=true;
-      if(ends_line || *iter=='/' || *iter=='*') //iter_has_context_class is sadly bugged
-        backward_success=context_iter.backward_char();
-      if(backward_success) {
-        if(last_keyval==GDK_KEY_BackSpace && !is_word_iter(iter) && iter.forward_char()) {} //backspace fix
-        if((spellcheck_all && !get_source_buffer()->iter_has_context_class(context_iter, "no-spell-check")) || !is_code_iter(context_iter)) {
-          if(!is_word_iter(iter) || (last_keyval==GDK_KEY_Return || last_keyval==GDK_KEY_KP_Enter)) { //Might have used space or - to split two words
-            auto first=iter;
-            auto second=iter;
-            if(last_keyval==GDK_KEY_Return || last_keyval==GDK_KEY_KP_Enter) {
-              while(first && !first.ends_line() && first.backward_char()) {}
-              if(first.backward_char() && second.forward_char()) {
-                get_buffer()->remove_tag_by_name("spellcheck_error", first, second);
-                auto word=spellcheck_get_word(first);
-                spellcheck_word(word.first, word.second);
-                word=spellcheck_get_word(second);
-                spellcheck_word(word.first, word.second);
-              }
-            }
-            else if(first.backward_char() && second.forward_char() && !second.starts_line()) {
-              get_buffer()->remove_tag_by_name("spellcheck_error", first, second);
-              auto word=spellcheck_get_word(first);
-              spellcheck_word(word.first, word.second);
-              word=spellcheck_get_word(second);
-              spellcheck_word(word.first, word.second);
-            }
-          }
-          else {
-            auto word=spellcheck_get_word(iter);
+    if(!is_word_iter(iter) && !iter.starts_line())
+      iter.backward_char();
+    if(!is_code_iter(iter)) {
+      if(last_keyval==GDK_KEY_Return || last_keyval==GDK_KEY_KP_Enter) {
+        auto previous_line_iter=iter;
+        while(previous_line_iter.backward_char() && !previous_line_iter.ends_line()) {}
+        if(previous_line_iter.backward_char()) {
+          get_buffer()->remove_tag(spellcheck_error_tag, previous_line_iter, iter);
+          auto word=get_word(previous_line_iter);
+          spellcheck_word(word.first, word.second);
+          word=get_word(iter);
+          spellcheck_word(word.first, word.second);
+        }
+      }
+      else {
+        auto previous_iter=iter;
+        //When for instance using space to split two words
+        if(previous_iter.backward_char() && !is_word_iter(previous_iter)) {
+          auto first=previous_iter;
+          auto second=iter;
+          if(first.backward_char()) {
+            get_buffer()->remove_tag(spellcheck_error_tag, first, second);
+            auto word=get_word(first);
+            spellcheck_word(word.first, word.second);
+            word=get_word(second);
             spellcheck_word(word.first, word.second);
           }
+        }
+        else {
+          auto word=get_word(iter);
+          spellcheck_word(word.first, word.second);
         }
       }
     }
@@ -100,7 +97,7 @@ Source::SpellCheckView::SpellCheckView() : Gsv::View() {
           if(!spell_check)
             begin_no_spellcheck_iter=iter;
           else
-            get_buffer()->remove_tag_by_name("spellcheck_error", begin_no_spellcheck_iter, iter);
+            get_buffer()->remove_tag(spellcheck_error_tag, begin_no_spellcheck_iter, iter);
         }
         return false;
       }
@@ -124,10 +121,27 @@ Source::SpellCheckView::SpellCheckView() : Gsv::View() {
         if(!spell_check)
           begin_no_spellcheck_iter=iter;
         else
-          get_buffer()->remove_tag_by_name("spellcheck_error", begin_no_spellcheck_iter, iter);
+          get_buffer()->remove_tag(spellcheck_error_tag, begin_no_spellcheck_iter, iter);
       }
       return false;
     }, 1000);
+  });
+  
+  // In case of for instance text paste or undo/redo
+  get_buffer()->signal_insert().connect([this](const Gtk::TextIter &end_iter, const Glib::ustring &inserted_string, int) {
+    if(spellcheck_checker==nullptr)
+      return;
+    if(inserted_string.size()<=1)
+      return;
+    
+    auto start_iter=end_iter;
+    start_iter.backward_chars(inserted_string.size());
+    if(!is_word_iter(start_iter) && !start_iter.starts_line())
+      start_iter.backward_char();
+    auto word=get_word(start_iter);
+    start_iter=word.first;
+    word=get_word(end_iter);
+    get_buffer()->remove_tag(spellcheck_error_tag, start_iter, word.second);
   });
   
   get_buffer()->signal_mark_set().connect([this](const Gtk::TextBuffer::iterator& iter, const Glib::RefPtr<Gtk::TextBuffer::Mark>& mark) {
@@ -139,18 +153,10 @@ Source::SpellCheckView::SpellCheckView() : Gsv::View() {
         spellcheck_suggestions_dialog->hide();
       delayed_spellcheck_suggestions_connection.disconnect();
       delayed_spellcheck_suggestions_connection=Glib::signal_timeout().connect([this]() {
-        auto tags=get_buffer()->get_insert()->get_iter().get_tags();
-        bool need_suggestions=false;
-        for(auto &tag: tags) {
-          if(tag->property_name()=="spellcheck_error") {
-            need_suggestions=true;
-            break;
-          }
-        }
-        if(need_suggestions) {
+        if(get_buffer()->get_insert()->get_iter().has_tag(spellcheck_error_tag)) {
           spellcheck_suggestions_dialog=std::make_unique<SelectionDialog>(*this, get_buffer()->create_mark(get_buffer()->get_insert()->get_iter()), false);
-          auto word=spellcheck_get_word(get_buffer()->get_insert()->get_iter());
-          auto suggestions=spellcheck_get_suggestions(word.first, word.second);
+          auto word=get_word(get_buffer()->get_insert()->get_iter());
+          auto suggestions=get_spellcheck_suggestions(word.first, word.second);
           if(suggestions.size()==0)
             return false;
           for(auto &suggestion: suggestions)
@@ -228,7 +234,7 @@ void Source::SpellCheckView::configure() {
     std::cerr << "Spell check error: " << aspell_error_message(spellcheck_possible_err) << std::endl;
   else
     spellcheck_checker = to_aspell_speller(spellcheck_possible_err);
-  get_buffer()->remove_tag_by_name("spellcheck_error", get_buffer()->begin(), get_buffer()->end());
+  get_buffer()->remove_tag(spellcheck_error_tag, get_buffer()->begin(), get_buffer()->end());
 }
 
 void Source::SpellCheckView::hide_dialogs() {
@@ -243,7 +249,7 @@ void Source::SpellCheckView::spellcheck(const Gtk::TextIter& start, const Gtk::T
   auto iter=start;
   while(iter && iter<end) {
     if(is_word_iter(iter)) {
-      auto word=spellcheck_get_word(iter);
+      auto word=get_word(iter);
       spellcheck_word(word.first, word.second);
       iter=word.second; 
     }
@@ -295,7 +301,7 @@ void Source::SpellCheckView::spellcheck() {
 }
 
 void Source::SpellCheckView::remove_spellcheck_errors() {
-  get_buffer()->remove_tag_by_name("spellcheck_error", get_buffer()->begin(), get_buffer()->end());
+  get_buffer()->remove_tag(spellcheck_error_tag, get_buffer()->begin(), get_buffer()->end());
 }
 
 void Source::SpellCheckView::goto_next_spellcheck_error() {
@@ -306,7 +312,7 @@ void Source::SpellCheckView::goto_next_spellcheck_error() {
   while(!wrapped || iter<insert_iter) {
     auto toggled_tags=iter.get_toggled_tags();
     for(auto &toggled_tag: toggled_tags) {
-      if(toggled_tag->property_name()=="spellcheck_error") {
+      if(toggled_tag==spellcheck_error_tag) {
         get_buffer()->place_cursor(iter);
         scroll_to(get_buffer()->get_insert(), 0.0, 1.0, 0.5);
         return;
@@ -333,8 +339,31 @@ bool Source::SpellCheckView::is_code_iter(const Gtk::TextIter &iter) {
   }
   if(comment_tag && ((iter.has_tag(comment_tag) && !iter.begins_tag(comment_tag)) || iter.ends_tag(comment_tag)))
     return false;
-  if(string_tag && iter.has_tag(string_tag) && !iter.begins_tag(string_tag))
-    return false;
+  if(string_tag) {
+    if(iter.has_tag(string_tag)) {
+      if(!iter.begins_tag(string_tag))
+        return false;
+    }
+    // If iter is at the end of string_tag, with exception of after " and '
+    else if(iter.ends_tag(string_tag)) {
+      auto previous_iter=iter;
+      if(!iter.starts_line() && previous_iter.backward_char()) {
+        if((*previous_iter=='"' || *previous_iter=='\'')) {
+          long backslash_count=0;
+          auto it=previous_iter;
+          while(it.backward_char() && *it=='\\')
+            ++backslash_count;
+          if(backslash_count%2==0) {
+            auto it=previous_iter;
+            while(!it.begins_tag(string_tag) && it.backward_to_tag_toggle(string_tag)) {}
+            if(it.begins_tag(string_tag) && *previous_iter==*it && previous_iter!=it)
+              return true;
+          }
+        }
+        return false;
+      }
+    }
+  }
   return true;
 }
 
@@ -342,7 +371,7 @@ bool Source::SpellCheckView::is_word_iter(const Gtk::TextIter& iter) {
   return ((*iter>='A' && *iter<='Z') || (*iter>='a' && *iter<='z') || *iter=='\'' || *iter>=128);
 }
 
-std::pair<Gtk::TextIter, Gtk::TextIter> Source::SpellCheckView::spellcheck_get_word(Gtk::TextIter iter) {
+std::pair<Gtk::TextIter, Gtk::TextIter> Source::SpellCheckView::get_word(Gtk::TextIter iter) {
   auto start=iter;
   auto end=iter;
   
@@ -363,27 +392,31 @@ void Source::SpellCheckView::spellcheck_word(const Gtk::TextIter& start, const G
   if((end.get_offset()-start.get_offset())==2) {
     auto before_end=end;
     before_end.backward_char();
-    if(*before_end=='\'' || *start=='\'')
+    if(*before_end=='\'' || *start=='\'') {
+      get_buffer()->remove_tag(spellcheck_error_tag, start, end);
       return;
+    }
   }
   else if((end.get_offset()-start.get_offset())==3) {
     auto before_end=end;
     before_end.backward_char();
-    if(*before_end=='\'' && *start=='\'')
+    if(*before_end=='\'' && *start=='\'') {
+      get_buffer()->remove_tag(spellcheck_error_tag, start, end);
       return;
+    }
   }
   
   auto word=get_buffer()->get_text(start, end);
   if(word.size()>0) {
     auto correct = aspell_speller_check(spellcheck_checker, word.data(), word.bytes());
     if(correct==0)
-      get_buffer()->apply_tag_by_name("spellcheck_error", start, end);
+      get_buffer()->apply_tag(spellcheck_error_tag, start, end);
     else
-      get_buffer()->remove_tag_by_name("spellcheck_error", start, end);
+      get_buffer()->remove_tag(spellcheck_error_tag, start, end);
   }
 }
 
-std::vector<std::string> Source::SpellCheckView::spellcheck_get_suggestions(const Gtk::TextIter& start, const Gtk::TextIter& end) {
+std::vector<std::string> Source::SpellCheckView::get_spellcheck_suggestions(const Gtk::TextIter& start, const Gtk::TextIter& end) {
   auto word_with_error=get_buffer()->get_text(start, end);
   
   const AspellWordList *suggestions = aspell_speller_suggest(spellcheck_checker, word_with_error.data(), word_with_error.bytes());

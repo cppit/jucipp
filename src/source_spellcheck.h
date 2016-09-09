@@ -26,6 +26,8 @@ namespace Source {
   private:
     std::unique_ptr<SelectionDialog> spellcheck_suggestions_dialog;
     
+    Glib::RefPtr<Gtk::TextTag> spellcheck_error_tag;
+    
     Glib::RefPtr<Gtk::TextTag> comment_tag;
     Glib::RefPtr<Gtk::TextTag> string_tag;
     Glib::RefPtr<Gtk::TextTag> no_spell_check_tag;
@@ -36,9 +38,9 @@ namespace Source {
     AspellCanHaveError *spellcheck_possible_err;
     AspellSpeller *spellcheck_checker;
     bool is_word_iter(const Gtk::TextIter& iter);
-    std::pair<Gtk::TextIter, Gtk::TextIter> spellcheck_get_word(Gtk::TextIter iter);
+    std::pair<Gtk::TextIter, Gtk::TextIter> get_word(Gtk::TextIter iter);
     void spellcheck_word(const Gtk::TextIter& start, const Gtk::TextIter& end);
-    std::vector<std::string> spellcheck_get_suggestions(const Gtk::TextIter& start, const Gtk::TextIter& end);
+    std::vector<std::string> get_spellcheck_suggestions(const Gtk::TextIter& start, const Gtk::TextIter& end);
     sigc::connection delayed_spellcheck_suggestions_connection;
     sigc::connection delayed_spellcheck_error_clear;
     
