@@ -319,6 +319,13 @@ void Window::set_menu_actions() {
       Directories::get().open(path);
   });
   
+  menu.add_action("reload_file", [this]() {
+    auto path = Notebook::get().get_current_view()->file_path;
+    std::cout<<"Path: "<<path<<std::endl;
+    Notebook::get().close_current();
+    Notebook::get().open(path);
+  });
+  
   menu.add_action("save", [this]() {
     if(auto view=Notebook::get().get_current_view()) {
       if(Notebook::get().save_current()) {
