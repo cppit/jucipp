@@ -629,33 +629,14 @@ void Project::Markdown::compile_and_run() {
   }
   
   std::stringstream stdin_stream, stdout_stream;
-  auto exit_status=Terminal::get().process(stdin_stream, stdout_stream, "markdown "+filesystem::escape_argument(Notebook::get().get_current_view()->file_path.string()));
+  auto exit_status=Terminal::get().process(stdin_stream, stdout_stream, "command -v grip");
   if(exit_status==0) {
-    boost::system::error_code ec;
-    auto temp_path=boost::filesystem::temp_directory_path(ec);
-    if(!ec) {
-      temp_path/=boost::filesystem::unique_path();
-      temp_path+=".html";
-      if(!boost::filesystem::exists(temp_path)) {
-        last_temp_path=temp_path;
-        std::ofstream file_stream(temp_path.string(), std::fstream::binary);
-        file_stream << stdout_stream.rdbuf();
-        file_stream.close();
-        
-        auto uri=temp_path.string();
-#ifdef __APPLE__
-        Terminal::get().process("open "+filesystem::escape_argument(uri));
-#else
-#ifdef __linux
-        uri="file://"+uri;
-#endif
-        GError* error=nullptr;
-        gtk_show_uri(nullptr, uri.c_str(), GDK_CURRENT_TIME, &error);
-        g_clear_error(&error);
-#endif
-      }
-    }
+    auto command="grip -b "+filesystem::escape_argument(Notebook::get().get_current_view()->file_path.string());
+    Terminal::get().print("Running: "+command+" in a quiet background process\n");
+    Terminal::get().async_process(command, "", nullptr, true);
   }
+  else
+    Terminal::get().print("Warning: install grip to preview Markdown files\n");
 }
 
 void Project::Python::compile_and_run() {

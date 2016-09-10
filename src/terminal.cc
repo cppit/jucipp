@@ -109,14 +109,16 @@ int Terminal::process(std::istream &stdin_stream, std::ostream &stdout_stream, c
   return process.get_exit_status();
 }
 
-void Terminal::async_process(const std::string &command, const boost::filesystem::path &path, std::function<void(int exit_status)> callback) {
-  std::thread async_execute_thread([this, command, path, callback](){
+void Terminal::async_process(const std::string &command, const boost::filesystem::path &path, std::function<void(int exit_status)> callback, bool quiet) {
+  std::thread async_execute_thread([this, command, path, callback, quiet]() {
     std::unique_lock<std::mutex> processes_lock(processes_mutex);
     stdin_buffer.clear();
-    auto process=std::make_shared<Process>(command, path.string(), [this](const char* bytes, size_t n) {
-      async_print(std::string(bytes, n));
-    }, [this](const char* bytes, size_t n) {
-      async_print(std::string(bytes, n), true);
+    auto process=std::make_shared<Process>(command, path.string(), [this, quiet](const char* bytes, size_t n) {
+      if(!quiet)
+        async_print(std::string(bytes, n));
+    }, [this, quiet](const char* bytes, size_t n) {
+      if(!quiet)
+        async_print(std::string(bytes, n), true);
     }, true);
     auto pid=process->get_id();
     if (pid<=0) {
