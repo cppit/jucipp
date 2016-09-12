@@ -2,6 +2,7 @@
 #include "config.h"
 #include "terminal.h"
 #include "filesystem.h"
+#include "info.h"
 #include <boost/version.hpp>
 
 namespace sigc {
@@ -284,18 +285,23 @@ void Source::DiffView::git_goto_next_diff() {
       wrapped=true;
     }
   }
+  Info::get().print("No changes found in current buffer");
 }
 
 std::string Source::DiffView::git_get_diff_details() {
-  if(!diff)
-    return std::string();
-  auto line_nr=get_buffer()->get_insert()->get_iter().get_line();
-  auto iter=get_buffer()->get_iter_at_line(line_nr);
-  if(iter.has_tag(renderer->tag_removed_above))
-    --line_nr;
-  std::unique_lock<std::mutex> lock(parse_mutex);
-  parse_buffer=get_buffer()->get_text();
-  return diff->get_details(parse_buffer.raw(), line_nr);
+  std::string details;
+  if(diff) {
+    auto line_nr=get_buffer()->get_insert()->get_iter().get_line();
+    auto iter=get_buffer()->get_iter_at_line(line_nr);
+    if(iter.has_tag(renderer->tag_removed_above))
+      --line_nr;
+    std::unique_lock<std::mutex> lock(parse_mutex);
+    parse_buffer=get_buffer()->get_text();
+    details=diff->get_details(parse_buffer.raw(), line_nr);
+  }
+  if(details.empty())
+    Info::get().print("No changes found at current line");
+  return details;
 }
 
 ///Return repository diff instance. Throws exception on error

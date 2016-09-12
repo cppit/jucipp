@@ -823,7 +823,10 @@ Source::ClangViewRefactor::ClangViewRefactor(const boost::filesystem::path &file
       Info::get().print("Buffer is parsing");
       return std::string();
     }
-    return get_identifier().spelling;
+    auto identifier=get_identifier();
+    if(identifier.spelling.empty())
+      Info::get().print("No symbol found at current cursor location");
+    return identifier.spelling;
   };
   
   rename_similar_tokens=[this](const std::vector<Source::View*> &views, const std::string &text) {
@@ -918,6 +921,7 @@ Source::ClangViewRefactor::ClangViewRefactor(const boost::filesystem::path &file
       auto offset=source_location.get_offset();
       return Offset(offset.line-1, offset.index-1, source_location.get_path());
     }
+    Info::get().print("No declaration found");
     return Offset();
   };
   
@@ -989,9 +993,8 @@ Source::ClangViewRefactor::ClangViewRefactor(const boost::filesystem::path &file
         }
         return locations;
       }
-      
-      Info::get().print("Could not find implementation");
     }
+    Info::get().print("No implementation found");
     return locations;
   };
   
@@ -1046,7 +1049,8 @@ Source::ClangViewRefactor::ClangViewRefactor(const boost::filesystem::path &file
         }
       }
     }
-    
+    if(usages.empty())
+      Info::get().print("No symbol found at current cursor location");
     return usages;
   };
   
@@ -1111,6 +1115,7 @@ Source::ClangViewRefactor::ClangViewRefactor(const boost::filesystem::path &file
         }
       }
     }
+    Info::get().print("No method found at current cursor location");
     return std::string();
   };
   
@@ -1178,6 +1183,8 @@ Source::ClangViewRefactor::ClangViewRefactor(const boost::filesystem::path &file
         }
       }
     }
+    if(methods.empty())
+      Info::get().print("No methods found in current buffer");
     return methods;
   };
   
@@ -1279,6 +1286,8 @@ Source::ClangViewRefactor::ClangViewRefactor(const boost::filesystem::path &file
         }
       }
     }
+    if(data.empty())
+      Info::get().print("No symbol found at current cursor location");
     return data;
   };
   
@@ -1295,7 +1304,9 @@ Source::ClangViewRefactor::ClangViewRefactor(const boost::filesystem::path &file
         return;
       }
     }
-    if(diagnostic_offsets.size()>0) {
+    if(diagnostic_offsets.size()==0)
+      Info::get().print("No diagnostics found in current buffer");
+    else {
       auto iter=get_buffer()->get_iter_at_offset(*diagnostic_offsets.begin());
       get_buffer()->place_cursor(iter);
       scroll_to(get_buffer()->get_insert(), 0.0, 1.0, 0.5);
@@ -1307,6 +1318,8 @@ Source::ClangViewRefactor::ClangViewRefactor(const boost::filesystem::path &file
       Info::get().print("Buffer is parsing");
       return std::vector<FixIt>();
     }
+    if(fix_its.empty())
+      Info::get().print("No fix-its found in current buffer");
     return fix_its;
   };
 }

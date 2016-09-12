@@ -479,8 +479,10 @@ void Project::Clang::debug_backtrace() {
     auto iter=view->get_iter_for_dialog();
     view->selection_dialog=std::make_unique<SelectionDialog>(*view, view->get_buffer()->create_mark(iter), true, true);
     auto rows=std::make_shared<std::unordered_map<std::string, Debug::LLDB::Frame> >();
-    if(backtrace.size()==0)
+    if(backtrace.size()==0) {
+      Info::get().print("No backtrace found");
       return;
+    }
     
     bool cursor_set=false;
     for(auto &frame: backtrace) {
@@ -529,8 +531,10 @@ void Project::Clang::debug_show_variables() {
     auto iter=view->get_iter_for_dialog();
     view->selection_dialog=std::make_unique<SelectionDialog>(*view, view->get_buffer()->create_mark(iter), true, true);
     auto rows=std::make_shared<std::unordered_map<std::string, Debug::LLDB::Variable> >();
-    if(variables.size()==0)
+    if(variables.size()==0) {
+      Info::get().print("No variables found");
       return;
+    }
     
     for(auto &variable: variables) {
       std::string row="#"+std::to_string(variable.thread_index_id)+":#"+std::to_string(variable.frame_index)+":"+variable.file_path.filename().string()+":"+std::to_string(variable.line_nr)+" - <b>"+Glib::Markup::escape_text(variable.name)+"</b>";

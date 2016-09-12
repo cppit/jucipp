@@ -438,10 +438,8 @@ void Window::set_menu_actions() {
   menu.add_action("source_git_show_diff", [this]() {
     if(auto view=Notebook::get().get_current_view()) {
       auto diff_details=view->git_get_diff_details();
-      if(diff_details.empty()) {
-        Info::get().print("Could not find any changes at the current line");
+      if(diff_details.empty())
         return;
-      }
       std::string postfix;
       if(diff_details.size()>2) {
         size_t pos=diff_details.find("@@", 2);
@@ -483,8 +481,10 @@ void Window::set_menu_actions() {
       auto path=std::move(pair.first);
       auto stream=std::move(pair.second);
       stream->seekg(0, std::ios::end);
-      if(stream->tellg()==0)
+      if(stream->tellg()==0) {
+        Info::get().print("No symbols found in current project");
         return;
+      }
       stream->seekg(0, std::ios::beg);
       
       auto dialog_iter=view->get_iter_for_dialog();

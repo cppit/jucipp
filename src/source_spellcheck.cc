@@ -1,5 +1,6 @@
 #include "source_spellcheck.h"
 #include "config.h"
+#include "info.h"
 #include <iostream>
 
 namespace sigc {
@@ -324,6 +325,7 @@ void Source::SpellCheckView::goto_next_spellcheck_error() {
       wrapped=true;
     }
   }
+  Info::get().print("No spelling errors found in current buffer");
 }
 
 bool Source::SpellCheckView::is_code_iter(const Gtk::TextIter &iter) {
