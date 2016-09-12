@@ -1363,13 +1363,15 @@ bool Source::View::on_key_press_event_basic(GdkEventKey* key) {
     
     Gtk::TextIter selection_start, selection_end;
     get_buffer()->get_selection_bounds(selection_start, selection_end);
+    auto selection_end_mark=get_buffer()->create_mark(selection_end);
     int line_start=selection_start.get_line();
     int line_end=selection_end.get_line();
     for(int line=line_start;line<=line_end;line++) {
       Gtk::TextIter line_it = get_buffer()->get_iter_at_line(line);
-      if(!get_buffer()->get_has_selection() || line_it!=selection_end)
+      if(!get_buffer()->get_has_selection() || line_it!=selection_end_mark->get_iter())
         get_buffer()->insert(line_it, tab);
     }
+    get_buffer()->delete_mark(selection_end_mark);
     return true;
   }
   //Indent left when clicking shift-tab, no matter where in the line the cursor is. Also works on selected text.
@@ -1423,8 +1425,11 @@ bool Source::View::on_key_press_event_basic(GdkEventKey* key) {
     }
     if(do_smart_backspace) {
       auto line_start_iter=iter;
-      if(line_start_iter.backward_chars(line.size()))
+      if(line_start_iter.backward_chars(line.size())) {
+        line_start_iter.backward_char();
         get_buffer()->erase(iter, line_start_iter);
+        return true;
+      }
     }
   }
   //"Smart" delete key
@@ -1445,8 +1450,8 @@ bool Source::View::on_key_press_event_basic(GdkEventKey* key) {
     if(do_smart_delete) {
       if(!insert_iter.starts_line())
         while((*iter==' ' || *iter=='\t') && iter.forward_char()) {}
-      if(iter.backward_char())
-        get_buffer()->erase(insert_iter, iter);
+      get_buffer()->erase(insert_iter, iter);
+      return true;
     }
   }
   //Next two are smart home/end keys that works with wrapped lines
