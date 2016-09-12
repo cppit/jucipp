@@ -700,105 +700,103 @@ void Source::View::paste() {
     }
   }
 
-  auto line=get_line_before();
+  get_buffer()->begin_user_action();
+  if(get_buffer()->get_has_selection()) {
+    Gtk::TextIter start, end;
+    get_buffer()->get_selection_bounds(start, end);
+    get_buffer()->erase(start, end);
+  }
+  auto line=get_line_before(); 
   std::string prefix_tabs;
   auto tabs_end_iter=get_tabs_end_iter();
-  if(!get_buffer()->get_has_selection() && tabs_end_iter.ends_line()) {
-    prefix_tabs=get_line_before(tabs_end_iter);
+  prefix_tabs=get_line_before(tabs_end_iter);
 
-    size_t start_line=0;
-    size_t end_line=0;
-    bool paste_line=false;
-    bool first_paste_line=true;
-    size_t paste_line_tabs=-1;
-    bool first_paste_line_has_tabs=false;
-    for(size_t c=0;c<text.size();c++) {
-      if(text[c]=='\n') {
-        end_line=c;
-        paste_line=true;
-      }
-      else if(c==text.size()-1) {
-        end_line=c+1;
-        paste_line=true;
-      }
-      if(paste_line) {
-        bool empty_line=true;
-        std::string line=text.substr(start_line, end_line-start_line);
-        size_t tabs=0;
-        for(auto chr: line) {
-          if(chr==tab_char)
-            tabs++;
-          else {
-            empty_line=false;
-            break;
-          }
-        }
-        if(first_paste_line) {
-          if(tabs!=0) {
-            first_paste_line_has_tabs=true;
-            paste_line_tabs=tabs;
-          }
-          first_paste_line=false;
-        }
-        else if(!empty_line)
-          paste_line_tabs=std::min(paste_line_tabs, tabs);
-
-        start_line=end_line+1;
-        paste_line=false;
-      }
+  size_t start_line=0;
+  size_t end_line=0;
+  bool paste_line=false;
+  bool first_paste_line=true;
+  size_t paste_line_tabs=-1;
+  bool first_paste_line_has_tabs=false;
+  for(size_t c=0;c<text.size();c++) {
+    if(text[c]=='\n') {
+      end_line=c;
+      paste_line=true;
     }
-    if(paste_line_tabs==static_cast<size_t>(-1))
-      paste_line_tabs=0;
-    start_line=0;
-    end_line=0;
-    paste_line=false;
-    first_paste_line=true;
-    get_buffer()->begin_user_action();
-    for(size_t c=0;c<text.size();c++) {
-      if(text[c]=='\n') {
-        end_line=c;
-        paste_line=true;
+    else if(c==text.size()-1) {
+      end_line=c+1;
+      paste_line=true;
+    }
+    if(paste_line) {
+      bool empty_line=true;
+      std::string line=text.substr(start_line, end_line-start_line);
+      size_t tabs=0;
+      for(auto chr: line) {
+        if(chr==tab_char)
+          tabs++;
+        else {
+          empty_line=false;
+          break;
+        }
       }
-      else if(c==text.size()-1) {
-        end_line=c+1;
-        paste_line=true;
+      if(first_paste_line) {
+        if(tabs!=0) {
+          first_paste_line_has_tabs=true;
+          paste_line_tabs=tabs;
+        }
+        first_paste_line=false;
       }
-      if(paste_line) {
-        std::string line=text.substr(start_line, end_line-start_line);
-        size_t line_tabs=0;
-        for(auto chr: line) {
-          if(chr==tab_char)
-            line_tabs++;
-          else
-            break;
-        }
-        auto tabs=paste_line_tabs;
-        if(!(first_paste_line && !first_paste_line_has_tabs) && line_tabs<paste_line_tabs) {
-          tabs=line_tabs;
-        }
-        
-        if(first_paste_line) {
-          if(first_paste_line_has_tabs)
-            get_buffer()->insert_at_cursor(text.substr(start_line+tabs, end_line-start_line-tabs));
-          else
-            get_buffer()->insert_at_cursor(text.substr(start_line, end_line-start_line));
-          first_paste_line=false;
-        }
+      else if(!empty_line)
+        paste_line_tabs=std::min(paste_line_tabs, tabs);
+
+      start_line=end_line+1;
+      paste_line=false;
+    }
+  }
+  if(paste_line_tabs==static_cast<size_t>(-1))
+    paste_line_tabs=0;
+  start_line=0;
+  end_line=0;
+  paste_line=false;
+  first_paste_line=true;
+  for(size_t c=0;c<text.size();c++) {
+    if(text[c]=='\n') {
+      end_line=c;
+      paste_line=true;
+    }
+    else if(c==text.size()-1) {
+      end_line=c+1;
+      paste_line=true;
+    }
+    if(paste_line) {
+      std::string line=text.substr(start_line, end_line-start_line);
+      size_t line_tabs=0;
+      for(auto chr: line) {
+        if(chr==tab_char)
+          line_tabs++;
         else
-          get_buffer()->insert_at_cursor('\n'+prefix_tabs+text.substr(start_line+tabs, end_line-start_line-tabs));
-        start_line=end_line+1;
-        paste_line=false;
+          break;
       }
+      auto tabs=paste_line_tabs;
+      if(!(first_paste_line && !first_paste_line_has_tabs) && line_tabs<paste_line_tabs) {
+        tabs=line_tabs;
+      }
+      
+      if(first_paste_line) {
+        if(first_paste_line_has_tabs)
+          get_buffer()->insert_at_cursor(text.substr(start_line+tabs, end_line-start_line-tabs));
+        else
+          get_buffer()->insert_at_cursor(text.substr(start_line, end_line-start_line));
+        first_paste_line=false;
+      }
+      else
+        get_buffer()->insert_at_cursor('\n'+prefix_tabs+text.substr(start_line+tabs, end_line-start_line-tabs));
+      start_line=end_line+1;
+      paste_line=false;
     }
-    get_buffer()->place_cursor(get_buffer()->get_insert()->get_iter());
-    get_buffer()->end_user_action();
-    scroll_to_cursor_delayed(this, false, false);
   }
-  else {
-    Gtk::Clipboard::get()->set_text(text);
-    get_buffer()->paste_clipboard(Gtk::Clipboard::get());
-    scroll_to_cursor_delayed(this, false, false);
-  }
+  get_buffer()->place_cursor(get_buffer()->get_insert()->get_iter());
+  get_buffer()->end_user_action();
+  scroll_to_cursor_delayed(this, false, false);
 }
 
 Gtk::TextIter Source::View::get_iter_for_dialog() {
