@@ -229,7 +229,7 @@ SelectionDialog::SelectionDialog(Gtk::TextView& text_view, Glib::RefPtr<Gtk::Tex
 }
 
 bool SelectionDialog::on_key_press(GdkEventKey* key) {
-  if(key->keyval==GDK_KEY_Down && list_view_text.get_model()->children().size()>0) {
+  if((key->keyval==GDK_KEY_Down || key->keyval==GDK_KEY_KP_Down) && list_view_text.get_model()->children().size()>0) {
     auto it=list_view_text.get_selection()->get_selected();
     if(it) {
       it++;
@@ -238,7 +238,7 @@ bool SelectionDialog::on_key_press(GdkEventKey* key) {
     }
     return true;
   }
-  else if(key->keyval==GDK_KEY_Up && list_view_text.get_model()->children().size()>0) {
+  else if((key->keyval==GDK_KEY_Up || key->keyval==GDK_KEY_KP_Up) && list_view_text.get_model()->children().size()>0) {
     auto it=list_view_text.get_selection()->get_selected();
     if(it) {
       it--;
@@ -257,7 +257,7 @@ bool SelectionDialog::on_key_press(GdkEventKey* key) {
     hide();
     return true;
   }
-  else if(key->keyval==GDK_KEY_Left || key->keyval==GDK_KEY_Right) {
+  else if(key->keyval==GDK_KEY_Left || key->keyval==GDK_KEY_KP_Left || key->keyval==GDK_KEY_Right || key->keyval==GDK_KEY_KP_Right) {
     hide();
     return false;
   }
@@ -347,7 +347,7 @@ void CompletionDialog::select(bool hide_window) {
 }
 
 bool CompletionDialog::on_key_release(GdkEventKey* key) {
-  if(key->keyval==GDK_KEY_Down || key->keyval==GDK_KEY_Up)
+  if(key->keyval==GDK_KEY_Down || key->keyval==GDK_KEY_KP_Down || key->keyval==GDK_KEY_Up || key->keyval==GDK_KEY_KP_Up)
     return false;
     
   if(show_offset>text_view.get_buffer()->get_insert()->get_iter().get_offset()) {
@@ -381,7 +381,7 @@ bool CompletionDialog::on_key_press(GdkEventKey* key) {
   }
   if(key->keyval==GDK_KEY_Shift_L || key->keyval==GDK_KEY_Shift_R || key->keyval==GDK_KEY_Alt_L || key->keyval==GDK_KEY_Alt_R || key->keyval==GDK_KEY_Control_L || key->keyval==GDK_KEY_Control_R || key->keyval==GDK_KEY_Meta_L || key->keyval==GDK_KEY_Meta_R)
     return false;
-  if(key->keyval==GDK_KEY_Down && list_view_text.get_model()->children().size()>0) {
+  if((key->keyval==GDK_KEY_Down || key->keyval==GDK_KEY_KP_Down) && list_view_text.get_model()->children().size()>0) {
     auto it=list_view_text.get_selection()->get_selected();
     if(it) {
       it++;
@@ -395,7 +395,7 @@ bool CompletionDialog::on_key_press(GdkEventKey* key) {
     select(false);
     return true;
   }
-  if(key->keyval==GDK_KEY_Up && list_view_text.get_model()->children().size()>0) {
+  if((key->keyval==GDK_KEY_Up || key->keyval==GDK_KEY_KP_Up) && list_view_text.get_model()->children().size()>0) {
     auto it=list_view_text.get_selection()->get_selected();
     if(it) {
       it--;

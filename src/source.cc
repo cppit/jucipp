@@ -1168,7 +1168,7 @@ bool Source::View::on_key_press_event(GdkEventKey* key) {
   last_keyval=key->keyval;
   
   //Move cursor one paragraph down
-  if(key->keyval==GDK_KEY_Down && (key->state&GDK_CONTROL_MASK)>0) {
+  if((key->keyval==GDK_KEY_Down || key->keyval==GDK_KEY_KP_Down) && (key->state&GDK_CONTROL_MASK)>0) {
     auto selection_start_iter=get_buffer()->get_selection_bound()->get_iter();
     auto iter=get_buffer()->get_iter_at_line(get_buffer()->get_insert()->get_iter().get_line());
     bool empty_line=false;
@@ -1195,7 +1195,7 @@ bool Source::View::on_key_press_event(GdkEventKey* key) {
     return true;
   }
   //Move cursor one paragraph up
-  else if(key->keyval==GDK_KEY_Up && (key->state&GDK_CONTROL_MASK)>0) {
+  else if((key->keyval==GDK_KEY_Up || key->keyval==GDK_KEY_KP_Up) && (key->state&GDK_CONTROL_MASK)>0) {
     auto selection_start_iter=get_buffer()->get_selection_bound()->get_iter();
     auto iter=get_buffer()->get_iter_at_line(get_buffer()->get_insert()->get_iter().get_line());
     iter.backward_char();
@@ -1451,7 +1451,7 @@ bool Source::View::on_key_press_event_basic(GdkEventKey* key) {
   }
   //Next two are smart home/end keys that works with wrapped lines
   //Note that smart end goes FIRST to end of line to avoid hiding empty chars after expressions
-  else if(key->keyval==GDK_KEY_End && (key->state&GDK_CONTROL_MASK)==0) {
+  else if((key->keyval==GDK_KEY_End || key->keyval==GDK_KEY_KP_End) && (key->state&GDK_CONTROL_MASK)==0) {
     auto end_line_iter=get_iter_at_line_end(iter.get_line());
     auto end_sentence_iter=end_line_iter;
     while(!end_sentence_iter.starts_line() && 
@@ -1474,7 +1474,7 @@ bool Source::View::on_key_press_event_basic(GdkEventKey* key) {
     scroll_to(get_buffer()->get_insert());
     return true;
   }
-  else if(key->keyval==GDK_KEY_Home && (key->state&GDK_CONTROL_MASK)==0) {
+  else if((key->keyval==GDK_KEY_Home || key->keyval==GDK_KEY_KP_Home) && (key->state&GDK_CONTROL_MASK)==0) {
     auto start_line_iter=get_buffer()->get_iter_at_line(iter.get_line());
     auto start_sentence_iter=start_line_iter;
     while(!start_sentence_iter.ends_line() && 

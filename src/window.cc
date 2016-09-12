@@ -1075,23 +1075,23 @@ bool Window::on_key_press_event(GdkEventKey *event) {
   }
 #ifdef __APPLE__ //For Apple's Command-left, right, up, down keys
   else if((event->state & GDK_META_MASK)>0 && (event->state & GDK_MOD1_MASK)==0) {
-    if(event->keyval==GDK_KEY_Left) {
+    if(event->keyval==GDK_KEY_Left || event->keyval==GDK_KEY_KP_Left) {
       event->keyval=GDK_KEY_Home;
       event->state=event->state & GDK_SHIFT_MASK;
       event->hardware_keycode=115;
     }
-    else if(event->keyval==GDK_KEY_Right) {
+    else if(event->keyval==GDK_KEY_Right || event->keyval==GDK_KEY_KP_Right) {
       event->keyval=GDK_KEY_End;
       event->state=event->state & GDK_SHIFT_MASK;
       event->hardware_keycode=119;
     }
-    else if(event->keyval==GDK_KEY_Up) {
+    else if(event->keyval==GDK_KEY_Up || event->keyval==GDK_KEY_KP_Up) {
       event->keyval=GDK_KEY_Home;
       event->state=event->state & GDK_SHIFT_MASK;
       event->state+=GDK_CONTROL_MASK;
       event->hardware_keycode=115;
     }
-    else if(event->keyval==GDK_KEY_Down) {
+    else if(event->keyval==GDK_KEY_Down || event->keyval==GDK_KEY_KP_Down) {
       event->keyval=GDK_KEY_End;
       event->state=event->state & GDK_SHIFT_MASK;
       event->state+=GDK_CONTROL_MASK;
