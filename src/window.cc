@@ -30,7 +30,7 @@ Window::Window() {
   
   set_menu_actions();
   configure();
-  activate_menu_items(false);
+  activate_menu_items();
   
   set_default_size(Config::get().window.default_size.first, Config::get().window.default_size.second);
   
@@ -1036,7 +1036,7 @@ void Window::set_menu_actions() {
         Notebook::get().status.set_text("");
         Notebook::get().info.set_text("");
         
-        activate_menu_items(false);
+        activate_menu_items();
       }
     }
   });
@@ -1048,24 +1048,34 @@ void Window::set_menu_actions() {
   });
 }
 
-void Window::activate_menu_items(bool activate) {
+void Window::activate_menu_items() {
   auto &menu = Menu::get();
-  auto &notebook = Notebook::get();
-  menu.actions["source_indentation_auto_indent_buffer"]->set_enabled(activate ? static_cast<bool>(notebook.get_current_view()->auto_indent) : false);
-  menu.actions["source_find_symbol_ctags"]->set_enabled(activate);
-  menu.actions["source_comments_toggle"]->set_enabled(activate ? static_cast<bool>(notebook.get_current_view()->toggle_comments) : false);
-  menu.actions["source_comments_add_documentation"]->set_enabled(activate ? static_cast<bool>(notebook.get_current_view()->add_documentation) : false);
-  menu.actions["source_find_documentation"]->set_enabled(activate ? static_cast<bool>(notebook.get_current_view()->get_token_data) : false);
-  menu.actions["source_goto_declaration"]->set_enabled(activate ? static_cast<bool>(notebook.get_current_view()->get_declaration_location) : false);
-  menu.actions["source_goto_implementation"]->set_enabled(activate ? static_cast<bool>(notebook.get_current_view()->get_implementation_locations) : false);
-  menu.actions["source_goto_usage"]->set_enabled(activate ? static_cast<bool>(notebook.get_current_view()->get_usages) : false);
-  menu.actions["source_goto_method"]->set_enabled(activate ? static_cast<bool>(notebook.get_current_view()->get_methods) : false);
-  menu.actions["source_rename"]->set_enabled(activate ? static_cast<bool>(notebook.get_current_view()->rename_similar_tokens) : false);
-  menu.actions["source_implement_method"]->set_enabled(activate ? static_cast<bool>(notebook.get_current_view()->get_method) : false);
-  menu.actions["source_goto_next_diagnostic"]->set_enabled(activate ? static_cast<bool>(notebook.get_current_view()->goto_next_diagnostic) : false);
-  menu.actions["source_apply_fix_its"]->set_enabled(activate ? static_cast<bool>(notebook.get_current_view()->get_fix_its) : false);
+  auto view=Notebook::get().get_current_view();
+  
+  menu.actions["source_spellcheck"]->set_enabled(view);
+  menu.actions["source_spellcheck_clear"]->set_enabled(view);
+  menu.actions["source_spellcheck_next_error"]->set_enabled(view);
+  menu.actions["source_git_next_diff"]->set_enabled(view);
+  menu.actions["source_git_show_diff"]->set_enabled(view);
+  menu.actions["source_indentation_set_buffer_tab"]->set_enabled(view);
+  menu.actions["source_goto_line"]->set_enabled(view);
+  menu.actions["source_center_cursor"]->set_enabled(view);
+  
+  menu.actions["source_indentation_auto_indent_buffer"]->set_enabled(view && static_cast<bool>(view->auto_indent));
+  menu.actions["source_find_symbol_ctags"]->set_enabled(view);
+  menu.actions["source_comments_toggle"]->set_enabled(view && static_cast<bool>(view->toggle_comments));
+  menu.actions["source_comments_add_documentation"]->set_enabled(view && static_cast<bool>(view->add_documentation));
+  menu.actions["source_find_documentation"]->set_enabled(view && static_cast<bool>(view->get_token_data));
+  menu.actions["source_goto_declaration"]->set_enabled(view && static_cast<bool>(view->get_declaration_location));
+  menu.actions["source_goto_implementation"]->set_enabled(view && static_cast<bool>(view->get_implementation_locations));
+  menu.actions["source_goto_usage"]->set_enabled(view && static_cast<bool>(view->get_usages));
+  menu.actions["source_goto_method"]->set_enabled(view && static_cast<bool>(view->get_methods));
+  menu.actions["source_rename"]->set_enabled(view && static_cast<bool>(view->rename_similar_tokens));
+  menu.actions["source_implement_method"]->set_enabled(view && static_cast<bool>(view->get_method));
+  menu.actions["source_goto_next_diagnostic"]->set_enabled(view && static_cast<bool>(view->goto_next_diagnostic));
+  menu.actions["source_apply_fix_its"]->set_enabled(view && static_cast<bool>(view->get_fix_its));
 #ifdef JUCI_ENABLE_DEBUG
-  menu.actions["debug_toggle_breakpoint"]->set_enabled(activate ? static_cast<bool>(notebook.get_current_view()->toggle_breakpoint) : false);
+  Project::debug_activate_menu_items();
 #endif
 }
 

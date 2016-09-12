@@ -17,6 +17,7 @@ std::unordered_map<std::string, std::string> Project::debug_run_arguments;
 std::atomic<bool> Project::compiling(false);
 std::atomic<bool> Project::debugging(false);
 std::pair<boost::filesystem::path, std::pair<int, int> > Project::debug_stop;
+std::string Project::debug_status;
 std::unique_ptr<Project::Base> Project::current;
 #ifdef JUCI_ENABLE_DEBUG
 std::unordered_map<std::string, Project::Clang::DebugOptions> Project::Clang::debug_options;
@@ -67,20 +68,27 @@ void Project::on_save(size_t index) {
   }
 }
 
-void Project::debug_update_status(const std::string &debug_status) {
+void Project::debug_update_status(const std::string &new_debug_status) {
+  debug_status=new_debug_status;
   if(debug_status.empty())
     debug_status_label().set_text("");
   else
     debug_status_label().set_text("debug: "+debug_status);
+  debug_activate_menu_items();
+}
+
+void Project::debug_activate_menu_items() {
   auto &menu=Menu::get();
+  auto view=Notebook::get().get_current_view();
   menu.actions["debug_stop"]->set_enabled(!debug_status.empty());
   menu.actions["debug_kill"]->set_enabled(!debug_status.empty());
   menu.actions["debug_step_over"]->set_enabled(!debug_status.empty());
   menu.actions["debug_step_into"]->set_enabled(!debug_status.empty());
   menu.actions["debug_step_out"]->set_enabled(!debug_status.empty());
-  menu.actions["debug_backtrace"]->set_enabled(!debug_status.empty());
-  menu.actions["debug_show_variables"]->set_enabled(!debug_status.empty());
+  menu.actions["debug_backtrace"]->set_enabled(!debug_status.empty() && view);
+  menu.actions["debug_show_variables"]->set_enabled(!debug_status.empty() && view);
   menu.actions["debug_run_command"]->set_enabled(!debug_status.empty());
+  menu.actions["debug_toggle_breakpoint"]->set_enabled(view && static_cast<bool>(view->toggle_breakpoint));
   menu.actions["debug_goto_stop"]->set_enabled(!debug_status.empty());
 }
 

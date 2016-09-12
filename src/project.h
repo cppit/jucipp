@@ -21,8 +21,10 @@ namespace Project {
   extern std::atomic<bool> compiling;
   extern std::atomic<bool> debugging;
   extern std::pair<boost::filesystem::path, std::pair<int, int> > debug_stop;
+  extern std::string debug_status;
+  void debug_update_status(const std::string &new_debug_status);
+  void debug_activate_menu_items();
   void debug_update_stop();
-  void debug_update_status(const std::string &debug_status);
   
   class Base {
   protected:
