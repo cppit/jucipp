@@ -141,14 +141,15 @@ bool Config::remove_deprecated_nodes(const boost::property_tree::ptree &default_
   if(parent_path.size()>0)
     parent_path+=".";
   bool unchanged=true;
-  for(auto &node: config_cfg) {
-    auto path=parent_path+node.first;
+  for(auto it=config_cfg.begin();it!=config_cfg.end();) {
+    auto path=parent_path+it->first;
     try {
       default_cfg.get<std::string>(path);
-      unchanged&=remove_deprecated_nodes(default_cfg, node.second, path);
+      unchanged&=remove_deprecated_nodes(default_cfg, it->second, path);
+      ++it;
     }
     catch(const std::exception &e) {
-      config_cfg.erase(node.first);
+      it=config_cfg.erase(it);
       unchanged=false;
     }
   }
@@ -195,8 +196,8 @@ void Config::get_source() {
   source.show_whitespace_characters=source_json.get<std::string>("show_whitespace_characters");
   
   source.smart_brackets=source_json.get<bool>("smart_brackets");
-  source.smart_insertions=source_json.get<bool>("smart_insertions");
-  if(source.smart_insertions)
+  source.smart_inserts=source_json.get<bool>("smart_inserts");
+  if(source.smart_inserts)
     source.smart_brackets=true;
 
   source.show_map = source_json.get<bool>("show_map");

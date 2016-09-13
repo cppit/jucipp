@@ -1230,7 +1230,7 @@ bool Source::View::on_key_press_event(GdkEventKey* key) {
     get_buffer()->end_user_action();
     return true;
   }
-  if(Config::get().source.smart_insertions && on_key_press_event_smart_insertions(key)) {
+  if(Config::get().source.smart_inserts && on_key_press_event_smart_inserts(key)) {
     get_buffer()->end_user_action();
     return true;
   }
@@ -1788,7 +1788,7 @@ bool Source::View::on_key_press_event_smart_brackets(GdkEventKey *key) {
   return false;
 }
 
-bool Source::View::on_key_press_event_smart_insertions(GdkEventKey *key) {
+bool Source::View::on_key_press_event_smart_inserts(GdkEventKey *key) {
   if(get_buffer()->get_has_selection()) {
     bool perform_insertion=false;
     char left_char, right_char;

@@ -61,7 +61,7 @@ public:
     std::string show_whitespace_characters;
     
     bool smart_brackets;
-    bool smart_insertions;
+    bool smart_inserts;
     
     bool show_map;
     std::string map_font_size;
