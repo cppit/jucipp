@@ -1592,8 +1592,44 @@ bool Source::View::on_key_press_event_bracket_language(GdkEventKey* key) {
             if(iter.backward_char())
               token=get_token(get_tabs_end_iter(get_buffer()->get_iter_at_line(iter.get_line())));
           }
+          //Add semicolon after class or struct
           if(token=="class" || token=="struct")
             add_semicolon=true;
+          //Add semicolon after lambda unless it's a parameter
+          else if(!open_non_curly_bracket_iter_found) {
+            auto it=previous_iter;
+            long para_count=0;
+            long square_count=0;
+            bool square_found=false;
+            while(it.backward_char()) {
+              if(*it==']' && is_code_iter(it)) {
+                --square_count;
+                square_found=true;
+              }
+              else if(*it=='[' && is_code_iter(it))
+                ++square_count;
+              else if(*it==')' && is_code_iter(it))
+                --para_count;
+              else if(*it=='(' && is_code_iter(it))
+                ++para_count;
+              
+              if(square_found && square_count==0 && para_count==0) {
+                add_semicolon=true;
+                break;
+              }
+              if(it==start_iter)
+                break;
+              if(!square_found && square_count==0 && para_count==0) {
+                if((*it>='A' && *it<='Z') || (*it>='a' && *it<='z') || (*it>='0' && *it<='9') || *it=='_' ||
+                   *it=='-' || *it==' ' || *it=='\t' || *it=='<' || *it=='>' || *it=='(' || *it==':' ||
+                   *it=='*' || *it=='&' || *it=='/' || it.ends_line() || !is_code_iter(it)) {
+                  continue;
+                }
+                else
+                  break;
+              }
+            }
+          }
         }
         get_buffer()->insert_at_cursor("\n"+tabs+tab+"\n"+tabs+(add_semicolon?"};":"}"));
         auto insert_it = get_buffer()->get_insert()->get_iter();

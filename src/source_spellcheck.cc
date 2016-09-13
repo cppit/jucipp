@@ -339,8 +339,25 @@ bool Source::SpellCheckView::is_code_iter(const Gtk::TextIter &iter) {
       return true;
     return false;
   }
-  if(comment_tag && ((iter.has_tag(comment_tag) && !iter.begins_tag(comment_tag)) || iter.ends_tag(comment_tag)))
-    return false;
+  if(comment_tag) {
+    if(iter.has_tag(comment_tag) && !iter.begins_tag(comment_tag))
+      return false;
+    //Exception at the end of /**/
+    else if(iter.ends_tag(comment_tag)) {
+      auto previous_iter=iter;
+      if(previous_iter.backward_char() && *previous_iter=='/') {
+        auto previous_previous_iter=previous_iter;
+        if(previous_previous_iter.backward_char() && *previous_previous_iter=='*') {
+          auto it=previous_iter;
+          while(!it.begins_tag(comment_tag) && it.backward_to_tag_toggle(comment_tag)) {}
+          auto next_iter=it;
+          if(it.begins_tag(comment_tag) && next_iter.forward_char() && *it=='/' && *next_iter=='*' && previous_iter!=it)
+            return true;
+        }
+      }
+      return false;
+    }
+  }
   if(string_tag) {
     if(iter.has_tag(string_tag)) {
       if(!iter.begins_tag(string_tag))
