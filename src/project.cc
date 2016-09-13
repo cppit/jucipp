@@ -98,6 +98,7 @@ void Project::debug_update_stop() {
       auto view=Notebook::get().get_view(c);
       if(view->file_path==debug_last_stop_file_path) {
         view->get_source_buffer()->remove_source_marks(view->get_buffer()->begin(), view->get_buffer()->end(), "debug_stop");
+        view->get_source_buffer()->remove_source_marks(view->get_buffer()->begin(), view->get_buffer()->end(), "debug_breakpoint_and_stop");
         break;
       }
     }
@@ -108,7 +109,10 @@ void Project::debug_update_stop() {
     auto view=Notebook::get().get_view(c);
     if(view->file_path==debug_stop.first) {
       if(debug_stop.second.first<view->get_buffer()->get_line_count()) {
-        view->get_source_buffer()->create_source_mark("debug_stop", view->get_buffer()->get_iter_at_line(debug_stop.second.first));
+        auto iter=view->get_buffer()->get_iter_at_line(debug_stop.second.first);
+        view->get_source_buffer()->create_source_mark("debug_stop", iter);
+        if(view->get_source_buffer()->get_source_marks_at_iter(iter, "debug_breakpoint").size()>0)
+          view->get_source_buffer()->create_source_mark("debug_breakpoint_and_stop", iter);
         debug_last_stop_file_path=debug_stop.first;
       }
       break;

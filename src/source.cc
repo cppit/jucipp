@@ -139,6 +139,12 @@ Source::View::View(const boost::filesystem::path &file_path, Glib::RefPtr<Gsv::L
   rgba.set_blue(1.0);
   mark_attr_debug_stop->set_background(rgba);
   set_mark_attributes("debug_stop", mark_attr_debug_stop, 101);
+  auto mark_attr_debug_breakpoint_and_stop=Gsv::MarkAttributes::create();
+  rgba.set_red(0.75);
+  rgba.set_green(0.5);
+  rgba.set_blue(0.75);
+  mark_attr_debug_breakpoint_and_stop->set_background(rgba);
+  set_mark_attributes("debug_breakpoint_and_stop", mark_attr_debug_breakpoint_and_stop, 102);
   
   get_buffer()->signal_changed().connect([this](){
     set_info(info);
