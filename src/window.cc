@@ -153,6 +153,10 @@ Window::Window() {
     return false;
   });
   
+  Gtk::Settings::get_default()->connect_property_changed("gtk-theme-name", [this] {
+    Directories::get().update();
+  });
+  
   about.signal_response().connect([this](int d){
     about.hide();
   });
