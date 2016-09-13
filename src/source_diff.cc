@@ -170,8 +170,15 @@ void Source::DiffView::configure() {
   parse_thread=std::thread([this]() {
     try {
       diff=get_diff();
+      status_branch=repository->get_branch();
     }
-    catch(const std::exception &) {}
+    catch(const std::exception &) {
+      status_branch="";
+    }
+    dispatcher.post([this] {
+      if(update_status_branch)
+        update_status_branch(this);
+    });
     
     try {
       while(true) {
@@ -199,6 +206,11 @@ void Source::DiffView::configure() {
           if(monitor_changed.compare_exchange_strong(expected_monitor_changed, false)) {
             try {
               diff=get_diff();
+              status_branch=repository->get_branch();
+              dispatcher.post([this] {
+                if(update_status_branch)
+                update_status_branch(this);
+              });
             }
             catch(const std::exception &) {
               dispatcher.post([this] {
@@ -208,6 +220,9 @@ void Source::DiffView::configure() {
                 get_buffer()->remove_tag(renderer->tag_removed_below, get_buffer()->begin(), get_buffer()->end());
                 get_buffer()->remove_tag(renderer->tag_removed_above, get_buffer()->begin(), get_buffer()->end());
                 renderer->queue_draw();
+                status_branch="";
+                if(update_status_branch)
+                  update_status_branch(this);
               });
             }
           }

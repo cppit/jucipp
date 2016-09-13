@@ -12,12 +12,12 @@ Config::Config() {
   for (auto &variable : environment_variables) {
     ptr=std::getenv(variable.c_str());
     if (ptr!=nullptr && boost::filesystem::exists(ptr)) {
-      home /= ptr;
-      home /= ".juci";
+      home_path = ptr;
+      home_juci_path = home_path / ".juci";
       break;
     }
   }
-  if(home.empty()) {
+  if(home_juci_path.empty()) {
     std::string searched_envs = "[";
     for(auto &variable : environment_variables)
       searched_envs+=variable+", ";
@@ -34,7 +34,7 @@ Config::Config() {
 }
 
 void Config::load() {
-  auto config_json = (home/"config"/"config.json").string(); // This causes some redundant copies, but assures windows support
+  auto config_json = (home_juci_path/"config"/"config.json").string(); // This causes some redundant copies, but assures windows support
   try {
     find_or_create_config_files();
     boost::property_tree::json_parser::read_json(config_json, cfg);
@@ -52,7 +52,7 @@ void Config::load() {
 }
 
 void Config::find_or_create_config_files() {
-  auto config_dir = home/"config";
+  auto config_dir = home_juci_path/"config";
   auto config_json = config_dir/"config.json";
 
   boost::filesystem::create_directories(config_dir); // io exp captured by calling method
@@ -60,7 +60,7 @@ void Config::find_or_create_config_files() {
   if (!boost::filesystem::exists(config_json))
     filesystem::write(config_json, default_config_file);
 
-  auto juci_style_path = home/"styles";
+  auto juci_style_path = home_juci_path/"styles";
   boost::filesystem::create_directories(juci_style_path); // io exp captured by calling method
 
   juci_style_path/="juci-light.xml";
@@ -168,7 +168,7 @@ void Config::update_config_file() {
       if(cfg.count("version")>0)
         cfg.find("version")->second.data()=default_cfg.get<std::string>("version");
       
-      auto style_path=home/"styles";
+      auto style_path=home_juci_path/"styles";
       filesystem::write(style_path/"juci-light.xml", juci_light_style);
       filesystem::write(style_path/"juci-dark.xml", juci_dark_style);
       filesystem::write(style_path/"juci-dark-blue.xml", juci_dark_blue_style);
@@ -183,7 +183,7 @@ void Config::update_config_file() {
   cfg_ok&=add_missing_nodes(default_cfg);
   cfg_ok&=remove_deprecated_nodes(default_cfg, cfg);
   if(!cfg_ok)
-    boost::property_tree::write_json((home/"config"/"config.json").string(), cfg);
+    boost::property_tree::write_json((home_juci_path/"config"/"config.json").string(), cfg);
 }
 
 void Config::get_source() {

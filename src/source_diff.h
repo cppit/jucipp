@@ -33,16 +33,20 @@ namespace Source {
     DiffView(const boost::filesystem::path &file_path);
     ~DiffView();
     
+    boost::filesystem::path file_path;
+  protected:
+    std::mutex file_path_mutex;
+  public:
     virtual void configure();
+    
+    std::function<void(DiffView *view)> update_status_branch;
+    std::string status_branch;
     
     Gtk::TextIter get_iter_at_line_end(int line_nr);
     
     void git_goto_next_diff();
     std::string git_get_diff_details();
     
-    boost::filesystem::path file_path;
-    ///Only needed when using file_path in a thread, or when changing file_path
-    std::mutex file_path_mutex;
   private:
     std::unique_ptr<Renderer> renderer;
     Dispatcher dispatcher;

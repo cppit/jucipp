@@ -96,7 +96,8 @@ public:
   Project project;
   Source source;
   
-  const boost::filesystem::path& juci_home_path() const { return home; }
+  boost::filesystem::path home_path;
+  boost::filesystem::path home_juci_path;
 
 private:
   void find_or_create_config_files();
@@ -107,6 +108,5 @@ private:
   void get_source();
 
   boost::property_tree::ptree cfg;
-  boost::filesystem::path home;
 };
 #endif

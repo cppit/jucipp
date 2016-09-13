@@ -49,7 +49,7 @@ void Application::on_activate() {
   if(directories.empty() && files.empty()) {
     try {
       boost::property_tree::ptree pt;
-      boost::property_tree::read_json((Config::get().juci_home_path()/"last_session.json").string(), pt);
+      boost::property_tree::read_json((Config::get().home_juci_path/"last_session.json").string(), pt);
       auto folder=pt.get<std::string>("folder");
       if(!folder.empty() && boost::filesystem::exists(folder) && boost::filesystem::is_directory(folder))
         directories.emplace_back(folder);

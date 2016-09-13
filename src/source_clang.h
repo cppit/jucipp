@@ -49,7 +49,7 @@ namespace Source {
     std::set<std::string> last_syntax_tags;
 
     void update_diagnostics();
-    std::vector<clang::Diagnostic> diagnostics;
+    std::vector<clang::Diagnostic> clang_diagnostics;
     
     static clang::Index clang_index;
     std::vector<std::string> get_compilation_commands();

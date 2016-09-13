@@ -42,8 +42,13 @@ public:
   void toggle_split();
   boost::filesystem::path get_current_folder();
 
-  Gtk::Label info;
-  Gtk::Label status;
+  Gtk::Label status_location;
+  Gtk::Label status_file_path;
+  Gtk::Label status_branch;
+  Gtk::Label status_diagnostics;
+  Gtk::Label status_state;
+  void update_status(Source::View *view);
+  void clear_status();
   
   std::function<void(Source::View*)> on_change_page;
   std::function<void(Source::View*)> on_close_page;

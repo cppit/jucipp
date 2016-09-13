@@ -94,19 +94,11 @@ bool Directories::TreeStore::drag_data_received_vfunc(const TreeModel::Path &pat
           auto new_file_path=target_path;
           for(;file_it!=view->file_path.end();file_it++)
             new_file_path/=*file_it;
-          {
-            std::unique_lock<std::mutex> lock(view->file_path_mutex);
-            view->file_path=new_file_path;
-          }
-          g_signal_emit_by_name(view->get_buffer()->gobj(), "modified_changed");
+          view->rename(new_file_path);
         }
       }
       else if(view->file_path==source_path) {
-        {
-          std::unique_lock<std::mutex> lock(view->file_path_mutex);
-          view->file_path=target_path;
-        }
-        g_signal_emit_by_name(view->get_buffer()->gobj(), "modified_changed");
+        view->rename(target_path);
         break;
       }
     }
@@ -299,19 +291,11 @@ Directories::Directories() : Gtk::ListViewText(1) {
             auto new_file_path=target_path;
             for(;file_it!=view->file_path.end();file_it++)
               new_file_path/=*file_it;
-            {
-              std::unique_lock<std::mutex> lock(view->file_path_mutex);
-              view->file_path=new_file_path;
-            }
-            g_signal_emit_by_name(view->get_buffer()->gobj(), "modified_changed");
+            view->rename(new_file_path);
           }
         }
         else if(view->file_path==*source_path) {
-          {
-            std::unique_lock<std::mutex> lock(view->file_path_mutex);
-            view->file_path=target_path;
-          }
-          g_signal_emit_by_name(view->get_buffer()->gobj(), "modified_changed");
+          view->rename(target_path);
           
           std::string old_language_id;
           if(view->language)

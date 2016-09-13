@@ -54,14 +54,26 @@ Window::Window() {
   hpaned->pack1(*directories_scrolled_window, Gtk::SHRINK);
   hpaned->pack2(*notebook_and_terminal_vpaned, Gtk::SHRINK);
   
-  auto info_and_status_hbox=Gtk::manage(new Gtk::HBox());
-  info_and_status_hbox->pack_start(Notebook::get().info, Gtk::PACK_SHRINK);
-  info_and_status_hbox->set_center_widget(Project::debug_status_label());
-  info_and_status_hbox->pack_end(Notebook::get().status, Gtk::PACK_SHRINK);
+  auto status_hbox=Gtk::manage(new Gtk::HBox());
+  status_hbox->set_homogeneous(true);
+  auto status_left_hbox=Gtk::manage(new Gtk::HBox());
+  status_left_hbox->pack_start(Notebook::get().status_file_path, Gtk::PACK_SHRINK);
+  status_left_hbox->pack_start(Notebook::get().status_branch, Gtk::PACK_SHRINK);
+  status_left_hbox->pack_start(Notebook::get().status_location, Gtk::PACK_SHRINK);
+  status_hbox->pack_start(*status_left_hbox);
+  auto status_right_vbox=Gtk::manage(new Gtk::HBox());
+  status_right_vbox->pack_end(Notebook::get().status_state, Gtk::PACK_SHRINK);
+  auto status_right_overlay=Gtk::manage(new Gtk::Overlay());
+  status_right_overlay->add(*status_right_vbox);
+  status_right_overlay->add_overlay(Notebook::get().status_diagnostics);
+  status_hbox->pack_end(*status_right_overlay);
+  auto status_overlay=Gtk::manage(new Gtk::Overlay());
+  status_overlay->add(*status_hbox);
+  status_overlay->add_overlay(Project::debug_status_label());
   
   auto vbox=Gtk::manage(new Gtk::VBox());
   vbox->pack_start(*hpaned);
-  vbox->pack_start(*info_and_status_hbox, Gtk::PACK_SHRINK);
+  vbox->pack_start(*status_overlay, Gtk::PACK_SHRINK);
   
   auto overlay_vbox=Gtk::manage(new Gtk::VBox());
   auto overlay_hbox=Gtk::manage(new Gtk::HBox());
@@ -122,15 +134,14 @@ Window::Window() {
     else if(view->soft_reparse_needed)
       view->soft_reparse();
     
-    view->set_status(view->status);
-    view->set_info(view->info);
+    Notebook::get().update_status(view);
     
 #ifdef JUCI_ENABLE_DEBUG
     if(Project::debugging)
       Project::debug_update_stop();
 #endif
   };
-  Notebook::get().on_close_page=[](Source::View *view) {
+  Notebook::get().on_close_page=[this](Source::View *view) {
 #ifdef JUCI_ENABLE_DEBUG
     if(Project::current && Project::debugging) {
       auto iter=view->get_buffer()->begin();
@@ -143,6 +154,13 @@ Window::Window() {
     }
 #endif
     EntryBox::get().hide();
+    if(auto view=Notebook::get().get_current_view())
+      Notebook::get().update_status(view);
+    else {
+      Notebook::get().clear_status();
+      
+      activate_menu_items();
+    }
   };
   
   signal_focus_out_event().connect([](GdkEventFocus *event) {
@@ -155,6 +173,8 @@ Window::Window() {
   
   Gtk::Settings::get_default()->connect_property_changed("gtk-theme-name", [this] {
     Directories::get().update();
+    if(auto view=Notebook::get().get_current_view())
+      Notebook::get().update_status(view);
   });
   
   about.signal_response().connect([this](int d){
@@ -187,9 +207,11 @@ void Window::configure() {
     css_provider=Gtk::CssProvider::get_named(Config::get().window.theme_name, Config::get().window.theme_variant);
   //TODO: add check if theme exists, or else write error to terminal
   Gtk::StyleContext::add_provider_for_screen(screen, css_provider, GTK_STYLE_PROVIDER_PRIORITY_SETTINGS);
-  Directories::get().update();
   Menu::get().set_keys();
   Terminal::get().configure();
+  Directories::get().update();
+  if(auto view=Notebook::get().get_current_view())
+    Notebook::get().update_status(view);
 }
 
 void Window::set_menu_actions() {
@@ -200,7 +222,7 @@ void Window::set_menu_actions() {
     about.present();
   });
   menu.add_action("preferences", [this]() {
-    Notebook::get().open(Config::get().juci_home_path()/"config"/"config.json");
+    Notebook::get().open(Config::get().home_juci_path/"config"/"config.json");
   });
   menu.add_action("quit", [this]() {
     close();
@@ -326,7 +348,7 @@ void Window::set_menu_actions() {
   menu.add_action("save", [this]() {
     if(auto view=Notebook::get().get_current_view()) {
       if(Notebook::get().save_current()) {
-        if(view->file_path==Config::get().juci_home_path()/"config"/"config.json") {
+        if(view->file_path==Config::get().home_juci_path/"config"/"config.json") {
           configure();
           for(size_t c=0;c<Notebook::get().size();c++) {
             Notebook::get().get_view(c)->configure();
@@ -1031,18 +1053,8 @@ void Window::set_menu_actions() {
     Notebook::get().previous();
   });
   menu.add_action("close_tab", [this]() {
-    if(Notebook::get().get_current_view() && Notebook::get().close_current()) {
-      if(auto view=Notebook::get().get_current_view()) {
-        view->set_status(view->status);
-        view->set_info(view->info);
-      }
-      else {
-        Notebook::get().status.set_text("");
-        Notebook::get().info.set_text("");
-        
-        activate_menu_items();
-      }
-    }
+    if(Notebook::get().get_current_view())
+      Notebook::get().close_current();
   });
   menu.add_action("window_toggle_split", [this] {
     Notebook::get().toggle_split();

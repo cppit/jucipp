@@ -108,7 +108,9 @@ void Source::ClangViewParse::parse_initialize() {
   clang_tokens=clang_tu->get_tokens(0, buffer.bytes()-1);
   update_syntax();
   
-  set_status("parsing...");
+  status_state="parsing...";
+  if(update_status_state)
+    update_status_state(this);
   parse_thread=std::thread([this]() {
     while(true) {
       while(parse_state==ParseState::PROCESSING && parse_process_state!=ParseProcessState::STARTING && parse_process_state!=ParseProcessState::PROCESSING)
@@ -137,7 +139,7 @@ void Source::ClangViewParse::parse_initialize() {
           auto expected=ParseProcessState::PROCESSING;
           if(parse_process_state.compare_exchange_strong(expected, ParseProcessState::POSTPROCESSING)) {
             clang_tokens=clang_tu->get_tokens(0, parse_thread_buffer.bytes()-1);
-            diagnostics=clang_tu->get_diagnostics();
+            clang_diagnostics=clang_tu->get_diagnostics();
             parse_lock.unlock();
             dispatcher.post([this] {
               std::unique_lock<std::mutex> parse_lock(parse_mutex, std::defer_lock);
@@ -147,7 +149,9 @@ void Source::ClangViewParse::parse_initialize() {
                   update_syntax();
                   update_diagnostics();
                   parsed=true;
-                  set_status("");
+                  status_state="";
+                  if(update_status_state)
+                    update_status_state(this);
                 }
                 parse_lock.unlock();
               }
@@ -161,8 +165,12 @@ void Source::ClangViewParse::parse_initialize() {
           parse_lock.unlock();
           dispatcher.post([this] {
             Terminal::get().print("Error: failed to reparse "+this->file_path.string()+".\n", true);
-            set_status("");
-            set_info("");
+            status_state="";
+            if(update_status_state)
+              update_status_state(this);
+            status_diagnostics=std::make_tuple(0, 0, 0);
+            if(update_status_diagnostics)
+              update_status_diagnostics(this);
             parsing_in_progress->cancel("failed");
           });
         }
@@ -181,8 +189,11 @@ void Source::ClangViewParse::soft_reparse() {
   delayed_reparse_connection=Glib::signal_timeout().connect([this]() {
     parsed=false;
     auto expected=ParseProcessState::IDLE;
-    if(parse_process_state.compare_exchange_strong(expected, ParseProcessState::STARTING))
-      set_status("parsing...");
+    if(parse_process_state.compare_exchange_strong(expected, ParseProcessState::STARTING)) {
+      status_state="parsing...";
+      if(update_status_state)
+        update_status_state(this);
+    }
     return false;
   }, 1000);
 }
@@ -276,7 +287,7 @@ void Source::ClangViewParse::update_diagnostics() {
   size_t num_warnings=0;
   size_t num_errors=0;
   size_t num_fix_its=0;
-  for(auto &diagnostic: diagnostics) {
+  for(auto &diagnostic: clang_diagnostics) {
     if(diagnostic.path==file_path.string()) {      
       int line=diagnostic.offsets.first.line-1;
       if(line<0 || line>=get_buffer()->get_line_count())
@@ -356,27 +367,9 @@ void Source::ClangViewParse::update_diagnostics() {
       }
     }
   }
-  std::string diagnostic_info;
-  if(num_warnings>0) {
-    diagnostic_info+=std::to_string(num_warnings)+" warning";
-    if(num_warnings>1)
-      diagnostic_info+='s';
-  }
-  if(num_errors>0) {
-    if(num_warnings>0)
-      diagnostic_info+=", ";
-    diagnostic_info+=std::to_string(num_errors)+" error";
-    if(num_errors>1)
-      diagnostic_info+='s';
-  }
-  if(num_fix_its>0) {
-    if(num_warnings>0 || num_errors>0)
-      diagnostic_info+=", ";
-    diagnostic_info+=std::to_string(num_fix_its)+" fix it";
-    if(num_fix_its>1)
-      diagnostic_info+='s';
-  }
-  set_info("  "+diagnostic_info);
+  status_diagnostics=std::make_tuple(num_warnings, num_errors, num_fix_its);
+  if(update_status_diagnostics)
+    update_status_diagnostics(this);
 }
 
 void Source::ClangViewParse::show_diagnostic_tooltips(const Gdk::Rectangle &rectangle) {
@@ -674,7 +667,9 @@ void Source::ClangViewAutocomplete::autocomplete() {
 
   autocomplete_state=AutocompleteState::STARTING;
   
-  set_status("autocomplete...");
+  status_state="autocomplete...";
+  if(update_status_state)
+    update_status_state(this);
   if(autocomplete_thread.joinable())
     autocomplete_thread.join();
   auto buffer=std::make_shared<Glib::ustring>(get_buffer()->get_text());
@@ -697,12 +692,16 @@ void Source::ClangViewAutocomplete::autocomplete() {
       if(parse_state==ParseState::PROCESSING) {
         dispatcher.post([this, autocomplete_data] {
           if(autocomplete_state==AutocompleteState::CANCELED) {
-            set_status("");
+            status_state="";
+            if(update_status_state)
+              update_status_state(this);
             soft_reparse();
             autocomplete_state=AutocompleteState::IDLE;
           }
           else if(autocomplete_state==AutocompleteState::RESTARTING) {
-            set_status("");
+            status_state="";
+            if(update_status_state)
+              update_status_state(this);
             soft_reparse();
             autocomplete_state=AutocompleteState::IDLE;
             autocomplete_check();
@@ -729,7 +728,9 @@ void Source::ClangViewAutocomplete::autocomplete() {
               }
             }
             autocomplete_data->clear();
-            set_status("");
+            status_state="";
+            if(update_status_state)
+              update_status_state(this);
             autocomplete_state=AutocompleteState::IDLE;
             if (!autocomplete_dialog_rows.empty()) {
               get_buffer()->begin_user_action();

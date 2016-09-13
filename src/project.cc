@@ -73,7 +73,7 @@ void Project::debug_update_status(const std::string &new_debug_status) {
   if(debug_status.empty())
     debug_status_label().set_text("");
   else
-    debug_status_label().set_text("debug: "+debug_status);
+    debug_status_label().set_text(debug_status);
   debug_activate_menu_items();
 }
 

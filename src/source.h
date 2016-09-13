@@ -9,6 +9,7 @@
 #include <unordered_map>
 #include <vector>
 #include <regex>
+#include <tuple>
 
 namespace Source {
   Glib::RefPtr<Gsv::Language> guess_language(const boost::filesystem::path &file_path);
@@ -42,6 +43,8 @@ namespace Source {
   public:
     View(const boost::filesystem::path &file_path, Glib::RefPtr<Gsv::Language> language);
     ~View();
+    
+    void rename(const boost::filesystem::path &path);
     
     virtual bool save(const std::vector<Source::View*> &views);
     void configure() override;
@@ -84,12 +87,13 @@ namespace Source {
     void hide_tooltips() override;
     void hide_dialogs() override;
     
-    std::function<void(View* view, const std::string &status_text)> on_update_status;
-    std::function<void(View* view, const std::string &info_text)> on_update_info;
-    void set_status(const std::string &status);
-    void set_info(const std::string &info);
-    std::string status;
-    std::string info;
+    std::function<void(View *view)> update_tab_label;
+    std::function<void(View *view)> update_status_location;
+    std::function<void(View *view)> update_status_file_path;
+    std::function<void(View *view)> update_status_diagnostics;
+    std::function<void(View *view)> update_status_state;
+    std::tuple<size_t, size_t, size_t> status_diagnostics;
+    std::string status_state;
     
     void set_tab_char_and_size(char tab_char, unsigned tab_size);
     std::pair<char, unsigned> get_tab_char_and_size() {return {tab_char, tab_size};}

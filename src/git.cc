@@ -242,6 +242,27 @@ Git::Repository::Diff Git::Repository::get_diff(const boost::filesystem::path &p
   return Diff(path, repository.get());
 }
 
+std::string Git::Repository::get_branch() noexcept {
+  std::string branch;
+  git_reference *reference;
+  if(git_repository_head(&reference, repository.get())==0) {
+    if(auto reference_name_cstr=git_reference_name(reference)) {
+      std::string reference_name(reference_name_cstr);
+      size_t pos;
+      if((pos=reference_name.rfind('/'))!=std::string::npos) {
+        if(pos+1<reference_name.size())
+          branch=reference_name.substr(pos+1);
+      }
+      else if((pos=reference_name.rfind('\\'))!=std::string::npos) {
+        if(pos+1<reference_name.size())
+          branch=reference_name.substr(pos+1);
+      }
+    }
+    git_reference_free(reference);
+  }
+  return branch;
+}
+
 void Git::initialize() noexcept {
   std::lock_guard<std::mutex> lock(mutex);
   if(!initialized) {

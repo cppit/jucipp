@@ -174,7 +174,7 @@ void Debug::LLDB::start(const std::string &command, const boost::filesystem::pat
               if(line_entry.IsValid()) {
                 lldb::SBStream stream;
                 line_entry.GetFileSpec().GetDescription(stream);
-                status +=" - "+boost::filesystem::path(stream.GetData()).filename().string()+":"+std::to_string(line_entry.GetLine());
+                status +=" "+boost::filesystem::path(stream.GetData()).filename().string()+":"+std::to_string(line_entry.GetLine());
               }
             }
             status_callback(status);

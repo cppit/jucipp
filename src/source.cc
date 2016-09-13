@@ -89,7 +89,7 @@ const std::regex Source::View::bracket_regex("^([ \\t]*).*\\{ *$");
 const std::regex Source::View::no_bracket_statement_regex("^([ \\t]*)(if|for|else if|while) *\\(.*[^;}] *$");
 const std::regex Source::View::no_bracket_no_para_statement_regex("^([ \\t]*)(else) *$");
 
-Source::View::View(const boost::filesystem::path &file_path, Glib::RefPtr<Gsv::Language> language): Gsv::View(), SpellCheckView(), DiffView(file_path), language(language) {
+Source::View::View(const boost::filesystem::path &file_path, Glib::RefPtr<Gsv::Language> language): Gsv::View(), SpellCheckView(), DiffView(file_path), language(language), status_diagnostics(0, 0, 0) {
   get_source_buffer()->begin_not_undoable_action();
   last_read_time=std::chrono::system_clock::to_time_t(std::chrono::system_clock::now());
   if(language) {
@@ -147,7 +147,8 @@ Source::View::View(const boost::filesystem::path &file_path, Glib::RefPtr<Gsv::L
   set_mark_attributes("debug_breakpoint_and_stop", mark_attr_debug_breakpoint_and_stop, 102);
   
   get_buffer()->signal_changed().connect([this](){
-    set_info(info);
+    if(update_status_location)
+      update_status_location(this);
   });
   
   signal_realize().connect([this] {
@@ -379,6 +380,17 @@ Source::View::View(const boost::filesystem::path &file_path, Glib::RefPtr<Gsv::L
   }
 }
 
+void Source::View::rename(const boost::filesystem::path &path) {
+  {
+    std::unique_lock<std::mutex> lock(file_path_mutex);
+    file_path=path;
+  }
+  if(update_status_file_path)
+    update_status_file_path(this);
+  if(update_tab_label)
+    update_tab_label(this);
+}
+
 void Source::View::set_tab_char_and_size(char tab_char, unsigned tab_size) {
   this->tab_char=tab_char;
   this->tab_size=tab_size;
@@ -459,7 +471,7 @@ void Source::View::configure() {
   
   //TODO: Move this to notebook? Might take up too much memory doing this for every tab.
   auto style_scheme_manager=Gsv::StyleSchemeManager::get_default();
-  style_scheme_manager->prepend_search_path((Config::get().juci_home_path()/"styles").string());
+  style_scheme_manager->prepend_search_path((Config::get().home_juci_path/"styles").string());
   
   if(Config::get().source.style.size()>0) {
     auto scheme = style_scheme_manager->get_scheme(Config::get().source.style);
@@ -596,7 +608,8 @@ void Source::View::set_tooltip_and_dialog_events() {
       if(selection_dialog)
         selection_dialog->hide();
       
-      set_info(info);
+      if(update_status_location)
+        update_status_location(this);
     }
   });
 
@@ -851,20 +864,6 @@ void Source::View::hide_dialogs() {
     selection_dialog->hide();
   if(autocomplete_dialog)
     autocomplete_dialog->hide();
-}
-
-void Source::View::set_status(const std::string &status) {
-  this->status=status;
-  if(on_update_status)
-    on_update_status(this, status);
-}
-
-void Source::View::set_info(const std::string &info) {
-  this->info=info;
-  auto iter=get_buffer()->get_insert()->get_iter();
-  auto positions=std::to_string(iter.get_line()+1)+":"+std::to_string(iter.get_line_offset()+1);
-  if(on_update_info)
-    on_update_info(this, positions+" "+info);
 }
 
 std::string Source::View::get_line(const Gtk::TextIter &iter) {

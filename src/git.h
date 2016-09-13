@@ -79,6 +79,8 @@ public:
     
     Diff get_diff(const boost::filesystem::path &path);
     
+    std::string get_branch() noexcept;
+    
     Glib::RefPtr<Gio::FileMonitor> monitor;
   };
   

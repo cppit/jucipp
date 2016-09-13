@@ -32,7 +32,7 @@ int main() {
                                                       Gsv::LanguageManager::get_default()->get_language("cpp"));
   while(!clang_view->parsed)
     flush_events();
-  g_assert_cmpuint(clang_view->diagnostics.size(), ==, 0);
+  g_assert_cmpuint(clang_view->clang_diagnostics.size(), ==, 0);
   
   //test get_declaration and get_implementation
   clang_view->place_cursor_at_line_index(13, 7);
@@ -69,7 +69,7 @@ int main() {
   iter.backward_char();
   token=clang_view->get_token(iter);
   g_assert_cmpstr(token.c_str(), ==, "RenamedTestClass");
-  g_assert_cmpuint(clang_view->diagnostics.size(), ==, 0);
+  g_assert_cmpuint(clang_view->clang_diagnostics.size(), ==, 0);
   clang_view->get_buffer()->set_text(saved_main);
   clang_view->save({clang_view});
   
@@ -77,7 +77,7 @@ int main() {
   clang_view->get_buffer()->set_text(main_error);
   while(!clang_view->parsed)
     flush_events();
-  g_assert_cmpuint(clang_view->diagnostics.size(), >, 0);
+  g_assert_cmpuint(clang_view->clang_diagnostics.size(), >, 0);
   g_assert_cmpuint(clang_view->get_fix_its().size(), >, 0);
   
   clang_view->async_delete();

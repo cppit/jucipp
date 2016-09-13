@@ -170,13 +170,112 @@ void Notebook::open(const boost::filesystem::path &file_path, size_t notebook_in
         view->hide_tooltips();
     }
   };
-  source_views.back()->on_update_status=[this](Source::View* view, const std::string &status_text) {
-    if(get_current_view()==view)
-      status.set_text(status_text+" ");
+  source_views.back()->update_status_location=[this](Source::View* view) {
+    if(get_current_view()==view) {
+      auto iter=view->get_buffer()->get_insert()->get_iter();
+      status_location.set_text(" "+std::to_string(iter.get_line()+1)+":"+std::to_string(iter.get_line_offset()+1));
+    }
   };
-  source_views.back()->on_update_info=[this](Source::View* view, const std::string &info_text) {
+  source_views.back()->update_status_file_path=[this](Source::View* view) {
+    if(get_current_view()==view) {
+      if(filesystem::file_in_path(view->file_path, Config::get().home_path)) {
+        auto relative_path=filesystem::get_relative_path(view->file_path, Config::get().home_path);
+        if(!relative_path.empty()) {
+          status_file_path.set_text((" ~"/relative_path).string());
+          return;
+        }
+      }
+      status_file_path.set_text(" "+view->file_path.string());
+    }
+  };
+  source_views.back()->update_status_branch=[this](Source::DiffView* view) {
+    if(get_current_view()==view) {
+      if(!view->status_branch.empty())
+        status_branch.set_text(" ("+view->status_branch+")");
+      else
+        status_branch.set_text("");
+    }
+  };
+  source_views.back()->update_tab_label=[this](Source::View *view) {
+    std::string title=view->file_path.filename().string();
+    if(view->get_buffer()->get_modified())
+      title+='*';
+    else
+      title+=' ';
+    for(size_t c=0;c<size();++c) {
+      if(source_views[c]==view) {
+        auto &tab_label=tab_labels.at(c);
+        tab_label->label.set_text(title);
+        tab_label->set_tooltip_text(view->file_path.string());
+        update_status(view);
+        return;
+      }
+    }
+  };
+  source_views.back()->update_status_diagnostics=[this](Source::View* view) {
+    if(get_current_view()==view) {
+      std::string diagnostic_info;
+      
+      auto num_warnings=std::get<0>(view->status_diagnostics);
+      auto num_errors=std::get<1>(view->status_diagnostics);
+      auto num_fix_its=std::get<2>(view->status_diagnostics);
+      if(num_warnings>0 || num_errors>0 || num_fix_its>0) {
+        auto normal_color=get_style_context()->get_color(Gtk::StateFlags::STATE_FLAG_NORMAL);
+        Gdk::RGBA yellow;
+        yellow.set_rgba(1.0, 1.0, 0.2);
+        double factor=0.5;
+        yellow.set_red(normal_color.get_red()+factor*(yellow.get_red()-normal_color.get_red()));
+        yellow.set_green(normal_color.get_green()+factor*(yellow.get_green()-normal_color.get_green()));
+        yellow.set_blue(normal_color.get_blue()+factor*(yellow.get_blue()-normal_color.get_blue()));
+        Gdk::RGBA red;
+        red.set_rgba(1.0, 0.0, 0.0);
+        factor=0.5;
+        red.set_red(normal_color.get_red()+factor*(red.get_red()-normal_color.get_red()));
+        red.set_green(normal_color.get_green()+factor*(red.get_green()-normal_color.get_green()));
+        red.set_blue(normal_color.get_blue()+factor*(red.get_blue()-normal_color.get_blue()));
+        Gdk::RGBA green;
+        green.set_rgba(0.0, 1.0, 0.0);
+        factor=0.4;
+        green.set_red(normal_color.get_red()+factor*(green.get_red()-normal_color.get_red()));
+        green.set_green(normal_color.get_green()+factor*(green.get_green()-normal_color.get_green()));
+        green.set_blue(normal_color.get_blue()+factor*(green.get_blue()-normal_color.get_blue()));
+        
+        std::stringstream yellow_ss, red_ss, green_ss;
+        yellow_ss << std::hex << std::setfill('0') << std::setw(2) << (int)(yellow.get_red_u()>>8) << std::setw(2) << (int)(yellow.get_green_u()>>8) << std::setw(2) << (int)(yellow.get_blue_u()>>8);
+        red_ss << std::hex << std::setfill('0') << std::setw(2) << (int)(red.get_red_u()>>8) << std::setw(2) << (int)(red.get_green_u()>>8) << std::setw(2) << (int)(red.get_blue_u()>>8);
+        green_ss << std::hex << std::setfill('0') << std::setw(2) << (int)(green.get_red_u()>>8) << std::setw(2) << (int)(green.get_green_u()>>8) << std::setw(2) << (int)(green.get_blue_u()>>8);
+        if(num_warnings>0) {
+          diagnostic_info+="<span color='#"+yellow_ss.str()+"'>";
+          diagnostic_info+=std::to_string(num_warnings)+" warning";
+          if(num_warnings>1)
+            diagnostic_info+='s';
+          diagnostic_info+="</span>";
+        }
+        if(num_errors>0) {
+          if(num_warnings>0)
+            diagnostic_info+=", ";
+          diagnostic_info+="<span color='#"+red_ss.str()+"'>";
+          diagnostic_info+=std::to_string(num_errors)+" error";
+          if(num_errors>1)
+            diagnostic_info+='s';
+          diagnostic_info+="</span>";
+        }
+        if(num_fix_its>0) {
+          if(num_warnings>0 || num_errors>0)
+            diagnostic_info+=", ";
+          diagnostic_info+="<span color='#"+green_ss.str()+"'>";
+          diagnostic_info+=std::to_string(num_fix_its)+" fix it";
+          if(num_fix_its>1)
+            diagnostic_info+='s';
+          diagnostic_info+="</span>";
+        }
+      }
+      status_diagnostics.set_markup(diagnostic_info);
+    }
+  };
+  source_views.back()->update_status_state=[this](Source::View* view) {
     if(get_current_view()==view)
-      info.set_text(" "+info_text);
+      status_state.set_text(view->status_state+" ");
   };
   
   scrolled_windows.emplace_back(new Gtk::ScrolledWindow());
@@ -200,20 +299,8 @@ void Notebook::open(const boost::filesystem::path &file_path, size_t notebook_in
   
   //Add star on tab label when the page is not saved:
   source_view->get_buffer()->signal_modified_changed().connect([this, source_view]() {
-    std::string title=source_view->file_path.filename().string();
-    if(source_view->get_buffer()->get_modified())
-      title+='*';
-    else
-      title+=' ';
-    
-    for(size_t c=0;c<size();c++) {
-      if(source_views[c]==source_view) {
-        auto &tab_label=tab_labels.at(c);
-        tab_label->label.set_text(title);
-        tab_label->set_tooltip_text(source_view->file_path.string());
-        return;
-      }
-    }
+    if(source_view->update_tab_label)
+      source_view->update_tab_label(source_view);
   });
   
   source_view->signal_focus_in_event().connect([this, source_view](GdkEventFocus *) {
@@ -319,7 +406,7 @@ void Notebook::save_session() {
     pt_root.add_child("files", pt_files);
     if(auto view=Notebook::get().get_current_view())
       pt_root.put("current_file", view->file_path.string());
-    boost::property_tree::write_json((Config::get().juci_home_path()/"last_session.json").string(), pt_root);
+    boost::property_tree::write_json((Config::get().home_juci_path/"last_session.json").string(), pt_root);
   }
   catch(const std::exception &) {}
 }
@@ -436,6 +523,27 @@ boost::filesystem::path Notebook::get_current_folder() {
     return view->file_path.parent_path();
   else
     return boost::filesystem::path();
+}
+
+void Notebook::update_status(Source::View *view) {
+  if(view->update_status_location)
+    view->update_status_location(view);
+  if(view->update_status_file_path)
+    view->update_status_file_path(view);
+  if(view->update_status_branch)
+    view->update_status_branch(view);
+  if(view->update_status_diagnostics)
+    view->update_status_diagnostics(view);
+  if(view->update_status_state)
+    view->update_status_state(view);
+}
+
+void Notebook::clear_status() {
+  status_location.set_text("");
+  status_file_path.set_text("");
+  status_branch.set_text("");
+  status_diagnostics.set_text("");
+  status_state.set_text("");
 }
 
 size_t Notebook::get_index(Source::View *view) {
