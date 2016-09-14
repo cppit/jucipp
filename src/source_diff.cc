@@ -55,6 +55,16 @@ Source::DiffView::DiffView(const boost::filesystem::path &file_path) : Gsv::View
   renderer->tag_removed_below=get_buffer()->create_tag();
   renderer->tag_removed_above=get_buffer()->create_tag();
   
+  boost::system::error_code ec;
+  last_write_time=boost::filesystem::last_write_time(file_path, ec);
+  if(ec)
+    last_write_time=static_cast<std::time_t>(-1);
+  
+  signal_focus_in_event().connect([this](GdkEventFocus *event) {
+    check_last_write_time();
+    return false;
+  });
+  
   configure();
 }
 
@@ -71,6 +81,15 @@ Source::DiffView::~DiffView() {
     parse_stop=true;
     if(parse_thread.joinable())
       parse_thread.join();
+  }
+}
+
+void Source::DiffView::check_last_write_time() {
+  if(has_focus()) {
+    boost::system::error_code ec;
+    auto last_write_time=boost::filesystem::last_write_time(file_path, ec);
+    if(!ec && this->last_write_time!=static_cast<std::time_t>(-1) && last_write_time!=this->last_write_time)
+      Info::get().print("Caution: " + file_path.filename().string() + " was changed outside of juCi++");
   }
 }
 
@@ -158,6 +177,7 @@ void Source::DiffView::configure() {
     if(monitor_event!=Gio::FileMonitorEvent::FILE_MONITOR_EVENT_CHANGES_DONE_HINT) {
       delayed_monitor_changed_connection.disconnect();
       delayed_monitor_changed_connection=Glib::signal_timeout().connect([this]() {
+        check_last_write_time();
         monitor_changed=true;
         parse_state=ParseState::STARTING;
         std::unique_lock<std::mutex> lock(parse_mutex);

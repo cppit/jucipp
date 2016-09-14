@@ -91,7 +91,6 @@ const std::regex Source::View::no_bracket_no_para_statement_regex("^([ \\t]*)(el
 
 Source::View::View(const boost::filesystem::path &file_path, Glib::RefPtr<Gsv::Language> language): Gsv::View(), SpellCheckView(), DiffView(file_path), language(language), status_diagnostics(0, 0, 0) {
   get_source_buffer()->begin_not_undoable_action();
-  last_read_time=std::chrono::system_clock::to_time_t(std::chrono::system_clock::now());
   if(language) {
     if(filesystem::read_non_utf8(file_path, get_buffer())==-1)
       Terminal::get().print("Warning: "+file_path.string()+" is not a valid UTF-8 file. Saving might corrupt the file.\n");
@@ -454,7 +453,10 @@ bool Source::View::save(const std::vector<Source::View*> &views) {
     cleanup_whitespace_characters();
   
   if(filesystem::write(file_path, get_buffer())) {
-    last_read_time=std::chrono::system_clock::to_time_t(std::chrono::system_clock::now());
+    boost::system::error_code ec;
+    last_write_time=boost::filesystem::last_write_time(file_path, ec);
+    if(ec)
+      last_write_time=static_cast<std::time_t>(-1);
     get_buffer()->set_modified(false);
     Directories::get().on_save_file(file_path);
     return true;
@@ -2048,14 +2050,6 @@ bool Source::View::on_button_press_event(GdkEventButton *event) {
   
   return Gsv::View::on_button_press_event(event);
 }
-
-bool Source::View::on_focus_in_event(GdkEventFocus* focus_event){
-  boost::system::error_code ec;
-  auto last_write_time=boost::filesystem::last_write_time(file_path, ec);
-  if(!ec && last_write_time>last_read_time)
-    Info::get().print("Caution: " + file_path.filename().string() + " was altered outside of juCi++");
-  return Gsv::View::on_focus_in_event(focus_event);
-};
 
 std::pair<char, unsigned> Source::View::find_tab_char_and_size() {
   std::unordered_map<char, size_t> tab_chars;

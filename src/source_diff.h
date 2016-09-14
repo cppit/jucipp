@@ -36,6 +36,8 @@ namespace Source {
     boost::filesystem::path file_path;
   protected:
     std::mutex file_path_mutex;
+    std::time_t last_write_time;
+    void check_last_write_time();
   public:
     virtual void configure();
     
