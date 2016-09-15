@@ -41,6 +41,8 @@ R"RAW(
         "cleanup_whitespace_characters": false,
         "show_whitespace_characters_comment": "Determines what kind of whitespaces should be drawn. Use comma-separated list of: space, tab, newline, nbsp, leading, text, trailing or all",
         "show_whitespace_characters": "",
+        "format_style_on_save_comment": "Performs clang-format on save for C/C++ and other curly-bracket languages supported by clang-format",
+        "format_style_on_save": false,
         "smart_brackets_comment": "If smart_inserts is enabled, this option is automatically enabled. When inserting an already closed bracket, the cursor might instead be moved, avoiding the need of arrow keys after autocomplete",
         "smart_brackets": true,
         "smart_inserts_comment": "When for instance inserting (, () gets inserted. Applies to: (), [], \", '. Also enables pressing ; inside an expression before a final ) to insert ; at the end of line, and deletions of empty insertions",

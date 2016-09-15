@@ -172,7 +172,7 @@ Source::View::View(const boost::filesystem::path &file_path, Glib::RefPtr<Gsv::L
                   language->get_id()=="go" || language->get_id()=="scala" || language->get_id()=="opencl")) {
     is_bracket_language=true;
     
-    auto_indent=[this]() {
+    format_style=[this]() {
       auto command=Config::get().terminal.clang_format_command;
       bool use_style_file=false;
       
@@ -208,47 +208,11 @@ Source::View::View(const boost::filesystem::path &file_path, Glib::RefPtr<Gsv::L
         command+="}\"";
       }
       
-      auto iter=get_buffer()->get_iter_at_line(get_buffer()->get_line_count()-1);
-      if(iter!=get_buffer()->end())
-        get_buffer()->insert(get_buffer()->end(), "\n");
       std::stringstream stdin_stream(get_buffer()->get_text()), stdout_stream;
       
       auto exit_status=Terminal::get().process(stdin_stream, stdout_stream, command, this->file_path.parent_path());
       if(exit_status==0) {
-        get_buffer()->begin_user_action();
-        auto iter=get_buffer()->get_insert()->get_iter();
-        auto cursor_line_nr=iter.get_line();
-        auto cursor_line_offset=iter.get_line_offset();
-        
-        //Insert new text without moving scrolled window
-        auto new_text=stdout_stream.str();
-        size_t start_line_index=0;
-        int line_nr=0;
-        for(size_t c=0;c<new_text.size();++c) {
-          if(new_text[c]=='\n') {
-            if(line_nr<get_buffer()->get_line_count()) {
-              auto start_iter=get_buffer()->get_iter_at_line(line_nr);
-              auto end_iter=get_iter_at_line_end(line_nr);
-              get_buffer()->erase(start_iter, end_iter);
-            }
-            else
-              get_buffer()->insert(get_buffer()->end(), "\n");
-            auto iter=get_buffer()->get_iter_at_line(line_nr);
-            get_buffer()->insert(iter, new_text.substr(start_line_index, c-start_line_index));
-            ++line_nr;
-            start_line_index=c+1;
-          }
-        }
-        iter=get_buffer()->get_iter_at_line(get_buffer()->get_line_count()-1);
-        if(iter!=get_buffer()->end())
-          get_buffer()->insert(get_buffer()->end(), "\n");
-        if(line_nr<get_buffer()->get_line_count()-1) {
-          auto iter=get_buffer()->get_iter_at_line(line_nr);
-          get_buffer()->erase(iter, get_buffer()->end());
-        }
-        get_buffer()->end_user_action();
-        
-        place_cursor_at_line_offset(cursor_line_nr, cursor_line_offset);
+        replace_text(stdout_stream.str());
       }
     };
   }
@@ -452,6 +416,9 @@ bool Source::View::save(const std::vector<Source::View*> &views) {
   if(Config::get().source.cleanup_whitespace_characters)
     cleanup_whitespace_characters();
   
+  if(Config::get().source.format_style_on_save && format_style)
+    format_style();
+  
   if(filesystem::write(file_path, get_buffer())) {
     boost::system::error_code ec;
     last_write_time=boost::filesystem::last_write_time(file_path, ec);
@@ -465,6 +432,63 @@ bool Source::View::save(const std::vector<Source::View*> &views) {
     Terminal::get().print("Error: could not save file "+file_path.string()+"\n", true);
     return false;
   }
+}
+
+void Source::View::replace_text(const std::string &text) {
+  get_buffer()->begin_user_action();
+  auto iter=get_buffer()->get_insert()->get_iter();
+  auto cursor_line_nr=iter.get_line();
+  auto cursor_line_offset=iter.get_line_offset();
+  
+  size_t start_line_index=0;
+  int line_nr=0;
+  for(size_t c=0;c<text.size();++c) {
+    if(text[c]=='\n' || c==text.size()-1) {
+      std::string line=text.substr(start_line_index, c-start_line_index);
+      if(text[c]!='\n')
+        line+=text[c];
+      //Remove carriage return
+      for(auto it=line.begin();it!=line.end();) {
+        if(*it=='\r')
+          it=line.erase(it);
+        else
+          ++it;
+      }
+      Gtk::TextIter iter;
+      if(line_nr<get_buffer()->get_line_count()) {
+        auto start_iter=get_buffer()->get_iter_at_line(line_nr);
+        auto end_iter=get_iter_at_line_end(line_nr);
+        
+        if(get_buffer()->get_text(start_iter, end_iter)!=line) {
+          get_buffer()->erase(start_iter, end_iter);
+          iter=get_buffer()->get_iter_at_line(line_nr);
+          get_buffer()->insert(iter, line);
+        }
+      }
+      else {
+        iter=get_buffer()->end();
+        get_buffer()->insert(iter, '\n'+line);
+      }
+      
+      ++line_nr;
+      start_line_index=c+1;
+    }
+  }
+  
+  if(text[text.size()-1]=='\n') {
+    Gtk::TextIter iter;
+    get_buffer()->insert(get_iter_at_line_end(line_nr-1), "\n");
+    ++line_nr;
+  }
+  
+  if(line_nr<get_buffer()->get_line_count()) {
+    auto iter=get_iter_at_line_end(line_nr-1);
+    get_buffer()->erase(iter, get_buffer()->end());
+  }
+  
+  get_buffer()->end_user_action();
+  
+  place_cursor_at_line_offset(cursor_line_nr, cursor_line_offset);
 }
 
 void Source::View::configure() {

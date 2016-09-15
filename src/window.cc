@@ -489,8 +489,8 @@ void Window::set_menu_actions() {
   });
   menu.add_action("source_indentation_auto_indent_buffer", [this]() {
     auto view=Notebook::get().get_current_view();
-    if(view && view->auto_indent)
-      view->auto_indent();
+    if(view && view->format_style)
+      view->format_style();
   });
   
   menu.add_action("source_goto_line", [this]() {
@@ -1077,7 +1077,7 @@ void Window::activate_menu_items() {
   menu.actions["source_goto_line"]->set_enabled(view);
   menu.actions["source_center_cursor"]->set_enabled(view);
   
-  menu.actions["source_indentation_auto_indent_buffer"]->set_enabled(view && static_cast<bool>(view->auto_indent));
+  menu.actions["source_indentation_auto_indent_buffer"]->set_enabled(view && static_cast<bool>(view->format_style));
   menu.actions["source_find_symbol_ctags"]->set_enabled(view);
   menu.actions["source_comments_toggle"]->set_enabled(view && static_cast<bool>(view->toggle_comments));
   menu.actions["source_comments_add_documentation"]->set_enabled(view && static_cast<bool>(view->add_documentation));

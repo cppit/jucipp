@@ -60,6 +60,8 @@ public:
     bool cleanup_whitespace_characters;
     std::string show_whitespace_characters;
     
+    bool format_style_on_save;
+    
     bool smart_brackets;
     bool smart_inserts;
     

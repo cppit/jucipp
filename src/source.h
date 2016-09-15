@@ -47,6 +47,9 @@ namespace Source {
     void rename(const boost::filesystem::path &path);
     
     virtual bool save(const std::vector<Source::View*> &views);
+    ///Set new text without moving scrolled window
+    void replace_text(const std::string &text);
+    
     void configure() override;
     
     void search_highlight(const std::string &text, bool case_sensitive, bool regex);
@@ -61,7 +64,7 @@ namespace Source {
     
     Glib::RefPtr<Gsv::Language> language;
     
-    std::function<void()> auto_indent;
+    std::function<void()> format_style;
     std::function<Offset()> get_declaration_location;
     std::function<std::vector<Offset>(const std::vector<Source::View*> &views)> get_implementation_locations;
     std::function<std::vector<std::pair<Offset, std::string> >(const std::vector<Source::View*> &views)> get_usages;
