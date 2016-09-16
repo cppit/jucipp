@@ -303,7 +303,7 @@ void Source::DiffView::git_goto_next_diff() {
   auto insert_iter=iter;
   bool wrapped=false;
   iter.forward_char();
-  while(!wrapped || iter<insert_iter) {
+  for(;;) {
     auto toggled_tags=iter.get_toggled_tags();
     for(auto &toggled_tag: toggled_tags) {
       if(toggled_tag->property_name()=="git_added" ||
@@ -314,11 +314,14 @@ void Source::DiffView::git_goto_next_diff() {
         return;
       }
     }
-    iter.forward_char();
+    if(wrapped && (iter==insert_iter || iter==get_buffer()->end()))
+      break;
     if(!wrapped && iter==get_buffer()->end()) {
       iter=get_buffer()->begin();
       wrapped=true;
     }
+    else
+      iter.forward_char();
   }
   Info::get().print("No changes found in current buffer");
 }
