@@ -65,7 +65,7 @@ Source::SpellCheckView::SpellCheckView() : Gsv::View() {
       else {
         auto previous_iter=iter;
         //When for instance using space to split two words
-        if(previous_iter.backward_char() && !is_word_iter(previous_iter)) {
+        if(previous_iter.backward_char() && (*previous_iter==' ' || *previous_iter=='-')) {
           auto first=previous_iter;
           auto second=iter;
           if(first.backward_char()) {
@@ -129,21 +129,20 @@ Source::SpellCheckView::SpellCheckView() : Gsv::View() {
   });
   
   // In case of for instance text paste or undo/redo
-  get_buffer()->signal_insert().connect([this](const Gtk::TextIter &end_iter, const Glib::ustring &inserted_string, int) {
+  get_buffer()->signal_insert().connect([this](const Gtk::TextIter &start_iter, const Glib::ustring &inserted_string, int) {
     if(spellcheck_checker==nullptr)
       return;
     if(inserted_string.size()<=1)
       return;
     
-    auto start_iter=end_iter;
-    start_iter.backward_chars(inserted_string.size());
-    if(!is_word_iter(start_iter) && !start_iter.starts_line())
-      start_iter.backward_char();
-    auto word=get_word(start_iter);
-    start_iter=word.first;
-    word=get_word(end_iter);
-    get_buffer()->remove_tag(spellcheck_error_tag, start_iter, word.second);
-  });
+    auto iter=start_iter;
+    if(!is_word_iter(iter) && !iter.starts_line())
+      iter.backward_char();
+    if(is_word_iter(iter)) {
+      auto word=get_word(iter);
+      get_buffer()->remove_tag(spellcheck_error_tag, word.first, word.second);
+    }
+  }, false);
   
   get_buffer()->signal_mark_set().connect([this](const Gtk::TextBuffer::iterator& iter, const Glib::RefPtr<Gtk::TextBuffer::Mark>& mark) {
     if(spellcheck_checker==nullptr)

@@ -229,7 +229,7 @@ void Source::DiffView::configure() {
               status_branch=repository->get_branch();
               dispatcher.post([this] {
                 if(update_status_branch)
-                update_status_branch(this);
+                  update_status_branch(this);
               });
             }
             catch(const std::exception &) {

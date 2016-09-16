@@ -744,7 +744,22 @@ void Source::View::paste() {
         text.replace(c, 1, "\n");
     }
   }
-
+  
+  //Exception for when pasted text is only whitespaces
+  bool only_whitespaces=true;
+  for(auto &chr: text) {
+    if(chr!='\n' && chr!='\r' && chr!=' ' && chr!='\t') {
+      only_whitespaces=false;
+      break;
+    }
+  }
+  if(only_whitespaces) {
+    Gtk::Clipboard::get()->set_text(text);
+    get_buffer()->paste_clipboard(Gtk::Clipboard::get());
+    scroll_to_cursor_delayed(this, false, false);
+    return;
+  }
+  
   get_buffer()->begin_user_action();
   if(get_buffer()->get_has_selection()) {
     Gtk::TextIter start, end;
