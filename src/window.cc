@@ -362,9 +362,9 @@ void Window::set_menu_actions() {
     if(auto view=Notebook::get().get_current_view()) {
       auto path = Dialog::save_file_as(view->file_path);
       if(path!="") {
-        std::ofstream file(path);
+        std::ofstream file(path, std::ofstream::binary);
         if(file) {
-          file << view->get_buffer()->get_text();
+          file << view->get_buffer()->get_text().raw();
           file.close();
           if(Directories::get().path!="")
             Directories::get().update();
@@ -372,7 +372,7 @@ void Window::set_menu_actions() {
           Terminal::get().print("File saved to: " + Notebook::get().get_current_view()->file_path.string()+"\n");
         }
         else
-          Terminal::get().print("Error saving file\n");
+          Terminal::get().print("Error saving file\n", true);
       }
     }
   });
