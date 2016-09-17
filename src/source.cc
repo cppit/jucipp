@@ -1910,11 +1910,27 @@ bool Source::View::on_key_press_event_smart_inserts(GdkEventKey *key) {
       left_char='"';
       right_char='"';
     }
-    // Insert `` around selection
-    else if(key->keyval==GDK_KEY_dead_grave) {
-      perform_insertion=true;
-      left_char='`';
-      right_char='`';
+    else if(language && language->get_id()=="markdown") {
+      if(key->keyval==GDK_KEY_dead_grave) {
+        perform_insertion=true;
+        left_char='`';
+        right_char='`';
+      }
+      if(key->keyval==GDK_KEY_asterisk) {
+        perform_insertion=true;
+        left_char='*';
+        right_char='*';
+      }
+      if(key->keyval==GDK_KEY_underscore) {
+        perform_insertion=true;
+        left_char='_';
+        right_char='_';
+      }
+      if(key->keyval==GDK_KEY_dead_tilde) {
+        perform_insertion=true;
+        left_char='~';
+        right_char='~';
+      }
     }
     if(perform_insertion) {
       Gtk::TextIter start, end;
