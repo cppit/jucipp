@@ -56,19 +56,21 @@ Window::Window() {
   
   auto status_hbox=Gtk::manage(new Gtk::HBox());
   status_hbox->set_homogeneous(true);
-  auto status_left_hbox=Gtk::manage(new Gtk::HBox());
-  status_left_hbox->pack_start(Notebook::get().status_file_path, Gtk::PACK_SHRINK);
-  status_left_hbox->pack_start(Notebook::get().status_branch, Gtk::PACK_SHRINK);
-  status_left_hbox->pack_start(Notebook::get().status_location, Gtk::PACK_SHRINK);
-  status_hbox->pack_start(*status_left_hbox);
-  auto status_right_vbox=Gtk::manage(new Gtk::HBox());
-  status_right_vbox->pack_end(Notebook::get().status_state, Gtk::PACK_SHRINK);
+  status_hbox->pack_start(*Gtk::manage(new Gtk::HBox()));
+  auto status_right_hbox=Gtk::manage(new Gtk::HBox());
+  status_right_hbox->pack_end(Notebook::get().status_state, Gtk::PACK_SHRINK);
   auto status_right_overlay=Gtk::manage(new Gtk::Overlay());
-  status_right_overlay->add(*status_right_vbox);
+  status_right_overlay->add(*status_right_hbox);
   status_right_overlay->add_overlay(Notebook::get().status_diagnostics);
   status_hbox->pack_end(*status_right_overlay);
+  
   auto status_overlay=Gtk::manage(new Gtk::Overlay());
   status_overlay->add(*status_hbox);
+  auto status_file_info_hbox=Gtk::manage(new Gtk::HBox);
+  status_file_info_hbox->pack_start(Notebook::get().status_file_path, Gtk::PACK_SHRINK);
+  status_file_info_hbox->pack_start(Notebook::get().status_branch, Gtk::PACK_SHRINK);
+  status_file_info_hbox->pack_start(Notebook::get().status_location, Gtk::PACK_SHRINK);
+  status_overlay->add_overlay(*status_file_info_hbox);
   status_overlay->add_overlay(Project::debug_status_label());
   
   auto vbox=Gtk::manage(new Gtk::VBox());
