@@ -31,6 +31,7 @@ public:
   std::vector<Source::View*> &get_views();
   
   void open(const boost::filesystem::path &file_path, size_t notebook_index=-1);
+  void reload(const boost::filesystem::path &file_path, size_t notebook_index=-1);
   void configure(size_t index);
   bool save(size_t index);
   bool save_current();
