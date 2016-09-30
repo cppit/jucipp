@@ -65,7 +65,8 @@ Source::SpellCheckView::SpellCheckView() : Gsv::View() {
       else {
         auto previous_iter=iter;
         //When for instance using space to split two words
-        if(previous_iter.backward_char() && (*previous_iter==' ' || *previous_iter=='-')) {
+        if(!iter.starts_line() && !iter.ends_line() && is_word_iter(iter) &&
+           previous_iter.backward_char() && !previous_iter.starts_line() && !is_word_iter(previous_iter)) {
           auto first=previous_iter;
           auto second=iter;
           if(first.backward_char()) {
