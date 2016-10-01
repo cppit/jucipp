@@ -105,6 +105,8 @@ R"RAW(
         "source_indentation_auto_indent_buffer": "<primary><shift>i",
         "source_goto_line": "<primary>g",
         "source_center_cursor": "<primary>l",
+        "source_cursor_history_back": "<alt>Left",
+        "source_cursor_history_forward": "<alt>Right",
         "source_find_symbol_ctags": "<primary><shift>f",
         "source_comments_toggle": "<primary>slash",
         "source_comments_add_documentation": "<primary><alt>slash",

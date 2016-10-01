@@ -167,6 +167,17 @@ Menu::Menu() {
           <attribute name='label' translatable='yes'>_Center _Cursor</attribute>
           <attribute name='action'>app.source_center_cursor</attribute>
         </item>
+        <submenu>
+          <attribute name='label' translatable='yes'>_Cursor _History</attribute>
+          <item>
+            <attribute name='label' translatable='yes'>_Back</attribute>
+            <attribute name='action'>app.source_cursor_history_back</attribute>
+          </item>
+          <item>
+            <attribute name='label' translatable='yes'>_Forward</attribute>
+            <attribute name='action'>app.source_cursor_history_forward</attribute>
+          </item>
+        </submenu>
       </section>
       <section>
         <item>

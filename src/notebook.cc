@@ -303,9 +303,69 @@ void Notebook::open(const boost::filesystem::path &file_path, size_t notebook_in
       source_view->update_tab_label(source_view);
   });
   
-  source_view->signal_focus_in_event().connect([this, source_view](GdkEventFocus *) {
-    set_current_view(source_view);
-    return false;
+  //Cursor history
+  auto update_cursor_locations=[this, source_view](const Gtk::TextBuffer::iterator &iter) {
+    bool mark_moved=false;
+    if(current_cursor_location!=static_cast<size_t>(-1)) {
+      auto &cursor_location=cursor_locations.at(current_cursor_location);
+      if(cursor_location.view==source_view && abs(cursor_location.mark->get_iter().get_line()-iter.get_line())<=2) {
+        source_view->get_buffer()->move_mark(cursor_location.mark, iter);
+        mark_moved=true;
+      }
+    }
+    if(!mark_moved) {
+      if(current_cursor_location!=static_cast<size_t>(-1)) {
+        for(auto it=cursor_locations.begin()+current_cursor_location+1;it!=cursor_locations.end();) {
+          it->view->get_buffer()->delete_mark(it->mark);
+          it=cursor_locations.erase(it);
+        }
+      }
+      cursor_locations.emplace_back(source_view, source_view->get_buffer()->create_mark(iter));
+      current_cursor_location=cursor_locations.size()-1;
+    }
+    
+    // Combine adjacent cursor histories that are similar
+    if(!cursor_locations.empty()) {
+      size_t cursor_locations_index=1;
+      auto last_it=cursor_locations.begin();
+      for(auto it=cursor_locations.begin()+1;it!=cursor_locations.end();) {
+        if(last_it->view==it->view && abs(last_it->mark->get_iter().get_line()-it->mark->get_iter().get_line())<=2) {
+          last_it->view->get_buffer()->delete_mark(last_it->mark);
+          last_it->mark=it->mark;
+          it=cursor_locations.erase(it);
+          if(current_cursor_location!=static_cast<size_t>(-1) && current_cursor_location>cursor_locations_index)
+            --current_cursor_location;
+        }
+        else {
+          ++it;
+          ++last_it;
+          ++cursor_locations_index;
+        }
+      }
+    }
+    
+    // Remove start of cache if cache limit is exceeded
+    while(cursor_locations.size()>10) {
+      cursor_locations.begin()->view->get_buffer()->delete_mark(cursor_locations.begin()->mark);
+      cursor_locations.erase(cursor_locations.begin());
+      if(current_cursor_location!=static_cast<size_t>(-1))
+        --current_cursor_location;
+    }
+    
+    if(current_cursor_location>=cursor_locations.size())
+      current_cursor_location=cursor_locations.size()-1;
+  };
+  source_view->get_buffer()->signal_mark_set().connect([this, source_view, update_cursor_locations](const Gtk::TextBuffer::iterator &iter, const Glib::RefPtr<Gtk::TextBuffer::Mark> &mark) {
+    if(mark->get_name()=="insert") {
+      if(disable_next_update_cursor_locations) {
+        disable_next_update_cursor_locations=false;
+        return;
+      }
+      update_cursor_locations(iter);
+    }
+  });
+  source_view->get_buffer()->signal_changed().connect([source_view, update_cursor_locations] {
+    update_cursor_locations(source_view->get_buffer()->get_insert()->get_iter());
   });
   
 #ifdef JUCI_ENABLE_DEBUG
@@ -330,6 +390,11 @@ void Notebook::open(const boost::filesystem::path &file_path, size_t notebook_in
     };
   }
 #endif
+  
+  source_view->signal_focus_in_event().connect([this, source_view](GdkEventFocus *) {
+    set_current_view(source_view);
+    return false;
+  });
   
   if(notebook_index==static_cast<size_t>(-1)) {
     if(!split)
@@ -454,6 +519,21 @@ bool Notebook::close(size_t index) {
 
     if(on_close_page)
       on_close_page(view);
+    
+    size_t cursor_locations_index=0;
+    for(auto it=cursor_locations.begin();it!=cursor_locations.end();) {
+      if(it->view==view) {
+        it=cursor_locations.erase(it);
+        if(current_cursor_location!=static_cast<size_t>(-1) && current_cursor_location>cursor_locations_index)
+          --current_cursor_location;
+      }
+      else {
+        ++it;
+        ++cursor_locations_index;
+      }
+    }
+    if(current_cursor_location>=cursor_locations.size())
+      current_cursor_location=cursor_locations.size()-1;
     
     if(auto clang_view=dynamic_cast<Source::ClangView*>(view))
       clang_view->async_delete();

@@ -502,6 +502,38 @@ void Window::set_menu_actions() {
     if(auto view=Notebook::get().get_current_view())
       view->scroll_to_cursor_delayed(view, true, false);
   });
+  menu.add_action("source_cursor_history_back", [this]() {
+    if(Notebook::get().cursor_locations.size()<=1)
+      return;
+    if(Notebook::get().current_cursor_location==static_cast<size_t>(-1))
+      Notebook::get().current_cursor_location=Notebook::get().cursor_locations.size()-1;
+    if(Notebook::get().current_cursor_location<1)
+      return;
+    
+    --Notebook::get().current_cursor_location;
+    auto &cursor_location=Notebook::get().cursor_locations.at(Notebook::get().current_cursor_location);
+    if(Notebook::get().get_current_view()!=cursor_location.view)
+      Notebook::get().open(cursor_location.view->file_path);
+    Notebook::get().disable_next_update_cursor_locations=true;
+    cursor_location.view->get_buffer()->place_cursor(cursor_location.mark->get_iter());
+    cursor_location.view->scroll_to_cursor_delayed(cursor_location.view, true, false);
+  });
+  menu.add_action("source_cursor_history_forward", [this]() {
+    if(Notebook::get().cursor_locations.size()<=1)
+      return;
+    if(Notebook::get().current_cursor_location==static_cast<size_t>(-1))
+      Notebook::get().current_cursor_location=Notebook::get().cursor_locations.size()-1;
+    if(Notebook::get().current_cursor_location==Notebook::get().cursor_locations.size()-1)
+      return;
+    
+    ++Notebook::get().current_cursor_location;
+    auto &cursor_location=Notebook::get().cursor_locations.at(Notebook::get().current_cursor_location);
+    if(Notebook::get().get_current_view()!=cursor_location.view)
+      Notebook::get().open(cursor_location.view->file_path);
+    Notebook::get().disable_next_update_cursor_locations=true;
+    cursor_location.view->get_buffer()->place_cursor(cursor_location.mark->get_iter());
+    cursor_location.view->scroll_to_cursor_delayed(cursor_location.view, true, false);
+  });
   
   menu.add_action("source_find_symbol_ctags", [this]() {
     if(auto view=Notebook::get().get_current_view()) {

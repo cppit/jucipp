@@ -16,6 +16,13 @@ class Notebook : public Gtk::HPaned {
     Gtk::Label label;
   };
   
+  class CursorLocation {
+  public:
+    CursorLocation(Source::View *view, Glib::RefPtr<Gtk::TextBuffer::Mark> mark) : view(view), mark(mark) {}
+    Source::View *view;
+    Glib::RefPtr<Gtk::TextBuffer::Mark> mark;
+  };
+  
 private:
   Notebook();
 public:
@@ -24,7 +31,6 @@ public:
     return singleton;
   }
   
-  //Source::View* get_view(int page);
   size_t size();
   Source::View* get_view(size_t index);
   Source::View* get_current_view();
@@ -52,6 +58,12 @@ public:
   
   std::function<void(Source::View*)> on_change_page;
   std::function<void(Source::View*)> on_close_page;
+  
+  /// Cursor history
+  std::vector<CursorLocation> cursor_locations;
+  size_t current_cursor_location=-1;
+  bool disable_next_update_cursor_locations=false;
+  
 private:
   size_t get_index(Source::View *view);
   Source::View *get_view(size_t notebook_index, int page);
