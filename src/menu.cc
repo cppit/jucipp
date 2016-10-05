@@ -63,6 +63,12 @@ Menu::Menu() {
       </section>
       <section>
         <item>
+          <attribute name='label' translatable='yes'>_Reload _File</attribute>
+          <attribute name='action'>app.reload_file</attribute>
+        </item>
+      </section>
+      <section>
+        <item>
           <attribute name='label' translatable='yes'>_Save</attribute>
           <attribute name='action'>app.save</attribute>
         </item>

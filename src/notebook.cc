@@ -128,6 +128,38 @@ std::vector<Source::View*> &Notebook::get_views() {
   return source_views;
 }
 
+void Notebook::reload(const boost::filesystem::path &file_path, size_t notebook_index) {
+  if(boost::filesystem::exists(file_path)) {
+    std::ifstream can_read(file_path.string());
+    if(!can_read) {
+      Terminal::get().print("Error: could not open "+file_path.string()+"\n", true);
+      return;
+    }
+    can_read.close();
+  }
+  
+  auto last_view=get_current_view();
+  int offset = last_view->get_buffer()->get_insert()->get_iter().get_offset();
+  int line = last_view->get_buffer()->get_insert()->get_iter().get_line();
+
+  auto language=Source::guess_language(file_path);
+  last_view->get_buffer()->erase(last_view->get_buffer()->begin(), last_view->get_buffer()->end());
+  last_view->get_source_buffer()->begin_not_undoable_action();
+  if(language) {
+    if(filesystem::read_non_utf8(file_path, last_view->get_buffer())==-1)
+      Terminal::get().print("Warning: "+file_path.string()+" is not a valid UTF-8 file. Saving might corrupt the file.\n");
+  }
+  else {
+    if(filesystem::read(file_path, last_view->get_buffer())==-1)
+      Terminal::get().print("Error: "+file_path.string()+" is not a valid UTF-8 file.\n", true);
+  }
+  
+  last_view->get_source_buffer()->end_not_undoable_action();
+
+  last_view->place_cursor_at_line_offset(line, offset);
+  last_view->get_buffer()->set_modified(true);
+}
+
 void Notebook::open(const boost::filesystem::path &file_path, size_t notebook_index) {
   if(notebook_index==1 && !split)
     toggle_split();
