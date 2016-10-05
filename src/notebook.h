@@ -37,7 +37,6 @@ public:
   std::vector<Source::View*> &get_views();
   
   void open(const boost::filesystem::path &file_path, size_t notebook_index=-1);
-  void reload(const boost::filesystem::path &file_path, size_t notebook_index=-1);
   void configure(size_t index);
   bool save(size_t index);
   bool save_current();
@@ -64,6 +63,7 @@ public:
   std::vector<CursorLocation> cursor_locations;
   size_t current_cursor_location=-1;
   bool disable_next_update_cursor_locations=false;
+  void delete_cursor_locations(Source::View *view);
   
 private:
   size_t get_index(Source::View *view);

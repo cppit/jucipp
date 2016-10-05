@@ -348,8 +348,36 @@ void Window::set_menu_actions() {
   });
   
   menu.add_action("reload_file", [this]() {
-    auto path = Notebook::get().get_current_view()->file_path;
-    Notebook::get().reload(path);
+    if(auto view=Notebook::get().get_current_view()) {
+      Gtk::MessageDialog dialog(*static_cast<Gtk::Window*>(get_toplevel()), "Reload file!", false, Gtk::MESSAGE_QUESTION, Gtk::BUTTONS_YES_NO);
+      dialog.set_default_response(Gtk::RESPONSE_YES);
+      dialog.set_secondary_text("Do you want to reload: " + view->file_path.string()+" ? The current buffer will be lost.");
+      int result = dialog.run();
+      if(result==Gtk::RESPONSE_YES) {
+        if(boost::filesystem::exists(view->file_path)) {
+          std::ifstream can_read(view->file_path.string());
+          if(!can_read) {
+            Terminal::get().print("Error: could not read "+view->file_path.string()+"\n", true);
+            return;
+          }
+          can_read.close();
+        }
+        else {
+          Terminal::get().print("Error: "+view->file_path.string()+" does not exist\n", true);
+          return;
+        }
+        
+        int line = view->get_buffer()->get_insert()->get_iter().get_line();
+        int offset = view->get_buffer()->get_insert()->get_iter().get_line_offset();
+        view->load();
+        while(Gtk::Main::events_pending())
+          Gtk::Main::iteration(false);
+        Notebook::get().delete_cursor_locations(view);
+        view->place_cursor_at_line_offset(line, offset);
+        view->scroll_to_cursor_delayed(view, true, false);
+        view->get_buffer()->set_modified(false);
+      }
+    }
   });
   
   menu.add_action("save", [this]() {
@@ -1107,6 +1135,7 @@ void Window::activate_menu_items() {
   auto &menu = Menu::get();
   auto view=Notebook::get().get_current_view();
   
+  menu.actions["reload_file"]->set_enabled(view);
   menu.actions["source_spellcheck"]->set_enabled(view);
   menu.actions["source_spellcheck_clear"]->set_enabled(view);
   menu.actions["source_spellcheck_next_error"]->set_enabled(view);

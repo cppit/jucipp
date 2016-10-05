@@ -44,6 +44,7 @@ namespace Source {
     View(const boost::filesystem::path &file_path, Glib::RefPtr<Gsv::Language> language);
     ~View();
     
+    bool load();
     void rename(const boost::filesystem::path &path);
     
     virtual bool save(const std::vector<Source::View*> &views);

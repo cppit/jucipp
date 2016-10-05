@@ -86,6 +86,7 @@ R"RAW(
         "new_folder": "<primary><shift>n",
         "open_file": "<primary>o",
         "open_folder": "<primary><shift>o",
+        "reload_file": "",
         "save": "<primary>s",
         "save_as": "<primary><shift>s",
         "print": "<primary>p",

@@ -90,16 +90,7 @@ const std::regex Source::View::no_bracket_statement_regex("^([ \\t]*)(if|for|els
 const std::regex Source::View::no_bracket_no_para_statement_regex("^([ \\t]*)(else) *$");
 
 Source::View::View(const boost::filesystem::path &file_path, Glib::RefPtr<Gsv::Language> language): Gsv::View(), SpellCheckView(), DiffView(file_path), language(language), status_diagnostics(0, 0, 0) {
-  get_source_buffer()->begin_not_undoable_action();
-  if(language) {
-    if(filesystem::read_non_utf8(file_path, get_buffer())==-1)
-      Terminal::get().print("Warning: "+file_path.string()+" is not a valid UTF-8 file. Saving might corrupt the file.\n");
-  }
-  else {
-    if(filesystem::read(file_path, get_buffer())==-1)
-      Terminal::get().print("Error: "+file_path.string()+" is not a valid UTF-8 file.\n", true);
-  }
-  get_source_buffer()->end_not_undoable_action();
+  load();
   
   get_buffer()->place_cursor(get_buffer()->get_iter_at_offset(0)); 
   
@@ -341,6 +332,30 @@ Source::View::View(const boost::filesystem::path &file_path, Glib::RefPtr<Gsv::L
       }
     };
   }
+}
+
+bool Source::View::load() {
+  get_source_buffer()->begin_not_undoable_action();
+  get_buffer()->erase(get_buffer()->begin(), get_buffer()->end());
+  bool status=true;
+  if(language) {
+    if(filesystem::read_non_utf8(file_path, get_buffer())==-1)
+      Terminal::get().print("Warning: "+file_path.string()+" is not a valid UTF-8 file. Saving might corrupt the file.\n");
+  }
+  else {
+    if(filesystem::read(file_path, get_buffer())==-1) {
+      Terminal::get().print("Error: "+file_path.string()+" is not a valid UTF-8 file.\n", true);
+      status=false;
+    }
+  }
+  get_source_buffer()->end_not_undoable_action();
+  
+  boost::system::error_code ec;
+  last_write_time=boost::filesystem::last_write_time(file_path, ec);
+  if(ec)
+    last_write_time=static_cast<std::time_t>(-1);
+  
+  return status;
 }
 
 void Source::View::rename(const boost::filesystem::path &path) {
