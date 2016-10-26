@@ -104,7 +104,7 @@ Source::SpellCheckView::SpellCheckView() : Gsv::View() {
         return false;
       }
       
-      bool spell_check=!is_code_iter(iter);
+      bool spell_check=get_source_buffer()->iter_has_context_class(iter, "string") || get_source_buffer()->iter_has_context_class(iter, "comment");
       if(!spell_check)
         begin_no_spellcheck_iter=iter;
       while(iter!=get_buffer()->end()) {
