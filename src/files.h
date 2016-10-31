@@ -26,7 +26,7 @@ const std::string default_config_file = R"RAW({
         "font_comment": "Use \"\" for default font, and for instance \"Monospace 12\" to also set size",)RAW"
 #ifdef __APPLE__
 R"RAW(
-        "font": "Menlo 12",)RAW"
+        "font": "Menlo 9",)RAW"
 #else
 #ifdef _WIN32
 R"RAW(
