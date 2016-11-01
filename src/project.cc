@@ -185,7 +185,7 @@ Project::Clang::DebugOptions::DebugOptions() : Base::DebugOptions() {
     set_visible(false);
   });
   
-  auto remote_vbox=Gtk::manage(new Gtk::VBox());
+  auto remote_vbox=Gtk::manage(new Gtk::Box(Gtk::Orientation::ORIENTATION_VERTICAL));
   remote_vbox->pack_start(remote_enabled, true, true);
   remote_vbox->pack_end(remote_host, true, true);
   

@@ -37,27 +37,27 @@ Window::Window() {
   auto directories_scrolled_window=Gtk::manage(new Gtk::ScrolledWindow());
   directories_scrolled_window->add(Directories::get());
   
-  auto notebook_vbox=Gtk::manage(new Gtk::VBox());
+  auto notebook_vbox=Gtk::manage(new Gtk::Box(Gtk::Orientation::ORIENTATION_VERTICAL));
   notebook_vbox->pack_start(Notebook::get());
   notebook_vbox->pack_end(EntryBox::get(), Gtk::PACK_SHRINK);
   
   auto terminal_scrolled_window=Gtk::manage(new Gtk::ScrolledWindow());
   terminal_scrolled_window->add(Terminal::get());
   
-  auto notebook_and_terminal_vpaned=Gtk::manage(new Gtk::VPaned());
+  auto notebook_and_terminal_vpaned=Gtk::manage(new Gtk::Paned(Gtk::Orientation::ORIENTATION_VERTICAL));
   notebook_and_terminal_vpaned->set_position(static_cast<int>(0.75*Config::get().window.default_size.second));
   notebook_and_terminal_vpaned->pack1(*notebook_vbox, Gtk::SHRINK);
   notebook_and_terminal_vpaned->pack2(*terminal_scrolled_window, Gtk::SHRINK);
   
-  auto hpaned=Gtk::manage(new Gtk::HPaned());
+  auto hpaned=Gtk::manage(new Gtk::Paned());
   hpaned->set_position(static_cast<int>(0.2*Config::get().window.default_size.first));
   hpaned->pack1(*directories_scrolled_window, Gtk::SHRINK);
   hpaned->pack2(*notebook_and_terminal_vpaned, Gtk::SHRINK);
   
-  auto status_hbox=Gtk::manage(new Gtk::HBox());
+  auto status_hbox=Gtk::manage(new Gtk::Box());
   status_hbox->set_homogeneous(true);
-  status_hbox->pack_start(*Gtk::manage(new Gtk::HBox()));
-  auto status_right_hbox=Gtk::manage(new Gtk::HBox());
+  status_hbox->pack_start(*Gtk::manage(new Gtk::Box()));
+  auto status_right_hbox=Gtk::manage(new Gtk::Box());
   status_right_hbox->pack_end(Notebook::get().status_state, Gtk::PACK_SHRINK);
   auto status_right_overlay=Gtk::manage(new Gtk::Overlay());
   status_right_overlay->add(*status_right_hbox);
@@ -66,19 +66,19 @@ Window::Window() {
   
   auto status_overlay=Gtk::manage(new Gtk::Overlay());
   status_overlay->add(*status_hbox);
-  auto status_file_info_hbox=Gtk::manage(new Gtk::HBox);
+  auto status_file_info_hbox=Gtk::manage(new Gtk::Box);
   status_file_info_hbox->pack_start(Notebook::get().status_file_path, Gtk::PACK_SHRINK);
   status_file_info_hbox->pack_start(Notebook::get().status_branch, Gtk::PACK_SHRINK);
   status_file_info_hbox->pack_start(Notebook::get().status_location, Gtk::PACK_SHRINK);
   status_overlay->add_overlay(*status_file_info_hbox);
   status_overlay->add_overlay(Project::debug_status_label());
   
-  auto vbox=Gtk::manage(new Gtk::VBox());
+  auto vbox=Gtk::manage(new Gtk::Box(Gtk::Orientation::ORIENTATION_VERTICAL));
   vbox->pack_start(*hpaned);
   vbox->pack_start(*status_overlay, Gtk::PACK_SHRINK);
   
-  auto overlay_vbox=Gtk::manage(new Gtk::VBox());
-  auto overlay_hbox=Gtk::manage(new Gtk::HBox());
+  auto overlay_vbox=Gtk::manage(new Gtk::Box(Gtk::Orientation::ORIENTATION_VERTICAL));
+  auto overlay_hbox=Gtk::manage(new Gtk::Box());
   overlay_vbox->set_hexpand(false);
   overlay_vbox->set_halign(Gtk::Align::ALIGN_START);
   overlay_vbox->pack_start(Info::get(), Gtk::PACK_SHRINK, 20);

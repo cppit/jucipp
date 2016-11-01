@@ -29,7 +29,7 @@ Notebook::TabLabel::TabLabel(const boost::filesystem::path &path, std::function<
   set_tooltip_text(path.string());
   
   auto button=Gtk::manage(new Gtk::Button());
-  auto hbox=Gtk::manage(new Gtk::HBox());
+  auto hbox=Gtk::manage(new Gtk::Box());
   
   hbox->set_can_focus(false);
   label.set_text(path.filename().string()+' ');
@@ -54,14 +54,14 @@ Notebook::TabLabel::TabLabel(const boost::filesystem::path &path, std::function<
   show_all();
 }
 
-Notebook::Notebook() : Gtk::HPaned(), notebooks(2) {
+Notebook::Notebook() : Gtk::Paned(), notebooks(2) {
   Gsv::init();
   
   for(auto &notebook: notebooks) {
     notebook.set_scrollable();
     notebook.set_group_name("source_notebooks");
     notebook.signal_switch_page().connect([this](Gtk::Widget *widget, guint) {
-      auto hbox=dynamic_cast<Gtk::HBox*>(widget);
+      auto hbox=dynamic_cast<Gtk::Box*>(widget);
       for(size_t c=0;c<hboxes.size();++c) {
         if(hboxes[c].get()==hbox) {
           focus_view(source_views[c]);
@@ -72,7 +72,7 @@ Notebook::Notebook() : Gtk::HPaned(), notebooks(2) {
       last_index=-1;
     });
     notebook.signal_page_added().connect([this](Gtk::Widget* widget, guint) {
-      auto hbox=dynamic_cast<Gtk::HBox*>(widget);
+      auto hbox=dynamic_cast<Gtk::Box*>(widget);
       for(size_t c=0;c<hboxes.size();++c) {
         if(hboxes[c].get()==hbox) {
           focus_view(source_views[c]);
@@ -279,7 +279,7 @@ void Notebook::open(const boost::filesystem::path &file_path, size_t notebook_in
   };
   
   scrolled_windows.emplace_back(new Gtk::ScrolledWindow());
-  hboxes.emplace_back(new Gtk::HBox());
+  hboxes.emplace_back(new Gtk::Box());
   scrolled_windows.back()->add(*source_views.back());
   hboxes.back()->pack_start(*scrolled_windows.back());
 
@@ -643,7 +643,7 @@ Source::View *Notebook::get_view(size_t notebook_index, int page) {
   if(notebook_index==static_cast<size_t>(-1) || notebook_index>=notebooks.size() ||
      page<0 || page>=notebooks[notebook_index].get_n_pages())
     return nullptr;
-  auto hbox=dynamic_cast<Gtk::HBox*>(notebooks[notebook_index].get_nth_page(page));
+  auto hbox=dynamic_cast<Gtk::Box*>(notebooks[notebook_index].get_nth_page(page));
   auto scrolled_window=dynamic_cast<Gtk::ScrolledWindow*>(hbox->get_children()[0]);
   return dynamic_cast<Source::View*>(scrolled_window->get_children()[0]);
 }

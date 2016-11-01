@@ -31,9 +31,9 @@ namespace Project {
 #ifdef JUCI_ENABLE_DEBUG
     class DebugOptions : public Gtk::Popover {
     public:
-      DebugOptions() : Gtk::Popover() { add(vbox); }
+      DebugOptions() : Gtk::Popover(), vbox(Gtk::Orientation::ORIENTATION_VERTICAL) { add(vbox); }
     protected:
-      Gtk::VBox vbox;
+      Gtk::Box vbox;
     };
 #endif
   public:

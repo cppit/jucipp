@@ -9,7 +9,7 @@
 #include <map>
 #include <sigc++/sigc++.h>
 
-class Notebook : public Gtk::HPaned {
+class Notebook : public Gtk::Paned {
   class TabLabel : public Gtk::EventBox {
   public:
     TabLabel(const boost::filesystem::path &path, std::function<void()> on_close);
@@ -75,7 +75,7 @@ private:
   std::vector<Source::View*> source_views; //Is NOT freed in destructor, this is intended for quick program exit.
   std::vector<std::unique_ptr<Gtk::Widget> > source_maps;
   std::vector<std::unique_ptr<Gtk::ScrolledWindow> > scrolled_windows;
-  std::vector<std::unique_ptr<Gtk::HBox> > hboxes;
+  std::vector<std::unique_ptr<Gtk::Box> > hboxes;
   std::vector<std::unique_ptr<TabLabel> > tab_labels;
   
   bool split=false;

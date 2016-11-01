@@ -50,7 +50,7 @@ protected:
   void resize();
   Gtk::TextView& text_view;
   Gtk::Window window;
-  Gtk::VBox vbox;
+  Gtk::Box vbox;
   Gtk::ScrolledWindow scrolled_window;
   ListViewText list_view_text;
   SearchEntry search_entry;
