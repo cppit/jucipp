@@ -201,7 +201,6 @@ boost::filesystem::path filesystem::get_canonical_path(const boost::filesystem::
 
 boost::filesystem::path filesystem::get_relative_path(const boost::filesystem::path &path, const boost::filesystem::path &base) noexcept {
   boost::filesystem::path relative_path;
-  boost::system::error_code ec;
 
   if(std::distance(path.begin(), path.end())<std::distance(base.begin(), base.end()))
     return boost::filesystem::path();
