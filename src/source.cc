@@ -1661,11 +1661,12 @@ bool Source::View::on_key_press_event_bracket_language(GdkEventKey* key) {
             auto it=previous_iter;
             long para_count=0;
             long square_count=0;
-            bool square_found=false;
+            bool square_outside_para_found=false;
             while(it.backward_char()) {
               if(*it==']' && is_code_iter(it)) {
                 --square_count;
-                square_found=true;
+                if(para_count==0)
+                  square_outside_para_found=true;
               }
               else if(*it=='[' && is_code_iter(it))
                 ++square_count;
@@ -1674,13 +1675,13 @@ bool Source::View::on_key_press_event_bracket_language(GdkEventKey* key) {
               else if(*it=='(' && is_code_iter(it))
                 ++para_count;
               
-              if(square_found && square_count==0 && para_count==0) {
+              if(square_outside_para_found && square_count==0 && para_count==0) {
                 add_semicolon=true;
                 break;
               }
               if(it==start_iter)
                 break;
-              if(!square_found && square_count==0 && para_count==0) {
+              if(!square_outside_para_found && square_count==0 && para_count==0) {
                 if((*it>='A' && *it<='Z') || (*it>='a' && *it<='z') || (*it>='0' && *it<='9') || *it=='_' ||
                    *it=='-' || *it==' ' || *it=='\t' || *it=='<' || *it=='>' || *it=='(' || *it==':' ||
                    *it=='*' || *it=='&' || *it=='/' || it.ends_line() || !is_code_iter(it)) {
