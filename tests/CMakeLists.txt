@@ -19,10 +19,20 @@ add_executable(process_test process_test.cc
 target_link_libraries(process_test ${global_libraries})
 add_test(process_test process_test)
 
+add_executable(compile_commands_test compile_commands_test.cc
+               $<TARGET_OBJECTS:project_shared> $<TARGET_OBJECTS:stubs>)
+target_link_libraries(compile_commands_test ${global_libraries})
+add_test(compile_commands_test compile_commands_test)
+
 add_executable(cmake_build_test cmake_build_test.cc
                $<TARGET_OBJECTS:project_shared> $<TARGET_OBJECTS:stubs>)
 target_link_libraries(cmake_build_test ${global_libraries})
 add_test(cmake_build_test cmake_build_test)
+
+add_executable(meson_build_test meson_build_test.cc
+               $<TARGET_OBJECTS:project_shared> $<TARGET_OBJECTS:stubs>)
+target_link_libraries(meson_build_test ${global_libraries})
+add_test(meson_build_test meson_build_test)
 
 add_executable(source_test source_test.cc
                $<TARGET_OBJECTS:project_shared> $<TARGET_OBJECTS:stubs>)

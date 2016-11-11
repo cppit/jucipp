@@ -156,16 +156,29 @@ R"RAW(
         "default_build_path_comment": "Use <project_directory_name> to insert the project top level directory name",
         "default_build_path": "./build",
         "debug_build_path_comment": "Use <project_directory_name> to insert the project top level directory name, and <default_build_path> to insert your default_build_path setting.",
-        "debug_build_path": "<default_build_path>/debug",)RAW"
+        "debug_build_path": "<default_build_path>/debug",
+        "cmake": {)RAW"
 #ifdef _WIN32
 R"RAW(
-        "cmake_command": "cmake -G\"MSYS Makefiles\"",)RAW"
+            "command": "cmake -G\"MSYS Makefiles\"",)RAW"
 #else
 R"RAW(
-        "cmake_command": "cmake",)RAW"
+            "command": "cmake",)RAW"
 #endif
 R"RAW(
-        "make_command": "cmake --build .",
+            "compile_command": "cmake --build ."
+        },
+        "meson": {)RAW"
+#ifdef __APPLE__
+R"RAW(
+            "command": "meson.py",)RAW"
+#else
+R"RAW(
+            "command": "meson",)RAW"
+#endif
+R"RAW(
+            "compile_command": "ninja"
+        },
         "save_on_compile_or_run": true,
         "clear_terminal_on_compile": true,
         "ctags_command": "ctags"

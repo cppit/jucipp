@@ -3,6 +3,7 @@
 
 #include <boost/filesystem.hpp>
 #include "cmake.h"
+#include "meson.h"
 
 namespace Project {
   class Build {
@@ -26,6 +27,17 @@ namespace Project {
     ::CMake cmake;
   public:
     CMakeBuild(const boost::filesystem::path &path);
+    
+    bool update_default(bool force=false) override;
+    bool update_debug(bool force=false) override;
+    
+    boost::filesystem::path get_executable(const boost::filesystem::path &path) override;
+  };
+  
+  class MesonBuild : public Build {
+    Meson meson;
+  public:
+    MesonBuild(const boost::filesystem::path &path);
     
     bool update_default(bool force=false) override;
     bool update_debug(bool force=false) override;
