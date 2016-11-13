@@ -97,11 +97,7 @@ bool Project::CMakeBuild::update_debug(bool force) {
 }
 
 boost::filesystem::path Project::CMakeBuild::get_executable(const boost::filesystem::path &path) {
-  auto executable=cmake.get_executable(path).string();
-  size_t pos=executable.find(project_path.string());
-  if(pos!=std::string::npos)
-    executable.replace(pos, project_path.string().size(), get_default_path().string());
-  return executable;
+  return cmake.get_executable(get_default_path(), path).string();
 }
 
 Project::MesonBuild::MesonBuild(const boost::filesystem::path &path) : Project::Build(), meson(path) {

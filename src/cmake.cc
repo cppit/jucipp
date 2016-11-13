@@ -4,6 +4,7 @@
 #include "config.h"
 #include "terminal.h"
 #include <regex>
+#include "compile_commands.h"
 
 CMake::CMake(const boost::filesystem::path &path) {
   const auto find_cmake_project=[this](const boost::filesystem::path &cmake_path) {
@@ -110,29 +111,67 @@ bool CMake::update_debug_build(const boost::filesystem::path &debug_build_path, 
   return false;
 }
 
-boost::filesystem::path CMake::get_executable(const boost::filesystem::path &file_path) {
-  auto executables = get_functions_parameters("add_executable");
+boost::filesystem::path CMake::get_executable(const boost::filesystem::path &build_path, const boost::filesystem::path &file_path) {
+  auto cmake_executables = get_functions_parameters("add_executable");
   
-  //Attempt to find executable based add_executable files and opened tab
-  boost::filesystem::path executable_path;
+  //Attempt to find executable based on add_executable in cmake files
+  auto cmake_fix_executable=[this, &build_path](std::string executable) {
+    size_t pos=executable.find(project_path.string());
+    if(pos!=std::string::npos)
+      executable.replace(pos, project_path.string().size(), build_path.string());
+    return executable;
+  };
   if(!file_path.empty()) {
-    for(auto &executable: executables) {
+    for(auto &executable: cmake_executables) {
       if(executable.second.size()>1) {
         for(size_t c=1;c<executable.second.size();c++) {
-          if(executable.second[c]==file_path.filename()) {
-            executable_path=executable.first.parent_path()/executable.second[0];
-            break;
+          if(executable.second[c]==file_path.filename() &&
+             executable.second[0].size()>0 && cmake_executables[0].second[0].substr(0, 2)!="${") {
+            return cmake_fix_executable((executable.first.parent_path()/executable.second[0]).string());
           }
         }
       }
-      if(!executable_path.empty())
-        break;
     }
   }
-  if(executable_path.empty() && executables.size()>0 && executables[0].second.size()>0)
-    executable_path=executables[0].first.parent_path()/executables[0].second[0];
+  if(cmake_executables.size()>0 && cmake_executables[0].second.size()>0 && cmake_executables[0].second[0].size()>0 &&
+     cmake_executables[0].second[0].substr(0, 2)!="${") {
+    return cmake_fix_executable((cmake_executables[0].first.parent_path()/cmake_executables[0].second[0]).string());
+  }
   
-  return executable_path;
+  //Attempt to find executable based on compile_commands.json
+  CompileCommands compile_commands(build_path);
+  size_t compile_commands_best_match_size=-1;
+  boost::filesystem::path compile_commands_best_match_executable;
+  for(auto &command: compile_commands.commands) {
+    boost::system::error_code ec;
+    auto command_file=boost::filesystem::canonical(command.file, ec);
+    if(!ec) {
+      auto values=command.paramter_values("-o");
+      if(!values.empty()) {
+        size_t pos;
+        values[0].erase(0, 11);
+        if((pos=values[0].find(".dir"))!=std::string::npos) {
+          boost::filesystem::path executable=values[0].substr(0, pos);
+          auto relative_path=filesystem::get_relative_path(command_file, project_path);
+          if(!relative_path.empty()) {
+            executable=build_path/relative_path.parent_path()/executable;
+            if(command_file==file_path)
+              return executable;
+            auto command_file_directory=command_file.parent_path();
+            if(filesystem::file_in_path(file_path, command_file_directory)) {
+              auto size=command_file_directory.string().size();
+              if(compile_commands_best_match_size==static_cast<size_t>(-1) || compile_commands_best_match_size<size) {
+                compile_commands_best_match_size=size;
+                compile_commands_best_match_executable=executable;
+              }
+            }
+          }
+        }
+      }
+    }
+  }
+  
+  return compile_commands_best_match_executable;
 }
 
 void CMake::read_files() {
