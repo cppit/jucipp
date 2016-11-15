@@ -683,8 +683,7 @@ bool Notebook::save_modified_dialog(size_t index) {
   dialog.set_secondary_text("Do you want to save: " + get_view(index)->file_path.string()+" ?");
   int result = dialog.run();
   if(result==Gtk::RESPONSE_YES) {
-    save(index);
-    return true;
+    return save(index);
   }
   else if(result==Gtk::RESPONSE_NO) {
     return true;
