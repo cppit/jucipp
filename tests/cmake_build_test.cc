@@ -32,9 +32,9 @@ int main() {
       auto functions_parameters=cmake.get_functions_parameters("project");
       g_assert(functions_parameters.at(0).second.at(0)=="juci");
       
-      g_assert(cmake.get_executable(project_path/"build", tests_path)==project_path/"build"/"tests"/"git_test");
+      g_assert(cmake.get_executable(project_path/"build", tests_path)==project_path/"build"/"tests"/"process_test");
       g_assert(cmake.get_executable(project_path/"build", tests_path/"cmake_build_test.cc")==project_path/"build"/"tests"/"cmake_build_test");
-      g_assert(cmake.get_executable(project_path/"build", tests_path/"non_existing_file.cc")==project_path/"build"/"tests"/"git_test");
+      g_assert(cmake.get_executable(project_path/"build", tests_path/"non_existing_file.cc")==project_path/"build"/"tests"/"process_test");
     }
     
     auto build=Project::Build::create(tests_path);

@@ -359,28 +359,26 @@ std::vector<std::pair<boost::filesystem::path, std::vector<std::string> > > CMak
   if(!parsed)
     parse();
   std::vector<std::pair<boost::filesystem::path, std::vector<std::string> > > functions;
-  size_t file_c=0;
-  for(auto &file: files) {
+  for(size_t c=files.size()-1;c!=static_cast<size_t>(-1);--c) {
     size_t pos=0;
-    while(pos<file.size()) {
+    while(pos<files[c].size()) {
       auto start_line=pos;
-      auto end_line=file.find('\n', start_line);
+      auto end_line=files[c].find('\n', start_line);
       if(end_line==std::string::npos)
-        end_line=file.size();
+        end_line=files[c].size();
       if(end_line>start_line) {
-        auto line=file.substr(start_line, end_line-start_line);
+        auto line=files[c].substr(start_line, end_line-start_line);
         std::smatch sm;
         if(std::regex_match(line, sm, function_regex)) {
           auto data=sm[1].str();
           while(data.size()>0 && data.back()==' ')
             data.pop_back();
           auto parameters=get_function_parameters(data);
-          functions.emplace(functions.begin(), paths[file_c], parameters);
+          functions.emplace_back(paths[c], parameters);
         }
       }
       pos=end_line+1;
     }
-    file_c++;
   }
   return functions;
 }
