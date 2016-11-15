@@ -32,7 +32,7 @@ CompileCommands::CompileCommands(const boost::filesystem::path &build_path) {
       bool backslash=false;
       bool single_quote=false;
       bool double_quote=false;
-      size_t parameter_start_pos=-1;
+      size_t parameter_start_pos=std::string::npos;
       size_t parameter_size=0;
       auto add_parameter=[&parameters, &parameters_str, &parameter_start_pos, &parameter_size] {
         auto parameter=parameters_str.substr(parameter_start_pos, parameter_size);
@@ -49,9 +49,9 @@ CompileCommands::CompileCommands(const boost::filesystem::path &build_path) {
         else if(parameters_str[c]=='\\')
           backslash=true;
         else if((parameters_str[c]==' ' || parameters_str[c]=='\t') && !backslash && !single_quote && !double_quote) {
-          if(parameter_start_pos!=static_cast<size_t>(-1)) {
+          if(parameter_start_pos!=std::string::npos) {
             add_parameter();
-            parameter_start_pos=-1;
+            parameter_start_pos=std::string::npos;
             parameter_size=0;
           }
           continue;
@@ -65,11 +65,11 @@ CompileCommands::CompileCommands(const boost::filesystem::path &build_path) {
           continue;
         }
         
-        if(parameter_start_pos==static_cast<size_t>(-1))
+        if(parameter_start_pos==std::string::npos)
           parameter_start_pos=c;
         ++parameter_size;
       }
-      if(parameter_start_pos!=static_cast<size_t>(-1))
+      if(parameter_start_pos!=std::string::npos)
         add_parameter();
       
       commands.emplace_back(Command{directory, parameters, boost::filesystem::absolute(file, build_path)});

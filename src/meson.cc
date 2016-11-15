@@ -33,14 +33,9 @@ Meson::Meson(const boost::filesystem::path &path) {
 }
 
 bool Meson::update_default_build(const boost::filesystem::path &default_build_path, bool force) {
-  if(project_path.empty())
+  if(project_path.empty() || !boost::filesystem::exists(project_path/"meson.build") || default_build_path.empty())
       return false;
   
-  if(!boost::filesystem::exists(project_path/"meson.build"))
-    return false;
-  
-  if(default_build_path.empty())
-    return false;
   if(!boost::filesystem::exists(default_build_path)) {
     boost::system::error_code ec;
     boost::filesystem::create_directories(default_build_path, ec);
@@ -65,14 +60,9 @@ bool Meson::update_default_build(const boost::filesystem::path &default_build_pa
 }
 
 bool Meson::update_debug_build(const boost::filesystem::path &debug_build_path, bool force) {
-  if(project_path.empty())
+  if(project_path.empty() || !boost::filesystem::exists(project_path/"meson.build") || debug_build_path.empty())
     return false;
   
-  if(!boost::filesystem::exists(project_path/"meson.build"))
-    return false;
-  
-  if(debug_build_path.empty())
-    return false;
   if(!boost::filesystem::exists(debug_build_path)) {
     boost::system::error_code ec;
     boost::filesystem::create_directories(debug_build_path, ec);

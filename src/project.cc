@@ -350,7 +350,7 @@ void Project::Clang::recreate_build() {
 std::pair<std::string, std::string> Project::Clang::debug_get_run_arguments() {
   auto debug_build_path=build->get_debug_path();
   auto default_build_path=build->get_default_path();
-  if(debug_build_path.empty())
+  if(debug_build_path.empty() || default_build_path.empty())
     return {"", ""};
   
   auto project_path=build->project_path.string();
@@ -384,11 +384,10 @@ Gtk::Popover *Project::Clang::debug_get_options() {
 
 void Project::Clang::debug_start() {
   auto debug_build_path=build->get_debug_path();
-  if(debug_build_path.empty() || !build->update_debug())
-    return;
   auto default_build_path=build->get_default_path();
-  if(default_build_path.empty())
+  if(debug_build_path.empty() || !build->update_debug() || default_build_path.empty())
     return;
+  
   auto project_path=std::make_shared<boost::filesystem::path>(build->project_path);
   
   auto run_arguments_it=debug_run_arguments.find(project_path->string());
