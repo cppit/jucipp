@@ -168,15 +168,8 @@ R"RAW(
 R"RAW(
             "compile_command": "cmake --build ."
         },
-        "meson": {)RAW"
-#ifdef __APPLE__
-R"RAW(
-            "command": "meson.py",)RAW"
-#else
-R"RAW(
-            "command": "meson",)RAW"
-#endif
-R"RAW(
+        "meson": {
+            "command": "meson",
             "compile_command": "ninja"
         },
         "save_on_compile_or_run": true,
