@@ -17,7 +17,7 @@ int main() {
     g_assert_cmpstr(compile_commands.commands.at(4).parameters.at(3).c_str(), ==, "te\\st");
     g_assert_cmpstr(compile_commands.commands.at(4).parameters.at(4).c_str(), ==, "te\\\\st");
     
-    auto parameter_values=compile_commands.commands.at(0).paramter_values("-o");
+    auto parameter_values=compile_commands.commands.at(0).parameter_values("-o");
     g_assert_cmpuint(parameter_values.size(), ==, 1);
     g_assert_cmpstr(parameter_values.at(0).c_str(), ==, "hello_lib@sta/main.cpp.o");
     

@@ -136,7 +136,7 @@ boost::filesystem::path CMake::get_executable(const boost::filesystem::path &bui
     boost::system::error_code ec;
     auto command_file=boost::filesystem::canonical(command.file, ec);
     if(!ec) {
-      auto values=command.paramter_values("-o");
+      auto values=command.parameter_values("-o");
       if(!values.empty()) {
         size_t pos;
         values[0].erase(0, 11);

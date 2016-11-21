@@ -94,7 +94,7 @@ boost::filesystem::path Meson::get_executable(const boost::filesystem::path &bui
     boost::system::error_code ec;
     auto command_file=boost::filesystem::canonical(command.file, ec);
     if(!ec) {
-      auto values=command.paramter_values("-o");
+      auto values=command.parameter_values("-o");
       if(!values.empty()) {
         size_t pos;
         if((pos=values[0].find("@"))!=std::string::npos) {

@@ -13,7 +13,7 @@ public:
     std::vector<std::string> parameters;
     boost::filesystem::path file;
     
-    std::vector<std::string> paramter_values(const std::string &parameter_name) const;
+    std::vector<std::string> parameter_values(const std::string &parameter_name) const;
   };
   
   CompileCommands(const boost::filesystem::path &build_path);

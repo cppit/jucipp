@@ -1,7 +1,7 @@
 #include "compile_commands.h"
 #include <boost/property_tree/json_parser.hpp>
 
-std::vector<std::string> CompileCommands::Command::paramter_values(const std::string &paramter_name) const {
+std::vector<std::string> CompileCommands::Command::parameter_values(const std::string &parameter_name) const {
   std::vector<std::string> parameter_values;
   
   bool found_argument=false;
@@ -10,7 +10,7 @@ std::vector<std::string> CompileCommands::Command::paramter_values(const std::st
       parameter_values.emplace_back(parameter);
       found_argument=false;
     }
-    else if(parameter==paramter_name)
+    else if(parameter==parameter_name)
       found_argument=true;
   }
   
