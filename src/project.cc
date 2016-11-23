@@ -224,7 +224,7 @@ std::pair<std::string, std::string> Project::Clang::get_run_arguments() {
     if(!executable.empty())
       arguments=filesystem::escape_argument(executable);
     else
-      arguments=filesystem::escape_argument(build->get_default_path());
+      arguments=filesystem::escape_argument(build->get_default_path().string());
   }
   
   return {project_path, arguments};
@@ -370,7 +370,7 @@ std::pair<std::string, std::string> Project::Clang::debug_get_run_arguments() {
       arguments=filesystem::escape_argument(executable);
     }
     else
-      arguments=filesystem::escape_argument(build->get_debug_path());
+      arguments=filesystem::escape_argument(build->get_debug_path().string());
   }
   
   return {project_path, arguments};

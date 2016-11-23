@@ -24,6 +24,11 @@ add_executable(compile_commands_test compile_commands_test.cc
 target_link_libraries(compile_commands_test ${global_libraries})
 add_test(compile_commands_test compile_commands_test)
 
+add_executable(filesystem_test filesystem_test.cc
+               $<TARGET_OBJECTS:project_shared> $<TARGET_OBJECTS:stubs>)
+target_link_libraries(filesystem_test ${global_libraries})
+add_test(filesystem_test filesystem_test)
+
 add_executable(cmake_build_test cmake_build_test.cc
                $<TARGET_OBJECTS:project_shared> $<TARGET_OBJECTS:stubs>)
 target_link_libraries(cmake_build_test ${global_libraries})

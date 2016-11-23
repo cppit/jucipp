@@ -138,28 +138,40 @@ bool filesystem::write(const std::string &path, Glib::RefPtr<Gtk::TextBuffer> bu
 
 std::string filesystem::escape_argument(const std::string &argument) {
   auto escaped=argument;
-  size_t pos=0;
-  while((pos=escaped.find(' ', pos))!=std::string::npos) {
-    escaped.replace(pos, 1, "\\ ");
-    pos+=2;
+  for(size_t pos=0;pos<escaped.size();++pos) {
+    if(escaped[pos]=='\\' || escaped[pos]==' ' || escaped[pos]=='(' || escaped[pos]==')' || escaped[pos]=='\'' || escaped[pos]=='"') {
+      escaped.insert(pos, "\\");
+      ++pos;
+    }
   }
   return escaped;
 }
 
-std::string filesystem::unescape(const std::string &argument) {
-  auto escaped=argument;
-  size_t pos=0;
-  while((pos=escaped.find("\\ ", pos))!=std::string::npos) {
-    escaped.replace(pos, 2, " ");
-    pos+=1;
-  }
-  if(escaped.size()>=2) {
-    if((escaped[0]=='\'' && escaped[escaped.size()-1]=='\'') ||
-       (escaped[0]=='"' && escaped[escaped.size()-1]=='"')) {
-      escaped=escaped.substr(1, escaped.size()-2);
+std::string filesystem::unescape_argument(const std::string &argument) {
+  auto unescaped=argument;
+  
+  if(unescaped.size()>=2) {
+    if((unescaped[0]=='\'' && unescaped[unescaped.size()-1]=='\'') ||
+       (unescaped[0]=='"' && unescaped[unescaped.size()-1]=='"')) {
+      char quotation_mark=unescaped[0];
+      unescaped=unescaped.substr(1, unescaped.size()-2);
+      for(size_t pos=1;pos<unescaped.size();++pos) {
+        if(unescaped[pos-1]=='\\' && unescaped[pos]==quotation_mark) {
+          unescaped.erase(pos-1, 1);
+          --pos;
+        }
+      }
+      return unescaped;
     }
   }
-  return escaped;
+  
+  for(size_t pos=1;pos<unescaped.size();++pos) {
+    if(unescaped[pos-1]=='\\' && (unescaped[pos]=='\\' || unescaped[pos]==' ' || unescaped[pos]=='(' || unescaped[pos]==')' || unescaped[pos]=='\'' || unescaped[pos]=='"')) {
+      unescaped.erase(pos-1, 1);
+      --pos;
+    }
+  }
+  return unescaped;
 }
 
 bool filesystem::file_in_path(const boost::filesystem::path &file_path, const boost::filesystem::path &path) {

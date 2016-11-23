@@ -60,9 +60,9 @@ void Debug::LLDB::start(const std::string &command, const boost::filesystem::pat
     if(c==command.size() || (!quote && !double_quote && !symbol && command[c]==' ')) {
       if(c>0 && start_pos!=std::string::npos) {
         if(executable.empty())
-          executable=filesystem::unescape(command.substr(start_pos, c-start_pos));
+          executable=filesystem::unescape_argument(command.substr(start_pos, c-start_pos));
         else
-          arguments.emplace_back(filesystem::unescape(command.substr(start_pos, c-start_pos)));
+          arguments.emplace_back(filesystem::unescape_argument(command.substr(start_pos, c-start_pos)));
         start_pos=std::string::npos;
       }
     }
