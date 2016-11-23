@@ -42,26 +42,32 @@ void Project::on_save(size_t index) {
   auto view=Notebook::get().get_view(index);
   if(!view)
     return;
+  boost::filesystem::path build_path;
   if(view->language && view->language->get_id()=="cmake") {
-    boost::filesystem::path cmake_path;
     if(view->file_path.filename()=="CMakeLists.txt")
-      cmake_path=view->file_path;
+      build_path=view->file_path;
     else
-      cmake_path=filesystem::find_file_in_path_parents("CMakeLists.txt", view->file_path.parent_path());
-    
-    if(!cmake_path.empty()) {
-      auto build=Build::create(cmake_path);
-      if(dynamic_cast<CMakeBuild*>(build.get())) {
-        build->update_default(true);
-        if(boost::filesystem::exists(build->get_debug_path()))
-          build->update_debug(true);
-        
-        for(size_t c=0;c<Notebook::get().size();c++) {
-          auto source_view=Notebook::get().get_view(c);
-          if(auto source_clang_view=dynamic_cast<Source::ClangView*>(source_view)) {
-            if(filesystem::file_in_path(source_clang_view->file_path, build->project_path))
-              source_clang_view->full_reparse_needed=true;
-          }
+      build_path=filesystem::find_file_in_path_parents("CMakeLists.txt", view->file_path.parent_path());
+  }
+  else if(view->language && view->language->get_id()=="meson") {
+    if(view->file_path.filename()=="meson.build")
+      build_path=view->file_path;
+    else
+      build_path=filesystem::find_file_in_path_parents("meson.build", view->file_path.parent_path());
+  }
+  
+  if(!build_path.empty()) {
+    auto build=Build::create(build_path);
+    if(dynamic_cast<CMakeBuild*>(build.get()) || dynamic_cast<MesonBuild*>(build.get())) {
+      build->update_default(true);
+      if(boost::filesystem::exists(build->get_debug_path()))
+        build->update_debug(true);
+      
+      for(size_t c=0;c<Notebook::get().size();c++) {
+        auto source_view=Notebook::get().get_view(c);
+        if(auto source_clang_view=dynamic_cast<Source::ClangView*>(source_view)) {
+          if(filesystem::file_in_path(source_clang_view->file_path, build->project_path))
+            source_clang_view->full_reparse_needed=true;
         }
       }
     }
@@ -140,7 +146,7 @@ std::unique_ptr<Project::Base> Project::create() {
   else
     build=Build::create(Directories::get().path);
   
-  if(dynamic_cast<CMakeBuild*>(build.get()))
+  if(dynamic_cast<CMakeBuild*>(build.get()) || dynamic_cast<MesonBuild*>(build.get()))
     return std::unique_ptr<Project::Base>(new Project::Clang(std::move(build)));
   else
     return std::unique_ptr<Project::Base>(new Project::Base(std::move(build)));
@@ -213,14 +219,10 @@ std::pair<std::string, std::string> Project::Clang::get_run_arguments() {
   
   if(arguments.empty()) {
     auto view=Notebook::get().get_current_view();
-    auto executable=build->get_executable(view?view->file_path:"").string();
+    auto executable=build->get_executable(view?view->file_path:Directories::get().path).string();
     
-    if(executable!="") {
-      size_t pos=executable.find(project_path);
-      if(pos!=std::string::npos)
-        executable.replace(pos, project_path.size(), build_path.string());
+    if(!executable.empty())
       arguments=filesystem::escape_argument(executable);
-    }
     else
       arguments=filesystem::escape_argument(build->get_default_path());
   }
@@ -238,7 +240,12 @@ void Project::Clang::compile() {
   
   compiling=true;
   Terminal::get().print("Compiling project "+build->project_path.string()+"\n");
-  Terminal::get().async_process(Config::get().project.make_command, default_build_path, [this](int exit_status) {
+  std::string compile_command;
+  if(dynamic_cast<CMakeBuild*>(build.get()))
+    compile_command=Config::get().project.cmake.compile_command;
+  else if(dynamic_cast<MesonBuild*>(build.get()))
+    compile_command=Config::get().project.meson.compile_command;
+  Terminal::get().async_process(compile_command, default_build_path, [this](int exit_status) {
     compiling=false;
   });
 }
@@ -257,15 +264,12 @@ void Project::Clang::compile_and_run() {
   
   if(arguments.empty()) {
     auto view=Notebook::get().get_current_view();
-    arguments=build->get_executable(view?view->file_path:"").string();
+    arguments=build->get_executable(view?view->file_path:Directories::get().path).string();
     if(arguments.empty()) {
       Terminal::get().print("Warning: could not find executable.\n");
-      Terminal::get().print("Solution: either use Project Set Run Arguments, or open a source file within a directory where add_executable is set.\n", true);
+      Terminal::get().print("Solution: either use Project Set Run Arguments, or open a source file within a directory where an executable is defined.\n", true);
       return;
     }
-    size_t pos=arguments.find(project_path.string());
-    if(pos!=std::string::npos)
-      arguments.replace(pos, project_path.string().size(), default_build_path.string());
     arguments=filesystem::escape_argument(arguments);
   }
   
@@ -274,7 +278,12 @@ void Project::Clang::compile_and_run() {
   
   compiling=true;
   Terminal::get().print("Compiling and running "+arguments+"\n");
-  Terminal::get().async_process(Config::get().project.make_command, default_build_path, [this, arguments, project_path](int exit_status){
+  std::string compile_command;
+  if(dynamic_cast<CMakeBuild*>(build.get()))
+    compile_command=Config::get().project.cmake.compile_command;
+  else if(dynamic_cast<MesonBuild*>(build.get()))
+    compile_command=Config::get().project.meson.compile_command;
+  Terminal::get().async_process(compile_command, default_build_path, [this, arguments, project_path](int exit_status){
     compiling=false;
     if(exit_status==EXIT_SUCCESS) {
       Terminal::get().async_process(arguments, project_path, [this, arguments](int exit_status){
@@ -339,8 +348,9 @@ void Project::Clang::recreate_build() {
 
 #ifdef JUCI_ENABLE_DEBUG
 std::pair<std::string, std::string> Project::Clang::debug_get_run_arguments() {
-  auto build_path=build->get_debug_path();
-  if(build_path.empty())
+  auto debug_build_path=build->get_debug_path();
+  auto default_build_path=build->get_default_path();
+  if(debug_build_path.empty() || default_build_path.empty())
     return {"", ""};
   
   auto project_path=build->project_path.string();
@@ -351,12 +361,12 @@ std::pair<std::string, std::string> Project::Clang::debug_get_run_arguments() {
   
   if(arguments.empty()) {
     auto view=Notebook::get().get_current_view();
-    auto executable=build->get_executable(view?view->file_path:"").string();
+    auto executable=build->get_executable(view?view->file_path:Directories::get().path).string();
     
-    if(executable!="") {
-      size_t pos=executable.find(project_path);
+    if(!executable.empty()) {
+      size_t pos=executable.find(default_build_path.string());
       if(pos!=std::string::npos)
-        executable.replace(pos, project_path.size(), build_path.string());
+        executable.replace(pos, default_build_path.string().size(), debug_build_path.string());
       arguments=filesystem::escape_argument(executable);
     }
     else
@@ -374,8 +384,10 @@ Gtk::Popover *Project::Clang::debug_get_options() {
 
 void Project::Clang::debug_start() {
   auto debug_build_path=build->get_debug_path();
-  if(debug_build_path.empty() || !build->update_debug())
+  auto default_build_path=build->get_default_path();
+  if(debug_build_path.empty() || !build->update_debug() || default_build_path.empty())
     return;
+  
   auto project_path=std::make_shared<boost::filesystem::path>(build->project_path);
   
   auto run_arguments_it=debug_run_arguments.find(project_path->string());
@@ -385,15 +397,15 @@ void Project::Clang::debug_start() {
   
   if(run_arguments->empty()) {
     auto view=Notebook::get().get_current_view();
-    *run_arguments=build->get_executable(view?view->file_path:"").string();
+    *run_arguments=build->get_executable(view?view->file_path:Directories::get().path).string();
     if(run_arguments->empty()) {
       Terminal::get().print("Warning: could not find executable.\n");
-      Terminal::get().print("Solution: either use Debug Set Run Arguments, or open a source file within a directory where add_executable is set.\n", true);
+      Terminal::get().print("Solution: either use Debug Set Run Arguments, or open a source file within a directory where an executable is defined.\n", true);
       return;
     }
-    size_t pos=run_arguments->find(project_path->string());
+    size_t pos=run_arguments->find(default_build_path.string());
     if(pos!=std::string::npos)
-      run_arguments->replace(pos, project_path->string().size(), debug_build_path.string());
+      run_arguments->replace(pos, default_build_path.string().size(), debug_build_path.string());
     *run_arguments=filesystem::escape_argument(*run_arguments);
   }
   
@@ -402,7 +414,12 @@ void Project::Clang::debug_start() {
   
   debugging=true;
   Terminal::get().print("Compiling and debugging "+*run_arguments+"\n");
-  Terminal::get().async_process(Config::get().project.make_command, debug_build_path, [this, run_arguments, project_path](int exit_status){
+  std::string compile_command;
+  if(dynamic_cast<CMakeBuild*>(build.get()))
+    compile_command=Config::get().project.cmake.compile_command;
+  else if(dynamic_cast<MesonBuild*>(build.get()))
+    compile_command=Config::get().project.meson.compile_command;
+  Terminal::get().async_process(compile_command, debug_build_path, [this, run_arguments, project_path](int exit_status){
     if(exit_status!=EXIT_SUCCESS)
       debugging=false;
     else {

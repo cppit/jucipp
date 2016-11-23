@@ -14,7 +14,9 @@ towards libclang with speed, stability, and ease of use in mind.
 * C++ warnings and errors on the fly
 * C++ Fix-its
 * Debug integration, both local and remote, through lldb
-* Automated CMake processing, including support for external libraries
+* Supports the following build systems:
+  * CMake
+  * Meson
 * Git support through libgit2
 * Fast C++ autocompletion
 * Keyword and buffer autocompletion for other file types

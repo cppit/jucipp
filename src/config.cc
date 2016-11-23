@@ -90,8 +90,10 @@ void Config::retrieve_config() {
   
   project.default_build_path=cfg.get<std::string>("project.default_build_path");
   project.debug_build_path=cfg.get<std::string>("project.debug_build_path");
-  project.make_command=cfg.get<std::string>("project.make_command");
-  project.cmake_command=cfg.get<std::string>("project.cmake_command");
+  project.cmake.command=cfg.get<std::string>("project.cmake.command");
+  project.cmake.compile_command=cfg.get<std::string>("project.cmake.compile_command");
+  project.meson.command=cfg.get<std::string>("project.meson.command");
+  project.meson.compile_command=cfg.get<std::string>("project.meson.compile_command");
   project.save_on_compile_or_run=cfg.get<bool>("project.save_on_compile_or_run");
   project.clear_terminal_on_compile=cfg.get<bool>("project.clear_terminal_on_compile");
   project.ctags_command=cfg.get<std::string>("project.ctags_command");

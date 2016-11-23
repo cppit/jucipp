@@ -22,10 +22,12 @@ set(project_files
 #Files used both in ../src and ../tests
 set(project_shared_files
     cmake.cc
+    compile_commands.cc
     ctags.cc
     dispatcher.cc
     filesystem.cc
     git.cc
+    meson.cc
     project_build.cc
     source.cc
     source_clang.cc

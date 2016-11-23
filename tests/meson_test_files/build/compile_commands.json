@@ -1,0 +1,27 @@
+[
+  {
+    "directory": "jucipp/tests/meson_test_files/build",
+    "command": "c++  '-Ihello_lib@sta' '-I..' '-I.' '-Wall' '-Winvalid-pch' '-Wnon-virtual-dtor' '-std=c++11' '-Wall' '-Wextra' '-O0' '-g' '-MMD' '-MQ' 'hello_lib@sta/main.cpp.o' '-MF' 'hello_lib@sta/main.cpp.o.d' -o 'hello_lib@sta/main.cpp.o' -c ../main.cpp",
+    "file": "../main.cpp"
+  },
+  {
+    "directory": "jucipp/tests/meson_test_files/build",
+    "command": "c++  '-Ihello@exe' '-I..' '-I.' '-Wall' '-Winvalid-pch' '-Wnon-virtual-dtor' '-std=c++11' '-Wall' '-Wextra' '-O0' '-g' '-MMD' '-MQ' 'hello@exe/main.cpp.o' '-MF' 'hello@exe/main.cpp.o.d' -o 'hello@exe/main.cpp.o' -c ../main.cpp",
+    "file": "../main.cpp"
+  },
+  {
+    "directory": "jucipp/tests/meson_test_files/build",
+    "command": "c++  '-Ia_subdir/hello2@exe' '-I../a_subdir' '-Ia_subdir' '-Wall' '-Winvalid-pch' '-Wnon-virtual-dtor' '-std=c++11' '-Wall' '-Wextra' '-O0' '-g' '-MMD' '-MQ' 'a_subdir/hello2@exe/main.cpp.o' '-MF' 'a_subdir/hello2@exe/main.cpp.o.d' -o 'a_subdir/hello2@exe/main.cpp.o' -c ../a_subdir/main.cpp",
+    "file": "../a_subdir/main.cpp"
+  },
+  {
+    "directory": "jucipp/tests/meson_test_files/build",
+    "command": "c++  '-Ianother_executable@exe' '-I..' '-I.' '-Wall' '-Winvalid-pch' '-Wnon-virtual-dtor' '-std=c++11' '-Wall' '-Wextra' '-O0' '-g' '-MMD' '-MQ' 'another_executable@exe/another_file.cpp.o' '-MF' 'another_executable@exe/another_file.cpp.o.d' -o 'another_executable@exe/another_file.cpp.o' -c ../another_file.cpp",
+    "file": "../another_file.cpp"
+  },
+  {
+    "directory": "jucipp/tests/meson_test_files/build",
+    "command": "'te\\'s\"t'  te\\ st test te\\\\st te\\\\\\\\st",
+    "file": "../parse_test.cpp"
+  }
+]

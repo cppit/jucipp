@@ -2,11 +2,29 @@
 #include "config.h"
 
 std::unique_ptr<Project::Build> Project::Build::create(const boost::filesystem::path &path) {
-  std::unique_ptr<Project::Build> cmake(new CMakeBuild(path));
-  if(!cmake->project_path.empty())
-    return cmake;
-  else
-    return std::make_unique<Project::Build>();
+  auto search_path=boost::filesystem::is_directory(path)?path:path.parent_path();
+  
+  while(true) {
+    if(boost::filesystem::exists(search_path/"CMakeLists.txt")) {
+      std::unique_ptr<Project::Build> cmake(new CMakeBuild(path));
+      if(!cmake->project_path.empty())
+        return cmake;
+      else
+        return std::make_unique<Project::Build>();
+    }
+    
+    if(boost::filesystem::exists(search_path/"meson.build")) {
+      std::unique_ptr<Project::Build> meson(new MesonBuild(path));
+      if(!meson->project_path.empty())
+        return meson;
+    }
+    
+    if(search_path==search_path.root_directory())
+      break;
+    search_path=search_path.parent_path();
+  }
+  
+  return std::make_unique<Project::Build>();
 }
 
 boost::filesystem::path Project::Build::get_default_path() {
@@ -79,5 +97,21 @@ bool Project::CMakeBuild::update_debug(bool force) {
 }
 
 boost::filesystem::path Project::CMakeBuild::get_executable(const boost::filesystem::path &path) {
-  return cmake.get_executable(path);
+  return cmake.get_executable(get_default_path(), path).string();
+}
+
+Project::MesonBuild::MesonBuild(const boost::filesystem::path &path) : Project::Build(), meson(path) {
+  project_path=meson.project_path;
+}
+
+bool Project::MesonBuild::update_default(bool force) {
+  return meson.update_default_build(get_default_path(), force);
+}
+
+bool Project::MesonBuild::update_debug(bool force) {
+  return meson.update_debug_build(get_debug_path(), force);
+}
+
+boost::filesystem::path Project::MesonBuild::get_executable(const boost::filesystem::path &path) {
+  return meson.get_executable(get_default_path(), path);
 }

@@ -36,10 +36,21 @@ public:
   
   class Project {
   public:
+    class CMake {
+    public:
+      std::string command;
+      std::string compile_command;
+    };
+    class Meson {
+    public:
+      std::string command;
+      std::string compile_command;
+    };
+    
     std::string default_build_path;
     std::string debug_build_path;
-    std::string cmake_command;
-    std::string make_command;
+    CMake cmake;
+    Meson meson;
     bool save_on_compile_or_run;
     bool clear_terminal_on_compile;
     std::string ctags_command;
