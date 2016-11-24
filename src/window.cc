@@ -376,6 +376,7 @@ void Window::set_menu_actions() {
         view->place_cursor_at_line_offset(line, offset);
         view->scroll_to_cursor_delayed(view, true, false);
         view->get_buffer()->set_modified(false);
+        view->full_reparse();
       }
     }
   });
