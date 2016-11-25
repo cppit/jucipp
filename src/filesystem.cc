@@ -139,7 +139,7 @@ bool filesystem::write(const std::string &path, Glib::RefPtr<Gtk::TextBuffer> bu
 std::string filesystem::escape_argument(const std::string &argument) {
   auto escaped=argument;
   for(size_t pos=0;pos<escaped.size();++pos) {
-    if(escaped[pos]=='\\' || escaped[pos]==' ' || escaped[pos]=='(' || escaped[pos]==')' || escaped[pos]=='\'' || escaped[pos]=='"') {
+    if(escaped[pos]==' ' || escaped[pos]=='(' || escaped[pos]==')' || escaped[pos]=='\'' || escaped[pos]=='"') {
       escaped.insert(pos, "\\");
       ++pos;
     }
@@ -166,7 +166,7 @@ std::string filesystem::unescape_argument(const std::string &argument) {
   }
   
   for(size_t pos=1;pos<unescaped.size();++pos) {
-    if(unescaped[pos-1]=='\\' && (unescaped[pos]=='\\' || unescaped[pos]==' ' || unescaped[pos]=='(' || unescaped[pos]==')' || unescaped[pos]=='\'' || unescaped[pos]=='"')) {
+    if(unescaped[pos-1]=='\\' && (unescaped[pos]==' ' || unescaped[pos]=='(' || unescaped[pos]==')' || unescaped[pos]=='\'' || unescaped[pos]=='"')) {
       unescaped.erase(pos-1, 1);
       --pos;
     }
