@@ -134,7 +134,7 @@ make install
 ```
 
 ##Windows with MSYS2 (https://msys2.github.io/)
-**MSYS2 does not yet support lldb (see https://github.com/cppit/jucipp/issues/190), but you can still compile juCi++ without debug support.**
+**See https://github.com/cppit/jucipp/issues/190 for details on adding debug support in MSYS2**
 
 Install dependencies (replace `x86_64` with `i686` for 32-bit MSYS2 installs):
 ```sh
