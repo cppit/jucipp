@@ -32,6 +32,8 @@ namespace Source {
     
     std::shared_ptr<Terminal::InProgress> parsing_in_progress;
     
+    void remove_include_guard(std::string &buffer);
+    
     void show_diagnostic_tooltips(const Gdk::Rectangle &rectangle) override;
     void show_type_tooltips(const Gdk::Rectangle &rectangle) override;
     

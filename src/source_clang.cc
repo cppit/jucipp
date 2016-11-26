@@ -104,7 +104,9 @@ void Source::ClangViewParse::parse_initialize() {
     }
     pos++;
   }
-  clang_tu = std::make_unique<clang::TranslationUnit>(clang_index, file_path.string(), get_compilation_commands(), buffer.raw());
+  auto &buffer_raw=const_cast<std::string&>(buffer.raw());
+  remove_include_guard(buffer_raw);
+  clang_tu = std::make_unique<clang::TranslationUnit>(clang_index, file_path.string(), get_compilation_commands(), buffer_raw);
   clang_tokens=clang_tu->get_tokens(0, buffer.bytes()-1);
   update_syntax();
   
@@ -133,7 +135,9 @@ void Source::ClangViewParse::parse_initialize() {
         });
       }
       else if (parse_process_state==ParseProcessState::PROCESSING && parse_lock.try_lock()) {
-        auto status=clang_tu->ReparseTranslationUnit(parse_thread_buffer.raw());
+        auto &parse_thread_buffer_raw=const_cast<std::string&>(parse_thread_buffer.raw());
+        remove_include_guard(parse_thread_buffer_raw);
+        auto status=clang_tu->ReparseTranslationUnit(parse_thread_buffer_raw);
         parsing_in_progress->done("done");
         if(status==0) {
           auto expected=ParseProcessState::PROCESSING;
@@ -242,6 +246,92 @@ std::vector<std::string> Source::ClangViewParse::get_compilation_commands() {
   }
 
   return arguments;
+}
+
+void Source::ClangViewParse::remove_include_guard(std::string &buffer) {
+  if(!(language && (language->get_id()=="chdr" || language->get_id()=="cpphdr")))
+    return;
+  
+  static std::regex ifndef_regex("^[ \t]*#ifndef.*$");
+  static std::regex define_regex("^[ \t]*#define.*$");
+  static std::regex endif_regex("^[ \t]*#endif.*$");
+  std::vector<std::pair<size_t, size_t>> ranges;
+  bool found_ifndef=false, found_define=false;
+  bool line_comment=false, multiline_comment=false;
+  size_t start_of_line=0;
+  std::string line;
+  for(size_t c=0;c<buffer.size();++c) {
+    if(!line_comment && !multiline_comment && buffer[c]=='/') {
+      if(c+1<buffer.size()) {
+        if(buffer[c+1]=='/')
+          line_comment=true;
+        else if(buffer[c+1]=='*')
+          multiline_comment=true;
+      }
+    }
+    else if(multiline_comment && buffer[c]=='*') {
+      if(c+1<buffer.size() && buffer[c+1]=='/')
+        multiline_comment=false;
+    }
+    else if(buffer[c]=='\n') {
+      bool empty_line=true;
+      for(auto &chr: line) {
+        if(chr!=' ' && chr!='\t') {
+          empty_line=false;
+          break;
+        }
+      }
+      
+      std::smatch sm;
+      if(empty_line) {}
+      else if(!found_ifndef && std::regex_match(line, sm, ifndef_regex)) {
+        found_ifndef=true;
+        ranges.emplace_back(start_of_line, c);
+      }
+      else if(found_ifndef && std::regex_match(line, sm, define_regex)) {
+        found_define=true;
+        ranges.emplace_back(start_of_line, c);
+        break;
+      }
+      else
+        return;
+      
+      line_comment=false;
+      line.clear();
+      if(c+1<buffer.size())
+        start_of_line=c+1;
+      else
+        return;
+    }
+    else if(buffer[c]!='\r' && !line_comment && !multiline_comment)
+      line+=buffer[c];
+  }
+  if(found_ifndef && found_define) {
+    size_t last_char_pos=std::string::npos;
+    for(size_t c=buffer.size()-1;c!=std::string::npos;--c) {
+      if(last_char_pos==std::string::npos) {
+        if(buffer[c]!=' ' && buffer[c]!='\t' && buffer[c]!='\r' && buffer[c]!='\n')
+          last_char_pos=c;
+      }
+      else {
+        if(buffer[c]=='\n' && c+1<buffer.size()) {
+          auto line=buffer.substr(c+1, last_char_pos-c);
+          std::smatch sm;
+          if(std::regex_match(line, sm, endif_regex)) {
+            ranges.emplace_back(c+1, last_char_pos+1);
+            for(auto &range: ranges) {
+              for(size_t c=range.first;c<range.second;++c) {
+                if(buffer[c]!='\r')
+                  buffer[c]=' ';
+              }
+            }
+            return;
+          }
+          return;
+        }
+      }
+    }
+  }
 }
 
 void Source::ClangViewParse::update_syntax() {
@@ -689,7 +779,10 @@ void Source::ClangViewAutocomplete::autocomplete() {
     std::unique_lock<std::mutex> lock(parse_mutex);
     if(parse_state==ParseState::PROCESSING) {
       parse_process_state=ParseProcessState::IDLE;
-      auto autocomplete_data=std::make_shared<std::vector<AutoCompleteData> >(autocomplete_get_suggestions(buffer->raw(), line_nr, column_nr));
+      
+      auto &buffer_raw=const_cast<std::string&>(buffer->raw());
+      remove_include_guard(buffer_raw);
+      auto autocomplete_data=std::make_shared<std::vector<AutoCompleteData> >(autocomplete_get_suggestions(buffer_raw, line_nr, column_nr));
       
       if(parse_state==ParseState::PROCESSING) {
         dispatcher.post([this, autocomplete_data] {
