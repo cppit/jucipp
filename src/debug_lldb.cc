@@ -59,8 +59,13 @@ void Debug::LLDB::start(const std::string &command, const boost::filesystem::pat
   for(size_t c=0;c<=command.size();c++) { 
     if(c==command.size() || (!quote && !double_quote && !symbol && command[c]==' ')) {
       if(c>0 && start_pos!=std::string::npos) {
-        if(executable.empty())
+        if(executable.empty()) {
           executable=filesystem::unescape_argument(command.substr(start_pos, c-start_pos));
+#ifdef _WIN32
+          if(remote_host.empty())
+            executable+=".exe";
+#endif
+        }
         else
           arguments.emplace_back(filesystem::unescape_argument(command.substr(start_pos, c-start_pos)));
         start_pos=std::string::npos;
