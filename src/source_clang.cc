@@ -252,7 +252,8 @@ void Source::ClangViewParse::remove_include_guard(std::string &buffer) {
   if(!(language && (language->get_id()=="chdr" || language->get_id()=="cpphdr")))
     return;
   
-  static std::regex ifndef_regex("^[ \t]*#ifndef[ \t]+([A-Za-z0-9_]+).*$");
+  static std::regex ifndef_regex1("^[ \t]*#ifndef[ \t]+([A-Za-z0-9_]+).*$");
+  static std::regex ifndef_regex2("^[ \t]*#if[ \t]+![ \t]*defined[ \t]*\\([ \t]*([A-Za-z0-9_]+).*$");
   static std::regex define_regex("^[ \t]*#define[ \t]+([A-Za-z0-9_]+).*$");
   static std::regex endif_regex("^[ \t]*#endif.*$");
   std::vector<std::pair<size_t, size_t>> ranges;
@@ -262,17 +263,16 @@ void Source::ClangViewParse::remove_include_guard(std::string &buffer) {
   std::string line;
   std::string preprocessor_identifier;
   for(size_t c=0;c<buffer.size();++c) {
-    if(!line_comment && !multiline_comment && buffer[c]=='/') {
-      if(c+1<buffer.size()) {
-        if(buffer[c+1]=='/')
-          line_comment=true;
-        else if(buffer[c+1]=='*')
-          multiline_comment=true;
-      }
+    if(!line_comment && !multiline_comment && buffer[c]=='/' && c+1<buffer.size() && (buffer[c+1]=='/' || buffer[c+1]=='*')) {
+      if(buffer[c+1]=='/')
+        line_comment=true;
+      else
+        multiline_comment=true;
+      ++c;
     }
-    else if(multiline_comment && buffer[c]=='*') {
-      if(c+1<buffer.size() && buffer[c+1]=='/')
-        multiline_comment=false;
+    else if(multiline_comment && buffer[c]=='*' && c+1<buffer.size() && buffer[c+1]=='/') {
+      multiline_comment=false;
+      ++c;
     }
     else if(buffer[c]=='\n') {
       bool empty_line=true;
@@ -285,7 +285,7 @@ void Source::ClangViewParse::remove_include_guard(std::string &buffer) {
       
       std::smatch sm;
       if(empty_line) {}
-      else if(!found_ifndef && std::regex_match(line, sm, ifndef_regex)) {
+      else if(!found_ifndef && (std::regex_match(line, sm, ifndef_regex1) || std::regex_match(line, sm, ifndef_regex2))) {
         found_ifndef=true;
         ranges.emplace_back(start_of_line, c);
         preprocessor_identifier=sm[1].str();
@@ -307,7 +307,7 @@ void Source::ClangViewParse::remove_include_guard(std::string &buffer) {
       else
         return;
     }
-    else if(buffer[c]!='\r' && !line_comment && !multiline_comment)
+    else if(!line_comment && !multiline_comment && buffer[c]!='\r')
       line+=buffer[c];
   }
   if(found_ifndef && found_define) {

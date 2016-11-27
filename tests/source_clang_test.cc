@@ -111,6 +111,10 @@ int main() {
     clang_view->remove_include_guard(source);
     g_assert_cmpstr(source.c_str(),==,"         \n//test\n         \n            \n");
     
+    source="#if !defined(F)\n#define F\n#endif\n";
+    clang_view->remove_include_guard(source);
+    g_assert_cmpstr(source.c_str(),==,"               \n         \n      \n");
+    
     source="#ifndef F\ntest\n#define F\n#endif  // F\n";
     auto old_source=source;
     clang_view->remove_include_guard(source);
