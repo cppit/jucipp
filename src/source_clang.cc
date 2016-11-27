@@ -252,14 +252,15 @@ void Source::ClangViewParse::remove_include_guard(std::string &buffer) {
   if(!(language && (language->get_id()=="chdr" || language->get_id()=="cpphdr")))
     return;
   
-  static std::regex ifndef_regex("^[ \t]*#ifndef.*$");
-  static std::regex define_regex("^[ \t]*#define.*$");
+  static std::regex ifndef_regex("^[ \t]*#ifndef[ \t]+([A-Za-z0-9_]+).*$");
+  static std::regex define_regex("^[ \t]*#define[ \t]+([A-Za-z0-9_]+).*$");
   static std::regex endif_regex("^[ \t]*#endif.*$");
   std::vector<std::pair<size_t, size_t>> ranges;
   bool found_ifndef=false, found_define=false;
   bool line_comment=false, multiline_comment=false;
   size_t start_of_line=0;
   std::string line;
+  std::string preprocessor_identifier;
   for(size_t c=0;c<buffer.size();++c) {
     if(!line_comment && !multiline_comment && buffer[c]=='/') {
       if(c+1<buffer.size()) {
@@ -287,10 +288,13 @@ void Source::ClangViewParse::remove_include_guard(std::string &buffer) {
       else if(!found_ifndef && std::regex_match(line, sm, ifndef_regex)) {
         found_ifndef=true;
         ranges.emplace_back(start_of_line, c);
+        preprocessor_identifier=sm[1].str();
       }
       else if(found_ifndef && std::regex_match(line, sm, define_regex)) {
         found_define=true;
         ranges.emplace_back(start_of_line, c);
+        if(preprocessor_identifier!=sm[1].str())
+          return;
         break;
       }
       else
