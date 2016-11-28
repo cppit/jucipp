@@ -1350,38 +1350,12 @@ bool Source::View::on_key_press_event_basic(GdkEventKey* key) {
     }
     
     iter=get_buffer()->get_insert()->get_iter();
-    auto previous_iter=iter;
-    previous_iter.backward_char();
-    auto start_iter=previous_iter;
-    Gtk::TextIter open_non_curly_bracket_iter;
-    bool open_non_curly_bracket_iter_found=false;
-    if(find_open_non_curly_bracket_backward(start_iter, open_non_curly_bracket_iter)) {
-      open_non_curly_bracket_iter_found=true;
-      start_iter=get_tabs_end_iter(get_buffer()->get_iter_at_line(open_non_curly_bracket_iter.get_line()));
-    }
-    else
-      start_iter=get_tabs_end_iter(get_buffer()->get_iter_at_line(find_start_of_sentence(start_iter).get_line()));
-    auto tabs=get_line_before(start_iter);
-    
-    //Indent multiline expressions
-    if(open_non_curly_bracket_iter_found) {
-      auto tabs_end_iter=get_tabs_end_iter(open_non_curly_bracket_iter);
-      auto tabs=get_line_before(get_tabs_end_iter(open_non_curly_bracket_iter));
-      auto iter=tabs_end_iter;
-      while(iter<=open_non_curly_bracket_iter) {
-        tabs+=' ';
-        iter.forward_char();
-      }
-      get_buffer()->insert_at_cursor("\n"+tabs);
-      scroll_to(get_buffer()->get_insert());
-      return true;
-    }
+    auto tabs=get_line_before(get_tabs_end_iter(iter));
     
     int line_nr=iter.get_line();
-    if((line_nr+1)<get_buffer()->get_line_count()) {
-      auto next_line_tabs_end_iter=get_tabs_end_iter(line_nr+1);
-      auto next_line_tabs=get_line_before(next_line_tabs_end_iter);
-      if(iter.ends_line() && next_line_tabs.size()>tabs.size()) {
+    if(iter.ends_line() && (line_nr+1)<get_buffer()->get_line_count()) {
+      auto next_line_tabs=get_line_before(get_tabs_end_iter(line_nr+1));
+      if(next_line_tabs.size()>tabs.size()) {
         get_buffer()->insert_at_cursor("\n"+next_line_tabs);
         scroll_to(get_buffer()->get_insert());
         return true;
