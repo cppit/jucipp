@@ -533,7 +533,7 @@ void Source::View::configure() {
   property_show_line_numbers() = Config::get().source.show_line_numbers;
   if(Config::get().source.font.size()>0)
     override_font(Pango::FontDescription(Config::get().source.font));
-#if GTKSOURCEVIEWMM_MAJOR_VERSION > 2 & GTKSOURCEVIEWMM_MINOR_VERSION > 15
+#if GTKSOURCEVIEWMM_MAJOR_VERSION > 3 || (GTKSOURCEVIEWMM_MAJOR_VERSION == 3 && GTKSOURCEVIEWMM_MINOR_VERSION >= 16)
   if(Config::get().source.show_background_pattern)
     gtk_source_view_set_background_pattern(this->gobj(), GTK_SOURCE_BACKGROUND_PATTERN_TYPE_GRID);
   else
@@ -697,7 +697,12 @@ void Source::View::search_forward() {
   get_buffer()->get_selection_bounds(insert, selection_bound);
   auto& start=selection_bound;
   Gtk::TextIter match_start, match_end;
+#if defined(GTK_SOURCE_MAJOR_VERSION) && (GTK_SOURCE_MAJOR_VERSION > 3 || (GTK_SOURCE_MAJOR_VERSION == 3 && GTK_SOURCE_MINOR_VERSION >= 22))
+  gboolean has_wrapped_around;
+  if(gtk_source_search_context_forward2(search_context, start.gobj(), match_start.gobj(), match_end.gobj(), &has_wrapped_around)) {
+#else
   if(gtk_source_search_context_forward(search_context, start.gobj(), match_start.gobj(), match_end.gobj())) {
+#endif
     get_buffer()->select_range(match_start, match_end);
     scroll_to(get_buffer()->get_insert());
   }
@@ -708,7 +713,12 @@ void Source::View::search_backward() {
   get_buffer()->get_selection_bounds(insert, selection_bound);
   auto &start=insert;
   Gtk::TextIter match_start, match_end;
+#if defined(GTK_SOURCE_MAJOR_VERSION) && (GTK_SOURCE_MAJOR_VERSION > 3 || (GTK_SOURCE_MAJOR_VERSION == 3 && GTK_SOURCE_MINOR_VERSION >= 22))
+  gboolean has_wrapped_around;
+  if(gtk_source_search_context_backward2(search_context, start.gobj(), match_start.gobj(), match_end.gobj(), &has_wrapped_around)) {
+#else
   if(gtk_source_search_context_backward(search_context, start.gobj(), match_start.gobj(), match_end.gobj())) {
+#endif
     get_buffer()->select_range(match_start, match_end);
     scroll_to(get_buffer()->get_insert());
   }
@@ -719,9 +729,18 @@ void Source::View::replace_forward(const std::string &replacement) {
   get_buffer()->get_selection_bounds(insert, selection_bound);
   auto &start=insert;
   Gtk::TextIter match_start, match_end;
+#if defined(GTK_SOURCE_MAJOR_VERSION) && (GTK_SOURCE_MAJOR_VERSION > 3 || (GTK_SOURCE_MAJOR_VERSION == 3 && GTK_SOURCE_MINOR_VERSION >= 22))
+  gboolean has_wrapped_around;
+  if(gtk_source_search_context_forward2(search_context, start.gobj(), match_start.gobj(), match_end.gobj(), &has_wrapped_around)) {
+#else
   if(gtk_source_search_context_forward(search_context, start.gobj(), match_start.gobj(), match_end.gobj())) {
+#endif
     auto offset=match_start.get_offset();
+#if defined(GTK_SOURCE_MAJOR_VERSION) && (GTK_SOURCE_MAJOR_VERSION > 3 || (GTK_SOURCE_MAJOR_VERSION == 3 && GTK_SOURCE_MINOR_VERSION >= 22))
+    gtk_source_search_context_replace2(search_context, match_start.gobj(), match_end.gobj(), replacement.c_str(), replacement.size(), nullptr);
+#else
     gtk_source_search_context_replace(search_context, match_start.gobj(), match_end.gobj(), replacement.c_str(), replacement.size(), nullptr);
+#endif
     
     Glib::ustring replacement_ustring=replacement;
     get_buffer()->select_range(get_buffer()->get_iter_at_offset(offset), get_buffer()->get_iter_at_offset(offset+replacement_ustring.size()));
@@ -734,9 +753,18 @@ void Source::View::replace_backward(const std::string &replacement) {
   get_buffer()->get_selection_bounds(insert, selection_bound);
   auto &start=selection_bound;
   Gtk::TextIter match_start, match_end;
+#if defined(GTK_SOURCE_MAJOR_VERSION) && (GTK_SOURCE_MAJOR_VERSION > 3 || (GTK_SOURCE_MAJOR_VERSION == 3 && GTK_SOURCE_MINOR_VERSION >= 22))
+  gboolean has_wrapped_around;
+  if(gtk_source_search_context_backward2(search_context, start.gobj(), match_start.gobj(), match_end.gobj(), &has_wrapped_around)) {
+#else
   if(gtk_source_search_context_backward(search_context, start.gobj(), match_start.gobj(), match_end.gobj())) {
+#endif
     auto offset=match_start.get_offset();
+#if defined(GTK_SOURCE_MAJOR_VERSION) && (GTK_SOURCE_MAJOR_VERSION > 3 || (GTK_SOURCE_MAJOR_VERSION == 3 && GTK_SOURCE_MINOR_VERSION >= 22))
+    gtk_source_search_context_replace2(search_context, match_start.gobj(), match_end.gobj(), replacement.c_str(), replacement.size(), nullptr);
+#else
     gtk_source_search_context_replace(search_context, match_start.gobj(), match_end.gobj(), replacement.c_str(), replacement.size(), nullptr);
+#endif
 
     get_buffer()->select_range(get_buffer()->get_iter_at_offset(offset), get_buffer()->get_iter_at_offset(offset+replacement.size()));
     scroll_to(get_buffer()->get_insert());
