@@ -58,6 +58,13 @@ Ctags::Location Ctags::get_location(const std::string &line, bool markup) {
   std::smatch sm;
   if(std::regex_match(line_fixed, sm, regex)) {
     location.symbol=sm[1].str();
+    //fix location.symbol for operators
+    if(9<location.symbol.size() && location.symbol[8]==' ' && location.symbol.compare(0, 8, "operator")==0) {
+      auto &chr=location.symbol[9];
+      if(!((chr>='a' && chr<='z') || (chr>='A' && chr<='Z') || (chr>='0' && chr<='9') || chr=='_'))
+        location.symbol.erase(8, 1);
+    }
+    
     location.file_path=sm[2].str();
     location.source=sm[4].str();
     try {
@@ -76,11 +83,12 @@ Ctags::Location Ctags::get_location(const std::string &line, bool markup) {
       
       if(markup) {
         location.source=Glib::Markup::escape_text(location.source);
+        auto symbol=Glib::Markup::escape_text(location.symbol);
         pos=-1;
-        while((pos=location.source.find(location.symbol, pos+1))!=std::string::npos) {
-          location.source.insert(pos+location.symbol.size(), "</b>");
+        while((pos=location.source.find(symbol, pos+1))!=std::string::npos) {
+          location.source.insert(pos+symbol.size(), "</b>");
           location.source.insert(pos, "<b>");
-          pos+=7+location.symbol.size();
+          pos+=7+symbol.size();
         }
       }
     }

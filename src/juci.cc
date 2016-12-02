@@ -75,7 +75,7 @@ void Application::on_activate() {
     else {
       std::string files_in_directory;
       for(auto it=files.begin();it!=files.end();) {
-        if(it->first.generic_string().substr(0, directory.generic_string().size()+1)==directory.generic_string()+'/') {
+        if(it->first.generic_string().compare(0, directory.generic_string().size()+1, directory.generic_string()+'/')==0) {
           files_in_directory+=" "+it->first.string();
           it=files.erase(it);
         }

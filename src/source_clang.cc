@@ -483,97 +483,80 @@ void Source::ClangViewParse::show_type_tooltips(const Gdk::Rectangle &rectangle)
     get_iter_location(iter, iter_rectangle);
     if(iter.ends_line() && location_x>iter_rectangle.get_x())
       return;
-    if(iter_rectangle.get_x()>location_x) {
-      if(!iter.starts_line()) {
-        if(!iter.backward_char())
-          return;
-      }
-    }
     
-    bool found_token=false;
-    if(!((*iter>='a' && *iter<='z') || (*iter>='A' && *iter<='Z') || (*iter>='0' && *iter<='9') || *iter=='_')) {
-      if(!iter.backward_char())
-        return;
-    }
-      
-    while((*iter>='a' && *iter<='z') || (*iter>='A' && *iter<='Z') || (*iter>='0' && *iter<='9') || *iter=='_') {
-      if(!found_token)
-        found_token=true;
-      if(!iter.backward_char())
-        return;
-    }
-    if(found_token && iter.forward_char()) {
-      auto tokens=clang_tu->get_tokens(iter.get_line()+1, iter.get_line_index()+1,
-                                       iter.get_line()+1, iter.get_line_index()+1);
-      
-      type_tooltips.clear();
-      for(auto &token: *tokens) {
-        auto cursor=token.get_cursor();
-        if(token.get_kind()==clang::Token::Kind::Identifier && cursor.has_type_description()) {
-          if(token.get_cursor().get_kind()==clang::Cursor::Kind::CallExpr) //These cursors are buggy
-            continue;
-          auto start=get_buffer()->get_iter_at_line_index(token.offsets.first.line-1, token.offsets.first.index-1);
-          auto end=get_buffer()->get_iter_at_line_index(token.offsets.second.line-1, token.offsets.second.index-1);
-          auto create_tooltip_buffer=[this, &token]() {
-            auto tooltip_buffer=Gtk::TextBuffer::create(get_buffer()->get_tag_table());
-            tooltip_buffer->insert_with_tag(tooltip_buffer->get_insert()->get_iter(), "Type: "+token.get_cursor().get_type_description(), "def:note");
-            auto brief_comment=token.get_cursor().get_brief_comments();
-            if(brief_comment!="")
-              tooltip_buffer->insert_with_tag(tooltip_buffer->get_insert()->get_iter(), "\n\n"+brief_comment, "def:note");
-
+    auto line=static_cast<unsigned>(iter.get_line());
+    auto index=static_cast<unsigned>(iter.get_line_index());
+    type_tooltips.clear();
+    for(size_t c=clang_tokens->size()-1;c!=static_cast<size_t>(-1);--c) {
+      auto &token=(*clang_tokens)[c];
+      if(token.is_identifier()) {
+        if(line==token.offsets.first.line-1 && index>=token.offsets.first.index-1 && index <=token.offsets.second.index-1) {
+          auto cursor=token.get_cursor();
+          auto referenced=cursor.get_referenced();
+          if(referenced) {
+            auto start=get_buffer()->get_iter_at_line_index(token.offsets.first.line-1, token.offsets.first.index-1);
+            auto end=get_buffer()->get_iter_at_line_index(token.offsets.second.line-1, token.offsets.second.index-1);
+            auto create_tooltip_buffer=[this, &token]() {
+              auto tooltip_buffer=Gtk::TextBuffer::create(get_buffer()->get_tag_table());
+              tooltip_buffer->insert_with_tag(tooltip_buffer->get_insert()->get_iter(), "Type: "+token.get_cursor().get_type_description(), "def:note");
+              auto brief_comment=token.get_cursor().get_brief_comments();
+              if(brief_comment!="")
+                tooltip_buffer->insert_with_tag(tooltip_buffer->get_insert()->get_iter(), "\n\n"+brief_comment, "def:note");
+  
 #ifdef JUCI_ENABLE_DEBUG
-            if(Debug::LLDB::get().is_stopped()) {
-              auto location=token.get_cursor().get_referenced().get_source_location();
-              Glib::ustring value_type="Value";
-              
-              auto start=get_buffer()->get_iter_at_line_index(token.offsets.first.line-1, token.offsets.first.index-1);
-              auto end=get_buffer()->get_iter_at_line_index(token.offsets.second.line-1, token.offsets.second.index-1);
-              auto iter=start;
-              while((*iter>='a' && *iter<='z') || (*iter>='A' && *iter<='Z') || (*iter>='0' && *iter<='9') || *iter=='_' || *iter=='.') {
-                start=iter;
-                if(!iter.backward_char())
-                  break;
-                if(*iter=='>') {
-                  if(!(iter.backward_char() && *iter=='-' && iter.backward_char()))
+              if(Debug::LLDB::get().is_stopped()) {
+                auto location=token.get_cursor().get_referenced().get_source_location();
+                Glib::ustring value_type="Value";
+                
+                auto start=get_buffer()->get_iter_at_line_index(token.offsets.first.line-1, token.offsets.first.index-1);
+                auto end=get_buffer()->get_iter_at_line_index(token.offsets.second.line-1, token.offsets.second.index-1);
+                auto iter=start;
+                while((*iter>='a' && *iter<='z') || (*iter>='A' && *iter<='Z') || (*iter>='0' && *iter<='9') || *iter=='_' || *iter=='.') {
+                  start=iter;
+                  if(!iter.backward_char())
                     break;
-                }
-                else if(*iter==':') {
-                  if(!(iter.backward_char() && *iter==':' && iter.backward_char()))
-                    break;
-                }
-              }
-              auto spelling=get_buffer()->get_text(start, end).raw();
-              
-              Glib::ustring debug_value=Debug::LLDB::get().get_value(spelling, location.get_path(), location.get_offset().line, location.get_offset().index);
-              if(debug_value.empty()) {
-                value_type="Return value";
-                auto cursor=token.get_cursor();
-                auto offsets=cursor.get_source_range().get_offsets();
-                debug_value=Debug::LLDB::get().get_return_value(cursor.get_source_location().get_path(), offsets.first.line, offsets.first.index);
-              }
-              if(!debug_value.empty()) {
-                size_t pos=debug_value.find(" = ");
-                if(pos!=Glib::ustring::npos) {
-                  Glib::ustring::iterator iter;
-                  while(!debug_value.validate(iter)) {
-                    auto next_char_iter=iter;
-                    next_char_iter++;
-                    debug_value.replace(iter, next_char_iter, "?");
+                  if(*iter=='>') {
+                    if(!(iter.backward_char() && *iter=='-' && iter.backward_char()))
+                      break;
                   }
-                  tooltip_buffer->insert_with_tag(tooltip_buffer->get_insert()->get_iter(), "\n\n"+value_type+": "+debug_value.substr(pos+3, debug_value.size()-(pos+3)-1), "def:note");
+                  else if(*iter==':') {
+                    if(!(iter.backward_char() && *iter==':' && iter.backward_char()))
+                      break;
+                  }
+                }
+                auto spelling=get_buffer()->get_text(start, end).raw();
+                
+                Glib::ustring debug_value=Debug::LLDB::get().get_value(spelling, location.get_path(), location.get_offset().line, location.get_offset().index);
+                if(debug_value.empty()) {
+                  value_type="Return value";
+                  auto cursor=token.get_cursor();
+                  auto offsets=cursor.get_source_range().get_offsets();
+                  debug_value=Debug::LLDB::get().get_return_value(cursor.get_source_location().get_path(), offsets.first.line, offsets.first.index);
+                }
+                if(!debug_value.empty()) {
+                  size_t pos=debug_value.find(" = ");
+                  if(pos!=Glib::ustring::npos) {
+                    Glib::ustring::iterator iter;
+                    while(!debug_value.validate(iter)) {
+                      auto next_char_iter=iter;
+                      next_char_iter++;
+                      debug_value.replace(iter, next_char_iter, "?");
+                    }
+                    tooltip_buffer->insert_with_tag(tooltip_buffer->get_insert()->get_iter(), "\n\n"+value_type+": "+debug_value.substr(pos+3, debug_value.size()-(pos+3)-1), "def:note");
+                  }
                 }
               }
-            }
 #endif
+              
+              return tooltip_buffer;
+            };
             
-            return tooltip_buffer;
-          };
-          
-          type_tooltips.emplace_back(create_tooltip_buffer, *this, get_buffer()->create_mark(start), get_buffer()->create_mark(end));
+            type_tooltips.emplace_back(create_tooltip_buffer, *this, get_buffer()->create_mark(start), get_buffer()->create_mark(end));
+            type_tooltips.show();
+            return;
+          }
         }
       }
-      
-      type_tooltips.show();
     }
   }
 }
@@ -952,14 +935,14 @@ Source::ClangViewRefactor::ClangViewRefactor(const boost::filesystem::path &file
           //If rename class, also rename constructors and destructor
           std::set<Identifier> identifiers;
           identifiers.emplace(identifier);
-          if(identifier.cursor.get_kind()==clang::Cursor::Kind::ClassDecl) {
+          auto identifier_cursor_kind=identifier.cursor.get_kind();
+          if(identifier_cursor_kind==clang::Cursor::Kind::ClassDecl || identifier_cursor_kind==clang::Cursor::Kind::ClassTemplate) {
             for(auto &token: *clang_view->clang_tokens) {
               auto cursor=token.get_cursor();
               auto cursor_kind=cursor.get_kind();
               auto parent_cursor=cursor.get_semantic_parent();
-              if(token.get_kind()==clang::Token::Kind::Identifier &&
-                 (cursor_kind==clang::Cursor::Kind::Constructor || cursor_kind==clang::Cursor::Kind::Destructor) &&
-                 parent_cursor.get_usr()==identifier.cursor.get_usr() && cursor.has_type_description()) {
+              if((cursor_kind==clang::Cursor::Kind::Constructor || cursor_kind==clang::Cursor::Kind::Destructor) &&
+                 token.is_identifier() && parent_cursor.get_usr()==identifier.cursor.get_usr()) {
                 identifiers.emplace(cursor.get_kind(), token.get_spelling(), cursor.get_usr());
               }
             }
@@ -1038,10 +1021,11 @@ Source::ClangViewRefactor::ClangViewRefactor(const boost::filesystem::path &file
         if(auto clang_view=dynamic_cast<Source::ClangView*>(view)) {
           for(auto &token: *clang_view->clang_tokens) {
             auto cursor=token.get_cursor();
-            auto kind=cursor.get_kind();
-            if((kind==clang::Cursor::Kind::FunctionDecl || kind==clang::Cursor::Kind::CXXMethod ||
-                kind==clang::Cursor::Kind::Constructor || kind==clang::Cursor::Kind::Destructor) &&
-               token.get_kind()==clang::Token::Kind::Identifier && cursor.has_type_description()) {
+            auto cursor_kind=cursor.get_kind();
+            if((cursor_kind==clang::Cursor::Kind::FunctionDecl || cursor_kind==clang::Cursor::Kind::CXXMethod ||
+                cursor_kind==clang::Cursor::Kind::Constructor || cursor_kind==clang::Cursor::Kind::Destructor ||
+                cursor_kind==clang::Cursor::Kind::ConversionFunction) &&
+               token.is_identifier()) {
               auto referenced=cursor.get_referenced();
               if(referenced && identifier.kind==referenced.get_kind() &&
                  identifier.spelling==token.get_spelling() && identifier.usr==referenced.get_usr()) {
@@ -1163,12 +1147,13 @@ Source::ClangViewRefactor::ClangViewRefactor(const boost::filesystem::path &file
     auto line=static_cast<unsigned>(iter.get_line());
     auto index=static_cast<unsigned>(iter.get_line_index());
     for(auto &token: *clang_tokens) {
-      auto cursor=token.get_cursor();
-      if(token.get_kind()==clang::Token::Kind::Identifier && cursor.has_type_description()) {
+      if(token.is_identifier()) {
         if(line==token.offsets.first.line-1 && index>=token.offsets.first.index-1 && index <=token.offsets.second.index-1) {
+          auto cursor=token.get_cursor();
           auto kind=cursor.get_kind();
           if(kind==clang::Cursor::Kind::FunctionDecl || kind==clang::Cursor::Kind::CXXMethod ||
-             kind==clang::Cursor::Kind::Constructor || kind==clang::Cursor::Kind::Destructor) {
+             kind==clang::Cursor::Kind::Constructor || kind==clang::Cursor::Kind::Destructor ||
+             kind==clang::Cursor::Kind::ConversionFunction) {
             auto referenced=cursor.get_referenced();
             if(referenced && referenced==cursor) {
               std::string result;
@@ -1225,13 +1210,19 @@ Source::ClangViewRefactor::ClangViewRefactor(const boost::filesystem::path &file
       Info::get().print("Buffer is parsing");
       return methods;
     }
+    clang::Offset last_offset(-1, -1);
     for(auto &token: *clang_tokens) {
-      auto cursor=token.get_cursor();
-      if(token.get_kind()==clang::Token::Kind::Identifier && cursor.has_type_description()) {
+      if(token.is_identifier()) {
+        auto cursor=token.get_cursor();
         auto kind=cursor.get_kind();
         if(kind==clang::Cursor::Kind::FunctionDecl || kind==clang::Cursor::Kind::CXXMethod ||
-           kind==clang::Cursor::Kind::Constructor || kind==clang::Cursor::Kind::Destructor) {
+           kind==clang::Cursor::Kind::Constructor || kind==clang::Cursor::Kind::Destructor ||
+           kind==clang::Cursor::Kind::ConversionFunction) {
           auto offset=cursor.get_source_location().get_offset();
+          if(offset==last_offset)
+            continue;
+          last_offset=offset;
+          
           std::string method;
           if(kind==clang::Cursor::Kind::FunctionDecl || kind==clang::Cursor::Kind::CXXMethod) {
             method+=cursor.get_type().get_result().get_spelling();
@@ -1255,28 +1246,10 @@ Source::ClangViewRefactor::ClangViewRefactor(const boost::filesystem::path &file
           size_t token_end_pos=row.find('(');
           if(token_end_pos==0 || token_end_pos==std::string::npos)
             continue;
-          if(token_end_pos>8 && row.substr(token_end_pos-4, 4)=="&gt;") {
-            token_end_pos-=8;
-            size_t angle_bracket_count=1;
-            do {
-              if(row.substr(token_end_pos-4, 4)=="&gt;") {
-                angle_bracket_count++;
-                token_end_pos-=4;
-              }
-              else if(row.substr(token_end_pos-4, 4)=="&lt;") {
-                angle_bracket_count--;
-                token_end_pos-=4;
-              }
-              else
-                token_end_pos--;
-            } while(angle_bracket_count>0 && token_end_pos>4);
-          }
           auto pos=token_end_pos;
           do {
             pos--;
-          } while(((row[pos]>='a' && row[pos]<='z') ||
-                 (row[pos]>='A' && row[pos]<='Z') ||
-                 (row[pos]>='0' && row[pos]<='9') || row[pos]=='_' || row[pos]=='~') && pos>0);
+          } while(row[pos]!=':' && row[pos]!=' ' && pos!=std::string::npos);
           row.insert(token_end_pos, "</b>");
           row.insert(pos+1, "<b>");
           methods.emplace_back(Offset(offset.line-1, offset.index-1), row);
@@ -1309,10 +1282,9 @@ Source::ClangViewRefactor::ClangViewRefactor(const boost::filesystem::path &file
     auto line=static_cast<unsigned>(iter.get_line());
     auto index=static_cast<unsigned>(iter.get_line_index());
     for(auto &token: *clang_tokens) {
-      auto cursor=token.get_cursor();
-      if(token.get_kind()==clang::Token::Kind::Identifier && cursor.has_type_description()) {
+      if(token.is_identifier()) {
         if(line==token.offsets.first.line-1 && index>=token.offsets.first.index-1 && index <=token.offsets.second.index-1) {
-          auto referenced=cursor.get_referenced();
+          auto referenced=token.get_cursor().get_referenced();
           if(referenced) {
             auto usr=referenced.get_usr();
             
@@ -1430,13 +1402,11 @@ Source::ClangViewRefactor::Identifier Source::ClangViewRefactor::get_identifier(
   auto iter=get_buffer()->get_insert()->get_iter();
   auto line=static_cast<unsigned>(iter.get_line());
   auto index=static_cast<unsigned>(iter.get_line_index());
-  for(auto &token: *clang_tokens) {
-    auto cursor=token.get_cursor();
-    if(token.get_kind()==clang::Token::Kind::Identifier && cursor.has_type_description()) {
+  for(size_t c=clang_tokens->size()-1;c!=static_cast<size_t>(-1);--c) {
+    auto &token=(*clang_tokens)[c];
+    if(token.is_identifier()) {
       if(line==token.offsets.first.line-1 && index>=token.offsets.first.index-1 && index <=token.offsets.second.index-1) {
-        if(token.get_cursor().get_kind()==clang::Cursor::Kind::CallExpr) //These cursors are buggy
-          continue;
-        auto referenced=cursor.get_referenced();
+        auto referenced=token.get_cursor().get_referenced();
         if(referenced)
           return Identifier(referenced.get_kind(), token.get_spelling(), referenced.get_usr(), referenced);
       }

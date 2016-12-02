@@ -98,7 +98,7 @@ boost::filesystem::path Meson::get_executable(const boost::filesystem::path &bui
       if(!values.empty()) {
         size_t pos;
         if((pos=values[0].find("@"))!=std::string::npos) {
-          if(pos+1<values[0].size() && values[0].substr(pos+1, 3)=="exe") {
+          if(pos+1<values[0].size() && values[0].compare(pos+1, 3, "exe")==0) {
             auto executable=build_path/values[0].substr(0, pos);
             if(command_file==file_path)
               return executable;
