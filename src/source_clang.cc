@@ -907,8 +907,13 @@ Source::ClangViewRefactor::ClangViewRefactor(const boost::filesystem::path &file
       return std::string();
     }
     auto identifier=get_identifier();
-    if(identifier.spelling.empty())
-      Info::get().print("No symbol found at current cursor location");
+    if(identifier.spelling.empty() ||
+       identifier.spelling=="::" || identifier.spelling=="," || identifier.spelling=="=" ||
+       identifier.spelling=="(" || identifier.spelling==")" ||
+       identifier.spelling=="[" || identifier.spelling=="]") {
+      Info::get().print("No valid symbol found at current cursor location");
+      return std::string();
+    }
     return identifier.spelling;
   };
   
