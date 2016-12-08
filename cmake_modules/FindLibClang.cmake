@@ -14,7 +14,9 @@
 #               Known LLVM release numbers.
 
 # most recent versions come first
-set(LIBCLANG_KNOWN_LLVM_VERSIONS 3.9.0
+set(LIBCLANG_KNOWN_LLVM_VERSIONS 4.0.0
+  4.0
+  3.9.0
   3.9
   3.8.1
   3.8.0
