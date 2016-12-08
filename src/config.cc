@@ -107,16 +107,14 @@ void Config::retrieve_config() {
 #ifdef __linux
   if(terminal.clang_format_command=="clang-format" &&
      !boost::filesystem::exists("/usr/bin/clang-format") && !boost::filesystem::exists("/usr/local/bin/clang-format")) {
-    if(boost::filesystem::exists("/usr/bin/clang-format-3.9"))
-      terminal.clang_format_command="/usr/bin/clang-format-3.9";
-    else if(boost::filesystem::exists("/usr/bin/clang-format-3.8"))
-      terminal.clang_format_command="/usr/bin/clang-format-3.8";
-    else if(boost::filesystem::exists("/usr/bin/clang-format-3.7"))
-      terminal.clang_format_command="/usr/bin/clang-format-3.7";
-    else if(boost::filesystem::exists("/usr/bin/clang-format-3.6"))
-      terminal.clang_format_command="/usr/bin/clang-format-3.6";
-    else if(boost::filesystem::exists("/usr/bin/clang-format-3.5"))
-      terminal.clang_format_command="/usr/bin/clang-format-3.5";
+    auto versions={"4.0", "3.9", "3.8", "3.7", "3.6", "3.5"};
+    for(auto &version: versions) {
+      auto corrected_command=std::string("/usr/bin/clang-format-")+version;
+      if(boost::filesystem::exists(corrected_command)) {
+        terminal.clang_format_command=corrected_command;
+        break;
+      }
+    }
   }
 #endif
 }

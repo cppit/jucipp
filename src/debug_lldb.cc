@@ -31,9 +31,25 @@ void log(const char *msg, void *) {
 
 Debug::LLDB::LLDB(): state(lldb::StateType::eStateInvalid), buffer_size(131072) {
 #ifdef __APPLE__
-  auto debugserver_path=boost::filesystem::path("/usr/local/opt/llvm/bin/debugserver");
-  if(boost::filesystem::exists(debugserver_path))
-    setenv("LLDB_DEBUGSERVER_PATH", debugserver_path.string().c_str(), 0);
+  if(!getenv("LLDB_DEBUGSERVER_PATH")) {
+    std::string debug_server_path("/usr/local/opt/llvm/bin/debugserver");
+    if(boost::filesystem::exists(debug_server_path))
+      setenv("LLDB_DEBUGSERVER_PATH", debug_server_path.c_str(), 0);
+  }
+#elif __linux
+  if(!getenv("LLDB_DEBUGSERVER_PATH")) {
+    std::string debug_server_path("/usr/bin/lldb-server");
+    if(!boost::filesystem::exists(debug_server_path)) {
+      auto versions={"4.0", "3.9", "3.8", "3.7", "3.6", "3.5"};
+      for(auto &version: versions) {
+        auto corrected_debug_server_path=debug_server_path+'-'+version;
+        if(boost::filesystem::exists(corrected_debug_server_path)) {
+          setenv("LLDB_DEBUGSERVER_PATH", corrected_debug_server_path.c_str(), 0);
+          break;
+        }
+      }
+    }
+  }
 #endif
 }
 
