@@ -41,6 +41,8 @@ Glib::RefPtr<Gsv::Language> Source::guess_language(const boost::filesystem::path
       language=language_manager->get_language("cmake");
     else if(filename=="Makefile")
       language=language_manager->get_language("makefile");
+    else if(file_path.extension()==".tcc")
+      language=language_manager->get_language("cpphdr");
   }
   return language;
 }

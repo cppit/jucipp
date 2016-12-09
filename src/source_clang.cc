@@ -235,7 +235,9 @@ std::vector<std::string> Source::ClangViewParse::get_compilation_commands() {
 #endif
   }
   arguments.emplace_back("-fretain-comments-from-system-headers");
-  if(file_path.extension()==".h") //TODO: temporary fix for .h-files (parse as c++)
+  auto file_path_extension=file_path.extension();
+  if(file_path_extension==".h" || //TODO: temporary fix for .h-files (parse as c++)
+     file_path_extension==".tcc")
     arguments.emplace_back("-xc++");
   if(language && (language->get_id()=="chdr" || language->get_id()=="cpphdr"))
     arguments.emplace_back("-Wno-pragma-once-outside-header");
