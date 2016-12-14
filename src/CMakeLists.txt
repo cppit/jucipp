@@ -10,7 +10,6 @@ set(project_files
     entrybox.cc
     info.cc
     juci.cc
-    menu.cc
     notebook.cc
     project.cc
     selectiondialog.cc
@@ -27,6 +26,7 @@ set(project_shared_files
     dispatcher.cc
     filesystem.cc
     git.cc
+    menu.cc
     meson.cc
     project_build.cc
     source.cc

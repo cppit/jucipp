@@ -32,6 +32,9 @@ Window::Window() {
   configure();
   activate_menu_items();
   
+  Menu::get().right_click_line_menu->attach_to_widget(*this);
+  Menu::get().right_click_selected_menu->attach_to_widget(*this);
+
   set_default_size(Config::get().window.default_size.first, Config::get().window.default_size.second);
   
   auto directories_scrolled_window=Gtk::manage(new Gtk::ScrolledWindow());

@@ -4,6 +4,7 @@
 #include "terminal.h"
 #include "info.h"
 #include "directories.h"
+#include "menu.h"
 #include <gtksourceview/gtksource.h>
 #include <boost/property_tree/json_parser.hpp>
 #include <boost/spirit/home/qi/char.hpp>
@@ -2123,6 +2124,20 @@ bool Source::View::on_button_press_event(GdkEventButton *event) {
     return true;
   }
   
+  if((event->type == GDK_BUTTON_PRESS) && (event->button == 3)){
+    if(!get_buffer()->get_has_selection()){
+      int x,y;
+      window_to_buffer_coords(Gtk::TextWindowType::TEXT_WINDOW_TEXT,event->x,event->y,x,y);
+      Gtk::TextIter iter;
+      get_iter_at_location(iter,x,y);
+      if(iter)
+        get_buffer()->place_cursor(iter);
+      Menu::get().right_click_line_menu->popup(event->button,event->time);
+    } else {
+      Menu::get().right_click_selected_menu->popup(event->button,event->time);
+    }
+    return true;
+  }
   return Gsv::View::on_button_press_event(event);
 }
 
