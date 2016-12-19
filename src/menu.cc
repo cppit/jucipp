@@ -23,6 +23,12 @@ const Glib::ustring menu_xml= R"RAW(<interface>
     </section>
     <section>
       <item>
+        <attribute name='label' translatable='yes'>_Toggle _Comments</attribute>
+        <attribute name='action'>app.source_comments_toggle</attribute>
+      </item>
+    </section>
+    <section>
+      <item>
         <attribute name='label' translatable='yes'>_Go _to _Declaration</attribute>
         <attribute name='action'>app.source_goto_declaration</attribute>
       </item>
@@ -41,12 +47,6 @@ const Glib::ustring menu_xml= R"RAW(<interface>
       <item>
         <attribute name='label' translatable='yes'>_Rename</attribute>
         <attribute name='action'>app.source_rename</attribute>
-      </item>
-    </section>
-    <section>
-      <item>
-        <attribute name='label' translatable='yes'>_Toggle _Line _Comment</attribute>
-        <attribute name='action'>app.source_comments_toggle</attribute>
       </item>
     </section>
   </menu>
@@ -77,7 +77,7 @@ const Glib::ustring menu_xml= R"RAW(<interface>
     </section>
     <section>
       <item>
-        <attribute name='label' translatable='yes'>_Toggle _Line _Comment</attribute>
+        <attribute name='label' translatable='yes'>_Toggle _Comments</attribute>
         <attribute name='action'>app.source_comments_toggle</attribute>
       </item>
     </section>
