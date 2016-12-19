@@ -2125,6 +2125,7 @@ bool Source::View::on_button_press_event(GdkEventButton *event) {
   }
   
   if((event->type == GDK_BUTTON_PRESS) && (event->button == 3)){
+    hide_tooltips();
     if(!get_buffer()->get_has_selection()){
       int x,y;
       window_to_buffer_coords(Gtk::TextWindowType::TEXT_WINDOW_TEXT,event->x,event->y,x,y);

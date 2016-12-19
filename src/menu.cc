@@ -23,27 +23,27 @@ const Glib::ustring menu_xml= R"RAW(<interface>
     </section>
     <section>
       <item>
-        <attribute name='label' translatable='yes'>_Reload _File</attribute>
-        <attribute name='action'>app.reload_file</attribute>
-      </item>
-    </section>
-    <section>
-      <item>
         <attribute name='label' translatable='yes'>_Go _to _Declaration</attribute>
         <attribute name='action'>app.source_goto_declaration</attribute>
       </item>
       <item>
-        <attribute name='label' translatable='yes'>_Go _to _Method</attribute>
-        <attribute name='action'>app.source_goto_method</attribute>
+        <attribute name='label' translatable='yes'>_Go _to _Implementation</attribute>
+        <attribute name='action'>app.source_goto_implementation</attribute>
       </item>
       <item>
         <attribute name='label' translatable='yes'>_Go _to _Usage</attribute>
         <attribute name='action'>app.source_goto_usage</attribute>
       </item>
       <item>
+        <attribute name='label' translatable='yes'>_Go _to _Method</attribute>
+        <attribute name='action'>app.source_goto_method</attribute>
+      </item>
+      <item>
         <attribute name='label' translatable='yes'>_Rename</attribute>
         <attribute name='action'>app.source_rename</attribute>
       </item>
+    </section>
+    <section>
       <item>
         <attribute name='label' translatable='yes'>_Toggle _Line _Comment</attribute>
         <attribute name='action'>app.source_comments_toggle</attribute>
