@@ -5,6 +5,7 @@
 #include "info.h"
 #include "directories.h"
 #include "menu.h"
+#include "selection_dialog.h"
 #include <gtksourceview/gtksource.h>
 #include <boost/property_tree/json_parser.hpp>
 #include <boost/spirit/home/qi/char.hpp>
@@ -647,10 +648,10 @@ void Source::View::set_tooltip_and_dialog_events() {
         return false;
       }, 500);
       
-      if(autocomplete_dialog)
-        autocomplete_dialog->hide();
-      if(selection_dialog)
-        selection_dialog->hide();
+      if(SelectionDialog::get())
+        SelectionDialog::get()->hide();
+      if(CompletionDialog::get())
+        CompletionDialog::get()->hide();
       
       if(update_status_location)
         update_status_location(this);
@@ -947,10 +948,10 @@ void Source::View::hide_tooltips() {
 
 void Source::View::hide_dialogs() {
   SpellCheckView::hide_dialogs();
-  if(selection_dialog)
-    selection_dialog->hide();
-  if(autocomplete_dialog)
-    autocomplete_dialog->hide();
+  if(SelectionDialog::get())
+    SelectionDialog::get()->hide();
+  if(CompletionDialog::get())
+    CompletionDialog::get()->hide();
 }
 
 std::string Source::View::get_line(const Gtk::TextIter &iter) {
@@ -1244,12 +1245,12 @@ std::string Source::View::get_token(Gtk::TextIter iter) {
 }
 
 bool Source::View::on_key_press_event(GdkEventKey* key) {
-  if(selection_dialog && selection_dialog->is_visible()) {
-    if(selection_dialog->on_key_press(key))
+  if(SelectionDialog::get() && SelectionDialog::get()->is_visible()) {
+    if(SelectionDialog::get()->on_key_press(key))
       return true;
   }
-  if(autocomplete_dialog && autocomplete_dialog->is_visible()) {
-    if(autocomplete_dialog->on_key_press(key))
+  if(CompletionDialog::get() && CompletionDialog::get()->is_visible()) {
+    if(CompletionDialog::get()->on_key_press(key))
       return true;
   }
   

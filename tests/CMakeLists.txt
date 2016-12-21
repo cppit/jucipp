@@ -5,7 +5,7 @@ set(stub_files
     stubs/dialogs.cc
     stubs/directories.cc
     stubs/info.cc
-    stubs/selectiondialog.cc
+    stubs/selection_dialog.cc
     stubs/terminal.cc
     stubs/tooltips.cc
 )

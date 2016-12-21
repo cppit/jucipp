@@ -6,6 +6,7 @@
 #include <fstream>
 #include "menu.h"
 #include "notebook.h"
+#include "selection_dialog.h"
 #ifdef JUCI_ENABLE_DEBUG
 #include "debug_lldb.h"
 #endif
@@ -91,10 +92,10 @@ void Project::debug_activate_menu_items() {
   menu.actions["debug_step_over"]->set_enabled(!debug_status.empty());
   menu.actions["debug_step_into"]->set_enabled(!debug_status.empty());
   menu.actions["debug_step_out"]->set_enabled(!debug_status.empty());
-  menu.actions["debug_backtrace"]->set_enabled(!debug_status.empty() && view);
-  menu.actions["debug_show_variables"]->set_enabled(!debug_status.empty() && view);
+  menu.actions["debug_backtrace"]->set_enabled(!debug_status.empty());
+  menu.actions["debug_show_variables"]->set_enabled(!debug_status.empty());
   menu.actions["debug_run_command"]->set_enabled(!debug_status.empty());
-  menu.actions["debug_toggle_breakpoint"]->set_enabled(view && static_cast<bool>(view->toggle_breakpoint));
+  menu.actions["debug_toggle_breakpoint"]->set_enabled(view && view->toggle_breakpoint);
   menu.actions["debug_goto_stop"]->set_enabled(!debug_status.empty());
 }
 
@@ -493,12 +494,16 @@ void Project::Clang::debug_step_out() {
 }
 
 void Project::Clang::debug_backtrace() {
-  auto view=Notebook::get().get_current_view();
-  if(view && debugging) {
+  if(debugging) {
+    auto view=Notebook::get().get_current_view();
     auto backtrace=Debug::LLDB::get().get_backtrace();
     
-    auto iter=view->get_iter_for_dialog();
-    view->selection_dialog=std::make_unique<SelectionDialog>(*view, view->get_buffer()->create_mark(iter), true, true);
+    if(view) {
+      auto iter=view->get_iter_for_dialog();
+      SelectionDialog::create(view, view->get_buffer()->create_mark(iter), true, true);
+    }
+    else
+      SelectionDialog::create(true, true);
     auto rows=std::make_shared<std::unordered_map<std::string, Debug::LLDB::Frame> >();
     if(backtrace.size()==0) {
       Info::get().print("No backtrace found");
@@ -520,14 +525,14 @@ void Project::Clang::debug_backtrace() {
         row+=":<b>"+Glib::Markup::escape_text(file_path)+":"+std::to_string(frame.line_nr)+"</b> - "+Glib::Markup::escape_text(frame.function_name);
       }
       (*rows)[row]=frame;
-      view->selection_dialog->add_row(row);
-      if(!cursor_set && frame.file_path==view->file_path) {
-        view->selection_dialog->set_cursor_at_last_row();
+      SelectionDialog::get()->add_row(row);
+      if(!cursor_set && view && frame.file_path==view->file_path) {
+        SelectionDialog::get()->set_cursor_at_last_row();
         cursor_set=true;
       }
     }
     
-    view->selection_dialog->on_select=[this, rows](const std::string& selected, bool hide_window) {
+    SelectionDialog::get()->on_select=[this, rows](const std::string& selected, bool hide_window) {
       auto frame=rows->at(selected);
       if(!frame.file_path.empty()) {
         Notebook::get().open(frame.file_path);
@@ -539,18 +544,24 @@ void Project::Clang::debug_backtrace() {
         }
       }
     };
-    view->hide_tooltips();
-    view->selection_dialog->show();
+    if(view)
+      view->hide_tooltips();
+    SelectionDialog::get()->show();
   }
 }
 
 void Project::Clang::debug_show_variables() {
-  auto view=Notebook::get().get_current_view();
-  if(debugging && view) {
+  if(debugging) {
+    auto view=Notebook::get().get_current_view();
     auto variables=Debug::LLDB::get().get_variables();
     
-    auto iter=view->get_iter_for_dialog();
-    view->selection_dialog=std::make_unique<SelectionDialog>(*view, view->get_buffer()->create_mark(iter), true, true);
+    Gtk::TextIter iter;
+    if(view) {
+      iter=view->get_iter_for_dialog();
+      SelectionDialog::create(view, view->get_buffer()->create_mark(iter), true, true);
+    }
+    else
+      SelectionDialog::create(true, true);
     auto rows=std::make_shared<std::unordered_map<std::string, Debug::LLDB::Variable> >();
     if(variables.size()==0) {
       Info::get().print("No variables found");
@@ -561,10 +572,10 @@ void Project::Clang::debug_show_variables() {
       std::string row="#"+std::to_string(variable.thread_index_id)+":#"+std::to_string(variable.frame_index)+":"+variable.file_path.filename().string()+":"+std::to_string(variable.line_nr)+" - <b>"+Glib::Markup::escape_text(variable.name)+"</b>";
       
       (*rows)[row]=variable;
-      view->selection_dialog->add_row(row);
+      SelectionDialog::get()->add_row(row);
     }
     
-    view->selection_dialog->on_select=[this, rows](const std::string& selected, bool hide_window) {
+    SelectionDialog::get()->on_select=[this, rows](const std::string& selected, bool hide_window) {
       auto variable=rows->at(selected);
       Debug::LLDB::get().select_frame(variable.frame_index, variable.thread_index_id);
       if(!variable.file_path.empty()) {
@@ -578,44 +589,49 @@ void Project::Clang::debug_show_variables() {
         Info::get().print("Debugger did not find declaration for the variable: "+variable.name);
     };
     
-    view->selection_dialog->on_hide=[this]() {
+    SelectionDialog::get()->on_hide=[this]() {
       debug_variable_tooltips.hide();
       debug_variable_tooltips.clear();
     };
     
-    view->selection_dialog->on_changed=[this, rows, iter](const std::string &selected) {
+    SelectionDialog::get()->on_changed=[this, rows, view, iter](const std::string &selected) {
       if(selected.empty()) {
         debug_variable_tooltips.hide();
         return;
       }
-      if(auto view=Notebook::get().get_current_view()) {
-        debug_variable_tooltips.clear();
-        auto create_tooltip_buffer=[this, rows, view, selected]() {
-          auto variable=rows->at(selected);
-          auto tooltip_buffer=Gtk::TextBuffer::create(view->get_buffer()->get_tag_table());
-          
-          Glib::ustring value=variable.value;
-          if(!value.empty()) {
-            Glib::ustring::iterator iter;
-            while(!value.validate(iter)) {
-              auto next_char_iter=iter;
-              next_char_iter++;
-              value.replace(iter, next_char_iter, "?");
-            } 
-            tooltip_buffer->insert_with_tag(tooltip_buffer->get_insert()->get_iter(), value.substr(0, value.size()-1), "def:note");
-          }
-          
-          return tooltip_buffer;
-        };
+      debug_variable_tooltips.clear();
+      auto create_tooltip_buffer=[this, rows, view, selected]() {
+        auto variable=rows->at(selected);
+        auto tooltip_buffer=view?Gtk::TextBuffer::create(view->get_buffer()->get_tag_table()):Gtk::TextBuffer::create();
         
-        debug_variable_tooltips.emplace_back(create_tooltip_buffer, *view, view->get_buffer()->create_mark(iter), view->get_buffer()->create_mark(iter));
-    
-        debug_variable_tooltips.show(true);
-      }
+        Glib::ustring value=variable.value;
+        if(!value.empty()) {
+          Glib::ustring::iterator iter;
+          while(!value.validate(iter)) {
+            auto next_char_iter=iter;
+            next_char_iter++;
+            value.replace(iter, next_char_iter, "?");
+          }
+          if(view)
+            tooltip_buffer->insert_with_tag(tooltip_buffer->get_insert()->get_iter(), value.substr(0, value.size()-1), "def:note");
+          else
+            tooltip_buffer->insert(tooltip_buffer->get_insert()->get_iter(), value.substr(0, value.size()-1));
+        }
+        
+        return tooltip_buffer;
+      };
+      
+      if(view)
+        debug_variable_tooltips.emplace_back(create_tooltip_buffer, view, view->get_buffer()->create_mark(iter), view->get_buffer()->create_mark(iter));
+      else
+        debug_variable_tooltips.emplace_back(create_tooltip_buffer);
+  
+      debug_variable_tooltips.show(true);
     };
     
-    view->hide_tooltips();
-    view->selection_dialog->show();
+    if(view)
+      view->hide_tooltips();
+    SelectionDialog::get()->show();
   }
 }
 

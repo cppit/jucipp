@@ -5,6 +5,7 @@
 #include <regex>
 #include "project.h"
 #include "filesystem.h"
+#include "selection_dialog.h"
 
 #if GTKSOURCEVIEWMM_MAJOR_VERSION > 3 || (GTKSOURCEVIEWMM_MAJOR_VERSION == 3 && GTKSOURCEVIEWMM_MINOR_VERSION >= 18)
 #include "gtksourceview-3.0/gtksourceview/gtksourcemap.h"
@@ -521,6 +522,9 @@ bool Notebook::close(size_t index) {
       on_close_page(view);
     
     delete_cursor_locations(view);
+    
+    SelectionDialog::get()=nullptr;
+    CompletionDialog::get()=nullptr;
     
     if(auto clang_view=dynamic_cast<Source::ClangView*>(view))
       clang_view->async_delete();

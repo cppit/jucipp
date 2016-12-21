@@ -31,13 +31,15 @@ class SelectionDialogBase {
   };
   
 public:
-  SelectionDialogBase(Gtk::TextView& text_view, Glib::RefPtr<Gtk::TextBuffer::Mark> start_mark, bool show_search_entry, bool use_markup);
-  ~SelectionDialogBase();
+  SelectionDialogBase(Gtk::TextView *text_view, Glib::RefPtr<Gtk::TextBuffer::Mark> start_mark, bool show_search_entry, bool use_markup);
+  virtual ~SelectionDialogBase();
   void add_row(const std::string& row);
   void set_cursor_at_last_row();
   void show();
   void hide();
+  
   bool is_visible() {return window.is_visible();}
+  void get_position(int &root_x, int &root_y) {window.get_position(root_x, root_y);}
   
   std::function<void()> on_hide;
   std::function<void(const std::string& selected, bool hide_window)> on_select;
@@ -47,8 +49,7 @@ public:
 protected:
   void cursor_changed();
   
-  void resize();
-  Gtk::TextView& text_view;
+  Gtk::TextView *text_view;
   Gtk::Window window;
   Gtk::Box vbox;
   Gtk::ScrolledWindow scrolled_window;
@@ -60,17 +61,31 @@ protected:
 };
 
 class SelectionDialog : public SelectionDialogBase {
+  SelectionDialog(Gtk::TextView *text_view, Glib::RefPtr<Gtk::TextBuffer::Mark> start_mark, bool show_search_entry, bool use_markup);
+  static std::unique_ptr<SelectionDialog> instance;
 public:
-  SelectionDialog(Gtk::TextView& text_view, Glib::RefPtr<Gtk::TextBuffer::Mark> start_mark, bool show_search_entry=true, bool use_markup=false);
   bool on_key_press(GdkEventKey* key);
+  
+  static void create(Gtk::TextView *text_view, Glib::RefPtr<Gtk::TextBuffer::Mark> start_mark, bool show_search_entry=true, bool use_markup=false) {
+    instance=std::unique_ptr<SelectionDialog>(new SelectionDialog(text_view, start_mark, show_search_entry, use_markup));
+  }
+  static void create(bool show_search_entry=true, bool use_markup=false) {
+    instance=std::unique_ptr<SelectionDialog>(new SelectionDialog(nullptr, Glib::RefPtr<Gtk::TextBuffer::Mark>(), show_search_entry, use_markup));
+  }
+  static std::unique_ptr<SelectionDialog> &get() {return instance;}
 };
 
 class CompletionDialog : public SelectionDialogBase {
+  CompletionDialog(Gtk::TextView *text_view, Glib::RefPtr<Gtk::TextBuffer::Mark> start_mark);
+  static std::unique_ptr<CompletionDialog> instance;
 public:
-  CompletionDialog(Gtk::TextView& text_view, Glib::RefPtr<Gtk::TextBuffer::Mark> start_mark);
   bool on_key_release(GdkEventKey* key);
   bool on_key_press(GdkEventKey* key);
   
+  static void create(Gtk::TextView *text_view, Glib::RefPtr<Gtk::TextBuffer::Mark> start_mark) {
+    instance=std::unique_ptr<CompletionDialog>(new CompletionDialog(text_view, start_mark));
+  }
+  static std::unique_ptr<CompletionDialog> &get() {return instance;}
 private:
   void select(bool hide_window=true);
   

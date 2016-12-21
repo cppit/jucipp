@@ -2,7 +2,6 @@
 #define JUCI_SOURCE_SPELLCHECK_H_
 #include <gtksourceviewmm.h>
 #include <aspell.h>
-#include "selectiondialog.h"
 
 namespace Source {
   class SpellCheckView : virtual public Gsv::View {
@@ -24,8 +23,6 @@ namespace Source {
     bool spellcheck_all=false;
     guint last_keyval=0;
   private:
-    std::unique_ptr<SelectionDialog> spellcheck_suggestions_dialog;
-    
     Glib::RefPtr<Gtk::TextTag> spellcheck_error_tag;
     
     Glib::RefPtr<Gtk::TextTag> comment_tag;

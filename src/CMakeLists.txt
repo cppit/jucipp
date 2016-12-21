@@ -12,7 +12,7 @@ set(project_files
     juci.cc
     notebook.cc
     project.cc
-    selectiondialog.cc
+    selection_dialog.cc
     terminal.cc
     tooltips.cc
     window.cc

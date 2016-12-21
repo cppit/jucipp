@@ -1,6 +1,7 @@
 #include "source_spellcheck.h"
 #include "config.h"
 #include "info.h"
+#include "selection_dialog.h"
 #include <iostream>
 
 namespace sigc {
@@ -27,8 +28,8 @@ Source::SpellCheckView::SpellCheckView() : Gsv::View() {
   spellcheck_error_tag->property_underline()=Pango::Underline::UNDERLINE_ERROR;
   
   signal_key_press_event().connect([this](GdkEventKey *event) {
-    if(spellcheck_suggestions_dialog && spellcheck_suggestions_dialog->is_visible()) {
-      if(spellcheck_suggestions_dialog->on_key_press(event))
+    if(SelectionDialog::get() && SelectionDialog::get()->is_visible()) {
+      if(SelectionDialog::get()->on_key_press(event))
         return true;
     }
     
@@ -150,26 +151,26 @@ Source::SpellCheckView::SpellCheckView() : Gsv::View() {
       return;
     
     if(mark->get_name()=="insert") {
-      if(spellcheck_suggestions_dialog)
-        spellcheck_suggestions_dialog->hide();
+      if(SelectionDialog::get())
+        SelectionDialog::get()->hide();
       delayed_spellcheck_suggestions_connection.disconnect();
       delayed_spellcheck_suggestions_connection=Glib::signal_timeout().connect([this]() {
         if(get_buffer()->get_insert()->get_iter().has_tag(spellcheck_error_tag)) {
-          spellcheck_suggestions_dialog=std::make_unique<SelectionDialog>(*this, get_buffer()->create_mark(get_buffer()->get_insert()->get_iter()), false);
+          SelectionDialog::create(this, get_buffer()->create_mark(get_buffer()->get_insert()->get_iter()), false);
           auto word=get_word(get_buffer()->get_insert()->get_iter());
           auto suggestions=get_spellcheck_suggestions(word.first, word.second);
           if(suggestions.size()==0)
             return false;
           for(auto &suggestion: suggestions)
-            spellcheck_suggestions_dialog->add_row(suggestion);
-          spellcheck_suggestions_dialog->on_select=[this, word](const std::string& selected, bool hide_window) {
+            SelectionDialog::get()->add_row(suggestion);
+          SelectionDialog::get()->on_select=[this, word](const std::string& selected, bool hide_window) {
             get_buffer()->begin_user_action();
             get_buffer()->erase(word.first, word.second);
             get_buffer()->insert(get_buffer()->get_insert()->get_iter(), selected);
             get_buffer()->end_user_action();
           };
           hide_tooltips();
-          spellcheck_suggestions_dialog->show();
+          SelectionDialog::get()->show();
         }
         return false;
       }, 500);
@@ -178,8 +179,8 @@ Source::SpellCheckView::SpellCheckView() : Gsv::View() {
   
   get_buffer()->signal_mark_set().connect([this](const Gtk::TextBuffer::iterator& iterator, const Glib::RefPtr<Gtk::TextBuffer::Mark>& mark) {
     if(mark->get_name()=="insert") {
-      if(spellcheck_suggestions_dialog)
-        spellcheck_suggestions_dialog->hide();
+      if(SelectionDialog::get())
+        SelectionDialog::get()->hide();
     }
   });
   
@@ -240,8 +241,8 @@ void Source::SpellCheckView::configure() {
 
 void Source::SpellCheckView::hide_dialogs() {
   delayed_spellcheck_suggestions_connection.disconnect();
-  if(spellcheck_suggestions_dialog)
-    spellcheck_suggestions_dialog->hide();
+  if(SelectionDialog::get())
+    SelectionDialog::get()->hide();
 }
 
 void Source::SpellCheckView::spellcheck(const Gtk::TextIter& start, const Gtk::TextIter& end) {

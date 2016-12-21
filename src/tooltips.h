@@ -6,7 +6,8 @@
 
 class Tooltip {
 public:
-  Tooltip(std::function<Glib::RefPtr<Gtk::TextBuffer>()> create_tooltip_buffer, Gtk::TextView& text_view, Glib::RefPtr<Gtk::TextBuffer::Mark> start_mark, Glib::RefPtr<Gtk::TextBuffer::Mark> end_mark);
+  Tooltip(std::function<Glib::RefPtr<Gtk::TextBuffer>()> create_tooltip_buffer, Gtk::TextView *text_view, Glib::RefPtr<Gtk::TextBuffer::Mark> start_mark, Glib::RefPtr<Gtk::TextBuffer::Mark> end_mark);
+  Tooltip(std::function<Glib::RefPtr<Gtk::TextBuffer>()> create_tooltip_buffer) : Tooltip(create_tooltip_buffer, nullptr, Glib::RefPtr<Gtk::TextBuffer::Mark>(), Glib::RefPtr<Gtk::TextBuffer::Mark>()) {}
   ~Tooltip();
   
   void update();
@@ -22,7 +23,7 @@ private:
   
   std::function<Glib::RefPtr<Gtk::TextBuffer>()> create_tooltip_buffer;
   std::unique_ptr<Gtk::TextView> tooltip_widget;
-  Gtk::TextView& text_view;
+  Gtk::TextView *text_view;
   std::pair<int, int> size;
   std::pair<int, int> position;
 };

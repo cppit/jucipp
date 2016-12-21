@@ -8,6 +8,7 @@
 #include "info.h"
 #include "dialogs.h"
 #include "ctags.h"
+#include "selection_dialog.h"
 
 namespace sigc {
 #ifndef SIGC_FUNCTORS_DEDUCE_RESULT_TYPE_WITH_DECLTYPE
@@ -455,7 +456,7 @@ void Source::ClangViewParse::update_diagnostics() {
         }
         return tooltip_buffer;
       };
-      diagnostic_tooltips.emplace_back(create_tooltip_buffer, *this, get_buffer()->create_mark(start), get_buffer()->create_mark(end));
+      diagnostic_tooltips.emplace_back(create_tooltip_buffer, this, get_buffer()->create_mark(start), get_buffer()->create_mark(end));
     
       get_buffer()->apply_tag_by_name(diagnostic_tag_name+"_underline", start, end);
       auto iter=get_buffer()->get_insert()->get_iter();
@@ -554,7 +555,7 @@ void Source::ClangViewParse::show_type_tooltips(const Gdk::Rectangle &rectangle)
               return tooltip_buffer;
             };
             
-            type_tooltips.emplace_back(create_tooltip_buffer, *this, get_buffer()->create_mark(start), get_buffer()->create_mark(end));
+            type_tooltips.emplace_back(create_tooltip_buffer, this, get_buffer()->create_mark(start), get_buffer()->create_mark(end));
             type_tooltips.show();
             return;
           }
@@ -568,7 +569,7 @@ void Source::ClangViewParse::show_type_tooltips(const Gdk::Rectangle &rectangle)
 Source::ClangViewAutocomplete::ClangViewAutocomplete(const boost::filesystem::path &file_path, Glib::RefPtr<Gsv::Language> language):
     Source::ClangViewParse(file_path, language), autocomplete_state(AutocompleteState::IDLE) {
   get_buffer()->signal_changed().connect([this](){
-    if(autocomplete_dialog && autocomplete_dialog->is_visible())
+    if(CompletionDialog::get() && CompletionDialog::get()->is_visible())
       delayed_reparse_connection.disconnect();
     else {
       if(!has_focus())
@@ -596,8 +597,8 @@ Source::ClangViewAutocomplete::ClangViewAutocomplete(const boost::filesystem::pa
   });
   
   signal_key_release_event().connect([this](GdkEventKey* key){
-    if(autocomplete_dialog && autocomplete_dialog->is_visible()) {
-      if(autocomplete_dialog->on_key_release(key))
+    if(CompletionDialog::get() && CompletionDialog::get()->is_visible()) {
+      if(CompletionDialog::get()->on_key_release(key))
         return true;
     }
     return false;
@@ -614,19 +615,19 @@ void Source::ClangViewAutocomplete::autocomplete_dialog_setup() {
   auto start_iter=get_buffer()->get_insert()->get_iter();
   if(prefix.size()>0 && !start_iter.backward_chars(prefix.size()))
     return;
-  autocomplete_dialog=std::make_unique<CompletionDialog>(*this, get_buffer()->create_mark(start_iter));
-  autocomplete_dialog_rows.clear();
-  autocomplete_dialog->on_hide=[this](){
+  CompletionDialog::create(this, get_buffer()->create_mark(start_iter));
+  completion_dialog_rows.clear();
+  CompletionDialog::get()->on_hide=[this](){
     get_buffer()->end_user_action();
     autocomplete_tooltips.hide();
     autocomplete_tooltips.clear();
     parsed=false;
     soft_reparse();
   };
-  autocomplete_dialog->on_select=[this](const std::string& selected, bool hide_window) {
-    auto row = autocomplete_dialog_rows.at(selected).first;
+  CompletionDialog::get()->on_select=[this](const std::string& selected, bool hide_window) {
+    auto row = completion_dialog_rows.at(selected).first;
     //erase existing variable or function before insert iter
-    get_buffer()->erase(autocomplete_dialog->start_mark->get_iter(), get_buffer()->get_insert()->get_iter());
+    get_buffer()->erase(CompletionDialog::get()->start_mark->get_iter(), get_buffer()->get_insert()->get_iter());
     //do not insert template argument or function parameters if they already exist
     auto iter=get_buffer()->get_insert()->get_iter();
     if(*iter=='<' || *iter=='(') {
@@ -640,7 +641,7 @@ void Source::ClangViewAutocomplete::autocomplete_dialog_setup() {
     auto it=manipulators_map.find(row);
     if(it!=manipulators_map.end())
       row=it->second;
-    get_buffer()->insert(autocomplete_dialog->start_mark->get_iter(), row);
+    get_buffer()->insert(CompletionDialog::get()->start_mark->get_iter(), row);
     //if selection is finalized, select text inside template arguments or function parameters
     if(hide_window) {
       auto para_pos=row.find('(');
@@ -668,8 +669,8 @@ void Source::ClangViewAutocomplete::autocomplete_dialog_setup() {
         }
       }
       if(start_pos!=std::string::npos && end_pos!=std::string::npos) {
-        auto start_offset=autocomplete_dialog->start_mark->get_iter().get_offset()+start_pos+1;
-        auto end_offset=autocomplete_dialog->start_mark->get_iter().get_offset()+end_pos;
+        auto start_offset=CompletionDialog::get()->start_mark->get_iter().get_offset()+start_pos+1;
+        auto end_offset=CompletionDialog::get()->start_mark->get_iter().get_offset()+end_pos;
         if(start_offset!=end_offset)
           get_buffer()->select_range(get_buffer()->get_iter_at_offset(start_offset), get_buffer()->get_iter_at_offset(end_offset));
       }
@@ -682,12 +683,12 @@ void Source::ClangViewAutocomplete::autocomplete_dialog_setup() {
     }
   };
   
-  autocomplete_dialog->on_changed=[this](const std::string &selected) {
+  CompletionDialog::get()->on_changed=[this](const std::string &selected) {
     if(selected.empty()) {
       autocomplete_tooltips.hide();
       return;
     }
-    auto tooltip=std::make_shared<std::string>(autocomplete_dialog_rows.at(selected).second);
+    auto tooltip=std::make_shared<std::string>(completion_dialog_rows.at(selected).second);
     if(tooltip->empty()) {
       autocomplete_tooltips.hide();
     }
@@ -701,8 +702,8 @@ void Source::ClangViewAutocomplete::autocomplete_dialog_setup() {
         return tooltip_buffer;
       };
       
-      auto iter=autocomplete_dialog->start_mark->get_iter();
-      autocomplete_tooltips.emplace_back(create_tooltip_buffer, *this, get_buffer()->create_mark(iter), get_buffer()->create_mark(iter));
+      auto iter=CompletionDialog::get()->start_mark->get_iter();
+      autocomplete_tooltips.emplace_back(create_tooltip_buffer, this, get_buffer()->create_mark(iter), get_buffer()->create_mark(iter));
   
       autocomplete_tooltips.show(true);
     }
@@ -808,8 +809,8 @@ void Source::ClangViewAutocomplete::autocomplete() {
                 auto row_insert_on_selection=row;
                 if(!return_value.empty())
                   row+=" --> " + return_value;
-                autocomplete_dialog_rows[row] = std::pair<std::string, std::string>(std::move(row_insert_on_selection), std::move(data.brief_comments));
-                autocomplete_dialog->add_row(row);
+                completion_dialog_rows[row] = std::pair<std::string, std::string>(std::move(row_insert_on_selection), std::move(data.brief_comments));
+                CompletionDialog::get()->add_row(row);
               }
             }
             autocomplete_data->clear();
@@ -817,10 +818,10 @@ void Source::ClangViewAutocomplete::autocomplete() {
             if(update_status_state)
               update_status_state(this);
             autocomplete_state=AutocompleteState::IDLE;
-            if (!autocomplete_dialog_rows.empty()) {
+            if (!completion_dialog_rows.empty()) {
               get_buffer()->begin_user_action();
               hide_tooltips();
-              autocomplete_dialog->show();
+              CompletionDialog::get()->show();
             }
             else
               soft_reparse();

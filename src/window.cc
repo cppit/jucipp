@@ -9,6 +9,7 @@
 #include "entrybox.h"
 #include "info.h"
 #include "ctags.h"
+#include "selection_dialog.h"
 
 namespace sigc {
 #ifndef SIGC_FUNCTORS_DEDUCE_RESULT_TYPE_WITH_DECLTYPE
@@ -573,48 +574,62 @@ void Window::set_menu_actions() {
   });
   
   menu.add_action("source_find_symbol_ctags", [this]() {
-    if(auto view=Notebook::get().get_current_view()) {
-      auto pair=Ctags::get_result(view->file_path.parent_path());
-      auto path=std::move(pair.first);
-      auto stream=std::move(pair.second);
-      stream->seekg(0, std::ios::end);
-      if(stream->tellg()==0) {
-        Info::get().print("No symbols found in current project");
-        return;
-      }
-      stream->seekg(0, std::ios::beg);
-      
-      auto dialog_iter=view->get_iter_for_dialog();
-      view->selection_dialog=std::make_unique<SelectionDialog>(*view, view->get_buffer()->create_mark(dialog_iter), true, true);
-      auto rows=std::make_shared<std::unordered_map<std::string, Source::Offset> >();
-        
-      std::string line;
-      while(std::getline(*stream, line)) {
-        auto location=Ctags::get_location(line, true);
-        
-        std::string row=location.file_path.string()+":"+std::to_string(location.line+1)+": "+location.source;
-        (*rows)[row]=Source::Offset(location.line, location.index, location.file_path);
-        view->selection_dialog->add_row(row);
-      }
-        
-      if(rows->size()==0)
-        return;
-      view->selection_dialog->on_select=[this, rows, path](const std::string &selected, bool hide_window) {
-        auto offset=rows->at(selected);
-        boost::filesystem::path declaration_file;
-        boost::system::error_code ec;
-        declaration_file=boost::filesystem::canonical(path/offset.file_path, ec);
-        if(ec)
-          return;
-        Notebook::get().open(declaration_file);
-        auto view=Notebook::get().get_current_view();
-        view->place_cursor_at_line_index(offset.line, offset.index);
-        view->scroll_to_cursor_delayed(view, true, false);
-        view->hide_tooltips();
-      };
-      view->hide_tooltips();
-      view->selection_dialog->show();
+    auto view=Notebook::get().get_current_view();
+    
+    boost::filesystem::path ctags_path;
+    if(view)
+      ctags_path=view->file_path.parent_path();
+    else if(!Directories::get().path.empty())
+      ctags_path=Directories::get().path;
+    else
+      ctags_path=boost::filesystem::current_path();
+    auto pair=Ctags::get_result(ctags_path);
+    
+    auto path=std::move(pair.first);
+    auto stream=std::move(pair.second);
+    stream->seekg(0, std::ios::end);
+    if(stream->tellg()==0) {
+      Info::get().print("No symbols found in current project");
+      return;
     }
+    stream->seekg(0, std::ios::beg);
+    
+    if(view) {
+      auto dialog_iter=view->get_iter_for_dialog();
+      SelectionDialog::create(view, view->get_buffer()->create_mark(dialog_iter), true, true);
+    }
+    else
+      SelectionDialog::create(true, true);
+    
+    auto rows=std::make_shared<std::unordered_map<std::string, Source::Offset> >();
+      
+    std::string line;
+    while(std::getline(*stream, line)) {
+      auto location=Ctags::get_location(line, true);
+      
+      std::string row=location.file_path.string()+":"+std::to_string(location.line+1)+": "+location.source;
+      (*rows)[row]=Source::Offset(location.line, location.index, location.file_path);
+      SelectionDialog::get()->add_row(row);
+    }
+      
+    if(rows->size()==0)
+      return;
+    SelectionDialog::get()->on_select=[this, rows, path](const std::string &selected, bool hide_window) {
+      auto offset=rows->at(selected);
+      boost::filesystem::path declaration_file;
+      boost::system::error_code ec;
+      declaration_file=boost::filesystem::canonical(path/offset.file_path, ec);
+      if(ec)
+        return;
+      Notebook::get().open(declaration_file);
+      auto view=Notebook::get().get_current_view();
+      view->place_cursor_at_line_index(offset.line, offset.index);
+      view->scroll_to_cursor_delayed(view, true, false);
+      view->hide_tooltips();
+    };
+    if(view)
+      view->hide_tooltips();
+    SelectionDialog::get()->show();
   });
   
   menu.add_action("source_comments_toggle", [this]() {
@@ -698,7 +713,7 @@ void Window::set_menu_actions() {
         auto locations=view->get_implementation_locations(Notebook::get().get_views());
         if(!locations.empty()) {
           auto dialog_iter=view->get_iter_for_dialog();
-          view->selection_dialog=std::make_unique<SelectionDialog>(*view, view->get_buffer()->create_mark(dialog_iter), true, true);
+          SelectionDialog::create(view, view->get_buffer()->create_mark(dialog_iter), true, true);
           auto rows=std::make_shared<std::unordered_map<std::string, Source::Offset> >();
           auto project_path=Project::Build::create(view->file_path)->project_path;
           if(project_path.empty()) {
@@ -718,7 +733,7 @@ void Window::set_menu_actions() {
                 path=location.file_path.filename();
               auto row=path.string()+":"+std::to_string(location.line+1);
               (*rows)[row]=location;
-              view->selection_dialog->add_row(row);
+              SelectionDialog::get()->add_row(row);
             }
           }
           
@@ -734,7 +749,7 @@ void Window::set_menu_actions() {
             view->scroll_to_cursor_delayed(view, true, false);
             return;
           }
-          view->selection_dialog->on_select=[this, rows](const std::string &selected, bool hide_window) {
+          SelectionDialog::get()->on_select=[this, rows](const std::string &selected, bool hide_window) {
             auto location=rows->at(selected);
             Notebook::get().open(location.file_path);
             auto view=Notebook::get().get_current_view();
@@ -743,7 +758,7 @@ void Window::set_menu_actions() {
             view->hide_tooltips();
           };
           view->hide_tooltips();
-          view->selection_dialog->show();
+          SelectionDialog::get()->show();
         }
       }
     }
@@ -755,7 +770,7 @@ void Window::set_menu_actions() {
         auto usages=view->get_usages(Notebook::get().get_views());
         if(!usages.empty()) {
           auto dialog_iter=view->get_iter_for_dialog();
-          view->selection_dialog=std::make_unique<SelectionDialog>(*view, view->get_buffer()->create_mark(dialog_iter), true, true);
+          SelectionDialog::create(view, view->get_buffer()->create_mark(dialog_iter), true, true);
           auto rows=std::make_shared<std::unordered_map<std::string, Source::Offset> >();
           
           auto iter=view->get_buffer()->get_insert()->get_iter();
@@ -769,18 +784,18 @@ void Window::set_menu_actions() {
             }
             row+=std::to_string(usage.first.line+1)+": "+usage.second;
             (*rows)[row]=usage.first;
-            view->selection_dialog->add_row(row);
+            SelectionDialog::get()->add_row(row);
             
             //Set dialog cursor to the last row if the textview cursor is at the same line
             if(current_page &&
                iter.get_line()==static_cast<int>(usage.first.line) && iter.get_line_index()>=static_cast<int>(usage.first.index)) {
-              view->selection_dialog->set_cursor_at_last_row();
+              SelectionDialog::get()->set_cursor_at_last_row();
             }
           }
           
           if(rows->size()==0)
             return;
-          view->selection_dialog->on_select=[this, rows](const std::string &selected, bool hide_window) {
+          SelectionDialog::get()->on_select=[this, rows](const std::string &selected, bool hide_window) {
             auto offset=rows->at(selected);
             boost::filesystem::path declaration_file;
             boost::system::error_code ec;
@@ -794,7 +809,7 @@ void Window::set_menu_actions() {
             view->hide_tooltips();
           };
           view->hide_tooltips();
-          view->selection_dialog->show();
+          SelectionDialog::get()->show();
         }
       }
     }
@@ -805,23 +820,23 @@ void Window::set_menu_actions() {
         auto methods=Notebook::get().get_current_view()->get_methods();
         if(!methods.empty()) {
           auto dialog_iter=view->get_iter_for_dialog();
-          view->selection_dialog=std::make_unique<SelectionDialog>(*view, view->get_buffer()->create_mark(dialog_iter), true, true);
+          SelectionDialog::create(view, view->get_buffer()->create_mark(dialog_iter), true, true);
           auto rows=std::make_shared<std::unordered_map<std::string, Source::Offset> >();
           auto iter=view->get_buffer()->get_insert()->get_iter();
           for(auto &method: methods) {
             (*rows)[method.second]=method.first;
-            view->selection_dialog->add_row(method.second);
+            SelectionDialog::get()->add_row(method.second);
             if(iter.get_line()>=static_cast<int>(method.first.line))
-              view->selection_dialog->set_cursor_at_last_row();
+              SelectionDialog::get()->set_cursor_at_last_row();
           }
-          view->selection_dialog->on_select=[view, rows](const std::string& selected, bool hide_window) {
+          SelectionDialog::get()->on_select=[view, rows](const std::string& selected, bool hide_window) {
             auto offset=rows->at(selected);
             view->get_buffer()->place_cursor(view->get_buffer()->get_iter_at_line_index(offset.line, offset.index));
             view->scroll_to(view->get_buffer()->get_insert(), 0.0, 1.0, 0.5);
             view->hide_tooltips();
           };
           view->hide_tooltips();
-          view->selection_dialog->show();
+          SelectionDialog::get()->show();
         }
       }
     }
@@ -1150,7 +1165,6 @@ void Window::activate_menu_items() {
   menu.actions["source_center_cursor"]->set_enabled(view);
   
   menu.actions["source_indentation_auto_indent_buffer"]->set_enabled(view && static_cast<bool>(view->format_style));
-  menu.actions["source_find_symbol_ctags"]->set_enabled(view);
   menu.actions["source_comments_toggle"]->set_enabled(view && static_cast<bool>(view->toggle_comments));
   menu.actions["source_comments_add_documentation"]->set_enabled(view && static_cast<bool>(view->add_documentation));
   menu.actions["source_find_documentation"]->set_enabled(view && static_cast<bool>(view->get_token_data));
@@ -1197,6 +1211,11 @@ bool Window::on_key_press_event(GdkEventKey *event) {
     }
   }
 #endif
+
+  if(SelectionDialog::get() && SelectionDialog::get()->is_visible()) {
+    if(SelectionDialog::get()->on_key_press(event))
+      return true;
+  }
 
   return Gtk::ApplicationWindow::on_key_press_event(event);
 }

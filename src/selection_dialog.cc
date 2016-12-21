@@ -1,4 +1,4 @@
-#include "selectiondialog.h"
+#include "selection_dialog.h"
 #include <algorithm>
 
 namespace sigc {
@@ -43,7 +43,7 @@ void SelectionDialogBase::ListViewText::clear() {
   list_store.reset();
 }
 
-SelectionDialogBase::SelectionDialogBase(Gtk::TextView& text_view, Glib::RefPtr<Gtk::TextBuffer::Mark> start_mark, bool show_search_entry, bool use_markup):
+SelectionDialogBase::SelectionDialogBase(Gtk::TextView *text_view, Glib::RefPtr<Gtk::TextBuffer::Mark> start_mark, bool show_search_entry, bool use_markup):
     text_view(text_view), window(Gtk::WindowType::WINDOW_POPUP), vbox(Gtk::Orientation::ORIENTATION_VERTICAL), list_view_text(use_markup), start_mark(start_mark), show_search_entry(show_search_entry) {
   auto g_application=g_application_get_default();
   auto gio_application=Glib::wrap(g_application, true);
@@ -67,26 +67,63 @@ SelectionDialogBase::SelectionDialogBase(Gtk::TextView& text_view, Glib::RefPtr<
   window.add(vbox);
 
   list_view_text.signal_realize().connect([this](){
-    resize();
+    auto g_application=g_application_get_default();
+    auto gio_application=Glib::wrap(g_application, true);
+    auto application=Glib::RefPtr<Gtk::Application>::cast_static(gio_application);
+    auto application_window=application->get_active_window();
+    
+    int row_width=0, row_height;
+    Gdk::Rectangle rect;
+    list_view_text.get_cell_area(list_view_text.get_model()->get_path(list_view_text.get_model()->children().begin()), *(list_view_text.get_column(0)), rect);
+    row_width=rect.get_width();
+    row_height=rect.get_height();
+    
+    row_width+=rect.get_x()*2; //TODO: Add correct margin x and y
+    row_height+=rect.get_y()*2;
+    
+    if(this->text_view && row_width>this->text_view->get_width()*2/3)
+      row_width=this->text_view->get_width()*2/3;
+    else if(row_width>application_window->get_width()/2)
+      row_width=application_window->get_width()/2;
+    else
+      scrolled_window.set_policy(Gtk::PolicyType::POLICY_NEVER, Gtk::PolicyType::POLICY_AUTOMATIC);
+    
+    int window_height=std::min(row_height*static_cast<int>(list_view_text.get_model()->children().size()), row_height*10);
+    if(this->show_search_entry)
+      window_height+=search_entry.get_height();
+    int window_width=row_width+1;
+    window.resize(window_width, window_height);
+    
+    if(this->text_view) {
+      Gdk::Rectangle iter_rect;
+      this->text_view->get_iter_location(this->start_mark->get_iter(), iter_rect);
+      Gdk::Rectangle visible_rect;
+      this->text_view->get_visible_rect(visible_rect);
+      int buffer_x=std::max(iter_rect.get_x(), visible_rect.get_x());
+      int buffer_y=iter_rect.get_y()+iter_rect.get_height();
+      int window_x, window_y;
+      this->text_view->buffer_to_window_coords(Gtk::TextWindowType::TEXT_WINDOW_TEXT, buffer_x, buffer_y, window_x, window_y);
+      int root_x, root_y;
+      this->text_view->get_window(Gtk::TextWindowType::TEXT_WINDOW_TEXT)->get_root_coords(window_x, window_y, root_x, root_y);
+      window.move(root_x, root_y+1); //TODO: replace 1 with some margin
+    }
+    else {
+      int root_x, root_y;
+      application_window->get_position(root_x, root_y);
+      root_x+=application_window->get_width()/2-window_width/2;
+      root_y+=application_window->get_height()/2-window_height/2;
+      window.move(root_x, root_y);
+    }
   });
   
   list_view_text.signal_cursor_changed().connect([this] {
     cursor_changed();
   });
-  
-  window.signal_realize().connect([this] {
-    Gdk::Rectangle iter_rect;
-    this->text_view.get_iter_location(this->start_mark->get_iter(), iter_rect);
-    Gdk::Rectangle visible_rect;
-    this->text_view.get_visible_rect(visible_rect);
-    int buffer_x=std::max(iter_rect.get_x(), visible_rect.get_x());
-    int buffer_y=iter_rect.get_y()+iter_rect.get_height();
-    int window_x, window_y;
-    this->text_view.buffer_to_window_coords(Gtk::TextWindowType::TEXT_WINDOW_TEXT, buffer_x, buffer_y, window_x, window_y);
-    int root_x, root_y;
-    this->text_view.get_window(Gtk::TextWindowType::TEXT_WINDOW_TEXT)->get_root_coords(window_x, window_y, root_x, root_y);
-    window.move(root_x, root_y+1); //TODO: replace 1 with some margin
-  });
+}
+
+SelectionDialogBase::~SelectionDialogBase() {
+  if(text_view)
+    text_view->get_buffer()->delete_mark(start_mark);
 }
 
 void SelectionDialogBase::cursor_changed() {
@@ -102,18 +139,14 @@ void SelectionDialogBase::cursor_changed() {
     on_changed(row);
   last_row=row;
 }
-
-SelectionDialogBase::~SelectionDialogBase() {
-  text_view.get_buffer()->delete_mark(start_mark);
-}
-
 void SelectionDialogBase::add_row(const std::string& row) {
   list_view_text.append(row);
 }
 
 void SelectionDialogBase::show() {
   window.show_all();
-  text_view.grab_focus();
+  if(text_view)
+    text_view->grab_focus();
   
   if(list_view_text.get_model()->children().size()>0) {
     if(!list_view_text.get_selection()->get_selected()) {
@@ -146,30 +179,9 @@ void SelectionDialogBase::hide() {
   list_view_text.clear();
 }
 
-void SelectionDialogBase::resize() {
-  if(list_view_text.get_realized()) {
-    int row_width=0, row_height;
-    Gdk::Rectangle rect;
-    list_view_text.get_cell_area(list_view_text.get_model()->get_path(list_view_text.get_model()->children().begin()), *(list_view_text.get_column(0)), rect);
-    row_width=rect.get_width();
-    row_height=rect.get_height();
+std::unique_ptr<SelectionDialog> SelectionDialog::instance;
 
-    row_width+=rect.get_x()*2; //TODO: Add correct margin x and y
-    row_height+=rect.get_y()*2;
-
-    if(row_width>text_view.get_width()/2)
-      row_width=text_view.get_width()/2;
-    else
-      scrolled_window.set_policy(Gtk::PolicyType::POLICY_NEVER, Gtk::PolicyType::POLICY_AUTOMATIC);
-
-    int window_height=std::min(row_height*static_cast<int>(list_view_text.get_model()->children().size()), row_height*10);
-    if(show_search_entry)
-      window_height+=search_entry.get_height();
-    window.resize(row_width+1, window_height);
-  }
-}
-
-SelectionDialog::SelectionDialog(Gtk::TextView& text_view, Glib::RefPtr<Gtk::TextBuffer::Mark> start_mark, bool show_search_entry, bool use_markup) : SelectionDialogBase(text_view, start_mark, show_search_entry, use_markup) {
+SelectionDialog::SelectionDialog(Gtk::TextView *text_view, Glib::RefPtr<Gtk::TextBuffer::Mark> start_mark, bool show_search_entry, bool use_markup) : SelectionDialogBase(text_view, start_mark, show_search_entry, use_markup) {
   std::shared_ptr<std::string> search_key(new std::string());
   auto filter_model=Gtk::TreeModelFilter::create(list_view_text.get_model());
   
@@ -288,8 +300,10 @@ bool SelectionDialog::on_key_press(GdkEventKey* key) {
   return false;
 }
 
-CompletionDialog::CompletionDialog(Gtk::TextView& text_view, Glib::RefPtr<Gtk::TextBuffer::Mark> start_mark) : SelectionDialogBase(text_view, start_mark, false, false) {
-  show_offset=text_view.get_buffer()->get_insert()->get_iter().get_offset();
+std::unique_ptr<CompletionDialog> CompletionDialog::instance;
+
+CompletionDialog::CompletionDialog(Gtk::TextView *text_view, Glib::RefPtr<Gtk::TextBuffer::Mark> start_mark) : SelectionDialogBase(text_view, start_mark, false, false) {
+  show_offset=text_view->get_buffer()->get_insert()->get_iter().get_offset();
   
   std::shared_ptr<std::string> search_key(new std::string());
   auto filter_model=Gtk::TreeModelFilter::create(list_view_text.get_model());  
@@ -325,7 +339,7 @@ CompletionDialog::CompletionDialog(Gtk::TextView& text_view, Glib::RefPtr<Gtk::T
     select();
   });
   
-  auto text=text_view.get_buffer()->get_text(start_mark->get_iter(), text_view.get_buffer()->get_insert()->get_iter());
+  auto text=text_view->get_buffer()->get_text(start_mark->get_iter(), text_view->get_buffer()->get_insert()->get_iter());
   if(text.size()>0) {
     search_entry.set_text(text);
     list_view_text.set_search_entry(search_entry);
@@ -349,11 +363,11 @@ bool CompletionDialog::on_key_release(GdkEventKey* key) {
   if(key->keyval==GDK_KEY_Down || key->keyval==GDK_KEY_KP_Down || key->keyval==GDK_KEY_Up || key->keyval==GDK_KEY_KP_Up)
     return false;
     
-  if(show_offset>text_view.get_buffer()->get_insert()->get_iter().get_offset()) {
+  if(show_offset>text_view->get_buffer()->get_insert()->get_iter().get_offset()) {
     hide();
   }
   else {
-    auto text=text_view.get_buffer()->get_text(start_mark->get_iter(), text_view.get_buffer()->get_insert()->get_iter());
+    auto text=text_view->get_buffer()->get_text(start_mark->get_iter(), text_view->get_buffer()->get_insert()->get_iter());
     search_entry.set_text(text);
     list_view_text.set_search_entry(search_entry);
     if(text=="") {
@@ -371,7 +385,7 @@ bool CompletionDialog::on_key_press(GdkEventKey* key) {
      (key->keyval>=GDK_KEY_a && key->keyval<=GDK_KEY_z) ||
      key->keyval==GDK_KEY_underscore || key->keyval==GDK_KEY_BackSpace) {
     if(row_in_entry) {
-      text_view.get_buffer()->erase(start_mark->get_iter(), text_view.get_buffer()->get_insert()->get_iter());
+      text_view->get_buffer()->erase(start_mark->get_iter(), text_view->get_buffer()->get_insert()->get_iter());
       row_in_entry=false;
       if(key->keyval==GDK_KEY_BackSpace)
         return true;

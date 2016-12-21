@@ -77,7 +77,7 @@ namespace Source {
     void autocomplete_dialog_setup();
     void autocomplete_check();
     void autocomplete();
-    std::unordered_map<std::string, std::pair<std::string, std::string> > autocomplete_dialog_rows;
+    std::unordered_map<std::string, std::pair<std::string, std::string> > completion_dialog_rows;
     std::vector<AutoCompleteData> autocomplete_get_suggestions(const std::string &buffer, int line_number, int column);
     Tooltips autocomplete_tooltips;
     std::string prefix;

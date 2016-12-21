@@ -80,8 +80,6 @@ namespace Source {
     std::function<void()> add_documentation;
     std::function<void(int)> toggle_breakpoint;
     
-    std::unique_ptr<CompletionDialog> autocomplete_dialog;
-    std::unique_ptr<SelectionDialog> selection_dialog;
     Gtk::TextIter get_iter_for_dialog();
     
     std::function<void(View* view, bool center, bool show_tooltips)> scroll_to_cursor_delayed=[](View* view, bool center, bool show_tooltips) {};
