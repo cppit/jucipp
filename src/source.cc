@@ -1244,11 +1244,11 @@ std::string Source::View::get_token(Gtk::TextIter iter) {
 }
 
 bool Source::View::on_key_press_event(GdkEventKey* key) {
-  if(selection_dialog && selection_dialog->shown) {
+  if(selection_dialog && selection_dialog->is_visible()) {
     if(selection_dialog->on_key_press(key))
       return true;
   }
-  if(autocomplete_dialog && autocomplete_dialog->shown) {
+  if(autocomplete_dialog && autocomplete_dialog->is_visible()) {
     if(autocomplete_dialog->on_key_press(key))
       return true;
   }

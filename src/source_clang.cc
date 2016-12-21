@@ -568,7 +568,7 @@ void Source::ClangViewParse::show_type_tooltips(const Gdk::Rectangle &rectangle)
 Source::ClangViewAutocomplete::ClangViewAutocomplete(const boost::filesystem::path &file_path, Glib::RefPtr<Gsv::Language> language):
     Source::ClangViewParse(file_path, language), autocomplete_state(AutocompleteState::IDLE) {
   get_buffer()->signal_changed().connect([this](){
-    if(autocomplete_dialog && autocomplete_dialog->shown)
+    if(autocomplete_dialog && autocomplete_dialog->is_visible())
       delayed_reparse_connection.disconnect();
     else {
       if(!has_focus())
@@ -596,7 +596,7 @@ Source::ClangViewAutocomplete::ClangViewAutocomplete(const boost::filesystem::pa
   });
   
   signal_key_release_event().connect([this](GdkEventKey* key){
-    if(autocomplete_dialog && autocomplete_dialog->shown) {
+    if(autocomplete_dialog && autocomplete_dialog->is_visible()) {
       if(autocomplete_dialog->on_key_release(key))
         return true;
     }

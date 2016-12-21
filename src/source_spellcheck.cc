@@ -27,7 +27,7 @@ Source::SpellCheckView::SpellCheckView() : Gsv::View() {
   spellcheck_error_tag->property_underline()=Pango::Underline::UNDERLINE_ERROR;
   
   signal_key_press_event().connect([this](GdkEventKey *event) {
-    if(spellcheck_suggestions_dialog && spellcheck_suggestions_dialog->shown) {
+    if(spellcheck_suggestions_dialog && spellcheck_suggestions_dialog->is_visible()) {
       if(spellcheck_suggestions_dialog->on_key_press(event))
         return true;
     }

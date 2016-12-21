@@ -90,7 +90,7 @@ SelectionDialogBase::SelectionDialogBase(Gtk::TextView& text_view, Glib::RefPtr<
 }
 
 void SelectionDialogBase::cursor_changed() {
-  if(!shown)
+  if(!is_visible())
     return;
   auto it=list_view_text.get_selection()->get_selected();
   std::string row;
@@ -112,7 +112,6 @@ void SelectionDialogBase::add_row(const std::string& row) {
 }
 
 void SelectionDialogBase::show() {
-  shown=true;
   window.show_all();
   text_view.grab_focus();
   
@@ -124,7 +123,8 @@ void SelectionDialogBase::show() {
     else if(list_view_text.get_model()->children().begin()!=list_view_text.get_selection()->get_selected()) {
       while(Gtk::Main::events_pending())
         Gtk::Main::iteration(false);
-      list_view_text.scroll_to_row(list_view_text.get_model()->get_path(list_view_text.get_selection()->get_selected()), 0.5);
+      if(is_visible())
+        list_view_text.scroll_to_row(list_view_text.get_model()->get_path(list_view_text.get_selection()->get_selected()), 0.5);
     }
   }
 }
@@ -138,9 +138,8 @@ void SelectionDialogBase::set_cursor_at_last_row() {
 }
 
 void SelectionDialogBase::hide() {
-  if(!shown)
+  if(!is_visible())
     return;
-  shown=false;
   window.hide();
   if(on_hide)
     on_hide();

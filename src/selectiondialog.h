@@ -37,13 +37,13 @@ public:
   void set_cursor_at_last_row();
   void show();
   void hide();
+  bool is_visible() {return window.is_visible();}
   
   std::function<void()> on_hide;
   std::function<void(const std::string& selected, bool hide_window)> on_select;
   std::function<void(const std::string &selected)> on_changed;
   Glib::RefPtr<Gtk::TextBuffer::Mark> start_mark;
   
-  bool shown=false;
 protected:
   void cursor_changed();
   
