@@ -541,20 +541,30 @@ void Window::set_menu_actions() {
       view->scroll_to_cursor_delayed(view, true, false);
   });
   menu.add_action("source_cursor_history_back", [this]() {
-    if(Notebook::get().cursor_locations.size()<=1)
+    if(Notebook::get().cursor_locations.size()==0)
       return;
     if(Notebook::get().current_cursor_location==static_cast<size_t>(-1))
       Notebook::get().current_cursor_location=Notebook::get().cursor_locations.size()-1;
-    if(Notebook::get().current_cursor_location<1)
-      return;
     
-    --Notebook::get().current_cursor_location;
-    auto &cursor_location=Notebook::get().cursor_locations.at(Notebook::get().current_cursor_location);
-    if(Notebook::get().get_current_view()!=cursor_location.view)
-      Notebook::get().open(cursor_location.view->file_path);
+    auto cursor_location=&Notebook::get().cursor_locations.at(Notebook::get().current_cursor_location);
+    // Move to current position if current position's view is not current view
+    // (in case one is looking at a new file but has not yet placed the cursor within the file)
+    if(cursor_location->view!=Notebook::get().get_current_view())
+      Notebook::get().open(cursor_location->view->file_path);
+    else {
+      if(Notebook::get().cursor_locations.size()<=1)
+        return;
+      if(Notebook::get().current_cursor_location==0)
+        return;
+      
+      --Notebook::get().current_cursor_location;
+      cursor_location=&Notebook::get().cursor_locations.at(Notebook::get().current_cursor_location);
+      if(Notebook::get().get_current_view()!=cursor_location->view)
+        Notebook::get().open(cursor_location->view->file_path);
+    }
     Notebook::get().disable_next_update_cursor_locations=true;
-    cursor_location.view->get_buffer()->place_cursor(cursor_location.mark->get_iter());
-    cursor_location.view->scroll_to_cursor_delayed(cursor_location.view, true, false);
+    cursor_location->view->get_buffer()->place_cursor(cursor_location->mark->get_iter());
+    cursor_location->view->scroll_to_cursor_delayed(cursor_location->view, true, false);
   });
   menu.add_action("source_cursor_history_forward", [this]() {
     if(Notebook::get().cursor_locations.size()<=1)
