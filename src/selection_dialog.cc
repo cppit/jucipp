@@ -274,7 +274,16 @@ bool SelectionDialog::on_key_press(GdkEventKey* key) {
   }
   else if(show_search_entry) {
 #ifdef __APPLE__ //OS X bug most likely: Gtk::Entry will not work if window is of type POPUP
-    if(key->is_modifier)
+    int search_entry_length=search_entry.get_text_length();
+    if(key->keyval==GDK_KEY_dead_tilde) {
+      search_entry.insert_text("~", 1, search_entry_length);
+      return true;
+    }
+    else if(key->keyval==GDK_KEY_dead_circumflex) {
+      search_entry.insert_text("^", 1, search_entry_length);
+      return true;
+    }
+    else if(key->is_modifier)
       return true;
     else if(key->keyval==GDK_KEY_BackSpace) {
       auto length=search_entry.get_text_length();
@@ -285,9 +294,8 @@ bool SelectionDialog::on_key_press(GdkEventKey* key) {
     else {
       gunichar unicode=gdk_keyval_to_unicode(key->keyval);
       if(unicode>=32 && unicode!=126) {
-        int length=search_entry.get_text_length();
         auto ustr=Glib::ustring(1, unicode);
-        search_entry.insert_text(ustr, ustr.bytes(), length);
+        search_entry.insert_text(ustr, ustr.bytes(), search_entry_length);
         return true;
       }
     }
