@@ -651,8 +651,23 @@ void Window::set_menu_actions() {
   });
   menu.add_action("source_comments_add_documentation", [this]() {
     if(auto view=Notebook::get().get_current_view()) {
-      if(view->add_documentation) {
-        view->add_documentation();
+      if(view->get_documentation_template) {
+        auto documentation_template=view->get_documentation_template();
+        auto offset=std::get<0>(documentation_template);
+        if(offset) {
+          boost::system::error_code ec;
+          auto canonical_path=boost::filesystem::canonical(offset.file_path, ec);
+          if(ec)
+            return;
+          Notebook::get().open(canonical_path);
+          auto view=Notebook::get().get_current_view();
+          auto iter=view->get_buffer()->get_iter_at_line_index(offset.line, offset.index);
+          view->get_buffer()->insert(iter, std::get<1>(documentation_template));
+          iter=view->get_buffer()->get_iter_at_line_index(offset.line, offset.index);
+          iter.forward_chars(std::get<2>(documentation_template));
+          view->get_buffer()->place_cursor(iter);
+          view->scroll_to_cursor_delayed(view, true, false);
+        }
       }
     }
   });
@@ -1174,18 +1189,18 @@ void Window::activate_menu_items() {
   menu.actions["source_goto_line"]->set_enabled(view);
   menu.actions["source_center_cursor"]->set_enabled(view);
   
-  menu.actions["source_indentation_auto_indent_buffer"]->set_enabled(view && static_cast<bool>(view->format_style));
-  menu.actions["source_comments_toggle"]->set_enabled(view && static_cast<bool>(view->toggle_comments));
-  menu.actions["source_comments_add_documentation"]->set_enabled(view && static_cast<bool>(view->add_documentation));
-  menu.actions["source_find_documentation"]->set_enabled(view && static_cast<bool>(view->get_token_data));
-  menu.actions["source_goto_declaration"]->set_enabled(view && static_cast<bool>(view->get_declaration_location));
-  menu.actions["source_goto_implementation"]->set_enabled(view && static_cast<bool>(view->get_implementation_locations));
-  menu.actions["source_goto_usage"]->set_enabled(view && static_cast<bool>(view->get_usages));
-  menu.actions["source_goto_method"]->set_enabled(view && static_cast<bool>(view->get_methods));
-  menu.actions["source_rename"]->set_enabled(view && static_cast<bool>(view->rename_similar_tokens));
-  menu.actions["source_implement_method"]->set_enabled(view && static_cast<bool>(view->get_method));
-  menu.actions["source_goto_next_diagnostic"]->set_enabled(view && static_cast<bool>(view->goto_next_diagnostic));
-  menu.actions["source_apply_fix_its"]->set_enabled(view && static_cast<bool>(view->get_fix_its));
+  menu.actions["source_indentation_auto_indent_buffer"]->set_enabled(view && view->format_style);
+  menu.actions["source_comments_toggle"]->set_enabled(view && view->toggle_comments);
+  menu.actions["source_comments_add_documentation"]->set_enabled(view && view->get_documentation_template);
+  menu.actions["source_find_documentation"]->set_enabled(view && view->get_token_data);
+  menu.actions["source_goto_declaration"]->set_enabled(view && view->get_declaration_location);
+  menu.actions["source_goto_implementation"]->set_enabled(view && view->get_implementation_locations);
+  menu.actions["source_goto_usage"]->set_enabled(view && view->get_usages);
+  menu.actions["source_goto_method"]->set_enabled(view && view->get_methods);
+  menu.actions["source_rename"]->set_enabled(view && view->rename_similar_tokens);
+  menu.actions["source_implement_method"]->set_enabled(view && view->get_method);
+  menu.actions["source_goto_next_diagnostic"]->set_enabled(view && view->goto_next_diagnostic);
+  menu.actions["source_apply_fix_its"]->set_enabled(view && view->get_fix_its);
 #ifdef JUCI_ENABLE_DEBUG
   Project::debug_activate_menu_items();
 #endif

@@ -275,7 +275,7 @@ const Glib::ustring menu_xml= R"RAW(<interface>
             <attribute name='action'>app.source_comments_toggle</attribute>
           </item>
           <item>
-            <attribute name='label' translatable='yes'>_Add _Documentation (not yet implemented)</attribute>
+            <attribute name='label' translatable='yes'>_Add _Documentation</attribute>
             <attribute name='action'>app.source_comments_add_documentation</attribute>
           </item>
         </submenu>

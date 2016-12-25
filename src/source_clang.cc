@@ -1403,6 +1403,50 @@ Source::ClangViewRefactor::ClangViewRefactor(const boost::filesystem::path &file
       Info::get().print("No fix-its found in current buffer");
     return fix_its;
   };
+  
+  get_documentation_template=[this]() {
+    if(!parsed) {
+      Info::get().print("Buffer is parsing");
+      return std::tuple<Source::Offset, std::string, size_t>(Source::Offset(), "", 0);
+    }
+    auto identifier=get_identifier();
+    if(identifier) {
+      auto cursor=identifier.cursor.get_canonical();
+      if(!clang_Range_isNull(clang_Cursor_getCommentRange(cursor.cx_cursor))) {
+        Info::get().print("Symbol is already documented");
+        return std::tuple<Source::Offset, std::string, size_t>(Source::Offset(), "", 0);
+      }
+      auto clang_offsets=cursor.get_source_range().get_offsets();
+      auto source_offset=Offset(clang_offsets.first.line-1, 0, cursor.get_source_location().get_path());
+      std::string tabs;
+      for(size_t c=0;c<clang_offsets.first.index-1;++c)
+        tabs+=' ';
+      auto first_line=tabs+"/**\n";
+      auto second_line=tabs+" * \n";
+      auto iter_offset=first_line.size()+second_line.size()-1;
+      
+      std::string param_lines;
+      for(int c=0;c<clang_Cursor_getNumArguments(cursor.cx_cursor);++c)
+        param_lines+=tabs+" * @param "+clang::Cursor(clang_Cursor_getArgument(cursor.cx_cursor, c)).get_spelling()+'\n';
+      
+      std::string return_line;
+      auto return_spelling=cursor.get_type().get_result().get_spelling();
+      if(!return_spelling.empty() && return_spelling!="void")
+        return_line+=tabs+" * @return\n";
+      
+      auto documentation=first_line+second_line;
+      if(!param_lines.empty() || !return_line.empty())
+        documentation+=tabs+" *\n";
+      
+      documentation+=param_lines+return_line+tabs+" */\n";
+      
+      return std::tuple<Source::Offset, std::string, size_t>(source_offset, documentation, iter_offset);
+    }
+    else {
+      Info::get().print("No symbol found at current cursor location");
+      return std::tuple<Source::Offset, std::string, size_t>(Source::Offset(), "", 0);
+    }
+  };
 }
 
 Source::ClangViewRefactor::Identifier Source::ClangViewRefactor::get_identifier() {

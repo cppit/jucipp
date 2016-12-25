@@ -77,7 +77,7 @@ namespace Source {
     std::function<void()> goto_next_diagnostic;
     std::function<std::vector<FixIt>()> get_fix_its;
     std::function<void()> toggle_comments;
-    std::function<void()> add_documentation;
+    std::function<std::tuple<Source::Offset, std::string, size_t>()> get_documentation_template;
     std::function<void(int)> toggle_breakpoint;
     
     Gtk::TextIter get_iter_for_dialog();
@@ -135,6 +135,8 @@ namespace Source {
     bool is_templated_function(Gtk::TextIter iter, Gtk::TextIter &parenthesis_end_iter);
     
     std::string get_token(Gtk::TextIter iter);
+    
+    void cleanup_whitespace_characters_on_return(const Gtk::TextIter &iter);
     
     const static std::regex bracket_regex;
     const static std::regex no_bracket_statement_regex;

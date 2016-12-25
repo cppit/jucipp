@@ -1244,6 +1244,25 @@ std::string Source::View::get_token(Gtk::TextIter iter) {
   return get_buffer()->get_text(start, end);
 }
 
+void Source::View::cleanup_whitespace_characters_on_return(const Gtk::TextIter &iter) {
+  auto start_blank_iter=iter;
+  auto end_blank_iter=iter;
+  while((*end_blank_iter==' ' || *end_blank_iter=='\t') &&
+        !end_blank_iter.ends_line() && end_blank_iter.forward_char()) {}
+  if(!start_blank_iter.starts_line()) {
+    start_blank_iter.backward_char();
+    while((*start_blank_iter==' ' || *start_blank_iter=='\t') &&
+          !start_blank_iter.starts_line() && start_blank_iter.backward_char()) {}
+    if(*start_blank_iter!=' ' && *start_blank_iter!='\t')
+      start_blank_iter.forward_char();
+  }
+
+  if(start_blank_iter.starts_line())
+    get_buffer()->erase(iter, end_blank_iter);
+  else
+    get_buffer()->erase(start_blank_iter, end_blank_iter);
+}
+
 bool Source::View::on_key_press_event(GdkEventKey* key) {
   if(SelectionDialog::get() && SelectionDialog::get()->is_visible()) {
     if(SelectionDialog::get()->on_key_press(key))
@@ -1327,24 +1346,6 @@ bool Source::View::on_key_press_event(GdkEventKey* key) {
     get_buffer()->end_user_action();
     return true;
   }
-
-  if(get_buffer()->get_has_selection()) {
-    auto return_value=on_key_press_event_basic(key);
-    get_buffer()->end_user_action();
-    if(return_value)
-      return true;
-    else
-      return Gsv::View::on_key_press_event(key);
-  }
-  
-  if(!is_code_iter(get_buffer()->get_insert()->get_iter())) {
-    auto return_value=on_key_press_event_basic(key);
-    get_buffer()->end_user_action();
-    if(return_value)
-      return true;
-    else
-      return Gsv::View::on_key_press_event(key);
-  }
   
   if(is_bracket_language && on_key_press_event_bracket_language(key)) {
     get_buffer()->end_user_action();
@@ -1363,23 +1364,10 @@ bool Source::View::on_key_press_event(GdkEventKey* key) {
 //Basic indentation
 bool Source::View::on_key_press_event_basic(GdkEventKey* key) {
   auto iter=get_buffer()->get_insert()->get_iter();
+
   //Indent as in next or previous line
   if((key->keyval==GDK_KEY_Return || key->keyval==GDK_KEY_KP_Enter) && !get_buffer()->get_has_selection() && !iter.starts_line()) {
-    //First remove spaces or tabs around cursor
-    auto start_blank_iter=iter;
-    auto end_blank_iter=iter;
-    while((*end_blank_iter==' ' || *end_blank_iter=='\t') &&
-          !end_blank_iter.ends_line() && end_blank_iter.forward_char()) {}
-    start_blank_iter.backward_char();
-    while((*start_blank_iter==' ' || *start_blank_iter=='\t') &&
-          !start_blank_iter.starts_line() && start_blank_iter.backward_char()) {}
-    
-    if(start_blank_iter.starts_line() && (*start_blank_iter==' ' || *start_blank_iter=='\t'))
-      get_buffer()->erase(iter, end_blank_iter);
-    else {
-      start_blank_iter.forward_char();
-      get_buffer()->erase(start_blank_iter, end_blank_iter);
-    }
+    cleanup_whitespace_characters_on_return(iter);
     
     iter=get_buffer()->get_insert()->get_iter();
     auto tabs=get_line_before(get_tabs_end_iter(iter));
@@ -1595,22 +1583,39 @@ bool Source::View::on_key_press_event_basic(GdkEventKey* key) {
 //Bracket language indentation
 bool Source::View::on_key_press_event_bracket_language(GdkEventKey* key) {
   auto iter=get_buffer()->get_insert()->get_iter();
+
+  if(get_buffer()->get_has_selection())
+    return false;
+
+  if(!is_code_iter(iter)) {
+    // Add * at start of line in comment blocks
+    if((key->keyval==GDK_KEY_Return || key->keyval==GDK_KEY_KP_Enter) && !iter.starts_line()) {
+      cleanup_whitespace_characters_on_return(iter);
+      
+      iter=get_buffer()->get_insert()->get_iter();
+      auto start_iter=get_tabs_end_iter(iter.get_line());
+      auto end_iter=start_iter;
+      end_iter.forward_chars(2);
+      auto start_of_sentence=get_buffer()->get_text(start_iter, end_iter);
+      if(!start_of_sentence.empty()) {
+        if(start_of_sentence=="/*" || start_of_sentence[0]=='*') {
+          auto tabs=get_line_before(start_iter);
+          auto insert_str="\n"+tabs;
+          if(start_of_sentence[0]=='/')
+            insert_str+=' ';
+          insert_str+="* ";
+          
+          get_buffer()->insert_at_cursor(insert_str);
+          return true;
+        }
+      }
+    }
+    return false;
+  }
+  
   //Indent depending on if/else/etc and brackets
   if((key->keyval==GDK_KEY_Return || key->keyval==GDK_KEY_KP_Enter) && !iter.starts_line()) {
-    //First remove spaces or tabs around cursor
-    auto start_blank_iter=iter;
-    auto end_blank_iter=iter;
-    while((*end_blank_iter==' ' || *end_blank_iter=='\t') &&
-          !end_blank_iter.ends_line() && end_blank_iter.forward_char()) {}
-    start_blank_iter.backward_char();
-    while((*start_blank_iter==' ' || *start_blank_iter=='\t' || start_blank_iter.ends_line()) &&
-          !start_blank_iter.starts_line() && start_blank_iter.backward_char()) {}
-    if(!start_blank_iter.starts_line()) {
-      start_blank_iter.forward_char();
-      get_buffer()->erase(start_blank_iter, end_blank_iter);
-    }
-    else
-      get_buffer()->erase(iter, end_blank_iter);
+    cleanup_whitespace_characters_on_return(iter);
     
     iter=get_buffer()->get_insert()->get_iter();
     auto previous_iter=iter;
@@ -1627,6 +1632,22 @@ bool Source::View::on_key_press_event_bracket_language(GdkEventKey* key) {
     else
       start_iter=get_tabs_end_iter(get_buffer()->get_iter_at_line(find_start_of_sentence(start_iter).get_line()));
     auto tabs=get_line_before(start_iter);
+    
+    /*
+     * Change tabs after ending comment block with an extra space (as in this case)
+     */
+    if(tabs.size()%tab_size==1) {
+      iter=get_buffer()->get_insert()->get_iter();
+      auto tabs_end_iter=get_tabs_end_iter(iter);
+      if(!tabs_end_iter.ends_line() && !is_code_iter(tabs_end_iter)) {
+        auto end_of_line_iter=tabs_end_iter;
+        end_of_line_iter.forward_to_line_end();
+        auto line=get_buffer()->get_text(tabs_end_iter, end_of_line_iter);
+        if(!line.empty() && line.compare(0, 2, "*/")==0)
+          tabs.pop_back();
+      }
+    }
+    
     if(*previous_iter=='{') {
       Gtk::TextIter found_iter;
       bool found_right_bracket=find_close_curly_bracket_forward(iter, found_iter);
