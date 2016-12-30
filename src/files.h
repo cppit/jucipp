@@ -264,14 +264,14 @@ const std::string juci_dark_style = R"RAW(<?xml version="1.0" encoding="UTF-8"?>
   <_description>Dark juCi++ style</_description>
 
   <!-- Palette -->
-  <color name="white"                       value="#CCCCCC"/>
+  <color name="white"                       value="#D6D6D6"/>
   <color name="black"                       value="#292929"/>
   <color name="gray"                        value="#888888"/>
   <color name="red"                         value="#FF9999"/>
   <color name="green"                       value="#AACC99"/>
-  <color name="blue"                        value="#9090FF"/>
-  <color name="light-blue"                  value="#AAAAFF"/>
-  <color name="purple"                      value="#DD88DD"/>
+  <color name="blue"                        value="#AAAAFF"/>
+  <color name="light-blue"                  value="#BBBBEE"/>
+  <color name="purple"                      value="#DD99DD"/>
 
   <style name="text"                        foreground="white" background="black"/>
   <style name="background-pattern"          background="#rgba(255,255,255,.04)"/>
