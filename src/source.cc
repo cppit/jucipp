@@ -168,9 +168,15 @@ Source::View::View(const boost::filesystem::path &file_path, Glib::RefPtr<Gsv::L
     is_bracket_language=true;
     
     format_style=[this]() {
-      auto command=Config::get().terminal.clang_format_command;
-      bool use_style_file=false;
+      auto command=Config::get().terminal.clang_format_command+" -output-replacements-xml -assume-filename="+filesystem::escape_argument(this->file_path.string());
       
+      if(get_buffer()->get_has_selection()) {
+        Gtk::TextIter start, end;
+        get_buffer()->get_selection_bounds(start, end);
+        command+=" -lines="+std::to_string(start.get_line()+1)+':'+std::to_string(end.get_line()+1);
+      }
+      
+      bool use_style_file=false;
       auto style_file_search_path=this->file_path.parent_path();
       while(true) {
         if(boost::filesystem::exists(style_file_search_path/".clang-format") || boost::filesystem::exists(style_file_search_path/"_clang-format")) {
@@ -207,7 +213,60 @@ Source::View::View(const boost::filesystem::path &file_path, Glib::RefPtr<Gsv::L
       
       auto exit_status=Terminal::get().process(stdin_stream, stdout_stream, command, this->file_path.parent_path());
       if(exit_status==0) {
-        replace_text(stdout_stream.str());
+        // The following code is complex due to clang-format returning offsets in byte offsets instead of char offsets
+        
+        // Create bytes_in_lines cache to significantly speed up the processing of finding iterators from byte offsets
+        std::vector<size_t> bytes_in_lines;
+        auto line_count=get_buffer()->get_line_count();
+        for(int line_nr=0;line_nr<line_count;++line_nr) {
+          auto iter=get_buffer()->get_iter_at_line(line_nr);
+          bytes_in_lines.emplace_back(iter.get_bytes_in_line());
+        }
+        
+        get_buffer()->begin_user_action();
+        try {
+          boost::property_tree::ptree pt;
+          boost::property_tree::xml_parser::read_xml(stdout_stream, pt);
+          auto replacements_pt=pt.get_child("replacements");
+          for(auto it=replacements_pt.rbegin();it!=replacements_pt.rend();++it) {
+            if(it->first=="replacement") {
+              auto offset=it->second.get<size_t>("<xmlattr>.offset");
+              auto length=it->second.get<size_t>("<xmlattr>.length");
+              auto replacement_str=it->second.get<std::string>("");
+              
+              size_t bytes=0;
+              for(size_t c=0;c<bytes_in_lines.size();++c) {
+                auto previous_bytes=bytes;
+                bytes+=bytes_in_lines[c];
+                if(offset<bytes || (c==bytes_in_lines.size()-1 && offset==bytes)) {
+                  std::pair<size_t, size_t> line_index(c, offset-previous_bytes);
+                  auto start=get_buffer()->get_iter_at_line_index(line_index.first, line_index.second);
+                  
+                  if(length>0) {
+                    auto offset_end=offset+length;
+                    size_t bytes=0;
+                    for(size_t c=0;c<bytes_in_lines.size();++c) {
+                      auto previous_bytes=bytes;
+                      bytes+=bytes_in_lines[c];
+                      if(offset_end<bytes || (c==bytes_in_lines.size()-1 && offset_end==bytes)) {
+                        auto end=get_buffer()->get_iter_at_line_index(c, offset_end-previous_bytes);
+                        get_buffer()->erase(start, end);
+                        break;
+                      }
+                    }
+                  }
+                  start=get_buffer()->get_iter_at_line_index(line_index.first, line_index.second);
+                  get_buffer()->insert(start, replacement_str);
+                  break;
+                }
+              }
+            }
+          }
+        }
+        catch(const std::exception &e) {
+          Terminal::get().print(std::string("Error: error parsing clang-format output: ")+e.what()+'\n', true);
+        }
+        get_buffer()->end_user_action();
       }
     };
   }
