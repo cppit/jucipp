@@ -251,11 +251,11 @@ Source::View::View(const boost::filesystem::path &file_path, Glib::RefPtr<Gsv::L
                       if(offset_end<bytes || (c==bytes_in_lines.size()-1 && offset_end==bytes)) {
                         auto end=get_buffer()->get_iter_at_line_index(c, offset_end-previous_bytes);
                         get_buffer()->erase(start, end);
+                        start=get_buffer()->get_iter_at_line_index(line_index.first, line_index.second);
                         break;
                       }
                     }
                   }
-                  start=get_buffer()->get_iter_at_line_index(line_index.first, line_index.second);
                   get_buffer()->insert(start, replacement_str);
                   break;
                 }
