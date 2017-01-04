@@ -265,7 +265,7 @@ const std::string juci_dark_style = R"RAW(<?xml version="1.0" encoding="UTF-8"?>
 
   <!-- Palette -->
   <color name="white"                       value="#D6D6D6"/>
-  <color name="black"                       value="#292929"/>
+  <color name="black"                       value="#202428"/>
   <color name="gray"                        value="#888888"/>
   <color name="red"                         value="#FF9999"/>
   <color name="green"                       value="#AACC99"/>
@@ -278,7 +278,7 @@ const std::string juci_dark_style = R"RAW(<?xml version="1.0" encoding="UTF-8"?>
   <style name="selection"                   background="#215D9C"/>
 
   <!-- Current Line Highlighting -->
-  <style name="current-line"                background="#rgba(255,255,255,.06)"/>
+  <style name="current-line"                background="#rgba(255,255,255,.05)"/>
 
   <!-- Bracket Matching -->
   <style name="bracket-match"               foreground="black" background="gray" bold="true"/>
