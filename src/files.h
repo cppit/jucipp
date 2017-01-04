@@ -333,9 +333,9 @@ const std::string juci_dark_blue_style = R"RAW(<?xml version="1.0" encoding="UTF
   <color name="red"                         value="#FF7777"/>
   <color name="yellow"                      value="#FFE100"/>
   <color name="light-yellow"                value="#EAC595"/>
-  <color name="light-blue"                  value="#00CCFF"/>
+  <color name="blue"                        value="#00CCFF"/>
   <color name="green"                       value="#14ECA8"/>
-  <color name="blue"                        value="#282A40"/>
+  <color name="light-blue"                  value="#8BFAFF"/>
   <color name="orange"                      value="#FF8800"/>
   <color name="light-green"                 value="#A0DB6B"/>
 
@@ -354,8 +354,8 @@ const std::string juci_dark_blue_style = R"RAW(<?xml version="1.0" encoding="UTF
   <style name="search-match"                foreground="dark-blue" background="white"/>
 
   <!-- Language specifics -->
-  <style name="def:builtin"                 foreground="light-blue"/>
-  <style name="def:constant"                foreground="light-blue"/>
+  <style name="def:builtin"                 foreground="blue"/>
+  <style name="def:constant"                foreground="blue"/>
   <style name="def:boolean"                 foreground="light-yellow"/>
   <style name="def:decimal"                 foreground="light-yellow"/>
   <style name="def:base-n-integer"          foreground="light-yellow"/>
@@ -367,9 +367,9 @@ const std::string juci_dark_blue_style = R"RAW(<?xml version="1.0" encoding="UTF
   <!-- Language specifics used by clang-parser in default config -->
   <style name="def:string"                  foreground="light-yellow"/>
   <style name="def:comment"                 foreground="gray"/>
-  <style name="def:statement"               foreground="light-blue"/>
-  <style name="def:type"                    foreground="light-blue"/>
-  <style name="def:function"                foreground="green"/>
+  <style name="def:statement"               foreground="blue"/>
+  <style name="def:type"                    foreground="blue"/>
+  <style name="def:function"                foreground="light-blue"/>
   <style name="def:identifier"              foreground="light-green"/>
   <style name="def:preprocessor"            foreground="yellow"/>
   <style name="def:error"                   foreground="red"/>
