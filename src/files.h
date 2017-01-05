@@ -308,7 +308,7 @@ const std::string juci_dark_style = R"RAW(<?xml version="1.0" encoding="UTF-8"?>
   <style name="def:preprocessor"            foreground="green"/>
   <style name="def:error"                   foreground="#FF6666"/>
   <style name="def:warning"                 foreground="#FFE100"/>
-  <style name="def:note"                    foreground="white" background="#444444"/>
+  <style name="def:note"                    foreground="white" background="#383F46"/>
 
   <style name="diff:added-line"             foreground="green"/>
   <style name="diff:removed-line"           foreground="red"/>
@@ -374,7 +374,7 @@ const std::string juci_dark_blue_style = R"RAW(<?xml version="1.0" encoding="UTF
   <style name="def:preprocessor"            foreground="yellow"/>
   <style name="def:error"                   foreground="red"/>
   <style name="def:warning"                 foreground="yellow"/>
-  <style name="def:note"                    foreground="white" background="#404466"/>
+  <style name="def:note"                    foreground="white" background="#383C59"/>
 
   <style name="diff:added-line"             foreground="green"/>
   <style name="diff:removed-line"           foreground="red"/>
