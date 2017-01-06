@@ -266,7 +266,7 @@ const std::string juci_dark_style = R"RAW(<?xml version="1.0" encoding="UTF-8"?>
   <!-- Palette -->
   <color name="white"                       value="#D6D6D6"/>
   <color name="black"                       value="#202428"/>
-  <color name="gray"                        value="#888888"/>
+  <color name="gray"                        value="#919191"/>
   <color name="red"                         value="#FF9999"/>
   <color name="yellow"                      value="#EEEE66"/>
   <color name="green"                       value="#AACC99"/>
