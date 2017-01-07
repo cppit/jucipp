@@ -289,6 +289,10 @@ Gtk::TextIter Source::DiffView::get_iter_at_line_end(int line_nr) {
   else if(line_nr+1<get_buffer()->get_line_count()) {
     auto iter=get_buffer()->get_iter_at_line(line_nr+1);
     iter.backward_char();
+    auto previous_iter=iter;
+    previous_iter.backward_char();
+    if(*previous_iter=='\r')
+      return previous_iter;
     return iter;
   }
   else {
