@@ -1347,9 +1347,9 @@ bool Source::View::on_key_press_event(GdkEventKey* key) {
         break;
       if(iter.starts_line())
         empty_line=true;
-      if(empty_line && !iter.ends_line() && *iter!=' ' && *iter!='\t')
+      if(empty_line && !iter.ends_line() && *iter!='\n' && *iter!=' ' && *iter!='\t')
         empty_line=false;
-      if(!text_found && !iter.ends_line() && *iter!=' ' && *iter!='\t')
+      if(!text_found && !iter.ends_line() && *iter!='\n' && *iter!=' ' && *iter!='\t')
         text_found=true;
       if(empty_line && text_found && iter.ends_line())
         break;
@@ -1375,9 +1375,9 @@ bool Source::View::on_key_press_event(GdkEventKey* key) {
         break;
       if(iter.ends_line())
         empty_line=true;
-      if(empty_line && !iter.ends_line() && *iter!=' ' && *iter!='\t')
+      if(empty_line && !iter.ends_line() && *iter!='\n' && *iter!=' ' && *iter!='\t')
         empty_line=false;
-      if(!text_found && !iter.ends_line() && *iter!=' ' && *iter!='\t')
+      if(!text_found && !iter.ends_line() && *iter!='\n' && *iter!=' ' && *iter!='\t')
         text_found=true;
       if(empty_line && text_found && iter.starts_line())
         break;
@@ -1386,6 +1386,8 @@ bool Source::View::on_key_press_event(GdkEventKey* key) {
     if(empty_line) {
       iter=get_iter_at_line_end(iter.get_line());
       iter.forward_char();
+      if(!iter.starts_line()) // For CR+LF
+        iter.forward_char();
     }
     if((key->state&GDK_SHIFT_MASK)>0)
       get_buffer()->select_range(iter, selection_start_iter);
