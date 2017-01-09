@@ -1370,8 +1370,9 @@ bool Source::View::on_key_press_event(GdkEventKey* key) {
     iter.backward_char();
     bool empty_line=false;
     bool text_found=false;
+    bool move_to_start=false;
     for(;;) {
-      if(!iter || iter.is_start())
+      if(!iter)
         break;
       if(iter.ends_line())
         empty_line=true;
@@ -1381,9 +1382,13 @@ bool Source::View::on_key_press_event(GdkEventKey* key) {
         text_found=true;
       if(empty_line && text_found && iter.starts_line())
         break;
+      if(iter.is_start()) {
+        move_to_start=true;
+        break;
+      }
       iter.backward_char();
     }
-    if(empty_line) {
+    if(empty_line && !move_to_start) {
       iter=get_iter_at_line_end(iter.get_line());
       iter.forward_char();
       if(!iter.starts_line()) // For CR+LF
