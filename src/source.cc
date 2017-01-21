@@ -1543,10 +1543,11 @@ bool Source::View::on_key_press_event_basic(GdkEventKey* key) {
       }
     }
     if(do_smart_backspace) {
-      auto line_start_iter=iter;
-      if(line_start_iter.backward_chars(line.size())) {
-        line_start_iter.backward_char();
-        get_buffer()->erase(iter, line_start_iter);
+      auto previous_line_end_iter=iter;
+      if(previous_line_end_iter.backward_chars(line.size()+1)) {
+        if(!previous_line_end_iter.ends_line()) // For CR+LF
+          previous_line_end_iter.backward_char();
+        get_buffer()->erase(previous_line_end_iter, iter);
         return true;
       }
     }
@@ -1561,14 +1562,17 @@ bool Source::View::on_key_press_event_basic(GdkEventKey* key) {
         break;
       }
       if(iter.ends_line()) {
+        if(*iter=='\r') // For CR+LF
+          iter.forward_char();
         if(!iter.forward_char())
           do_smart_delete=false;
         break;
       }
     } while(iter.forward_char());
     if(do_smart_delete) {
-      if(!insert_iter.starts_line())
+      if(!insert_iter.starts_line()) {
         while((*iter==' ' || *iter=='\t') && iter.forward_char()) {}
+      }
       get_buffer()->erase(insert_iter, iter);
       return true;
     }
