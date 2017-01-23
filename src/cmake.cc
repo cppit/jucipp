@@ -104,32 +104,50 @@ bool CMake::update_debug_build(const boost::filesystem::path &debug_build_path, 
 boost::filesystem::path CMake::get_executable(const boost::filesystem::path &build_path, const boost::filesystem::path &file_path) {
   auto cmake_executables = get_functions_parameters("add_executable");
   
-  //Attempt to find executable based on add_executable in cmake files
   auto cmake_fix_executable=[this, &build_path](std::string executable) {
     size_t pos=executable.find(project_path.string());
     if(pos!=std::string::npos)
       executable.replace(pos, project_path.string().size(), build_path.string());
     return executable;
   };
+  
   if(!file_path.empty()) {
     for(auto &executable: cmake_executables) {
       if(executable.second.size()>1) {
         for(size_t c=1;c<executable.second.size();c++) {
-          if(executable.second[c]==file_path.filename() &&
-             executable.second[0].size()>0 && cmake_executables[0].second[0].substr(0, 2)!="${") {
-            return cmake_fix_executable((executable.first.parent_path()/executable.second[0]).string());
+          if(executable.second[c]==file_path.filename()) {
+            if(executable.second[0].size()>0 && cmake_executables[0].second[0].compare(0, 2, "${")!=0)
+              return cmake_fix_executable((executable.first.parent_path()/executable.second[0]).string());
+            return get_executable_from_compile_commands(build_path, file_path);
           }
         }
       }
     }
   }
-  if(cmake_executables.size()>0 && cmake_executables[0].second.size()>0 && cmake_executables[0].second[0].size()>0 &&
-     cmake_executables[0].second[0].substr(0, 2)!="${") {
-    return cmake_fix_executable((cmake_executables[0].first.parent_path()/cmake_executables[0].second[0]).string());
+  
+  size_t best_match_c=-1;
+  size_t best_match_size=-1;
+  for(size_t c=0;c<cmake_executables.size();++c) {
+    if(cmake_executables[c].second.size()>0) {
+      auto size=cmake_executables[c].first.parent_path().string().size();
+      if(best_match_size==static_cast<size_t>(-1) || best_match_size<size) {
+        best_match_size=size;
+        best_match_c=c;
+      }
+    }
+  }
+  if(best_match_c!=static_cast<size_t>(-1) &&
+     cmake_executables[best_match_c].second[0].size()>0 &&
+     cmake_executables[best_match_c].second[0].compare(0, 2, "${")!=0) {
+    return cmake_fix_executable((cmake_executables[best_match_c].first.parent_path()/cmake_executables[best_match_c].second[0]).string());
   }
   
-  //Attempt to find executable based on compile_commands.json
+  return get_executable_from_compile_commands(build_path, file_path);
+}
+
+boost::filesystem::path CMake::get_executable_from_compile_commands(const boost::filesystem::path &build_path, const boost::filesystem::path &file_path) {
   CompileCommands compile_commands(build_path);
+  
   size_t compile_commands_best_match_size=-1;
   boost::filesystem::path compile_commands_best_match_executable;
   for(auto &command: compile_commands.commands) {
@@ -225,40 +243,6 @@ void CMake::remove_newlines_inside_parentheses() {
   }
 }
 
-void CMake::find_variables() {
-  for(auto &file: files) {
-    size_t pos=0;
-    while(pos<file.size()) {
-      auto start_line=pos;
-      auto end_line=file.find('\n', start_line);
-      if(end_line==std::string::npos)
-        end_line=file.size();
-      if(end_line>start_line) {
-        auto line=file.substr(start_line, end_line-start_line);
-        std::smatch sm;
-        const static std::regex set_regex("^ *set *\\( *([A-Za-z_][A-Za-z_0-9]*) +(.*)\\) *$", std::regex::icase);
-        if(std::regex_match(line, sm, set_regex)) {
-          auto data=sm[2].str();
-          while(data.size()>0 && data.back()==' ')
-            data.pop_back();
-          parse_variable_parameters(data);
-          variables[sm[1].str()]=data;
-        }
-        else {
-          const static std::regex project_regex("^ *project *\\( *([^ ]+).*\\) *$", std::regex::icase);
-          if(std::regex_match(line, sm, project_regex)) {
-            auto data=sm[1].str();
-            parse_variable_parameters(data);
-            variables["CMAKE_PROJECT_NAME"]=data; //TODO: is this variable deprecated/non-standard?
-            variables["PROJECT_NAME"]=data;
-          }
-        }
-      }
-      pos=end_line+1;
-    }
-  }
-}
-
 void CMake::parse_variable_parameters(std::string &data) {
   size_t pos=0;
   bool inside_quote=false;
@@ -306,7 +290,6 @@ void CMake::parse() {
   remove_tabs();
   remove_comments();
   remove_newlines_inside_parentheses();
-  find_variables();
   parsed=true;
 }
 
@@ -356,10 +339,11 @@ std::vector<std::string> CMake::get_function_parameters(std::string &data) {
 
 std::vector<std::pair<boost::filesystem::path, std::vector<std::string> > > CMake::get_functions_parameters(const std::string &name) {
   const std::regex function_regex("^ *"+name+" *\\( *(.*)\\) *$", std::regex::icase);
+  variables.clear();
   if(!parsed)
     parse();
   std::vector<std::pair<boost::filesystem::path, std::vector<std::string> > > functions;
-  for(size_t c=files.size()-1;c!=static_cast<size_t>(-1);--c) {
+  for(size_t c=0;c<files.size();++c) {
     size_t pos=0;
     while(pos<files[c].size()) {
       auto start_line=pos;
@@ -369,6 +353,21 @@ std::vector<std::pair<boost::filesystem::path, std::vector<std::string> > > CMak
       if(end_line>start_line) {
         auto line=files[c].substr(start_line, end_line-start_line);
         std::smatch sm;
+        const static std::regex set_regex("^ *set *\\( *([A-Za-z_][A-Za-z_0-9]*) +(.*)\\) *$", std::regex::icase);
+        const static std::regex project_regex("^ *project *\\( *([^ ]+).*\\) *$", std::regex::icase);
+        if(std::regex_match(line, sm, set_regex)) {
+          auto data=sm[2].str();
+          while(data.size()>0 && data.back()==' ')
+            data.pop_back();
+          parse_variable_parameters(data);
+          variables[sm[1].str()]=data;
+        }
+        else if(std::regex_match(line, sm, project_regex)) {
+          auto data=sm[1].str();
+          parse_variable_parameters(data);
+          variables["CMAKE_PROJECT_NAME"]=data; //TODO: is this variable deprecated/non-standard?
+          variables["PROJECT_NAME"]=data;
+        }
         if(std::regex_match(line, sm, function_regex)) {
           auto data=sm[1].str();
           while(data.size()>0 && data.back()==' ')

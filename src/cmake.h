@@ -15,6 +15,8 @@ public:
   
   boost::filesystem::path get_executable(const boost::filesystem::path &build_path, const boost::filesystem::path &file_path);
 private:
+  boost::filesystem::path get_executable_from_compile_commands(const boost::filesystem::path &build_path, const boost::filesystem::path &file_path);
+  
   std::vector<boost::filesystem::path> paths;
   std::vector<std::string> files;
   std::unordered_map<std::string, std::string> variables;
@@ -22,7 +24,6 @@ private:
   void remove_tabs();
   void remove_comments();
   void remove_newlines_inside_parentheses();
-  void find_variables();
   void parse_variable_parameters(std::string &data);
   void parse();
   std::vector<std::string> get_function_parameters(std::string &data);
