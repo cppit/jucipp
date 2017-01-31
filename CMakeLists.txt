@@ -94,5 +94,7 @@ endif()
 
 if(${CMAKE_SYSTEM_NAME} MATCHES Linux|.*BSD|DragonFly)
     install(FILES "${CMAKE_SOURCE_DIR}/share/juci.desktop"
-        DESTINATION "${CMAKE_INSTALL_PREFIX}/share/applications")
+            DESTINATION "${CMAKE_INSTALL_PREFIX}/share/applications")
+    install(FILES "${CMAKE_SOURCE_DIR}/share/juci.svg"
+            DESTINATION "${CMAKE_INSTALL_PREFIX}/share/icons/hicolor/scalable/apps")
 endif()
