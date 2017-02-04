@@ -2,6 +2,9 @@
 #define JUCI_FILES_H_
 #include <string>
 
+/// If you add or remove nodes from the default_config_file, increase the juci
+/// version number (JUCI_VERSION) in ../CMakeLists.txt to automatically apply
+/// the changes to user's ~/.juci/config/config.json files
 const std::string default_config_file = R"RAW({
     "version": ")RAW"+std::string(JUCI_VERSION)+R"RAW(",
     "default_window_size": {
