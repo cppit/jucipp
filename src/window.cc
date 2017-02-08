@@ -187,6 +187,7 @@ Window::Window() {
     about.hide();
   });
   
+  about.set_logo_icon_name("juci");
   about.set_version(Config::get().window.version);
   about.set_authors({"(in order of appearance)",
                      "Ted Johan Kristoffersen", 
