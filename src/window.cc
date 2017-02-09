@@ -584,6 +584,15 @@ void Window::set_menu_actions() {
     cursor_location.view->scroll_to_cursor_delayed(cursor_location.view, true, false);
   });
   
+  menu.add_action("source_show_completion", [this] {
+    if(auto view=Notebook::get().get_current_view()) {
+      if(view->non_interactive_completion)
+        view->non_interactive_completion();
+      else
+        g_signal_emit_by_name(view->gobj(), "show-completion");
+    }
+  });
+  
   menu.add_action("source_find_symbol_ctags", [this]() {
     auto view=Notebook::get().get_current_view();
     

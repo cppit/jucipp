@@ -568,6 +568,12 @@ void Source::ClangViewParse::show_type_tooltips(const Gdk::Rectangle &rectangle)
 
 Source::ClangViewAutocomplete::ClangViewAutocomplete(const boost::filesystem::path &file_path, Glib::RefPtr<Gsv::Language> language):
     Source::ClangViewParse(file_path, language), autocomplete_state(AutocompleteState::IDLE) {
+  non_interactive_completion=[this] {
+    if(CompletionDialog::get() && CompletionDialog::get()->is_visible())
+      return;
+    autocomplete_check();
+  };
+  
   get_buffer()->signal_changed().connect([this](){
     if(CompletionDialog::get() && CompletionDialog::get()->is_visible())
       delayed_reparse_connection.disconnect();
@@ -577,15 +583,18 @@ Source::ClangViewAutocomplete::ClangViewAutocomplete(const boost::filesystem::pa
       if((last_keyval>='0' && last_keyval<='9') ||
          (last_keyval>='a' && last_keyval<='z') || (last_keyval>='A' && last_keyval<='Z') ||
          last_keyval=='_') {
-        autocomplete_check();
+        if(interactive_completion || autocomplete_state!=AutocompleteState::IDLE)
+          autocomplete_check();
       }
       else {
         if(autocomplete_state==AutocompleteState::STARTING || autocomplete_state==AutocompleteState::RESTARTING)
           autocomplete_state=AutocompleteState::CANCELED;
         auto iter=get_buffer()->get_insert()->get_iter();
         iter.backward_chars(2);
-        if(last_keyval=='.' || (last_keyval==':' && *iter==':') || (last_keyval=='>' && *iter=='-'))
-          autocomplete_check();
+        if(last_keyval=='.' || (last_keyval==':' && *iter==':') || (last_keyval=='>' && *iter=='-')) {
+          if(interactive_completion)
+            autocomplete_check();
+        }
       }
     }
   });

@@ -111,6 +111,8 @@ R"RAW(
         "source_center_cursor": "<primary>l",
         "source_cursor_history_back": "<alt>Left",
         "source_cursor_history_forward": "<alt>Right",
+        "source_show_completion_comment" : "Add completion keybinding to disable interactive autocompletion",
+        "source_show_completion" : "",
         "source_find_symbol_ctags": "<primary><shift>f",
         "source_comments_toggle": "<primary>slash",
         "source_comments_add_documentation": "<primary><alt>slash",

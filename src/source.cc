@@ -654,6 +654,15 @@ void Source::View::configure() {
   if(style->property_foreground_set()) {
     note_tag->property_foreground()=style->property_foreground();
   }
+  
+  if(Config::get().menu.keys["source_show_completion"].empty()) {
+    get_completion()->unblock_interactive();
+    interactive_completion=true;
+  }
+  else {
+    get_completion()->block_interactive();
+    interactive_completion=false;
+  }
 }
 
 void Source::View::set_tooltip_and_dialog_events() {
