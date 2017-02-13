@@ -2224,7 +2224,15 @@ bool Source::View::on_button_press_event(GdkEventButton *event) {
     get_buffer()->select_range(start, end);
     return true;
   }
-  
+
+  if((event->type == GDK_BUTTON_PRESS) && (event->button == 1)){
+    if(event->state & GDK_CONTROL_MASK) {
+      hide_tooltips();
+      Menu::get().actions["source_goto_implementation"]->activate();
+      return true;
+    }
+  }
+
   if((event->type == GDK_BUTTON_PRESS) && (event->button == 3)){
     hide_tooltips();
     if(!get_buffer()->get_has_selection()){
