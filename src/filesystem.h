@@ -34,6 +34,9 @@ public:
   ///Attempts to get canonical path, if not, return the path parameter
   static boost::filesystem::path get_canonical_path(const boost::filesystem::path &path) noexcept;
   
+  /// Return path with dot, dot-dot and directory separator elements removed
+  static boost::filesystem::path get_normal_path(const boost::filesystem::path &path) noexcept;
+  
   ///Returns empty path on failure
   static boost::filesystem::path get_relative_path(const boost::filesystem::path &path, const boost::filesystem::path &base) noexcept;
 };

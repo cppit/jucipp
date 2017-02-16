@@ -211,6 +211,28 @@ boost::filesystem::path filesystem::get_canonical_path(const boost::filesystem::
   return canonical_path;
 }
 
+boost::filesystem::path filesystem::get_normal_path(const boost::filesystem::path &path) noexcept {
+  boost::filesystem::path normal_path;
+  
+  for(auto &e: path) {
+    if(e==".")
+      continue;
+    else if(e=="..") {
+      auto parent_path=normal_path.parent_path();
+      if(!parent_path.empty())
+        normal_path=parent_path;
+      else
+        normal_path/=e;
+    }
+    else if(e.empty())
+      continue;
+    else
+      normal_path/=e;
+  }
+  
+  return normal_path;
+}
+
 boost::filesystem::path filesystem::get_relative_path(const boost::filesystem::path &path, const boost::filesystem::path &base) noexcept {
   boost::filesystem::path relative_path;
 

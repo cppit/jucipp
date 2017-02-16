@@ -1,5 +1,6 @@
 #include "filesystem.h"
 #include <glib.h>
+#include <iostream>
 
 int main() {
   {
@@ -24,9 +25,22 @@ int main() {
     g_assert(!filesystem::file_in_path(boost::filesystem::canonical(tests_path/".."/"CMakeLists.txt"), tests_path));
   }
   
+  auto license_file=boost::filesystem::canonical(tests_path/".."/"LICENSE");
   {
-    auto license_file=boost::filesystem::canonical(tests_path/".."/"LICENSE");
     g_assert(filesystem::find_file_in_path_parents("LICENSE", tests_path)==license_file);
+  }
+  
+  {
+    g_assert(filesystem::get_normal_path(tests_path/".."/"LICENSE")==license_file);
+    g_assert(filesystem::get_normal_path("/foo")=="/foo");
+    g_assert(filesystem::get_normal_path("/foo/")=="/foo");
+    g_assert(filesystem::get_normal_path("/foo/.")=="/foo");
+    g_assert(filesystem::get_normal_path("/foo/./bar/..////")=="/foo");
+    g_assert(filesystem::get_normal_path("/foo/.///bar/../")=="/foo");
+    g_assert(filesystem::get_normal_path("../foo")=="../foo");
+    g_assert(filesystem::get_normal_path("../../foo")=="../../foo");
+    g_assert(filesystem::get_normal_path("../././foo")=="../foo");
+    g_assert(filesystem::get_normal_path("/../foo")=="/../foo");
   }
   
   {
