@@ -81,7 +81,7 @@ private:
   std::vector<std::unique_ptr<TabLabel> > tab_labels;
   
   bool split=false;
-  bool tabs_visible = true; //Flag set to true when the tabs are visible.
+  bool tabs_visible=true; //Flag set to true when the tabs are visible.
   size_t last_index=-1;
   
   void set_current_view(Source::View *view);
