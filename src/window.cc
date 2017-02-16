@@ -1183,6 +1183,9 @@ void Window::set_menu_actions() {
   menu.add_action("window_clear_terminal", [this] {
     Terminal::get().clear();
   });
+  menu.add_action("window_toggle_tabs", [this] {
+    Notebook::get().toggle_tabs();
+  });
 }
 
 void Window::activate_menu_items() {

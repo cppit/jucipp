@@ -155,6 +155,7 @@ R"RAW(
 R"RAW(
         "close_tab": "<primary>w",
         "window_toggle_split": "",
+        "window_toggle_tabs": "",
         "window_clear_terminal": ""
     },
     "project": {

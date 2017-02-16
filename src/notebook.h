@@ -46,6 +46,8 @@ public:
   void next();
   void previous();
   void toggle_split();
+  /// Hide/Show tabs.		
+  void toggle_tabs();
   boost::filesystem::path get_current_folder();
 
   Gtk::Label status_location;
@@ -79,6 +81,7 @@ private:
   std::vector<std::unique_ptr<TabLabel> > tab_labels;
   
   bool split=false;
+  bool tabs_visible = true; //Flag set to true when the tabs are visible.
   size_t last_index=-1;
   
   void set_current_view(Source::View *view);
