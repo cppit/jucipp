@@ -192,25 +192,6 @@ boost::filesystem::path filesystem::find_file_in_path_parents(const std::string 
   }
 }
 
-boost::filesystem::path filesystem::get_canonical_path(const boost::filesystem::path &path) noexcept {
-  if(path.is_absolute()) {
-    bool is_canonical=true;
-    for(auto &str: path) {
-      if(str==".." || str==".") {
-        is_canonical=false;
-        break;
-      }
-    }
-    if(is_canonical)
-      return path;
-  }
-  boost::system::error_code ec;
-  auto canonical_path=boost::filesystem::canonical(path, ec);
-  if(ec)
-    return path;
-  return canonical_path;
-}
-
 boost::filesystem::path filesystem::get_normal_path(const boost::filesystem::path &path) noexcept {
   boost::filesystem::path normal_path;
   

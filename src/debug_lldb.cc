@@ -210,7 +210,7 @@ void Debug::LLDB::start(const std::string &command, const boost::filesystem::pat
                 auto column=line_entry.GetColumn();
                 if(column==0)
                   column=1;
-                stop_callback(filesystem::get_canonical_path(stream.GetData()), line_entry.GetLine(), column);
+                stop_callback(filesystem::get_normal_path(stream.GetData()), line_entry.GetLine(), column);
               }
               else
                 stop_callback("", 0, 0);
@@ -346,7 +346,7 @@ std::vector<Debug::LLDB::Frame> Debug::LLDB::get_backtrace() {
         auto column=line_entry.GetColumn();
         if(column==0)
           column=1;
-        backtrace_frame.file_path=filesystem::get_canonical_path(stream.GetData());
+        backtrace_frame.file_path=filesystem::get_normal_path(stream.GetData());
         backtrace_frame.line_nr=line_entry.GetLine();
         backtrace_frame.line_index=column;
       }
@@ -386,7 +386,7 @@ std::vector<Debug::LLDB::Variable> Debug::LLDB::get_variables() {
               variable.line_index=1;
             
             auto file_spec=declaration.GetFileSpec();
-            variable.file_path=filesystem::get_canonical_path(file_spec.GetDirectory());
+            variable.file_path=filesystem::get_normal_path(file_spec.GetDirectory());
             variable.file_path/=file_spec.GetFilename();
           }
           else {
@@ -399,7 +399,7 @@ std::vector<Debug::LLDB::Variable> Debug::LLDB::get_variables() {
                 variable.line_index=1;
               
               auto file_spec=line_entry.GetFileSpec();
-              variable.file_path=filesystem::get_canonical_path(file_spec.GetDirectory());
+              variable.file_path=filesystem::get_normal_path(file_spec.GetDirectory());
               variable.file_path/=file_spec.GetFilename();
             }
           }
@@ -443,7 +443,7 @@ std::string Debug::LLDB::get_value(const std::string &variable, const boost::fil
         if(declaration.IsValid()) {
           if(declaration.GetLine()==line_nr && (declaration.GetColumn()==0 || declaration.GetColumn()==line_index)) {
             auto file_spec=declaration.GetFileSpec();
-            auto value_decl_path=filesystem::get_canonical_path(file_spec.GetDirectory());
+            auto value_decl_path=filesystem::get_normal_path(file_spec.GetDirectory());
             value_decl_path/=file_spec.GetFilename();
             if(value_decl_path==file_path) {
               value.GetDescription(stream);
@@ -478,7 +478,7 @@ std::string Debug::LLDB::get_return_value(const boost::filesystem::path &file_pa
       if(line_entry.IsValid()) {
         lldb::SBStream stream;
         line_entry.GetFileSpec().GetDescription(stream);
-        if(filesystem::get_canonical_path(stream.GetData())==file_path && line_entry.GetLine()==line_nr &&
+        if(filesystem::get_normal_path(stream.GetData())==file_path && line_entry.GetLine()==line_nr &&
            (line_entry.GetColumn()==0 || line_entry.GetColumn()==line_index)) {
           lldb::SBStream stream;
           thread_return_value.GetDescription(stream);
@@ -524,7 +524,7 @@ void Debug::LLDB::remove_breakpoint(const boost::filesystem::path &file_path, in
           auto line_entry=breakpoint.GetLocationAtIndex(l_index).GetAddress().GetLineEntry();
           if(line_entry.GetLine()==static_cast<uint32_t>(line_nr_try)) {
             auto file_spec=line_entry.GetFileSpec();
-            auto breakpoint_path=filesystem::get_canonical_path(file_spec.GetDirectory());
+            auto breakpoint_path=filesystem::get_normal_path(file_spec.GetDirectory());
             breakpoint_path/=file_spec.GetFilename();
             if(breakpoint_path==file_path) {
               if(!target.BreakpointDelete(breakpoint.GetID()))

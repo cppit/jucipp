@@ -1,6 +1,5 @@
 #include "filesystem.h"
 #include <glib.h>
-#include <iostream>
 
 int main() {
   {

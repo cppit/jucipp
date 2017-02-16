@@ -425,6 +425,11 @@ void Source::View::rename(const boost::filesystem::path &path) {
   {
     std::unique_lock<std::mutex> lock(file_path_mutex);
     file_path=path;
+    
+    boost::system::error_code ec;
+    canonical_file_path=boost::filesystem::canonical(file_path, ec);
+    if(ec)
+      canonical_file_path=file_path;
   }
   if(update_status_file_path)
     update_status_file_path(this);

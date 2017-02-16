@@ -34,6 +34,7 @@ namespace Source {
     ~DiffView();
     
     boost::filesystem::path file_path;
+    boost::filesystem::path canonical_file_path;
   protected:
     std::mutex file_path_mutex;
     std::time_t last_write_time;

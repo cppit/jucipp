@@ -45,17 +45,17 @@ int main() {
     g_assert(build->project_path==project_path);
     
     Config::get().project.default_build_path="./build";
-    g_assert(build->get_default_path()==project_path/"./build");
+    g_assert(build->get_default_path()==project_path/"build");
     
     Config::get().project.debug_build_path="<default_build_path>/debug";
-    g_assert(build->get_debug_path()==project_path/"./build/debug");
+    g_assert(build->get_debug_path()==project_path/"build/debug");
     
     auto project_path_filename=project_path.filename();
     Config::get().project.debug_build_path="../debug_<project_directory_name>";
-    g_assert(build->get_debug_path()==project_path/("../debug_"+project_path_filename.string()));
+    g_assert(build->get_debug_path()==project_path.parent_path()/("debug_"+project_path_filename.string()));
     
     Config::get().project.default_build_path="../build_<project_directory_name>";
-    g_assert(build->get_default_path()==project_path/("../build_"+project_path_filename.string()));
+    g_assert(build->get_default_path()==project_path.parent_path()/("build_"+project_path_filename.string()));
   }
   {
     auto project_path=tests_path/"source_clang_test_files";

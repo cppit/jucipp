@@ -601,8 +601,14 @@ void Window::set_menu_actions() {
       ctags_path=view->file_path.parent_path();
     else if(!Directories::get().path.empty())
       ctags_path=Directories::get().path;
-    else
-      ctags_path=boost::filesystem::current_path();
+    else {
+      boost::system::error_code ec;
+      ctags_path=boost::filesystem::current_path(ec);
+      if(ec) {
+        Terminal::get().print("Error: could not find current path\n", true);
+        return;
+      }
+    }
     auto pair=Ctags::get_result(ctags_path);
     
     auto path=std::move(pair.first);
@@ -636,12 +642,7 @@ void Window::set_menu_actions() {
       return;
     SelectionDialog::get()->on_select=[this, rows, path](const std::string &selected, bool hide_window) {
       auto offset=rows->at(selected);
-      boost::filesystem::path declaration_file;
-      boost::system::error_code ec;
-      declaration_file=boost::filesystem::canonical(path/offset.file_path, ec);
-      if(ec)
-        return;
-      Notebook::get().open(declaration_file);
+      Notebook::get().open(path/offset.file_path);
       auto view=Notebook::get().get_current_view();
       view->place_cursor_at_line_index(offset.line, offset.index);
       view->scroll_to_cursor_delayed(view, true, false);
@@ -665,11 +666,7 @@ void Window::set_menu_actions() {
         auto documentation_template=view->get_documentation_template();
         auto offset=std::get<0>(documentation_template);
         if(offset) {
-          boost::system::error_code ec;
-          auto canonical_path=boost::filesystem::canonical(offset.file_path, ec);
-          if(ec)
-            return;
-          Notebook::get().open(canonical_path);
+          Notebook::get().open(offset.file_path);
           auto view=Notebook::get().get_current_view();
           auto iter=view->get_buffer()->get_iter_at_line_index(offset.line, offset.index);
           view->get_buffer()->insert(iter, std::get<1>(documentation_template));
@@ -727,12 +724,7 @@ void Window::set_menu_actions() {
       if(view->get_declaration_location) {
         auto location=view->get_declaration_location();
         if(location) {
-          boost::filesystem::path declaration_file;
-          boost::system::error_code ec;
-          declaration_file=boost::filesystem::canonical(location.file_path, ec);
-          if(ec)
-            return;
-          Notebook::get().open(declaration_file);
+          Notebook::get().open(location.file_path);
           auto view=Notebook::get().get_current_view();
           auto line=static_cast<int>(location.line);
           auto index=static_cast<int>(location.index);
@@ -758,18 +750,12 @@ void Window::set_menu_actions() {
               project_path=view->file_path.parent_path();
           }
           for(auto &location: locations) {
-            boost::filesystem::path implementation_path;
-            boost::system::error_code ec;
-            implementation_path=boost::filesystem::canonical(location.file_path, ec);
-            if(!ec) {
-              location.file_path=implementation_path;
-              auto path=filesystem::get_relative_path(location.file_path, project_path);
-              if(path.empty())
-                path=location.file_path.filename();
-              auto row=path.string()+":"+std::to_string(location.line+1);
-              (*rows)[row]=location;
-              SelectionDialog::get()->add_row(row);
-            }
+            auto path=filesystem::get_relative_path(filesystem::get_normal_path(location.file_path), project_path);
+            if(path.empty())
+              path=location.file_path.filename();
+            auto row=path.string()+":"+std::to_string(location.line+1);
+            (*rows)[row]=location;
+            SelectionDialog::get()->add_row(row);
           }
           
           if(rows->size()==0)
@@ -832,12 +818,7 @@ void Window::set_menu_actions() {
             return;
           SelectionDialog::get()->on_select=[this, rows](const std::string &selected, bool hide_window) {
             auto offset=rows->at(selected);
-            boost::filesystem::path declaration_file;
-            boost::system::error_code ec;
-            declaration_file=boost::filesystem::canonical(offset.file_path, ec);
-            if(ec)
-              return;
-            Notebook::get().open(declaration_file);
+            Notebook::get().open(offset.file_path);
             auto view=Notebook::get().get_current_view();
             view->place_cursor_at_line_index(offset.line, offset.index);
             view->scroll_to(view->get_buffer()->get_insert(), 0.0, 1.0, 0.5);

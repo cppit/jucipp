@@ -49,13 +49,17 @@ void Source::DiffView::Renderer::draw_vfunc(const Cairo::RefPtr<Cairo::Context> 
 }
 
 Source::DiffView::DiffView(const boost::filesystem::path &file_path) : Gsv::View(), file_path(file_path), renderer(new Renderer()) {
+  boost::system::error_code ec;
+  canonical_file_path=boost::filesystem::canonical(file_path, ec);
+  if(ec)
+    canonical_file_path=file_path;
+  
   renderer->tag_added=get_buffer()->create_tag("git_added");
   renderer->tag_modified=get_buffer()->create_tag("git_modified");
   renderer->tag_removed=get_buffer()->create_tag("git_removed");
   renderer->tag_removed_below=get_buffer()->create_tag();
   renderer->tag_removed_above=get_buffer()->create_tag();
   
-  boost::system::error_code ec;
   last_write_time=boost::filesystem::last_write_time(file_path, ec);
   if(ec)
     last_write_time=static_cast<std::time_t>(-1);
@@ -346,11 +350,11 @@ std::string Source::DiffView::git_get_diff_details() {
 
 ///Return repository diff instance. Throws exception on error
 std::unique_ptr<Git::Repository::Diff> Source::DiffView::get_diff() {
-  auto work_path=boost::filesystem::canonical(repository->get_work_path());
+  auto work_path=filesystem::get_normal_path(repository->get_work_path());
   boost::filesystem::path relative_path;
   {
     std::unique_lock<std::mutex> lock(file_path_mutex);
-    relative_path=filesystem::get_relative_path(file_path, work_path);
+    relative_path=filesystem::get_relative_path(canonical_file_path, work_path);
     if(relative_path.empty())
       throw std::runtime_error("not a relative path");
   }

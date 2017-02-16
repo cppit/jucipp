@@ -151,27 +151,24 @@ boost::filesystem::path CMake::get_executable_from_compile_commands(const boost:
   size_t compile_commands_best_match_size=-1;
   boost::filesystem::path compile_commands_best_match_executable;
   for(auto &command: compile_commands.commands) {
-    boost::system::error_code ec;
-    auto command_file=boost::filesystem::canonical(command.file, ec);
-    if(!ec) {
-      auto values=command.parameter_values("-o");
-      if(!values.empty()) {
-        size_t pos;
-        values[0].erase(0, 11);
-        if((pos=values[0].find(".dir"))!=std::string::npos) {
-          boost::filesystem::path executable=values[0].substr(0, pos);
-          auto relative_path=filesystem::get_relative_path(command_file, project_path);
-          if(!relative_path.empty()) {
-            executable=build_path/relative_path.parent_path()/executable;
-            if(command_file==file_path)
-              return executable;
-            auto command_file_directory=command_file.parent_path();
-            if(filesystem::file_in_path(file_path, command_file_directory)) {
-              auto size=command_file_directory.string().size();
-              if(compile_commands_best_match_size==static_cast<size_t>(-1) || compile_commands_best_match_size<size) {
-                compile_commands_best_match_size=size;
-                compile_commands_best_match_executable=executable;
-              }
+    auto command_file=filesystem::get_normal_path(command.file);
+    auto values=command.parameter_values("-o");
+    if(!values.empty()) {
+      size_t pos;
+      values[0].erase(0, 11);
+      if((pos=values[0].find(".dir"))!=std::string::npos) {
+        boost::filesystem::path executable=values[0].substr(0, pos);
+        auto relative_path=filesystem::get_relative_path(command_file, project_path);
+        if(!relative_path.empty()) {
+          executable=build_path/relative_path.parent_path()/executable;
+          if(command_file==file_path)
+            return executable;
+          auto command_file_directory=command_file.parent_path();
+          if(filesystem::file_in_path(file_path, command_file_directory)) {
+            auto size=command_file_directory.string().size();
+            if(compile_commands_best_match_size==static_cast<size_t>(-1) || compile_commands_best_match_size<size) {
+              compile_commands_best_match_size=size;
+              compile_commands_best_match_executable=executable;
             }
           }
         }

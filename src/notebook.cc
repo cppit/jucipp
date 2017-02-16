@@ -129,12 +129,18 @@ std::vector<Source::View*> &Notebook::get_views() {
   return source_views;
 }
 
-void Notebook::open(const boost::filesystem::path &file_path, size_t notebook_index) {
+void Notebook::open(const boost::filesystem::path &file_path_, size_t notebook_index) {
+  auto file_path=filesystem::get_normal_path(file_path_);
+  
   if(notebook_index==1 && !split)
     toggle_split();
   
+  boost::system::error_code ec;
+  auto canonical_file_path=boost::filesystem::canonical(file_path, ec);
+  if(ec)
+    canonical_file_path=file_path;
   for(size_t c=0;c<size();c++) {
-    if(file_path==source_views[c]->file_path) {
+    if(canonical_file_path==source_views[c]->canonical_file_path) {
       auto notebook_page=get_notebook_page(c);
       notebooks[notebook_page.first].set_current_page(notebook_page.second);
       focus_view(source_views[c]);

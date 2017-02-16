@@ -91,24 +91,21 @@ boost::filesystem::path Meson::get_executable(const boost::filesystem::path &bui
   size_t best_match_size=-1;
   boost::filesystem::path best_match_executable;
   for(auto &command: compile_commands.commands) {
-    boost::system::error_code ec;
-    auto command_file=boost::filesystem::canonical(command.file, ec);
-    if(!ec) {
-      auto values=command.parameter_values("-o");
-      if(!values.empty()) {
-        size_t pos;
-        if((pos=values[0].find("@"))!=std::string::npos) {
-          if(pos+1<values[0].size() && values[0].compare(pos+1, 3, "exe")==0) {
-            auto executable=build_path/values[0].substr(0, pos);
-            if(command_file==file_path)
-              return executable;
-            auto command_file_directory=command_file.parent_path();
-            if(filesystem::file_in_path(file_path, command_file_directory)) {
-              auto size=command_file_directory.string().size();
-              if(best_match_size==static_cast<size_t>(-1) || best_match_size<size) {
-                best_match_size=size;
-                best_match_executable=executable;
-              }
+    auto command_file=filesystem::get_normal_path(command.file);
+    auto values=command.parameter_values("-o");
+    if(!values.empty()) {
+      size_t pos;
+      if((pos=values[0].find("@"))!=std::string::npos) {
+        if(pos+1<values[0].size() && values[0].compare(pos+1, 3, "exe")==0) {
+          auto executable=build_path/values[0].substr(0, pos);
+          if(command_file==file_path)
+            return executable;
+          auto command_file_directory=command_file.parent_path();
+          if(filesystem::file_in_path(file_path, command_file_directory)) {
+            auto size=command_file_directory.string().size();
+            if(best_match_size==static_cast<size_t>(-1) || best_match_size<size) {
+              best_match_size=size;
+              best_match_executable=executable;
             }
           }
         }

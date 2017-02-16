@@ -378,13 +378,16 @@ Directories::~Directories() {
 }
 
 void Directories::open(const boost::filesystem::path &dir_path) {
-  if(dir_path.empty())
+  boost::system::error_code ec;
+  if(dir_path.empty() || !boost::filesystem::exists(dir_path, ec) || ec)
     return;
   
   tree_store->clear();
   
+  path=filesystem::get_normal_path(dir_path);
+  
   //TODO: report that set_title does not handle '_' correctly?
-  auto title=dir_path.filename().string();
+  auto title=path.filename().string();
   size_t pos=0;
   while((pos=title.find('_', pos))!=std::string::npos) {
     title.replace(pos, 1, "__");
@@ -397,9 +400,8 @@ void Directories::open(const boost::filesystem::path &dir_path) {
       directory.second.repository->clear_saved_status();
   }
   directories.clear();
-  add_or_update_path(dir_path, Gtk::TreeModel::Row(), true);
   
-  path=dir_path;
+  add_or_update_path(path, Gtk::TreeModel::Row(), true);
 }
 
 void Directories::update() {

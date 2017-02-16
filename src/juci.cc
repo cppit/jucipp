@@ -14,25 +14,26 @@ int Application::on_command_line(const Glib::RefPtr<Gio::ApplicationCommandLine>
   char **argv = cmd->get_arguments(argc);
   ctx.parse(argc, argv);
   if(argc>=2) {
+    boost::system::error_code current_path_ec;
+    auto current_path=boost::filesystem::current_path(current_path_ec);
+    if(current_path_ec)
+      errors.emplace_back("Error: could not find current path\n");
     for(int c=1;c<argc;c++) {
-      boost::filesystem::path p(argv[c]);
-      if(boost::filesystem::exists(p)) {
-        p=boost::filesystem::canonical(p);
-        if(boost::filesystem::is_regular_file(p))
-          files.emplace_back(p, 0);
-        else if(boost::filesystem::is_directory(p))
-          directories.emplace_back(p);
+      boost::filesystem::path path(argv[c]);
+      if(path.is_relative() && !current_path_ec)
+        path=current_path/path;
+      if(boost::filesystem::exists(path)) {
+        if(boost::filesystem::is_regular_file(path))
+          files.emplace_back(path, 0);
+        else if(boost::filesystem::is_directory(path))
+          directories.emplace_back(path);
       }
-      else { //Open new file if parent path exists
-        auto parent_p=p.parent_path();
-        boost::system::error_code ec;
-        auto new_p=boost::filesystem::canonical(parent_p, ec);
-        if(!ec && boost::filesystem::is_directory(new_p)) {
-          new_p/=p.filename();
-          files.emplace_back(new_p, 0);
-        }
+      //Open new file if parent path exists
+      else {
+        if(path.is_absolute() && boost::filesystem::is_directory(path.parent_path()))
+          files.emplace_back(path, 0);
         else
-          errors.emplace_back("Error: folder path "+parent_p.string()+" does not exist.\n");
+          errors.emplace_back("Error: could not create "+path.string()+".\n");
       }
     }
   }
