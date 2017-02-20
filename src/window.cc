@@ -642,7 +642,10 @@ void Window::set_menu_actions() {
       return;
     SelectionDialog::get()->on_select=[this, rows, path](const std::string &selected, bool hide_window) {
       auto offset=rows->at(selected);
-      Notebook::get().open(path/offset.file_path);
+      auto full_path=path/offset.file_path;
+      if(!boost::filesystem::is_regular_file(full_path))
+        return;
+      Notebook::get().open(full_path);
       auto view=Notebook::get().get_current_view();
       view->place_cursor_at_line_index(offset.line, offset.index);
       view->scroll_to_cursor_delayed(view, true, false);
@@ -666,6 +669,8 @@ void Window::set_menu_actions() {
         auto documentation_template=view->get_documentation_template();
         auto offset=std::get<0>(documentation_template);
         if(offset) {
+          if(!boost::filesystem::is_regular_file(offset.file_path))
+            return;
           Notebook::get().open(offset.file_path);
           auto view=Notebook::get().get_current_view();
           auto iter=view->get_buffer()->get_iter_at_line_index(offset.line, offset.index);
@@ -724,6 +729,8 @@ void Window::set_menu_actions() {
       if(view->get_declaration_location) {
         auto location=view->get_declaration_location();
         if(location) {
+          if(!boost::filesystem::is_regular_file(location.file_path))
+            return;
           Notebook::get().open(location.file_path);
           auto view=Notebook::get().get_current_view();
           auto line=static_cast<int>(location.line);
@@ -762,6 +769,8 @@ void Window::set_menu_actions() {
             return;
           else if(rows->size()==1) {
             auto location=*rows->begin();
+            if(!boost::filesystem::is_regular_file(location.second.file_path))
+              return;
             Notebook::get().open(location.second.file_path);
             auto view=Notebook::get().get_current_view();
             auto line=static_cast<int>(location.second.line);
@@ -772,6 +781,8 @@ void Window::set_menu_actions() {
           }
           SelectionDialog::get()->on_select=[this, rows](const std::string &selected, bool hide_window) {
             auto location=rows->at(selected);
+            if(!boost::filesystem::is_regular_file(location.file_path))
+              return;
             Notebook::get().open(location.file_path);
             auto view=Notebook::get().get_current_view();
             view->place_cursor_at_line_index(location.line, location.index);
@@ -818,6 +829,8 @@ void Window::set_menu_actions() {
             return;
           SelectionDialog::get()->on_select=[this, rows](const std::string &selected, bool hide_window) {
             auto offset=rows->at(selected);
+            if(!boost::filesystem::is_regular_file(offset.file_path))
+              return;
             Notebook::get().open(offset.file_path);
             auto view=Notebook::get().get_current_view();
             view->place_cursor_at_line_index(offset.line, offset.index);
