@@ -355,19 +355,18 @@ bool Terminal::on_button_press_event(GdkEventButton* button_event) {
       std::string path_str=get_buffer()->get_text(start_iter, end_iter);
       std::smatch sm;
       if(std::regex_match(path_str, sm, link_regex)) {
-        auto path_str=sm[1].str()+sm[2].str();
-        auto path=boost::filesystem::path(path_str);
+        auto path=boost::filesystem::path(sm[1].str()+sm[2].str());
         if(path.is_relative()) {
           if(Project::current) {
-            path=Project::current->build->get_default_path()/path_str;
-            if(!boost::filesystem::is_regular_file(path))
-              path=Project::current->build->get_debug_path()/path_str;
+            auto absolute_path=Project::current->build->get_default_path()/path;
+            if(boost::filesystem::exists(absolute_path))
+              path=absolute_path;
+            else
+              path=Project::current->build->get_debug_path()/path;
           }
           else
             return Gtk::TextView::on_button_press_event(button_event);
         }
-        else
-          path=path_str;
         if(boost::filesystem::is_regular_file(path)) {
           Notebook::get().open(path);
           if(auto view=Notebook::get().get_current_view()) {
