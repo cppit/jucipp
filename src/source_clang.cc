@@ -1014,7 +1014,7 @@ Source::ClangViewRefactor::ClangViewRefactor(const boost::filesystem::path &file
   
   auto get_header_location=[this]() {
     // If cursor is at an include line, return offset to included file
-    const static std::regex include_regex("^[ \t]*#[ \t]*include[ \t]*[<\"](.+)[>\"][ \t]*$");
+    const static std::regex include_regex("^[ \t]*#[ \t]*include[ \t]*[<\"]([^<>\"]+)[>\"].*$");
     std::smatch sm;
     auto line=get_line();
     if(std::regex_match(line, sm, include_regex)) {
