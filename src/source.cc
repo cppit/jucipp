@@ -2213,6 +2213,7 @@ bool Source::View::on_key_press_event_smart_inserts(GdkEventKey *key) {
 }
 
 bool Source::View::on_button_press_event(GdkEventButton *event) {
+  // Select range when double clicking
   if(event->type==GDK_2BUTTON_PRESS) {
     Gtk::TextIter start, end;
     get_buffer()->get_selection_bounds(start, end);
@@ -2230,14 +2231,32 @@ bool Source::View::on_button_press_event(GdkEventButton *event) {
     return true;
   }
 
+  // Go to implementation or declaration
   if((event->type == GDK_BUTTON_PRESS) && (event->button == 1)){
-    if(event->state & GDK_CONTROL_MASK) {
-      hide_tooltips();
-      Menu::get().actions["source_goto_implementation"]->activate();
-      return true;
+#ifdef __APPLE__
+    GdkModifierType mask=GDK_MOD2_MASK;
+#else
+    GdkModifierType mask=GDK_CONTROL_MASK;
+#endif
+    if(event->state & mask) {
+      int x, y;
+      window_to_buffer_coords(Gtk::TextWindowType::TEXT_WINDOW_TEXT, event->x, event->y, x, y);
+      Gtk::TextIter iter;
+      get_iter_at_location(iter, x, y);
+      if(iter)
+        get_buffer()->place_cursor(iter);
+      
+      if(is_implementation_location) {
+        if(is_implementation_location())
+          Menu::get().actions["source_goto_declaration"]->activate();
+        else
+          Menu::get().actions["source_goto_implementation"]->activate();
+        return true;
+      }
     }
   }
 
+  // Open right click menu
   if((event->type == GDK_BUTTON_PRESS) && (event->button == 3)){
     hide_tooltips();
     if(!get_buffer()->get_has_selection()){

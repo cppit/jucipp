@@ -1012,7 +1012,60 @@ Source::ClangViewRefactor::ClangViewRefactor(const boost::filesystem::path &file
     }
   });
   
-  get_declaration_location=[this](){
+  auto get_header_location=[this]() {
+    // If cursor is at an include line, return offset to included file
+    const static std::regex include_regex("^[ \t]*#[ \t]*include[ \t]*[<\"](.+)[>\"][ \t]*$");
+    std::smatch sm;
+    auto line=get_line();
+    if(std::regex_match(line, sm, include_regex)) {
+      struct ClientData {
+        boost::filesystem::path &file_path;
+        std::string found_include;
+        int line_nr;
+        std::string sm_str;
+      };
+      ClientData client_data{this->file_path, std::string(), get_buffer()->get_insert()->get_iter().get_line(), sm[1].str()};
+      
+      // Attempt to find the 100% correct include file first
+      clang_getInclusions(clang_tu->cx_tu, [](CXFile included_file, CXSourceLocation *inclusion_stack, unsigned include_len, CXClientData client_data_) {
+        auto client_data=static_cast<ClientData*>(client_data_);
+        if(client_data->found_include.empty() && include_len>0) {
+          auto source_location=clang::SourceLocation(inclusion_stack[0]);
+          if(static_cast<int>(source_location.get_offset().line)-1==client_data->line_nr &&
+             filesystem::get_normal_path(source_location.get_path())==client_data->file_path)
+            client_data->found_include=clang::to_string(clang_getFileName(included_file));
+        }
+      }, &client_data);
+      
+      if(!client_data.found_include.empty())
+        return Offset(0, 0, client_data.found_include);
+      
+      // Find a matching include file if no include was found previously
+      clang_getInclusions(clang_tu->cx_tu, [](CXFile included_file, CXSourceLocation *inclusion_stack, unsigned include_len, CXClientData client_data_) {
+        auto client_data=static_cast<ClientData*>(client_data_);
+        if(client_data->found_include.empty()) {
+          for(unsigned c=1;c<include_len;++c) {
+            auto source_location=clang::SourceLocation(inclusion_stack[c]);
+            if(static_cast<int>(source_location.get_offset().line)-1<=client_data->line_nr &&
+               filesystem::get_normal_path(source_location.get_path())==client_data->file_path) {
+              auto included_file_str=clang::to_string(clang_getFileName(included_file));
+              if(included_file_str.size()>=client_data->sm_str.size() &&
+                 included_file_str.compare(included_file_str.size()-client_data->sm_str.size(), client_data->sm_str.size(), client_data->sm_str)==0) {
+                client_data->found_include=included_file_str;
+                break;
+              }
+            }
+          }
+        }
+      }, &client_data);
+      
+      if(!client_data.found_include.empty())
+        return Offset(0, 0, client_data.found_include);
+    }
+    return Offset();
+  };
+  
+  get_declaration_location=[this, get_header_location](){
     if(!parsed) {
       Info::get().print("Buffer is parsing");
       return Offset();
@@ -1024,61 +1077,15 @@ Source::ClangViewRefactor::ClangViewRefactor(const boost::filesystem::path &file
       return Offset(offset.line-1, offset.index-1, source_location.get_path());
     }
     else {
-      // If cursor is at an include line, return offset to included file
-      const static std::regex include_regex("^[ \t]*#[ \t]*include[ \t]*[<\"](.+)[>\"][ \t]*$");
-      std::smatch sm;
-      auto line=get_line();
-      if(std::regex_match(line, sm, include_regex)) {
-        struct ClientData {
-          boost::filesystem::path &file_path;
-          std::string found_include;
-          int line_nr;
-          std::string sm_str;
-        };
-        ClientData client_data{this->file_path, std::string(), get_buffer()->get_insert()->get_iter().get_line(), sm[1].str()};
-        
-        // Attempt to find the 100% correct include file first
-        clang_getInclusions(clang_tu->cx_tu, [](CXFile included_file, CXSourceLocation *inclusion_stack, unsigned include_len, CXClientData client_data_) {
-          auto client_data=static_cast<ClientData*>(client_data_);
-          if(client_data->found_include.empty() && include_len>0) {
-            auto source_location=clang::SourceLocation(inclusion_stack[0]);
-            if(static_cast<int>(source_location.get_offset().line)-1==client_data->line_nr &&
-               filesystem::get_normal_path(source_location.get_path())==client_data->file_path)
-              client_data->found_include=clang::to_string(clang_getFileName(included_file));
-          }
-        }, &client_data);
-        
-        if(!client_data.found_include.empty())
-          return Offset(0, 0, client_data.found_include);
-        
-        // Find a matching include file if no include was found previously
-        clang_getInclusions(clang_tu->cx_tu, [](CXFile included_file, CXSourceLocation *inclusion_stack, unsigned include_len, CXClientData client_data_) {
-          auto client_data=static_cast<ClientData*>(client_data_);
-          if(client_data->found_include.empty()) {
-            for(unsigned c=1;c<include_len;++c) {
-              auto source_location=clang::SourceLocation(inclusion_stack[c]);
-              if(static_cast<int>(source_location.get_offset().line)-1<=client_data->line_nr &&
-                 filesystem::get_normal_path(source_location.get_path())==client_data->file_path) {
-                auto included_file_str=clang::to_string(clang_getFileName(included_file));
-                if(included_file_str.size()>=client_data->sm_str.size() &&
-                   included_file_str.compare(included_file_str.size()-client_data->sm_str.size(), client_data->sm_str.size(), client_data->sm_str)==0) {
-                  client_data->found_include=included_file_str;
-                  break;
-                }
-              }
-            }
-          }
-        }, &client_data);
-        
-        if(!client_data.found_include.empty())
-          return Offset(0, 0, client_data.found_include);
-      }
+      auto location=get_header_location();
+      if(location)
+        return location;
     }
     Info::get().print("No declaration found");
     return Offset();
   };
   
-  is_implementation=[this]() {
+  is_implementation_location=[this]() {
     if(!parsed)
       return false;
     auto iter=get_buffer()->get_insert()->get_iter();
@@ -1093,7 +1100,7 @@ Source::ClangViewRefactor::ClangViewRefactor(const boost::filesystem::path &file
     return false;
   };
   
-  get_implementation_locations=[this](const std::vector<Source::View*> &views){
+  get_implementation_locations=[this, get_header_location](const std::vector<Source::View*> &views){
     std::vector<Offset> locations;
     if(!parsed) {
       Info::get().print("Buffer is parsing");
@@ -1160,6 +1167,13 @@ Source::ClangViewRefactor::ClangViewRefactor(const boost::filesystem::path &file
           location.index=ctags_location.index;
           locations.emplace_back(location);
         }
+        return locations;
+      }
+    }
+    else {
+      auto location=get_header_location();
+      if(location) {
+        locations.emplace_back(location);
         return locations;
       }
     }
