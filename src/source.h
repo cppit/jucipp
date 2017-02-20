@@ -68,6 +68,7 @@ namespace Source {
     std::function<void()> non_interactive_completion;
     std::function<void()> format_style;
     std::function<Offset()> get_declaration_location;
+    std::function<bool()> is_implementation;
     std::function<std::vector<Offset>(const std::vector<Source::View*> &views)> get_implementation_locations;
     std::function<std::vector<std::pair<Offset, std::string> >(const std::vector<Source::View*> &views)> get_usages;
     std::function<std::string()> get_method;

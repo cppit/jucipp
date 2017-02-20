@@ -1078,6 +1078,21 @@ Source::ClangViewRefactor::ClangViewRefactor(const boost::filesystem::path &file
     return Offset();
   };
   
+  is_implementation=[this]() {
+    if(!parsed)
+      return false;
+    auto iter=get_buffer()->get_insert()->get_iter();
+    auto line=static_cast<unsigned>(iter.get_line());
+    auto index=static_cast<unsigned>(iter.get_line_index());
+    for(auto &token: *clang_tokens) {
+      if(token.is_identifier()) {
+        if(line==token.offsets.first.line-1 && index>=token.offsets.first.index-1 && index <=token.offsets.second.index-1)
+          return clang_isCursorDefinition(token.get_cursor().cx_cursor)>0;
+      }
+    }
+    return false;
+  };
+  
   get_implementation_locations=[this](const std::vector<Source::View*> &views){
     std::vector<Offset> locations;
     if(!parsed) {
