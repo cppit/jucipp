@@ -2246,13 +2246,8 @@ bool Source::View::on_button_press_event(GdkEventButton *event) {
       if(iter)
         get_buffer()->place_cursor(iter);
       
-      if(is_implementation_location) {
-        if(is_implementation_location())
-          Menu::get().actions["source_goto_declaration"]->activate();
-        else
-          Menu::get().actions["source_goto_implementation"]->activate();
-        return true;
-      }
+      Menu::get().actions["source_goto_declaration_or_implementation"]->activate();
+      return true;
     }
   }
 

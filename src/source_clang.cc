@@ -1011,65 +1011,8 @@ Source::ClangViewRefactor::ClangViewRefactor(const boost::filesystem::path &file
       }, 100);
     }
   });
-  
-  auto get_header_location=[this]() {
-    // If cursor is at an include line, return offset to included file
-    const static std::regex include_regex("^[ \t]*#[ \t]*include[ \t]*[<\"]([^<>\"]+)[>\"].*$");
-    std::smatch sm;
-    auto line=get_line();
-    if(std::regex_match(line, sm, include_regex)) {
-      struct ClientData {
-        boost::filesystem::path &file_path;
-        std::string found_include;
-        int line_nr;
-        std::string sm_str;
-      };
-      ClientData client_data{this->file_path, std::string(), get_buffer()->get_insert()->get_iter().get_line(), sm[1].str()};
-      
-      // Attempt to find the 100% correct include file first
-      clang_getInclusions(clang_tu->cx_tu, [](CXFile included_file, CXSourceLocation *inclusion_stack, unsigned include_len, CXClientData client_data_) {
-        auto client_data=static_cast<ClientData*>(client_data_);
-        if(client_data->found_include.empty() && include_len>0) {
-          auto source_location=clang::SourceLocation(inclusion_stack[0]);
-          if(static_cast<int>(source_location.get_offset().line)-1==client_data->line_nr &&
-             filesystem::get_normal_path(source_location.get_path())==client_data->file_path)
-            client_data->found_include=clang::to_string(clang_getFileName(included_file));
-        }
-      }, &client_data);
-      
-      if(!client_data.found_include.empty())
-        return Offset(0, 0, client_data.found_include);
-      
-      // Find a matching include file if no include was found previously
-      clang_getInclusions(clang_tu->cx_tu, [](CXFile included_file, CXSourceLocation *inclusion_stack, unsigned include_len, CXClientData client_data_) {
-        auto client_data=static_cast<ClientData*>(client_data_);
-        if(client_data->found_include.empty()) {
-          for(unsigned c=1;c<include_len;++c) {
-            auto source_location=clang::SourceLocation(inclusion_stack[c]);
-            if(static_cast<int>(source_location.get_offset().line)-1<=client_data->line_nr &&
-               filesystem::get_normal_path(source_location.get_path())==client_data->file_path) {
-              auto included_file_str=clang::to_string(clang_getFileName(included_file));
-              if(included_file_str.size()>=client_data->sm_str.size() &&
-                 included_file_str.compare(included_file_str.size()-client_data->sm_str.size(), client_data->sm_str.size(), client_data->sm_str)==0) {
-                client_data->found_include=included_file_str;
-                break;
-              }
-            }
-          }
-        }
-      }, &client_data);
-      
-      if(!client_data.found_include.empty())
-        return Offset(0, 0, client_data.found_include);
-    }
-    return Offset();
-  };
-  
-  get_declaration_location=[this, get_header_location](){
-    if(!parsed) {
-      Info::get().print("Buffer is parsing");
-      return Offset();
-    }
+    
+  auto declaration_location=[this]() {
     auto identifier=get_identifier();
     if(identifier) {
       auto source_location=identifier.cursor.get_canonical().get_source_location();
@@ -1077,35 +1020,72 @@ Source::ClangViewRefactor::ClangViewRefactor(const boost::filesystem::path &file
       return Offset(offset.line-1, offset.index-1, source_location.get_path());
     }
     else {
-      auto location=get_header_location();
-      if(location)
-        return location;
+      // If cursor is at an include line, return offset to included file
+      const static std::regex include_regex("^[ \t]*#[ \t]*include[ \t]*[<\"]([^<>\"]+)[>\"].*$");
+      std::smatch sm;
+      auto line=get_line();
+      if(std::regex_match(line, sm, include_regex)) {
+        struct ClientData {
+          boost::filesystem::path &file_path;
+          std::string found_include;
+          int line_nr;
+          std::string sm_str;
+        };
+        ClientData client_data{this->file_path, std::string(), get_buffer()->get_insert()->get_iter().get_line(), sm[1].str()};
+        
+        // Attempt to find the 100% correct include file first
+        clang_getInclusions(clang_tu->cx_tu, [](CXFile included_file, CXSourceLocation *inclusion_stack, unsigned include_len, CXClientData client_data_) {
+          auto client_data=static_cast<ClientData*>(client_data_);
+          if(client_data->found_include.empty() && include_len>0) {
+            auto source_location=clang::SourceLocation(inclusion_stack[0]);
+            if(static_cast<int>(source_location.get_offset().line)-1==client_data->line_nr &&
+               filesystem::get_normal_path(source_location.get_path())==client_data->file_path)
+              client_data->found_include=clang::to_string(clang_getFileName(included_file));
+          }
+        }, &client_data);
+        
+        if(!client_data.found_include.empty())
+          return Offset(0, 0, client_data.found_include);
+        
+        // Find a matching include file if no include was found previously
+        clang_getInclusions(clang_tu->cx_tu, [](CXFile included_file, CXSourceLocation *inclusion_stack, unsigned include_len, CXClientData client_data_) {
+          auto client_data=static_cast<ClientData*>(client_data_);
+          if(client_data->found_include.empty()) {
+            for(unsigned c=1;c<include_len;++c) {
+              auto source_location=clang::SourceLocation(inclusion_stack[c]);
+              if(static_cast<int>(source_location.get_offset().line)-1<=client_data->line_nr &&
+                 filesystem::get_normal_path(source_location.get_path())==client_data->file_path) {
+                auto included_file_str=clang::to_string(clang_getFileName(included_file));
+                if(included_file_str.size()>=client_data->sm_str.size() &&
+                   included_file_str.compare(included_file_str.size()-client_data->sm_str.size(), client_data->sm_str.size(), client_data->sm_str)==0) {
+                  client_data->found_include=included_file_str;
+                  break;
+                }
+              }
+            }
+          }
+        }, &client_data);
+        
+        if(!client_data.found_include.empty())
+          return Offset(0, 0, client_data.found_include);
+      }
     }
-    Info::get().print("No declaration found");
     return Offset();
   };
   
-  is_implementation_location=[this]() {
-    if(!parsed)
-      return false;
-    auto iter=get_buffer()->get_insert()->get_iter();
-    auto line=static_cast<unsigned>(iter.get_line());
-    auto index=static_cast<unsigned>(iter.get_line_index());
-    for(auto &token: *clang_tokens) {
-      if(token.is_identifier()) {
-        if(line==token.offsets.first.line-1 && index>=token.offsets.first.index-1 && index <=token.offsets.second.index-1)
-          return clang_isCursorDefinition(token.get_cursor().cx_cursor)>0;
-      }
-    }
-    return false;
-  };
-  
-  get_implementation_locations=[this, get_header_location](const std::vector<Source::View*> &views){
-    std::vector<Offset> locations;
+  get_declaration_location=[this, declaration_location](){
     if(!parsed) {
       Info::get().print("Buffer is parsing");
-      return locations;
+      return Offset();
     }
+    auto offset=declaration_location();
+    if(!offset)
+      Info::get().print("No declaration found");
+    return offset;
+  };
+  
+  auto implementation_locations=[this](const std::vector<Source::View*> &views) {
+    std::vector<Offset> offsets;
     auto identifier=get_identifier();
     if(identifier) {
       wait_parsing(views);
@@ -1122,32 +1102,32 @@ Source::ClangViewRefactor::ClangViewRefactor(const boost::filesystem::path &file
               if(referenced && identifier.kind==referenced.get_kind() &&
                  identifier.spelling==token.get_spelling() && identifier.usr==referenced.get_usr()) {
                 if(clang_isCursorDefinition(referenced.cx_cursor)) {
-                  Offset location;
-                  location.file_path=cursor.get_source_location().get_path();
+                  Offset offset;
+                  offset.file_path=cursor.get_source_location().get_path();
                   auto clang_offset=cursor.get_source_location().get_offset();
-                  location.line=clang_offset.line-1;
-                  location.index=clang_offset.index-1;
-                  locations.emplace_back(location);
+                  offset.line=clang_offset.line-1;
+                  offset.index=clang_offset.index-1;
+                  offsets.emplace_back(offset);
                 }
               }
             }
           }
         }
       }
-      if(!locations.empty())
-        return locations;
+      if(!offsets.empty())
+        return offsets;
       
       //If no implementation was found, try using clang_getCursorDefinition
       auto definition=identifier.cursor.get_definition();
       if(definition) {
         auto definition_location=definition.get_source_location();
-        Offset location;
-        location.file_path=definition_location.get_path();
-        auto offset=definition_location.get_offset();
-        location.line=offset.line-1;
-        location.index=offset.index-1;
-        locations.emplace_back(location);
-        return locations;
+        Offset offset;
+        offset.file_path=definition_location.get_path();
+        auto definition_offset=definition_location.get_offset();
+        offset.line=definition_offset.line-1;
+        offset.index=definition_offset.index-1;
+        offsets.emplace_back(offset);
+        return offsets;
       }
       
       //If no implementation was found, try using Ctags
@@ -1161,24 +1141,72 @@ Source::ClangViewRefactor::ClangViewRefactor(const boost::filesystem::path &file
       auto ctags_locations=Ctags::get_locations(this->file_path, name, identifier.cursor.get_type_description());
       if(!ctags_locations.empty()) {
         for(auto &ctags_location: ctags_locations) {
-          Offset location;
-          location.file_path=ctags_location.file_path;
-          location.line=ctags_location.line;
-          location.index=ctags_location.index;
-          locations.emplace_back(location);
+          Offset offset;
+          offset.file_path=ctags_location.file_path;
+          offset.line=ctags_location.line;
+          offset.index=ctags_location.index;
+          offsets.emplace_back(offset);
         }
-        return locations;
+        return offsets;
       }
+    }
+    return offsets;
+  };
+  
+  get_implementation_locations=[this, implementation_locations](const std::vector<Source::View*> &views){
+    if(!parsed) {
+      Info::get().print("Buffer is parsing");
+      return std::vector<Offset>();
+    }
+    auto offsets=implementation_locations(views);
+    if(offsets.empty())
+      Info::get().print("No implementation found");
+    return offsets;
+  };
+  
+  get_declaration_or_implementation_locations=[this, declaration_location, implementation_locations](const std::vector<Source::View*> &views) {
+    if(!parsed) {
+      Info::get().print("Buffer is parsing");
+      return std::vector<Offset>();
+    }
+    
+    std::vector<Offset> offsets;
+    
+    bool is_implementation=false;
+    auto iter=get_buffer()->get_insert()->get_iter();
+    auto line=static_cast<unsigned>(iter.get_line());
+    auto index=static_cast<unsigned>(iter.get_line_index());
+    for(auto &token: *clang_tokens) {
+      if(token.is_identifier()) {
+        if(line==token.offsets.first.line-1 && index>=token.offsets.first.index-1 && index<=token.offsets.second.index-1) {
+          if(clang_isCursorDefinition(token.get_cursor().cx_cursor)>0)
+            is_implementation=true;
+          break;
+        }
+      }
+    }
+    // If cursor is at implementation, return declaration_location
+    if(is_implementation) {
+      auto offset=declaration_location();
+      if(offset)
+        offsets.emplace_back(offset);
     }
     else {
-      auto location=get_header_location();
-      if(location) {
-        locations.emplace_back(location);
-        return locations;
+      auto implementation_offsets=implementation_locations(views);
+      if(!implementation_offsets.empty()) {
+        offsets=std::move(implementation_offsets);
+      }
+      else {
+        auto offset=declaration_location();
+        if(offset)
+          offsets.emplace_back(offset);
       }
     }
-    Info::get().print("No implementation found");
-    return locations;
+    
+    if(offsets.empty())
+      Info::get().print("No declaration or implementation found");
+    
+    return offsets;
   };
   
   get_usages=[this](const std::vector<Source::View*> &views) {
