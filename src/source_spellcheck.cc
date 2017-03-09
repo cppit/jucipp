@@ -57,9 +57,11 @@ Source::SpellCheckView::SpellCheckView() : Gsv::View() {
         while(previous_line_iter.backward_char() && !previous_line_iter.ends_line()) {}
         if(previous_line_iter.backward_char()) {
           get_buffer()->remove_tag(spellcheck_error_tag, previous_line_iter, iter);
-          auto word=get_word(previous_line_iter);
-          spellcheck_word(word.first, word.second);
-          word=get_word(iter);
+          if(!is_code_iter(previous_line_iter)) {
+            auto word=get_word(previous_line_iter);
+            spellcheck_word(word.first, word.second);
+          }
+          auto word=get_word(iter);
           spellcheck_word(word.first, word.second);
         }
       }
