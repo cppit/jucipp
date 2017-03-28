@@ -45,7 +45,7 @@ make
 sudo make install
 ```
 
-##Arch Linux/Manjaro Linux
+## Arch Linux/Manjaro Linux
 Package available in the Arch User Repository:
 https://aur.archlinux.org/packages/jucipp-git/
 
