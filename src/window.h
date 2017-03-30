@@ -35,6 +35,7 @@ private:
   bool case_sensitive_search=true;
   bool regex_search=false;
   bool search_entry_shown=false;
+  bool is_full_screen=false;
 };
 
 #endif  // JUCI_WINDOW_H

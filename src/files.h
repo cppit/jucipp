@@ -156,7 +156,8 @@ R"RAW(
         "close_tab": "<primary>w",
         "window_toggle_split": "",
         "window_toggle_tabs": "",
-        "window_clear_terminal": ""
+        "window_clear_terminal": "",
+        "full_screen": "F11"
     },
     "project": {
         "default_build_path_comment": "Use <project_directory_name> to insert the project top level directory name",
