@@ -154,8 +154,15 @@ R"RAW(
 #endif
 R"RAW(
         "close_tab": "<primary>w",
-        "window_toggle_split": "",
-        "window_toggle_full_screen": "",
+        "window_toggle_split": "",)RAW"
+#ifdef __APPLE__
+R"RAW(
+        "window_toggle_full_screen": "<primary><control>f",)RAW"
+#else
+R"RAW(
+        "window_toggle_full_screen": "F11",)RAW"
+#endif
+R"RAW(
         "window_toggle_tabs": "",
         "window_clear_terminal": ""
     },
