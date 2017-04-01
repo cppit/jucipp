@@ -1181,20 +1181,17 @@ void Window::set_menu_actions() {
   menu.add_action("window_toggle_split", [this] {
     Notebook::get().toggle_split();
   });
-  menu.add_action("window_clear_terminal", [this] {
-    Terminal::get().clear();
-  });
-  menu.add_action("full_screen", [this] {
-    if(!is_full_screen){
-      Window::get().fullscreen();
-      is_full_screen = true;
-    } else {
-      Window::get().unfullscreen();
-      is_full_screen = false;
-    }
+  menu.add_action("window_toggle_full_screen", [this] {
+    if(this->get_window()->get_state() & Gdk::WindowState::WINDOW_STATE_FULLSCREEN)
+      unfullscreen();
+    else
+      fullscreen();
   });
   menu.add_action("window_toggle_tabs", [this] {
     Notebook::get().toggle_tabs();
+  });
+  menu.add_action("window_clear_terminal", [this] {
+    Terminal::get().clear();
   });
 }
 
