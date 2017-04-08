@@ -1673,7 +1673,8 @@ bool Source::View::on_key_press_event_bracket_language(GdkEventKey* key) {
 
   if(!is_code_iter(iter)) {
     // Add * at start of line in comment blocks
-    if((key->keyval==GDK_KEY_Return || key->keyval==GDK_KEY_KP_Enter) && !iter.starts_line()) {
+    if((key->keyval==GDK_KEY_Return || key->keyval==GDK_KEY_KP_Enter) &&
+       !iter.starts_line() && !iter.has_tag(string_tag) && !iter.ends_tag(string_tag)) {
       cleanup_whitespace_characters_on_return(iter);
       
       iter=get_buffer()->get_insert()->get_iter();

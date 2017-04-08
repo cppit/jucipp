@@ -22,12 +22,13 @@ namespace Source {
     bool is_code_iter(const Gtk::TextIter &iter);
     bool spellcheck_all=false;
     guint last_keyval=0;
-  private:
-    Glib::RefPtr<Gtk::TextTag> spellcheck_error_tag;
     
     Glib::RefPtr<Gtk::TextTag> comment_tag;
     Glib::RefPtr<Gtk::TextTag> string_tag;
     Glib::RefPtr<Gtk::TextTag> no_spell_check_tag;
+  private:
+    Glib::RefPtr<Gtk::TextTag> spellcheck_error_tag;
+    
     sigc::connection signal_tag_added_connection;
     sigc::connection signal_tag_removed_connection;
     
