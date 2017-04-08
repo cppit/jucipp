@@ -133,7 +133,7 @@ make
 make install
 ```
 
-##Windows with MSYS2 (https://msys2.github.io/)
+## Windows with MSYS2 (https://msys2.github.io/)
 **See https://github.com/cppit/jucipp/issues/190 for details on adding debug support in MSYS2**
 
 Install dependencies (replace `x86_64` with `i686` for 32-bit MSYS2 installs):

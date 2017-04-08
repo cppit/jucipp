@@ -59,6 +59,7 @@ pkg_check_modules(LIBGIT2 libgit2 REQUIRED)
 
 if(MSYS)
   set(global_libraries winpthread)
+  set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -mwindows")
 endif()
 set(global_libraries ${global_libraries}
   ${GTKMM_LIBRARIES}
