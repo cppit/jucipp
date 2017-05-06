@@ -26,8 +26,8 @@ namespace Source {
   protected:
     Dispatcher dispatcher;
     void parse_initialize();
-    std::unique_ptr<clang::TranslationUnit> clang_tu;
-    std::unique_ptr<clang::Tokens> clang_tokens;
+    std::unique_ptr<clangmm::TranslationUnit> clang_tu;
+    std::unique_ptr<clangmm::Tokens> clang_tokens;
     sigc::connection delayed_reparse_connection;
     
     std::shared_ptr<Terminal::InProgress> parsing_in_progress;
@@ -51,9 +51,9 @@ namespace Source {
     std::set<std::string> last_syntax_tags;
 
     void update_diagnostics();
-    std::vector<clang::Diagnostic> clang_diagnostics;
+    std::vector<clangmm::Diagnostic> clang_diagnostics;
     
-    static clang::Index clang_index;
+    static clangmm::Index clang_index;
     std::vector<std::string> get_compilation_commands();
   };
     
@@ -63,9 +63,9 @@ namespace Source {
   public:
     class AutoCompleteData {
     public:
-      explicit AutoCompleteData(const std::vector<clang::CompletionChunk> &chunks) :
+      explicit AutoCompleteData(const std::vector<clangmm::CompletionChunk> &chunks) :
         chunks(chunks) { }
-      std::vector<clang::CompletionChunk> chunks;
+      std::vector<clangmm::CompletionChunk> chunks;
       std::string brief_comments;
     };
     
@@ -88,18 +88,18 @@ namespace Source {
   class ClangViewRefactor : public virtual ClangViewParse {
     class Identifier {
     public:
-      Identifier(clang::Cursor::Kind kind, const std::string &spelling, const std::string &usr, const clang::Cursor &cursor=clang::Cursor()) :
+      Identifier(clangmm::Cursor::Kind kind, const std::string &spelling, const std::string &usr, const clangmm::Cursor &cursor=clangmm::Cursor()) :
         kind(kind), spelling(spelling), usr(usr), cursor(cursor) {}
       
-      Identifier() : kind(static_cast<clang::Cursor::Kind>(0)) {}
+      Identifier() : kind(static_cast<clangmm::Cursor::Kind>(0)) {}
       operator bool() const { return static_cast<int>(kind)!=0; }
       bool operator==(const Identifier &rhs) const { return (kind==rhs.kind && spelling==rhs.spelling && usr==rhs.usr); }
       bool operator!=(const Identifier &rhs) const { return !(*this==rhs); }
       bool operator<(const Identifier &rhs) const { return usr<rhs.usr; }
-      clang::Cursor::Kind kind;
+      clangmm::Cursor::Kind kind;
       std::string spelling;
       std::string usr;
-      clang::Cursor cursor;
+      clangmm::Cursor cursor;
     };
   public:
     ClangViewRefactor(const boost::filesystem::path &file_path, Glib::RefPtr<Gsv::Language> language);
