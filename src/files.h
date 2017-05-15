@@ -21,7 +21,7 @@ const std::string default_config_file = R"RAW({
         "history_size": 1000,
         "font_comment": "Use \"\" to use source.font with slightly smaller size",
         "font": "",
-        "show_progress": true
+        "show_progress": false
     },
     "source": {
         "style_comment": "Use \"\" for default style, and for instance juci-dark or juci-dark-blue together with dark gtk_theme variant. Styles from normal gtksourceview install: classic, cobalt, kate, oblivion, solarized-dark, solarized-light, tango",
