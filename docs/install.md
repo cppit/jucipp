@@ -7,6 +7,7 @@
     - [Arch Linux/Manjaro Linux](#arch-linuxmanjaro-linux)
     - [Fedora 23](#fedora-23)
     - [Mageia 5](#mageia-5)
+    - [OpenSUSE Tumbleweed](#opensuse-tumbleweed)
   - OS X
     - [Homebrew](#os-x-with-homebrew-httpbrewsh)
   - Windows
@@ -110,6 +111,23 @@ git clone --recursive https://github.com/cppit/jucipp
 mkdir jucipp/build
 cd jucipp/build
 cmake -DCMAKE_CXX_COMPILER=g++ ..
+make
+sudo make install
+```
+
+## OpenSUSE Tumbleweed
+
+Install dependencies:
+```sh
+sudo zypper install patterns-devel-base-devel_basis patterns-devel-C-C++-devel_C_C++ git-core cmake ctags clang-devel lldb-devel gtkmm3-devel aspell-devel libgit2-devel gtksourceviewmm-devel
+```
+
+Get juCi++ source, compile and install:
+```sh
+git clone --recursive https://github.com/cppit/jucipp
+mkdir jucipp/build
+cd jucipp/build
+cmake -DCMAKE_INSTALL_PREFIX=/usr -DCMAKE_CXX_COMPILER=g++ ..
 make
 sudo make install
 ```
