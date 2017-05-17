@@ -89,7 +89,6 @@ sudo make install
 ```
 
 ## Mageia 5
-
 **Mageia doesn't support LLDB, but you can compile without debug support.**
 
 Install dependencies:
@@ -116,10 +115,9 @@ sudo make install
 ```
 
 ## OpenSUSE Tumbleweed
-
 Install dependencies:
 ```sh
-sudo zypper install patterns-devel-base-devel_basis patterns-devel-C-C++-devel_C_C++ git-core cmake ctags clang-devel lldb-devel gtkmm3-devel aspell-devel libgit2-devel gtksourceviewmm-devel
+sudo zypper install git-core cmake gcc-c++ boost-devel clang-devel lldb-devel gtksourceviewmm-devel aspell-devel aspell-en libgit2-devel ctags
 ```
 
 Get juCi++ source, compile and install:
@@ -127,7 +125,7 @@ Get juCi++ source, compile and install:
 git clone --recursive https://github.com/cppit/jucipp
 mkdir jucipp/build
 cd jucipp/build
-cmake -DCMAKE_INSTALL_PREFIX=/usr -DCMAKE_CXX_COMPILER=g++ ..
+cmake -DCMAKE_CXX_COMPILER=g++ ..
 make
 sudo make install
 ```
