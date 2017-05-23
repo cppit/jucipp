@@ -76,6 +76,10 @@ else()
   )
 endif()
 
+if(APPLE)
+    install(CODE "execute_process(COMMAND /usr/bin/python ${CMAKE_SOURCE_DIR}/share/set_icon_macos.py ${CMAKE_SOURCE_DIR}/share/juci.png ${CMAKE_INSTALL_PREFIX}/bin/juci)")
+endif()
+
 # add a target to generate API documentation with Doxygen
 find_package(Plantuml)
 find_package(Doxygen)
