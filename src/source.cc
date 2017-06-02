@@ -886,10 +886,9 @@ void Source::View::paste() {
     get_buffer()->get_selection_bounds(start, end);
     get_buffer()->erase(start, end);
   }
-  auto line=get_line_before(); 
-  std::string prefix_tabs;
+  auto iter=get_buffer()->get_insert()->get_iter();
   auto tabs_end_iter=get_tabs_end_iter();
-  prefix_tabs=get_line_before(tabs_end_iter);
+  auto prefix_tabs=get_line_before(iter<tabs_end_iter?iter:tabs_end_iter);
 
   size_t start_line=0;
   size_t end_line=0;
@@ -974,6 +973,9 @@ void Source::View::paste() {
       paste_line=false;
     }
   }
+  // add final newline if present in text
+  if(text.size()>0 && text.back()=='\n')
+    get_buffer()->insert_at_cursor('\n'+prefix_tabs);
   get_buffer()->place_cursor(get_buffer()->get_insert()->get_iter());
   get_buffer()->end_user_action();
   scroll_to_cursor_delayed(this, false, false);
