@@ -657,9 +657,8 @@ void Window::set_menu_actions() {
   });
   
   menu.add_action("source_find_file", [this]() {
-    using namespace boost::filesystem;
     auto view = Notebook::get().get_current_view();
-    auto project_path = canonical(Directories::get().path);
+    auto project_path = boost::filesystem::canonical(Directories::get().path);
   
     if(view) {
       auto dialog_iter=view->get_iter_for_dialog();
@@ -670,22 +669,22 @@ void Window::set_menu_actions() {
     }
     
     // std::vector<std::string> excludes;
-    path build_default_path, build_debug_path;
+    boost::filesystem::path build_default_path, build_debug_path;
     auto build = Project::Build::create(project_path);
     if(!project_path.empty()) {
       if (is_directory(build->get_default_path())) {
-        build_default_path = canonical(build->get_default_path());
+        build_default_path = boost::filesystem::canonical(build->get_default_path());
       }      
       if (is_directory(build->get_debug_path())) {
-        build_debug_path = canonical(build->get_debug_path());
+        build_debug_path = boost::filesystem::canonical(build->get_debug_path());
       }
     }
   
     // populate with all files in project
-    for (recursive_directory_iterator iter(project_path), end; iter != end; iter++) {
-      auto path = canonical(iter->path());
+    for (boost::filesystem::recursive_directory_iterator iter(project_path), end; iter != end; iter++) {
+      auto path = boost::filesystem::canonical(iter->path());
       // ignore folders, but not everything in them
-      if (!is_regular_file(path)) {
+      if (!boost::filesystem::is_regular_file(path)) {
         continue;
       }
   
@@ -704,7 +703,7 @@ void Window::set_menu_actions() {
     }
   
     SelectionDialog::get()->on_select=[this, project_path](const std::string &selected, bool hide_window) {
-      auto full_path = canonical(selected);
+      auto full_path = boost::filesystem::canonical(selected);
       Notebook::get().open(full_path);
       auto view=Notebook::get().get_current_view();
       view->hide_tooltips();
