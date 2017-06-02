@@ -691,7 +691,6 @@ void Window::set_menu_actions() {
       // ignore build directory, and everything in it
       if ((filesystem::file_in_path(path, build_default_path) && build_default_path != "") ||
           (filesystem::file_in_path(path, build_debug_path) && build_debug_path != "")) {
-        std::cout << path << std::endl;
         iter.pop();
         continue;
       }
