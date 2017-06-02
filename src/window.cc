@@ -656,6 +656,66 @@ void Window::set_menu_actions() {
     SelectionDialog::get()->show();
   });
   
+  menu.add_action("source_find_file", [this]() {
+    using namespace boost::filesystem;
+    auto view = Notebook::get().get_current_view();
+    auto project_path = canonical(Directories::get().path);
+  
+    if(view) {
+      auto dialog_iter=view->get_iter_for_dialog();
+      SelectionDialog::create(view, view->get_buffer()->create_mark(dialog_iter), true, true);
+    }
+    else {
+      SelectionDialog::create(true, true);
+    }
+    
+    // std::vector<std::string> excludes;
+    path build_default_path, build_debug_path;
+    auto build = Project::Build::create(project_path);
+    if(!project_path.empty()) {
+      if (is_directory(build->get_default_path())) {
+        build_default_path = canonical(build->get_default_path());
+      }      
+      if (is_directory(build->get_debug_path())) {
+        build_debug_path = canonical(build->get_debug_path());
+      }
+    }
+  
+    // populate with all files in project
+    for (recursive_directory_iterator iter(project_path), end; iter != end; iter++) {
+      auto path = canonical(iter->path());
+      // ignore folders, but not everything in them
+      if (!is_regular_file(path)) {
+        continue;
+      }
+  
+      // ignore build directory, and everything in it
+      if ((filesystem::file_in_path(path, build_default_path) && build_default_path != "") ||
+          (filesystem::file_in_path(path, build_debug_path) && build_debug_path != "")) {
+        std::cout << path << std::endl;
+        iter.pop();
+        continue;
+      }
+  
+      // remove project base path (and separating slash)
+      auto path_str = filesystem::get_relative_path(path, project_path).string();
+      // SelectionDialog::get()->add_row(path_str.substr(project_path.string().length()+1));
+      SelectionDialog::get()->add_row(path_str);
+    }
+  
+    SelectionDialog::get()->on_select=[this, project_path](const std::string &selected, bool hide_window) {
+      auto full_path = canonical(selected);
+      Notebook::get().open(full_path);
+      auto view=Notebook::get().get_current_view();
+      view->hide_tooltips();
+    };
+  
+    if(view)
+      view->hide_tooltips();
+    SelectionDialog::get()->show();
+  
+  });
+  
   menu.add_action("source_comments_toggle", [this]() {
     if(auto view=Notebook::get().get_current_view()) {
       if(view->toggle_comments) {
