@@ -658,7 +658,18 @@ void Window::set_menu_actions() {
   
   menu.add_action("source_find_file", [this]() {
     auto view = Notebook::get().get_current_view();
-    auto project_path = boost::filesystem::canonical(Directories::get().path);
+
+    boost::filesystem::path project_path;
+    if(!Directories::get().path.empty())
+      project_path=Directories::get().path;
+    else {
+      boost::system::error_code ec;
+      project_path=boost::filesystem::current_path(ec);
+      if(ec) {
+        Terminal::get().print("Error: could not find current path\n", true);
+        return;
+      }
+    }
   
     if(view) {
       auto dialog_iter=view->get_iter_for_dialog();
@@ -668,21 +679,20 @@ void Window::set_menu_actions() {
       SelectionDialog::create(true, true);
     }
     
-    // std::vector<std::string> excludes;
     boost::filesystem::path build_default_path, build_debug_path;
     auto build = Project::Build::create(project_path);
     if(!project_path.empty()) {
       if (is_directory(build->get_default_path())) {
-        build_default_path = boost::filesystem::canonical(build->get_default_path());
+        build_default_path = build->get_default_path();
       }      
       if (is_directory(build->get_debug_path())) {
-        build_debug_path = boost::filesystem::canonical(build->get_debug_path());
+        build_debug_path = build->get_debug_path();
       }
     }
   
     // populate with all files in project
     for (boost::filesystem::recursive_directory_iterator iter(project_path), end; iter != end; iter++) {
-      auto path = boost::filesystem::canonical(iter->path());
+      auto path = iter->path();
       // ignore folders, but not everything in them
       if (!boost::filesystem::is_regular_file(path)) {
         continue;
@@ -704,8 +714,8 @@ void Window::set_menu_actions() {
     SelectionDialog::get()->on_select=[this, project_path](const std::string &selected, bool hide_window) {
       auto full_path = boost::filesystem::canonical(selected);
       Notebook::get().open(full_path);
-      auto view=Notebook::get().get_current_view();
-      view->hide_tooltips();
+      if (auto view=Notebook::get().get_current_view())
+        view->hide_tooltips();
     };
   
     if(view)

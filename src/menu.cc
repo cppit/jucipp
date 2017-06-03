@@ -263,7 +263,7 @@ const Glib::ustring menu_xml= R"RAW(<interface>
       </section>
       <section>
         <item>
-          <attribute name='label' translatable='yes'>G_oto File</attribute>
+          <attribute name='label' translatable='yes'>_Find _File</attribute>
           <attribute name='action'>app.source_find_file</attribute>
         </item>
         <item>
