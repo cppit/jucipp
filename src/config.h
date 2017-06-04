@@ -6,6 +6,7 @@
 #include <string>
 #include <utility>
 #include <vector>
+#include "dispatcher.h"
 
 class Config {
 public:
@@ -113,6 +114,9 @@ public:
   boost::filesystem::path home_juci_path;
 
 private:
+  /// Used to dispatch Terminal outputs after juCi++ GUI setup and configuration
+  Dispatcher dispatcher;
+  
   void find_or_create_config_files();
   void update(boost::property_tree::ptree &cfg);
   void make_version_dependent_corrections(boost::property_tree::ptree &cfg, const boost::property_tree::ptree &default_cfg, const std::string &version);

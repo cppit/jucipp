@@ -43,7 +43,9 @@ void Config::load() {
     read(cfg);
   }
   catch(const std::exception &e) {
-    ::Terminal::get().print("Error: could not parse "+config_json+": "+e.what()+"\n", true);
+    dispatcher.post([config_json, e_what=std::string(e.what())] {
+      ::Terminal::get().print("Error: could not parse "+config_json+": "+e_what+"\n", true);
+    });
     std::stringstream ss;
     ss << default_config_file;
     boost::property_tree::read_json(ss, cfg);
@@ -104,10 +106,21 @@ void Config::update(boost::property_tree::ptree &cfg) {
 }
 
 void Config::make_version_dependent_corrections(boost::property_tree::ptree &cfg, const boost::property_tree::ptree &default_cfg, const std::string &version) {
+  auto &keybindings_cfg=cfg.get_child("keybindings");
   try {
-    
+    if(version<="1.2.4") {
+      auto it_file_print=keybindings_cfg.find("print");
+      if(it_file_print!=keybindings_cfg.not_found() && it_file_print->second.data()=="<primary>p") {
+        dispatcher.post([] {
+          ::Terminal::get().print("Preference change: keybindings.print set to \"\"\n");
+        });
+        it_file_print->second.data()="";
+      }
+    }
   }
-  catch(...) {}
+  catch(const std::exception &e) {
+    std::cerr << "Error correcting preferences: " << e.what() << std::endl;
+  }
 }
 
 bool Config::add_missing_nodes(boost::property_tree::ptree &cfg, const boost::property_tree::ptree &default_cfg, std::string parent_path) {

@@ -659,63 +659,67 @@ void Window::set_menu_actions() {
   menu.add_action("source_find_file", [this]() {
     auto view = Notebook::get().get_current_view();
 
-    boost::filesystem::path project_path;
-    if(!Directories::get().path.empty())
-      project_path=Directories::get().path;
+    boost::filesystem::path search_path;
+    if(view)
+      search_path=view->file_path.parent_path();
+    else if(!Directories::get().path.empty())
+      search_path=Directories::get().path;
     else {
       boost::system::error_code ec;
-      project_path=boost::filesystem::current_path(ec);
+      search_path=boost::filesystem::current_path(ec);
       if(ec) {
         Terminal::get().print("Error: could not find current path\n", true);
         return;
       }
     }
+    auto build=Project::Build::create(search_path);
+    auto project_path=build->project_path;
+    boost::filesystem::path default_path, debug_path;
+    if(!project_path.empty()) {
+      search_path=project_path;
+      default_path = build->get_default_path();
+      debug_path = build->get_debug_path();
+    }
+    else if (!Directories::get().path.empty())
+      search_path=Directories::get().path;
   
     if(view) {
       auto dialog_iter=view->get_iter_for_dialog();
       SelectionDialog::create(view, view->get_buffer()->create_mark(dialog_iter), true, true);
     }
-    else {
+    else
       SelectionDialog::create(true, true);
-    }
     
-    boost::filesystem::path build_default_path, build_debug_path;
-    auto build = Project::Build::create(project_path);
-    if(!project_path.empty()) {
-      if (is_directory(build->get_default_path())) {
-        build_default_path = build->get_default_path();
-      }      
-      if (is_directory(build->get_debug_path())) {
-        build_debug_path = build->get_debug_path();
-      }
-    }
-  
-    // populate with all files in project
-    for (boost::filesystem::recursive_directory_iterator iter(project_path), end; iter != end; iter++) {
+    std::unordered_set<std::string> buffer_paths;
+    for(auto view: Notebook::get().get_views())
+      buffer_paths.emplace(view->file_path.string());
+    
+    auto paths=std::make_shared<std::unordered_map<std::string, boost::filesystem::path>>();
+    // populate with all files in search_path
+    for (boost::filesystem::recursive_directory_iterator iter(search_path), end; iter != end; iter++) {
       auto path = iter->path();
-      // ignore folders, but not everything in them
+      // ignore folders
       if (!boost::filesystem::is_regular_file(path)) {
+        if(path==default_path || path==debug_path || path.filename()==".git")
+          iter.no_push();
         continue;
       }
-  
-      // ignore build directory, and everything in it
-      if ((filesystem::file_in_path(path, build_default_path) && build_default_path != "") ||
-          (filesystem::file_in_path(path, build_debug_path) && build_debug_path != "")) {
-        iter.pop();
-        continue;
-      }
-  
-      // remove project base path (and separating slash)
-      auto path_str = filesystem::get_relative_path(path, project_path).string();
-      // SelectionDialog::get()->add_row(path_str.substr(project_path.string().length()+1));
-      SelectionDialog::get()->add_row(path_str);
+        
+      // remove project base path
+      auto row_str = filesystem::get_relative_path(path, search_path).string();
+      if(buffer_paths.count(path.string()))
+        row_str="<b>"+row_str+"</b>";
+      paths->emplace(row_str, path);
+      SelectionDialog::get()->add_row(row_str);
     }
   
-    SelectionDialog::get()->on_select=[this, project_path](const std::string &selected, bool hide_window) {
-      auto full_path = boost::filesystem::canonical(selected);
-      Notebook::get().open(full_path);
-      if (auto view=Notebook::get().get_current_view())
-        view->hide_tooltips();
+    SelectionDialog::get()->on_select=[this, paths](const std::string &selected, bool hide_window) {
+      auto it=paths->find(selected);
+      if(it!=paths->end()) {
+        Notebook::get().open(it->second);
+        if (auto view=Notebook::get().get_current_view())
+          view->hide_tooltips();
+      }
     };
   
     if(view)
