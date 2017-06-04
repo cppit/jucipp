@@ -114,12 +114,10 @@ public:
 
 private:
   void find_or_create_config_files();
-  void retrieve_config();
-  bool add_missing_nodes(const boost::property_tree::ptree &default_cfg, std::string parent_path="");
-  bool remove_deprecated_nodes(const boost::property_tree::ptree &default_cfg, boost::property_tree::ptree &config_cfg, std::string parent_path="");
-  void update_config_file();
-  void get_source();
-
-  boost::property_tree::ptree cfg;
+  void update(boost::property_tree::ptree &cfg);
+  void make_version_dependent_corrections(boost::property_tree::ptree &cfg, const boost::property_tree::ptree &default_cfg, const std::string &version);
+  bool add_missing_nodes(boost::property_tree::ptree &cfg, const boost::property_tree::ptree &default_cfg, std::string parent_path="");
+  bool remove_deprecated_nodes(boost::property_tree::ptree &cfg, const boost::property_tree::ptree &default_cfg, std::string parent_path="");
+  void read(const boost::property_tree::ptree &cfg);
 };
 #endif
