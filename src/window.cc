@@ -710,6 +710,11 @@ void Window::set_menu_actions() {
       paths->emplace(row_str, path);
       SelectionDialog::get()->add_row(row_str);
     }
+    
+    if(paths->empty()) {
+      Info::get().print("No files found in current project");
+      return;
+    }
   
     SelectionDialog::get()->on_select=[this, paths](const std::string &selected, bool hide_window) {
       auto it=paths->find(selected);
