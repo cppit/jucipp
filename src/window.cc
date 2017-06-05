@@ -596,20 +596,20 @@ void Window::set_menu_actions() {
   menu.add_action("source_find_symbol_ctags", [this]() {
     auto view=Notebook::get().get_current_view();
     
-    boost::filesystem::path ctags_path;
+    boost::filesystem::path search_path;
     if(view)
-      ctags_path=view->file_path.parent_path();
+      search_path=view->file_path.parent_path();
     else if(!Directories::get().path.empty())
-      ctags_path=Directories::get().path;
+      search_path=Directories::get().path;
     else {
       boost::system::error_code ec;
-      ctags_path=boost::filesystem::current_path(ec);
+      search_path=boost::filesystem::current_path(ec);
       if(ec) {
         Terminal::get().print("Error: could not find current path\n", true);
         return;
       }
     }
-    auto pair=Ctags::get_result(ctags_path);
+    auto pair=Ctags::get_result(search_path);
     
     auto path=std::move(pair.first);
     auto stream=std::move(pair.second);
@@ -680,8 +680,6 @@ void Window::set_menu_actions() {
       default_path = build->get_default_path();
       debug_path = build->get_debug_path();
     }
-    else if (!Directories::get().path.empty())
-      search_path=Directories::get().path;
   
     if(view) {
       auto dialog_iter=view->get_iter_for_dialog();

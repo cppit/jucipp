@@ -3,7 +3,6 @@
 #include "terminal.h"
 #include "project_build.h"
 #include "filesystem.h"
-#include "directories.h"
 #include <iostream>
 #include <vector>
 #include <regex>
@@ -22,12 +21,8 @@ std::pair<boost::filesystem::path, std::unique_ptr<std::stringstream> > Ctags::g
     if(!relative_debug_path.empty())
       exclude+=" --exclude="+relative_debug_path.string();
   }
-  else {
-    if(!Directories::get().path.empty())
-      run_path=Directories::get().path;
-    else
-      run_path=path;
-  }
+  else
+    run_path=path;
   
   std::stringstream stdin_stream;
   //TODO: when debian stable gets newer g++ version that supports move on streams, remove unique_ptr below
