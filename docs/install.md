@@ -135,7 +135,7 @@ sudo make install
 
 Install dependencies:
 ```sh
-brew install --with-clang --with-lldb llvm
+brew install --with-lldb llvm
 brew install cmake pkg-config boost gtksourceviewmm3 aspell clang-format libgit2 ctags
 ```
 
