@@ -27,7 +27,7 @@ int main() {
   {
     CompileCommands compile_commands(tests_path/"source_clang_test_files"/"build");
     
-    g_assert(compile_commands.commands.at(0).directory=="build");
+    g_assert(compile_commands.commands.at(0).directory==".");
     
     g_assert_cmpuint(compile_commands.commands.size(), ==, 1);
     

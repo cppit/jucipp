@@ -102,54 +102,27 @@ bool CMake::update_debug_build(const boost::filesystem::path &debug_build_path, 
 }
 
 boost::filesystem::path CMake::get_executable(const boost::filesystem::path &build_path, const boost::filesystem::path &file_path) {
-  auto cmake_executables = get_functions_parameters("add_executable");
+  // CMake does not store in compile_commands.json if an object is part of an executable or not.
+  // Therefore, executables are first attempted found in the cmake files. These executables
+  // are then used to identify if a file in compile_commands.json is part of an executable or not
   
-  auto cmake_fix_executable=[this, &build_path](std::string executable) {
-    size_t pos=executable.find(project_path.string());
-    if(pos!=std::string::npos)
-      executable.replace(pos, project_path.string().size(), build_path.string());
-    return executable;
-  };
+  auto parameters = get_functions_parameters("add_executable");
   
-  if(!file_path.empty()) {
-    for(auto &executable: cmake_executables) {
-      if(executable.second.size()>1) {
-        for(size_t c=1;c<executable.second.size();c++) {
-          if(executable.second[c]==file_path.filename()) {
-            if(executable.second[0].size()>0 && cmake_executables[0].second[0].compare(0, 2, "${")!=0)
-              return cmake_fix_executable((executable.first.parent_path()/executable.second[0]).string());
-            return get_executable_from_compile_commands(build_path, file_path);
-          }
-        }
-      }
+  std::vector<boost::filesystem::path> cmake_executables;
+  for(auto &parameter: parameters) {
+    if(parameter.second.size()>1 && parameter.second[0].size()>0 && parameter.second[0].compare(0, 2, "${")!=0) {
+      auto executable=(parameter.first.parent_path()/parameter.second[0]).string();
+      auto project_path_str=project_path.string();
+      size_t pos=executable.find(project_path_str);
+      if(pos!=std::string::npos)
+        executable.replace(pos, project_path_str.size(), build_path.string());
+      cmake_executables.emplace_back(executable);
     }
   }
   
-  size_t best_match_c=-1;
-  size_t best_match_size=-1;
-  for(size_t c=0;c<cmake_executables.size();++c) {
-    if(cmake_executables[c].second.size()>0) {
-      auto size=cmake_executables[c].first.parent_path().string().size();
-      if(best_match_size==static_cast<size_t>(-1) || best_match_size<size) {
-        best_match_size=size;
-        best_match_c=c;
-      }
-    }
-  }
-  if(best_match_c!=static_cast<size_t>(-1) &&
-     cmake_executables[best_match_c].second[0].size()>0 &&
-     cmake_executables[best_match_c].second[0].compare(0, 2, "${")!=0) {
-    return cmake_fix_executable((cmake_executables[best_match_c].first.parent_path()/cmake_executables[best_match_c].second[0]).string());
-  }
   
-  return get_executable_from_compile_commands(build_path, file_path);
-}
-
-boost::filesystem::path CMake::get_executable_from_compile_commands(const boost::filesystem::path &build_path, const boost::filesystem::path &file_path) {
   CompileCommands compile_commands(build_path);
-  
-  size_t compile_commands_best_match_size=-1;
-  boost::filesystem::path compile_commands_best_match_executable;
+  std::vector<std::pair<boost::filesystem::path, boost::filesystem::path>> command_files_and_maybe_executables;
   for(auto &command: compile_commands.commands) {
     auto command_file=filesystem::get_normal_path(command.file);
     auto values=command.parameter_values("-o");
@@ -157,26 +130,51 @@ boost::filesystem::path CMake::get_executable_from_compile_commands(const boost:
       size_t pos;
       values[0].erase(0, 11);
       if((pos=values[0].find(".dir"))!=std::string::npos) {
-        boost::filesystem::path executable=values[0].substr(0, pos);
-        auto relative_path=filesystem::get_relative_path(command_file, project_path);
-        if(!relative_path.empty()) {
-          executable=build_path/relative_path.parent_path()/executable;
-          if(command_file==file_path)
-            return executable;
-          auto command_file_directory=command_file.parent_path();
-          if(filesystem::file_in_path(file_path, command_file_directory)) {
-            auto size=command_file_directory.string().size();
-            if(compile_commands_best_match_size==static_cast<size_t>(-1) || compile_commands_best_match_size<size) {
-              compile_commands_best_match_size=size;
-              compile_commands_best_match_executable=executable;
-            }
+        auto executable=command.directory/values[0].substr(0, pos);
+        command_files_and_maybe_executables.emplace_back(command_file, executable);
+      }
+    }
+  }
+  
+  size_t best_match_size=-1;
+  boost::filesystem::path best_match_executable;
+  
+  for(auto &cmake_executable: cmake_executables) {
+    for(auto &command_file_and_maybe_executable: command_files_and_maybe_executables) {
+      auto &command_file=command_file_and_maybe_executable.first;
+      auto &maybe_executable=command_file_and_maybe_executable.second;
+      if(cmake_executable==maybe_executable) {
+        if(command_file==file_path)
+          return maybe_executable;
+        auto command_file_directory=command_file.parent_path();
+        if(filesystem::file_in_path(file_path, command_file_directory)) {
+          auto size=static_cast<size_t>(std::distance(command_file_directory.begin(), command_file_directory.end()));
+          if(best_match_size==static_cast<size_t>(-1) || best_match_size<size) {
+            best_match_size=size;
+            best_match_executable=maybe_executable;
           }
         }
       }
     }
   }
+  if(!best_match_executable.empty())
+    return best_match_executable;
   
-  return compile_commands_best_match_executable;
+  for(auto &command_file_and_maybe_executable: command_files_and_maybe_executables) {
+    auto &command_file=command_file_and_maybe_executable.first;
+    auto &maybe_executable=command_file_and_maybe_executable.second;
+    if(command_file==file_path)
+      return maybe_executable;
+    auto command_file_directory=command_file.parent_path();
+    if(filesystem::file_in_path(file_path, command_file_directory)) {
+      auto size=static_cast<size_t>(std::distance(command_file_directory.begin(), command_file_directory.end()));
+      if(best_match_size==static_cast<size_t>(-1) || best_match_size<size) {
+        best_match_size=size;
+        best_match_executable=maybe_executable;
+      }
+    }
+  }
+  return best_match_executable;
 }
 
 void CMake::read_files() {

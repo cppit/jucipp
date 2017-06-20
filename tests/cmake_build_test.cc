@@ -3,6 +3,7 @@
 #include "project_build.h"
 #include "config.h"
 #include <boost/filesystem.hpp>
+#include "process.hpp"
 
 #include <iostream>
 using namespace std;
@@ -14,6 +15,9 @@ int main() {
     
     {
       CMake cmake(project_path);
+      Process process("cmake -DCMAKE_EXPORT_COMPILE_COMMANDS=ON ..", (project_path/"build").string(), [](const char *bytes, size_t n) {});
+      g_assert(process.get_exit_status()==0);
+      
       g_assert(cmake.get_executable(project_path/"build", project_path)=="");
       g_assert(cmake.get_executable(project_path/"build"/"non_existing_file.cc", project_path)=="");
     }
@@ -32,9 +36,9 @@ int main() {
       auto functions_parameters=cmake.get_functions_parameters("project");
       g_assert(functions_parameters.at(0).second.at(0)=="juci");
       
-      g_assert(cmake.get_executable(project_path/"build", tests_path)==project_path/"build"/"tests"/"process_test");
+      g_assert(cmake.get_executable(project_path/"build", tests_path).parent_path()==project_path/"build"/"tests");
       g_assert(cmake.get_executable(project_path/"build", tests_path/"cmake_build_test.cc")==project_path/"build"/"tests"/"cmake_build_test");
-      g_assert(cmake.get_executable(project_path/"build", tests_path/"non_existing_file.cc")==project_path/"build"/"tests"/"process_test");
+      g_assert(cmake.get_executable(project_path/"build", tests_path/"non_existing_file.cc").parent_path()==project_path/"build"/"tests");
     }
     
     auto build=Project::Build::create(tests_path);
@@ -63,8 +67,8 @@ int main() {
     
     g_assert(cmake.project_path==project_path);
     
-    g_assert(cmake.get_executable(project_path/"build", project_path/"main.cpp")==project_path/"build"/"test");
-    g_assert(cmake.get_executable(project_path/"build", project_path/"non_existing_file.cpp")==project_path/"build"/"test");
-    g_assert(cmake.get_executable(project_path/"build", project_path)==project_path/"build"/"test");
+    g_assert(cmake.get_executable(project_path/"build", project_path/"main.cpp")==boost::filesystem::path(".")/"test");
+    g_assert(cmake.get_executable(project_path/"build", project_path/"non_existing_file.cpp")==boost::filesystem::path(".")/"test");
+    g_assert(cmake.get_executable(project_path/"build", project_path)==boost::filesystem::path(".")/"test");
   }
 }

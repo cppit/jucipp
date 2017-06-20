@@ -1,6 +1,6 @@
 [
 {
-  "directory": "build",
+  "directory": ".",
   "command": "c++ -std=c++1y -Wall -Wextra -Wno-unused-parameter -o CMakeFiles/test.dir/main.cpp.o main.cpp",
   "file": "../main.cpp"
 }
