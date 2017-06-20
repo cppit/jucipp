@@ -1205,12 +1205,11 @@ long Source::View::symbol_count(Gtk::TextIter iter, unsigned int positive_char, 
       curly_count--;
     else if(check_if_next_iter_is_code_iter) {
       auto next_iter=iter;
-      if(next_iter.forward_char()) {
-        if(*iter==positive_char && is_code_iter(next_iter))
-          symbol_count++;
-        else if(*iter==negative_char && is_code_iter(next_iter))
-          symbol_count--;
-      }
+      next_iter.forward_char();
+      if(*iter==positive_char && is_code_iter(next_iter))
+        symbol_count++;
+      else if(*iter==negative_char && is_code_iter(next_iter))
+        symbol_count--;
     }
     
     if(break_on_curly && curly_count>0)
@@ -1234,12 +1233,11 @@ long Source::View::symbol_count(Gtk::TextIter iter, unsigned int positive_char, 
       curly_count--;
     else if(check_if_next_iter_is_code_iter) {
       auto next_iter=iter;
-      if(next_iter.forward_char()) {
-        if(*iter==positive_char && is_code_iter(next_iter))
-          symbol_count++;
-        else if(*iter==negative_char && is_code_iter(next_iter))
-          symbol_count--;
-      }
+      next_iter.forward_char();
+      if(*iter==positive_char && is_code_iter(next_iter))
+        symbol_count++;
+      else if(*iter==negative_char && is_code_iter(next_iter))
+        symbol_count--;
     }
     
     if(break_on_curly && curly_count<0)
