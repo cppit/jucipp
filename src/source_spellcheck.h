@@ -37,7 +37,7 @@ namespace Source {
     AspellSpeller *spellcheck_checker;
     bool is_word_iter(const Gtk::TextIter& iter);
     std::pair<Gtk::TextIter, Gtk::TextIter> get_word(Gtk::TextIter iter);
-    void spellcheck_word(const Gtk::TextIter& start, const Gtk::TextIter& end);
+    void spellcheck_word(Gtk::TextIter start, Gtk::TextIter end);
     std::vector<std::string> get_spellcheck_suggestions(const Gtk::TextIter& start, const Gtk::TextIter& end);
     sigc::connection delayed_spellcheck_suggestions_connection;
     sigc::connection delayed_spellcheck_error_clear;

@@ -160,6 +160,13 @@ Source::SpellCheckView::SpellCheckView() : Gsv::View() {
         if(get_buffer()->get_insert()->get_iter().has_tag(spellcheck_error_tag)) {
           SelectionDialog::create(this, get_buffer()->create_mark(get_buffer()->get_insert()->get_iter()), false);
           auto word=get_word(get_buffer()->get_insert()->get_iter());
+          if(*word.first=='\'' && word.second.get_offset()-word.first.get_offset()>=3) {
+            auto before_end=word.second;
+            if(before_end.backward_char() && *before_end=='\'') {
+              word.first.forward_char();
+              word.second.backward_char();
+            }
+          }
           auto suggestions=get_spellcheck_suggestions(word.first, word.second);
           if(suggestions.size()==0)
             return false;
@@ -355,7 +362,7 @@ bool Source::SpellCheckView::is_code_iter(const Gtk::TextIter &iter) {
     // for example, mark first " as code iter in this case: r""
     if(*iter=='\'' || *iter=='"') {
       auto previous_iter=iter;
-      if(previous_iter.backward_char() && previous_iter.ends_tag(no_spell_check_tag))
+      if(previous_iter.backward_char() && *previous_iter!='\'' && *previous_iter!='\"' && previous_iter.ends_tag(no_spell_check_tag))
         return true;
     }
     return false;
@@ -408,7 +415,17 @@ bool Source::SpellCheckView::is_code_iter(const Gtk::TextIter &iter) {
 }
 
 bool Source::SpellCheckView::is_word_iter(const Gtk::TextIter& iter) {
-  return ((*iter>='A' && *iter<='Z') || (*iter>='a' && *iter<='z') || *iter=='\'' || *iter>=128);
+  if(((*iter>='A' && *iter<='Z') || (*iter>='a' && *iter<='z') || *iter>=128))
+    return true;
+  if(*iter=='\'') {
+    if(is_code_iter(iter))
+      return false;
+    auto next_iter=iter;
+    if(next_iter.forward_char() && is_code_iter(next_iter))
+      return false;
+    return true;
+  }
+  return false;
 }
 
 std::pair<Gtk::TextIter, Gtk::TextIter> Source::SpellCheckView::get_word(Gtk::TextIter iter) {
@@ -428,21 +445,13 @@ std::pair<Gtk::TextIter, Gtk::TextIter> Source::SpellCheckView::get_word(Gtk::Te
   return {start, end};
 }
 
-void Source::SpellCheckView::spellcheck_word(const Gtk::TextIter& start, const Gtk::TextIter& end) {
-  if((end.get_offset()-start.get_offset())==2) {
+void Source::SpellCheckView::spellcheck_word(Gtk::TextIter start, Gtk::TextIter end) {
+  if(*start=='\'' && end.get_offset()-start.get_offset()>=3) {
     auto before_end=end;
-    before_end.backward_char();
-    if(*before_end=='\'' || *start=='\'') {
+    if(before_end.backward_char() && *before_end=='\'') {
       get_buffer()->remove_tag(spellcheck_error_tag, start, end);
-      return;
-    }
-  }
-  else if((end.get_offset()-start.get_offset())==3) {
-    auto before_end=end;
-    before_end.backward_char();
-    if(*before_end=='\'' && *start=='\'') {
-      get_buffer()->remove_tag(spellcheck_error_tag, start, end);
-      return;
+      start.forward_char();
+      end.backward_char();
     }
   }
   
