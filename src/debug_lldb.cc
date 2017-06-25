@@ -314,8 +314,12 @@ std::pair<std::string, std::string> Debug::LLDB::run_command(const std::string &
   if(state==lldb::StateType::eStateStopped || state==lldb::StateType::eStateRunning) {
     lldb::SBCommandReturnObject command_return_object;
     debugger->GetCommandInterpreter().HandleCommand(command.c_str(), command_return_object, true);
-    command_return.first=command_return_object.GetOutput();
-    command_return.second=command_return_object.GetError();
+    auto output=command_return_object.GetOutput();
+    if(output)
+      command_return.first=output;
+    auto error=command_return_object.GetError();
+    if(error)
+      command_return.second=error;
   }
   return command_return;
 }
