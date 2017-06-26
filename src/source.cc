@@ -1109,6 +1109,7 @@ bool Source::View::find_open_non_curly_bracket_backward(Gtk::TextIter iter, Gtk:
 }
 
 Gtk::TextIter Source::View::find_start_of_sentence(Gtk::TextIter iter) {
+  bool stream_operator_test=*iter==';'?true:false;
   int para_count=0;
   int square_count=0;
   long curly_count=0;
@@ -1131,22 +1132,33 @@ Gtk::TextIter Source::View::find_start_of_sentence(Gtk::TextIter iter) {
       break;
     
     if(iter.starts_line() && para_count==0 && square_count==0) {
-      //Handle : and , on previous line
-      auto previous_iter=iter;
-      previous_iter.backward_char();
-      while(!previous_iter.starts_line() && (*previous_iter==' ' || previous_iter.ends_line()) && previous_iter.backward_char()) {}
-      if(*previous_iter!=',' && *previous_iter!=':')
-        return iter;
-      else if(*previous_iter==':') {
+      bool stream_operator_found=false;
+      // Handle << at the beginning of the sentence if iter initially started with ;
+      if(stream_operator_test) {
+        auto tabs_end_iter=get_tabs_end_iter(iter);
+        if(!tabs_end_iter.starts_line() && *tabs_end_iter=='<' &&
+           tabs_end_iter.forward_char() && *tabs_end_iter=='<' &&
+           tabs_end_iter.forward_char() && *tabs_end_iter==' ')
+          stream_operator_found=true;
+      }
+      // Handle : and , on previous line
+      if(!stream_operator_found) {
+        auto previous_iter=iter;
         previous_iter.backward_char();
-        while(!previous_iter.starts_line() && *previous_iter==' ' && previous_iter.backward_char()) {}
-        if(*previous_iter==')') {
-          auto token=get_token(get_tabs_end_iter(get_buffer()->get_iter_at_line(previous_iter.get_line())));
-          if(token=="case")
+        while(!previous_iter.starts_line() && (*previous_iter==' ' || previous_iter.ends_line()) && previous_iter.backward_char()) {}
+        if(*previous_iter!=',' && *previous_iter!=':')
+          return iter;
+        else if(*previous_iter==':') {
+          previous_iter.backward_char();
+          while(!previous_iter.starts_line() && *previous_iter==' ' && previous_iter.backward_char()) {}
+          if(*previous_iter==')') {
+            auto token=get_token(get_tabs_end_iter(get_buffer()->get_iter_at_line(previous_iter.get_line())));
+            if(token=="case")
+              return iter;
+          }
+          else
             return iter;
         }
-        else
-          return iter;
       }
     }
   } while(iter.backward_char());
