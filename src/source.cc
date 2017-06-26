@@ -167,7 +167,7 @@ Source::View::View(const boost::filesystem::path &file_path, Glib::RefPtr<Gsv::L
                   language->get_id()=="go" || language->get_id()=="scala" || language->get_id()=="opencl")) {
     is_bracket_language=true;
     
-    format_style=[this]() {
+    format_style=[this](bool continue_without_style_file) {
       auto command=Config::get().terminal.clang_format_command+" -output-replacements-xml -assume-filename="+filesystem::escape_argument(this->file_path.string());
       
       if(get_buffer()->get_has_selection()) {
@@ -191,6 +191,8 @@ Source::View::View(const boost::filesystem::path &file_path, Glib::RefPtr<Gsv::L
       if(use_style_file)
         command+=" -style=file";
       else {
+        if(!continue_without_style_file)
+          return;
         unsigned indent_width;
         std::string tab_style;
         if(tab_char=='\t') {
@@ -499,8 +501,12 @@ bool Source::View::save(const std::vector<Source::View*> &views) {
   if(Config::get().source.cleanup_whitespace_characters)
     cleanup_whitespace_characters();
   
-  if(Config::get().source.format_style_on_save && format_style)
-    format_style();
+  if(format_style) {
+    if(Config::get().source.format_style_on_save)
+      format_style(true);
+    else if(Config::get().source.format_style_on_save_if_style_file_found)
+      format_style(false);
+  }
   
   if(filesystem::write(file_path, get_buffer())) {
     boost::system::error_code ec;

@@ -172,6 +172,7 @@ void Config::read(const boost::property_tree::ptree &cfg) {
   source.cleanup_whitespace_characters=source_json.get<bool>("cleanup_whitespace_characters");
   source.show_whitespace_characters=source_json.get<std::string>("show_whitespace_characters");
   source.format_style_on_save=source_json.get<bool>("format_style_on_save");
+  source.format_style_on_save_if_style_file_found=source_json.get<bool>("format_style_on_save_if_style_file_found");
   source.smart_brackets=source_json.get<bool>("smart_brackets");
   source.smart_inserts=source_json.get<bool>("smart_inserts");
   if(source.smart_inserts)

@@ -531,7 +531,7 @@ void Window::set_menu_actions() {
   menu.add_action("source_indentation_auto_indent_buffer", [this]() {
     auto view=Notebook::get().get_current_view();
     if(view && view->format_style)
-      view->format_style();
+      view->format_style(true);
   });
   
   menu.add_action("source_goto_line", [this]() {

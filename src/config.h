@@ -73,6 +73,7 @@ public:
     std::string show_whitespace_characters;
     
     bool format_style_on_save;
+    bool format_style_on_save_if_style_file_found;
     
     bool smart_brackets;
     bool smart_inserts;

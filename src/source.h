@@ -66,7 +66,7 @@ namespace Source {
     Glib::RefPtr<Gsv::Language> language;
     
     std::function<void()> non_interactive_completion;
-    std::function<void()> format_style;
+    std::function<void(bool)> format_style;
     std::function<Offset()> get_declaration_location;
     std::function<std::vector<Offset>(const std::vector<Source::View*> &views)> get_implementation_locations;
     std::function<std::vector<Offset>(const std::vector<Source::View*> &views)> get_declaration_or_implementation_locations;
