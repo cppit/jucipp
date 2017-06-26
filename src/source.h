@@ -129,6 +129,7 @@ namespace Source {
     Gtk::TextIter get_tabs_end_iter(int line_nr);
     Gtk::TextIter get_tabs_end_iter();
     
+    /// Usually returns at start of line, but not always
     Gtk::TextIter find_start_of_sentence(Gtk::TextIter iter);
     bool find_open_non_curly_bracket_backward(Gtk::TextIter iter, Gtk::TextIter &found_iter);
     bool find_open_curly_bracket_backward(Gtk::TextIter iter, Gtk::TextIter &found_iter);

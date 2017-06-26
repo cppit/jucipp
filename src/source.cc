@@ -1735,15 +1735,19 @@ bool Source::View::on_key_press_event_bracket_language(GdkEventKey* key) {
     
     if(*previous_iter=='{') {
       Gtk::TextIter found_iter;
-      bool found_right_bracket=find_close_curly_bracket_forward(iter, found_iter);
-      
+      // Check if an '}' is needed
       bool has_right_curly_bracket=false;
+      bool found_right_bracket=find_close_curly_bracket_forward(iter, found_iter);
       if(found_right_bracket) {
         auto tabs_end_iter=get_tabs_end_iter(found_iter);
         auto line_tabs=get_line_before(tabs_end_iter);
         if(tabs.size()==line_tabs.size())
           has_right_curly_bracket=true;
       }
+      // special case for functions and classes with no indentation after: namespace {
+      if(tabs.empty() && has_right_curly_bracket)
+        has_right_curly_bracket=symbol_count(iter, '{', '}')!=1;
+      
       if(*get_buffer()->get_insert()->get_iter()=='}') {
         get_buffer()->insert_at_cursor("\n"+tabs+tab+"\n"+tabs);
         auto insert_it = get_buffer()->get_insert()->get_iter();
