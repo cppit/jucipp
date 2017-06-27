@@ -82,7 +82,7 @@ R"RAW(
             "705": "def:comment"
         },
         "clang_format_style_comment": "IndentWidth, AccessModifierOffset and UseTab are set automatically. See http://clang.llvm.org/docs/ClangFormatStyleOptions.html",
-        "clang_format_style": "ColumnLimit: 0, MaxEmptyLinesToKeep: 2"
+        "clang_format_style": "ColumnLimit: 0, MaxEmptyLinesToKeep: 2, SpaceBeforeParens: Never, NamespaceIndentation: All, BreakBeforeBraces: Custom, BraceWrapping: {BeforeElse: true, BeforeCatch: true}"
     },
     "keybindings": {
         "preferences": "<primary>comma",
