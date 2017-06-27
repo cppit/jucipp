@@ -39,10 +39,15 @@ towards libclang with speed, stability, and ease of use in mind.
 See [enhancements](https://github.com/cppit/jucipp/labels/enhancement) for planned features.
 
 ## Screenshots
-<img src="https://github.com/cppit/jucipp/blob/master/docs/images/screenshot1b.png" width="350"/>
-<img src="https://github.com/cppit/jucipp/blob/master/docs/images/screenshot2b.png" width="350"/><br>
-<img src="https://github.com/cppit/jucipp/blob/master/docs/images/screenshot3b.png" width="350"/>
-<img src="https://github.com/cppit/jucipp/blob/master/docs/images/screenshot4.png" width="350"/>
+<table border="0">
+<tr>
+<td><img src="https://github.com/cppit/jucipp/blob/master/docs/images/screenshot1b.png" width="380"/></td>
+<td><img src="https://github.com/cppit/jucipp/blob/master/docs/images/screenshot2b.png" width="380"/></td>
+</tr><tr>
+<td><img src="https://github.com/cppit/jucipp/blob/master/docs/images/screenshot3b.png" width="380"/></td>
+<td><img src="https://github.com/cppit/jucipp/blob/master/docs/images/screenshot4.png" width="380"/></td>
+</tr>
+</table>
 
 ## Dependencies
 * boost-filesystem

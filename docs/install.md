@@ -7,8 +7,9 @@
     - [Fedora 23](#fedora-23)
     - [Mageia 5](#mageia-5)
     - [OpenSUSE Tumbleweed](#opensuse-tumbleweed)
-  - OS X
-    - [Homebrew](#os-x-with-homebrew-httpbrewsh)
+  - [FreeBSD](#freebsd)
+  - MacOS
+    - [Homebrew](#macos-with-homebrew-httpbrewsh)
   - Windows
     - [MSYS 2](#windows-with-msys2-httpsmsys2githubio)
 - [Run](#run)
@@ -113,7 +114,10 @@ make
 sudo make install
 ```
 
-## OS X with Homebrew (http://brew.sh/)
+## FreeBSD
+On FreeBSD, latest release of juCi++ is available through the port: jucipp.
+
+## MacOS with Homebrew (http://brew.sh/)
 **Installing llvm may take some time, and you need to follow the lldb code signing instructions. For an easier dependency install, but without debug support, remove `--with-lldb` below.**
 
 Install dependencies:
