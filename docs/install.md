@@ -2,8 +2,7 @@
 
 - Installation
   - Linux
-    - [Debian testing/Linux Mint/Ubuntu](#debian-testinglinux-mintubuntu)
-    - [Debian stable/Linux Mint Debian Edition/Raspbian](#debian-stablelinux-mint-debian-editionraspbian)
+    - [Debian/Linux Mint/Ubuntu](#debianlinux-mintubuntu)
     - [Arch Linux/Manjaro Linux](#arch-linuxmanjaro-linux)
     - [Fedora 23](#fedora-23)
     - [Mageia 5](#mageia-5)
@@ -14,26 +13,10 @@
     - [MSYS 2](#windows-with-msys2-httpsmsys2githubio)
 - [Run](#run)
 
-## Debian testing/Linux Mint/Ubuntu
+## Debian/Linux Mint/Ubuntu
 Install dependencies:
 ```sh
 sudo apt-get install git cmake make g++ libclang-3.8-dev liblldb-3.8-dev clang-format pkg-config libboost-filesystem-dev libgtksourceviewmm-3.0-dev aspell-en libaspell-dev libgit2-dev exuberant-ctags
-```
-
-Get juCi++ source, compile and install:
-```sh
-git clone --recursive https://github.com/cppit/jucipp
-mkdir jucipp/build
-cd jucipp/build
-cmake -DCMAKE_CXX_COMPILER=g++ ..
-make
-sudo make install
-```
-
-## Debian stable/Linux Mint Debian Edition/Raspbian
-Install dependencies:
-```sh
-sudo apt-get install git cmake make g++ libclang-3.5-dev liblldb-3.5-dev clang-format-3.5 pkg-config libboost-filesystem-dev libgtksourceviewmm-3.0-dev aspell-en libaspell-dev libgit2-dev exuberant-ctags
 ```
 
 Get juCi++ source, compile and install:
