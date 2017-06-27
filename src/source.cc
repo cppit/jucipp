@@ -89,9 +89,9 @@ std::string Source::FixIt::string(Glib::RefPtr<Gtk::TextBuffer> buffer) {
 //////////////
 //// View ////
 //////////////
-const std::regex Source::View::bracket_regex("^([ \\t]*).*\\{ *$");
-const std::regex Source::View::no_bracket_statement_regex("^([ \\t]*)(if|for|else if|while) *\\(.*[^;}] *$");
-const std::regex Source::View::no_bracket_no_para_statement_regex("^([ \\t]*)(else) *$");
+const std::regex Source::View::bracket_regex("^.*\\{ *$", std::regex::extended);
+const std::regex Source::View::no_bracket_statement_regex("^(if|for|else if|while) *\\(.*[^;}] *$", std::regex::extended);
+const std::regex Source::View::no_bracket_no_para_statement_regex("^else *$");
 
 Source::View::View(const boost::filesystem::path &file_path, Glib::RefPtr<Gsv::Language> language): Gsv::View(), SpellCheckView(), DiffView(file_path), language(language), status_diagnostics(0, 0, 0) {
   load();
@@ -1109,7 +1109,20 @@ bool Source::View::find_open_non_curly_bracket_backward(Gtk::TextIter iter, Gtk:
 }
 
 Gtk::TextIter Source::View::find_start_of_sentence(Gtk::TextIter iter) {
-  bool stream_operator_test=*iter==';'?true:false;
+  if(iter.starts_line())
+    return iter;
+  
+  iter.backward_char();
+  bool stream_operator_test=false;
+  bool colon_test=false;
+  
+  if(*iter==';')
+    stream_operator_test=true;
+  if(*iter=='{') {
+    iter.backward_char();
+    colon_test=true;
+  }
+  
   int para_count=0;
   int square_count=0;
   long curly_count=0;
@@ -1133,16 +1146,22 @@ Gtk::TextIter Source::View::find_start_of_sentence(Gtk::TextIter iter) {
     
     if(iter.starts_line() && para_count==0 && square_count==0) {
       bool stream_operator_found=false;
+      bool colon_found=false;
       // Handle << at the beginning of the sentence if iter initially started with ;
       if(stream_operator_test) {
-        auto tabs_end_iter=get_tabs_end_iter(iter);
-        if(!tabs_end_iter.starts_line() && *tabs_end_iter=='<' &&
-           tabs_end_iter.forward_char() && *tabs_end_iter=='<' &&
-           tabs_end_iter.forward_char() && *tabs_end_iter==' ')
+        auto test_iter=get_tabs_end_iter(iter);
+        if(!test_iter.starts_line() && *test_iter=='<' && is_code_iter(test_iter) &&
+           test_iter.forward_char() && *test_iter=='<')
           stream_operator_found=true;
       }
+      // Handle : at the beginning of the sentence if iter initially started with {
+      else if(colon_test) {
+        auto test_iter=get_tabs_end_iter(iter);
+        if(!test_iter.starts_line() && *test_iter==':' && is_code_iter(test_iter))
+          colon_found=true;
+      }
       // Handle : and , on previous line
-      if(!stream_operator_found) {
+      if(!stream_operator_found && !colon_found) {
         auto previous_iter=iter;
         previous_iter.backward_char();
         while(!previous_iter.starts_line() && (*previous_iter==' ' || previous_iter.ends_line()) && previous_iter.backward_char()) {}
@@ -1733,7 +1752,7 @@ bool Source::View::on_key_press_event_bracket_language(GdkEventKey* key) {
       start_iter=get_tabs_end_iter(get_buffer()->get_iter_at_line(open_non_curly_bracket_iter.get_line()));
     }
     else
-      start_iter=get_tabs_end_iter(get_buffer()->get_iter_at_line(find_start_of_sentence(start_iter).get_line()));
+      start_iter=get_tabs_end_iter(get_buffer()->get_iter_at_line(find_start_of_sentence(iter).get_line()));
     auto tabs=get_line_before(start_iter);
     
     /*
@@ -1855,35 +1874,36 @@ bool Source::View::on_key_press_event_bracket_language(GdkEventKey* key) {
       scroll_to(get_buffer()->get_insert());
       return true;
     }
-    auto line=get_line_before();
+    std::string sentence=get_buffer()->get_text(start_iter, iter);
     std::smatch sm;
-    if(std::regex_match(line, sm, no_bracket_statement_regex)) {
+    if(std::regex_match(sentence, sm, no_bracket_statement_regex)) {
       get_buffer()->insert_at_cursor("\n"+tabs+tab);
       scroll_to(get_buffer()->get_insert());
       return true;
     }
-    else if(std::regex_match(line, sm, no_bracket_no_para_statement_regex)) {
+    else if(std::regex_match(sentence, sm, no_bracket_no_para_statement_regex)) {
       get_buffer()->insert_at_cursor("\n"+tabs+tab);
       scroll_to(get_buffer()->get_insert());
       return true;
     }
     //Indenting after for instance if(...)\n...;\n
-    else if(iter.backward_char() && *iter==';') {
+    else if(iter.backward_char() && *iter==';' && iter.get_line()>0) {
+      auto previous_end_iter=start_iter;
+      while(previous_end_iter.backward_char() && !previous_end_iter.ends_line()) {}
+      auto previous_start_iter=get_tabs_end_iter(get_buffer()->get_iter_at_line(find_start_of_sentence(previous_end_iter).get_line()));
+      auto previous_tabs=get_line_before(previous_start_iter);
+      std::string previous_sentence=get_buffer()->get_text(previous_start_iter, previous_end_iter);
       std::smatch sm2;
-      size_t line_nr=get_buffer()->get_insert()->get_iter().get_line();
-      if(line_nr>0 && tabs.size()>=tab_size) {
-        std::string previous_line=get_line(line_nr-1);
-        if(!std::regex_match(previous_line, sm2, bracket_regex)) {
-          if(std::regex_match(previous_line, sm2, no_bracket_statement_regex)) {
-            get_buffer()->insert_at_cursor("\n"+sm2[1].str());
-            scroll_to(get_buffer()->get_insert());
-            return true;
-          }
-          else if(std::regex_match(previous_line, sm2, no_bracket_no_para_statement_regex)) {
-            get_buffer()->insert_at_cursor("\n"+sm2[1].str());
-            scroll_to(get_buffer()->get_insert());
-            return true;
-          }
+      if(!std::regex_match(previous_sentence, sm2, bracket_regex)) {
+        if(std::regex_match(previous_sentence, sm2, no_bracket_statement_regex)) {
+          get_buffer()->insert_at_cursor("\n"+previous_tabs);
+          scroll_to(get_buffer()->get_insert());
+          return true;
+        }
+        else if(std::regex_match(previous_sentence, sm2, no_bracket_no_para_statement_regex)) {
+          get_buffer()->insert_at_cursor("\n"+previous_tabs);
+          scroll_to(get_buffer()->get_insert());
+          return true;
         }
       }
     }
@@ -1946,19 +1966,22 @@ bool Source::View::on_key_press_event_bracket_language(GdkEventKey* key) {
   }
   //Indent left when writing { on a new line after for instance if(...)\n...
   else if(key->keyval==GDK_KEY_braceleft) {
-    auto iter=get_buffer()->get_insert()->get_iter();
     auto tabs_end_iter=get_tabs_end_iter();
     auto tabs=get_line_before(tabs_end_iter);
     size_t line_nr=iter.get_line();
     if(line_nr>0 && tabs.size()>=tab_size && iter==tabs_end_iter) {
-      std::string previous_line=get_line(line_nr-1);
-      std::smatch sm;
-      if(!std::regex_match(previous_line, sm, bracket_regex)) {
-        auto start_iter=iter;
-        start_iter.backward_chars(tab_size);
-        if(std::regex_match(previous_line, sm, no_bracket_statement_regex) ||
-           std::regex_match(previous_line, sm, no_bracket_no_para_statement_regex)) {
-          if((tabs.size()-tab_size)==sm[1].str().size()) {
+      auto previous_end_iter=iter;
+      while(previous_end_iter.backward_char() && !previous_end_iter.ends_line()) {}
+      auto previous_start_iter=get_tabs_end_iter(get_buffer()->get_iter_at_line(find_start_of_sentence(previous_end_iter).get_line()));
+      auto previous_tabs=get_line_before(previous_start_iter);
+      if((tabs.size()-tab_size)==previous_tabs.size()) {
+        std::string previous_sentence=get_buffer()->get_text(previous_start_iter, previous_end_iter);
+        std::smatch sm;
+        if(!std::regex_match(previous_sentence, sm, bracket_regex)) {
+          if(std::regex_match(previous_sentence, sm, no_bracket_statement_regex) ||
+             std::regex_match(previous_sentence, sm, no_bracket_no_para_statement_regex)) {
+            auto start_iter=iter;
+            start_iter.backward_chars(tab_size);
             get_buffer()->erase(start_iter, iter);
             get_buffer()->insert_at_cursor("{");
             scroll_to(get_buffer()->get_insert());
