@@ -15,7 +15,7 @@ int main() {
     
     {
       CMake cmake(project_path);
-      Process process("cmake -DCMAKE_EXPORT_COMPILE_COMMANDS=ON ..", (project_path/"build").string(), [](const char *bytes, size_t n) {});
+      TinyProcessLib::Process process("cmake -DCMAKE_EXPORT_COMPILE_COMMANDS=ON ..", (project_path/"build").string(), [](const char *bytes, size_t n) {});
       g_assert(process.get_exit_status()==0);
       
       g_assert(cmake.get_executable(project_path/"build", project_path)=="");

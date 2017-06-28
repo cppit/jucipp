@@ -67,7 +67,7 @@ private:
   const static std::regex link_regex;
   void apply_link_tags(Gtk::TextIter start_iter, Gtk::TextIter end_iter);
 
-  std::vector<std::shared_ptr<Process> > processes;
+  std::vector<std::shared_ptr<TinyProcessLib::Process>> processes;
   std::mutex processes_mutex;
   Glib::ustring stdin_buffer;
   

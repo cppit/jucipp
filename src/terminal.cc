@@ -57,15 +57,15 @@ Terminal::Terminal() {
 }
 
 int Terminal::process(const std::string &command, const boost::filesystem::path &path, bool use_pipes) {  
-  std::unique_ptr<Process> process;
+  std::unique_ptr<TinyProcessLib::Process> process;
   if(use_pipes)
-    process=std::make_unique<Process>(command, path.string(), [this](const char* bytes, size_t n) {
+    process=std::make_unique<TinyProcessLib::Process>(command, path.string(), [this](const char* bytes, size_t n) {
       async_print(std::string(bytes, n));
     }, [this](const char* bytes, size_t n) {
       async_print(std::string(bytes, n), true);
     });
   else
-    process=std::make_unique<Process>(command, path.string());
+    process=std::make_unique<TinyProcessLib::Process>(command, path.string());
     
   if(process->get_id()<=0) {
     async_print("Error: failed to run command: " + command + "\n", true);
@@ -76,7 +76,7 @@ int Terminal::process(const std::string &command, const boost::filesystem::path 
 }
 
 int Terminal::process(std::istream &stdin_stream, std::ostream &stdout_stream, const std::string &command, const boost::filesystem::path &path) {
-  Process process(command, path.string(), [this, &stdout_stream](const char* bytes, size_t n) {
+  TinyProcessLib::Process process(command, path.string(), [this, &stdout_stream](const char* bytes, size_t n) {
     Glib::ustring umessage(std::string(bytes, n));
     Glib::ustring::iterator iter;
     while(!umessage.validate(iter)) {
@@ -113,7 +113,7 @@ void Terminal::async_process(const std::string &command, const boost::filesystem
   std::thread async_execute_thread([this, command, path, callback, quiet]() {
     std::unique_lock<std::mutex> processes_lock(processes_mutex);
     stdin_buffer.clear();
-    auto process=std::make_shared<Process>(command, path.string(), [this, quiet](const char* bytes, size_t n) {
+    auto process=std::make_shared<TinyProcessLib::Process>(command, path.string(), [this, quiet](const char* bytes, size_t n) {
       if(!quiet)
         async_print(std::string(bytes, n));
     }, [this, quiet](const char* bytes, size_t n) {
