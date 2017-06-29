@@ -49,6 +49,11 @@ add_executable(source_clang_test source_clang_test.cc
 target_link_libraries(source_clang_test ${global_libraries})
 add_test(source_clang_test source_clang_test)
 
+add_executable(source_key_test source_key_test.cc
+               $<TARGET_OBJECTS:project_shared> $<TARGET_OBJECTS:stubs>)
+target_link_libraries(source_key_test ${global_libraries})
+add_test(source_key_test source_key_test)
+
 if(LIBLLDB_FOUND AND (NOT LIBCLANG_LIBRARIES STREQUAL "/usr/lib/llvm-3.5/lib/libclang.so"))
   add_executable(lldb_test lldb_test.cc
                  $<TARGET_OBJECTS:project_shared> $<TARGET_OBJECTS:stubs>)
