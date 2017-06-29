@@ -1044,8 +1044,16 @@ Source::ClangViewRefactor::ClangViewRefactor(const boost::filesystem::path &file
           }
         }, &client_data);
         
-        if(!client_data.found_include.empty())
-          return Offset(0, 0, client_data.found_include);
+        if(!client_data.found_include.empty()) {
+          // Workaround for bug in ArchLinux's clang_getFileName()
+          // TODO: remove the workaround when this is fixed
+          auto include_path=filesystem::get_normal_path(client_data.found_include);
+          boost::system::error_code ec;
+          if(!boost::filesystem::exists(include_path, ec))
+            include_path="/usr/include"/include_path;
+          
+          return Offset(0, 0, include_path);
+        }
         
         // Find a matching include file if no include was found previously
         clang_getInclusions(clang_tu->cx_tu, [](CXFile included_file, CXSourceLocation *inclusion_stack, unsigned include_len, CXClientData client_data_) {
@@ -1066,8 +1074,16 @@ Source::ClangViewRefactor::ClangViewRefactor(const boost::filesystem::path &file
           }
         }, &client_data);
         
-        if(!client_data.found_include.empty())
-          return Offset(0, 0, client_data.found_include);
+        if(!client_data.found_include.empty()) {
+          // Workaround for bug in ArchLinux's clang_getFileName()
+          // TODO: remove the workaround when this is fixed
+          auto include_path=filesystem::get_normal_path(client_data.found_include);
+          boost::system::error_code ec;
+          if(!boost::filesystem::exists(include_path, ec))
+            include_path="/usr/include"/include_path;
+          
+          return Offset(0, 0, include_path);
+        }
       }
     }
     return Offset();
