@@ -40,7 +40,7 @@ Debug::LLDB::LLDB(): state(lldb::StateType::eStateInvalid), buffer_size(131072) 
   if(!getenv("LLDB_DEBUGSERVER_PATH")) {
     std::string debug_server_path("/usr/bin/lldb-server");
     if(!boost::filesystem::exists(debug_server_path)) {
-      auto versions={"4.0", "3.9", "3.8", "3.7", "3.6", "3.5"};
+      auto versions={"5.0", "5", "4.0", "4", "3.9", "3.8", "3.7", "3.6", "3.5"};
       for(auto &version: versions) {
         auto corrected_debug_server_path=debug_server_path+'-'+version;
         if(boost::filesystem::exists(corrected_debug_server_path)) {

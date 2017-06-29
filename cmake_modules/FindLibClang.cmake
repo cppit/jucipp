@@ -14,22 +14,20 @@
 #               Known LLVM release numbers.
 
 # most recent versions come first
-set(LIBCLANG_KNOWN_LLVM_VERSIONS 4.0.0_1 4.0.0
-  4.0
+set(LIBCLANG_KNOWN_LLVM_VERSIONS 5.0.0 5.0
+  4.0.1
+  4.0.0_1 4.0.0 4.0
   3.9.1
-  3.9.0
-  3.9
+  3.9.0 3.9
   3.8.1
-  3.8.0
-  3.8
+  3.8.0 3.8
   3.7.1
   3.7
   3.6.2
   3.6.1
   3.6
   3.5.1
-  3.5.0                   #Arch Linux
-  3.5                     #LLVM Debian/Ubuntu packages from http://llvm.org/apt/
+  3.5.0 3.5
   3.4.2 3.4.1 3.4 3.3 3.2 3.1)
 
 set(libclang_llvm_header_search_paths)
@@ -65,7 +63,7 @@ endforeach()
 find_path(LIBCLANG_INCLUDE_DIR clang-c/Index.h
   PATHS ${libclang_llvm_header_search_paths}
   PATH_SUFFIXES LLVM/include #Windows package from http://llvm.org/releases/
-    llvm40/include llvm39/include llvm38/include llvm37/include llvm36/include # FreeBSD
+    llvm50/include llvm41/include llvm40/include llvm39/include llvm38/include llvm37/include llvm36/include # FreeBSD
   DOC "The path to the directory that contains clang-c/Index.h")
 
 # On Windows with MSVC, the import library uses the ".imp" file extension
@@ -79,7 +77,7 @@ endif()
 find_library(LIBCLANG_LIBRARY NAMES libclang.imp libclang clang
   PATHS ${libclang_llvm_lib_search_paths}
   PATH_SUFFIXES LLVM/lib #Windows package from http://llvm.org/releases/
-    llvm40/lib llvm39/lib llvm38/lib llvm37/lib llvm36/lib # FreeBSD
+    llvm50/lib llvm41/lib llvm40/lib llvm39/lib llvm38/lib llvm37/lib llvm36/lib # FreeBSD
   DOC "The file that corresponds to the libclang library.")
 
 get_filename_component(LIBCLANG_LIBRARY_DIR ${LIBCLANG_LIBRARY} PATH)

@@ -229,7 +229,7 @@ void Config::read(const boost::property_tree::ptree &cfg) {
 #ifdef __linux
   if(terminal.clang_format_command=="clang-format" &&
      !boost::filesystem::exists("/usr/bin/clang-format") && !boost::filesystem::exists("/usr/local/bin/clang-format")) {
-    auto versions={"4.0", "3.9", "3.8", "3.7", "3.6", "3.5"};
+    auto versions={"5.0", "5", "4.0", "4", "3.9", "3.8", "3.7", "3.6", "3.5"};
     for(auto &version: versions) {
       auto corrected_command=std::string("/usr/bin/clang-format-")+version;
       if(boost::filesystem::exists(corrected_command)) {
