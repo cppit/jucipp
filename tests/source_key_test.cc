@@ -15,7 +15,7 @@ int main() {
 
   auto language_manager = Gsv::LanguageManager::get_default();
   GdkEventKey event;
-  event.state=0;
+  event.state = 0;
 
   {
     Source::View view(source_file, language_manager->get_language("cpp"));
@@ -54,6 +54,18 @@ int main() {
       g_assert(view.get_buffer()->get_insert()->get_iter().get_line_offset() == 4);
     }
     {
+      view.get_buffer()->set_text("  int main() {}");
+      auto iter = view.get_buffer()->get_insert()->get_iter();
+      iter.backward_chars(1);
+      view.get_buffer()->place_cursor(iter);
+      view.on_key_press_event(&event);
+      g_assert(view.get_buffer()->get_text() == "  int main() {\n"
+                                                "    \n"
+                                                "  }");
+      g_assert(view.get_buffer()->get_insert()->get_iter().get_line() == 1);
+      g_assert(view.get_buffer()->get_insert()->get_iter().get_line_offset() == 4);
+    }
+    {
       view.get_buffer()->set_text("  int main()\n"
                                   "  {");
       view.on_key_press_event(&event);
@@ -70,6 +82,20 @@ int main() {
                                   "  }");
       auto iter = view.get_buffer()->get_insert()->get_iter();
       iter.backward_chars(4);
+      view.get_buffer()->place_cursor(iter);
+      view.on_key_press_event(&event);
+      g_assert(view.get_buffer()->get_text() == "  int main()\n"
+                                                "  {\n"
+                                                "    \n"
+                                                "  }");
+      g_assert(view.get_buffer()->get_insert()->get_iter().get_line() == 2);
+      g_assert(view.get_buffer()->get_insert()->get_iter().get_line_offset() == 4);
+    }
+    {
+      view.get_buffer()->set_text("  int main()\n"
+                                  "  {}");
+      auto iter = view.get_buffer()->get_insert()->get_iter();
+      iter.backward_chars(1);
       view.get_buffer()->place_cursor(iter);
       view.on_key_press_event(&event);
       g_assert(view.get_buffer()->get_text() == "  int main()\n"
@@ -428,6 +454,7 @@ int main() {
       g_assert(view.get_buffer()->get_insert()->get_iter() == view.get_buffer()->end());
     }
 
+
     event.keyval = GDK_KEY_braceleft;
     {
       view.get_buffer()->set_text("  int main()\n"
@@ -451,6 +478,17 @@ int main() {
       view.on_key_press_event(&event);
       g_assert(view.get_buffer()->get_text() == "  if(true)\n"
                                                 "  {");
+      g_assert(view.get_buffer()->get_insert()->get_iter() == view.get_buffer()->end());
+    }
+
+
+    event.keyval = GDK_KEY_braceright;
+    {
+      view.get_buffer()->set_text("  int main() {\n"
+                                  "    ");
+      view.on_key_press_event(&event);
+      g_assert(view.get_buffer()->get_text() == "  int main() {\n"
+                                                "  }");
       g_assert(view.get_buffer()->get_insert()->get_iter() == view.get_buffer()->end());
     }
   }
