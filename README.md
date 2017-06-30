@@ -27,7 +27,7 @@ towards libclang with speed, stability, and ease of use in mind.
 * Go to declaration, implementation, methods and usages (C++)
 * Find symbol through Ctags
 * Spell checking depending on file context
-* Run shell commands within JuCi++
+* Run shell commands within juCi++
 * Regex search and replace
 * Smart paste, keys and indentation
 * Auto-indentation of C++ file buffers through [clang-format](http://clang.llvm.org/docs/ClangFormat.html)
@@ -41,11 +41,11 @@ See [enhancements](https://github.com/cppit/jucipp/labels/enhancement) for plann
 ## Screenshots
 <table border="0">
 <tr>
-<td><img src="https://github.com/cppit/jucipp/blob/master/docs/images/screenshot1b.png" width="380"/></td>
-<td><img src="https://github.com/cppit/jucipp/blob/master/docs/images/screenshot2b.png" width="380"/></td>
+<td><img src="https://github.com/cppit/jucipp/blob/master/docs/images/screenshot1c.png" width="380"/></td>
+<td><img src="https://github.com/cppit/jucipp/blob/master/docs/images/screenshot2c.png" width="380"/></td>
 </tr><tr>
-<td><img src="https://github.com/cppit/jucipp/blob/master/docs/images/screenshot3b.png" width="380"/></td>
-<td><img src="https://github.com/cppit/jucipp/blob/master/docs/images/screenshot4.png" width="380"/></td>
+<td><img src="https://github.com/cppit/jucipp/blob/master/docs/images/screenshot3c.png" width="380"/></td>
+<td><img src="https://github.com/cppit/jucipp/blob/master/docs/images/screenshot4b.png" width="380"/></td>
 </tr>
 </table>
 
