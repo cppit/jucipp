@@ -17,12 +17,6 @@ const std::string default_config_file = R"RAW({
         "variant_comment": "Use \"\" for default variant, and \"dark\" for dark theme variant. Note that not all themes support dark variant, but for instance Adwaita does",
         "variant": ""
     },
-    "terminal": {
-        "history_size": 1000,
-        "font_comment": "Use \"\" to use source.font with slightly smaller size",
-        "font": "",
-        "show_progress": false
-    },
     "source": {
         "style_comment": "Use \"\" for default style, and for instance juci-dark or juci-dark-blue together with dark gtk_theme variant. Styles from normal gtksourceview install: classic, cobalt, kate, oblivion, solarized-dark, solarized-light, tango",
         "style": "juci-light",
@@ -83,6 +77,12 @@ R"RAW(
         },
         "clang_format_style_comment": "IndentWidth, AccessModifierOffset and UseTab are set automatically. See http://clang.llvm.org/docs/ClangFormatStyleOptions.html",
         "clang_format_style": "ColumnLimit: 0, MaxEmptyLinesToKeep: 2, SpaceBeforeParens: Never, NamespaceIndentation: All, BreakBeforeBraces: Custom, BraceWrapping: {BeforeElse: true, BeforeCatch: true}"
+    },
+    "terminal": {
+        "history_size": 1000,
+        "font_comment": "Use \"\" to use source.font with slightly smaller size",
+        "font": "",
+        "show_progress": false
     },
     "keybindings": {
         "preferences": "<primary>comma",
