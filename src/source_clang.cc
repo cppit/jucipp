@@ -568,332 +568,225 @@ void Source::ClangViewParse::show_type_tooltips(const Gdk::Rectangle &rectangle)
 
 
 Source::ClangViewAutocomplete::ClangViewAutocomplete(const boost::filesystem::path &file_path, Glib::RefPtr<Gsv::Language> language):
-    Source::ClangViewParse(file_path, language), autocomplete_state(AutocompleteState::IDLE) {
+    Source::ClangViewParse(file_path, language), autocomplete(this, interactive_completion, last_keyval, true) {
   non_interactive_completion=[this] {
     if(CompletionDialog::get() && CompletionDialog::get()->is_visible())
       return;
-    autocomplete_check();
+    autocomplete.run();
   };
   
-  get_buffer()->signal_changed().connect([this](){
-    if(CompletionDialog::get() && CompletionDialog::get()->is_visible())
-      delayed_reparse_connection.disconnect();
-    else {
-      if(!has_focus())
-        return;
-      if((last_keyval>='0' && last_keyval<='9') ||
-         (last_keyval>='a' && last_keyval<='z') || (last_keyval>='A' && last_keyval<='Z') ||
-         last_keyval=='_') {
-        if(interactive_completion || autocomplete_state!=AutocompleteState::IDLE)
-          autocomplete_check();
-      }
-      else {
-        if(autocomplete_state==AutocompleteState::STARTING || autocomplete_state==AutocompleteState::RESTARTING)
-          autocomplete_state=AutocompleteState::CANCELED;
-        auto iter=get_buffer()->get_insert()->get_iter();
-        iter.backward_chars(2);
-        if(last_keyval=='.' || (last_keyval==':' && *iter==':') || (last_keyval=='>' && *iter=='-')) {
-          if(interactive_completion)
-            autocomplete_check();
-        }
-      }
-    }
-  });
-  get_buffer()->signal_mark_set().connect([this](const Gtk::TextBuffer::iterator& iterator, const Glib::RefPtr<Gtk::TextBuffer::Mark>& mark){
-    if(mark->get_name()=="insert") {
-      if(autocomplete_state==AutocompleteState::STARTING || autocomplete_state==AutocompleteState::RESTARTING)
-        autocomplete_state=AutocompleteState::CANCELED;
-    }
-  });
+  autocomplete.is_processing=[this] {
+    return parse_state==ParseState::PROCESSING;
+  };
   
-  signal_key_release_event().connect([this](GdkEventKey* key){
-    if(CompletionDialog::get() && CompletionDialog::get()->is_visible()) {
-      if(CompletionDialog::get()->on_key_release(key))
+  autocomplete.reparse=[this] {
+    soft_reparse();
+  };
+  
+  autocomplete.cancel_reparse=[this] {
+    delayed_reparse_connection.disconnect();
+  };
+  
+  autocomplete.get_parse_lock=[this]() {
+    return std::make_unique<std::lock_guard<std::mutex>>(parse_mutex);
+  };
+  
+  autocomplete.stop_parse=[this]() {
+    parse_process_state=ParseProcessState::IDLE;
+  };
+  
+  autocomplete.is_continue_key=[this](guint keyval) {
+    if((keyval>='0' && keyval<='9') || (keyval>='a' && keyval<='z') || (keyval>='A' && keyval<='Z') || keyval=='_')
+      return true;
+    return false;
+  };
+  
+  autocomplete.is_restart_key=[this](guint keyval) {
+    auto iter=get_buffer()->get_insert()->get_iter();
+    iter.backward_chars(2);
+    if(keyval=='.' || (keyval==':' && *iter==':') || (keyval=='>' && *iter=='-'))
+      return true;
+    return false;
+  };
+  
+  autocomplete.run_check=[this]() {
+    auto iter=get_buffer()->get_insert()->get_iter();
+    if(iter.backward_char() && iter.backward_char() && !is_code_iter(iter))
+      return false;
+    std::string line=" "+get_line_before();
+    const static std::regex in_specified_namespace("^.*[a-zA-Z0-9_\\)\\]\\>](->|\\.|::)([a-zA-Z0-9_]*)$");
+    const static std::regex within_namespace("^.*[^a-zA-Z0-9_]+([a-zA-Z0-9_]{3,})$");
+    std::smatch sm;
+    if(std::regex_match(line, sm, in_specified_namespace)) {
+      {
+        std::unique_lock<std::mutex> lock(autocomplete.prefix_mutex);
+        autocomplete.prefix=sm[2].str();
+      }
+      if(autocomplete.prefix.size()==0 || autocomplete.prefix[0]<'0' || autocomplete.prefix[0]>'9')
+        return true;
+    }
+    else if(std::regex_match(line, sm, within_namespace)) {
+      {
+        std::unique_lock<std::mutex> lock(autocomplete.prefix_mutex);
+        autocomplete.prefix=sm[1].str();
+      }
+      if(autocomplete.prefix.size()==0 || autocomplete.prefix[0]<'0' || autocomplete.prefix[0]>'9')
         return true;
     }
     return false;
-  }, false);
-
-  signal_focus_out_event().connect([this](GdkEventFocus* event) {
-    if(autocomplete_state==AutocompleteState::STARTING || autocomplete_state==AutocompleteState::RESTARTING)
-      autocomplete_state=AutocompleteState::CANCELED;
-    return false;
-  });
-}
-
-void Source::ClangViewAutocomplete::autocomplete_dialog_setup() {
-  auto start_iter=get_buffer()->get_insert()->get_iter();
-  if(prefix.size()>0 && !start_iter.backward_chars(prefix.size()))
-    return;
-  CompletionDialog::create(this, get_buffer()->create_mark(start_iter));
-  completion_dialog_rows.clear();
-  CompletionDialog::get()->on_hide=[this](){
-    get_buffer()->end_user_action();
-    autocomplete_tooltips.hide();
-    autocomplete_tooltips.clear();
-    parsed=false;
-    soft_reparse();
   };
-  CompletionDialog::get()->on_select=[this](const std::string& selected, bool hide_window) {
-    auto row = completion_dialog_rows.at(selected).first;
-    //erase existing variable or function before insert iter
-    get_buffer()->erase(CompletionDialog::get()->start_mark->get_iter(), get_buffer()->get_insert()->get_iter());
-    //do not insert template argument or function parameters if they already exist
-    auto iter=get_buffer()->get_insert()->get_iter();
-    if(*iter=='<' || *iter=='(') {
-      auto bracket_pos=row.find(*iter);
-      if(bracket_pos!=std::string::npos) {
-        row=row.substr(0, bracket_pos);
-      }
+  
+  autocomplete.before_get_suggestions=[this] {
+    status_state="autocomplete...";
+    if(update_status_state)
+      update_status_state(this);
+  };
+  
+  autocomplete.after_get_suggestions=[this] {
+    status_state="";
+    if(update_status_state)
+      update_status_state(this);
+  };
+  
+  autocomplete.on_get_suggestions_error=[this] {
+    Terminal::get().print("Error: autocomplete failed, reparsing "+this->file_path.string()+"\n", true);
+    full_reparse();
+  };
+  
+  autocomplete.get_suggestions=[this](std::string &buffer, int line_number, int column) {
+    auto suggestions=std::make_shared<std::vector<Suggestion>>();
+    remove_include_guard(buffer);
+    auto results=clang_tu->get_code_completions(buffer, line_number, column);
+    if(results.cx_results==nullptr) {
+      auto expected=ParseState::PROCESSING;
+      parse_state.compare_exchange_strong(expected, ParseState::RESTARTING);
+      return suggestions;
     }
-    //Fixes for the most commonly used stream manipulators
-    static auto manipulators_map=autocomplete_manipulators_map();
-    auto it=manipulators_map.find(row);
-    if(it!=manipulators_map.end())
-      row=it->second;
-    get_buffer()->insert(CompletionDialog::get()->start_mark->get_iter(), row);
-    //if selection is finalized, select text inside template arguments or function parameters
-    if(hide_window) {
-      auto para_pos=row.find('(');
-      auto angle_pos=row.find('<');
-      size_t start_pos=std::string::npos;
-      size_t end_pos=std::string::npos;
-      if(angle_pos<para_pos) {
-        start_pos=angle_pos;
-        end_pos=row.find('>');
+    
+    if(autocomplete.state==Autocomplete<Suggestion>::State::STARTING) {
+      std::string prefix_copy;
+      {
+        std::lock_guard<std::mutex> lock(autocomplete.prefix_mutex);
+        prefix_copy=autocomplete.prefix;
       }
-      else if(para_pos!=std::string::npos) {
-        start_pos=para_pos;
-        end_pos=row.size()-1;
-      }
-      if(start_pos==std::string::npos || end_pos==std::string::npos) {
-        if((start_pos=row.find('\"'))!=std::string::npos)
-          end_pos=row.find('\"', start_pos+1);
-      }
-      if(start_pos==std::string::npos || end_pos==std::string::npos) {
-        if((start_pos=row.find(' '))!=std::string::npos) {
-          if((start_pos=row.find("expression", start_pos+1))!=std::string::npos) {
-            end_pos=start_pos+10;
-            start_pos--;
+        
+      for (unsigned i = 0; i < results.size(); ++i) {
+        auto result=results.get(i);
+        if(result.available()) {
+          auto chunks=result.get_chunks();
+          bool match=false;
+          for(auto &chunk: chunks) {
+            if(chunk.kind!=clangmm::CompletionChunk_ResultType && chunk.kind!=clangmm::CompletionChunk_Informative) {
+              if(chunk.chunk.size()>=prefix_copy.size() && chunk.chunk.compare(0, prefix_copy.size(), prefix_copy)==0)
+                match=true;
+              break;
+            }
+          }
+          if(match) {
+            suggestions->emplace_back(std::move(chunks));
+            suggestions->back().brief_comments=result.get_brief_comments();
           }
         }
       }
-      if(start_pos!=std::string::npos && end_pos!=std::string::npos) {
-        auto start_offset=CompletionDialog::get()->start_mark->get_iter().get_offset()+start_pos+1;
-        auto end_offset=CompletionDialog::get()->start_mark->get_iter().get_offset()+end_pos;
-        if(start_offset!=end_offset)
-          get_buffer()->select_range(get_buffer()->get_iter_at_offset(start_offset), get_buffer()->get_iter_at_offset(end_offset));
-      }
-      else {
-        //new autocomplete after for instance when selecting "std::"
-        auto iter=get_buffer()->get_insert()->get_iter();
-        if(iter.backward_char() && *iter==':')
-          autocomplete_check();
-      }
     }
-  };
-  
-  CompletionDialog::get()->on_changed=[this](const std::string &selected) {
-    if(selected.empty()) {
-      autocomplete_tooltips.hide();
-      return;
-    }
-    auto tooltip=std::make_shared<std::string>(completion_dialog_rows.at(selected).second);
-    if(tooltip->empty()) {
-      autocomplete_tooltips.hide();
-    }
-    else {
-      autocomplete_tooltips.clear();
-      auto create_tooltip_buffer=[this, tooltip]() {
-        auto tooltip_buffer=Gtk::TextBuffer::create(get_buffer()->get_tag_table());
-        
-        tooltip_buffer->insert_with_tag(tooltip_buffer->get_insert()->get_iter(), *tooltip, "def:note");
-        
-        return tooltip_buffer;
-      };
-      
-      auto iter=CompletionDialog::get()->start_mark->get_iter();
-      autocomplete_tooltips.emplace_back(create_tooltip_buffer, this, get_buffer()->create_mark(iter), get_buffer()->create_mark(iter));
-  
-      autocomplete_tooltips.show(true);
-    }
-  };
-}
-
-void Source::ClangViewAutocomplete::autocomplete_check() {
-  auto iter=get_buffer()->get_insert()->get_iter();
-  if(iter.backward_char() && iter.backward_char() && !is_code_iter(iter))
-    return;
-  std::string line=" "+get_line_before();
-  const static std::regex in_specified_namespace("^(.*[a-zA-Z0-9_\\)\\]\\>])(->|\\.|::)([a-zA-Z0-9_]*)$");
-  const static std::regex within_namespace("^(.*)([^a-zA-Z0-9_]+)([a-zA-Z0-9_]{3,})$");
-  std::smatch sm;
-  if(std::regex_match(line, sm, in_specified_namespace)) {
-    {
-      std::unique_lock<std::mutex> lock(prefix_mutex);
-      prefix=sm[3].str();
-    }
-    if(prefix.size()==0 || prefix[0]<'0' || prefix[0]>'9')
-      autocomplete();
-  }
-  else if(std::regex_match(line, sm, within_namespace)) {
-    {
-      std::unique_lock<std::mutex> lock(prefix_mutex);
-      prefix=sm[3].str();
-    }
-    if(prefix.size()==0 || prefix[0]<'0' || prefix[0]>'9')
-      autocomplete();
-  }
-  if(autocomplete_state!=AutocompleteState::IDLE)
-    delayed_reparse_connection.disconnect();
-}
-
-void Source::ClangViewAutocomplete::autocomplete() {
-  if(parse_state!=ParseState::PROCESSING)
-    return;
-  
-  if(autocomplete_state==AutocompleteState::CANCELED)
-    autocomplete_state=AutocompleteState::RESTARTING;
-  
-  if(autocomplete_state!=AutocompleteState::IDLE)
-    return;
-
-  autocomplete_state=AutocompleteState::STARTING;
-  
-  status_state="autocomplete...";
-  if(update_status_state)
-    update_status_state(this);
-  if(autocomplete_thread.joinable())
-    autocomplete_thread.join();
-  auto buffer=std::make_shared<Glib::ustring>(get_buffer()->get_text());
-  auto iter=get_buffer()->get_insert()->get_iter();
-  auto line_nr=iter.get_line()+1;
-  auto column_nr=iter.get_line_index()+1;
-  auto pos=iter.get_offset()-1;
-  while(pos>=0 && (((*buffer)[pos]>='a' && (*buffer)[pos]<='z') || ((*buffer)[pos]>='A' && (*buffer)[pos]<='Z') ||
-                   ((*buffer)[pos]>='0' && (*buffer)[pos]<='9') || (*buffer)[pos]=='_')) {
-    buffer->replace(pos, 1, " ");
-    column_nr--;
-    pos--;
-  }
-  autocomplete_thread=std::thread([this, line_nr, column_nr, buffer](){
-    std::unique_lock<std::mutex> lock(parse_mutex);
-    if(parse_state==ParseState::PROCESSING) {
-      parse_process_state=ParseProcessState::IDLE;
-      
-      auto &buffer_raw=const_cast<std::string&>(buffer->raw());
-      remove_include_guard(buffer_raw);
-      auto autocomplete_data=std::make_shared<std::vector<AutoCompleteData> >(autocomplete_get_suggestions(buffer_raw, line_nr, column_nr));
-      
-      if(parse_state==ParseState::PROCESSING) {
-        dispatcher.post([this, autocomplete_data] {
-          if(autocomplete_state==AutocompleteState::CANCELED) {
-            status_state="";
-            if(update_status_state)
-              update_status_state(this);
-            soft_reparse();
-            autocomplete_state=AutocompleteState::IDLE;
-          }
-          else if(autocomplete_state==AutocompleteState::RESTARTING) {
-            status_state="";
-            if(update_status_state)
-              update_status_state(this);
-            soft_reparse();
-            autocomplete_state=AutocompleteState::IDLE;
-            autocomplete_check();
-          }
-          else {
-            autocomplete_dialog_setup();
-            
-            for (auto &data : *autocomplete_data) {
-              std::string row;
-              std::string return_value;
-              for (auto &chunk : data.chunks) {
-                if(chunk.kind==clangmm::CompletionChunk_ResultType)
-                  return_value=chunk.chunk;
-                else if(chunk.kind!=clangmm::CompletionChunk_Informative)
-                  row+=chunk.chunk;
-              }
-              data.chunks.clear();
-              if (!row.empty()) {
-                auto row_insert_on_selection=row;
-                if(!return_value.empty())
-                  row+=" --> " + return_value;
-                completion_dialog_rows[row] = std::pair<std::string, std::string>(std::move(row_insert_on_selection), std::move(data.brief_comments));
-                CompletionDialog::get()->add_row(row);
-              }
-            }
-            autocomplete_data->clear();
-            status_state="";
-            if(update_status_state)
-              update_status_state(this);
-            autocomplete_state=AutocompleteState::IDLE;
-            if (!completion_dialog_rows.empty()) {
-              get_buffer()->begin_user_action();
-              hide_tooltips();
-              CompletionDialog::get()->show();
-            }
-            else
-              soft_reparse();
-          }
-        });
-      }
-      else {
-        dispatcher.post([this] {
-          Terminal::get().print("Error: autocomplete failed, reparsing "+this->file_path.string()+"\n", true);
-          autocomplete_state=AutocompleteState::CANCELED;
-          full_reparse();
-        });
-      }
-    }
-  });
-}
-
-std::vector<Source::ClangViewAutocomplete::AutoCompleteData> Source::ClangViewAutocomplete::autocomplete_get_suggestions(const std::string &buffer, int line_number, int column) {
-  std::vector<AutoCompleteData> suggestions;
-  auto results=clang_tu->get_code_completions(buffer, line_number, column);
-  if(results.cx_results==nullptr) {
-    auto expected=ParseState::PROCESSING;
-    parse_state.compare_exchange_strong(expected, ParseState::RESTARTING);
     return suggestions;
-  }
+  };
   
-  if(autocomplete_state==AutocompleteState::STARTING) {
-    std::unique_lock<std::mutex> lock(prefix_mutex);
-    auto prefix_copy=prefix;
-    lock.unlock();
-      
-    for (unsigned i = 0; i < results.size(); i++) {
-      auto result=results.get(i);
-      if(result.available()) {
-        auto chunks=result.get_chunks();
-        bool match=false;
-        for(auto &chunk: chunks) {
-          if(chunk.kind!=clangmm::CompletionChunk_ResultType && chunk.kind!=clangmm::CompletionChunk_Informative) {
-            if(chunk.chunk.size()>=prefix_copy.size() && chunk.chunk.compare(0, prefix_copy.size(), prefix_copy)==0)
-              match=true;
-            break;
-          }
-        }
-        if(match) {
-          suggestions.emplace_back(std::move(chunks));
-          suggestions.back().brief_comments=result.get_brief_comments();
+  autocomplete.foreach_suggestion=[this](Suggestion &suggestion) {
+    std::string row;
+    std::string return_value;
+    for(auto &chunk : suggestion.chunks) {
+      if(chunk.kind == clangmm::CompletionChunk_ResultType)
+        return_value = chunk.chunk;
+      else if(chunk.kind != clangmm::CompletionChunk_Informative)
+        row += chunk.chunk;
+    }
+    suggestion.chunks.clear();
+    if(!row.empty()) {
+      auto row_insert_on_selection = row;
+      if(!return_value.empty())
+        row += " --> " + return_value;
+      autocomplete.rows[row] = std::pair<std::string, std::string>(std::move(row_insert_on_selection), std::move(suggestion.brief_comments));
+      CompletionDialog::get()->add_row(row);
+    }
+  };
+  
+  autocomplete.setup_dialog=[this] {
+    CompletionDialog::get()->on_show=[this] {
+      hide_tooltips();
+    };
+    
+    CompletionDialog::get()->on_select=[this](const std::string &selected, bool hide_window) {
+      auto row = autocomplete.rows.at(selected).first;
+      //erase existing variable or function before insert iter
+      get_buffer()->erase(CompletionDialog::get()->start_mark->get_iter(), get_buffer()->get_insert()->get_iter());
+      //do not insert template argument or function parameters if they already exist
+      auto iter=get_buffer()->get_insert()->get_iter();
+      if(*iter=='<' || *iter=='(') {
+        auto bracket_pos=row.find(*iter);
+        if(bracket_pos!=std::string::npos) {
+          row=row.substr(0, bracket_pos);
         }
       }
-    }
-  }
-  return suggestions;
+      //Fixes for the most commonly used stream manipulators
+      auto manipulators_map=autocomplete_manipulators_map();
+      auto it=manipulators_map.find(row);
+      if(it!=manipulators_map.end())
+        row=it->second;
+      get_buffer()->insert(CompletionDialog::get()->start_mark->get_iter(), row);
+      //if selection is finalized, select text inside template arguments or function parameters
+      if(hide_window) {
+        auto para_pos=row.find('(');
+        auto angle_pos=row.find('<');
+        size_t start_pos=std::string::npos;
+        size_t end_pos=std::string::npos;
+        if(angle_pos<para_pos) {
+          start_pos=angle_pos;
+          end_pos=row.find('>');
+        }
+        else if(para_pos!=std::string::npos) {
+          start_pos=para_pos;
+          end_pos=row.size()-1;
+        }
+        if(start_pos==std::string::npos || end_pos==std::string::npos) {
+          if((start_pos=row.find('\"'))!=std::string::npos)
+            end_pos=row.find('\"', start_pos+1);
+        }
+        if(start_pos==std::string::npos || end_pos==std::string::npos) {
+          if((start_pos=row.find(' '))!=std::string::npos) {
+            if((start_pos=row.find("expression", start_pos+1))!=std::string::npos) {
+              end_pos=start_pos+10;
+              start_pos--;
+            }
+          }
+        }
+        if(start_pos!=std::string::npos && end_pos!=std::string::npos) {
+          auto start_offset=CompletionDialog::get()->start_mark->get_iter().get_offset()+start_pos+1;
+          auto end_offset=CompletionDialog::get()->start_mark->get_iter().get_offset()+end_pos;
+          if(start_offset!=end_offset)
+            get_buffer()->select_range(get_buffer()->get_iter_at_offset(start_offset), get_buffer()->get_iter_at_offset(end_offset));
+        }
+        else {
+          //new autocomplete after for instance when selecting "std::"
+          auto iter=get_buffer()->get_insert()->get_iter();
+          if(iter.backward_char() && *iter==':')
+            autocomplete.run();
+        }
+      }
+    };
+  };
 }
 
-std::unordered_map<std::string, std::string> Source::ClangViewAutocomplete::autocomplete_manipulators_map() {
-  std::unordered_map<std::string, std::string> map;
+const std::unordered_map<std::string, std::string> &Source::ClangViewAutocomplete::autocomplete_manipulators_map() {
   //TODO: feel free to add more
-  map["endl(basic_ostream<_CharT, _Traits> &__os)"]="endl";
-  map["flush(basic_ostream<_CharT, _Traits> &__os)"]="flush";
-  map["hex(std::ios_base &__str)"]="hex"; //clang++ headers
-  map["hex(std::ios_base &__base)"]="hex"; //g++ headers
-  map["dec(std::ios_base &__str)"]="dec";
-  map["dec(std::ios_base &__base)"]="dec";
+  static std::unordered_map<std::string, std::string> map={
+    {"endl(basic_ostream<_CharT, _Traits> &__os)", "endl"},
+    {"flush(basic_ostream<_CharT, _Traits> &__os)", "flush"},
+    {"hex(std::ios_base &__str)", "hex"}, //clang++ headers
+    {"hex(std::ios_base &__base)", "hex"}, //g++ headers
+    {"dec(std::ios_base &__str)", "dec"},
+    {"dec(std::ios_base &__base)", "dec"}
+  };
   return map;
 }
 
@@ -1696,7 +1589,7 @@ void Source::ClangView::full_reparse() {
         return;
       }
     }
-    autocomplete_state=AutocompleteState::IDLE;
+    autocomplete.state=Autocomplete<ClangViewAutocomplete::Suggestion>::State::IDLE;
     soft_reparse_needed=false;
     full_reparse_running=true;
     if(full_reparse_thread.joinable())
@@ -1704,8 +1597,8 @@ void Source::ClangView::full_reparse() {
     full_reparse_thread=std::thread([this](){
       if(parse_thread.joinable())
         parse_thread.join();
-      if(autocomplete_thread.joinable())
-        autocomplete_thread.join();
+      if(autocomplete.thread.joinable())
+        autocomplete.thread.join();
       dispatcher.post([this] {
         parse_initialize();
         full_reparse_running=false;
@@ -1726,8 +1619,8 @@ void Source::ClangView::async_delete() {
       full_reparse_thread.join();
     if(parse_thread.joinable())
       parse_thread.join();
-    if(autocomplete_thread.joinable())
-      autocomplete_thread.join();
+    if(autocomplete.thread.joinable())
+      autocomplete.thread.join();
     do_delete_object();
   });
 }

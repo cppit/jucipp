@@ -41,6 +41,7 @@ public:
   bool is_visible() {return window.is_visible();}
   void get_position(int &root_x, int &root_y) {window.get_position(root_x, root_y);}
   
+  std::function<void()> on_show;
   std::function<void()> on_hide;
   std::function<void(const std::string& selected, bool hide_window)> on_select;
   std::function<void(const std::string &selected)> on_changed;

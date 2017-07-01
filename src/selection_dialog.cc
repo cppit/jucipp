@@ -160,6 +160,8 @@ void SelectionDialogBase::show() {
         list_view_text.scroll_to_row(list_view_text.get_model()->get_path(list_view_text.get_selection()->get_selected()), 0.5);
     }
   }
+  if(on_show)
+    on_show();
 }
 
 void SelectionDialogBase::set_cursor_at_last_row() {

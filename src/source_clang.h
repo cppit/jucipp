@@ -9,6 +9,7 @@
 #include "source.h"
 #include "terminal.h"
 #include "dispatcher.h"
+#include "autocomplete.h"
 
 namespace Source {
   class ClangViewParse : public View {
@@ -58,12 +59,10 @@ namespace Source {
   };
     
   class ClangViewAutocomplete : public virtual ClangViewParse {
-  protected:
-    enum class AutocompleteState {IDLE, STARTING, RESTARTING, CANCELED};
   public:
-    class AutoCompleteData {
+    class Suggestion {
     public:
-      explicit AutoCompleteData(const std::vector<clangmm::CompletionChunk> &chunks) :
+      explicit Suggestion(std::vector<clangmm::CompletionChunk> &&chunks) :
         chunks(chunks) { }
       std::vector<clangmm::CompletionChunk> chunks;
       std::string brief_comments;
@@ -71,18 +70,9 @@ namespace Source {
     
     ClangViewAutocomplete(const boost::filesystem::path &file_path, Glib::RefPtr<Gsv::Language> language);
   protected:
-    std::atomic<AutocompleteState> autocomplete_state;
-    std::thread autocomplete_thread;
+    Autocomplete<Suggestion> autocomplete;
   private:
-    void autocomplete_dialog_setup();
-    void autocomplete_check();
-    void autocomplete();
-    std::unordered_map<std::string, std::pair<std::string, std::string> > completion_dialog_rows;
-    std::vector<AutoCompleteData> autocomplete_get_suggestions(const std::string &buffer, int line_number, int column);
-    Tooltips autocomplete_tooltips;
-    std::string prefix;
-    std::mutex prefix_mutex;
-    static std::unordered_map<std::string, std::string> autocomplete_manipulators_map();
+    const std::unordered_map<std::string, std::string> &autocomplete_manipulators_map();
   };
 
   class ClangViewRefactor : public virtual ClangViewParse {
