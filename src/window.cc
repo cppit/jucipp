@@ -323,7 +323,7 @@ void Window::set_menu_actions() {
         Terminal::get().print("Error: "+cpp_main_path.string()+" already exists.\n", true);
         return;
       }
-      std::string cmakelists="cmake_minimum_required(VERSION 2.8)\n\nproject("+project_name+")\n\nset(CMAKE_CXX_FLAGS \"${CMAKE_CXX_FLAGS} -std=c++1y -Wall -Wextra -Wno-unused-parameter\")\n\nadd_executable("+project_name+" main.cpp)\n";
+      std::string cmakelists="cmake_minimum_required(VERSION 2.8)\n\nproject("+project_name+")\n\nset(CMAKE_CXX_FLAGS \"${CMAKE_CXX_FLAGS} -std=c++1y -Wall -Wextra\")\n\nadd_executable("+project_name+" main.cpp)\n";
       std::string cpp_main="#include <iostream>\n\nint main() {\n  std::cout << \"Hello World!\\n\";\n}\n";
       if(filesystem::write(cmakelists_path, cmakelists) && filesystem::write(cpp_main_path, cpp_main)) {
         Directories::get().open(project_path);
