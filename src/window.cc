@@ -788,7 +788,11 @@ void Window::set_menu_actions() {
                 Terminal::get().process("open \""+uri+"\"");
 #else
                 GError* error=nullptr;
+#if GTK_VERSION_GE(3, 22)
+                gtk_show_uri_on_window(nullptr, uri.c_str(), GDK_CURRENT_TIME, &error);
+#else
                 gtk_show_uri(nullptr, uri.c_str(), GDK_CURRENT_TIME, &error);
+#endif
                 g_clear_error(&error);
 #endif
               }
