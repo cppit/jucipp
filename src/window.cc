@@ -442,7 +442,9 @@ void Window::set_menu_actions() {
     if(auto view=Notebook::get().get_current_view()) {
       auto undo_manager = view->get_source_buffer()->get_undo_manager();
       if (undo_manager->can_undo()) {
+        view->disable_spellcheck=true;
         undo_manager->undo();
+        view->disable_spellcheck=false;
         view->scroll_to(view->get_buffer()->get_insert());
       }
     }
@@ -451,7 +453,9 @@ void Window::set_menu_actions() {
     if(auto view=Notebook::get().get_current_view()) {
       auto undo_manager = view->get_source_buffer()->get_undo_manager();
       if(undo_manager->can_redo()) {
+        view->disable_spellcheck=true;
         undo_manager->redo();
+        view->disable_spellcheck=false;
         view->scroll_to(view->get_buffer()->get_insert());
       }
     }
@@ -461,8 +465,11 @@ void Window::set_menu_actions() {
     auto widget=get_focus();
     if(auto entry=dynamic_cast<Gtk::Entry*>(widget))
       entry->cut_clipboard();
-    else if(auto view=Notebook::get().get_current_view())
+    else if(auto view=Notebook::get().get_current_view()) {
+      view->disable_spellcheck=true;
       view->get_buffer()->cut_clipboard(Gtk::Clipboard::get());
+      view->disable_spellcheck=false;
+    }
   });
   menu.add_action("edit_copy", [this]() {
     auto widget=get_focus();
@@ -475,8 +482,11 @@ void Window::set_menu_actions() {
     auto widget=get_focus();
     if(auto entry=dynamic_cast<Gtk::Entry*>(widget))
       entry->paste_clipboard();
-    else if(auto view=Notebook::get().get_current_view())
+    else if(auto view=Notebook::get().get_current_view()) {
+      view->disable_spellcheck=true;
       view->paste();
+      view->disable_spellcheck=false;
+    }
   });
   
   menu.add_action("edit_find", [this]() {
@@ -530,8 +540,11 @@ void Window::set_menu_actions() {
   });
   menu.add_action("source_indentation_auto_indent_buffer", [this]() {
     auto view=Notebook::get().get_current_view();
-    if(view && view->format_style)
+    if(view && view->format_style) {
+      view->disable_spellcheck=true;
       view->format_style(true);
+      view->disable_spellcheck=false;
+    }
   });
   
   menu.add_action("source_goto_line", [this]() {

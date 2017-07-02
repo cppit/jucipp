@@ -51,6 +51,15 @@ Source::SpellCheckView::SpellCheckView() : Gsv::View() {
     auto iter=get_buffer()->get_insert()->get_iter();
     if(!is_word_iter(iter) && !iter.starts_line())
       iter.backward_char();
+    
+    if(disable_spellcheck) {
+      if(is_word_iter(iter)) {
+        auto word=get_word(iter);
+        get_buffer()->remove_tag(spellcheck_error_tag, word.first, word.second);
+      }
+      return;
+    }
+    
     if(!is_code_iter(iter)) {
       if(last_keyval==GDK_KEY_Return || last_keyval==GDK_KEY_KP_Enter) {
         auto previous_line_iter=iter;
@@ -136,7 +145,8 @@ Source::SpellCheckView::SpellCheckView() : Gsv::View() {
   get_buffer()->signal_insert().connect([this](const Gtk::TextIter &start_iter, const Glib::ustring &inserted_string, int) {
     if(spellcheck_checker==nullptr)
       return;
-    if(inserted_string.size()<=1)
+    
+    if(!disable_spellcheck)
       return;
     
     auto iter=start_iter;

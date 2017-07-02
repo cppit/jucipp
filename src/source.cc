@@ -272,6 +272,117 @@ Source::View::View(const boost::filesystem::path &file_path, Glib::RefPtr<Gsv::L
       }
     };
   }
+  else if(language && language->get_id()=="markdown") {
+    // The style file currently has no options, but checking if it exists
+    format_style=[this](bool continue_without_style_file) {
+      bool has_style_file=false;
+      auto style_file_search_path=this->file_path.parent_path();
+      while(true) {
+        if(boost::filesystem::exists(style_file_search_path/".markdown-format")) {
+          has_style_file=true;
+          break;
+        }
+        if(style_file_search_path==style_file_search_path.root_directory())
+          break;
+        style_file_search_path=style_file_search_path.parent_path();
+      }
+      if(!has_style_file && !continue_without_style_file)
+        return;
+      
+      auto special_character=[](Gtk::TextIter iter) {
+        if(*iter=='*' || *iter=='#' || *iter=='<' || *iter=='>' || *iter==' ' || *iter=='=' || *iter=='`' || *iter=='-')
+          return true;
+        // Tests if a line starts with for instance: 2. 
+        if(*iter>='0' && *iter<='9' && iter.forward_char() &&
+           *iter=='.' && iter.forward_char() &&
+           *iter==' ')
+          return true;
+        return false;
+      };
+      
+      get_buffer()->begin_user_action();
+      cleanup_whitespace_characters();
+      
+      auto iter=get_buffer()->begin();
+      size_t last_space_offset=-1;
+      bool headline=false;
+      bool monospace=false;
+      bool script=false;
+      bool html_tag=false;
+      int square_brackets=0;
+      do {
+        if(iter.starts_line()) {
+          last_space_offset=-1;
+          auto next_line_iter=iter;
+          if(*iter=='#' || (next_line_iter.forward_line() && *next_line_iter=='='))
+            headline=true;
+          else
+            headline=false;
+          auto test_iter=iter;
+          if(*test_iter=='`' && test_iter.forward_char() &&
+             *test_iter=='`' && test_iter.forward_char() &&
+             *test_iter=='`') {
+            script=!script;
+            iter.forward_chars(2);
+            continue;
+          }
+        }
+        if(!script && *iter=='`')
+          monospace=!monospace;
+        if(!script && !monospace) {
+          if(*iter=='<')
+            html_tag=true;
+          else if(*iter=='>')
+            html_tag=false;
+          else if(*iter=='[')
+            ++square_brackets;
+          else if(*iter==']')
+            --square_brackets;
+        }
+        if(!headline && !script && !monospace && !html_tag && square_brackets==0) {
+          if(*iter==' ' && iter.get_line_offset()<80)
+            last_space_offset=iter.get_offset();
+          // Insert newline on long lines
+          else if((*iter==' ' || iter.ends_line()) && iter.get_line_offset()>=80 && last_space_offset!=static_cast<size_t>(-1)) {
+            auto stored_iter=iter;
+            iter=get_buffer()->get_iter_at_offset(last_space_offset);
+            auto next_iter=iter;
+            next_iter.forward_char();
+            // Do not add newline if the next iter is a special character
+            if(special_character(next_iter)) {
+              iter=stored_iter;
+              if(*iter==' ')
+                last_space_offset=iter.get_offset();
+              continue;
+            }
+            iter=get_buffer()->erase(iter, next_iter);
+            iter=get_buffer()->insert(iter, "\n");
+            iter.backward_char();
+          }
+          // Remove newline on short lines
+          else if(iter.ends_line() && !iter.starts_line() && iter.get_line_offset()<80) {
+            auto next_line_iter=iter;
+            // Do not remove newline if the next line for instance is a header
+            if(next_line_iter.forward_char() && !next_line_iter.ends_line() && !special_character(next_line_iter)) {
+              auto end_word_iter=next_line_iter;
+              // Do not remove newline if the word on the next line is too long
+              size_t diff=0;
+              while(*end_word_iter!=' ' && !end_word_iter.ends_line() && end_word_iter.forward_char())
+                ++diff;
+              if(iter.get_line_offset()+diff+1<80) {
+                iter=get_buffer()->erase(iter, next_line_iter);
+                iter=get_buffer()->insert(iter, " ");
+                iter.backward_char();
+                if(iter.get_line_offset()<80)
+                  last_space_offset=iter.get_offset();
+              }
+            }
+          }
+        }
+      } while(iter.forward_char());
+      get_buffer()->end_user_action();
+    };
+  }
   
 #ifndef __APPLE__
   set_tab_width(4); //Visual size of a \t hardcoded to be equal to visual size of 4 spaces. Buggy on OS X
@@ -400,6 +511,7 @@ Source::View::View(const boost::filesystem::path &file_path, Glib::RefPtr<Gsv::L
 }
 
 bool Source::View::load() {
+  disable_spellcheck=true;
   get_source_buffer()->begin_not_undoable_action();
   get_buffer()->erase(get_buffer()->begin(), get_buffer()->end());
   bool status=true;
@@ -414,6 +526,7 @@ bool Source::View::load() {
     }
   }
   get_source_buffer()->end_not_undoable_action();
+  disable_spellcheck=false;
   
   boost::system::error_code ec;
   last_write_time=boost::filesystem::last_write_time(file_path, ec);

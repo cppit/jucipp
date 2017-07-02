@@ -18,6 +18,7 @@ namespace Source {
     void remove_spellcheck_errors();
     void goto_next_spellcheck_error();
     
+    bool disable_spellcheck=false;
   protected:
     bool is_code_iter(const Gtk::TextIter &iter);
     bool spellcheck_all=false;
