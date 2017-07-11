@@ -78,17 +78,17 @@ namespace Source {
   class ClangViewRefactor : public virtual ClangViewParse {
     class Identifier {
     public:
-      Identifier(clangmm::Cursor::Kind kind, const std::string &spelling, const std::string &usr, const clangmm::Cursor &cursor=clangmm::Cursor()) :
-        kind(kind), spelling(spelling), usr(usr), cursor(cursor) {}
-      
+      Identifier(const std::string &spelling, const clangmm::Cursor &cursor)
+          : kind(cursor.get_kind()), spelling(spelling), usr_extended(cursor.get_usr_extended()), cursor(cursor) {}
       Identifier() : kind(static_cast<clangmm::Cursor::Kind>(0)) {}
+      
       operator bool() const { return static_cast<int>(kind)!=0; }
-      bool operator==(const Identifier &rhs) const { return (kind==rhs.kind && spelling==rhs.spelling && usr==rhs.usr); }
+      bool operator==(const Identifier &rhs) const { return spelling==rhs.spelling && usr_extended==rhs.usr_extended; }
       bool operator!=(const Identifier &rhs) const { return !(*this==rhs); }
-      bool operator<(const Identifier &rhs) const { return usr<rhs.usr; }
+      bool operator<(const Identifier &rhs) const { return spelling<rhs.spelling || (spelling==rhs.spelling && usr_extended<rhs.usr_extended); }
       clangmm::Cursor::Kind kind;
       std::string spelling;
-      std::string usr;
+      std::string usr_extended;
       clangmm::Cursor cursor;
     };
   public:
@@ -103,7 +103,6 @@ namespace Source {
     void tag_similar_identifiers(const Identifier &identifier);
     Glib::RefPtr<Gtk::TextTag> similar_identifiers_tag;
     Identifier last_tagged_identifier;
-    bool renaming=false;
   };
   
   class ClangView : public ClangViewAutocomplete, public ClangViewRefactor {

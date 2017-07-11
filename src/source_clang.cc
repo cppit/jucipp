@@ -797,7 +797,7 @@ Source::ClangViewRefactor::ClangViewRefactor(const boost::filesystem::path &file
   similar_identifiers_tag->property_weight()=1000; //TODO: Replace 1000 with Pango::WEIGHT_ULTRAHEAVY when debian stable gets updated in 2017
   
   get_buffer()->signal_changed().connect([this]() {
-    if(!renaming && last_tagged_identifier) {
+    if(last_tagged_identifier) {
       for(auto &mark: similar_identifiers_marks) {
         get_buffer()->remove_tag(similar_identifiers_tag, mark.first->get_iter(), mark.second->get_iter());
         get_buffer()->delete_mark(mark.first);
@@ -837,32 +837,42 @@ Source::ClangViewRefactor::ClangViewRefactor(const boost::filesystem::path &file
       //If rename constructor or destructor, set token to class
       if(identifier.kind==clangmm::Cursor::Kind::Constructor || identifier.kind==clangmm::Cursor::Kind::Destructor) {
         auto parent_cursor=identifier.cursor.get_semantic_parent();
-        identifier=Identifier(parent_cursor.get_kind(), identifier.spelling, parent_cursor.get_usr(), parent_cursor);
+        identifier=Identifier(identifier.spelling, parent_cursor);
+      }
+      //Special case for class with constructor template
+      else if(identifier.kind==clangmm::Cursor::Kind::FunctionTemplate) {
+        auto parent_cursor=identifier.cursor.get_semantic_parent();
+        auto kind=parent_cursor.get_kind();
+        if(identifier.spelling==parent_cursor.get_spelling() &&
+           (kind==clangmm::Cursor::Kind::ClassDecl || kind==clangmm::Cursor::Kind::ClassTemplate || kind==clangmm::Cursor::Kind::StructDecl))
+          identifier=Identifier(identifier.spelling, parent_cursor);
       }
       
       std::vector<Source::View*> renamed_views;
       for(auto &view: views) {
         if(auto clang_view=dynamic_cast<Source::ClangView*>(view)) {
-          
           //If rename class, also rename constructors and destructor
           std::set<Identifier> identifiers;
           identifiers.emplace(identifier);
           auto identifier_cursor_kind=identifier.cursor.get_kind();
-          if(identifier_cursor_kind==clangmm::Cursor::Kind::ClassDecl || identifier_cursor_kind==clangmm::Cursor::Kind::ClassTemplate) {
+          if(identifier_cursor_kind==clangmm::Cursor::Kind::ClassDecl || identifier_cursor_kind==clangmm::Cursor::Kind::ClassTemplate ||
+             identifier_cursor_kind==clangmm::Cursor::Kind::StructDecl) {
             for(auto &token: *clang_view->clang_tokens) {
               auto cursor=token.get_cursor();
-              auto cursor_kind=cursor.get_kind();
-              auto parent_cursor=cursor.get_semantic_parent();
-              if((cursor_kind==clangmm::Cursor::Kind::Constructor || cursor_kind==clangmm::Cursor::Kind::Destructor) &&
-                 token.is_identifier() && parent_cursor.get_usr()==identifier.cursor.get_usr()) {
-                identifiers.emplace(cursor.get_kind(), token.get_spelling(), cursor.get_usr());
+              auto kind=cursor.get_kind();
+              if((kind==clangmm::Cursor::Kind::Constructor || kind==clangmm::Cursor::Kind::Destructor ||
+                  kind==clangmm::Cursor::Kind::FunctionTemplate) && token.is_identifier()) {
+                auto parent_cursor=cursor.get_semantic_parent();
+                if(parent_cursor.get_kind()==identifier.kind && token.get_spelling()==identifier.spelling && parent_cursor.get_usr_extended()==identifier.usr_extended) {
+                  identifiers.emplace(token.get_spelling(), cursor);
+                }
               }
             }
           }
           
           std::vector<std::pair<clangmm::Offset, clangmm::Offset> > offsets;
           for(auto &identifier: identifiers) {
-            auto token_offsets=clang_view->clang_tokens->get_similar_token_offsets(identifier.kind, identifier.spelling, identifier.usr);
+            auto token_offsets=clang_view->clang_tokens->get_similar_token_offsets(identifier.spelling, identifier.usr_extended);
             for(auto &token_offset: token_offsets)
               offsets.emplace_back(token_offset);
           }
@@ -872,7 +882,6 @@ Source::ClangViewRefactor::ClangViewRefactor(const boost::filesystem::path &file
                                clang_view->get_buffer()->create_mark(clang_view->get_buffer()->get_iter_at_line_index(offset.second.line-1, offset.second.index-1)));
           }
           if(!marks.empty()) {
-            clang_view->renaming=true;
             clang_view->get_buffer()->begin_user_action();
             for(auto &mark: marks) {
               clang_view->get_buffer()->erase(mark.first->get_iter(), mark.second->get_iter());
@@ -881,7 +890,6 @@ Source::ClangViewRefactor::ClangViewRefactor(const boost::filesystem::path &file
               clang_view->get_buffer()->delete_mark(mark.second);
             }
             clang_view->get_buffer()->end_user_action();
-            clang_view->renaming=false;
             clang_view->save(views);
             renamed_views.emplace_back(clang_view);
             renamed.emplace_back(clang_view->file_path, marks.size());
@@ -998,6 +1006,9 @@ Source::ClangViewRefactor::ClangViewRefactor(const boost::filesystem::path &file
     auto identifier=get_identifier();
     if(identifier) {
       wait_parsing(views);
+      
+      //First, look for a definition cursor that is equal
+      auto identifier_usr=identifier.cursor.get_usr();
       for(auto &view: views) {
         if(auto clang_view=dynamic_cast<Source::ClangView*>(view)) {
           for(auto &token: *clang_view->clang_tokens) {
@@ -1005,15 +1016,15 @@ Source::ClangViewRefactor::ClangViewRefactor(const boost::filesystem::path &file
             auto cursor_kind=cursor.get_kind();
             if((cursor_kind==clangmm::Cursor::Kind::FunctionDecl || cursor_kind==clangmm::Cursor::Kind::CXXMethod ||
                 cursor_kind==clangmm::Cursor::Kind::Constructor || cursor_kind==clangmm::Cursor::Kind::Destructor ||
-                cursor_kind==clangmm::Cursor::Kind::ConversionFunction) &&
+                cursor_kind==clangmm::Cursor::Kind::FunctionTemplate || cursor_kind==clangmm::Cursor::Kind::ConversionFunction) &&
                token.is_identifier()) {
-              auto referenced=cursor.get_referenced();
-              if(referenced && identifier.kind==referenced.get_kind() &&
-                 identifier.spelling==token.get_spelling() && identifier.usr==referenced.get_usr()) {
-                if(clang_isCursorDefinition(referenced.cx_cursor)) {
+              auto token_spelling=token.get_spelling();
+              if(identifier.kind==cursor.get_kind() && identifier.spelling==token_spelling && identifier_usr==cursor.get_usr()) {
+                if(clang_isCursorDefinition(cursor.cx_cursor)) {
                   Offset offset;
-                  offset.file_path=cursor.get_source_location().get_path();
-                  auto clang_offset=cursor.get_source_location().get_offset();
+                  auto location=cursor.get_source_location();
+                  auto clang_offset=location.get_offset();
+                  offset.file_path=location.get_path();
                   offset.line=clang_offset.line-1;
                   offset.index=clang_offset.index-1;
                   offsets.emplace_back(offset);
@@ -1029,12 +1040,26 @@ Source::ClangViewRefactor::ClangViewRefactor(const boost::filesystem::path &file
       //If no implementation was found, try using clang_getCursorDefinition
       auto definition=identifier.cursor.get_definition();
       if(definition) {
-        auto definition_location=definition.get_source_location();
+        auto location=definition.get_source_location();
         Offset offset;
-        offset.file_path=definition_location.get_path();
-        auto definition_offset=definition_location.get_offset();
-        offset.line=definition_offset.line-1;
-        offset.index=definition_offset.index-1;
+        offset.file_path=location.get_path();
+        auto clang_offset=location.get_offset();
+        offset.line=clang_offset.line-1;
+        offset.index=clang_offset.index-1;
+        offsets.emplace_back(offset);
+        return offsets;
+      }
+      
+      //If no implementation was found, use declaration if it is a function template
+      auto canonical=identifier.cursor.get_canonical();
+      auto cursor=clang_tu->get_cursor(canonical.get_source_location());
+      if(cursor && cursor.get_kind()==clangmm::Cursor::Kind::FunctionTemplate) {
+        auto location=cursor.get_source_location();
+        Offset offset;
+        offset.file_path=location.get_path();
+        auto clang_offset=location.get_offset();
+        offset.line=clang_offset.line-1;
+        offset.index=clang_offset.index-1;
         offsets.emplace_back(offset);
         return offsets;
       }
@@ -1135,7 +1160,7 @@ Source::ClangViewRefactor::ClangViewRefactor(const boost::filesystem::path &file
       }
       for(auto &view: views_reordered) {
         if(auto clang_view=dynamic_cast<Source::ClangView*>(view)) {
-          auto offsets=clang_view->clang_tokens->get_similar_token_offsets(identifier.kind, identifier.spelling, identifier.usr);
+          auto offsets=clang_view->clang_tokens->get_similar_token_offsets(identifier.spelling, identifier.usr_extended);
           for(auto &offset: offsets) {
             size_t whitespaces_removed=0;
             auto start_iter=clang_view->get_buffer()->get_iter_at_line(offset.first.line-1);
@@ -1253,14 +1278,14 @@ Source::ClangViewRefactor::ClangViewRefactor(const boost::filesystem::path &file
         auto kind=cursor.get_kind();
         if(kind==clangmm::Cursor::Kind::FunctionDecl || kind==clangmm::Cursor::Kind::CXXMethod ||
            kind==clangmm::Cursor::Kind::Constructor || kind==clangmm::Cursor::Kind::Destructor ||
-           kind==clangmm::Cursor::Kind::ConversionFunction) {
+           kind==clangmm::Cursor::Kind::FunctionTemplate || kind==clangmm::Cursor::Kind::ConversionFunction) {
           auto offset=cursor.get_source_location().get_offset();
           if(offset==last_offset)
             continue;
           last_offset=offset;
           
           std::string method;
-          if(kind==clangmm::Cursor::Kind::FunctionDecl || kind==clangmm::Cursor::Kind::CXXMethod) {
+          if(kind!=clangmm::Cursor::Kind::Constructor && kind!=clangmm::Cursor::Kind::Destructor) {
             method+=cursor.get_type().get_result().get_spelling();
             auto pos=method.find(" ");
             if(pos!=std::string::npos)
@@ -1488,7 +1513,7 @@ Source::ClangViewRefactor::Identifier Source::ClangViewRefactor::get_identifier(
       if(line==token.offsets.first.line-1 && index>=token.offsets.first.index-1 && index <=token.offsets.second.index-1) {
         auto referenced=token.get_cursor().get_referenced();
         if(referenced)
-          return Identifier(referenced.get_kind(), token.get_spelling(), referenced.get_usr(), referenced);
+          return Identifier(token.get_spelling(), referenced);
       }
     }
   }
@@ -1535,7 +1560,7 @@ void Source::ClangViewRefactor::tag_similar_identifiers(const Identifier &identi
         get_buffer()->delete_mark(mark.second);
       }
       similar_identifiers_marks.clear();
-      auto offsets=clang_tokens->get_similar_token_offsets(identifier.kind, identifier.spelling, identifier.usr);
+      auto offsets=clang_tokens->get_similar_token_offsets(identifier.spelling, identifier.usr_extended);
       for(auto &offset: offsets) {
         auto start_iter=get_buffer()->get_iter_at_line_index(offset.first.line-1, offset.first.index-1);
         auto end_iter=get_buffer()->get_iter_at_line_index(offset.second.line-1, offset.second.index-1);

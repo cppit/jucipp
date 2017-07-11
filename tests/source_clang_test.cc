@@ -35,18 +35,18 @@ int main() {
   g_assert_cmpuint(clang_view->clang_diagnostics.size(), ==, 0);
   
   //test get_declaration and get_implementation
-  clang_view->place_cursor_at_line_index(13, 7);
+  clang_view->place_cursor_at_line_index(15, 7);
   auto location=clang_view->get_declaration_location();
-  g_assert_cmpuint(location.line, ==, 4);
+  g_assert_cmpuint(location.line, ==, 6);
   
   clang_view->place_cursor_at_line_index(location.line, location.index);
   auto impl_locations=clang_view->get_implementation_locations({clang_view});
   g_assert_cmpuint(impl_locations.size(), ==, 1);
-  g_assert_cmpuint(impl_locations[0].line, ==, 9);
+  g_assert_cmpuint(impl_locations[0].line, ==, 11);
   
   clang_view->place_cursor_at_line_index(location.line, location.index);
   location=clang_view->get_declaration_location();
-  g_assert_cmpuint(location.line, ==, 4);
+  g_assert_cmpuint(location.line, ==, 6);
   
   //test get_usages and get_methods
   auto locations=clang_view->get_usages({clang_view});
