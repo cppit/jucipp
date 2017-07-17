@@ -123,7 +123,7 @@ On FreeBSD, latest release of juCi++ is available through the port: jucipp.
 Install dependencies:
 ```sh
 brew install --with-lldb llvm
-brew install cmake pkg-config boost gtksourceviewmm3 aspell clang-format libgit2 ctags
+brew install cmake pkg-config boost gtksourceviewmm3 gnome-icon-theme aspell clang-format libgit2 ctags
 ```
 
 Get juCi++ source, compile and install:
