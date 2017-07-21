@@ -1,20 +1,6 @@
 #include "dialogs.h"
 #include <cmath>
 
-namespace sigc {
-#ifndef SIGC_FUNCTORS_DEDUCE_RESULT_TYPE_WITH_DECLTYPE
-  template <typename Functor>
-  struct functor_trait<Functor, false> {
-    typedef decltype (::sigc::mem_fun(std::declval<Functor&>(),
-                                      &Functor::operator())) _intermediate;
-    typedef typename _intermediate::result_type result_type;
-    typedef Functor functor_type;
-  };
-#else
-  SIGC_FUNCTORS_DEDUCE_RESULT_TYPE_WITH_DECLTYPE
-#endif
-}
-
 Dialog::Message::Message(const std::string &text): Gtk::MessageDialog(text, false, Gtk::MessageType::MESSAGE_INFO, Gtk::ButtonsType::BUTTONS_NONE, true) {
   auto g_application=g_application_get_default();
   auto gio_application=Glib::wrap(g_application, true);

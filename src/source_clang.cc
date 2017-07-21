@@ -11,20 +11,6 @@
 #include "selection_dialog.h"
 #include "filesystem.h"
 
-namespace sigc {
-#ifndef SIGC_FUNCTORS_DEDUCE_RESULT_TYPE_WITH_DECLTYPE
-  template <typename Functor>
-  struct functor_trait<Functor, false> {
-    typedef decltype (::sigc::mem_fun(std::declval<Functor&>(),
-                                      &Functor::operator())) _intermediate;
-    typedef typename _intermediate::result_type result_type;
-    typedef Functor functor_type;
-  };
-#else
-  SIGC_FUNCTORS_DEDUCE_RESULT_TYPE_WITH_DECLTYPE
-#endif
-}
-
 clangmm::Index Source::ClangViewParse::clang_index(0, 0);
 
 Source::ClangViewParse::ClangViewParse(const boost::filesystem::path &file_path, Glib::RefPtr<Gsv::Language> language):
@@ -227,7 +213,7 @@ std::vector<std::string> Source::ClangViewParse::get_compilation_commands() {
     auto clang_version=sm[1].str();
     arguments.emplace_back("-I/usr/lib/clang/"+clang_version+"/include");
     arguments.emplace_back("-I/usr/lib64/clang/"+clang_version+"/include"); // For Fedora
-#if defined(__APPLE__) && CINDEX_VERSION_MAJOR==0 && CINDEX_VERSION_MINOR<32
+#if defined(__APPLE__) && CINDEX_VERSION_MAJOR==0 && CINDEX_VERSION_MINOR<32 // TODO: remove during 2018 if llvm3.7 is no longer in homebrew (CINDEX_VERSION_MINOR=32 equals clang-3.8 I think)
     arguments.emplace_back("-I/usr/local/Cellar/llvm/"+clang_version+"/lib/clang/"+clang_version+"/include");
     arguments.emplace_back("-I/Applications/Xcode.app/Contents/Developer/Toolchains/XcodeDefault.xctoolchain/usr/bin/../include/c++/v1");
     arguments.emplace_back("-I/Library/Developer/CommandLineTools/usr/bin/../include/c++/v1"); //Added for OS X 10.11

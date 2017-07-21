@@ -1,19 +1,5 @@
 #include "info.h"
 
-namespace sigc {
-#ifndef SIGC_FUNCTORS_DEDUCE_RESULT_TYPE_WITH_DECLTYPE
-  template <typename Functor>
-  struct functor_trait<Functor, false> {
-    typedef decltype (::sigc::mem_fun(std::declval<Functor&>(),
-                                      &Functor::operator())) _intermediate;
-    typedef typename _intermediate::result_type result_type;
-    typedef Functor functor_type;
-  };
-#else
-  SIGC_FUNCTORS_DEDUCE_RESULT_TYPE_WITH_DECLTYPE
-#endif
-}
-
 Info::Info() {
   set_hexpand(false);
   set_halign(Gtk::Align::ALIGN_END);

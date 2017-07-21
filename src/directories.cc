@@ -6,20 +6,6 @@
 #include "filesystem.h"
 #include "entrybox.h"
 
-namespace sigc {
-#ifndef SIGC_FUNCTORS_DEDUCE_RESULT_TYPE_WITH_DECLTYPE
-  template <typename Functor>
-  struct functor_trait<Functor, false> {
-    typedef decltype (::sigc::mem_fun(std::declval<Functor&>(),
-                                      &Functor::operator())) _intermediate;
-    typedef typename _intermediate::result_type result_type;
-    typedef Functor functor_type;
-  };
-#else
-  SIGC_FUNCTORS_DEDUCE_RESULT_TYPE_WITH_DECLTYPE
-#endif
-}
-
 bool Directories::TreeStore::row_drop_possible_vfunc(const Gtk::TreeModel::Path &path, const Gtk::SelectionData &selection_data) const {
   return true;
 }
@@ -525,12 +511,7 @@ void Directories::add_or_update_path(const boost::filesystem::path &dir_path, co
   
   if(path_it==directories.end()) {
     auto g_file=Glib::wrap(g_file_new_for_path(dir_path.string().c_str())); //TODO: report missing constructor in giomm
-
-#if GLIBMM_MAJOR_VERSION>2 || (GLIBMM_MAJOR_VERSION==2 && GLIBMM_MINOR_VERSION>=45)
     auto monitor=g_file->monitor_directory(Gio::FileMonitorFlags::FILE_MONITOR_WATCH_MOVES);
-#else
-    auto monitor=g_file->monitor_directory(Gio::FileMonitorFlags::FILE_MONITOR_SEND_MOVED);
-#endif
     auto path_and_row=std::make_shared<std::pair<boost::filesystem::path, Gtk::TreeModel::Row> >(dir_path, row);
     auto connection=std::make_shared<sigc::connection>();
     

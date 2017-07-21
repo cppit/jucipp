@@ -6,24 +6,7 @@
 #include "project.h"
 #include "filesystem.h"
 #include "selection_dialog.h"
-
-#if GTKSOURCEVIEWMM_MAJOR_VERSION > 3 || (GTKSOURCEVIEWMM_MAJOR_VERSION == 3 && GTKSOURCEVIEWMM_MINOR_VERSION >= 18)
 #include "gtksourceview-3.0/gtksourceview/gtksourcemap.h"
-#endif
-
-namespace sigc {
-#ifndef SIGC_FUNCTORS_DEDUCE_RESULT_TYPE_WITH_DECLTYPE
-  template <typename Functor>
-  struct functor_trait<Functor, false> {
-    typedef decltype (::sigc::mem_fun(std::declval<Functor&>(),
-                                      &Functor::operator())) _intermediate;
-    typedef typename _intermediate::result_type result_type;
-    typedef Functor functor_type;
-  };
-#else
-  SIGC_FUNCTORS_DEDUCE_RESULT_TYPE_WITH_DECLTYPE
-#endif
-}
 
 Notebook::TabLabel::TabLabel(const boost::filesystem::path &path, std::function<void()> on_close) {
   set_can_focus(false);
@@ -290,10 +273,9 @@ void Notebook::open(const boost::filesystem::path &file_path_, size_t notebook_i
   scrolled_windows.back()->add(*source_views.back());
   hboxes.back()->pack_start(*scrolled_windows.back());
 
-#if GTKSOURCEVIEWMM_MAJOR_VERSION > 3 || (GTKSOURCEVIEWMM_MAJOR_VERSION == 3 && GTKSOURCEVIEWMM_MINOR_VERSION >= 18)
   source_maps.emplace_back(Glib::wrap(gtk_source_map_new()));
   gtk_source_map_set_view(GTK_SOURCE_MAP(source_maps.back()->gobj()), source_views.back()->gobj());
-#endif
+
   configure(source_views.size()-1);
   
   //Set up tab label
@@ -436,7 +418,6 @@ void Notebook::open(const boost::filesystem::path &file_path_, size_t notebook_i
 }
 
 void Notebook::configure(size_t index) {
-#if GTKSOURCEVIEWMM_MAJOR_VERSION > 3 || (GTKSOURCEVIEWMM_MAJOR_VERSION == 3 && GTKSOURCEVIEWMM_MINOR_VERSION >= 18)
   auto source_font_description=Pango::FontDescription(Config::get().source.font);
   auto source_map_font_desc=Pango::FontDescription(static_cast<std::string>(source_font_description.get_family())+" "+Config::get().source.map_font_size); 
   source_maps.at(index)->override_font(source_map_font_desc);
@@ -446,7 +427,6 @@ void Notebook::configure(size_t index) {
   }
   else if(hboxes.at(index)->get_children().size()==2)
     hboxes.at(index)->remove(*source_maps.at(index));
-#endif
 }
 
 bool Notebook::save(size_t index) {
@@ -520,9 +500,7 @@ bool Notebook::close(size_t index) {
     
     auto notebook_page=get_notebook_page(index);
     notebooks[notebook_page.first].remove_page(notebook_page.second);
-#if GTKSOURCEVIEWMM_MAJOR_VERSION > 3 || (GTKSOURCEVIEWMM_MAJOR_VERSION == 3 && GTKSOURCEVIEWMM_MINOR_VERSION >= 18)
     source_maps.erase(source_maps.begin()+index);
-#endif
 
     if(on_close_page)
       on_close_page(view);

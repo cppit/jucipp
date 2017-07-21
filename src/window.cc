@@ -11,20 +11,6 @@
 #include "ctags.h"
 #include "selection_dialog.h"
 
-namespace sigc {
-#ifndef SIGC_FUNCTORS_DEDUCE_RESULT_TYPE_WITH_DECLTYPE
-  template <typename Functor>
-  struct functor_trait<Functor, false> {
-    typedef decltype (::sigc::mem_fun(std::declval<Functor&>(),
-                                      &Functor::operator())) _intermediate;
-    typedef typename _intermediate::result_type result_type;
-    typedef Functor functor_type;
-  };
-#else
-  SIGC_FUNCTORS_DEDUCE_RESULT_TYPE_WITH_DECLTYPE
-#endif
-}
-
 Window::Window() {
   set_title("juCi++");
   set_events(Gdk::POINTER_MOTION_MASK|Gdk::FOCUS_CHANGE_MASK|Gdk::SCROLL_MASK|Gdk::LEAVE_NOTIFY_MASK);
@@ -93,9 +79,7 @@ Window::Window() {
   auto overlay=Gtk::manage(new Gtk::Overlay());
   overlay->add(*vbox);
   overlay->add_overlay(*overlay_hbox);
-#if GTKMM_MAJOR_VERSION>3 || (GTKMM_MAJOR_VERSION==3 && GTKMM_MINOR_VERSION>=18)
   overlay->set_overlay_pass_through(*overlay_hbox, true);
-#endif
   add(*overlay);
   
   show_all_children();

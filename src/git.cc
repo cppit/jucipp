@@ -46,11 +46,7 @@ Git::Repository::Diff::Lines Git::Repository::Diff::get_lines(const std::string 
   Lines lines;
   Error error;
   std::lock_guard<std::mutex> lock(mutex);
-#if LIBGIT2_SOVERSION>=23
   error.code=git_diff_blob_to_buffer(blob.get(), nullptr, buffer.c_str(), buffer.size(), nullptr, &options, nullptr, nullptr, hunk_cb, nullptr, &lines);
-#else
-  error.code=git_diff_blob_to_buffer(blob.get(), nullptr, buffer.c_str(), buffer.size(), nullptr, &options, nullptr, hunk_cb, nullptr, &lines);
-#endif
   if(error)
     throw std::runtime_error(error.message());
   return lines;
@@ -74,11 +70,7 @@ std::string Git::Repository::Diff::get_details(const std::string &buffer, int li
   details.second=line_nr;
   Error error;
   std::lock_guard<std::mutex> lock(mutex);
-#if LIBGIT2_SOVERSION>=23
   error.code=git_diff_blob_to_buffer(blob.get(), nullptr, buffer.c_str(), buffer.size(), nullptr, &options, nullptr, nullptr, nullptr, line_cb, &details);
-#else
-  error.code=git_diff_blob_to_buffer(blob.get(), nullptr, buffer.c_str(), buffer.size(), nullptr, &options, nullptr, nullptr, line_cb, &details);
-#endif
   if(error)
     throw std::runtime_error(error.message());
   return details.first;
@@ -102,12 +94,7 @@ Git::Repository::Repository(const boost::filesystem::path &path) {
   
   auto git_path_str=get_path().string();
   auto git_directory=Glib::wrap(g_file_new_for_path(git_path_str.c_str())); //TODO: report missing constructor in giomm
-#if GLIBMM_MAJOR_VERSION>2 || (GLIBMM_MAJOR_VERSION==2 && GLIBMM_MINOR_VERSION>=45)
   monitor=git_directory->monitor_directory(Gio::FileMonitorFlags::FILE_MONITOR_WATCH_MOVES);
-#else
-  monitor=git_directory->monitor_directory(Gio::FileMonitorFlags::FILE_MONITOR_SEND_MOVED);
-#endif
-
   monitor_changed_connection=monitor->signal_changed().connect([this](const Glib::RefPtr<Gio::File> &file,
                                                                       const Glib::RefPtr<Gio::File>&,
                                                                       Gio::FileMonitorEvent monitor_event) {
@@ -150,16 +137,12 @@ int Git::Repository::status_callback(const char *path, unsigned int status_flags
     status=STATUS::RENAMED;
   else if((status_flags&(GIT_STATUS_INDEX_TYPECHANGE|GIT_STATUS_WT_TYPECHANGE))>0)
     status=STATUS::TYPECHANGE;
-#if LIBGIT2_SOVERSION>=23
   else if((status_flags&(GIT_STATUS_WT_UNREADABLE))>0)
     status=STATUS::UNREADABLE;
-#endif
   else if((status_flags&(GIT_STATUS_IGNORED))>0)
     status=STATUS::IGNORED;
-#if LIBGIT2_SOVERSION>=23
   else if((status_flags&(GIT_STATUS_CONFLICTED))>0)
     status=STATUS::CONFLICTED;
-#endif
   else
     status=STATUS::CURRENT;
   
@@ -266,11 +249,7 @@ std::string Git::Repository::get_branch() noexcept {
 void Git::initialize() noexcept {
   std::lock_guard<std::mutex> lock(mutex);
   if(!initialized) {
-#if LIBGIT2_SOVERSION>=22
     git_libgit2_init();
-#else
-    git_threads_init();
-#endif
     initialized=true;
   }
 }

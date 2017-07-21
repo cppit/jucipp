@@ -15,20 +15,6 @@
 #include <numeric>
 #include <set>
 
-namespace sigc {
-#ifndef SIGC_FUNCTORS_DEDUCE_RESULT_TYPE_WITH_DECLTYPE
-  template <typename Functor>
-  struct functor_trait<Functor, false> {
-    typedef decltype (::sigc::mem_fun(std::declval<Functor&>(),
-                                      &Functor::operator())) _intermediate;
-    typedef typename _intermediate::result_type result_type;
-    typedef Functor functor_type;
-  };
-#else
-  SIGC_FUNCTORS_DEDUCE_RESULT_TYPE_WITH_DECLTYPE
-#endif
-}
-
 Glib::RefPtr<Gsv::Language> Source::guess_language(const boost::filesystem::path &file_path) {
   auto language_manager=Gsv::LanguageManager::get_default();
   bool result_uncertain = false;
@@ -720,12 +706,10 @@ void Source::View::configure() {
   property_show_line_numbers() = Config::get().source.show_line_numbers;
   if(Config::get().source.font.size()>0)
     override_font(Pango::FontDescription(Config::get().source.font));
-#if GTKSOURCEVIEWMM_MAJOR_VERSION > 3 || (GTKSOURCEVIEWMM_MAJOR_VERSION == 3 && GTKSOURCEVIEWMM_MINOR_VERSION >= 16)
   if(Config::get().source.show_background_pattern)
     gtk_source_view_set_background_pattern(this->gobj(), GTK_SOURCE_BACKGROUND_PATTERN_TYPE_GRID);
   else
     gtk_source_view_set_background_pattern(this->gobj(), GTK_SOURCE_BACKGROUND_PATTERN_TYPE_NONE);
-#endif
   
   //Create tags for diagnostic warnings and errors:
   auto scheme = get_source_buffer()->get_style_scheme();
@@ -762,9 +746,7 @@ void Source::View::configure() {
       error_property=style->property_background().get_value();
     
     diagnostic_tag_underline->property_underline()=Pango::Underline::UNDERLINE_ERROR;
-#if GTK_VERSION_GE(3, 16)
     diagnostic_tag_underline->set_property("underline-rgba", Gdk::RGBA(error_property));
-#endif
   }
   //TODO: clear tag_class and param_spec?
 
