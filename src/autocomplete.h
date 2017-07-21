@@ -45,7 +45,7 @@ public:
 
   std::function<void()> setup_dialog = [] {};
 
-  Autocomplete(Gtk::TextView *view, bool &interactive_completion, guint &last_keyval, bool strip_word): view(view), state(State::IDLE), strip_word(strip_word) {
+  Autocomplete(Gtk::TextView *view, bool &interactive_completion, guint &last_keyval, bool strip_word): view(view), strip_word(strip_word), state(State::IDLE) {
     view->get_buffer()->signal_changed().connect([this, &interactive_completion, &last_keyval] {
       if(CompletionDialog::get() && CompletionDialog::get()->is_visible()) {
         cancel_reparse();

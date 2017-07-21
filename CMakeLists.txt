@@ -16,13 +16,20 @@ set(CPACK_DEBIAN_PACKAGE_HOMEPAGE "https://github.com/cppit/jucipp")
 set(CPACK_DEBIAN_PACKAGE_SHLIBDEPS ON)
 include(CPack)
 
-set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -DJUCI_VERSION=\\\"${JUCI_VERSION}\\\" -std=c++1y -pthread -Wall -Wextra -Wno-unused-parameter -Wno-reorder")
+set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -DJUCI_VERSION=\\\"${JUCI_VERSION}\\\" -std=c++1y -pthread -Wall -Wextra -Wno-unused-parameter")
 if(CMAKE_BUILD_TYPE STREQUAL "")
   set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -O3")
 endif()
 
+# temporarily disable these warnings: Only <gtksourceview/gtksource.h> can be included directly.
+if("${CMAKE_CXX_COMPILER_ID}" STREQUAL "GNU")
+  set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -Wno-cpp")
+elseif(CMAKE_CXX_COMPILER_ID MATCHES "Clang")
+  set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -Wno-#warnings")
+endif()
+
 if(APPLE)
-  set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -undefined dynamic_lookup") #TODO: fix this
+  set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -undefined dynamic_lookup -Wno-unused-command-line-argument") #TODO: fix this
   link_directories(/usr/local/lib /usr/local/opt/gettext/lib)
   include_directories(/usr/local/opt/gettext/include)
   set(CMAKE_MACOSX_RPATH 1)
