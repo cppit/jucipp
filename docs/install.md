@@ -4,8 +4,8 @@
   - Linux
     - [Debian/Linux Mint/Ubuntu](#debianlinux-mintubuntu)
     - [Arch Linux/Manjaro Linux](#arch-linuxmanjaro-linux)
-    - [Fedora 23](#fedora-23)
-    - [Mageia 5](#mageia-5)
+    - [Fedora](#fedora)
+    - [Mageia](#mageia)
     - [OpenSUSE Tumbleweed](#opensuse-tumbleweed)
   - [FreeBSD](#freebsd)
   - MacOS
@@ -56,7 +56,7 @@ make
 sudo make install
 ```
 
-## Fedora 23
+## Fedora
 Install dependencies:
 ```sh
 sudo dnf install git cmake make gcc-c++ clang-devel clang lldb-devel boost-devel gtksourceviewmm3-devel gtkmm30-devel aspell-devel aspell-en libgit2-devel ctags
@@ -72,8 +72,8 @@ make
 sudo make install
 ```
 
-## Mageia 5
-**Mageia doesn't support LLDB, but you can compile without debug support.**
+## Mageia
+**Mageia might not yet support LLDB, but you can compile without debug support.**
 
 Install dependencies:
 
