@@ -872,7 +872,7 @@ Source::ClangViewRefactor::ClangViewRefactor(const boost::filesystem::path &file
           
           std::vector<std::pair<clangmm::Offset, clangmm::Offset> > offsets;
           for(auto &identifier: identifiers) {
-            auto token_offsets=clang_view->clang_tokens->get_similar_token_offsets(identifier.spelling, identifier.usr_extended);
+            auto token_offsets=clang_view->clang_tokens->get_similar_token_offsets(identifier.kind, identifier.spelling, identifier.cursor.get_all_usr_extended());
             for(auto &token_offset: token_offsets)
               offsets.emplace_back(token_offset);
           }
@@ -1171,7 +1171,7 @@ Source::ClangViewRefactor::ClangViewRefactor(const boost::filesystem::path &file
       }
       for(auto &view: views_reordered) {
         if(auto clang_view=dynamic_cast<Source::ClangView*>(view)) {
-          auto offsets=clang_view->clang_tokens->get_similar_token_offsets(identifier.spelling, identifier.usr_extended);
+          auto offsets=clang_view->clang_tokens->get_similar_token_offsets(identifier.kind, identifier.spelling, identifier.cursor.get_all_usr_extended());
           for(auto &offset: offsets) {
             size_t whitespaces_removed=0;
             auto start_iter=clang_view->get_buffer()->get_iter_at_line(offset.first.line-1);
@@ -1571,7 +1571,7 @@ void Source::ClangViewRefactor::tag_similar_identifiers(const Identifier &identi
         get_buffer()->delete_mark(mark.second);
       }
       similar_identifiers_marks.clear();
-      auto offsets=clang_tokens->get_similar_token_offsets(identifier.spelling, identifier.usr_extended);
+      auto offsets=clang_tokens->get_similar_token_offsets(identifier.kind, identifier.spelling, identifier.cursor.get_all_usr_extended());
       for(auto &offset: offsets) {
         auto start_iter=get_buffer()->get_iter_at_line_index(offset.first.line-1, offset.first.index-1);
         auto end_iter=get_buffer()->get_iter_at_line_index(offset.second.line-1, offset.second.index-1);
