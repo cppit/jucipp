@@ -1290,33 +1290,38 @@ Source::ClangViewRefactor::ClangViewRefactor(const boost::filesystem::path &file
               method.erase(pos, 1);
             method+=" ";
           }
+          method+=cursor.get_display_name();
           
-          std::string parent_str;
+          std::string prefix;
           auto parent=cursor.get_semantic_parent();
           while(parent && parent.get_kind()!=clangmm::Cursor::Kind::TranslationUnit) {
-            parent_str.insert(0, parent.get_display_name()+"::");
+            prefix.insert(0, parent.get_display_name()+(prefix.empty()?"":"::"));
             parent=parent.get_semantic_parent();
           }
           
-          method+=parent_str+cursor.get_display_name();
-          
-          std::string row=std::to_string(offset.line)+": "+Glib::Markup::escape_text(method);
+          method=Glib::Markup::escape_text(method);
           //Add bold method token
-          size_t token_end_pos=row.find('(');
-          if(token_end_pos==0 || token_end_pos==std::string::npos)
+          size_t token_end_pos=method.find('(');
+          if(token_end_pos==std::string::npos)
             continue;
-          auto pos=token_end_pos;
-          do {
-            pos--;
-          } while(row[pos]!=':' && row[pos]!=' ' && pos!=std::string::npos);
-          row.insert(token_end_pos, "</b>");
-          row.insert(pos+1, "<b>");
-          methods.emplace_back(Offset(offset.line-1, offset.index-1), row);
+          auto token_start_pos=token_end_pos;
+          while(token_start_pos!=0 && method[token_start_pos]!=' ')
+            --token_start_pos;
+          method.insert(token_end_pos, "</b>");
+          method.insert(token_start_pos, "<b>");
+          
+          if(!prefix.empty())
+            prefix+=':';
+          prefix+=std::to_string(offset.line)+": ";
+          prefix=Glib::Markup::escape_text(prefix);
+          
+          methods.emplace_back(Offset(offset.line-1, offset.index-1), prefix+method);
         }
       }
     }
     if(methods.empty())
       Info::get().print("No methods found in current buffer");
+    
     return methods;
   };
   
