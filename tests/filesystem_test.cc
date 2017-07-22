@@ -3,6 +3,11 @@
 
 int main() {
   {
+    auto home_path=filesystem::get_home_path();
+    g_assert(!home_path.empty());
+  }
+  
+  {
     auto original="test () '\"";
     auto escaped=filesystem::escape_argument(original);
     g_assert_cmpstr(escaped.c_str(), ==, "test\\ \\(\\)\\ \\'\\\"");

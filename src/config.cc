@@ -7,24 +7,10 @@
 #include <algorithm>
 
 Config::Config() {
-  std::vector<std::string> environment_variables = {"JUCI_HOME", "HOME", "AppData"};
-  char *ptr = nullptr;
-  for (auto &variable : environment_variables) {
-    ptr=std::getenv(variable.c_str());
-    if (ptr!=nullptr && boost::filesystem::exists(ptr)) {
-      home_path = ptr;
-      home_juci_path = home_path / ".juci";
-      break;
-    }
-  }
-  if(home_juci_path.empty()) {
-    std::string searched_envs = "[";
-    for(auto &variable : environment_variables)
-      searched_envs+=variable+", ";
-    searched_envs.erase(searched_envs.end()-2, searched_envs.end());
-    searched_envs+="]";
-    throw std::runtime_error("One of these environment variables needs to point to a writable directory to save configuration: " + searched_envs);
-  }
+  home_path=filesystem::get_home_path();
+  if(home_path.empty())
+    throw std::runtime_error("Could not find home path");
+  home_juci_path=home_path/".juci";
   
 #ifdef _WIN32
      auto env_MSYSTEM_PREFIX=std::getenv("MSYSTEM_PREFIX");

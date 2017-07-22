@@ -167,16 +167,8 @@ void Notebook::open(const boost::filesystem::path &file_path_, size_t notebook_i
     }
   };
   source_views.back()->update_status_file_path=[this](Source::View* view) {
-    if(get_current_view()==view) {
-      if(filesystem::file_in_path(view->file_path, Config::get().home_path)) {
-        auto relative_path=filesystem::get_relative_path(view->file_path, Config::get().home_path);
-        if(!relative_path.empty()) {
-          status_file_path.set_text((" ~"/relative_path).string());
-          return;
-        }
-      }
-      status_file_path.set_text(" "+view->file_path.string());
-    }
+    if(get_current_view()==view)
+      status_file_path.set_text(' '+filesystem::get_short_path(view->file_path).string());
   };
   source_views.back()->update_status_branch=[this](Source::DiffView* view) {
     if(get_current_view()==view) {
@@ -196,7 +188,7 @@ void Notebook::open(const boost::filesystem::path &file_path_, size_t notebook_i
       if(source_views[c]==view) {
         auto &tab_label=tab_labels.at(c);
         tab_label->label.set_text(title);
-        tab_label->set_tooltip_text(view->file_path.string());
+        tab_label->set_tooltip_text(filesystem::get_short_path(view->file_path).string());
         update_status(view);
         return;
       }

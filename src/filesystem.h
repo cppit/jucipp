@@ -28,6 +28,9 @@ public:
   static std::string escape_argument(const std::string &argument);
   static std::string unescape_argument(const std::string &argument);
   
+  static boost::filesystem::path get_home_path() noexcept;
+  static boost::filesystem::path get_short_path(const boost::filesystem::path &path) noexcept;
+  
   static bool file_in_path(const boost::filesystem::path &file_path, const boost::filesystem::path &path);
   static boost::filesystem::path find_file_in_path_parents(const std::string &file_name, const boost::filesystem::path &path);
   

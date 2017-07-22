@@ -174,6 +174,28 @@ std::string filesystem::unescape_argument(const std::string &argument) {
   return unescaped;
 }
 
+boost::filesystem::path filesystem::get_home_path() noexcept {
+  std::vector<std::string> environment_variables = {"HOME", "AppData"};
+  char *ptr = nullptr;
+  for (auto &variable : environment_variables) {
+    ptr=std::getenv(variable.c_str());
+    boost::system::error_code ec;
+    if (ptr!=nullptr && boost::filesystem::exists(ptr, ec))
+      return ptr;
+  }
+  return boost::filesystem::path();
+}
+
+boost::filesystem::path filesystem::get_short_path(const boost::filesystem::path &path) noexcept {
+  static auto home_path=get_home_path();
+  if(!home_path.empty()) {
+    auto relative_path=filesystem::get_relative_path(path, home_path);
+    if(!relative_path.empty())
+      return "~"/relative_path;
+  }
+  return path;
+}
+
 bool filesystem::file_in_path(const boost::filesystem::path &file_path, const boost::filesystem::path &path) {
   if(std::distance(file_path.begin(), file_path.end())<std::distance(path.begin(), path.end()))
     return false;

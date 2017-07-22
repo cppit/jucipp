@@ -220,12 +220,12 @@ std::pair<std::string, std::string> Project::Clang::get_run_arguments() {
   
   if(arguments.empty()) {
     auto view=Notebook::get().get_current_view();
-    auto executable=build->get_executable(view?view->file_path:Directories::get().path).string();
+    auto executable=build->get_executable(view?view->file_path:Directories::get().path);
     
     if(!executable.empty())
-      arguments=filesystem::escape_argument(executable);
+      arguments=filesystem::escape_argument(filesystem::get_short_path(executable).string());
     else
-      arguments=filesystem::escape_argument(build->get_default_path().string());
+      arguments=filesystem::escape_argument(filesystem::get_short_path(build->get_default_path()).string());
   }
   
   return {project_path, arguments};
@@ -240,7 +240,7 @@ void Project::Clang::compile() {
     Terminal::get().clear();
   
   compiling=true;
-  Terminal::get().print("Compiling project "+build->project_path.string()+"\n");
+  Terminal::get().print("Compiling project "+filesystem::get_short_path(build->project_path).string()+"\n");
   std::string compile_command;
   if(dynamic_cast<CMakeBuild*>(build.get()))
     compile_command=Config::get().project.cmake.compile_command;
@@ -265,13 +265,13 @@ void Project::Clang::compile_and_run() {
   
   if(arguments.empty()) {
     auto view=Notebook::get().get_current_view();
-    arguments=build->get_executable(view?view->file_path:Directories::get().path).string();
-    if(arguments.empty()) {
+    auto executable=build->get_executable(view?view->file_path:Directories::get().path);
+    if(executable.empty()) {
       Terminal::get().print("Warning: could not find executable.\n");
       Terminal::get().print("Solution: either use Project Set Run Arguments, or open a source file within a directory where an executable is defined.\n", true);
       return;
     }
-    arguments=filesystem::escape_argument(arguments);
+    arguments=filesystem::escape_argument(filesystem::get_short_path(executable).string());
   }
   
   if(Config::get().project.clear_terminal_on_compile)
@@ -324,7 +324,7 @@ void Project::Clang::recreate_build() {
         boost::filesystem::remove_all(debug_build_path);
     }
     catch(const std::exception &e) {
-      Terminal::get().print(std::string("Error: could remove build: ")+e.what()+"\n", true);
+      Terminal::get().print(std::string("Error: could not remove build: ")+e.what()+"\n", true);
       return;
     }
   }
@@ -368,10 +368,10 @@ std::pair<std::string, std::string> Project::Clang::debug_get_run_arguments() {
       size_t pos=executable.find(default_build_path.string());
       if(pos!=std::string::npos)
         executable.replace(pos, default_build_path.string().size(), debug_build_path.string());
-      arguments=filesystem::escape_argument(executable);
+      arguments=filesystem::escape_argument(filesystem::get_short_path(executable).string());
     }
     else
-      arguments=filesystem::escape_argument(build->get_debug_path().string());
+      arguments=filesystem::escape_argument(filesystem::get_short_path(build->get_debug_path()).string());
   }
   
   return {project_path, arguments};
@@ -407,7 +407,7 @@ void Project::Clang::debug_start() {
     size_t pos=run_arguments->find(default_build_path.string());
     if(pos!=std::string::npos)
       run_arguments->replace(pos, default_build_path.string().size(), debug_build_path.string());
-    *run_arguments=filesystem::escape_argument(*run_arguments);
+    *run_arguments=filesystem::escape_argument(filesystem::get_short_path(*run_arguments).string());
   }
   
   if(Config::get().project.clear_terminal_on_compile)
@@ -680,7 +680,7 @@ void Project::Markdown::compile_and_run() {
   std::stringstream stdin_stream, stdout_stream;
   auto exit_status=Terminal::get().process(stdin_stream, stdout_stream, "command -v grip");
   if(exit_status==0) {
-    auto command="grip -b "+filesystem::escape_argument(Notebook::get().get_current_view()->file_path.string());
+    auto command="grip -b "+filesystem::escape_argument(filesystem::get_short_path(Notebook::get().get_current_view()->file_path).string());
     Terminal::get().print("Running: "+command+" in a quiet background process\n");
     Terminal::get().async_process(command, "", nullptr, true);
   }
@@ -689,7 +689,7 @@ void Project::Markdown::compile_and_run() {
 }
 
 void Project::Python::compile_and_run() {
-  auto command="PYTHONUNBUFFERED=1 python "+filesystem::escape_argument(Notebook::get().get_current_view()->file_path.string());
+  auto command="PYTHONUNBUFFERED=1 python "+filesystem::escape_argument(filesystem::get_short_path(Notebook::get().get_current_view()->file_path).string());
   Terminal::get().print("Running "+command+"\n");
   Terminal::get().async_process(command, Notebook::get().get_current_view()->file_path.parent_path(), [command](int exit_status) {
     Terminal::get().async_print(command+" returned: "+std::to_string(exit_status)+'\n');
@@ -697,7 +697,7 @@ void Project::Python::compile_and_run() {
 }
 
 void Project::JavaScript::compile_and_run() {
-  auto command="node --harmony "+filesystem::escape_argument(Notebook::get().get_current_view()->file_path.string());
+  auto command="node --harmony "+filesystem::escape_argument(filesystem::get_short_path(Notebook::get().get_current_view()->file_path).string());
   Terminal::get().print("Running "+command+"\n");
   Terminal::get().async_process(command, Notebook::get().get_current_view()->file_path.parent_path(), [command](int exit_status) {
     Terminal::get().async_print(command+" returned: "+std::to_string(exit_status)+'\n');
