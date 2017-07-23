@@ -22,6 +22,34 @@ int main() {
     auto unescaped=filesystem::unescape_argument("\"test \\'()\\\"\"");
     g_assert_cmpstr(unescaped.c_str(), ==, "test \\'()\"");
   }
+  {
+    auto unescaped=filesystem::unescape_argument("\\\\");
+    g_assert_cmpstr(unescaped.c_str(), ==, "\\");
+  }
+  {
+    auto unescaped=filesystem::unescape_argument("\\\\\\ ");
+    g_assert_cmpstr(unescaped.c_str(), ==, "\\ ");
+  }
+  {
+    auto unescaped=filesystem::unescape_argument("\\\\\\ \\ \\ \\\\");
+    g_assert_cmpstr(unescaped.c_str(), ==, "\\   \\");
+  }
+  {
+    auto unescaped=filesystem::unescape_argument("c:\\a\\ b\\c");
+    g_assert_cmpstr(unescaped.c_str(), ==, "c:\\a b\\c");
+  }
+  {
+    auto unescaped=filesystem::unescape_argument("\"\\\\\\\"\"");
+    g_assert_cmpstr(unescaped.c_str(), ==, "\\\"");
+  }
+  {
+    auto unescaped=filesystem::unescape_argument("\"\\\"\"");
+    g_assert_cmpstr(unescaped.c_str(), ==, "\"");
+  }
+  {
+    auto unescaped=filesystem::unescape_argument("\"a\\b\"");
+    g_assert_cmpstr(unescaped.c_str(), ==, "a\\b");
+  }
   
   auto tests_path=boost::filesystem::canonical(JUCI_TESTS_PATH);
   {

@@ -412,10 +412,10 @@ bool Source::SpellCheckView::is_code_iter(const Gtk::TextIter &iter) {
 
 bool Source::SpellCheckView::is_word_iter(const Gtk::TextIter& iter) {
   auto previous_iter=iter;
-  size_t forward_slash_count=0;
+  size_t backslash_count=0;
   while(previous_iter.backward_char() && *previous_iter=='\\')
-    ++forward_slash_count;
-  if(forward_slash_count%2==1)
+    ++backslash_count;
+  if(backslash_count%2==1)
     return false;
   if(((*iter>='A' && *iter<='Z') || (*iter>='a' && *iter<='z') || *iter>=128))
     return true;

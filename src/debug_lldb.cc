@@ -53,6 +53,63 @@ Debug::LLDB::LLDB(): state(lldb::StateType::eStateInvalid), buffer_size(131072) 
 #endif
 }
 
+std::tuple<std::vector<std::string>, std::string, std::vector<std::string> > Debug::LLDB::parse_run_arguments(const std::string &command) {
+  std::vector<std::string> environment;
+  std::string executable;
+  std::vector<std::string> arguments;
+  
+  size_t start_pos=std::string::npos;
+  bool quote=false;
+  bool double_quote=false;
+  size_t backslash_count=0;
+  for(size_t c=0;c<=command.size();c++) { 
+    if(c==command.size() || (!quote && !double_quote && backslash_count%2==0 && command[c]==' ')) {
+      if(c>0 && start_pos!=std::string::npos) {
+        auto argument=command.substr(start_pos, c-start_pos);
+        if(executable.empty()) {
+          //Check for environment variable
+          bool env_arg=false;
+          for(size_t c=0;c<argument.size();++c) {
+            if((argument[c]>='a' && argument[c]<='z') || (argument[c]>='A' && argument[c]<='Z') ||
+               (argument[c]>='0' && argument[c]<='9') || argument[c]=='_')
+              continue;
+            else if(argument[c]=='=' && c+1<argument.size()) {
+              environment.emplace_back(argument.substr(0, c+1)+filesystem::unescape_argument(argument.substr(c+1)));
+              env_arg=true;
+              break;
+            }
+            else
+              break;
+          }
+          
+          if(!env_arg) {
+            executable=filesystem::unescape_argument(argument);
+#ifdef _WIN32
+            if(remote_host.empty())
+              executable+=".exe";
+#endif
+          }
+        }
+        else
+          arguments.emplace_back(filesystem::unescape_argument(argument));
+        start_pos=std::string::npos;
+      }
+    }
+    else if(command[c]=='\'' && backslash_count%2==0 && !double_quote)
+      quote=!quote;
+    else if(command[c]=='"' && backslash_count%2==0 && !quote)
+      double_quote=!double_quote;
+    else if(command[c]=='\\' && !quote && !double_quote)
+      ++backslash_count;
+    else
+      backslash_count=0;
+    if(c<command.size() && start_pos==std::string::npos && command[c]!=' ')
+      start_pos=c;
+  }
+  
+  return std::make_tuple(environment, executable, arguments);
+}
+
 void Debug::LLDB::start(const std::string &command, const boost::filesystem::path &path,
                   const std::vector<std::pair<boost::filesystem::path, int> > &breakpoints,
                   std::function<void(int exit_status)> callback,
@@ -66,42 +123,15 @@ void Debug::LLDB::start(const std::string &command, const boost::filesystem::pat
   }
   
   //Create executable string and argument array
-  std::string executable;
-  std::vector<std::string> arguments;
-  size_t start_pos=std::string::npos;
-  bool quote=false;
-  bool double_quote=false;
-  bool symbol=false;
-  for(size_t c=0;c<=command.size();c++) { 
-    if(c==command.size() || (!quote && !double_quote && !symbol && command[c]==' ')) {
-      if(c>0 && start_pos!=std::string::npos) {
-        if(executable.empty()) {
-          executable=filesystem::unescape_argument(command.substr(start_pos, c-start_pos));
-#ifdef _WIN32
-          if(remote_host.empty())
-            executable+=".exe";
-#endif
-        }
-        else
-          arguments.emplace_back(filesystem::unescape_argument(command.substr(start_pos, c-start_pos)));
-        start_pos=std::string::npos;
-      }
-    }
-    else if(command[c]=='\\' && !quote && !double_quote)
-      symbol=true;
-    else if(symbol)
-      symbol=false;
-    else if(command[c]=='\'' && !double_quote)
-      quote=!quote;
-    else if(command[c]=='"' && !quote)
-      double_quote=!double_quote;
-    if(c<command.size() && start_pos==std::string::npos && command[c]!=' ')
-      start_pos=c;
-  }
-  const char *argv[arguments.size()+1];
+  auto parsed_run_arguments=parse_run_arguments(command);
+  auto &environment_from_arguments=std::get<0>(parsed_run_arguments);
+  auto &executable=std::get<1>(parsed_run_arguments);
+  auto &arguments=std::get<2>(parsed_run_arguments);
+  
+  std::vector<const char*> argv;
   for(size_t c=0;c<arguments.size();c++)
-    argv[c]=arguments[c].c_str();
-  argv[arguments.size()]=nullptr;
+    argv.emplace_back(arguments[c].c_str());
+  argv.emplace_back(nullptr);
   
   auto target=debugger->CreateTarget(executable.c_str());
   if(!target.IsValid()) {
@@ -142,14 +172,31 @@ void Debug::LLDB::start(const std::string &command, const boost::filesystem::pat
         }
       }
     }
-    const char *empty_parameter[1];
-    empty_parameter[0]=nullptr;
-    process->RemoteLaunch(argv, empty_parameter, nullptr, nullptr, nullptr, nullptr, lldb::eLaunchFlagNone, false, error);
+    
+    // Create environment array
+    std::vector<const char*> environment;
+    for(auto &e: environment_from_arguments)
+      environment.emplace_back(e.c_str());
+    environment.emplace_back(nullptr);
+    
+    process->RemoteLaunch(argv.data(), environment.data(), nullptr, nullptr, nullptr, nullptr, lldb::eLaunchFlagNone, false, error);
     if(!error.Fail())
       process->Continue();
   }
-  else
-    process = std::make_unique<lldb::SBProcess>(target.Launch(*listener, argv, const_cast<const char**>(environ), nullptr, nullptr, nullptr, path.string().c_str(), lldb::eLaunchFlagNone, false, error));
+  else {
+    // Create environment array
+    std::vector<const char*> environment;
+    for(auto &e: environment_from_arguments)
+      environment.emplace_back(e.c_str());
+    size_t environ_size=0;
+    while(environ[environ_size]!=nullptr)
+      ++environ_size;
+    for(size_t c=0;c<environ_size;++c)
+      environment.emplace_back(environ[c]);
+    environment.emplace_back(nullptr);
+    
+    process = std::make_unique<lldb::SBProcess>(target.Launch(*listener, argv.data(), environment.data(), nullptr, nullptr, nullptr, path.string().c_str(), lldb::eLaunchFlagNone, false, error));
+  }
   if(error.Fail()) {
     Terminal::get().async_print(std::string("Error (debug): ")+error.GetCString()+'\n', true);
     if(callback)

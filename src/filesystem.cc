@@ -155,21 +155,33 @@ std::string filesystem::unescape_argument(const std::string &argument) {
        (unescaped[0]=='"' && unescaped[unescaped.size()-1]=='"')) {
       char quotation_mark=unescaped[0];
       unescaped=unescaped.substr(1, unescaped.size()-2);
-      for(size_t pos=1;pos<unescaped.size();++pos) {
-        if(unescaped[pos-1]=='\\' && unescaped[pos]==quotation_mark) {
+      size_t backslash_count=0;
+      for(size_t pos=0;pos<unescaped.size();++pos) {
+        if(backslash_count%2==1 && (unescaped[pos]=='\\' || unescaped[pos]==quotation_mark)) {
           unescaped.erase(pos-1, 1);
           --pos;
+          backslash_count=0;
         }
+        else if(unescaped[pos]=='\\')
+          ++backslash_count;
+        else
+          backslash_count=0;
       }
       return unescaped;
     }
   }
   
-  for(size_t pos=1;pos<unescaped.size();++pos) {
-    if(unescaped[pos-1]=='\\' && (unescaped[pos]==' ' || unescaped[pos]=='(' || unescaped[pos]==')' || unescaped[pos]=='\'' || unescaped[pos]=='"')) {
+  size_t backslash_count=0;
+  for(size_t pos=0;pos<unescaped.size();++pos) {
+    if(backslash_count%2==1 && (unescaped[pos]=='\\' || unescaped[pos]==' ' || unescaped[pos]=='(' || unescaped[pos]==')' || unescaped[pos]=='\'' || unescaped[pos]=='"')) {
       unescaped.erase(pos-1, 1);
       --pos;
+      backslash_count=0;
     }
+    else if(unescaped[pos]=='\\')
+      ++backslash_count;
+    else
+      backslash_count=0;
   }
   return unescaped;
 }

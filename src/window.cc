@@ -1037,7 +1037,7 @@ void Window::set_menu_actions() {
     EntryBox::get().labels.emplace_back();
     auto label_it=EntryBox::get().labels.begin();
     label_it->update=[label_it](int state, const std::string& message){
-      label_it->set_text("Set empty to let juCi++ deduce executable");
+      label_it->set_text("Synopsis: [environment_variable=value]... executable [argument]...\nSet empty to let juCi++ deduce executable.");
     };
     label_it->update(0, "");
     EntryBox::get().entries.emplace_back(run_arguments->second, [this, run_arguments](const std::string& content){
@@ -1134,7 +1134,7 @@ void Window::set_menu_actions() {
     EntryBox::get().labels.emplace_back();
     auto label_it=EntryBox::get().labels.begin();
     label_it->update=[label_it](int state, const std::string& message){
-      label_it->set_text("Set empty to let juCi++ deduce executable");
+      label_it->set_text("Synopsis: [environment_variable=value]... executable [argument]...\nSet empty to let juCi++ deduce executable.");
     };
     label_it->update(0, "");
     EntryBox::get().entries.emplace_back(run_arguments->second, [this, run_arguments](const std::string& content){

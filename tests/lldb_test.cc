@@ -13,6 +13,67 @@ int main() {
   auto source_path=tests_path/"lldb_test_files"/"main.cpp";
   g_assert(boost::filesystem::exists(source_path));
   
+  {
+    auto parsed_run_arguments=Debug::LLDB::get().parse_run_arguments("\"~/test/te st\"");
+    assert(std::get<0>(parsed_run_arguments).size()==0);
+    
+    assert(std::get<1>(parsed_run_arguments)=="~/test/te st");
+    
+    assert(std::get<2>(parsed_run_arguments).size()==0);
+  }
+  {
+    auto parsed_run_arguments=Debug::LLDB::get().parse_run_arguments("~/test/te\\ st");
+    assert(std::get<0>(parsed_run_arguments).size()==0);
+    
+    assert(std::get<1>(parsed_run_arguments)=="~/test/te st");
+    
+    assert(std::get<2>(parsed_run_arguments).size()==0);
+  }
+  {
+    auto parsed_run_arguments=Debug::LLDB::get().parse_run_arguments("~/test/te\\ st Arg1\\\\ arg2");
+    assert(std::get<0>(parsed_run_arguments).size()==0);
+    
+    assert(std::get<1>(parsed_run_arguments)=="~/test/te st");
+    
+    assert(std::get<2>(parsed_run_arguments).size()==2);
+    assert(std::get<2>(parsed_run_arguments)[0]=="Arg1\\");
+    assert(std::get<2>(parsed_run_arguments)[1]=="arg2");
+  }
+  {
+    auto parsed_run_arguments=Debug::LLDB::get().parse_run_arguments("~/test/te\\ st Arg1\\\\\\ arg1");
+    assert(std::get<0>(parsed_run_arguments).size()==0);
+    
+    assert(std::get<1>(parsed_run_arguments)=="~/test/te st");
+    
+    assert(std::get<2>(parsed_run_arguments).size()==1);
+    assert(std::get<2>(parsed_run_arguments)[0]=="Arg1\\ arg1");
+  }
+  {
+    auto parsed_run_arguments=Debug::LLDB::get().parse_run_arguments("\"~/test/te st\" Arg1 \"Ar g2\" Ar\\ g3");
+    assert(std::get<0>(parsed_run_arguments).size()==0);
+    
+    assert(std::get<1>(parsed_run_arguments)=="~/test/te st");
+    
+    assert(std::get<2>(parsed_run_arguments).size()==3);
+    assert(std::get<2>(parsed_run_arguments)[0]=="Arg1");
+    assert(std::get<2>(parsed_run_arguments)[1]=="Ar g2");
+    assert(std::get<2>(parsed_run_arguments)[2]=="Ar g3");
+  }
+  {
+    auto parsed_run_arguments=Debug::LLDB::get().parse_run_arguments("ENV1=Test ENV2=Te\\ st ENV3=\"te ts\" ~/test/te\\ st Arg1 \"Ar g2\" Ar\\ g3");
+    assert(std::get<0>(parsed_run_arguments).size()==3);
+    assert(std::get<0>(parsed_run_arguments)[0]=="ENV1=Test");
+    assert(std::get<0>(parsed_run_arguments)[1]=="ENV2=Te st");
+    assert(std::get<0>(parsed_run_arguments)[2]=="ENV3=te ts");
+    
+    assert(std::get<1>(parsed_run_arguments)=="~/test/te st");
+    
+    assert(std::get<2>(parsed_run_arguments).size()==3);
+    assert(std::get<2>(parsed_run_arguments)[0]=="Arg1");
+    assert(std::get<2>(parsed_run_arguments)[1]=="Ar g2");
+    assert(std::get<2>(parsed_run_arguments)[2]=="Ar g3");
+  }
+  
   std::vector<std::pair<boost::filesystem::path, int> > breakpoints;
   breakpoints.emplace_back(source_path, 2);
   

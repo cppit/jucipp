@@ -8,6 +8,7 @@
 #include <lldb/API/SBProcess.h>
 #include <thread>
 #include <mutex>
+#include <tuple>
 
 namespace Debug {
   class LLDB {
@@ -72,6 +73,8 @@ namespace Debug {
     void write(const std::string &buffer);
     
   private:
+    std::tuple<std::vector<std::string>, std::string, std::vector<std::string>> parse_run_arguments(const std::string &command);
+    
     std::unique_ptr<lldb::SBDebugger> debugger;
     std::unique_ptr<lldb::SBListener> listener;
     std::unique_ptr<lldb::SBProcess> process;
