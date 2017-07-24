@@ -18,14 +18,138 @@ int main() {
   event.state = 0;
 
   {
-    Source::View view(source_file, language_manager->get_language("cpp"));
+    auto language = language_manager->get_language("cpp");
+    Source::View view(source_file, language);
+    view.get_source_buffer()->set_highlight_syntax(true);
+    view.get_source_buffer()->set_language(language);
     view.set_tab_char_and_size(' ', 2);
     event.keyval = GDK_KEY_Return;
+
+    {
+      view.get_buffer()->set_text("{");
+      view.on_key_press_event(&event);
+      g_assert(view.get_buffer()->get_text() == "{\n"
+                                                "  \n"
+                                                "}");
+      g_assert(view.get_buffer()->get_insert()->get_iter().get_line() == 1);
+      g_assert(view.get_buffer()->get_insert()->get_iter().get_line_offset() == 2);
+    }
+    {
+      view.get_buffer()->set_text("{\n"
+                                  "  \n"
+                                  "}");
+      auto iter = view.get_buffer()->begin();
+      iter.forward_char();
+      view.get_buffer()->place_cursor(iter);
+      view.on_key_press_event(&event);
+      g_assert(view.get_buffer()->get_text() == "{\n"
+                                                "  \n"
+                                                "  \n"
+                                                "}");
+      g_assert(view.get_buffer()->get_insert()->get_iter().get_line() == 1);
+      g_assert(view.get_buffer()->get_insert()->get_iter().get_line_offset() == 2);
+    }
+    {
+      view.get_buffer()->set_text("{\n"
+                                  "  \n"
+                                  "}");
+      auto iter = view.get_buffer()->get_iter_at_line(2);
+      iter.backward_char();
+      view.get_buffer()->place_cursor(iter);
+      view.on_key_press_event(&event);
+      g_assert(view.get_buffer()->get_text() == "{\n"
+                                                "  \n"
+                                                "  \n"
+                                                "}");
+      g_assert(view.get_buffer()->get_insert()->get_iter().get_line() == 2);
+      g_assert(view.get_buffer()->get_insert()->get_iter().get_line_offset() == 2);
+    }
+    {
+      view.get_buffer()->set_text("{\n"
+                                  "  {\n"
+                                  "}");
+      auto iter = view.get_buffer()->get_iter_at_line(2);
+      iter.backward_char();
+      view.get_buffer()->place_cursor(iter);
+      view.on_key_press_event(&event);
+      g_assert(view.get_buffer()->get_text() == "{\n"
+                                                "  {\n"
+                                                "    \n"
+                                                "  }\n"
+                                                "}");
+      g_assert(view.get_buffer()->get_insert()->get_iter().get_line() == 2);
+      g_assert(view.get_buffer()->get_insert()->get_iter().get_line_offset() == 4);
+    }
+    {
+      view.get_buffer()->set_text("{\n"
+                                  "  {\n"
+                                  "    \n"
+                                  "  }\n"
+                                  "}");
+      auto iter = view.get_buffer()->get_iter_at_line(2);
+      iter.backward_char();
+      view.get_buffer()->place_cursor(iter);
+      view.on_key_press_event(&event);
+      g_assert(view.get_buffer()->get_text() == "{\n"
+                                                "  {\n"
+                                                "    \n"
+                                                "    \n"
+                                                "  }\n"
+                                                "}");
+      g_assert(view.get_buffer()->get_insert()->get_iter().get_line() == 2);
+      g_assert(view.get_buffer()->get_insert()->get_iter().get_line_offset() == 4);
+    }
+    {
+      view.get_buffer()->set_text("{\n"
+                                  "{\n"
+                                  "}");
+      auto iter = view.get_buffer()->get_iter_at_line(1);
+      iter.forward_char();
+      view.get_buffer()->place_cursor(iter);
+      view.on_key_press_event(&event);
+      g_assert(view.get_buffer()->get_text() == "{\n"
+                                                "{\n"
+                                                "  \n"
+                                                "}\n"
+                                                "}");
+      g_assert(view.get_buffer()->get_insert()->get_iter().get_line() == 2);
+      g_assert(view.get_buffer()->get_insert()->get_iter().get_line_offset() == 2);
+    }
+    {
+      view.get_buffer()->set_text("{\n"
+                                  "{\n"
+                                  "  \n"
+                                  "}\n"
+                                  "}");
+      auto iter = view.get_buffer()->get_iter_at_line(1);
+      iter.forward_char();
+      view.get_buffer()->place_cursor(iter);
+      view.on_key_press_event(&event);
+      g_assert(view.get_buffer()->get_text() == "{\n"
+                                                "{\n"
+                                                "  \n"
+                                                "  \n"
+                                                "}\n"
+                                                "}");
+      g_assert(view.get_buffer()->get_insert()->get_iter().get_line() == 2);
+      g_assert(view.get_buffer()->get_insert()->get_iter().get_line_offset() == 2);
+    }
 
     {
       view.get_buffer()->set_text("  int main() {");
       view.on_key_press_event(&event);
       g_assert(view.get_buffer()->get_text() == "  int main() {\n"
+                                                "    \n"
+                                                "  }");
+      g_assert(view.get_buffer()->get_insert()->get_iter().get_line() == 1);
+      g_assert(view.get_buffer()->get_insert()->get_iter().get_line_offset() == 4);
+    }
+    {
+      view.get_buffer()->set_text("  int main() {//comment");
+      while(Gtk::Main::events_pending())
+        Gtk::Main::iteration(false);
+      view.on_key_press_event(&event);
+      g_assert(view.get_buffer()->get_text() == "  int main() {//comment\n"
                                                 "    \n"
                                                 "  }");
       g_assert(view.get_buffer()->get_insert()->get_iter().get_line() == 1);
@@ -48,6 +172,21 @@ int main() {
       view.get_buffer()->place_cursor(iter);
       view.on_key_press_event(&event);
       g_assert(view.get_buffer()->get_text() == "  int main() {\n"
+                                                "    \n"
+                                                "  }");
+      g_assert(view.get_buffer()->get_insert()->get_iter().get_line() == 1);
+      g_assert(view.get_buffer()->get_insert()->get_iter().get_line_offset() == 4);
+    }
+    {
+      view.get_buffer()->set_text("  int main() {//comment\n"
+                                  "  }");
+      auto iter = view.get_buffer()->get_insert()->get_iter();
+      iter.backward_chars(4);
+      view.get_buffer()->place_cursor(iter);
+      while(Gtk::Main::events_pending())
+        Gtk::Main::iteration(false);
+      view.on_key_press_event(&event);
+      g_assert(view.get_buffer()->get_text() == "  int main() {//comment\n"
                                                 "    \n"
                                                 "  }");
       g_assert(view.get_buffer()->get_insert()->get_iter().get_line() == 1);
@@ -105,6 +244,129 @@ int main() {
       g_assert(view.get_buffer()->get_insert()->get_iter().get_line() == 2);
       g_assert(view.get_buffer()->get_insert()->get_iter().get_line_offset() == 4);
     }
+    {
+      view.get_buffer()->set_text("  int main()\n"
+                                  "  {/*comment*/}");
+      auto iter = view.get_buffer()->get_insert()->get_iter();
+      iter.backward_chars(1);
+      view.get_buffer()->place_cursor(iter);
+      while(Gtk::Main::events_pending())
+        Gtk::Main::iteration(false);
+      view.on_key_press_event(&event);
+      g_assert(view.get_buffer()->get_text() == "  int main()\n"
+                                                "  {/*comment*/\n"
+                                                "    \n"
+                                                "  }");
+      g_assert(view.get_buffer()->get_insert()->get_iter().get_line() == 2);
+      g_assert(view.get_buffer()->get_insert()->get_iter().get_line_offset() == 4);
+    }
+
+    {
+      view.get_buffer()->set_text("  else");
+      view.on_key_press_event(&event);
+      g_assert(view.get_buffer()->get_text() == "  else\n"
+                                                "    ");
+      g_assert(view.get_buffer()->get_insert()->get_iter() == view.get_buffer()->end());
+    }
+    {
+      view.get_buffer()->set_text("  else // comment");
+      while(Gtk::Main::events_pending())
+        Gtk::Main::iteration(false);
+      view.on_key_press_event(&event);
+      g_assert(view.get_buffer()->get_text() == "  else // comment\n"
+                                                "    ");
+      g_assert(view.get_buffer()->get_insert()->get_iter() == view.get_buffer()->end());
+    }
+    {
+      view.get_buffer()->set_text("  else;");
+      view.on_key_press_event(&event);
+      g_assert(view.get_buffer()->get_text() == "  else;\n"
+                                                "  ");
+      g_assert(view.get_buffer()->get_insert()->get_iter() == view.get_buffer()->end());
+    }
+    {
+      view.get_buffer()->set_text("  else;//comment");
+      while(Gtk::Main::events_pending())
+        Gtk::Main::iteration(false);
+      view.on_key_press_event(&event);
+      g_assert(view.get_buffer()->get_text() == "  else;//comment\n"
+                                                "  ");
+      g_assert(view.get_buffer()->get_insert()->get_iter() == view.get_buffer()->end());
+    }
+    {
+      view.get_buffer()->set_text("  else {}");
+      view.on_key_press_event(&event);
+      g_assert(view.get_buffer()->get_text() == "  else {}\n"
+                                                "  ");
+      g_assert(view.get_buffer()->get_insert()->get_iter() == view.get_buffer()->end());
+    }
+    {
+      view.get_buffer()->set_text("  else {}//comment");
+      while(Gtk::Main::events_pending())
+        Gtk::Main::iteration(false);
+      view.on_key_press_event(&event);
+      g_assert(view.get_buffer()->get_text() == "  else {}//comment\n"
+                                                "  ");
+      g_assert(view.get_buffer()->get_insert()->get_iter() == view.get_buffer()->end());
+    }
+
+    {
+      view.get_buffer()->set_text("  } else if(true)");
+      view.on_key_press_event(&event);
+      g_assert(view.get_buffer()->get_text() == "  } else if(true)\n"
+                                                "    ");
+      g_assert(view.get_buffer()->get_insert()->get_iter() == view.get_buffer()->end());
+    }
+    {
+      view.get_buffer()->set_text("  } else if(true)//comment");
+      while(Gtk::Main::events_pending())
+        Gtk::Main::iteration(false);
+      view.on_key_press_event(&event);
+      g_assert(view.get_buffer()->get_text() == "  } else if(true)//comment\n"
+                                                "    ");
+      g_assert(view.get_buffer()->get_insert()->get_iter() == view.get_buffer()->end());
+    }
+    {
+      view.get_buffer()->set_text("  } else if(true)\n"
+                                  "    ;");
+      view.on_key_press_event(&event);
+      g_assert(view.get_buffer()->get_text() == "  } else if(true)\n"
+                                                "    ;\n"
+                                                "  ");
+      g_assert(view.get_buffer()->get_insert()->get_iter() == view.get_buffer()->end());
+    }
+    {
+      view.get_buffer()->set_text("  } else if(true)//comment\n"
+                                  "    ;//comment");
+      while(Gtk::Main::events_pending())
+        Gtk::Main::iteration(false);
+      view.on_key_press_event(&event);
+      g_assert(view.get_buffer()->get_text() == "  } else if(true)//comment\n"
+                                                "    ;//comment\n"
+                                                "  ");
+      g_assert(view.get_buffer()->get_insert()->get_iter() == view.get_buffer()->end());
+    }
+
+    {
+      view.get_buffer()->set_text("  if(true) {\n"
+                                  "    ;");
+      view.on_key_press_event(&event);
+      g_assert(view.get_buffer()->get_text() == "  if(true) {\n"
+                                                "    ;\n"
+                                                "    ");
+      g_assert(view.get_buffer()->get_insert()->get_iter() == view.get_buffer()->end());
+    }
+    {
+      view.get_buffer()->set_text("  if(true) { /*comment*/\n"
+                                  "    ;");
+      while(Gtk::Main::events_pending())
+        Gtk::Main::iteration(false);
+      view.on_key_press_event(&event);
+      g_assert(view.get_buffer()->get_text() == "  if(true) { /*comment*/\n"
+                                                "    ;\n"
+                                                "    ");
+      g_assert(view.get_buffer()->get_insert()->get_iter() == view.get_buffer()->end());
+    }
 
     {
       view.get_buffer()->set_text("  if(true &&\n"
@@ -132,6 +394,19 @@ int main() {
       g_assert(view.get_buffer()->get_text() == "  if(true &&\n"
                                                 "     false)\n"
                                                 "    ;\n"
+                                                "  ");
+      g_assert(view.get_buffer()->get_insert()->get_iter() == view.get_buffer()->end());
+    }
+    {
+      view.get_buffer()->set_text("  if(true &&\n"
+                                  "     false)//comment\n"
+                                  "    ;//comment");
+      while(Gtk::Main::events_pending())
+        Gtk::Main::iteration(false);
+      view.on_key_press_event(&event);
+      g_assert(view.get_buffer()->get_text() == "  if(true &&\n"
+                                                "     false)//comment\n"
+                                                "    ;//comment\n"
                                                 "  ");
       g_assert(view.get_buffer()->get_insert()->get_iter() == view.get_buffer()->end());
     }
@@ -378,6 +653,17 @@ int main() {
       g_assert(view.get_buffer()->get_insert()->get_iter().get_line() == 1);
       g_assert(view.get_buffer()->get_insert()->get_iter().get_line_offset() == 4);
     }
+    {
+      view.get_buffer()->set_text("  auto func=[] {//comment");
+      while(Gtk::Main::events_pending())
+        Gtk::Main::iteration(false);
+      view.on_key_press_event(&event);
+      g_assert(view.get_buffer()->get_text() == "  auto func=[] {//comment\n"
+                                                "    \n"
+                                                "  };");
+      g_assert(view.get_buffer()->get_insert()->get_iter().get_line() == 1);
+      g_assert(view.get_buffer()->get_insert()->get_iter().get_line_offset() == 4);
+    }
 
     {
       view.get_buffer()->set_text("  void Class::Class()\n"
@@ -433,6 +719,17 @@ int main() {
     }
     {
       view.get_buffer()->set_text("  class Class : BaseClass {\n"
+                                  "    public://comment");
+      while(Gtk::Main::events_pending())
+        Gtk::Main::iteration(false);
+      view.on_key_press_event(&event);
+      g_assert(view.get_buffer()->get_text() == "  class Class : BaseClass {\n"
+                                                "  public://comment\n"
+                                                "    ");
+      g_assert(view.get_buffer()->get_insert()->get_iter() == view.get_buffer()->end());
+    }
+    {
+      view.get_buffer()->set_text("  class Class : BaseClass {\n"
                                   "    int a;\n"
                                   "  public:");
       view.on_key_press_event(&event);
@@ -454,6 +751,47 @@ int main() {
       g_assert(view.get_buffer()->get_insert()->get_iter() == view.get_buffer()->end());
     }
 
+    {
+      view.get_buffer()->set_text("  /*");
+      while(Gtk::Main::events_pending())
+        Gtk::Main::iteration(false);
+      view.on_key_press_event(&event);
+      g_assert(view.get_buffer()->get_text() == "  /*\n"
+                                                "   * ");
+      g_assert(view.get_buffer()->get_insert()->get_iter() == view.get_buffer()->end());
+    }
+    {
+      view.get_buffer()->set_text("  /*\n"
+                                  "   */");
+      while(Gtk::Main::events_pending())
+        Gtk::Main::iteration(false);
+      view.on_key_press_event(&event);
+      g_assert(view.get_buffer()->get_text() == "  /*\n"
+                                                "   */\n"
+                                                "  ");
+      g_assert(view.get_buffer()->get_insert()->get_iter() == view.get_buffer()->end());
+    }
+    {
+      view.get_buffer()->set_text("   //comment");
+      while(Gtk::Main::events_pending())
+        Gtk::Main::iteration(false);
+      view.on_key_press_event(&event);
+      g_assert(view.get_buffer()->get_text() == "   //comment\n"
+                                                "   ");
+      g_assert(view.get_buffer()->get_insert()->get_iter() == view.get_buffer()->end());
+    }
+    {
+      view.get_buffer()->set_text("   //comment\n"
+                                  "   //comment");
+      while(Gtk::Main::events_pending())
+        Gtk::Main::iteration(false);
+      view.on_key_press_event(&event);
+      g_assert(view.get_buffer()->get_text() == "   //comment\n"
+                                                "   //comment\n"
+                                                "   ");
+      g_assert(view.get_buffer()->get_insert()->get_iter() == view.get_buffer()->end());
+    }
+
 
     event.keyval = GDK_KEY_braceleft;
     {
@@ -465,10 +803,20 @@ int main() {
       g_assert(view.get_buffer()->get_insert()->get_iter() == view.get_buffer()->end());
     }
     {
-      view.get_buffer()->set_text("  if(true)\n"
+      view.get_buffer()->set_text("  else if(true)\n"
                                   "    ");
       view.on_key_press_event(&event);
-      g_assert(view.get_buffer()->get_text() == "  if(true)\n"
+      g_assert(view.get_buffer()->get_text() == "  else if(true)\n"
+                                                "  {");
+      g_assert(view.get_buffer()->get_insert()->get_iter() == view.get_buffer()->end());
+    }
+    {
+      view.get_buffer()->set_text("  else if(true)//comment\n"
+                                  "    ");
+      while(Gtk::Main::events_pending())
+        Gtk::Main::iteration(false);
+      view.on_key_press_event(&event);
+      g_assert(view.get_buffer()->get_text() == "  else if(true)//comment\n"
                                                 "  {");
       g_assert(view.get_buffer()->get_insert()->get_iter() == view.get_buffer()->end());
     }
@@ -488,6 +836,16 @@ int main() {
                                   "    ");
       view.on_key_press_event(&event);
       g_assert(view.get_buffer()->get_text() == "  int main() {\n"
+                                                "  }");
+      g_assert(view.get_buffer()->get_insert()->get_iter() == view.get_buffer()->end());
+    }
+    {
+      view.get_buffer()->set_text("  int main() {//comment\n"
+                                  "    ");
+      while(Gtk::Main::events_pending())
+        Gtk::Main::iteration(false);
+      view.on_key_press_event(&event);
+      g_assert(view.get_buffer()->get_text() == "  int main() {//comment\n"
                                                 "  }");
       g_assert(view.get_buffer()->get_insert()->get_iter() == view.get_buffer()->end());
     }

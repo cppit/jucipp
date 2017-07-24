@@ -8,7 +8,6 @@
 #include <string>
 #include <unordered_map>
 #include <vector>
-#include <regex>
 #include <tuple>
 
 namespace Source {
@@ -140,10 +139,6 @@ namespace Source {
     std::string get_token(Gtk::TextIter iter);
     
     void cleanup_whitespace_characters_on_return(const Gtk::TextIter &iter);
-    
-    const static std::regex bracket_regex;
-    const static std::regex no_bracket_statement_regex;
-    const static std::regex no_bracket_no_para_statement_regex;
     
     bool is_bracket_language=false;
     bool on_key_press_event(GdkEventKey* key) override;
