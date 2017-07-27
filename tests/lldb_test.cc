@@ -29,7 +29,6 @@ int main() {
       line_nr=line_nr_;
     });
   });
-  debug_thread.detach();
   
   for(;;) {
     if(exited) {
@@ -68,4 +67,6 @@ int main() {
   }
   
   Debug::LLDB::get().cancel();
+  
+  debug_thread.join();
 }
