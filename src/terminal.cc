@@ -43,8 +43,6 @@ void Terminal::InProgress::cancel(const std::string& msg) {
     Terminal::get().async_print(line_nr-1, msg);
 }
 
-const std::regex Terminal::link_regex("^([A-Z]:)?([^:]+):([0-9]+):([0-9]+)$");
-
 Terminal::Terminal() {
   bold_tag=get_buffer()->create_tag();
   bold_tag->property_weight()=PANGO_WEIGHT_BOLD;
@@ -177,39 +175,70 @@ bool Terminal::on_motion_notify_event(GdkEventMotion *motion_event) {
   return Gtk::TextView::on_motion_notify_event(motion_event);
 }
 
+std::tuple<size_t, size_t, std::string, std::string, std::string> Terminal::find_link(const std::string &line) {
+  const static std::regex link_regex("^([A-Z]:)?([^:]+):([0-9]+):([0-9]+): .*$|" //compile warning/error
+                                     "^Assertion failed: .*file ([A-Z]:)?([^:]+), line ([0-9]+)\\.$|" //clang assert()
+                                     "^[^:]*: ([A-Z]:)?([^:]+):([0-9]+): .* Assertion .* failed\\.$|" //gcc assert()
+                                     "^ERROR:([A-Z]:)?([^:]+):([0-9]+):.*$"); //g_assert (glib.h)
+  size_t start_position=-1, end_position=-1;
+  std::string path, line_number, line_offset;
+  std::smatch sm;
+  if(std::regex_match(line, sm, link_regex)) {
+    for(size_t sub=1;sub<link_regex.mark_count();) {
+      size_t subs=sub==1?4:3;
+      if(sm.length(sub+1)) {
+        start_position=sm.position(sub+1)-sm.length(sub);
+        end_position=sm.position(sub+subs-1)+sm.length(sub+subs-1);
+        if(sm.length(sub))
+          path+=sm[sub].str();
+        path+=sm[sub+1].str();
+        line_number=sm[sub+2].str();
+        line_offset=subs==4?sm[sub+3].str():"1";
+        break;
+      }
+      sub+=subs;
+    }
+  }
+  return std::make_tuple(start_position, end_position, path, line_number, line_offset);
+}
+
 void Terminal::apply_link_tags(Gtk::TextIter start_iter, Gtk::TextIter end_iter) {
   auto iter=start_iter;
-  int offset=0;
-  size_t colons=0;
-  Gtk::TextIter start_path_iter;
-  bool possible_path=false;
-  //Search for path with line and index
-  //Simple implementation. Not sure if it is work the effort to make it work 100% on all platforms.
+  Gtk::TextIter line_start;
+  bool line_start_set=false;
+  bool delimiter_found=false;
+  bool dot_found=false;
+  bool number_found=false;
   do {
     if(iter.starts_line()) {
-      offset=0;
-      colons=0;
-      start_path_iter=iter;
-      possible_path=true;
+      line_start=iter;
+      line_start_set=true;
+      delimiter_found=false;
+      dot_found=false;
+      number_found=false;
     }
-    if(possible_path) {
-      if(*iter==' ' || *iter=='\t' || iter.ends_line())
-        possible_path=false;
-      else {
-        ++offset;
-        if(*iter==':') {
-#ifdef _WIN32
-          if(offset!=2)
-#endif
-            ++colons;
-          if(colons==3 && possible_path) {
-            std::smatch sm;
-            if(std::regex_match(get_buffer()->get_text(start_path_iter, iter).raw(), sm, link_regex))
-              get_buffer()->apply_tag(link_tag, start_path_iter, iter);
-            possible_path=false;
-          }
-        }
+    if(line_start_set && (*iter=='\\' || *iter=='/'))
+      delimiter_found=true;
+    else if(line_start_set && *iter=='.')
+      dot_found=true;
+    else if(line_start_set && (*iter>='0' && *iter<='9'))
+      number_found=true;
+    else if(line_start_set && delimiter_found && dot_found && number_found && iter.ends_line()) {
+      auto line=get_buffer()->get_text(line_start, iter);
+      //Convert to ascii for std::regex and Gtk::Iter::forward_chars
+      for(size_t c=0;c<line.size();++c) {
+        if(line[c]>127)
+          line.replace(c, 1, "a");
       }
+      auto link=find_link(line.raw());
+      if(std::get<0>(link)!=static_cast<size_t>(-1)) {
+        auto link_start=line_start;
+        auto link_end=line_start;
+        link_start.forward_chars(std::get<0>(link));
+        link_end.forward_chars(std::get<1>(link));
+        get_buffer()->apply_tag(link_tag, link_start, link_end);
+      }
+      line_start_set=false;
     }
   } while(iter.forward_char() && iter!=end_iter);
 }
@@ -348,14 +377,16 @@ bool Terminal::on_button_press_event(GdkEventButton* button_event) {
     int location_x, location_y;
     window_to_buffer_coords(Gtk::TextWindowType::TEXT_WINDOW_TEXT, button_event->x, button_event->y, location_x, location_y);
     get_iter_at_location(iter, location_x, location_y);
-    auto start_iter=iter;
-    auto end_iter=iter;
-    if(iter.has_tag(link_tag) &&
-       start_iter.backward_to_tag_toggle(link_tag) && end_iter.forward_to_tag_toggle(link_tag)) {
-      std::string path_str=get_buffer()->get_text(start_iter, end_iter);
-      std::smatch sm;
-      if(std::regex_match(path_str, sm, link_regex)) {
-        auto path=boost::filesystem::path(sm[1].str()+sm[2].str());
+    if(iter.has_tag(link_tag)) {
+      auto start_iter=get_buffer()->get_iter_at_line(iter.get_line());
+      auto end_iter=start_iter;
+      while(!end_iter.ends_line() && end_iter.forward_char()) {}
+      auto link=find_link(get_buffer()->get_text(start_iter, end_iter).raw());
+      if(std::get<0>(link)!=static_cast<size_t>(-1)) {
+        boost::filesystem::path path=std::get<2>(link);
+        std::string line=std::get<3>(link);
+        std::string index=std::get<4>(link);
+        
         if(path.is_relative()) {
           if(Project::current) {
             auto absolute_path=Project::current->build->get_default_path()/path;
@@ -371,13 +402,13 @@ bool Terminal::on_button_press_event(GdkEventButton* button_event) {
           Notebook::get().open(path);
           if(auto view=Notebook::get().get_current_view()) {
             try {
-              int line = std::stoi(sm[3].str())-1;
-              int index = std::stoi(sm[4].str())-1;
-              view->place_cursor_at_line_index(line, index);
+              int line_int = std::stoi(line)-1;
+              int index_int = std::stoi(index)-1;
+              view->place_cursor_at_line_index(line_int, index_int);
               view->scroll_to_cursor_delayed(view, true, true);
               return true;
             }
-            catch(const std::exception &) {}
+            catch(...) {}
           }
         }
       }

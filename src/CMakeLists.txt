@@ -13,7 +13,6 @@ set(project_files
     notebook.cc
     project.cc
     selection_dialog.cc
-    terminal.cc
     tooltips.cc
     window.cc
 )
@@ -33,6 +32,7 @@ set(project_shared_files
     source_clang.cc
     source_diff.cc
     source_spellcheck.cc
+    terminal.cc
 
     ${PROJECT_SOURCE_DIR}/libclangmm/src/CodeCompleteResults.cc
     ${PROJECT_SOURCE_DIR}/libclangmm/src/CompilationDatabase.cc

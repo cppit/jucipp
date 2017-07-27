@@ -12,6 +12,7 @@
 #include "dispatcher.h"
 #include <unordered_set>
 #include <regex>
+#include <tuple>
 
 class Terminal : public Gtk::TextView {
 public:
@@ -64,7 +65,8 @@ private:
   Glib::RefPtr<Gdk::Cursor> link_mouse_cursor;
   Glib::RefPtr<Gdk::Cursor> default_mouse_cursor;
   size_t deleted_lines=0;
-  const static std::regex link_regex;
+  
+  std::tuple<size_t, size_t, std::string, std::string, std::string> find_link(const std::string &line);
   void apply_link_tags(Gtk::TextIter start_iter, Gtk::TextIter end_iter);
 
   std::vector<std::shared_ptr<TinyProcessLib::Process>> processes;

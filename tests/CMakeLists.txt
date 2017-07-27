@@ -5,8 +5,9 @@ set(stub_files
     stubs/dialogs.cc
     stubs/directories.cc
     stubs/info.cc
+    stubs/notebook.cc
+    stubs/project.cc
     stubs/selection_dialog.cc
-    stubs/terminal.cc
     stubs/tooltips.cc
 )
 
@@ -53,6 +54,11 @@ add_executable(source_key_test source_key_test.cc
                $<TARGET_OBJECTS:project_shared> $<TARGET_OBJECTS:stubs>)
 target_link_libraries(source_key_test ${global_libraries})
 add_test(source_key_test source_key_test)
+
+add_executable(terminal_test terminal_test.cc
+               $<TARGET_OBJECTS:project_shared> $<TARGET_OBJECTS:stubs>)
+target_link_libraries(terminal_test ${global_libraries})
+add_test(terminal_test terminal_test)
 
 if(LIBLLDB_FOUND)
   add_executable(lldb_test lldb_test.cc
