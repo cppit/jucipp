@@ -3,6 +3,7 @@
 #include "project.h"
 #include "info.h"
 #include "notebook.h"
+#include "filesystem.h"
 #include <iostream>
 
 Terminal::InProgress::InProgress(const std::string& start_msg): stop(false) {
@@ -45,7 +46,7 @@ void Terminal::InProgress::cancel(const std::string& msg) {
 
 Terminal::Terminal() {
   bold_tag=get_buffer()->create_tag();
-  bold_tag->property_weight()=PANGO_WEIGHT_BOLD;
+  bold_tag->property_weight()=Pango::WEIGHT_ULTRAHEAVY;
   
   link_tag=get_buffer()->create_tag();
   link_tag->property_underline()=Pango::Underline::UNDERLINE_SINGLE;
@@ -176,7 +177,7 @@ bool Terminal::on_motion_notify_event(GdkEventMotion *motion_event) {
 }
 
 std::tuple<size_t, size_t, std::string, std::string, std::string> Terminal::find_link(const std::string &line) {
-  const static std::regex link_regex("^([A-Z]:)?([^:]+):([0-9]+):([0-9]+): .*$|" //compile warning/error
+  const static std::regex link_regex("^([A-Z]:)?([^:]+):([0-9]+):([0-9]+): .*$|" //compile warning/error/rename usages
                                      "^Assertion failed: .*file ([A-Z]:)?([^:]+), line ([0-9]+)\\.$|" //clang assert()
                                      "^[^:]*: ([A-Z]:)?([^:]+):([0-9]+): .* Assertion .* failed\\.$|" //gcc assert()
                                      "^ERROR:([A-Z]:)?([^:]+):([0-9]+):.*$"); //g_assert (glib.h)
@@ -280,7 +281,7 @@ size_t Terminal::print(const std::string &message, bool bold){
     umessage.replace(iter, next_char_iter, "?");
   }
   
-  auto start_mark=get_buffer()->create_mark(get_buffer()->get_iter_at_line(get_buffer()->get_insert()->get_iter().get_line()));
+  auto start_mark=get_buffer()->create_mark(get_buffer()->get_iter_at_line(get_buffer()->end().get_line()));
   if(bold)
     get_buffer()->insert_with_tag(get_buffer()->end(), umessage, bold_tag);
   else
@@ -386,6 +387,18 @@ bool Terminal::on_button_press_event(GdkEventButton* button_event) {
         boost::filesystem::path path=std::get<2>(link);
         std::string line=std::get<3>(link);
         std::string index=std::get<4>(link);
+        
+        if(!path.empty() && *path.begin()=="~") { // boost::filesystem does not recognize ~
+          boost::filesystem::path corrected_path;
+          corrected_path=filesystem::get_home_path();
+          if(!corrected_path.empty()) {
+            auto it=path.begin();
+            ++it;
+            for(;it!=path.end();++it)
+              corrected_path/=*it;
+            path=corrected_path;
+          }
+        }
         
         if(path.is_relative()) {
           if(Project::current) {

@@ -11,6 +11,7 @@
 #include "debug_lldb.h"
 #endif
 #include "info.h"
+#include "usages_clang.h"
 
 boost::filesystem::path Project::debug_last_stop_file_path;
 std::unordered_map<std::string, std::string> Project::run_arguments;
@@ -61,7 +62,9 @@ void Project::on_save(size_t index) {
     auto build=Build::create(build_path);
     if(dynamic_cast<CMakeBuild*>(build.get()) || dynamic_cast<MesonBuild*>(build.get())) {
       build->update_default(true);
-      if(boost::filesystem::exists(build->get_debug_path()))
+      Usages::Clang::erase_all_caches_for_project(build->project_path, build->get_default_path());
+      boost::system::error_code ec;
+      if(boost::filesystem::exists(build->get_debug_path()), ec)
         build->update_debug(true);
       
       for(size_t c=0;c<Notebook::get().size();c++) {

@@ -84,7 +84,13 @@ std::string Source::FixIt::string(Glib::RefPtr<Gtk::TextBuffer> buffer) {
 //////////////
 //// View ////
 //////////////
+std::unordered_set<Source::View*> Source::View::non_deleted_views;
+std::map<boost::filesystem::path, Source::View*> Source::View::views;
+
 Source::View::View(const boost::filesystem::path &file_path, Glib::RefPtr<Gsv::Language> language): Gsv::View(), SpellCheckView(), DiffView(file_path), language(language), status_diagnostics(0, 0, 0) {
+  non_deleted_views.emplace(this);
+  views.emplace(file_path, this);
+  
   load();
   
   get_buffer()->place_cursor(get_buffer()->get_iter_at_offset(0)); 
@@ -507,12 +513,41 @@ bool Source::View::load() {
   get_buffer()->erase(get_buffer()->begin(), get_buffer()->end());
   bool status=true;
   if(language) {
-    if(filesystem::read_non_utf8(file_path, get_buffer())==-1)
-      Terminal::get().print("Warning: "+file_path.string()+" is not a valid UTF-8 file. Saving might corrupt the file.\n");
+    std::ifstream input(file_path.string(), std::ofstream::binary);
+    if(input) {
+      std::stringstream ss;
+      ss << input.rdbuf();
+      Glib::ustring ustr=ss.str();
+      
+      bool valid=true;
+      Glib::ustring::iterator iter;
+      while(!ustr.validate(iter)) {
+        auto next_char_iter=iter;
+        next_char_iter++;
+        ustr.replace(iter, next_char_iter, "?");
+        valid=false;
+      }  
+      get_buffer()->insert_at_cursor(ustr);
+    
+      if(!valid)
+        Terminal::get().print("Warning: "+file_path.string()+" is not a valid UTF-8 file. Saving might corrupt the file.\n");
+    }
   }
   else {
-    if(filesystem::read(file_path, get_buffer())==-1) {
-      Terminal::get().print("Error: "+file_path.string()+" is not a valid UTF-8 file.\n", true);
+    std::ifstream input(file_path.string(), std::ofstream::binary);
+    if(input) {
+      std::stringstream ss;
+      ss << input.rdbuf();
+      Glib::ustring ustr=ss.str();
+      
+      bool valid=true;
+      if(ustr.validate())
+        get_buffer()->insert_at_cursor(ustr);
+      else
+        valid=false;
+      
+      if(!valid)
+        Terminal::get().print("Error: "+file_path.string()+" is not a valid UTF-8 file.\n", true);
       status=false;
     }
   }
@@ -599,7 +634,7 @@ Gsv::DrawSpacesFlags Source::View::parse_show_whitespace_characters(const std::s
     static_cast<Gsv::DrawSpacesFlags>(std::accumulate(out.begin(), out.end(), 0));
 }
 
-bool Source::View::save(const std::vector<Source::View*> &views) {
+bool Source::View::save() {
   if(file_path.empty() || !get_buffer()->get_modified())
     return false;
   if(Config::get().source.cleanup_whitespace_characters)
@@ -612,7 +647,21 @@ bool Source::View::save(const std::vector<Source::View*> &views) {
       format_style(false);
   }
   
-  if(filesystem::write(file_path, get_buffer())) {
+  std::ofstream output(file_path.string(), std::ofstream::binary);
+  if(output) {
+    auto start_iter=get_buffer()->begin();
+    auto end_iter=start_iter;
+    bool end_reached=false;
+    while(!end_reached) {
+      for(size_t c=0;c<131072;c++) {
+        if(!end_iter.forward_char()) {
+          end_reached=true;
+          break;
+        }
+      }
+      output << get_buffer()->get_text(start_iter, end_iter).c_str();
+      start_iter=end_iter;
+    }
     boost::system::error_code ec;
     last_write_time=boost::filesystem::last_write_time(file_path, ec);
     if(ec)
@@ -866,6 +915,9 @@ Source::View::~View() {
   
   delayed_tooltips_connection.disconnect();
   renderer_activate_connection.disconnect();
+  
+  non_deleted_views.erase(this);
+  views.erase(file_path);
 }
 
 void Source::View::search_highlight(const std::string &text, bool case_sensitive, bool regex) {

@@ -60,6 +60,11 @@ add_executable(terminal_test terminal_test.cc
 target_link_libraries(terminal_test ${global_libraries})
 add_test(terminal_test terminal_test)
 
+add_executable(usages_clang_test usages_clang_test.cc
+               $<TARGET_OBJECTS:project_shared> $<TARGET_OBJECTS:stubs>)
+target_link_libraries(usages_clang_test ${global_libraries})
+add_test(usages_clang_test usages_clang_test)
+
 if(LIBLLDB_FOUND)
   add_executable(lldb_test lldb_test.cc
                  $<TARGET_OBJECTS:project_shared> $<TARGET_OBJECTS:stubs>)

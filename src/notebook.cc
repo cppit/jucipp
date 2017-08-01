@@ -422,7 +422,7 @@ void Notebook::configure(size_t index) {
 }
 
 bool Notebook::save(size_t index) {
-  if(!source_views[index]->save(source_views))
+  if(!source_views[index]->save())
     return false;
   Project::on_save(index);
   return true;

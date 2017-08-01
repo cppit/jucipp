@@ -40,13 +40,16 @@ namespace Source {
 
   class View : public SpellCheckView, public DiffView {
   public:
+    static std::unordered_set<View*> non_deleted_views;
+    static std::map<boost::filesystem::path, View*> views;
+    
     View(const boost::filesystem::path &file_path, Glib::RefPtr<Gsv::Language> language);
     ~View();
     
     bool load();
     void rename(const boost::filesystem::path &path);
     
-    virtual bool save(const std::vector<Source::View*> &views);
+    virtual bool save();
     ///Set new text without moving scrolled window
     void replace_text(const std::string &text);
     
@@ -67,14 +70,14 @@ namespace Source {
     std::function<void()> non_interactive_completion;
     std::function<void(bool)> format_style;
     std::function<Offset()> get_declaration_location;
-    std::function<std::vector<Offset>(const std::vector<Source::View*> &views)> get_implementation_locations;
-    std::function<std::vector<Offset>(const std::vector<Source::View*> &views)> get_declaration_or_implementation_locations;
-    std::function<std::vector<std::pair<Offset, std::string> >(const std::vector<Source::View*> &views)> get_usages;
+    std::function<std::vector<Offset>()> get_implementation_locations;
+    std::function<std::vector<Offset>()> get_declaration_or_implementation_locations;
+    std::function<std::vector<std::pair<Offset, std::string> >()> get_usages;
     std::function<std::string()> get_method;
     std::function<std::vector<std::pair<Offset, std::string> >()> get_methods;
     std::function<std::vector<std::string>()> get_token_data;
     std::function<std::string()> get_token_spelling;
-    std::function<std::vector<std::pair<boost::filesystem::path, size_t> >(const std::vector<Source::View*> &views, const std::string &text)> rename_similar_tokens;
+    std::function<void(const std::string &text)> rename_similar_tokens;
     std::function<void()> goto_next_diagnostic;
     std::function<std::vector<FixIt>()> get_fix_its;
     std::function<void()> toggle_comments;
@@ -103,7 +106,7 @@ namespace Source {
     
     bool soft_reparse_needed=false;
     bool full_reparse_needed=false;
-    virtual void soft_reparse() {soft_reparse_needed=false;}
+    virtual void soft_reparse(bool delayed=false) {soft_reparse_needed=false;}
     virtual void full_reparse() {full_reparse_needed=false;}
   protected:
     bool parsed=false;

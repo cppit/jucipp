@@ -30,7 +30,7 @@ int main() {
   {
     Source::View source_view(source_file, Glib::RefPtr<Gsv::Language>());
     source_view.get_buffer()->set_text(hello_world);
-    g_assert(source_view.save({&source_view}));
+    g_assert(source_view.save());
   }
   
   Source::View source_view(source_file, Glib::RefPtr<Gsv::Language>());

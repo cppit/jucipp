@@ -13,7 +13,7 @@ public:
   static std::string new_folder(const boost::filesystem::path &path);
   static std::string save_file_as(const boost::filesystem::path &path);
   
-  class Message : public Gtk::MessageDialog {
+  class Message : public Gtk::Window {
   public:
     Message(const std::string &text);
   protected:

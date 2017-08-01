@@ -20,15 +20,16 @@ namespace Source {
   public:
     ClangViewParse(const boost::filesystem::path &file_path, Glib::RefPtr<Gsv::Language> language);
     
-    bool save(const std::vector<Source::View*> &views) override;
+    bool save() override;
     void configure() override;
     
-    void soft_reparse() override;
+    void soft_reparse(bool delayed=false) override;
   protected:
     Dispatcher dispatcher;
     void parse_initialize();
     std::unique_ptr<clangmm::TranslationUnit> clang_tu;
     std::unique_ptr<clangmm::Tokens> clang_tokens;
+    std::vector<std::pair<clangmm::Offset, clangmm::Offset>> clang_tokens_offsets;
     sigc::connection delayed_reparse_connection;
     
     std::shared_ptr<Terminal::InProgress> parsing_in_progress;
@@ -94,7 +95,7 @@ namespace Source {
     sigc::connection delayed_tag_similar_identifiers_connection;
   private:
     Identifier get_identifier();
-    void wait_parsing(const std::vector<Source::View*> &views);
+    void wait_parsing();
     
     std::list<std::pair<Glib::RefPtr<Gtk::TextMark>, Glib::RefPtr<Gtk::TextMark> > > similar_identifiers_marks;
     void tag_similar_identifiers(const Identifier &identifier);

@@ -12,3 +12,4 @@
 !debian/*
 
 build
+.usages_clang

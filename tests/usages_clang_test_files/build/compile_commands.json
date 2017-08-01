@@ -1,0 +1,7 @@
+[
+  {
+    "directory": "jucipp/tests/usages_clang_test_files/build",
+    "command": "c++  -Ihello@exe -I. -I.. -Xclang -fcolor-diagnostics -pipe -Wall -Winvalid-pch -Wnon-virtual-dtor -O0 -g -std=c++11 -Wall -Wextra -MMD -MQ 'hello@exe/main.cpp.o' -MF 'hello@exe/main.cpp.o.d' -o 'hello@exe/main.cpp.o' -c ../main.cpp",
+    "file": "../main.cpp"
+  }
+]

@@ -33,6 +33,7 @@ set(project_shared_files
     source_diff.cc
     source_spellcheck.cc
     terminal.cc
+    usages_clang.cc
 
     ${PROJECT_SOURCE_DIR}/libclangmm/src/CodeCompleteResults.cc
     ${PROJECT_SOURCE_DIR}/libclangmm/src/CompilationDatabase.cc

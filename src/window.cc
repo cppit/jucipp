@@ -217,6 +217,10 @@ void Window::set_menu_actions() {
   });
   menu.add_action("quit", [this]() {
     close();
+    while(!Source::View::non_deleted_views.empty()) {
+      while(Gtk::Main::events_pending())
+        Gtk::Main::iteration(false);
+    }
   });
   
   menu.add_action("new_file", [this]() {
@@ -869,20 +873,20 @@ void Window::set_menu_actions() {
   menu.add_action("source_goto_implementation", [this, goto_selected_location]() {
     if(auto view=Notebook::get().get_current_view()) {
       if(view->get_implementation_locations)
-        goto_selected_location(view, view->get_implementation_locations(Notebook::get().get_views()));
+        goto_selected_location(view, view->get_implementation_locations());
     }
   });
   menu.add_action("source_goto_declaration_or_implementation", [this, goto_selected_location]() {
     if(auto view=Notebook::get().get_current_view()) {
       if(view->get_declaration_or_implementation_locations)
-        goto_selected_location(view, view->get_declaration_or_implementation_locations(Notebook::get().get_views()));
+        goto_selected_location(view, view->get_declaration_or_implementation_locations());
     }
   });
 
   menu.add_action("source_goto_usage", [this]() {
     if(auto view=Notebook::get().get_current_view()) {
       if(view->get_usages) {
-        auto usages=view->get_usages(Notebook::get().get_views());
+        auto usages=view->get_usages();
         if(!usages.empty()) {
           auto dialog_iter=view->get_iter_for_dialog();
           SelectionDialog::create(view, view->get_buffer()->create_mark(dialog_iter), true, true);
@@ -917,7 +921,7 @@ void Window::set_menu_actions() {
             Notebook::get().open(offset.file_path);
             auto view=Notebook::get().get_current_view();
             view->place_cursor_at_line_index(offset.line, offset.index);
-            view->scroll_to(view->get_buffer()->get_insert(), 0.0, 1.0, 0.5);
+            view->scroll_to_cursor_delayed(view, true, false);
             view->hide_tooltips();
           };
           view->hide_tooltips();
@@ -1555,21 +1559,12 @@ void Window::rename_token_entry() {
     if(view->get_token_spelling && view->rename_similar_tokens) {
       auto spelling=std::make_shared<std::string>(view->get_token_spelling());
       if(!spelling->empty()) {
-        EntryBox::get().labels.emplace_back();
-        auto label_it=EntryBox::get().labels.begin();
-        label_it->update=[label_it](int state, const std::string& message){
-          label_it->set_text("Warning: only opened files will be refactored, and altered files will be saved");
-        };
-        label_it->update(0, "");
         auto iter=std::make_shared<Gtk::TextIter>(view->get_buffer()->get_insert()->get_iter());
         EntryBox::get().entries.emplace_back(*spelling, [this, view, spelling, iter](const std::string& content){
           //TODO: gtk needs a way to check if iter is valid without dumping g_error message
           //iter->get_buffer() will print such a message, but no segfault will occur
-          if(Notebook::get().get_current_view()==view && content!=*spelling && iter->get_buffer() && view->get_buffer()->get_insert()->get_iter()==*iter) {
-            auto renamed_pairs=view->rename_similar_tokens(Notebook::get().get_views(), content);
-            for(auto &renamed: renamed_pairs)
-              Terminal::get().print("Replaced "+std::to_string(renamed.second)+" occurrence"+(renamed.second>1?"s":"")+" in file "+renamed.first.string()+"\n");
-          }
+          if(Notebook::get().get_current_view()==view && content!=*spelling && iter->get_buffer() && view->get_buffer()->get_insert()->get_iter()==*iter)
+            view->rename_similar_tokens(content);
           else
             Info::get().print("Operation canceled");
           EntryBox::get().hide();
