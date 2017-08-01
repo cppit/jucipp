@@ -1204,7 +1204,6 @@ Gtk::TextIter Source::View::find_start_of_sentence(Gtk::TextIter iter) {
   if(iter.starts_line())
     return iter;
   
-  iter.backward_char();
   bool stream_operator_test=false;
   bool colon_test=false;
   
@@ -1868,7 +1867,7 @@ bool Source::View::on_key_press_event_bracket_language(GdkEventKey* key) {
       start_iter=get_tabs_end_iter(get_buffer()->get_iter_at_line(open_non_curly_bracket_iter.get_line()));
     }
     else
-      start_iter=get_tabs_end_iter(get_buffer()->get_iter_at_line(find_start_of_sentence(iter).get_line()));
+      start_iter=get_tabs_end_iter(get_buffer()->get_iter_at_line(find_start_of_sentence(condition_iter).get_line()));
     auto tabs=get_line_before(start_iter);
     
     /*
@@ -2006,9 +2005,10 @@ bool Source::View::on_key_press_event_bracket_language(GdkEventKey* key) {
     else if(*condition_iter==';' && condition_iter.get_line()>0) {
       auto previous_end_iter=start_iter;
       while(previous_end_iter.backward_char() && !previous_end_iter.ends_line()) {}
-      auto previous_start_iter=get_tabs_end_iter(get_buffer()->get_iter_at_line(find_start_of_sentence(previous_end_iter).get_line()));
+      auto condition_iter=get_condition_iter(previous_end_iter);
+      auto previous_start_iter=get_tabs_end_iter(get_buffer()->get_iter_at_line(find_start_of_sentence(condition_iter).get_line()));
       auto previous_tabs=get_line_before(previous_start_iter);
-      auto after_condition_iter=get_condition_iter(previous_end_iter);
+      auto after_condition_iter=condition_iter;
       after_condition_iter.forward_char();
       std::string previous_sentence=get_buffer()->get_text(previous_start_iter, after_condition_iter);
       std::smatch sm2;
@@ -2082,10 +2082,11 @@ bool Source::View::on_key_press_event_bracket_language(GdkEventKey* key) {
     if(line_nr>0 && tabs.size()>=tab_size && iter==tabs_end_iter) {
       auto previous_end_iter=iter;
       while(previous_end_iter.backward_char() && !previous_end_iter.ends_line()) {}
-      auto previous_start_iter=get_tabs_end_iter(get_buffer()->get_iter_at_line(find_start_of_sentence(previous_end_iter).get_line()));
-      auto after_condition_iter=get_condition_iter(previous_end_iter);
-      after_condition_iter.forward_char();
+      auto condition_iter=get_condition_iter(previous_end_iter);
+      auto previous_start_iter=get_tabs_end_iter(get_buffer()->get_iter_at_line(find_start_of_sentence(condition_iter).get_line()));
       auto previous_tabs=get_line_before(previous_start_iter);
+      auto after_condition_iter=condition_iter;
+      after_condition_iter.forward_char();
       if((tabs.size()-tab_size)==previous_tabs.size()) {
         std::string previous_sentence=get_buffer()->get_text(previous_start_iter, after_condition_iter);
         std::smatch sm;

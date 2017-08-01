@@ -388,6 +388,32 @@ int main() {
     }
     {
       view.get_buffer()->set_text("  if(true &&\n"
+                                  "     false) {");
+      view.on_key_press_event(&event);
+      g_assert(view.get_buffer()->get_text() == "  if(true &&\n"
+                                                "     false) {\n"
+                                                "    \n"
+                                                "  }");
+      auto iter = view.get_buffer()->end();
+      iter.backward_chars(4);
+      g_assert(view.get_buffer()->get_insert()->get_iter() == iter);
+    }
+    {
+      view.get_buffer()->set_text("  if(true && // comment\n"
+                                  "     false) { // comment");
+      while(Gtk::Main::events_pending())
+        Gtk::Main::iteration(false);
+      view.on_key_press_event(&event);
+      g_assert(view.get_buffer()->get_text() == "  if(true && // comment\n"
+                                                "     false) { // comment\n"
+                                                "    \n"
+                                                "  }");
+      auto iter = view.get_buffer()->end();
+      iter.backward_chars(4);
+      g_assert(view.get_buffer()->get_insert()->get_iter() == iter);
+    }
+    {
+      view.get_buffer()->set_text("  if(true &&\n"
                                   "     false)\n"
                                   "    ;");
       view.on_key_press_event(&event);
