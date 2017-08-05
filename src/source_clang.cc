@@ -10,6 +10,7 @@
 #include "ctags.h"
 #include "selection_dialog.h"
 #include "filesystem.h"
+#include "compile_commands.h"
 
 clangmm::Index Source::ClangViewParse::clang_index(0, 0);
 
@@ -93,8 +94,15 @@ void Source::ClangViewParse::parse_initialize() {
     pos++;
   }
   auto &buffer_raw=const_cast<std::string&>(buffer.raw());
-  remove_include_guard(buffer_raw);
-  clang_tu = std::make_unique<clangmm::TranslationUnit>(clang_index, file_path.string(), get_compilation_commands(), buffer_raw);
+  if(this->language && (this->language->get_id()=="chdr" || this->language->get_id()=="cpphdr"))
+    clangmm::remove_include_guard(buffer_raw);
+  
+  auto build=Project::Build::create(file_path);
+  if(build->project_path.empty())
+    Info::get().print(file_path.filename().string()+": could not find a supported build system");
+  build->update_default();
+  auto arguments=CompileCommands::get_arguments(build->get_default_path(), file_path);
+  clang_tu = std::make_unique<clangmm::TranslationUnit>(clang_index, file_path.string(), arguments, buffer_raw);
   clang_tokens=clang_tu->get_tokens(0, buffer.bytes()-1);
   update_syntax();
   
@@ -124,7 +132,8 @@ void Source::ClangViewParse::parse_initialize() {
       }
       else if (parse_process_state==ParseProcessState::PROCESSING && parse_lock.try_lock()) {
         auto &parse_thread_buffer_raw=const_cast<std::string&>(parse_thread_buffer.raw());
-        remove_include_guard(parse_thread_buffer_raw);
+        if(this->language && (this->language->get_id()=="chdr" || this->language->get_id()=="cpphdr"))
+          clangmm::remove_include_guard(parse_thread_buffer_raw);
         auto status=clang_tu->ReparseTranslationUnit(parse_thread_buffer_raw);
         parsing_in_progress->done("done");
         if(status==0) {
@@ -188,146 +197,6 @@ void Source::ClangViewParse::soft_reparse() {
     }
     return false;
   }, 1000);
-}
-
-std::vector<std::string> Source::ClangViewParse::get_compilation_commands() {
-  auto build=Project::Build::create(file_path);
-  if(build->project_path.empty())
-    Info::get().print(file_path.filename().string()+": could not find a supported build system");
-  auto default_build_path=build->get_default_path();
-  build->update_default();
-  clangmm::CompilationDatabase db(default_build_path.string());
-  clangmm::CompileCommands commands(file_path.string(), db);
-  std::vector<clangmm::CompileCommand> cmds = commands.get_commands();
-  std::vector<std::string> arguments;
-  for (auto &i : cmds) {
-    std::vector<std::string> lol = i.get_command_as_args();
-    for (size_t a = 1; a < lol.size()-4; a++) {
-      arguments.emplace_back(lol[a]);
-    }
-  }
-  auto clang_version_string=clangmm::to_string(clang_getClangVersion());
-  const static std::regex clang_version_regex("^[A-Za-z ]+([0-9.]+).*$");
-  std::smatch sm;
-  if(std::regex_match(clang_version_string, sm, clang_version_regex)) {
-    auto clang_version=sm[1].str();
-    arguments.emplace_back("-I/usr/lib/clang/"+clang_version+"/include");
-    arguments.emplace_back("-I/usr/lib64/clang/"+clang_version+"/include"); // For Fedora
-#if defined(__APPLE__) && CINDEX_VERSION_MAJOR==0 && CINDEX_VERSION_MINOR<32 // TODO: remove during 2018 if llvm3.7 is no longer in homebrew (CINDEX_VERSION_MINOR=32 equals clang-3.8 I think)
-    arguments.emplace_back("-I/usr/local/Cellar/llvm/"+clang_version+"/lib/clang/"+clang_version+"/include");
-    arguments.emplace_back("-I/Applications/Xcode.app/Contents/Developer/Toolchains/XcodeDefault.xctoolchain/usr/bin/../include/c++/v1");
-    arguments.emplace_back("-I/Library/Developer/CommandLineTools/usr/bin/../include/c++/v1"); //Added for OS X 10.11
-#endif
-#ifdef _WIN32
-    if(!Config::get().terminal.msys2_mingw_path.empty())
-      arguments.emplace_back("-I"+(Config::get().terminal.msys2_mingw_path/"lib/clang"/clang_version/"include").string());
-#endif
-  }
-  arguments.emplace_back("-fretain-comments-from-system-headers");
-  
-  if(file_path.extension()==".h" ||  //TODO: temporary fix for .h-files (parse as c++)
-     (language && (language->get_id()=="cpp" || language->get_id()=="cpphdr")))
-    arguments.emplace_back("-xc++");
-  
-  if(language && (language->get_id()=="chdr" || language->get_id()=="cpphdr"))
-    arguments.emplace_back("-Wno-pragma-once-outside-header");
-  
-  if(!default_build_path.empty()) {
-    arguments.emplace_back("-working-directory");
-    arguments.emplace_back(default_build_path.string());
-  }
-
-  return arguments;
-}
-
-void Source::ClangViewParse::remove_include_guard(std::string &buffer) {
-  if(!(language && (language->get_id()=="chdr" || language->get_id()=="cpphdr")))
-    return;
-  
-  static std::regex ifndef_regex1("^[ \t]*#ifndef[ \t]+([A-Za-z0-9_]+).*$");
-  static std::regex ifndef_regex2("^[ \t]*#if[ \t]+![ \t]*defined[ \t]*\\([ \t]*([A-Za-z0-9_]+).*$");
-  static std::regex define_regex("^[ \t]*#define[ \t]+([A-Za-z0-9_]+).*$");
-  static std::regex endif_regex("^[ \t]*#endif.*$");
-  std::vector<std::pair<size_t, size_t>> ranges;
-  bool found_ifndef=false, found_define=false;
-  bool line_comment=false, multiline_comment=false;
-  size_t start_of_line=0;
-  std::string line;
-  std::string preprocessor_identifier;
-  for(size_t c=0;c<buffer.size();++c) {
-    if(!line_comment && !multiline_comment && buffer[c]=='/' && c+1<buffer.size() && (buffer[c+1]=='/' || buffer[c+1]=='*')) {
-      if(buffer[c+1]=='/')
-        line_comment=true;
-      else
-        multiline_comment=true;
-      ++c;
-    }
-    else if(multiline_comment && buffer[c]=='*' && c+1<buffer.size() && buffer[c+1]=='/') {
-      multiline_comment=false;
-      ++c;
-    }
-    else if(buffer[c]=='\n') {
-      bool empty_line=true;
-      for(auto &chr: line) {
-        if(chr!=' ' && chr!='\t') {
-          empty_line=false;
-          break;
-        }
-      }
-      
-      std::smatch sm;
-      if(empty_line) {}
-      else if(!found_ifndef && (std::regex_match(line, sm, ifndef_regex1) || std::regex_match(line, sm, ifndef_regex2))) {
-        found_ifndef=true;
-        ranges.emplace_back(start_of_line, c);
-        preprocessor_identifier=sm[1].str();
-      }
-      else if(found_ifndef && std::regex_match(line, sm, define_regex)) {
-        found_define=true;
-        ranges.emplace_back(start_of_line, c);
-        if(preprocessor_identifier!=sm[1].str())
-          return;
-        break;
-      }
-      else
-        return;
-      
-      line_comment=false;
-      line.clear();
-      if(c+1<buffer.size())
-        start_of_line=c+1;
-      else
-        return;
-    }
-    else if(!line_comment && !multiline_comment && buffer[c]!='\r')
-      line+=buffer[c];
-  }
-  if(found_ifndef && found_define) {
-    size_t last_char_pos=std::string::npos;
-    for(size_t c=buffer.size()-1;c!=std::string::npos;--c) {
-      if(last_char_pos==std::string::npos) {
-        if(buffer[c]!=' ' && buffer[c]!='\t' && buffer[c]!='\r' && buffer[c]!='\n')
-          last_char_pos=c;
-      }
-      else {
-        if(buffer[c]=='\n' && c+1<buffer.size()) {
-          auto line=buffer.substr(c+1, last_char_pos-c);
-          std::smatch sm;
-          if(std::regex_match(line, sm, endif_regex)) {
-            ranges.emplace_back(c+1, last_char_pos+1);
-            for(auto &range: ranges) {
-              for(size_t c=range.first;c<range.second;++c) {
-                if(buffer[c]!='\r')
-                  buffer[c]=' ';
-              }
-            }
-            return;
-          }
-          return;
-        }
-      }
-    }
-  }
 }
 
 void Source::ClangViewParse::update_syntax() {
@@ -642,7 +511,8 @@ Source::ClangViewAutocomplete::ClangViewAutocomplete(const boost::filesystem::pa
   
   autocomplete.get_suggestions=[this](std::string &buffer, int line_number, int column) {
     auto suggestions=std::make_shared<std::vector<Suggestion>>();
-    remove_include_guard(buffer);
+    if(this->language && (this->language->get_id()=="chdr" || this->language->get_id()=="cpphdr"))
+      clangmm::remove_include_guard(buffer);
     auto results=clang_tu->get_code_completions(buffer, line_number, column);
     if(results.cx_results==nullptr) {
       auto expected=ParseState::PROCESSING;

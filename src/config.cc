@@ -11,12 +11,6 @@ Config::Config() {
   if(home_path.empty())
     throw std::runtime_error("Could not find home path");
   home_juci_path=home_path/".juci";
-  
-#ifdef _WIN32
-     auto env_MSYSTEM_PREFIX=std::getenv("MSYSTEM_PREFIX");
-     if(env_MSYSTEM_PREFIX!=nullptr)
-       terminal.msys2_mingw_path=boost::filesystem::path(env_MSYSTEM_PREFIX);
-#endif
 }
 
 void Config::load() {

@@ -29,10 +29,6 @@ public:
     int history_size;
     std::string font;
     bool show_progress;
-    
-#ifdef _WIN32
-    boost::filesystem::path msys2_mingw_path;
-#endif
   };
   
   class Project {

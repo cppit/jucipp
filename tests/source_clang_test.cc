@@ -84,50 +84,50 @@ int main() {
   {
     clang_view->language=Gsv::LanguageManager::get_default()->get_language("chdr");
     std::string source="#ifndef F\n#define F\n#endif  // F";
-    clang_view->remove_include_guard(source);
+    clangmm::remove_include_guard(source);
     g_assert_cmpstr(source.c_str(),==,"         \n         \n            ");
     
     source="#ifndef F\n#define F\n#endif  // F\n";
-    clang_view->remove_include_guard(source);
+    clangmm::remove_include_guard(source);
     g_assert_cmpstr(source.c_str(),==,"         \n         \n            \n");
     
     source="/*test*/\n#ifndef F\n#define F\n#endif  // F\n";
-    clang_view->remove_include_guard(source);
+    clangmm::remove_include_guard(source);
     g_assert_cmpstr(source.c_str(),==,"/*test*/\n         \n         \n            \n");
     
     source="//test\n#ifndef F\n#define F\n#endif  // F\n";
-    clang_view->remove_include_guard(source);
+    clangmm::remove_include_guard(source);
     g_assert_cmpstr(source.c_str(),==,"//test\n         \n         \n            \n");
     
     source="#ifndef F /*test*/\n#define F\n#endif  // F";
-    clang_view->remove_include_guard(source);
+    clangmm::remove_include_guard(source);
     g_assert_cmpstr(source.c_str(),==,"                  \n         \n            ");
     
     source="#ifndef F //test\n#define F\n#endif  // F";
-    clang_view->remove_include_guard(source);
+    clangmm::remove_include_guard(source);
     g_assert_cmpstr(source.c_str(),==,"                \n         \n            ");
     
     source="#ifndef F\n//test\n#define F\n#endif  // F\n";
-    clang_view->remove_include_guard(source);
+    clangmm::remove_include_guard(source);
     g_assert_cmpstr(source.c_str(),==,"         \n//test\n         \n            \n");
     
     source="#if !defined(F)\n#define F\n#endif\n";
-    clang_view->remove_include_guard(source);
+    clangmm::remove_include_guard(source);
     g_assert_cmpstr(source.c_str(),==,"               \n         \n      \n");
     
     source="#ifndef F\ntest\n#define F\n#endif  // F\n";
     auto old_source=source;
-    clang_view->remove_include_guard(source);
+    clangmm::remove_include_guard(source);
     g_assert_cmpstr(old_source.c_str(),==,source.c_str());
     
     source="test\n#ifndef F\n#define F\n#endif  // F\n";
     old_source=source;
-    clang_view->remove_include_guard(source);
+    clangmm::remove_include_guard(source);
     g_assert_cmpstr(old_source.c_str(),==,source.c_str());
     
     source="#ifndef F\n#define F\n#endif  // F\ntest\n";
     old_source=source;
-    clang_view->remove_include_guard(source);
+    clangmm::remove_include_guard(source);
     g_assert_cmpstr(old_source.c_str(),==,source.c_str());
   }
   

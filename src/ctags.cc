@@ -21,8 +21,13 @@ std::pair<boost::filesystem::path, std::unique_ptr<std::stringstream> > Ctags::g
     if(!relative_debug_path.empty())
       exclude+=" --exclude="+relative_debug_path.string();
   }
-  else
-    run_path=path;
+  else {
+    boost::system::error_code ec;
+    if(boost::filesystem::is_directory(path, ec) || ec)
+      run_path=path;
+    else
+      run_path=path.parent_path();
+  }
   
   std::stringstream stdin_stream;
   //TODO: when debian stable gets newer g++ version that supports move on streams, remove unique_ptr below
