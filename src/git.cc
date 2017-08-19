@@ -91,6 +91,8 @@ Git::Repository::Repository(const boost::filesystem::path &path) {
   });
   
   work_path=get_work_path();
+  if(work_path.empty())
+    throw std::runtime_error("Could not find work path");
   
   auto git_path_str=get_path().string();
   auto git_directory=Glib::wrap(g_file_new_for_path(git_path_str.c_str())); //TODO: report missing constructor in giomm
@@ -271,6 +273,8 @@ std::shared_ptr<Git::Repository> Git::get_repository(const boost::filesystem::pa
 }
 
 boost::filesystem::path Git::path(const char *cpath, size_t cpath_length) noexcept {
+  if(cpath==nullptr)
+    return boost::filesystem::path();
   if(cpath_length==static_cast<size_t>(-1))
     cpath_length=strlen(cpath);
   if(cpath_length>0 && (cpath[cpath_length-1]=='/' || cpath[cpath_length-1]=='\\'))
