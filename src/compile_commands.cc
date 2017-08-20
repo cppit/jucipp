@@ -81,23 +81,25 @@ CompileCommands::CompileCommands(const boost::filesystem::path &build_path) {
 }
 
 std::vector<std::string> CompileCommands::get_arguments(const boost::filesystem::path &build_path, const boost::filesystem::path &file_path) {
-  clangmm::CompilationDatabase db(build_path.string());
-  clangmm::CompileCommands commands(file_path.string(), db);
-  std::vector<clangmm::CompileCommand> cmds = commands.get_commands();
   std::vector<std::string> arguments;
-  for (auto &cmd : cmds) {
-    auto cmd_arguments = cmd.get_arguments();
-    bool ignore_next=false;
-    for (size_t c = 1; c < cmd_arguments.size(); c++) {
-      if(ignore_next) {
-        ignore_next=false;
-        continue;
+  if(!build_path.empty()) {
+    clangmm::CompilationDatabase db(build_path.string());
+    clangmm::CompileCommands commands(file_path.string(), db);
+    auto cmds = commands.get_commands();
+    for (auto &cmd : cmds) {
+      auto cmd_arguments = cmd.get_arguments();
+      bool ignore_next=false;
+      for (size_t c = 1; c < cmd_arguments.size(); c++) {
+        if(ignore_next) {
+          ignore_next=false;
+          continue;
+        }
+        else if(cmd_arguments[c]=="-o" || cmd_arguments[c]=="-c") {
+          ignore_next=true;
+          continue;
+        }
+        arguments.emplace_back(cmd_arguments[c]);
       }
-      else if(cmd_arguments[c]=="-o" || cmd_arguments[c]=="-c") {
-        ignore_next=true;
-        continue;
-      }
-      arguments.emplace_back(cmd_arguments[c]);
     }
   }
   auto clang_version_string=clangmm::to_string(clang_getClangVersion());
@@ -125,13 +127,11 @@ std::vector<std::string> CompileCommands::get_arguments(const boost::filesystem:
      extension!=".c")
     arguments.emplace_back("-xc++");
   
-  if(extension.empty()) { // For std headers
-    arguments.emplace_back("-xc++");
-    arguments.emplace_back("-w"); // Disable all warnings
-  }
-  
-  if((extension.size()>1 && extension[1]=='h') || extension==".tcc")
+  if(extension.empty() || (1<extension.size() && extension[1]=='h') || extension==".tcc") {
     arguments.emplace_back("-Wno-pragma-once-outside-header");
+    arguments.emplace_back("-Wno-pragma-system-header-outside-header");
+    arguments.emplace_back("-Wno-include-next-outside-header");
+  }
   
   if(!build_path.empty()) {
     arguments.emplace_back("-working-directory");
