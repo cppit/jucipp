@@ -17,7 +17,7 @@ std::atomic<size_t> Usages::Clang::cache_in_progress_count(0);
 
 bool Usages::Clang::Cache::Cursor::operator==(const Cursor &o) {
   for(auto &usr : usrs) {
-    if(o.usrs.count(usr))
+    if(clangmm::Cursor::is_similar_kind(o.kind, kind) && o.usrs.count(usr))
       return true;
   }
   return false;
