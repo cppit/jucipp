@@ -298,6 +298,8 @@ void Project::Clang::compile_and_run() {
 }
 
 void Project::Clang::recreate_build() {
+  if(build->project_path.empty())
+    return;
   auto default_build_path=build->get_default_path();
   if(default_build_path.empty())
     return;
@@ -320,6 +322,7 @@ void Project::Clang::recreate_build() {
     dialog.set_secondary_text(message+"?");
     if(dialog.run()!=Gtk::RESPONSE_YES)
       return;
+    Usages::Clang::erase_all_caches_for_project(build->project_path, default_build_path);
     try {
       if(has_default_build)
         boost::filesystem::remove_all(default_build_path);
