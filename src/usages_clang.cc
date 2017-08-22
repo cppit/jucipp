@@ -443,7 +443,7 @@ bool Usages::Clang::add_usages_from_cache(const boost::filesystem::path &path, s
   for(auto &path_and_last_write_time : cache.paths_and_last_write_times) {
     boost::system::error_code ec;
     auto last_write_time = boost::filesystem::last_write_time(path_and_last_write_time.first, ec);
-    if(ec || last_write_time > path_and_last_write_time.second) {
+    if(ec || last_write_time != path_and_last_write_time.second) {
       // std::cout << "updated file: " << path_and_last_write_time.first << ", included from " << path << std::endl;
       return false;
     }
