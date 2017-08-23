@@ -41,7 +41,7 @@ bool Source::ClangViewParse::save() {
   
   if(language->get_id()=="chdr" || language->get_id()=="cpphdr") {
     for(auto &view: views) {
-      if(auto clang_view=dynamic_cast<Source::ClangView*>(view.second)) {
+      if(auto clang_view=dynamic_cast<Source::ClangView*>(view)) {
         if(this!=clang_view)
           clang_view->soft_reparse_needed=true;
       }
@@ -707,8 +707,8 @@ Source::ClangViewRefactor::ClangViewRefactor(const boost::filesystem::path &file
       std::vector<clangmm::TranslationUnit*> translation_units;
       translation_units.emplace_back(clang_tu.get());
       for(auto &view: views) {
-        if(view.second!=this) {
-          if(auto clang_view=dynamic_cast<Source::ClangView*>(view.second))
+        if(view!=this) {
+          if(auto clang_view=dynamic_cast<Source::ClangView*>(view))
             translation_units.emplace_back(clang_view->clang_tu.get());
         }
       }
@@ -720,22 +720,28 @@ Source::ClangViewRefactor::ClangViewRefactor(const boost::filesystem::path &file
       std::vector<Usages::Clang::Usages*> usages_renamed;
       for(auto &usage: usages) {
         size_t line_c=usage.lines.size()-1;
-        auto view_it=views.find(usage.path);
+        auto view_it=views.end();
+        for(auto it=views.begin();it!=views.end();++it) {
+          if((*it)->file_path==usage.path) {
+            view_it=it;
+            break;
+          }
+        }
         if(view_it!=views.end()) {
-          view_it->second->get_buffer()->begin_user_action();
+          (*view_it)->get_buffer()->begin_user_action();
           for(auto offset_it=usage.offsets.rbegin();offset_it!=usage.offsets.rend();++offset_it) {
-            auto start_iter=view_it->second->get_buffer()->get_iter_at_line_index(offset_it->first.line-1, offset_it->first.index-1);
-            auto end_iter=view_it->second->get_buffer()->get_iter_at_line_index(offset_it->second.line-1, offset_it->second.index-1);
-            view_it->second->get_buffer()->erase(start_iter, end_iter);
-            start_iter=view_it->second->get_buffer()->get_iter_at_line_index(offset_it->first.line-1, offset_it->first.index-1);
-            view_it->second->get_buffer()->insert(start_iter, text);
+            auto start_iter=(*view_it)->get_buffer()->get_iter_at_line_index(offset_it->first.line-1, offset_it->first.index-1);
+            auto end_iter=(*view_it)->get_buffer()->get_iter_at_line_index(offset_it->second.line-1, offset_it->second.index-1);
+            (*view_it)->get_buffer()->erase(start_iter, end_iter);
+            start_iter=(*view_it)->get_buffer()->get_iter_at_line_index(offset_it->first.line-1, offset_it->first.index-1);
+            (*view_it)->get_buffer()->insert(start_iter, text);
             if(offset_it->first.index-1<usage.lines[line_c].size())
               usage.lines[line_c].replace(offset_it->first.index-1, offset_it->second.index-offset_it->first.index, text);
             --line_c;
           }
-          view_it->second->get_buffer()->end_user_action();
-          view_it->second->save();
-          renamed_views.emplace_back(view_it->second);
+          (*view_it)->get_buffer()->end_user_action();
+          (*view_it)->save();
+          renamed_views.emplace_back(*view_it);
           usages_renamed.emplace_back(&usage);
         }
         else {
@@ -907,7 +913,7 @@ Source::ClangViewRefactor::ClangViewRefactor(const boost::filesystem::path &file
       //First, look for a definition cursor that is equal
       auto identifier_usr=identifier.cursor.get_usr();
       for(auto &view: views) {
-        if(auto clang_view=dynamic_cast<Source::ClangView*>(view.second)) {
+        if(auto clang_view=dynamic_cast<Source::ClangView*>(view)) {
           for(auto &token: *clang_view->clang_tokens) {
             auto cursor=token.get_cursor();
             auto cursor_kind=cursor.get_kind();
@@ -1099,8 +1105,8 @@ Source::ClangViewRefactor::ClangViewRefactor(const boost::filesystem::path &file
       std::vector<clangmm::TranslationUnit*> translation_units;
       translation_units.emplace_back(clang_tu.get());
       for(auto &view: views) {
-        if(view.second!=this) {
-          if(auto clang_view=dynamic_cast<Source::ClangView*>(view.second))
+        if(view!=this) {
+          if(auto clang_view=dynamic_cast<Source::ClangView*>(view))
             translation_units.emplace_back(clang_view->clang_tu.get());
         }
       }
@@ -1456,7 +1462,7 @@ void Source::ClangViewRefactor::wait_parsing() {
   std::unique_ptr<Dialog::Message> message;
   std::vector<Source::ClangView*> clang_views;
   for(auto &view: views) {
-    if(auto clang_view=dynamic_cast<Source::ClangView*>(view.second)) {
+    if(auto clang_view=dynamic_cast<Source::ClangView*>(view)) {
       if(!clang_view->parsed) {
         clang_views.emplace_back(clang_view);
         if(!message)
@@ -1568,11 +1574,11 @@ void Source::ClangView::async_delete() {
   delayed_tag_similar_identifiers_connection.disconnect();
   parsing_in_progress->cancel("canceled, freeing resources in the background");
   
-  views.erase(file_path);
+  views.erase(this);
   std::set<boost::filesystem::path> project_paths_in_use;
   for(auto &view: views) {
-    if(dynamic_cast<ClangView*>(view.second)) {
-      auto build=Project::Build::create(view.first);
+    if(dynamic_cast<ClangView*>(view)) {
+      auto build=Project::Build::create(view->file_path);
       if(!build->project_path.empty())
         project_paths_in_use.emplace(build->project_path);
     }

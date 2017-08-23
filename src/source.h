@@ -41,7 +41,7 @@ namespace Source {
   class View : public SpellCheckView, public DiffView {
   public:
     static std::unordered_set<View*> non_deleted_views;
-    static std::map<boost::filesystem::path, View*> views;
+    static std::unordered_set<View*> views;
     
     View(const boost::filesystem::path &file_path, Glib::RefPtr<Gsv::Language> language);
     ~View();

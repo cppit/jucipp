@@ -85,11 +85,11 @@ std::string Source::FixIt::string(Glib::RefPtr<Gtk::TextBuffer> buffer) {
 //// View ////
 //////////////
 std::unordered_set<Source::View*> Source::View::non_deleted_views;
-std::map<boost::filesystem::path, Source::View*> Source::View::views;
+std::unordered_set<Source::View*> Source::View::views;
 
 Source::View::View(const boost::filesystem::path &file_path, Glib::RefPtr<Gsv::Language> language): Gsv::View(), SpellCheckView(), DiffView(file_path), language(language), status_diagnostics(0, 0, 0) {
   non_deleted_views.emplace(this);
-  views.emplace(file_path, this);
+  views.emplace(this);
   
   load();
   
@@ -917,7 +917,7 @@ Source::View::~View() {
   renderer_activate_connection.disconnect();
   
   non_deleted_views.erase(this);
-  views.erase(file_path);
+  views.erase(this);
 }
 
 void Source::View::search_highlight(const std::string &text, bool case_sensitive, bool regex) {
