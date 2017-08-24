@@ -101,6 +101,9 @@ boost::filesystem::path filesystem::get_home_path() noexcept {
 }
 
 boost::filesystem::path filesystem::get_short_path(const boost::filesystem::path &path) noexcept {
+#ifdef _WIN32
+  return path;
+#else
   static auto home_path=get_home_path();
   if(!home_path.empty()) {
     auto relative_path=filesystem::get_relative_path(path, home_path);
@@ -108,6 +111,7 @@ boost::filesystem::path filesystem::get_short_path(const boost::filesystem::path
       return "~"/relative_path;
   }
   return path;
+#endif
 }
 
 bool filesystem::file_in_path(const boost::filesystem::path &file_path, const boost::filesystem::path &path) {
