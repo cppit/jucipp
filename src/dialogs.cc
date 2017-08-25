@@ -32,8 +32,29 @@ bool Dialog::Message::on_delete_event(GdkEventAny *event) {
 
 std::string Dialog::gtk_dialog(const boost::filesystem::path &path, const std::string &title,
                         const std::vector<std::pair<std::string, Gtk::ResponseType>> &buttons,
-                        Gtk::FileChooserAction gtk_options) {
-  Gtk::FileChooserDialog dialog(title, gtk_options);
+                        Gtk::FileChooserAction action) {
+  // Workaround for crash on MacOS when filtering files in file/folder dialogs.
+  // See also https://github.com/cppit/jucipp/issues/259.
+  // TODO 2018: check if this bug has been fixed
+#ifdef __APPLE__
+  class FileChooserDialog : public Gtk::FileChooserDialog {
+    Gtk::FileChooserAction action;
+  public:
+    FileChooserDialog(const Glib::ustring& title, Gtk::FileChooserAction action) : Gtk::FileChooserDialog(title, action), action(action) {}
+  protected:
+    bool on_key_press_event(GdkEventKey *key_event) override {
+      if(action==Gtk::FileChooserAction::FILE_CHOOSER_ACTION_OPEN || action==Gtk::FileChooserAction::FILE_CHOOSER_ACTION_SELECT_FOLDER) {
+        auto unicode=gdk_keyval_to_unicode(key_event->keyval);
+        if(unicode>31 && unicode!=127)
+          return true;
+      }
+      return Gtk::FileChooserDialog::on_key_press_event(key_event);
+    }
+  };
+  FileChooserDialog dialog(title, action);
+#else
+  Gtk::FileChooserDialog dialog(title, action);
+#endif
   
   auto g_application=g_application_get_default();
   auto gio_application=Glib::wrap(g_application, true);
