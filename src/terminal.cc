@@ -164,16 +164,34 @@ void Terminal::kill_async_processes(bool force) {
     process->kill(force);
 }
 
-bool Terminal::on_motion_notify_event(GdkEventMotion *motion_event) {
+bool Terminal::on_motion_notify_event(GdkEventMotion *event) {
   Gtk::TextIter iter;
   int location_x, location_y;
-  window_to_buffer_coords(Gtk::TextWindowType::TEXT_WINDOW_TEXT, motion_event->x, motion_event->y, location_x, location_y);
+  window_to_buffer_coords(Gtk::TextWindowType::TEXT_WINDOW_TEXT, event->x, event->y, location_x, location_y);
   get_iter_at_location(iter, location_x, location_y);
   if(iter.has_tag(link_tag))
     get_window(Gtk::TextWindowType::TEXT_WINDOW_TEXT)->set_cursor(link_mouse_cursor);
   else
     get_window(Gtk::TextWindowType::TEXT_WINDOW_TEXT)->set_cursor(default_mouse_cursor);
-  return Gtk::TextView::on_motion_notify_event(motion_event);
+  
+  // Workaround for drag-and-drop crash on MacOS
+  // TODO 2018: check if this bug has been fixed
+#ifdef __APPLE__
+  if((event->state & GDK_BUTTON1_MASK) == 0)
+    return Gtk::TextView::on_motion_notify_event(event);
+  else {
+    int x, y;
+    window_to_buffer_coords(Gtk::TextWindowType::TEXT_WINDOW_TEXT, event->x, event->y, x, y);
+    Gtk::TextIter iter;
+    get_iter_at_location(iter, x, y);
+    get_buffer()->select_range(get_buffer()->get_insert()->get_iter(), iter);
+    return true;
+  }
+#else
+  return Gtk::TextView::on_motion_notify_event(event);
+#endif
+  
+  return Gtk::TextView::on_motion_notify_event(event);
 }
 
 std::tuple<size_t, size_t, std::string, std::string, std::string> Terminal::find_link(const std::string &line) {

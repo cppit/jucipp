@@ -150,6 +150,7 @@ namespace Source {
     bool on_key_press_event_smart_brackets(GdkEventKey* key);
     bool on_key_press_event_smart_inserts(GdkEventKey* key);
     bool on_button_press_event(GdkEventButton *event) override;
+    bool on_motion_notify_event(GdkEventMotion *motion_event) override;
     
     std::pair<char, unsigned> find_tab_char_and_size();
     unsigned tab_size;

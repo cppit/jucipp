@@ -2486,6 +2486,25 @@ bool Source::View::on_button_press_event(GdkEventButton *event) {
   return Gsv::View::on_button_press_event(event);
 }
 
+bool Source::View::on_motion_notify_event(GdkEventMotion *event) {
+  // Workaround for drag-and-drop crash on MacOS
+  // TODO 2018: check if this bug has been fixed
+#ifdef __APPLE__
+  if((event->state & GDK_BUTTON1_MASK) == 0)
+    return Gsv::View::on_motion_notify_event(event);
+  else {
+    int x, y;
+    window_to_buffer_coords(Gtk::TextWindowType::TEXT_WINDOW_TEXT, event->x, event->y, x, y);
+    Gtk::TextIter iter;
+    get_iter_at_location(iter, x, y);
+    get_buffer()->select_range(get_buffer()->get_insert()->get_iter(), iter);
+    return true;
+  }
+#else
+  return Gsv::View::on_motion_notify_event(event);
+#endif
+}
+
 std::pair<char, unsigned> Source::View::find_tab_char_and_size() {
   std::unordered_map<char, size_t> tab_chars;
   std::unordered_map<unsigned, size_t> tab_sizes;
