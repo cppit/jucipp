@@ -10,6 +10,15 @@ bool Directories::TreeStore::row_drop_possible_vfunc(const Gtk::TreeModel::Path 
   return true;
 }
 
+bool Directories::TreeStore::drag_data_get_vfunc(const TreeModel::Path &path, Gtk::SelectionData &selection_data) const {
+  // Workaround for MacOS crash when dragging a path for instance inside dir/subdir
+#ifdef __APPLE__
+  return true;
+#else
+  return Gtk::TreeStore::drag_data_get_vfunc(path, selection_data);
+#endif
+}
+
 bool Directories::TreeStore::drag_data_received_vfunc(const TreeModel::Path &path, const Gtk::SelectionData &selection_data) {
   auto &directories=Directories::get();
   
