@@ -576,7 +576,7 @@ Source::ClangViewAutocomplete::ClangViewAutocomplete(const boost::filesystem::pa
     if(!row.empty()) {
       auto row_insert_on_selection = row;
       if(!return_value.empty())
-        row += " --> " + return_value;
+        row += "  →  " + return_value;
       autocomplete.rows[row] = std::pair<std::string, std::string>(std::move(row_insert_on_selection), std::move(suggestion.brief_comments));
       CompletionDialog::get()->add_row(row);
     }
