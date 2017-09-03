@@ -241,6 +241,18 @@ Source::View::View(const boost::filesystem::path &file_path, Glib::RefPtr<Gsv::L
                   std::pair<size_t, size_t> line_index(c, offset-previous_bytes);
                   auto start=get_buffer()->get_iter_at_line_index(line_index.first, line_index.second);
                   
+                  // Use left gravity insert to avoid moving cursor from end of line
+                  bool left_gravity_insert=false;
+                  if(get_buffer()->get_insert()->get_iter()==start) {
+                    auto iter=start;
+                    do {
+                      if(*iter!=' ' && *iter!='\t') {
+                        left_gravity_insert=iter.ends_line();
+                        break;
+                      }
+                    } while(iter.forward_char());
+                  }
+                  
                   if(length>0) {
                     auto offset_end=offset+length;
                     size_t bytes=0;
@@ -255,7 +267,14 @@ Source::View::View(const boost::filesystem::path &file_path, Glib::RefPtr<Gsv::L
                       }
                     }
                   }
-                  get_buffer()->insert(start, replacement_str);
+                  if(left_gravity_insert) {
+                    auto mark=get_buffer()->create_mark(start);
+                    get_buffer()->insert(start, replacement_str);
+                    get_buffer()->place_cursor(mark->get_iter());
+                    get_buffer()->delete_mark(mark);
+                  }
+                  else
+                    get_buffer()->insert(start, replacement_str);
                   break;
                 }
               }
