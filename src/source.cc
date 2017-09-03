@@ -1768,7 +1768,10 @@ bool Source::View::on_key_press_event_basic(GdkEventKey* key) {
       if(previous_line_end_iter.backward_chars(line.size()+1)) {
         if(!previous_line_end_iter.ends_line()) // For CR+LF
           previous_line_end_iter.backward_char();
-        get_buffer()->erase(previous_line_end_iter, iter);
+        if(previous_line_end_iter.starts_line()) // When previous line is empty, keep tabs in current line
+          get_buffer()->erase(previous_line_end_iter, get_buffer()->get_iter_at_line(iter.get_line()));
+        else
+          get_buffer()->erase(previous_line_end_iter, iter);
         return true;
       }
     }
