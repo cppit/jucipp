@@ -423,7 +423,8 @@ bool Source::SpellCheckView::is_word_iter(const Gtk::TextIter& iter) {
     if(is_code_iter(iter))
       return false;
     auto next_iter=iter;
-    if(next_iter.forward_char() && is_code_iter(next_iter))
+    if(next_iter.forward_char() && is_code_iter(next_iter) &&
+       !(comment_tag && iter.ends_tag(comment_tag))) // additional check for end of line comment
       return false;
     return true;
   }
