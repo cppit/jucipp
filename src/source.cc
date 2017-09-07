@@ -1893,7 +1893,7 @@ bool Source::View::on_key_press_event_bracket_language(GdkEventKey* key) {
 
   if(get_buffer()->get_has_selection())
     return false;
-
+  
   if(!is_code_iter(iter)) {
     // Add * at start of line in comment blocks
     if(key->keyval==GDK_KEY_Return || key->keyval==GDK_KEY_KP_Enter) {
@@ -1976,10 +1976,7 @@ bool Source::View::on_key_press_event_bracket_language(GdkEventKey* key) {
       }
     }
     
-    if(!is_code_iter(condition_iter))
-      return false;
-    
-    if(*condition_iter=='{') {
+    if(*condition_iter=='{' && is_code_iter(condition_iter)) {
       Gtk::TextIter found_iter;
       // Check if an '}' is needed
       bool has_right_curly_bracket=false;
@@ -2093,7 +2090,7 @@ bool Source::View::on_key_press_event_bracket_language(GdkEventKey* key) {
       return true;
     }
     //Indenting after for instance if(...)\n...;\n
-    else if(*condition_iter==';' && condition_iter.get_line()>0) {
+    else if(*condition_iter==';' && condition_iter.get_line()>0 && is_code_iter(condition_iter)) {
       auto previous_end_iter=start_iter;
       while(previous_end_iter.backward_char() && !previous_end_iter.ends_line()) {}
       auto condition_iter=get_condition_iter(previous_end_iter);
@@ -2110,7 +2107,7 @@ bool Source::View::on_key_press_event_bracket_language(GdkEventKey* key) {
       }
     }
     //Indenting after ':'
-    else if(*condition_iter==':') {
+    else if(*condition_iter==':' && is_code_iter(condition_iter)) {
       bool perform_indent=true;
       auto iter=condition_iter;
       while(!iter.starts_line() && *iter==' ' && iter.backward_char()) {}
