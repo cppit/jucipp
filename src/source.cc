@@ -1625,6 +1625,15 @@ bool Source::View::on_key_press_event(GdkEventKey* key) {
   
   get_buffer()->begin_user_action();
   
+  // Shift+enter: go to end of line and enter
+  if((key->keyval==GDK_KEY_Return || key->keyval==GDK_KEY_KP_Enter) && (key->state&GDK_SHIFT_MASK)>0) {
+    auto iter=get_buffer()->get_insert()->get_iter();
+    if(!iter.ends_line()) {
+      iter.forward_to_line_end();
+      get_buffer()->place_cursor(iter);
+    }
+  }
+  
   if(Config::get().source.smart_brackets && on_key_press_event_smart_brackets(key)) {
     get_buffer()->end_user_action();
     return true;
