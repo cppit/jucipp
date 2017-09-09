@@ -818,6 +818,21 @@ int main() {
       g_assert(view.get_buffer()->get_insert()->get_iter() == view.get_buffer()->end());
     }
 
+    {
+      view.get_buffer()->set_text("if('a'=='a')");
+      auto iter = view.get_buffer()->get_insert()->get_iter();
+      iter.backward_char();
+      view.get_buffer()->place_cursor(iter);
+      while(Gtk::Main::events_pending())
+        Gtk::Main::iteration(false);
+      view.on_key_press_event(&event);
+      g_assert(view.get_buffer()->get_text() == "if('a'=='a'\n"
+                                                "   )");
+      iter=view.get_buffer()->end();
+      iter.backward_char();
+      g_assert(view.get_buffer()->get_insert()->get_iter() == iter);
+    }
+
 
     event.keyval = GDK_KEY_braceleft;
     {
