@@ -10,19 +10,6 @@
 #include "process.hpp"
 #include "config.h"
 
-#include <lldb/API/SBTarget.h>
-#include <lldb/API/SBProcess.h>
-#include <lldb/API/SBEvent.h>
-#include <lldb/API/SBBreakpoint.h>
-#include <lldb/API/SBThread.h>
-#include <lldb/API/SBStream.h>
-#include <lldb/API/SBDeclaration.h>
-#include <lldb/API/SBCommandInterpreter.h>
-#include <lldb/API/SBCommandReturnObject.h>
-#include <lldb/API/SBBreakpointLocation.h>
-
-using namespace std; //TODO: remove
-
 extern char **environ;
 
 void log(const char *msg, void *) {
@@ -112,9 +99,6 @@ std::tuple<std::vector<std::string>, std::string, std::vector<std::string> > Deb
 
 void Debug::LLDB::start(const std::string &command, const boost::filesystem::path &path,
                   const std::vector<std::pair<boost::filesystem::path, int> > &breakpoints,
-                  std::function<void(int exit_status)> callback,
-                  std::function<void(const std::string &status)> status_callback,
-                  std::function<void(const boost::filesystem::path &file_path, int line_nr, int line_index)> stop_callback,
                   const std::string &remote_host) {
   if(!debugger) {
     lldb::SBDebugger::Initialize();
@@ -136,8 +120,8 @@ void Debug::LLDB::start(const std::string &command, const boost::filesystem::pat
   auto target=debugger->CreateTarget(executable.c_str());
   if(!target.IsValid()) {
     Terminal::get().async_print("Error (debug): Could not create debug target to: "+executable+'\n', true);
-    if(callback)
-      callback(-1);
+    for(auto &handler: on_exit)
+      handler.second(-1);
     return;
   }
   
@@ -145,8 +129,8 @@ void Debug::LLDB::start(const std::string &command, const boost::filesystem::pat
   for(auto &breakpoint: breakpoints) {
     if(!(target.BreakpointCreateByLocation(breakpoint.first.string().c_str(), breakpoint.second)).IsValid()) {
       Terminal::get().async_print("Error (debug): Could not create breakpoint at: "+breakpoint.first.string()+":"+std::to_string(breakpoint.second)+'\n', true);
-      if(callback)
-        callback(-1);
+      for(auto &handler: on_exit)
+        handler.second(-1);
       return;
     }
   }
@@ -157,8 +141,8 @@ void Debug::LLDB::start(const std::string &command, const boost::filesystem::pat
     process = std::make_unique<lldb::SBProcess>(target.ConnectRemote(*listener, connect_string.c_str(), "gdb-remote", error));
     if(error.Fail()) {
       Terminal::get().async_print(std::string("Error (debug): ")+error.GetCString()+'\n', true);
-      if(callback)
-        callback(-1);
+      for(auto &handler: on_exit)
+        handler.second(-1);
       return;
     }
     lldb::SBEvent event;
@@ -199,16 +183,18 @@ void Debug::LLDB::start(const std::string &command, const boost::filesystem::pat
   }
   if(error.Fail()) {
     Terminal::get().async_print(std::string("Error (debug): ")+error.GetCString()+'\n', true);
-    if(callback)
-      callback(-1);
+    for(auto &handler: on_exit)
+      handler.second(-1);
     return;
   }
   if(debug_thread.joinable())
     debug_thread.join();
-  debug_thread=std::thread([this, callback, status_callback, stop_callback]() {
+  for(auto &handler: on_start)
+    handler.second(*process);
+  debug_thread=std::thread([this]() {
     lldb::SBEvent event;
     while(true) {
-      std::unique_lock<std::mutex> lock(event_mutex);
+      std::unique_lock<std::mutex> lock(mutex);
       if(listener->GetNextEvent(event)) {
         if((event.GetType() & lldb::SBProcess::eBroadcastBitStateChanged)>0) {
           auto state=process->GetStateFromEvent(event);
@@ -224,67 +210,17 @@ void Debug::LLDB::start(const std::string &command, const boost::filesystem::pat
             }
           }
           
-          //Update debug status
-          lldb::SBStream stream;
-          event.GetDescription(stream);
-          std::string event_desc=stream.GetData();
-          event_desc.pop_back();
-          auto pos=event_desc.rfind(" = ");
-          if(status_callback && pos!=std::string::npos) {
-            auto status=event_desc.substr(pos+3);
-            if(state==lldb::StateType::eStateStopped) {
-              char buffer[100];
-              auto thread=process->GetSelectedThread();
-              auto n=thread.GetStopDescription(buffer, 100);
-              if(n>0)
-                status+=" ("+std::string(buffer, n<=100?n:100)+")";
-              auto line_entry=thread.GetSelectedFrame().GetLineEntry();
-              if(line_entry.IsValid()) {
-                lldb::SBStream stream;
-                line_entry.GetFileSpec().GetDescription(stream);
-                status +=" "+boost::filesystem::path(stream.GetData()).filename().string()+":"+std::to_string(line_entry.GetLine());
-              }
-            }
-            status_callback(status);
-          }
+          lock.unlock();
+          for(auto &handler: on_event)
+            handler.second(event);
+          lock.lock();
           
-          if(state==lldb::StateType::eStateStopped) {
-            if(stop_callback) {
-              auto line_entry=process->GetSelectedThread().GetSelectedFrame().GetLineEntry();
-              if(line_entry.IsValid()) {
-                lldb::SBStream stream;
-                line_entry.GetFileSpec().GetDescription(stream);
-                auto column=line_entry.GetColumn();
-                if(column==0)
-                  column=1;
-                stop_callback(filesystem::get_normal_path(stream.GetData()), line_entry.GetLine(), column);
-              }
-              else
-                stop_callback("", 0, 0);
-            }
-          }
-          else if(state==lldb::StateType::eStateRunning) {
-            stop_callback("", 0, 0);
-          }
-          else if(state==lldb::StateType::eStateExited) {
-            auto exit_status=process->GetExitStatus();
-            if(callback)
-              callback(exit_status);
-            if(status_callback)
-              status_callback("");
-            if(stop_callback)
-              stop_callback("", 0, 0);
-            process.reset();
-            this->state=lldb::StateType::eStateInvalid;
-            return;
-          }
-          else if(state==lldb::StateType::eStateCrashed) {
-            if(callback)
-              callback(-1);
-            if(status_callback)
-              status_callback("");
-            if(stop_callback)
-              stop_callback("", 0, 0);
+          if(state==lldb::StateType::eStateExited || state==lldb::StateType::eStateCrashed) {
+            auto exit_status=state==lldb::StateType::eStateCrashed?-1:process->GetExitStatus();
+            lock.unlock();
+            for(auto &handler: on_exit)
+              handler.second(exit_status);
+            lock.lock();
             process.reset();
             this->state=lldb::StateType::eStateInvalid;
             return;
@@ -311,13 +247,13 @@ void Debug::LLDB::start(const std::string &command, const boost::filesystem::pat
 }
 
 void Debug::LLDB::continue_debug() {
-  std::unique_lock<std::mutex> lock(event_mutex);
+  std::unique_lock<std::mutex> lock(mutex);
   if(state==lldb::StateType::eStateStopped)
     process->Continue();
 }
 
 void Debug::LLDB::stop() {
-  std::unique_lock<std::mutex> lock(event_mutex);
+  std::unique_lock<std::mutex> lock(mutex);
   if(state==lldb::StateType::eStateRunning) {
     auto error=process->Stop();
     if(error.Fail())
@@ -326,7 +262,7 @@ void Debug::LLDB::stop() {
 }
 
 void Debug::LLDB::kill() {
-  std::unique_lock<std::mutex> lock(event_mutex);
+  std::unique_lock<std::mutex> lock(mutex);
   if(process) {
     auto error=process->Kill();
     if(error.Fail())
@@ -335,21 +271,21 @@ void Debug::LLDB::kill() {
 }
 
 void Debug::LLDB::step_over() {
-  std::unique_lock<std::mutex> lock(event_mutex);
+  std::unique_lock<std::mutex> lock(mutex);
   if(state==lldb::StateType::eStateStopped) {
     process->GetSelectedThread().StepOver();
   }
 }
 
 void Debug::LLDB::step_into() {
-  std::unique_lock<std::mutex> lock(event_mutex);
+  std::unique_lock<std::mutex> lock(mutex);
   if(state==lldb::StateType::eStateStopped) {
     process->GetSelectedThread().StepInto();
   }
 }
 
 void Debug::LLDB::step_out() {
-  std::unique_lock<std::mutex> lock(event_mutex);
+  std::unique_lock<std::mutex> lock(mutex);
   if(state==lldb::StateType::eStateStopped) {
     process->GetSelectedThread().StepOut();
   }
@@ -357,7 +293,7 @@ void Debug::LLDB::step_out() {
 
 std::pair<std::string, std::string> Debug::LLDB::run_command(const std::string &command) {
   std::pair<std::string, std::string> command_return;
-  std::unique_lock<std::mutex> lock(event_mutex);
+  std::unique_lock<std::mutex> lock(mutex);
   if(state==lldb::StateType::eStateStopped || state==lldb::StateType::eStateRunning) {
     lldb::SBCommandReturnObject command_return_object;
     debugger->GetCommandInterpreter().HandleCommand(command.c_str(), command_return_object, true);
@@ -373,7 +309,7 @@ std::pair<std::string, std::string> Debug::LLDB::run_command(const std::string &
 
 std::vector<Debug::LLDB::Frame> Debug::LLDB::get_backtrace() {
   std::vector<Frame> backtrace;
-  std::unique_lock<std::mutex> lock(event_mutex);
+  std::unique_lock<std::mutex> lock(mutex);
   if(state==lldb::StateType::eStateStopped) {
     auto thread=process->GetSelectedThread();
     for(uint32_t c_f=0;c_f<thread.GetNumFrames();c_f++) {
@@ -409,7 +345,7 @@ std::vector<Debug::LLDB::Frame> Debug::LLDB::get_backtrace() {
 
 std::vector<Debug::LLDB::Variable> Debug::LLDB::get_variables() {
   std::vector<Debug::LLDB::Variable> variables;
-  std::unique_lock<std::mutex> lock(event_mutex);
+  std::unique_lock<std::mutex> lock(mutex);
   if(state==lldb::StateType::eStateStopped) {
     for(uint32_t c_t=0;c_t<process->GetNumThreads();c_t++) {
       auto thread=process->GetThreadAtIndex(c_t);
@@ -463,7 +399,7 @@ std::vector<Debug::LLDB::Variable> Debug::LLDB::get_variables() {
 }
 
 void Debug::LLDB::select_frame(uint32_t frame_index, uint32_t thread_index_id) {
-  std::unique_lock<std::mutex> lock(event_mutex);
+  std::unique_lock<std::mutex> lock(mutex);
   if(state==lldb::StateType::eStateStopped) {
     if(thread_index_id!=0)
       process->SetSelectedThreadByIndexID(thread_index_id);
@@ -479,7 +415,7 @@ void Debug::LLDB::cancel() {
 
 std::string Debug::LLDB::get_value(const std::string &variable, const boost::filesystem::path &file_path, unsigned int line_nr, unsigned int line_index) {
   std::string variable_value;
-  std::unique_lock<std::mutex> lock(event_mutex);
+  std::unique_lock<std::mutex> lock(mutex);
   if(state==lldb::StateType::eStateStopped) {
     auto frame=process->GetSelectedThread().GetSelectedFrame();
     
@@ -520,7 +456,7 @@ std::string Debug::LLDB::get_value(const std::string &variable, const boost::fil
 
 std::string Debug::LLDB::get_return_value(const boost::filesystem::path &file_path, unsigned int line_nr, unsigned int line_index) {
   std::string return_value;
-  std::unique_lock<std::mutex> lock(event_mutex);
+  std::unique_lock<std::mutex> lock(mutex);
   if(state==lldb::StateType::eStateStopped) {
     auto thread=process->GetSelectedThread();
     auto thread_return_value=thread.GetStopReturnValue();
@@ -542,22 +478,22 @@ std::string Debug::LLDB::get_return_value(const boost::filesystem::path &file_pa
 }
 
 bool Debug::LLDB::is_invalid() {
-  std::unique_lock<std::mutex> lock(event_mutex);
+  std::unique_lock<std::mutex> lock(mutex);
   return state==lldb::StateType::eStateInvalid;
 }
 
 bool Debug::LLDB::is_stopped() {
-  std::unique_lock<std::mutex> lock(event_mutex);
+  std::unique_lock<std::mutex> lock(mutex);
   return state==lldb::StateType::eStateStopped;
 }
 
 bool Debug::LLDB::is_running() {
-  std::unique_lock<std::mutex> lock(event_mutex);
+  std::unique_lock<std::mutex> lock(mutex);
   return state==lldb::StateType::eStateRunning;
 }
 
 void Debug::LLDB::add_breakpoint(const boost::filesystem::path &file_path, int line_nr) {
-  std::unique_lock<std::mutex> lock(event_mutex);
+  std::unique_lock<std::mutex> lock(mutex);
   if(state==lldb::eStateStopped || state==lldb::eStateRunning) {
     if(!(process->GetTarget().BreakpointCreateByLocation(file_path.string().c_str(), line_nr)).IsValid())
       Terminal::get().async_print("Error (debug): Could not create breakpoint at: "+file_path.string()+":"+std::to_string(line_nr)+'\n', true);
@@ -565,7 +501,7 @@ void Debug::LLDB::add_breakpoint(const boost::filesystem::path &file_path, int l
 }
 
 void Debug::LLDB::remove_breakpoint(const boost::filesystem::path &file_path, int line_nr, int line_count) {
-  std::unique_lock<std::mutex> lock(event_mutex);
+  std::unique_lock<std::mutex> lock(mutex);
   if(state==lldb::eStateStopped || state==lldb::eStateRunning) {
     auto target=process->GetTarget();
     for(int line_nr_try=line_nr;line_nr_try<line_count;line_nr_try++) {
@@ -590,7 +526,7 @@ void Debug::LLDB::remove_breakpoint(const boost::filesystem::path &file_path, in
 }
 
 void Debug::LLDB::write(const std::string &buffer) {
-  std::unique_lock<std::mutex> lock(event_mutex);
+  std::unique_lock<std::mutex> lock(mutex);
   if(state==lldb::StateType::eStateRunning) {
     process->PutSTDIN(buffer.c_str(), buffer.size());
   }

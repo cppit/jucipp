@@ -80,15 +80,26 @@ int main() {
   std::atomic<bool> exited(false);
   int exit_status;
   std::atomic<int> line_nr(0);
+  Debug::LLDB::get().on_exit["test"]=[&](int exit_status_) {
+    exit_status=exit_status_;
+    exited=true;
+  };
+  Debug::LLDB::get().on_event["test"]=[&](const lldb::SBEvent &event) {
+    std::unique_lock<std::mutex> lock(Debug::LLDB::get().mutex);
+    auto process=lldb::SBProcess::GetProcessFromEvent(event);
+    auto state=lldb::SBProcess::GetStateFromEvent(event);
+    if(state==lldb::StateType::eStateStopped) {
+      auto line_entry=process.GetSelectedThread().GetSelectedFrame().GetLineEntry();
+      if(line_entry.IsValid()) {
+        lldb::SBStream stream;
+        line_entry.GetFileSpec().GetDescription(stream);
+        line_nr=line_entry.GetLine();
+      }
+    }
+  };
+  
   std::thread debug_thread([&] {
-    Debug::LLDB::get().start(exec_path.string(), "", breakpoints, [&](int exit_status_){
-      exit_status=exit_status_;
-      exited=true;
-    }, [](const std::string &status) {
-      
-    }, [&](const boost::filesystem::path &file_path, int line_nr_, int line_index) {
-      line_nr=line_nr_;
-    });
+    Debug::LLDB::get().start(exec_path.string(), "", breakpoints);
   });
   
   for(;;) {

@@ -447,24 +447,63 @@ void Project::Clang::debug_start() {
         auto options_it=debug_options.find(project_path->string());
         if(options_it!=debug_options.end() && options_it->second.remote_enabled.get_active())
           remote_host=options_it->second.remote_host.get_text();
-        Debug::LLDB::get().start(*run_arguments, *project_path, breakpoints, [this, run_arguments](int exit_status){
+        
+        Debug::LLDB::get().on_exit["debug_start"]=[this, run_arguments](int exit_status) {
           debugging=false;
           Terminal::get().async_print(*run_arguments+" returned: "+std::to_string(exit_status)+'\n');
-        }, [this](const std::string &status) {
-          dispatcher.post([this, status] {
-            debug_update_status(status);
+          dispatcher.post([this] {
+            debug_update_status("");
           });
-        }, [this](const boost::filesystem::path &file_path, int line_nr, int line_index) {
-          dispatcher.post([this, file_path, line_nr, line_index] {
-            Project::debug_stop.first=file_path;
-            Project::debug_stop.second.first=line_nr-1;
-            Project::debug_stop.second.second=line_index-1;
-            
+        };
+        
+        Debug::LLDB::get().on_event["debug_start"]=[this](const lldb::SBEvent &event) {
+          std::string status;
+          boost::filesystem::path stop_path;
+          unsigned stop_line=0, stop_column=0;
+          
+          std::unique_lock<std::mutex> lock(Debug::LLDB::get().mutex);
+          auto process=lldb::SBProcess::GetProcessFromEvent(event);
+          auto state=lldb::SBProcess::GetStateFromEvent(event);
+          lldb::SBStream stream;
+          event.GetDescription(stream);
+          std::string event_desc=stream.GetData();
+          event_desc.pop_back();
+          auto pos=event_desc.rfind(" = ");
+          if(pos!=std::string::npos && pos+3<event_desc.size())
+            status=event_desc.substr(pos+3);
+          if(state==lldb::StateType::eStateStopped) {
+            char buffer[100];
+            auto thread=process.GetSelectedThread();
+            auto n=thread.GetStopDescription(buffer, 100);
+            if(n>0)
+              status+=" ("+std::string(buffer, n<=100?n:100)+")";
+            auto line_entry=thread.GetSelectedFrame().GetLineEntry();
+            if(line_entry.IsValid()) {
+              lldb::SBStream stream;
+              line_entry.GetFileSpec().GetDescription(stream);
+              auto line=line_entry.GetLine();
+              status +=" "+boost::filesystem::path(stream.GetData()).filename().string()+":"+std::to_string(line);
+              auto column=line_entry.GetColumn();
+              if(column==0)
+                column=1;
+              stop_path=filesystem::get_normal_path(stream.GetData());
+              stop_line=line-1;
+              stop_column=column-1;
+            }
+          }
+          
+          dispatcher.post([this, status=std::move(status), stop_path=std::move(stop_path), stop_line, stop_column] {
+            debug_update_status(status);
+            Project::debug_stop.first=stop_path;
+            Project::debug_stop.second.first=stop_line;
+            Project::debug_stop.second.second=stop_column;
             debug_update_stop();
             if(auto view=Notebook::get().get_current_view())
               view->get_buffer()->place_cursor(view->get_buffer()->get_insert()->get_iter());
           });
-        }, remote_host);
+        };
+        
+        Debug::LLDB::get().start(*run_arguments, *project_path, breakpoints, remote_host);
       });
     }
   });

@@ -3,9 +3,7 @@
 
 #include <boost/filesystem.hpp>
 #include <unordered_map>
-#include <lldb/API/SBDebugger.h>
-#include <lldb/API/SBListener.h>
-#include <lldb/API/SBProcess.h>
+#include <lldb/API/LLDB.h>
 #include <thread>
 #include <mutex>
 #include <tuple>
@@ -41,11 +39,14 @@ namespace Debug {
       return singleton;
     }
     
+    std::unordered_map<std::string, std::function<void(const lldb::SBProcess &)>> on_start;
+    std::unordered_map<std::string, std::function<void(int exit_status)>> on_exit;
+    std::unordered_map<std::string, std::function<void(const lldb::SBEvent &)>> on_event;
+    
+    std::mutex mutex;
+
     void start(const std::string &command, const boost::filesystem::path &path="",
                const std::vector<std::pair<boost::filesystem::path, int> > &breakpoints={},
-               std::function<void(int exit_status)> callback=nullptr,
-               std::function<void(const std::string &status)> status_callback=nullptr,
-               std::function<void(const boost::filesystem::path &file_path, int line_nr, int line_index)> stop_callback=nullptr,
                const std::string &remote_host="");
     void continue_debug(); //can't use continue as function name
     void stop();
@@ -81,7 +82,6 @@ namespace Debug {
     std::thread debug_thread;
     
     lldb::StateType state;
-    std::mutex event_mutex;
     
     size_t buffer_size;
   };
