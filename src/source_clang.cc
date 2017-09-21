@@ -465,9 +465,50 @@ Source::ClangViewAutocomplete::ClangViewAutocomplete(const boost::filesystem::pa
     parse_process_state=ParseProcessState::IDLE;
   };
   
-  autocomplete.is_continue_key=[this](guint keyval) {
+  // Activate argument completions
+  get_buffer()->signal_changed().connect([this] {
+    if(!interactive_completion)
+      return;
+    if(CompletionDialog::get() && CompletionDialog::get()->is_visible())
+      return;
+    if(!has_focus())
+      return;
+    if(show_arguments)
+      autocomplete.stop();
+    show_arguments=false;
+    delayed_show_arguments_connection.disconnect();
+    delayed_show_arguments_connection=Glib::signal_timeout().connect([this]() {
+      if(get_buffer()->get_has_selection())
+        return false;
+      if(CompletionDialog::get() && CompletionDialog::get()->is_visible())
+        return false;
+      if(!has_focus())
+        return false;
+      if(is_possible_parameter()) {
+        autocomplete.stop();
+        autocomplete.run();
+      }
+      return false;
+    }, 500);
+  }, false);
+
+  // Remove argument completions
+  signal_key_press_event().connect([this](GdkEventKey *key) {
+    if(show_arguments && CompletionDialog::get() && CompletionDialog::get()->is_visible() &&
+       key->keyval != GDK_KEY_Down && key->keyval != GDK_KEY_Up &&
+       key->keyval != GDK_KEY_Return && key->keyval != GDK_KEY_KP_Enter &&
+       key->keyval != GDK_KEY_ISO_Left_Tab && key->keyval != GDK_KEY_Tab &&
+       (key->keyval < GDK_KEY_Shift_L || key->keyval > GDK_KEY_Hyper_R)) {
+      get_buffer()->erase(CompletionDialog::get()->start_mark->get_iter(), get_buffer()->get_insert()->get_iter());
+      CompletionDialog::get()->hide();
+    }
+    return false;
+  }, false);
+
+  autocomplete.is_continue_key=[](guint keyval) {
     if((keyval>='0' && keyval<='9') || (keyval>='a' && keyval<='z') || (keyval>='A' && keyval<='Z') || keyval=='_')
       return true;
+    
     return false;
   };
   
@@ -481,8 +522,12 @@ Source::ClangViewAutocomplete::ClangViewAutocomplete(const boost::filesystem::pa
   
   autocomplete.run_check=[this]() {
     auto iter=get_buffer()->get_insert()->get_iter();
-    if(iter.backward_char() && iter.backward_char() && !is_code_iter(iter))
+    iter.backward_char();
+    if(!is_code_iter(iter))
       return false;
+    
+    show_arguments=false;
+    
     std::string line=" "+get_line_before();
     const static std::regex in_specified_namespace("^.*[a-zA-Z0-9_\\)\\]\\>](->|\\.|::)([a-zA-Z0-9_]*)$");
     const static std::regex within_namespace("^.*[^a-zA-Z0-9_]+([a-zA-Z0-9_]{3,})$");
@@ -503,82 +548,116 @@ Source::ClangViewAutocomplete::ClangViewAutocomplete(const boost::filesystem::pa
       if(autocomplete.prefix.size()==0 || autocomplete.prefix[0]<'0' || autocomplete.prefix[0]>'9')
         return true;
     }
+    else if(is_possible_parameter()) {
+      show_arguments=true;
+      std::unique_lock<std::mutex> lock(autocomplete.prefix_mutex);
+      autocomplete.prefix="";
+      return true;
+    }
+    else if(!interactive_completion) {
+      auto end_iter=get_buffer()->get_insert()->get_iter();
+      auto iter=end_iter;
+      while(iter.backward_char() && autocomplete.is_continue_key(*iter)) {}
+      if(iter!=end_iter)
+        iter.forward_char();
+      std::unique_lock<std::mutex> lock(autocomplete.prefix_mutex);
+      autocomplete.prefix=get_buffer()->get_text(iter, end_iter);
+      return true;
+    }
+    
     return false;
   };
   
-  autocomplete.before_get_suggestions=[this] {
+  autocomplete.before_add_rows=[this] {
     status_state="autocomplete...";
     if(update_status_state)
       update_status_state(this);
   };
   
-  autocomplete.after_get_suggestions=[this] {
+  autocomplete.after_add_rows=[this] {
     status_state="";
     if(update_status_state)
       update_status_state(this);
   };
   
-  autocomplete.on_get_suggestions_error=[this] {
+  autocomplete.on_add_rows_error=[this] {
     Terminal::get().print("Error: autocomplete failed, reparsing "+this->file_path.string()+"\n", true);
     full_reparse();
   };
   
-  autocomplete.get_suggestions=[this](std::string &buffer, int line_number, int column) {
-    auto suggestions=std::make_shared<std::vector<Suggestion>>();
+  autocomplete.add_rows=[this](std::string &buffer, int line_number, int column) {
     if(this->language && (this->language->get_id()=="chdr" || this->language->get_id()=="cpphdr"))
       clangmm::remove_include_guard(buffer);
     auto results=clang_tu->get_code_completions(buffer, line_number, column);
     if(results.cx_results==nullptr) {
       auto expected=ParseState::PROCESSING;
       parse_state.compare_exchange_strong(expected, ParseState::RESTARTING);
-      return suggestions;
+      return;
     }
     
-    if(autocomplete.state==Autocomplete<Suggestion>::State::STARTING) {
+    if(autocomplete.state==Autocomplete::State::STARTING) {
       std::string prefix_copy;
       {
         std::lock_guard<std::mutex> lock(autocomplete.prefix_mutex);
         prefix_copy=autocomplete.prefix;
       }
-        
+      
       for (unsigned i = 0; i < results.size(); ++i) {
         auto result=results.get(i);
         if(result.available()) {
-          auto chunks=result.get_chunks();
-          bool match=false;
-          for(auto &chunk: chunks) {
-            if(chunk.kind!=clangmm::CompletionChunk_ResultType && chunk.kind!=clangmm::CompletionChunk_Informative) {
-              if(chunk.chunk.size()>=prefix_copy.size() && chunk.chunk.compare(0, prefix_copy.size(), prefix_copy)==0)
-                match=true;
-              break;
+          std::string text;
+          if(show_arguments) {
+            class Recursive {
+            public:
+              static void f(const clangmm::CompletionString &completion_string, std::string &text) {
+                for(unsigned i = 0; i < completion_string.get_num_chunks(); ++i) {
+                  auto kind=static_cast<clangmm::CompletionChunkKind>(clang_getCompletionChunkKind(completion_string.cx_completion_sting, i));
+                  if(kind==clangmm::CompletionChunk_Optional)
+                    f(clangmm::CompletionString(clang_getCompletionChunkCompletionString(completion_string.cx_completion_sting, i)), text);
+                  else if(kind==clangmm::CompletionChunk_CurrentParameter) {
+                    auto chunk_cstr=clangmm::String(clang_getCompletionChunkText(completion_string.cx_completion_sting, i));
+                    text+=chunk_cstr.c_str;
+                  }
+                }
+              }
+            };
+            Recursive::f(result, text);
+            if(!text.empty()) {
+              bool already_added=false;
+              for(auto &pair: autocomplete.rows) {
+                if(pair.first==text) {
+                  already_added=true;
+                  break;
+                }
+              }
+              if(!already_added)
+                autocomplete.rows.emplace_back(std::move(text), result.get_brief_comment());
             }
           }
-          if(match) {
-            suggestions->emplace_back(std::move(chunks));
-            suggestions->back().brief_comments=result.get_brief_comments();
+          else {
+            std::string return_text;
+            bool match=false;
+            for(unsigned i = 0; i < result.get_num_chunks(); ++i) {
+              auto kind=static_cast<clangmm::CompletionChunkKind>(clang_getCompletionChunkKind(result.cx_completion_sting, i));
+              if(kind!=clangmm::CompletionChunk_Informative) {
+                auto chunk_cstr=clangmm::String(clang_getCompletionChunkText(result.cx_completion_sting, i));
+                if(kind==clangmm::CompletionChunk_TypedText) {
+                  if(strlen(chunk_cstr.c_str)>=prefix_copy.size() && prefix_copy.compare(0, prefix_copy.size(), chunk_cstr.c_str, prefix_copy.size())==0)
+                    match = true;
+                  else
+                    break;
+                }
+                if(kind==clangmm::CompletionChunk_ResultType)
+                  return_text=std::string("  →  ")+chunk_cstr.c_str;
+                else
+                  text+=chunk_cstr.c_str;
+              }
+            }
+            if(match && !text.empty())
+              autocomplete.rows.emplace_back(std::move(text), result.get_brief_comment());
           }
         }
       }
-    }
-    return suggestions;
-  };
-  
-  autocomplete.foreach_suggestion=[this](Suggestion &suggestion) {
-    std::string row;
-    std::string return_value;
-    for(auto &chunk : suggestion.chunks) {
-      if(chunk.kind == clangmm::CompletionChunk_ResultType)
-        return_value = chunk.chunk;
-      else if(chunk.kind != clangmm::CompletionChunk_Informative)
-        row += chunk.chunk;
-    }
-    suggestion.chunks.clear();
-    if(!row.empty()) {
-      auto row_insert_on_selection = row;
-      if(!return_value.empty())
-        row += "  →  " + return_value;
-      autocomplete.rows[row] = std::pair<std::string, std::string>(std::move(row_insert_on_selection), std::move(suggestion.brief_comments));
-      CompletionDialog::get()->add_row(row);
     }
   };
   
@@ -587,8 +666,15 @@ Source::ClangViewAutocomplete::ClangViewAutocomplete(const boost::filesystem::pa
       hide_tooltips();
     };
     
-    CompletionDialog::get()->on_select=[this](const std::string &selected, bool hide_window) {
-      auto row = autocomplete.rows.at(selected).first;
+    CompletionDialog::get()->on_select=[this](unsigned int index, const std::string &text, bool hide_window) {
+      if(index>=autocomplete.rows.size())
+        return;
+      std::string row;
+      auto pos=text.find("  →  ");
+      if(pos!=std::string::npos)
+        row=text.substr(0, pos);
+      else
+        row=text;
       //erase existing variable or function before insert iter
       get_buffer()->erase(CompletionDialog::get()->start_mark->get_iter(), get_buffer()->get_insert()->get_iter());
       //do not insert template argument or function parameters if they already exist
@@ -607,45 +693,71 @@ Source::ClangViewAutocomplete::ClangViewAutocomplete(const boost::filesystem::pa
       get_buffer()->insert(CompletionDialog::get()->start_mark->get_iter(), row);
       //if selection is finalized, select text inside template arguments or function parameters
       if(hide_window) {
-        auto para_pos=row.find('(');
-        auto angle_pos=row.find('<');
         size_t start_pos=std::string::npos;
         size_t end_pos=std::string::npos;
-        if(angle_pos<para_pos) {
-          start_pos=angle_pos;
-          end_pos=row.find('>');
+        if(show_arguments) {
+          start_pos=0;
+          end_pos=row.size();
         }
-        else if(para_pos!=std::string::npos) {
-          start_pos=para_pos;
-          end_pos=row.size()-1;
-        }
-        if(start_pos==std::string::npos || end_pos==std::string::npos) {
-          if((start_pos=row.find('\"'))!=std::string::npos)
-            end_pos=row.find('\"', start_pos+1);
-        }
-        if(start_pos==std::string::npos || end_pos==std::string::npos) {
-          if((start_pos=row.find(' '))!=std::string::npos) {
-            if((start_pos=row.find("expression", start_pos+1))!=std::string::npos) {
-              end_pos=start_pos+10;
-              start_pos--;
+        else {
+          auto para_pos=row.find('(');
+          auto angle_pos=row.find('<');
+          if(angle_pos<para_pos) {
+            start_pos=angle_pos+1;
+            end_pos=row.find('>');
+          }
+          else if(para_pos!=std::string::npos) {
+            start_pos=para_pos+1;
+            end_pos=row.size()-1;
+          }
+          if(start_pos==std::string::npos || end_pos==std::string::npos) {
+            if((start_pos=row.find('\"'))!=std::string::npos) {
+              end_pos=row.find('\"', start_pos+1);
+              ++start_pos;
             }
           }
         }
+        if(start_pos==std::string::npos || end_pos==std::string::npos) {
+          if((start_pos=row.find(' '))!=std::string::npos) {
+            std::vector<std::string> parameters={"expression", "arguments", "identifier", "type name", "qualifier::name", "macro", "condition"};
+            for(auto &parameter: parameters) {
+              if((start_pos=row.find(parameter, start_pos+1))!=std::string::npos) {
+                end_pos=start_pos+parameter.size();
+                break;
+              }
+            }
+          }
+        }
+        
         if(start_pos!=std::string::npos && end_pos!=std::string::npos) {
-          auto start_offset=CompletionDialog::get()->start_mark->get_iter().get_offset()+start_pos+1;
-          auto end_offset=CompletionDialog::get()->start_mark->get_iter().get_offset()+end_pos;
-          if(start_offset!=end_offset)
+          int start_offset=CompletionDialog::get()->start_mark->get_iter().get_offset()+start_pos;
+          int end_offset=CompletionDialog::get()->start_mark->get_iter().get_offset()+end_pos;
+          auto size=get_buffer()->size();
+          if(start_offset!=end_offset && start_offset<size && end_offset<size)
             get_buffer()->select_range(get_buffer()->get_iter_at_offset(start_offset), get_buffer()->get_iter_at_offset(end_offset));
         }
         else {
           //new autocomplete after for instance when selecting "std::"
           auto iter=get_buffer()->get_insert()->get_iter();
-          if(iter.backward_char() && *iter==':')
+          if(iter.backward_char() && *iter==':') {
             autocomplete.run();
+            return;
+          }
         }
       }
     };
   };
+}
+
+bool Source::ClangViewAutocomplete::is_possible_parameter() {
+  auto iter=get_buffer()->get_insert()->get_iter();
+  if(iter.backward_char() && (!interactive_completion || last_keyval=='(' || last_keyval==',' || last_keyval==' ' ||
+                              last_keyval==GDK_KEY_Return || last_keyval==GDK_KEY_KP_Enter)) {
+    while((*iter==' ' || *iter=='\t' || *iter=='\n' || *iter=='\r') && iter.backward_char()) {}
+    if(*iter=='(' || *iter==',')
+      return true;
+  }
+  return false;
 }
 
 const std::unordered_map<std::string, std::string> &Source::ClangViewAutocomplete::autocomplete_manipulators_map() {
@@ -1552,7 +1664,7 @@ void Source::ClangView::full_reparse() {
         return;
       }
     }
-    autocomplete.state=Autocomplete<ClangViewAutocomplete::Suggestion>::State::IDLE;
+    autocomplete.state=Autocomplete::State::IDLE;
     soft_reparse_needed=false;
     full_reparse_running=true;
     if(full_reparse_thread.joinable())
@@ -1571,6 +1683,7 @@ void Source::ClangView::full_reparse() {
 }
 
 void Source::ClangView::async_delete() {
+  delayed_show_arguments_connection.disconnect();
   delayed_tag_similar_identifiers_connection.disconnect();
   parsing_in_progress->cancel("canceled, freeing resources in the background");
   

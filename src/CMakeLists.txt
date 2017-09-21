@@ -19,6 +19,7 @@ set(project_files
 
 #Files used both in ../src and ../tests
 set(project_shared_files
+    autocomplete.cc
     cmake.cc
     compile_commands.cc
     ctags.cc

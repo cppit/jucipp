@@ -422,27 +422,27 @@ Source::View::View(const boost::filesystem::path &file_path, Glib::RefPtr<Gsv::L
   }
   set_tab_char_and_size(tab_char, tab_size);
   
-  std::shared_ptr<std::string> comment_characters;
+  std::string comment_characters;
   if(is_bracket_language)
-    comment_characters=std::make_shared<std::string>("//");
+    comment_characters="//";
   else if(language) {
     if(language->get_id()=="cmake" || language->get_id()=="makefile" || language->get_id()=="python" ||
        language->get_id()=="python3" || language->get_id()=="sh" || language->get_id()=="perl" ||
        language->get_id()=="ruby" || language->get_id()=="r" || language->get_id()=="asm" ||
        language->get_id()=="automake")
-      comment_characters=std::make_shared<std::string>("#");
+      comment_characters="#";
     else if(language->get_id()=="latex" || language->get_id()=="matlab" || language->get_id()=="octave" ||
             language->get_id()=="bibtex")
-      comment_characters=std::make_shared<std::string>("%");
+      comment_characters="%";
     else if(language->get_id()=="fortran")
-      comment_characters=std::make_shared<std::string>("!");
+      comment_characters="!";
     else if(language->get_id()=="pascal")
-      comment_characters=std::make_shared<std::string>("//");
+      comment_characters="//";
     else if(language->get_id()=="lua")
-      comment_characters=std::make_shared<std::string>("--");
+      comment_characters="--";
   }
-  if(comment_characters) {
-    toggle_comments=[this, comment_characters] {
+  if(!comment_characters.empty()) {
+    toggle_comments=[this, comment_characters=std::move(comment_characters)] {
       std::vector<int> lines;
       Gtk::TextIter selection_start, selection_end;
       get_buffer()->get_selection_bounds(selection_start, selection_end);
@@ -470,12 +470,12 @@ Source::View::View(const boost::filesystem::path &file_path, Glib::RefPtr<Gsv::L
           else {
             lines.emplace_back(line);
             line_added=true;
-            for(size_t c=0;c<comment_characters->size();++c) {
+            for(size_t c=0;c<comment_characters.size();++c) {
               if(iter.ends_line()) {
                 break;
               }
-              else if(*iter==static_cast<unsigned int>((*comment_characters)[c])) {
-                if(c<comment_characters->size()-1) {
+              else if(*iter==static_cast<unsigned int>(comment_characters[c])) {
+                if(c<comment_characters.size()-1) {
                   iter.forward_char();
                   continue;
                 }
@@ -503,14 +503,14 @@ Source::View::View(const boost::filesystem::path &file_path, Glib::RefPtr<Gsv::L
         }
       }
       if(lines.size()) {
-        auto comment_characters_and_space=*comment_characters+' ';
+        auto comment_characters_and_space=comment_characters+' ';
         get_buffer()->begin_user_action();
         for(auto &line: lines) {
           auto iter=get_buffer()->get_iter_at_line(line);
           iter.forward_chars(min_indentation);
           if(lines_commented) {
             auto end_iter=iter;
-            end_iter.forward_chars(comment_characters->size()+static_cast<int>(extra_spaces));
+            end_iter.forward_chars(comment_characters.size()+static_cast<int>(extra_spaces));
             while(*iter==' ' || *iter=='\t') {
               iter.forward_char();
               end_iter.forward_char();
@@ -1772,6 +1772,8 @@ bool Source::View::on_key_press_event_basic(GdkEventKey* key) {
         break;
       }
     }
+    if(get_buffer()->size()==1) // special case due to backward_char(s) returning false when moving to start of buffer
+      do_smart_backspace=false;
     if(do_smart_backspace) {
       auto previous_line_end_iter=iter;
       if(previous_line_end_iter.backward_chars(line.size()+1)) {
@@ -2367,10 +2369,11 @@ bool Source::View::on_key_press_event_smart_inserts(GdkEventKey *key) {
     // Insert ()
     if(key->keyval==GDK_KEY_parenleft && allow_insertion(iter)) {
       if(symbol_count(iter, '(', ')')==0) {
-        get_buffer()->insert_at_cursor("()");
-        auto iter=get_buffer()->get_insert()->get_iter();
+        get_buffer()->insert_at_cursor(")");
+        iter=get_buffer()->get_insert()->get_iter();
         iter.backward_char();
         get_buffer()->place_cursor(iter);
+        get_buffer()->insert_at_cursor("(");
         scroll_to(get_buffer()->get_insert());
         return true;
       }

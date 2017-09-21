@@ -40,7 +40,9 @@ namespace Debug {
     }
     
     std::unordered_map<std::string, std::function<void(const lldb::SBProcess &)>> on_start;
+    /// The handlers are not run in the main loop.
     std::unordered_map<std::string, std::function<void(int exit_status)>> on_exit;
+    /// The handlers are not run in the main loop.
     std::unordered_map<std::string, std::function<void(const lldb::SBEvent &)>> on_event;
     
     std::mutex mutex;

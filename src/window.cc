@@ -628,21 +628,23 @@ void Window::set_menu_actions() {
     else
       SelectionDialog::create(true, true);
     
-    auto rows=std::make_shared<std::unordered_map<std::string, Source::Offset> >();
+    std::vector<Source::Offset> rows;
       
     std::string line;
     while(std::getline(*stream, line)) {
       auto location=Ctags::get_location(line, true);
       
       std::string row=location.file_path.string()+":"+std::to_string(location.line+1)+": "+location.source;
-      (*rows)[row]=Source::Offset(location.line, location.index, location.file_path);
+      rows.emplace_back(Source::Offset(location.line, location.index, location.file_path));
       SelectionDialog::get()->add_row(row);
     }
       
-    if(rows->size()==0)
+    if(rows.size()==0)
       return;
-    SelectionDialog::get()->on_select=[this, rows, path](const std::string &selected, bool hide_window) {
-      auto offset=rows->at(selected);
+    SelectionDialog::get()->on_select=[this, rows=std::move(rows), path=std::move(path)](unsigned int index, const std::string &text, bool hide_window) {
+      if(index>=rows.size())
+        return;
+      auto offset=rows[index];
       auto full_path=path/offset.file_path;
       if(!boost::filesystem::is_regular_file(full_path))
         return;
@@ -693,7 +695,7 @@ void Window::set_menu_actions() {
     for(auto view: Notebook::get().get_views())
       buffer_paths.emplace(view->file_path.string());
     
-    auto paths=std::make_shared<std::unordered_map<std::string, boost::filesystem::path>>();
+    std::vector<boost::filesystem::path> paths;
     // populate with all files in search_path
     for (boost::filesystem::recursive_directory_iterator iter(search_path), end; iter != end; iter++) {
       auto path = iter->path();
@@ -708,22 +710,21 @@ void Window::set_menu_actions() {
       auto row_str = filesystem::get_relative_path(path, search_path).string();
       if(buffer_paths.count(path.string()))
         row_str="<b>"+row_str+"</b>";
-      paths->emplace(row_str, path);
+      paths.emplace_back(path);
       SelectionDialog::get()->add_row(row_str);
     }
     
-    if(paths->empty()) {
+    if(paths.empty()) {
       Info::get().print("No files found in current project");
       return;
     }
   
-    SelectionDialog::get()->on_select=[this, paths](const std::string &selected, bool hide_window) {
-      auto it=paths->find(selected);
-      if(it!=paths->end()) {
-        Notebook::get().open(it->second);
-        if (auto view=Notebook::get().get_current_view())
-          view->hide_tooltips();
-      }
+    SelectionDialog::get()->on_select=[this, paths=std::move(paths)](unsigned int index, const std::string &text, bool hide_window) {
+      if(index>=paths.size())
+        return;
+      Notebook::get().open(paths[index]);
+      if (auto view=Notebook::get().get_current_view())
+        view->hide_tooltips();
     };
   
     if(view)
@@ -825,7 +826,7 @@ void Window::set_menu_actions() {
     if(!locations.empty()) {
       auto dialog_iter=view->get_iter_for_dialog();
       SelectionDialog::create(view, view->get_buffer()->create_mark(dialog_iter), true, true);
-      auto rows=std::make_shared<std::unordered_map<std::string, Source::Offset> >();
+      std::vector<Source::Offset> rows;
       auto project_path=Project::Build::create(view->file_path)->project_path;
       if(project_path.empty()) {
         if(!Directories::get().path.empty())
@@ -838,26 +839,28 @@ void Window::set_menu_actions() {
         if(path.empty())
           path=location.file_path.filename();
         auto row=path.string()+":"+std::to_string(location.line+1);
-        (*rows)[row]=location;
+        rows.emplace_back(location);
         SelectionDialog::get()->add_row(row);
       }
       
-      if(rows->size()==0)
+      if(rows.size()==0)
         return;
-      else if(rows->size()==1) {
-        auto location=*rows->begin();
-        if(!boost::filesystem::is_regular_file(location.second.file_path))
+      else if(rows.size()==1) {
+        auto location=*rows.begin();
+        if(!boost::filesystem::is_regular_file(location.file_path))
           return;
-        Notebook::get().open(location.second.file_path);
+        Notebook::get().open(location.file_path);
         auto view=Notebook::get().get_current_view();
-        auto line=static_cast<int>(location.second.line);
-        auto index=static_cast<int>(location.second.index);
+        auto line=static_cast<int>(location.line);
+        auto index=static_cast<int>(location.index);
         view->place_cursor_at_line_index(line, index);
         view->scroll_to_cursor_delayed(view, true, false);
         return;
       }
-      SelectionDialog::get()->on_select=[rows](const std::string &selected, bool hide_window) {
-        auto location=rows->at(selected);
+      SelectionDialog::get()->on_select=[rows=std::move(rows)](unsigned int index, const std::string &text, bool hide_window) {
+        if(index>=rows.size())
+          return;
+        auto location=rows[index];
         if(!boost::filesystem::is_regular_file(location.file_path))
           return;
         Notebook::get().open(location.file_path);
@@ -890,7 +893,7 @@ void Window::set_menu_actions() {
         if(!usages.empty()) {
           auto dialog_iter=view->get_iter_for_dialog();
           SelectionDialog::create(view, view->get_buffer()->create_mark(dialog_iter), true, true);
-          auto rows=std::make_shared<std::unordered_map<std::string, Source::Offset> >();
+          std::vector<Source::Offset> rows;
           
           auto iter=view->get_buffer()->get_insert()->get_iter();
           for(auto &usage: usages) {
@@ -902,7 +905,7 @@ void Window::set_menu_actions() {
               current_page=false;
             }
             row+=std::to_string(usage.first.line+1)+": "+usage.second;
-            (*rows)[row]=usage.first;
+            rows.emplace_back(usage.first);
             SelectionDialog::get()->add_row(row);
             
             //Set dialog cursor to the last row if the textview cursor is at the same line
@@ -912,10 +915,12 @@ void Window::set_menu_actions() {
             }
           }
           
-          if(rows->size()==0)
+          if(rows.size()==0)
             return;
-          SelectionDialog::get()->on_select=[this, rows](const std::string &selected, bool hide_window) {
-            auto offset=rows->at(selected);
+          SelectionDialog::get()->on_select=[this, rows=std::move(rows)](unsigned int index, const std::string &text, bool hide_window) {
+            if(index>=rows.size())
+              return;
+            auto offset=rows[index];
             if(!boost::filesystem::is_regular_file(offset.file_path))
               return;
             Notebook::get().open(offset.file_path);
@@ -937,16 +942,18 @@ void Window::set_menu_actions() {
         if(!methods.empty()) {
           auto dialog_iter=view->get_iter_for_dialog();
           SelectionDialog::create(view, view->get_buffer()->create_mark(dialog_iter), true, true);
-          auto rows=std::make_shared<std::unordered_map<std::string, Source::Offset> >();
+          std::vector<Source::Offset> rows;
           auto iter=view->get_buffer()->get_insert()->get_iter();
           for(auto &method: methods) {
-            (*rows)[method.second]=method.first;
+            rows.emplace_back(method.first);
             SelectionDialog::get()->add_row(method.second);
             if(iter.get_line()>=static_cast<int>(method.first.line))
               SelectionDialog::get()->set_cursor_at_last_row();
           }
-          SelectionDialog::get()->on_select=[view, rows](const std::string& selected, bool hide_window) {
-            auto offset=rows->at(selected);
+          SelectionDialog::get()->on_select=[view, rows=std::move(rows)](unsigned int index, const std::string &text, bool hide_window) {
+            if(index>=rows.size())
+              return;
+            auto offset=rows[index];
             view->get_buffer()->place_cursor(view->get_buffer()->get_iter_at_line_index(offset.line, offset.index));
             view->scroll_to(view->get_buffer()->get_insert(), 0.0, 1.0, 0.5);
             view->hide_tooltips();
@@ -971,16 +978,16 @@ void Window::set_menu_actions() {
           EntryBox::get().buttons.back().activate();
           return;
         }
-        auto method=std::make_shared<std::string>(view->get_method());
-        if(method->empty())
+        auto method=view->get_method();
+        if(method.empty())
           return;
         
         EntryBox::get().clear();
         EntryBox::get().labels.emplace_back();
-        EntryBox::get().labels.back().set_text(*method);
-        EntryBox::get().buttons.emplace_back(button_text, [this, method](){
+        EntryBox::get().labels.back().set_text(method);
+        EntryBox::get().buttons.emplace_back(button_text, [this, method=std::move(method)](){
           if(auto view=Notebook::get().get_current_view()) {
-            view->get_buffer()->insert_at_cursor(*method);
+            view->get_buffer()->insert_at_cursor(method);
             EntryBox::get().clear();
           }
         });
@@ -1033,8 +1040,8 @@ void Window::set_menu_actions() {
   
   menu.add_action("project_set_run_arguments", [this]() {
     auto project=Project::create();
-    auto run_arguments=std::make_shared<std::pair<std::string, std::string> >(project->get_run_arguments());
-    if(run_arguments->second.empty())
+    auto run_arguments=project->get_run_arguments();
+    if(run_arguments.second.empty())
       return;
     
     EntryBox::get().clear();
@@ -1044,8 +1051,8 @@ void Window::set_menu_actions() {
       label_it->set_text("Synopsis: [environment_variable=value]... executable [argument]...\nSet empty to let juCi++ deduce executable.");
     };
     label_it->update(0, "");
-    EntryBox::get().entries.emplace_back(run_arguments->second, [this, run_arguments](const std::string& content){
-      Project::run_arguments[run_arguments->first]=content;
+    EntryBox::get().entries.emplace_back(run_arguments.second, [this, run_arguments_first=std::move(run_arguments.first)](const std::string &content){
+      Project::run_arguments[run_arguments_first]=content;
       EntryBox::get().hide();
     }, 50);
     auto entry_it=EntryBox::get().entries.begin();
@@ -1130,8 +1137,8 @@ void Window::set_menu_actions() {
 #ifdef JUCI_ENABLE_DEBUG
   menu.add_action("debug_set_run_arguments", [this]() {
     auto project=Project::create();
-    auto run_arguments=std::make_shared<std::pair<std::string, std::string> >(project->debug_get_run_arguments());
-    if(run_arguments->second.empty())
+    auto run_arguments=project->debug_get_run_arguments();
+    if(run_arguments.second.empty())
       return;
     
     EntryBox::get().clear();
@@ -1141,8 +1148,8 @@ void Window::set_menu_actions() {
       label_it->set_text("Synopsis: [environment_variable=value]... executable [argument]...\nSet empty to let juCi++ deduce executable.");
     };
     label_it->update(0, "");
-    EntryBox::get().entries.emplace_back(run_arguments->second, [this, run_arguments](const std::string& content){
-      Project::debug_run_arguments[run_arguments->first]=content;
+    EntryBox::get().entries.emplace_back(run_arguments.second, [this, run_arguments_first=std::move(run_arguments.first)](const std::string& content){
+      Project::debug_run_arguments[run_arguments_first]=content;
       EntryBox::get().hide();
     }, 50);
     auto entry_it=EntryBox::get().entries.begin();
@@ -1559,11 +1566,10 @@ void Window::rename_token_entry() {
     if(view->get_token_spelling && view->rename_similar_tokens) {
       auto spelling=std::make_shared<std::string>(view->get_token_spelling());
       if(!spelling->empty()) {
-        auto iter=std::make_shared<Gtk::TextIter>(view->get_buffer()->get_insert()->get_iter());
-        EntryBox::get().entries.emplace_back(*spelling, [this, view, spelling, iter](const std::string& content){
+        EntryBox::get().entries.emplace_back(*spelling, [this, view, spelling, iter=view->get_buffer()->get_insert()->get_iter()](const std::string& content){
           //TODO: gtk needs a way to check if iter is valid without dumping g_error message
           //iter->get_buffer() will print such a message, but no segfault will occur
-          if(Notebook::get().get_current_view()==view && content!=*spelling && iter->get_buffer() && view->get_buffer()->get_insert()->get_iter()==*iter)
+          if(Notebook::get().get_current_view()==view && content!=*spelling && iter.get_buffer() && view->get_buffer()->get_insert()->get_iter()==iter)
             view->rename_similar_tokens(content);
           else
             Info::get().print("Operation canceled");

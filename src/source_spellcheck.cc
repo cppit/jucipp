@@ -168,10 +168,10 @@ Source::SpellCheckView::SpellCheckView() : Gsv::View() {
             return false;
           for(auto &suggestion: suggestions)
             SelectionDialog::get()->add_row(suggestion);
-          SelectionDialog::get()->on_select=[this, word](const std::string& selected, bool hide_window) {
+          SelectionDialog::get()->on_select=[this, word](unsigned int index, const std::string &text, bool hide_window) {
             get_buffer()->begin_user_action();
             get_buffer()->erase(word.first, word.second);
-            get_buffer()->insert(get_buffer()->get_insert()->get_iter(), selected);
+            get_buffer()->insert(get_buffer()->get_insert()->get_iter(), text);
             get_buffer()->end_user_action();
           };
           hide_tooltips();

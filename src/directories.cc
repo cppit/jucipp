@@ -163,10 +163,9 @@ Directories::Directories() : Gtk::ListViewText(1) {
     if(menu_popup_row_path.empty())
       return;
     EntryBox::get().clear();
-    auto source_path=std::make_shared<boost::filesystem::path>(menu_popup_row_path);
-    EntryBox::get().entries.emplace_back("", [this, source_path](const std::string &content) {
-      bool is_directory=boost::filesystem::is_directory(*source_path);
-      auto target_path = (is_directory ? *source_path : source_path->parent_path())/content;
+    EntryBox::get().entries.emplace_back("", [this, source_path=menu_popup_row_path](const std::string &content) {
+      bool is_directory=boost::filesystem::is_directory(source_path);
+      auto target_path = (is_directory ? source_path : source_path.parent_path())/content;
       if(!boost::filesystem::exists(target_path)) {
         if(filesystem::write(target_path, "")) {
           update();
@@ -206,10 +205,9 @@ Directories::Directories() : Gtk::ListViewText(1) {
     if(menu_popup_row_path.empty())
       return;
     EntryBox::get().clear();
-    auto source_path=std::make_shared<boost::filesystem::path>(menu_popup_row_path);
-    EntryBox::get().entries.emplace_back("", [this, source_path](const std::string &content) {
-      bool is_directory=boost::filesystem::is_directory(*source_path);
-      auto target_path = (is_directory ? *source_path : source_path->parent_path())/content;
+    EntryBox::get().entries.emplace_back("", [this, source_path=menu_popup_row_path](const std::string &content) {
+      bool is_directory=boost::filesystem::is_directory(source_path);
+      auto target_path = (is_directory ? source_path : source_path.parent_path())/content;
       if(!boost::filesystem::exists(target_path)) {
         boost::system::error_code ec;
         boost::filesystem::create_directory(target_path, ec);
@@ -252,11 +250,10 @@ Directories::Directories() : Gtk::ListViewText(1) {
     if(menu_popup_row_path.empty())
       return;
     EntryBox::get().clear();
-    auto source_path=std::make_shared<boost::filesystem::path>(menu_popup_row_path);
-    EntryBox::get().entries.emplace_back(menu_popup_row_path.filename().string(), [this, source_path](const std::string &content){
-      bool is_directory=boost::filesystem::is_directory(*source_path);
+    EntryBox::get().entries.emplace_back(menu_popup_row_path.filename().string(), [this, source_path=menu_popup_row_path](const std::string &content){
+      bool is_directory=boost::filesystem::is_directory(source_path);
       
-      auto target_path=source_path->parent_path()/content;
+      auto target_path=source_path.parent_path()/content;
       
       if(boost::filesystem::exists(target_path)) {
         Terminal::get().print("Error: could not rename to "+target_path.string()+": already exists\n", true);
@@ -264,12 +261,12 @@ Directories::Directories() : Gtk::ListViewText(1) {
       }
       
       if(is_directory)
-        this->remove_path(*source_path);
+        this->remove_path(source_path);
       
       boost::system::error_code ec;
-      boost::filesystem::rename(*source_path, target_path, ec);
+      boost::filesystem::rename(source_path, target_path, ec);
       if(ec) {
-        Terminal::get().print("Error: could not rename "+source_path->string()+": "+ec.message()+'\n', true);
+        Terminal::get().print("Error: could not rename "+source_path.string()+": "+ec.message()+'\n', true);
         return;
       }
       update();
@@ -279,9 +276,9 @@ Directories::Directories() : Gtk::ListViewText(1) {
       for(size_t c=0;c<Notebook::get().size();c++) {
         auto view=Notebook::get().get_view(c);
         if(is_directory) {
-          if(filesystem::file_in_path(view->file_path, *source_path)) {
+          if(filesystem::file_in_path(view->file_path, source_path)) {
             auto file_it=view->file_path.begin();
-            for(auto source_it=source_path->begin();source_it!=source_path->end();source_it++)
+            for(auto source_it=source_path.begin();source_it!=source_path.end();source_it++)
               file_it++;
             auto new_file_path=target_path;
             for(;file_it!=view->file_path.end();file_it++)
@@ -289,7 +286,7 @@ Directories::Directories() : Gtk::ListViewText(1) {
             view->rename(new_file_path);
           }
         }
-        else if(view->file_path==*source_path) {
+        else if(view->file_path==source_path) {
           view->rename(target_path);
           
           std::string old_language_id;
@@ -651,25 +648,24 @@ void Directories::remove_path(const boost::filesystem::path &dir_path) {
   }
 }
 
-void Directories::colorize_path(const boost::filesystem::path &dir_path_, bool include_parent_paths) {
-  auto it=directories.find(dir_path_.string());
+void Directories::colorize_path(const boost::filesystem::path &dir_path, bool include_parent_paths) {
+  auto it=directories.find(dir_path.string());
   if(it==directories.end())
     return;
   
   if(it!=directories.end() && it->second.repository) {
-    auto dir_path=std::make_shared<boost::filesystem::path>(dir_path_);
     auto repository=it->second.repository;
     std::thread git_status_thread([this, dir_path, repository, include_parent_paths] {
-      auto status=std::make_shared<Git::Repository::Status>();
+      Git::Repository::Status status;
       try {
-        *status=repository->get_status();
+        status=repository->get_status();
       }
       catch(const std::exception &e) {
         Terminal::get().async_print(std::string("Error (git): ")+e.what()+'\n', true);
       }
       
-      dispatcher.post([this, dir_path, include_parent_paths, status] {
-        auto it=directories.find(dir_path->string());
+      dispatcher.post([this, dir_path=std::move(dir_path), include_parent_paths, status=std::move(status)] {
+        auto it=directories.find(dir_path.string());
         if(it==directories.end())
           return;
         
@@ -698,9 +694,9 @@ void Directories::colorize_path(const boost::filesystem::path &dir_path_, bool i
             auto name=Glib::Markup::escape_text(child.get_value(column_record.name));
             auto path=child.get_value(column_record.path);
             Gdk::RGBA *color;
-            if(status->modified.find(path.generic_string())!=status->modified.end())
+            if(status.modified.find(path.generic_string())!=status.modified.end())
               color=&yellow;
-            else if(status->added.find(path.generic_string())!=status->added.end())
+            else if(status.added.find(path.generic_string())!=status.added.end())
               color=&green;
             else
               color=&normal_color;

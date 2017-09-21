@@ -259,15 +259,14 @@ void Source::DiffView::configure() {
       }
     }
     catch(const std::exception &e) {
-      auto e_what=std::make_shared<std::string>(e.what());
-      dispatcher.post([this, e_what] {
+      dispatcher.post([this, e_what=e.what()] {
         get_buffer()->remove_tag(renderer->tag_added, get_buffer()->begin(), get_buffer()->end());
         get_buffer()->remove_tag(renderer->tag_modified, get_buffer()->begin(), get_buffer()->end());
         get_buffer()->remove_tag(renderer->tag_removed, get_buffer()->begin(), get_buffer()->end());
         get_buffer()->remove_tag(renderer->tag_removed_below, get_buffer()->begin(), get_buffer()->end());
         get_buffer()->remove_tag(renderer->tag_removed_above, get_buffer()->begin(), get_buffer()->end());
         renderer->queue_draw();
-        Terminal::get().print("Error (git): "+*e_what+'\n', true);
+        Terminal::get().print(std::string("Error (git): ")+e_what+'\n', true);
       });
     }
   });

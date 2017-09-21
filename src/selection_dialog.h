@@ -10,18 +10,21 @@ class SelectionDialogBase {
     public:
       ColumnRecord() {
         add(text);
+        add(index);
       }
       Gtk::TreeModelColumn<std::string> text;
+      Gtk::TreeModelColumn<unsigned int> index;
     };
   public:
     bool use_markup;
+    ColumnRecord column_record;
     ListViewText(bool use_markup);
     void append(const std::string& value);
     void clear();
   private:
     Glib::RefPtr<Gtk::ListStore> list_store;
-    ColumnRecord column_record;
     Gtk::CellRendererText cell_renderer;
+    unsigned int size=0;
   };
   
   class SearchEntry : public Gtk::Entry {
@@ -43,8 +46,8 @@ public:
   
   std::function<void()> on_show;
   std::function<void()> on_hide;
-  std::function<void(const std::string& selected, bool hide_window)> on_select;
-  std::function<void(const std::string &selected)> on_changed;
+  std::function<void(unsigned int index, const std::string &text, bool hide_window)> on_select;
+  std::function<void(unsigned int index, const std::string &text)> on_changed;
   Glib::RefPtr<Gtk::TextBuffer::Mark> start_mark;
   
 protected:
@@ -58,7 +61,7 @@ protected:
   SearchEntry search_entry;
   bool show_search_entry;
   
-  std::string last_row;
+  unsigned int last_index=static_cast<unsigned int>(-1);
 };
 
 class SelectionDialog : public SelectionDialogBase {

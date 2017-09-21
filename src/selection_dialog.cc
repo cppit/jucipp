@@ -22,11 +22,13 @@ SelectionDialogBase::ListViewText::ListViewText(bool use_markup) : Gtk::TreeView
 void SelectionDialogBase::ListViewText::append(const std::string& value) {
   auto new_row=list_store->append();
   new_row->set_value(column_record.text, value);
+  new_row->set_value(column_record.index, size++);
 }
 
 void SelectionDialogBase::ListViewText::clear() {
   unset_model();
   list_store.reset();
+  size=0;
 }
 
 SelectionDialogBase::SelectionDialogBase(Gtk::TextView *text_view, Glib::RefPtr<Gtk::TextBuffer::Mark> start_mark, bool show_search_entry, bool use_markup):
@@ -116,14 +118,18 @@ void SelectionDialogBase::cursor_changed() {
   if(!is_visible())
     return;
   auto it=list_view_text.get_selection()->get_selected();
-  std::string row;
+  unsigned int index=static_cast<unsigned int>(-1);
   if(it)
-    it->get_value(0, row);
-  if(last_row==row)
+    index=it->get_value(list_view_text.column_record.index);
+  if(last_index==index)
     return;
-  if(on_changed)
-    on_changed(row);
-  last_row=row;
+  if(on_changed) {
+    std::string text;
+    if(it)
+      text=it->get_value(list_view_text.column_record.text);
+    on_changed(index, text);
+  }
+  last_index=index;
 }
 void SelectionDialogBase::add_row(const std::string& row) {
   list_view_text.append(row);
@@ -165,12 +171,13 @@ void SelectionDialogBase::hide() {
   if(on_hide)
     on_hide();
   list_view_text.clear();
+  last_index=static_cast<unsigned int>(-1);
 }
 
 std::unique_ptr<SelectionDialog> SelectionDialog::instance;
 
 SelectionDialog::SelectionDialog(Gtk::TextView *text_view, Glib::RefPtr<Gtk::TextBuffer::Mark> start_mark, bool show_search_entry, bool use_markup) : SelectionDialogBase(text_view, start_mark, show_search_entry, use_markup) {
-  std::shared_ptr<std::string> search_key(new std::string());
+  auto search_key=std::make_shared<std::string>();
   auto filter_model=Gtk::TreeModelFilter::create(list_view_text.get_model());
   
   filter_model->set_visible_func([this, search_key](const Gtk::TreeModel::const_iterator& iter){
@@ -211,10 +218,10 @@ SelectionDialog::SelectionDialog(Gtk::TextView *text_view, Glib::RefPtr<Gtk::Tex
   auto activate=[this](){
     auto it=list_view_text.get_selection()->get_selected();
     if(on_select && it) {
-      std::string row;
-      it->get_value(0, row);
+      auto index=it->get_value(list_view_text.column_record.index);
+      auto text=it->get_value(list_view_text.column_record.text);
       hide();
-      on_select(row, true);
+      on_select(index, text, true);
     }
     else
       hide();
@@ -301,7 +308,7 @@ std::unique_ptr<CompletionDialog> CompletionDialog::instance;
 CompletionDialog::CompletionDialog(Gtk::TextView *text_view, Glib::RefPtr<Gtk::TextBuffer::Mark> start_mark) : SelectionDialogBase(text_view, start_mark, false, false) {
   show_offset=text_view->get_buffer()->get_insert()->get_iter().get_offset();
   
-  std::shared_ptr<std::string> search_key(new std::string());
+  auto search_key=std::make_shared<std::string>();
   auto filter_model=Gtk::TreeModelFilter::create(list_view_text.get_model());  
   if(show_offset==start_mark->get_iter().get_offset()) {
     filter_model->set_visible_func([this, search_key](const Gtk::TreeModel::const_iterator& iter){
@@ -347,9 +354,9 @@ void CompletionDialog::select(bool hide_window) {
   
   auto it=list_view_text.get_selection()->get_selected();
   if(on_select && it) {
-    std::string row;
-    it->get_value(0, row);
-    on_select(row, hide_window);
+    auto index=it->get_value(list_view_text.column_record.index);
+    auto text=it->get_value(list_view_text.column_record.text);
+    on_select(index, text, hide_window);
   }
   if(hide_window)
     hide();

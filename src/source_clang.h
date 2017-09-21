@@ -58,18 +58,13 @@ namespace Source {
     
   class ClangViewAutocomplete : public virtual ClangViewParse {
   public:
-    class Suggestion {
-    public:
-      explicit Suggestion(std::vector<clangmm::CompletionChunk> &&chunks) :
-        chunks(chunks) { }
-      std::vector<clangmm::CompletionChunk> chunks;
-      std::string brief_comments;
-    };
-    
     ClangViewAutocomplete(const boost::filesystem::path &file_path, Glib::RefPtr<Gsv::Language> language);
   protected:
-    Autocomplete<Suggestion> autocomplete;
+    Autocomplete autocomplete;
+    sigc::connection delayed_show_arguments_connection;
   private:
+    bool is_possible_parameter();
+    bool show_arguments;
     const std::unordered_map<std::string, std::string> &autocomplete_manipulators_map();
   };
 

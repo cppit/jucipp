@@ -549,7 +549,7 @@ void Project::Clang::debug_backtrace() {
     }
     else
       SelectionDialog::create(true, true);
-    auto rows=std::make_shared<std::unordered_map<std::string, Debug::LLDB::Frame> >();
+    std::vector<Debug::LLDB::Frame> rows;
     if(backtrace.size()==0) {
       Info::get().print("No backtrace found");
       return;
@@ -569,7 +569,7 @@ void Project::Clang::debug_backtrace() {
         auto file_path=frame.file_path.filename().string();
         row+=":<b>"+Glib::Markup::escape_text(file_path)+":"+std::to_string(frame.line_nr)+"</b> - "+Glib::Markup::escape_text(frame.function_name);
       }
-      (*rows)[row]=frame;
+      rows.emplace_back(frame);
       SelectionDialog::get()->add_row(row);
       if(!cursor_set && view && frame.file_path==view->file_path) {
         SelectionDialog::get()->set_cursor_at_last_row();
@@ -577,8 +577,10 @@ void Project::Clang::debug_backtrace() {
       }
     }
     
-    SelectionDialog::get()->on_select=[this, rows](const std::string& selected, bool hide_window) {
-      auto frame=rows->at(selected);
+    SelectionDialog::get()->on_select=[this, rows=std::move(rows)](unsigned int index, const std::string &text, bool hide_window) {
+      if(index>=rows.size())
+        return;
+      auto frame=rows[index];
       if(!frame.file_path.empty()) {
         Notebook::get().open(frame.file_path);
         if(auto view=Notebook::get().get_current_view()) {
@@ -607,7 +609,7 @@ void Project::Clang::debug_show_variables() {
     }
     else
       SelectionDialog::create(true, true);
-    auto rows=std::make_shared<std::unordered_map<std::string, Debug::LLDB::Variable> >();
+    auto rows=std::make_shared<std::vector<Debug::LLDB::Variable>>();
     if(variables.size()==0) {
       Info::get().print("No variables found");
       return;
@@ -616,12 +618,14 @@ void Project::Clang::debug_show_variables() {
     for(auto &variable: variables) {
       std::string row="#"+std::to_string(variable.thread_index_id)+":#"+std::to_string(variable.frame_index)+":"+variable.file_path.filename().string()+":"+std::to_string(variable.line_nr)+" - <b>"+Glib::Markup::escape_text(variable.name)+"</b>";
       
-      (*rows)[row]=variable;
+      rows->emplace_back(variable);
       SelectionDialog::get()->add_row(row);
     }
     
-    SelectionDialog::get()->on_select=[this, rows](const std::string& selected, bool hide_window) {
-      auto variable=rows->at(selected);
+    SelectionDialog::get()->on_select=[this, rows](unsigned int index, const std::string &text, bool hide_window) {
+      if(index>=rows->size())
+        return;
+      auto variable=(*rows)[index];
       Debug::LLDB::get().select_frame(variable.frame_index, variable.thread_index_id);
       if(!variable.file_path.empty()) {
         Notebook::get().open(variable.file_path);
@@ -639,14 +643,14 @@ void Project::Clang::debug_show_variables() {
       debug_variable_tooltips.clear();
     };
     
-    SelectionDialog::get()->on_changed=[this, rows, view, iter](const std::string &selected) {
-      if(selected.empty()) {
+    SelectionDialog::get()->on_changed=[this, rows, view, iter](unsigned int index, const std::string &text) {
+      if(index>=rows->size()) {
         debug_variable_tooltips.hide();
         return;
       }
       debug_variable_tooltips.clear();
-      auto create_tooltip_buffer=[this, rows, view, selected]() {
-        auto variable=rows->at(selected);
+      auto create_tooltip_buffer=[this, rows, view, index]() {
+        auto variable=(*rows)[index];
         auto tooltip_buffer=view?Gtk::TextBuffer::create(view->get_buffer()->get_tag_table()):Gtk::TextBuffer::create();
         
         Glib::ustring value=variable.value;
