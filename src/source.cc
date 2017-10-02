@@ -339,7 +339,7 @@ Source::View::View(const boost::filesystem::path &file_path, Glib::RefPtr<Gsv::L
              *test_iter=='`' && test_iter.forward_char() &&
              *test_iter=='`') {
             script=!script;
-            iter.forward_chars(2);
+            iter.forward_chars(3);
             continue;
           }
         }
