@@ -653,8 +653,11 @@ Source::ClangViewAutocomplete::ClangViewAutocomplete(const boost::filesystem::pa
                   text+=chunk_cstr.c_str;
               }
             }
-            if(match && !text.empty())
+            if(match && !text.empty()) {
+              if(!return_text.empty())
+                text+=return_text;
               autocomplete.rows.emplace_back(std::move(text), result.get_brief_comment());
+            }
           }
         }
       }
