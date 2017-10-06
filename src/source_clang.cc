@@ -529,10 +529,11 @@ Source::ClangViewAutocomplete::ClangViewAutocomplete(const boost::filesystem::pa
     show_arguments=false;
     
     std::string line=" "+get_line_before();
-    const static std::regex in_specified_namespace("^.*[a-zA-Z0-9_\\)\\]\\>](->|\\.|::)([a-zA-Z0-9_]*)$");
-    const static std::regex within_namespace("^.*[^a-zA-Z0-9_]+([a-zA-Z0-9_]{3,})$");
+    const static std::regex dot_or_arrow("^.*[a-zA-Z0-9_\\)\\]\\>](\\.|->)([a-zA-Z0-9_]*)$");
+    const static std::regex colon_colon("^.*::([a-zA-Z0-9_]*)$");
+    const static std::regex part_of_symbol("^.*[^a-zA-Z0-9_]+([a-zA-Z0-9_]{3,})$");
     std::smatch sm;
-    if(std::regex_match(line, sm, in_specified_namespace)) {
+    if(std::regex_match(line, sm, dot_or_arrow)) {
       {
         std::unique_lock<std::mutex> lock(autocomplete.prefix_mutex);
         autocomplete.prefix=sm[2].str();
@@ -540,7 +541,15 @@ Source::ClangViewAutocomplete::ClangViewAutocomplete(const boost::filesystem::pa
       if(autocomplete.prefix.size()==0 || autocomplete.prefix[0]<'0' || autocomplete.prefix[0]>'9')
         return true;
     }
-    else if(std::regex_match(line, sm, within_namespace)) {
+    else if(std::regex_match(line, sm, colon_colon)) {
+      {
+        std::unique_lock<std::mutex> lock(autocomplete.prefix_mutex);
+        autocomplete.prefix=sm[1].str();
+      }
+      if(autocomplete.prefix.size()==0 || autocomplete.prefix[0]<'0' || autocomplete.prefix[0]>'9')
+        return true;
+    }
+    else if(std::regex_match(line, sm, part_of_symbol)) {
       {
         std::unique_lock<std::mutex> lock(autocomplete.prefix_mutex);
         autocomplete.prefix=sm[1].str();
