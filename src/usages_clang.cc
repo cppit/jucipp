@@ -685,12 +685,13 @@ void Usages::Clang::write_cache(const boost::filesystem::path &path, const Clang
     if(chr == '/' || chr == '\\')
       chr = '_';
   }
+  path_str += ".usages";
 
-  auto full_cache_path = cache_path / (path_str + ".usages");
+  auto full_cache_path = cache_path / path_str;
   auto tmp_file = boost::filesystem::temp_directory_path(ec);
   if(ec)
     return;
-  tmp_file /= ("jucipp" + std::to_string(get_current_process_id()) + path_str + ".usages");
+  tmp_file /= ("jucipp" + std::to_string(get_current_process_id()) + path_str);
 
   std::ofstream stream(tmp_file.string());
   if(stream) {
