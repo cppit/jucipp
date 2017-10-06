@@ -8,7 +8,17 @@
 #include <regex>
 #include <thread>
 
-// #include <iostream> //TODO: remove
+#ifdef _WIN32
+#include <windows.h>
+DWORD get_current_process_id() {
+  return GetCurrentProcessId();
+}
+#else
+#include <unistd.h>
+pid_t get_current_process_id() {
+  return getpid();
+}
+#endif
 
 const boost::filesystem::path Usages::Clang::cache_folder = ".usages_clang";
 std::map<boost::filesystem::path, Usages::Clang::Cache> Usages::Clang::caches;
@@ -675,15 +685,27 @@ void Usages::Clang::write_cache(const boost::filesystem::path &path, const Clang
     if(chr == '/' || chr == '\\')
       chr = '_';
   }
-  auto full_cache_path = cache_path / (path_str + ".usages");
 
-  std::ofstream stream(full_cache_path.string());
+  auto full_cache_path = cache_path / (path_str + ".usages");
+  auto tmp_file = boost::filesystem::temp_directory_path(ec);
+  if(ec)
+    return;
+  tmp_file /= ("jucipp" + std::to_string(get_current_process_id()) + path_str + ".usages");
+
+  std::ofstream stream(tmp_file.string());
   if(stream) {
     try {
       boost::archive::text_oarchive text_oarchive(stream);
       text_oarchive << cache;
+      stream.close();
+      boost::filesystem::rename(tmp_file, full_cache_path, ec);
+      if(ec) {
+        boost::filesystem::copy_file(tmp_file, full_cache_path, boost::filesystem::copy_option::overwrite_if_exists);
+        boost::filesystem::remove(tmp_file, ec);
+      }
     }
     catch(...) {
+      boost::filesystem::remove(tmp_file, ec);
     }
   }
 }
