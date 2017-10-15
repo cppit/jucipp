@@ -50,6 +50,8 @@ R"RAW(
         "map_font_size": "1",
         "show_git_diff": true,
         "show_background_pattern": true,
+        "show_right_margin": false,
+        "right_margin_position": 80,
         "spellcheck_language_comment": "Use \"\" to set language from your locale settings",
         "spellcheck_language": "en_US",
         "auto_tab_char_and_size_comment": "Use false to always use default tab char and size",

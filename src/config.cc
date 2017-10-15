@@ -161,6 +161,8 @@ void Config::read(const boost::property_tree::ptree &cfg) {
   source.map_font_size = source_json.get<std::string>("map_font_size");
   source.show_git_diff = source_json.get<bool>("show_git_diff");
   source.show_background_pattern = source_json.get<bool>("show_background_pattern");
+  source.show_right_margin = source_json.get<bool>("show_right_margin");
+  source.right_margin_position = source_json.get<unsigned>("right_margin_position");
   source.spellcheck_language = source_json.get<std::string>("spellcheck_language");
   source.default_tab_char = source_json.get<char>("default_tab_char");
   source.default_tab_size = source_json.get<unsigned>("default_tab_size");
@@ -174,7 +176,7 @@ void Config::read(const boost::property_tree::ptree &cfg) {
       source.clang_types[std::stoi(i.first)] = i.second.get_value<std::string>();
     }
     catch(const std::exception &) {}
-  }  
+  }
   source.clang_format_style = source_json.get<std::string>("clang_format_style");
   source.clang_usages_threads = static_cast<unsigned>(source_json.get<int>("clang_usages_threads"));
   auto pt_doc_search=cfg.get_child("documentation_searches");

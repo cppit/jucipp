@@ -78,6 +78,8 @@ public:
     std::string map_font_size;
     bool show_git_diff;
     bool show_background_pattern;
+    bool show_right_margin;
+    unsigned right_margin_position;
     
     bool auto_tab_char_and_size;
     char default_tab_char;

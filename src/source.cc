@@ -783,6 +783,8 @@ void Source::View::configure() {
     gtk_source_view_set_background_pattern(this->gobj(), GTK_SOURCE_BACKGROUND_PATTERN_TYPE_GRID);
   else
     gtk_source_view_set_background_pattern(this->gobj(), GTK_SOURCE_BACKGROUND_PATTERN_TYPE_NONE);
+  property_show_right_margin() = Config::get().source.show_right_margin;
+  property_right_margin_position() = Config::get().source.right_margin_position;
   
   //Create tags for diagnostic warnings and errors:
   auto scheme = get_source_buffer()->get_style_scheme();
