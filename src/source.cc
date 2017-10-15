@@ -356,10 +356,10 @@ Source::View::View(const boost::filesystem::path &file_path, Glib::RefPtr<Gsv::L
             --square_brackets;
         }
         if(!headline && !script && !monospace && !html_tag && square_brackets==0) {
-          if(*iter==' ' && iter.get_line_offset()<80)
+          if(*iter==' ' && iter.get_line_offset()<=80)
             last_space_offset=iter.get_offset();
           // Insert newline on long lines
-          else if((*iter==' ' || iter.ends_line()) && iter.get_line_offset()>=80 && last_space_offset!=static_cast<size_t>(-1)) {
+          else if((*iter==' ' || iter.ends_line()) && iter.get_line_offset()>80 && last_space_offset!=static_cast<size_t>(-1)) {
             auto stored_iter=iter;
             iter=get_buffer()->get_iter_at_offset(last_space_offset);
             auto next_iter=iter;
@@ -376,7 +376,7 @@ Source::View::View(const boost::filesystem::path &file_path, Glib::RefPtr<Gsv::L
             iter.backward_char();
           }
           // Remove newline on short lines
-          else if(iter.ends_line() && !iter.starts_line() && iter.get_line_offset()<80) {
+          else if(iter.ends_line() && !iter.starts_line() && iter.get_line_offset()<=80) {
             auto next_line_iter=iter;
             // Do not remove newline if the next line for instance is a header
             if(next_line_iter.forward_char() && !next_line_iter.ends_line() && !special_character(next_line_iter)) {
@@ -385,11 +385,11 @@ Source::View::View(const boost::filesystem::path &file_path, Glib::RefPtr<Gsv::L
               size_t diff=0;
               while(*end_word_iter!=' ' && !end_word_iter.ends_line() && end_word_iter.forward_char())
                 ++diff;
-              if(iter.get_line_offset()+diff+1<80) {
+              if(iter.get_line_offset()+diff+1<=80) {
                 iter=get_buffer()->erase(iter, next_line_iter);
                 iter=get_buffer()->insert(iter, " ");
                 iter.backward_char();
-                if(iter.get_line_offset()<80)
+                if(iter.get_line_offset()<=80)
                   last_space_offset=iter.get_offset();
               }
             }
