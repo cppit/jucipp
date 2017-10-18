@@ -13,6 +13,10 @@ towards libclang with speed, stability, and ease of use in mind.
 * Syntax highlighting for more than 100 different file types
 * C++ warnings and errors on the fly
 * C++ Fix-its
+* Clang-Tidy support through libclang plugins, for instance (recreating existing build is needed):
+  ```
+  CXX=clang++ CXXFLAGS="-Xclang -add-plugin -Xclang clang-tidy -Xclang -plugin-arg-clang-tidy -Xclang -checks='-*,clang-analyzer-core.*'" juci [project-path]
+  ```
 * Debug integration, both local and remote, through lldb
 * Supports the following build systems:
   * CMake
