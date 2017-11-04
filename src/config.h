@@ -25,7 +25,6 @@ public:
   
   class Terminal {
   public:
-    std::string clang_format_command;
     int history_size;
     std::string font;
     bool show_progress;

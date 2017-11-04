@@ -17,27 +17,17 @@ void log(const char *msg, void *) {
 }
 
 Debug::LLDB::LLDB(): state(lldb::StateType::eStateInvalid), buffer_size(131072) {
-#ifdef __APPLE__
   if(!getenv("LLDB_DEBUGSERVER_PATH")) {
+#ifdef __APPLE__
     std::string debug_server_path("/usr/local/opt/llvm/bin/debugserver");
     if(boost::filesystem::exists(debug_server_path))
       setenv("LLDB_DEBUGSERVER_PATH", debug_server_path.c_str(), 0);
-  }
-#elif __linux
-  if(!getenv("LLDB_DEBUGSERVER_PATH")) {
-    std::string debug_server_path("/usr/bin/lldb-server");
-    if(!boost::filesystem::exists(debug_server_path)) {
-      auto versions={"5.0", "5", "4.0", "4", "3.9", "3.8", "3.7", "3.6", "3.5"};
-      for(auto &version: versions) {
-        auto corrected_debug_server_path=debug_server_path+'-'+version;
-        if(boost::filesystem::exists(corrected_debug_server_path)) {
-          setenv("LLDB_DEBUGSERVER_PATH", corrected_debug_server_path.c_str(), 0);
-          break;
-        }
-      }
-    }
-  }
+#else
+    auto debug_server_path = filesystem::get_executable("lldb-server").string();
+    if(debug_server_path != "lldb-server")
+      setenv("LLDB_DEBUGSERVER_PATH", debug_server_path.c_str(), 0);
 #endif
+  }
 }
 
 std::tuple<std::vector<std::string>, std::string, std::vector<std::string> > Debug::LLDB::parse_run_arguments(const std::string &command) {

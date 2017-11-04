@@ -165,7 +165,9 @@ Source::View::View(const boost::filesystem::path &file_path, Glib::RefPtr<Gsv::L
     is_bracket_language=true;
     
     format_style=[this](bool continue_without_style_file) {
-      auto command=Config::get().terminal.clang_format_command+" -output-replacements-xml -assume-filename="+filesystem::escape_argument(this->file_path.string());
+      static auto clang_format_command = filesystem::get_executable("clang-format").string();
+      
+      auto command=clang_format_command+" -output-replacements-xml -assume-filename="+filesystem::escape_argument(this->file_path.string());
       
       if(get_buffer()->get_has_selection()) {
         Gtk::TextIter start, end;

@@ -207,19 +207,4 @@ void Config::read(const boost::property_tree::ptree &cfg) {
   terminal.font=cfg.get<std::string>("terminal.font");
   
   terminal.show_progress=cfg.get<bool>("terminal.show_progress");
-  
-  terminal.clang_format_command="clang-format";
-#ifdef __linux
-  if(terminal.clang_format_command=="clang-format" &&
-     !boost::filesystem::exists("/usr/bin/clang-format") && !boost::filesystem::exists("/usr/local/bin/clang-format")) {
-    auto versions={"5.0", "5", "4.0", "4", "3.9", "3.8", "3.7", "3.6", "3.5"};
-    for(auto &version: versions) {
-      auto corrected_command=std::string("/usr/bin/clang-format-")+version;
-      if(boost::filesystem::exists(corrected_command)) {
-        terminal.clang_format_command=corrected_command;
-        break;
-      }
-    }
-  }
-#endif
 }

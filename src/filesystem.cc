@@ -173,3 +173,44 @@ boost::filesystem::path filesystem::get_relative_path(const boost::filesystem::p
 
   return relative_path;
 }
+
+boost::filesystem::path filesystem::get_executable(const boost::filesystem::path &executable_name) noexcept {
+#if defined(__APPLE__) || defined(_WIN32)
+  return executable_name;
+#endif
+
+  static std::vector<boost::filesystem::path> bin_paths={"/usr/bin", "/usr/local/bin"};
+  
+  try {
+    for(auto &path: bin_paths) {
+      if(boost::filesystem::exists(path/executable_name))
+        return executable_name;
+    }
+    
+    auto executable_name_str = executable_name.string();
+    for(auto &path: bin_paths) {
+      boost::filesystem::path executable;
+      for(boost::filesystem::directory_iterator it(path), end; it != end; ++it) {
+        auto it_path = it->path();
+        auto it_path_filename_str = it_path.filename().string();
+        if(!it_path_filename_str.empty() && it_path_filename_str.compare(0, executable_name_str.size(), executable_name_str)==0) {
+          if(it_path > executable &&
+             ((it_path_filename_str.size() > executable_name_str.size() &&
+               it_path_filename_str[executable_name_str.size()]>='0' &&
+               it_path_filename_str[executable_name_str.size()]<='9') ||
+              (it_path_filename_str.size() > executable_name_str.size()+1 &&
+               it_path_filename_str[executable_name_str.size()]=='-' &&
+               it_path_filename_str[executable_name_str.size()+1]>='0' &&
+               it_path_filename_str[executable_name_str.size()+1]<='9')) &&
+             !boost::filesystem::is_directory(it_path))
+            executable=it_path;
+        }
+      }
+      if(!executable.empty())
+        return executable;
+    }
+  }
+  catch(...) {}
+  
+  return executable_name;
+}

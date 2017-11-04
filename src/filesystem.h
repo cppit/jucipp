@@ -29,7 +29,10 @@ public:
   /// Return path with dot, dot-dot and directory separator elements removed
   static boost::filesystem::path get_normal_path(const boost::filesystem::path &path) noexcept;
   
-  ///Returns empty path on failure
+  /// Returns empty path on failure
   static boost::filesystem::path get_relative_path(const boost::filesystem::path &path, const boost::filesystem::path &base) noexcept;
+  
+  /// Return executable with latest version in filename on systems that is lacking executable_name symbolic link
+  static boost::filesystem::path get_executable(const boost::filesystem::path &executable_name) noexcept;
 };
 #endif  // JUCI_FILESYSTEM_H_
