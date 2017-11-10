@@ -1776,7 +1776,7 @@ bool Source::View::on_key_press_event_basic(GdkEventKey* key) {
         break;
       }
     }
-    if(get_buffer()->size()==1) // special case due to backward_char(s) returning false when moving to start of buffer
+    if(iter.get_line()==0) // Special case since there are no previous line
       do_smart_backspace=false;
     if(do_smart_backspace) {
       auto previous_line_end_iter=iter;

@@ -890,5 +890,24 @@ int main() {
                                                 "  }");
       g_assert(view.get_buffer()->get_insert()->get_iter() == view.get_buffer()->end());
     }
+    
+    
+    event.keyval = GDK_KEY_BackSpace;
+    {
+      view.get_buffer()->set_text("  int main()\n");
+      auto iter=view.get_buffer()->begin();
+      iter.forward_chars(2);
+      view.get_buffer()->place_cursor(iter);
+      assert(view.on_key_press_event_basic(&event)==false);
+      assert(view.on_key_press_event_bracket_language(&event)==false);
+    }
+    {
+      view.get_buffer()->set_text("  int main()");
+      auto iter=view.get_buffer()->begin();
+      iter.forward_chars(2);
+      view.get_buffer()->place_cursor(iter);
+      assert(view.on_key_press_event_basic(&event)==false);
+      assert(view.on_key_press_event_bracket_language(&event)==false);
+    }
   }
 }
