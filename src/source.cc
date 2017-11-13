@@ -16,8 +16,29 @@
 #include <set>
 #include <regex>
 
+// TODO 2019: Remove workarounds when Debian stable and FreeBSD has newer glibmm packages
+#if GLIBMM_MAJOR_VERSION>2 || (GLIBMM_MAJOR_VERSION==2 && (GLIBMM_MINOR_VERSION>51 || (GLIBMM_MINOR_VERSION==51 && GLIBMM_MICRO_VERSION>=2)))
+using LanguageManager = Gsv::LanguageManager;
+using StyleSchemeManager = Gsv::StyleSchemeManager;
+#else
+class LanguageManager {
+public:
+  static Glib::RefPtr<Gsv::LanguageManager> get_default() {
+    static auto instance = Gsv::LanguageManager::create();
+    return instance;
+  }
+};
+class StyleSchemeManager {
+public:
+  static Glib::RefPtr<Gsv::StyleSchemeManager> get_default() {
+    static auto instance = Gsv::StyleSchemeManager::create();
+    return instance;
+  }
+};
+#endif
+
 Glib::RefPtr<Gsv::Language> Source::guess_language(const boost::filesystem::path &file_path) {
-  auto language_manager=Gsv::LanguageManager::get_default();
+  auto language_manager=LanguageManager::get_default();
   bool result_uncertain = false;
   auto content_type = Gio::content_type_guess(file_path.string(), nullptr, 0, result_uncertain);
   if(result_uncertain) {
@@ -759,7 +780,7 @@ void Source::View::configure() {
   DiffView::configure();
   
   //TODO: Move this to notebook? Might take up too much memory doing this for every tab.
-  auto style_scheme_manager=Gsv::StyleSchemeManager::get_default();
+  auto style_scheme_manager=StyleSchemeManager::get_default();
   style_scheme_manager->prepend_search_path((Config::get().home_juci_path/"styles").string());
   
   if(Config::get().source.style.size()>0) {
@@ -2714,7 +2735,7 @@ Source::GenericView::GenericView(const boost::filesystem::path &file_path, Glib:
   completion->add_provider(completion_words);
   
   if(language) {
-    auto language_manager=Gsv::LanguageManager::get_default();
+    auto language_manager=LanguageManager::get_default();
     auto search_paths=language_manager->get_search_path();
     bool found_language_file=false;
     boost::filesystem::path language_file;
