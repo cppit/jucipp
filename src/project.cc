@@ -448,15 +448,22 @@ void Project::Clang::debug_start() {
         if(options_it!=debug_options.end() && options_it->second.remote_enabled.get_active())
           remote_host=options_it->second.remote_host.get_text();
         
-        Debug::LLDB::get().on_exit["debug_start"]=[this, run_arguments](int exit_status) {
+        static auto on_exit_it=Debug::LLDB::get().on_exit.end();
+        if(on_exit_it!=Debug::LLDB::get().on_exit.end())
+          Debug::LLDB::get().on_exit.erase(on_exit_it);
+        Debug::LLDB::get().on_exit.emplace_back([this, run_arguments](int exit_status) {
           debugging=false;
           Terminal::get().async_print(*run_arguments+" returned: "+std::to_string(exit_status)+'\n');
           dispatcher.post([this] {
             debug_update_status("");
           });
-        };
+        });
+        on_exit_it=std::prev(Debug::LLDB::get().on_exit.end());
         
-        Debug::LLDB::get().on_event["debug_start"]=[this](const lldb::SBEvent &event) {
+        static auto on_event_it=Debug::LLDB::get().on_event.end();
+        if(on_event_it!=Debug::LLDB::get().on_event.end())
+          Debug::LLDB::get().on_event.erase(on_event_it);
+        Debug::LLDB::get().on_event.emplace_back([this](const lldb::SBEvent &event) {
           std::string status;
           boost::filesystem::path stop_path;
           unsigned stop_line=0, stop_column=0;
@@ -501,7 +508,8 @@ void Project::Clang::debug_start() {
             if(auto view=Notebook::get().get_current_view())
               view->get_buffer()->place_cursor(view->get_buffer()->get_insert()->get_iter());
           });
-        };
+        });
+        on_event_it=std::prev(Debug::LLDB::get().on_event.end());
         
         Debug::LLDB::get().start(*run_arguments, *project_path, breakpoints, remote_host);
       });

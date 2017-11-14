@@ -80,11 +80,11 @@ int main() {
   std::atomic<bool> exited(false);
   int exit_status;
   std::atomic<int> line_nr(0);
-  Debug::LLDB::get().on_exit["test"]=[&](int exit_status_) {
+  Debug::LLDB::get().on_exit.emplace_back([&](int exit_status_) {
     exit_status=exit_status_;
     exited=true;
-  };
-  Debug::LLDB::get().on_event["test"]=[&](const lldb::SBEvent &event) {
+  });
+  Debug::LLDB::get().on_event.emplace_back([&](const lldb::SBEvent &event) {
     std::unique_lock<std::mutex> lock(Debug::LLDB::get().mutex);
     auto process=lldb::SBProcess::GetProcessFromEvent(event);
     auto state=lldb::SBProcess::GetStateFromEvent(event);
@@ -96,7 +96,7 @@ int main() {
         line_nr=line_entry.GetLine();
       }
     }
-  };
+  });
   
   std::thread debug_thread([&] {
     Debug::LLDB::get().start(exec_path.string(), "", breakpoints);

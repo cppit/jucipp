@@ -2,7 +2,7 @@
 #define JUCI_DEBUG_CLANG_H_
 
 #include <boost/filesystem.hpp>
-#include <unordered_map>
+#include <list>
 #include <lldb/API/LLDB.h>
 #include <thread>
 #include <mutex>
@@ -39,11 +39,11 @@ namespace Debug {
       return singleton;
     }
     
-    std::unordered_map<std::string, std::function<void(const lldb::SBProcess &)>> on_start;
+    std::list<std::function<void(const lldb::SBProcess &)>> on_start;
     /// The handlers are not run in the main loop.
-    std::unordered_map<std::string, std::function<void(int exit_status)>> on_exit;
+    std::list<std::function<void(int exit_status)>> on_exit;
     /// The handlers are not run in the main loop.
-    std::unordered_map<std::string, std::function<void(const lldb::SBEvent &)>> on_event;
+    std::list<std::function<void(const lldb::SBEvent &)>> on_event;
     
     std::mutex mutex;
 

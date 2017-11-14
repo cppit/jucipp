@@ -111,7 +111,7 @@ void Debug::LLDB::start(const std::string &command, const boost::filesystem::pat
   if(!target.IsValid()) {
     Terminal::get().async_print("Error (debug): Could not create debug target to: "+executable+'\n', true);
     for(auto &handler: on_exit)
-      handler.second(-1);
+      handler(-1);
     return;
   }
   
@@ -120,7 +120,7 @@ void Debug::LLDB::start(const std::string &command, const boost::filesystem::pat
     if(!(target.BreakpointCreateByLocation(breakpoint.first.string().c_str(), breakpoint.second)).IsValid()) {
       Terminal::get().async_print("Error (debug): Could not create breakpoint at: "+breakpoint.first.string()+":"+std::to_string(breakpoint.second)+'\n', true);
       for(auto &handler: on_exit)
-        handler.second(-1);
+        handler(-1);
       return;
     }
   }
@@ -132,7 +132,7 @@ void Debug::LLDB::start(const std::string &command, const boost::filesystem::pat
     if(error.Fail()) {
       Terminal::get().async_print(std::string("Error (debug): ")+error.GetCString()+'\n', true);
       for(auto &handler: on_exit)
-        handler.second(-1);
+        handler(-1);
       return;
     }
     lldb::SBEvent event;
@@ -174,13 +174,13 @@ void Debug::LLDB::start(const std::string &command, const boost::filesystem::pat
   if(error.Fail()) {
     Terminal::get().async_print(std::string("Error (debug): ")+error.GetCString()+'\n', true);
     for(auto &handler: on_exit)
-      handler.second(-1);
+      handler(-1);
     return;
   }
   if(debug_thread.joinable())
     debug_thread.join();
   for(auto &handler: on_start)
-    handler.second(*process);
+    handler(*process);
   debug_thread=std::thread([this]() {
     lldb::SBEvent event;
     while(true) {
@@ -202,14 +202,14 @@ void Debug::LLDB::start(const std::string &command, const boost::filesystem::pat
           
           lock.unlock();
           for(auto &handler: on_event)
-            handler.second(event);
+            handler(event);
           lock.lock();
           
           if(state==lldb::StateType::eStateExited || state==lldb::StateType::eStateCrashed) {
             auto exit_status=state==lldb::StateType::eStateCrashed?-1:process->GetExitStatus();
             lock.unlock();
             for(auto &handler: on_exit)
-              handler.second(exit_status);
+              handler(exit_status);
             lock.lock();
             process.reset();
             this->state=lldb::StateType::eStateInvalid;
