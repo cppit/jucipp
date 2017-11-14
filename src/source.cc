@@ -779,13 +779,14 @@ void Source::View::configure() {
   SpellCheckView::configure();
   DiffView::configure();
   
-  //TODO: Move this to notebook? Might take up too much memory doing this for every tab.
   auto style_scheme_manager=StyleSchemeManager::get_default();
-  style_scheme_manager->prepend_search_path((Config::get().home_juci_path/"styles").string());
-  
+  static bool call_prepend_search_path=true;
+  if(call_prepend_search_path) {
+    style_scheme_manager->prepend_search_path((Config::get().home_juci_path/"styles").string());
+    call_prepend_search_path=false;
+  }
   if(Config::get().source.style.size()>0) {
     auto scheme = style_scheme_manager->get_scheme(Config::get().source.style);
-  
     if(scheme)
       get_source_buffer()->set_style_scheme(scheme);
     else
