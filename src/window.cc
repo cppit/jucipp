@@ -161,6 +161,15 @@ Window::Window() {
     return false;
   });
   
+  signal_hide().connect([]{
+    while(!Source::View::non_deleted_views.empty()) {
+      while(Gtk::Main::events_pending())
+        Gtk::Main::iteration(false);
+    }
+    // TODO 2022 (after Debian Stretch LTS has ended, see issue #354): remove:
+    Project::current=nullptr;
+  });
+  
   Gtk::Settings::get_default()->connect_property_changed("gtk-theme-name", [this] {
     Directories::get().update();
     if(auto view=Notebook::get().get_current_view())
@@ -217,10 +226,6 @@ void Window::set_menu_actions() {
   });
   menu.add_action("quit", [this]() {
     close();
-    while(!Source::View::non_deleted_views.empty()) {
-      while(Gtk::Main::events_pending())
-        Gtk::Main::iteration(false);
-    }
   });
   
   menu.add_action("new_file", [this]() {
