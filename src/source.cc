@@ -780,11 +780,16 @@ void Source::View::configure() {
   DiffView::configure();
   
   auto style_scheme_manager=StyleSchemeManager::get_default();
-  static bool call_prepend_search_path=true;
-  if(call_prepend_search_path) {
-    style_scheme_manager->prepend_search_path((Config::get().home_juci_path/"styles").string());
-    call_prepend_search_path=false;
+  static std::string juci_search_path=(Config::get().home_juci_path/"styles").string();
+  bool found_juci_search_path=false;
+  for(auto &search_path: style_scheme_manager->get_search_path()) {
+    if(search_path==juci_search_path) {
+      found_juci_search_path=true;
+      break;
+    }
   }
+  if(!found_juci_search_path)
+    style_scheme_manager->prepend_search_path(juci_search_path);
   if(Config::get().source.style.size()>0) {
     auto scheme = style_scheme_manager->get_scheme(Config::get().source.style);
     if(scheme)
