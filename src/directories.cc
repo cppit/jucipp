@@ -535,7 +535,8 @@ void Directories::add_or_update_path(const boost::filesystem::path &dir_path, co
           repository->clear_saved_status();
         connection->disconnect();
         *connection=Glib::signal_timeout().connect([path_and_row, this]() {
-          add_or_update_path(path_and_row->first, path_and_row->second, true);
+          if(filesystem::file_in_path(path_and_row->first, path))
+            add_or_update_path(path_and_row->first, path_and_row->second, true);
           return false;
         }, 500);
       }
