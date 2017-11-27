@@ -16,20 +16,21 @@ set(CPACK_DEBIAN_PACKAGE_HOMEPAGE "https://github.com/cppit/jucipp")
 set(CPACK_DEBIAN_PACKAGE_SHLIBDEPS ON)
 include(CPack)
 
-set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -DJUCI_VERSION=\\\"${JUCI_VERSION}\\\" -std=c++1y -pthread -Wall -Wextra -Wno-unused-parameter")
+add_compile_options(-std=c++1y -pthread -Wall -Wextra -Wno-unused-parameter)
+add_definitions(-DJUCI_VERSION="${JUCI_VERSION}")
 if(CMAKE_BUILD_TYPE STREQUAL "")
-  set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -O3")
+  add_compile_options(-O3)
 endif()
 
 # temporarily disable these warnings: Only <gtksourceview/gtksource.h> can be included directly.
 if("${CMAKE_CXX_COMPILER_ID}" STREQUAL "GNU")
-  set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -Wno-cpp")
+  add_definitions(-Wno-cpp)
 elseif(CMAKE_CXX_COMPILER_ID MATCHES "Clang")
-  set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -Wno-#warnings")
+  add_definitions("-Wno-#warnings")
 endif()
 
 if(APPLE)
-  set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -undefined dynamic_lookup -Wno-unused-command-line-argument") #TODO: fix this
+  add_definitions(-undefined dynamic_lookup -Wno-unused-command-line-argument) #TODO: fix this
   link_directories(/usr/local/lib /usr/local/opt/gettext/lib)
   include_directories(/usr/local/opt/gettext/include)
   set(CMAKE_MACOSX_RPATH 1)
@@ -39,9 +40,22 @@ if(${CMAKE_SYSTEM_NAME} MATCHES FreeBSD)
   link_directories(/usr/local/lib)
 endif()
 
-set(CMAKE_MODULE_PATH ${CMAKE_MODULE_PATH} "${CMAKE_SOURCE_DIR}/cmake_modules/")
-find_package(LibClang REQUIRED)
+option(BUILD_TESTING OFF)
 
+set(BUILD_TESTING_SAVED ${BUILD_TESTING})
+set(BUILD_TESTING OFF CACHE BOOL "Disable sub-project tests" FORCE)
+add_subdirectory(libclangmm)
+add_subdirectory(tiny-process-library)
+set(BUILD_TESTING ${BUILD_TESTING_SAVED} CACHE BOOL "Set to previous value" FORCE)
+
+find_package(Boost 1.54 COMPONENTS system filesystem serialization REQUIRED)
+find_package(ASPELL REQUIRED)
+include(FindPkgConfig)
+pkg_check_modules(GTKMM gtkmm-3.0 REQUIRED)
+pkg_check_modules(GTKSVMM gtksourceviewmm-3.0 REQUIRED)
+pkg_check_modules(LIBGIT2 libgit2 REQUIRED)
+set(CMAKE_MODULE_PATH ${CMAKE_MODULE_PATH} "${CMAKE_SOURCE_DIR}/libclangmm/cmake_modules/")
+find_package(LibClang REQUIRED)
 #Find liblldb with the same version as the version of libclang found
 string(REPLACE libclang liblldb LIBLLDB_LIBRARIES "${LIBCLANG_LIBRARIES}")
 if(EXISTS "${LIBLLDB_LIBRARIES}")
@@ -51,57 +65,28 @@ elseif(EXISTS "${LIBLLDB_LIBRARIES}.1")
   set(LIBLLDB_FOUND TRUE)
 endif()
 if(LIBLLDB_FOUND)
-  set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -DJUCI_ENABLE_DEBUG")
+  add_definitions(-DJUCI_ENABLE_DEBUG)
 else()
   set(LIBLLDB_LIBRARIES "")
   message("liblldb not found. Building juCi++ without debugging support")
 endif()
 
-find_package(Boost 1.54 COMPONENTS system filesystem serialization REQUIRED)
-find_package(ASPELL REQUIRED)
-include(FindPkgConfig)
-pkg_check_modules(GTKMM gtkmm-3.0 REQUIRED)
-pkg_check_modules(GTKSVMM gtksourceviewmm-3.0 REQUIRED)
-pkg_check_modules(LIBGIT2 libgit2 REQUIRED)
-
-if(MSYS)
-  set(global_libraries winpthread)
-endif()
-set(global_libraries ${global_libraries}
-  ${GTKMM_LIBRARIES}
-  ${GTKSVMM_LIBRARIES}
-  ${Boost_LIBRARIES}
-  ${LIBCLANG_LIBRARIES}
-  ${LIBLLDB_LIBRARIES}
-  ${ASPELL_LIBRARIES}
-  ${LIBGIT2_LIBRARIES}
-  )
-
-set(global_includes
-   ${Boost_INCLUDE_DIRS}
-   ${GTKMM_INCLUDE_DIRS}
-   ${GTKSVMM_INCLUDE_DIRS}
-   ${LIBCLANG_INCLUDE_DIRS}
-   ${ASPELL_INCLUDE_DIR}
-   ${LIBGIT2_INCLUDE_DIRS}
-   ${PROJECT_SOURCE_DIR}/libclangmm/src
-   ${PROJECT_SOURCE_DIR}/tiny-process-library
-   ${PROJECT_SOURCE_DIR}/src
+# For both src and tests targets
+include_directories(
+  ${Boost_INCLUDE_DIRS}
+  ${GTKMM_INCLUDE_DIRS}
+  ${GTKSVMM_INCLUDE_DIRS}
+  ${LIBCLANG_INCLUDE_DIRS}
+  ${ASPELL_INCLUDE_DIR}
+  ${LIBGIT2_INCLUDE_DIRS}
 )
 
 add_subdirectory("src")
 
 #TODO: instead of the if-expression below, disable tests on Travis CI for clang++ builds
 if(NOT (("${CMAKE_CXX_COMPILER_ID}" STREQUAL "Clang") AND (NOT $ENV{distribution} STREQUAL "")))
-  if(ENABLE_TESTING)
+  if(BUILD_TESTING)
     enable_testing()
     add_subdirectory(tests)
   endif()
-endif()
-
-if(${CMAKE_SYSTEM_NAME} MATCHES Linux|.*BSD|DragonFly)
-    install(FILES "${CMAKE_SOURCE_DIR}/share/juci.desktop"
-            DESTINATION "${CMAKE_INSTALL_PREFIX}/share/applications")
-    install(FILES "${CMAKE_SOURCE_DIR}/share/juci.svg"
-            DESTINATION "${CMAKE_INSTALL_PREFIX}/share/icons/hicolor/scalable/apps")
 endif()

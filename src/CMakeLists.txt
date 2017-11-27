@@ -1,88 +1,65 @@
-if(MSYS)
-  set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -DMSYS_PROCESS_USE_SH")
-endif()
-
-set(project_files
-    config.cc
-    dialogs.cc
-    dialogs_unix.cc
-    directories.cc
-    entrybox.cc
-    info.cc
-    juci.cc
-    notebook.cc
-    project.cc
-    selection_dialog.cc
-    tooltips.cc
-    window.cc
+# Files used both in ../src and ../tests
+set(JUCI_SHARED_FILES
+  autocomplete.cc
+  cmake.cc
+  compile_commands.cc
+  ctags.cc
+  dispatcher.cc
+  filesystem.cc
+  git.cc
+  menu.cc
+  meson.cc
+  project_build.cc
+  source.cc
+  source_clang.cc
+  source_diff.cc
+  source_spellcheck.cc
+  terminal.cc
+  usages_clang.cc
 )
-
-#Files used both in ../src and ../tests
-set(project_shared_files
-    autocomplete.cc
-    cmake.cc
-    compile_commands.cc
-    ctags.cc
-    dispatcher.cc
-    filesystem.cc
-    git.cc
-    menu.cc
-    meson.cc
-    project_build.cc
-    source.cc
-    source_clang.cc
-    source_diff.cc
-    source_spellcheck.cc
-    terminal.cc
-    usages_clang.cc
-
-    ${PROJECT_SOURCE_DIR}/libclangmm/src/CodeCompleteResults.cc
-    ${PROJECT_SOURCE_DIR}/libclangmm/src/CompilationDatabase.cc
-    ${PROJECT_SOURCE_DIR}/libclangmm/src/CompileCommand.cc
-    ${PROJECT_SOURCE_DIR}/libclangmm/src/CompileCommands.cc
-    ${PROJECT_SOURCE_DIR}/libclangmm/src/CompletionString.cc
-    ${PROJECT_SOURCE_DIR}/libclangmm/src/Cursor.cc
-    ${PROJECT_SOURCE_DIR}/libclangmm/src/Diagnostic.cc
-    ${PROJECT_SOURCE_DIR}/libclangmm/src/Index.cc
-    ${PROJECT_SOURCE_DIR}/libclangmm/src/SourceLocation.cc
-    ${PROJECT_SOURCE_DIR}/libclangmm/src/SourceRange.cc
-    ${PROJECT_SOURCE_DIR}/libclangmm/src/Token.cc
-    ${PROJECT_SOURCE_DIR}/libclangmm/src/Tokens.cc
-    ${PROJECT_SOURCE_DIR}/libclangmm/src/TranslationUnit.cc
-    ${PROJECT_SOURCE_DIR}/libclangmm/src/Utility.cc
-    
-    ${PROJECT_SOURCE_DIR}/tiny-process-library/process.cpp
-)
-
 if(LIBLLDB_FOUND)
-  list(APPEND project_shared_files debug_lldb.cc)
+  list(APPEND JUCI_SHARED_FILES debug_lldb.cc)
 endif()
+add_library(juci_shared STATIC ${JUCI_SHARED_FILES})
+target_link_libraries(juci_shared
+  ${GTKMM_LIBRARIES}
+  ${GTKSVMM_LIBRARIES}
+  ${Boost_LIBRARIES}
+  ${LIBLLDB_LIBRARIES}
+  ${ASPELL_LIBRARIES}
+  ${LIBGIT2_LIBRARIES}
+  clangmm
+  tiny-process-library
+)
 
-if(MSYS)
-  list(APPEND project_shared_files ${PROJECT_SOURCE_DIR}/tiny-process-library/process_win.cpp)
-else()
-  list(APPEND project_shared_files ${PROJECT_SOURCE_DIR}/tiny-process-library/process_unix.cpp)
-endif()
+add_executable(juci
+  config.cc
+  dialogs.cc
+  dialogs_unix.cc
+  directories.cc
+  entrybox.cc
+  info.cc
+  juci.cc
+  notebook.cc
+  project.cc
+  selection_dialog.cc
+  tooltips.cc
+  window.cc
+)
+target_link_libraries(juci juci_shared)
 
-include_directories(${global_includes})
-
-add_library(project_shared OBJECT ${project_shared_files})
-
-if(("${CMAKE_CXX_COMPILER_ID}" STREQUAL "Clang") AND (NOT $ENV{distribution} STREQUAL ""))
-  add_library(${CMAKE_PROJECT_NAME} OBJECT ${project_files})
-else()
-  add_executable(${CMAKE_PROJECT_NAME} ${project_files} $<TARGET_OBJECTS:project_shared>)
-  target_link_libraries(${CMAKE_PROJECT_NAME} ${global_libraries})
-  install(TARGETS ${CMAKE_PROJECT_NAME}
-    RUNTIME DESTINATION bin
-  )
-endif()
-
-if(APPLE)
-    install(CODE "execute_process(COMMAND /usr/bin/python ${CMAKE_SOURCE_DIR}/share/set_icon_macos.py ${CMAKE_SOURCE_DIR}/share/juci.png ${CMAKE_INSTALL_PREFIX}/bin/juci)")
+install(TARGETS juci RUNTIME DESTINATION bin)
+if(${CMAKE_SYSTEM_NAME} MATCHES Linux|.*BSD|DragonFly)
+  install(FILES "${CMAKE_SOURCE_DIR}/share/juci.desktop"
+          DESTINATION "${CMAKE_INSTALL_PREFIX}/share/applications")
+  install(FILES "${CMAKE_SOURCE_DIR}/share/juci.svg"
+          DESTINATION "${CMAKE_INSTALL_PREFIX}/share/icons/hicolor/scalable/apps")
+elseif(APPLE)
+  install(CODE "execute_process(COMMAND /usr/bin/python ${CMAKE_SOURCE_DIR}/share/set_icon_macos.py ${CMAKE_SOURCE_DIR}/share/juci.png ${CMAKE_INSTALL_PREFIX}/bin/juci)")
 endif()
 
 # add a target to generate API documentation with Doxygen
+set(CMAKE_MODULE_PATH ${CMAKE_MODULE_PATH} "${CMAKE_SOURCE_DIR}/cmake_modules/")
 find_package(Plantuml)
 find_package(Doxygen)
 if(DOXYGEN_FOUND)
