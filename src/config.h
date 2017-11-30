@@ -27,7 +27,6 @@ public:
   public:
     int history_size;
     std::string font;
-    bool show_progress;
   };
   
   class Project {

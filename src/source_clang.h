@@ -32,8 +32,6 @@ namespace Source {
     std::vector<std::pair<clangmm::Offset, clangmm::Offset>> clang_tokens_offsets;
     sigc::connection delayed_reparse_connection;
     
-    std::shared_ptr<Terminal::InProgress> parsing_in_progress;
-    
     void show_diagnostic_tooltips(const Gdk::Rectangle &rectangle) override;
     void show_type_tooltips(const Gdk::Rectangle &rectangle) override;
     

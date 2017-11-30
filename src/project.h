@@ -26,7 +26,7 @@ namespace Project {
   void debug_activate_menu_items();
   void debug_update_stop();
   
-  class Base {
+  class Base : public std::enable_shared_from_this<Base> {
   protected:
 #ifdef JUCI_ENABLE_DEBUG
     class DebugOptions : public Gtk::Popover {
@@ -41,6 +41,8 @@ namespace Project {
     virtual ~Base() {}
     
     std::unique_ptr<Build> build;
+    
+    Dispatcher dispatcher;
     
     virtual std::pair<std::string, std::string> get_run_arguments();
     virtual void compile();
@@ -77,8 +79,6 @@ namespace Project {
     };
     static std::unordered_map<std::string, DebugOptions> debug_options;
 #endif
-    
-    Dispatcher dispatcher;
   public:
     Clang(std::unique_ptr<Build> &&build) : Base(std::move(build)) {}
     ~Clang() { dispatcher.disconnect(); }
@@ -139,8 +139,8 @@ namespace Project {
     void compile_and_run() override;
   };
   
-  std::unique_ptr<Base> create();
-  extern std::unique_ptr<Base> current;
+  std::shared_ptr<Base> create();
+  extern std::shared_ptr<Base> current;
 };
 
 #endif  // JUCI_PROJECT_H_

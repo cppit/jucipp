@@ -5,34 +5,12 @@
 #include <functional>
 #include "gtkmm.h"
 #include <boost/filesystem.hpp>
-#include <thread>
-#include <atomic>
 #include <iostream>
 #include "process.hpp"
 #include "dispatcher.h"
-#include <unordered_set>
-#include <regex>
 #include <tuple>
 
 class Terminal : public Gtk::TextView {
-public:
-  class InProgress {
-    friend class Terminal;
-  public:
-    InProgress(const std::string& start_msg);
-    ~InProgress();
-    void done(const std::string& msg);
-    void cancel(const std::string& msg);
-  private:
-    void start(const std::string& msg);
-    size_t line_nr;
-    
-    std::atomic<bool> stop;
-    
-    std::thread wait_thread;
-  };
-  
-private:
   Terminal();
 public:
   static Terminal &get() {
@@ -47,7 +25,6 @@ public:
   void kill_async_processes(bool force=false);
   
   size_t print(const std::string &message, bool bold=false);
-  std::shared_ptr<InProgress> print_in_progress(std::string start_msg);
   void async_print(const std::string &message, bool bold=false);
   void async_print(size_t line_nr, const std::string &message);
   
@@ -72,9 +49,6 @@ private:
   std::vector<std::shared_ptr<TinyProcessLib::Process>> processes;
   std::mutex processes_mutex;
   Glib::ustring stdin_buffer;
-  
-  std::unordered_set<InProgress*> in_progresses;
-  std::mutex in_progresses_mutex;
 };
 
 #endif  // JUCI_TERMINAL_H_

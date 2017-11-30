@@ -27,7 +27,6 @@ Source::ClangViewParse::ClangViewParse(const boost::filesystem::path &file_path,
   }
   configure();
   
-  parsing_in_progress=Terminal::get().print_in_progress("Parsing "+file_path.string());
   parse_initialize();
   
   get_buffer()->signal_changed().connect([this]() {
@@ -142,7 +141,6 @@ void Source::ClangViewParse::parse_initialize() {
         if(this->language && (this->language->get_id()=="chdr" || this->language->get_id()=="cpphdr"))
           clangmm::remove_include_guard(parse_thread_buffer_raw);
         auto status=clang_tu->reparse(parse_thread_buffer_raw);
-        parsing_in_progress->done("done");
         if(status==0) {
           auto expected=ParseProcessState::PROCESSING;
           if(parse_process_state.compare_exchange_strong(expected, ParseProcessState::POSTPROCESSING)) {
@@ -183,7 +181,6 @@ void Source::ClangViewParse::parse_initialize() {
             status_diagnostics=std::make_tuple(0, 0, 0);
             if(update_status_diagnostics)
               update_status_diagnostics(this);
-            parsing_in_progress->cancel("failed");
           });
         }
       }
@@ -1697,7 +1694,6 @@ void Source::ClangView::full_reparse() {
 void Source::ClangView::async_delete() {
   delayed_show_arguments_connection.disconnect();
   delayed_tag_similar_identifiers_connection.disconnect();
-  parsing_in_progress->cancel("canceled, freeing resources in the background");
   
   views.erase(this);
   std::set<boost::filesystem::path> project_paths_in_use;

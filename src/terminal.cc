@@ -5,44 +5,8 @@
 #include "notebook.h"
 #include "filesystem.h"
 #include <iostream>
-
-Terminal::InProgress::InProgress(const std::string& start_msg): stop(false) {
-  if(Config::get().terminal.show_progress)
-    start(start_msg);
-  else
-    stop=true;
-}
-
-Terminal::InProgress::~InProgress() {
-  stop=true;
-  if(wait_thread.joinable())
-    wait_thread.join();
-}
-
-void Terminal::InProgress::start(const std::string& msg) {
-  line_nr=Terminal::get().print(msg+"...\n");
-  wait_thread=std::thread([this](){
-    size_t c=0;
-    while(!stop) {
-      if(c%100==0)
-        Terminal::get().async_print(line_nr-1, ".");
-      std::this_thread::sleep_for(std::chrono::milliseconds(10));
-      c++;
-    }
-  });
-}
-
-void Terminal::InProgress::done(const std::string& msg) {
-  bool expected=false;
-  if(stop.compare_exchange_strong(expected, true))
-    Terminal::get().async_print(line_nr-1, msg);
-}
-
-void Terminal::InProgress::cancel(const std::string& msg) {
-  bool expected=false;
-  if(stop.compare_exchange_strong(expected, true))
-    Terminal::get().async_print(line_nr-1, msg);
-}
+#include <regex>
+#include <thread>
 
 Terminal::Terminal() {
   bold_tag=get_buffer()->create_tag();
@@ -319,21 +283,6 @@ size_t Terminal::print(const std::string &message, bool bold){
   return static_cast<size_t>(get_buffer()->end().get_line())+deleted_lines;
 }
 
-std::shared_ptr<Terminal::InProgress> Terminal::print_in_progress(std::string start_msg) {
-  auto in_progress=std::shared_ptr<Terminal::InProgress>(new Terminal::InProgress(start_msg), [this](Terminal::InProgress *in_progress) {
-    {
-      std::unique_lock<std::mutex> lock(in_progresses_mutex);
-      in_progresses.erase(in_progress);
-    }
-    delete in_progress;
-  });
-  {
-    std::unique_lock<std::mutex> lock(in_progresses_mutex);
-    in_progresses.emplace(in_progress.get());
-  }
-  return in_progress;
-}
-
 void Terminal::async_print(const std::string &message, bool bold) {
   dispatcher.post([this, message, bold] {
     Terminal::get().print(message, bold);
@@ -379,13 +328,6 @@ void Terminal::configure() {
 }
 
 void Terminal::clear() {
-  {
-    std::unique_lock<std::mutex> lock(in_progresses_mutex);
-    for(auto &in_progress: in_progresses)
-      in_progress->stop=true;
-  }
-  while(Gtk::Main::events_pending())
-    Gtk::Main::iteration(false);
   get_buffer()->set_text("");
 }
 

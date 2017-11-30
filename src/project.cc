@@ -20,7 +20,7 @@ std::atomic<bool> Project::compiling(false);
 std::atomic<bool> Project::debugging(false);
 std::pair<boost::filesystem::path, std::pair<int, int> > Project::debug_stop;
 std::string Project::debug_status;
-std::unique_ptr<Project::Base> Project::current;
+std::shared_ptr<Project::Base> Project::current;
 #ifdef JUCI_ENABLE_DEBUG
 std::unordered_map<std::string, Project::Clang::DebugOptions> Project::Clang::debug_options;
 #endif
@@ -130,7 +130,7 @@ void Project::debug_update_stop() {
   }
 }
 
-std::unique_ptr<Project::Base> Project::create() {
+std::shared_ptr<Project::Base> Project::create() {
   std::unique_ptr<Project::Build> build;
   
   if(auto view=Notebook::get().get_current_view()) {
@@ -138,22 +138,22 @@ std::unique_ptr<Project::Base> Project::create() {
     if(view->language) {
       auto language_id=view->language->get_id();
       if(language_id=="markdown")
-        return std::unique_ptr<Project::Base>(new Project::Markdown(std::move(build)));
+        return std::shared_ptr<Project::Base>(new Project::Markdown(std::move(build)));
       if(language_id=="python")
-        return std::unique_ptr<Project::Base>(new Project::Python(std::move(build)));
+        return std::shared_ptr<Project::Base>(new Project::Python(std::move(build)));
       if(language_id=="js")
-        return std::unique_ptr<Project::Base>(new Project::JavaScript(std::move(build)));
+        return std::shared_ptr<Project::Base>(new Project::JavaScript(std::move(build)));
       if(language_id=="html")
-        return std::unique_ptr<Project::Base>(new Project::HTML(std::move(build)));
+        return std::shared_ptr<Project::Base>(new Project::HTML(std::move(build)));
     }
   }
   else
     build=Build::create(Directories::get().path);
   
   if(dynamic_cast<CMakeBuild*>(build.get()) || dynamic_cast<MesonBuild*>(build.get()))
-    return std::unique_ptr<Project::Base>(new Project::Clang(std::move(build)));
+    return std::shared_ptr<Project::Base>(new Project::Clang(std::move(build)));
   else
-    return std::unique_ptr<Project::Base>(new Project::Base(std::move(build)));
+    return std::shared_ptr<Project::Base>(new Project::Base(std::move(build)));
 }
 
 std::pair<std::string, std::string> Project::Base::get_run_arguments() {
@@ -239,17 +239,18 @@ void Project::Clang::compile() {
   if(default_build_path.empty() || !build->update_default())
     return;
   
+  compiling=true;
+  
   if(Config::get().project.clear_terminal_on_compile)
     Terminal::get().clear();
   
-  compiling=true;
   Terminal::get().print("Compiling project "+filesystem::get_short_path(build->project_path).string()+"\n");
   std::string compile_command;
   if(dynamic_cast<CMakeBuild*>(build.get()))
     compile_command=Config::get().project.cmake.compile_command;
   else if(dynamic_cast<MesonBuild*>(build.get()))
     compile_command=Config::get().project.meson.compile_command;
-  Terminal::get().async_process(compile_command, default_build_path, [this](int exit_status) {
+  Terminal::get().async_process(compile_command, default_build_path, [](int exit_status) {
     compiling=false;
   });
 }
@@ -277,20 +278,21 @@ void Project::Clang::compile_and_run() {
     arguments=filesystem::escape_argument(filesystem::get_short_path(executable).string());
   }
   
+  compiling=true;
+  
   if(Config::get().project.clear_terminal_on_compile)
     Terminal::get().clear();
   
-  compiling=true;
   Terminal::get().print("Compiling and running "+arguments+"\n");
   std::string compile_command;
   if(dynamic_cast<CMakeBuild*>(build.get()))
     compile_command=Config::get().project.cmake.compile_command;
   else if(dynamic_cast<MesonBuild*>(build.get()))
     compile_command=Config::get().project.meson.compile_command;
-  Terminal::get().async_process(compile_command, default_build_path, [this, arguments, project_path](int exit_status){
+  Terminal::get().async_process(compile_command, default_build_path, [arguments, project_path](int exit_status){
     compiling=false;
     if(exit_status==EXIT_SUCCESS) {
-      Terminal::get().async_process(arguments, project_path, [this, arguments](int exit_status){
+      Terminal::get().async_process(arguments, project_path, [arguments](int exit_status){
         Terminal::get().async_print(arguments+" returned: "+std::to_string(exit_status)+'\n');
       });
     }
@@ -416,21 +418,22 @@ void Project::Clang::debug_start() {
     *run_arguments=filesystem::escape_argument(filesystem::get_short_path(*run_arguments).string());
   }
   
+  debugging=true;
+  
   if(Config::get().project.clear_terminal_on_compile)
     Terminal::get().clear();
   
-  debugging=true;
   Terminal::get().print("Compiling and debugging "+*run_arguments+"\n");
   std::string compile_command;
   if(dynamic_cast<CMakeBuild*>(build.get()))
     compile_command=Config::get().project.cmake.compile_command;
   else if(dynamic_cast<MesonBuild*>(build.get()))
     compile_command=Config::get().project.meson.compile_command;
-  Terminal::get().async_process(compile_command, debug_build_path, [this, run_arguments, project_path](int exit_status){
+  Terminal::get().async_process(compile_command, debug_build_path, [self=this->shared_from_this(), run_arguments, project_path](int exit_status){
     if(exit_status!=EXIT_SUCCESS)
       debugging=false;
     else {
-      dispatcher.post([this, run_arguments, project_path] {
+      self->dispatcher.post([self, run_arguments, project_path] {
         std::vector<std::pair<boost::filesystem::path, int> > breakpoints;
         for(size_t c=0;c<Notebook::get().size();c++) {
           auto view=Notebook::get().get_view(c);
@@ -451,10 +454,10 @@ void Project::Clang::debug_start() {
         static auto on_exit_it=Debug::LLDB::get().on_exit.end();
         if(on_exit_it!=Debug::LLDB::get().on_exit.end())
           Debug::LLDB::get().on_exit.erase(on_exit_it);
-        Debug::LLDB::get().on_exit.emplace_back([this, run_arguments](int exit_status) {
+        Debug::LLDB::get().on_exit.emplace_back([self, run_arguments](int exit_status) {
           debugging=false;
           Terminal::get().async_print(*run_arguments+" returned: "+std::to_string(exit_status)+'\n');
-          dispatcher.post([this] {
+          self->dispatcher.post([] {
             debug_update_status("");
           });
         });
@@ -463,7 +466,7 @@ void Project::Clang::debug_start() {
         static auto on_event_it=Debug::LLDB::get().on_event.end();
         if(on_event_it!=Debug::LLDB::get().on_event.end())
           Debug::LLDB::get().on_event.erase(on_event_it);
-        Debug::LLDB::get().on_event.emplace_back([this](const lldb::SBEvent &event) {
+        Debug::LLDB::get().on_event.emplace_back([self](const lldb::SBEvent &event) {
           std::string status;
           boost::filesystem::path stop_path;
           unsigned stop_line=0, stop_column=0;
@@ -499,7 +502,7 @@ void Project::Clang::debug_start() {
             }
           }
           
-          dispatcher.post([this, status=std::move(status), stop_path=std::move(stop_path), stop_line, stop_column] {
+          self->dispatcher.post([status=std::move(status), stop_path=std::move(stop_path), stop_line, stop_column] {
             debug_update_status(status);
             Project::debug_stop.first=stop_path;
             Project::debug_stop.second.first=stop_line;
@@ -585,7 +588,7 @@ void Project::Clang::debug_backtrace() {
       }
     }
     
-    SelectionDialog::get()->on_select=[this, rows=std::move(rows)](unsigned int index, const std::string &text, bool hide_window) {
+    SelectionDialog::get()->on_select=[rows=std::move(rows)](unsigned int index, const std::string &text, bool hide_window) {
       if(index>=rows.size())
         return;
       auto frame=rows[index];
@@ -630,7 +633,7 @@ void Project::Clang::debug_show_variables() {
       SelectionDialog::get()->add_row(row);
     }
     
-    SelectionDialog::get()->on_select=[this, rows](unsigned int index, const std::string &text, bool hide_window) {
+    SelectionDialog::get()->on_select=[rows](unsigned int index, const std::string &text, bool hide_window) {
       if(index>=rows->size())
         return;
       auto variable=(*rows)[index];
@@ -646,18 +649,18 @@ void Project::Clang::debug_show_variables() {
         Info::get().print("Debugger did not find declaration for the variable: "+variable.name);
     };
     
-    SelectionDialog::get()->on_hide=[this]() {
-      debug_variable_tooltips.hide();
-      debug_variable_tooltips.clear();
+    SelectionDialog::get()->on_hide=[self=this->shared_from_this()]() {
+      self->debug_variable_tooltips.hide();
+      self->debug_variable_tooltips.clear();
     };
     
-    SelectionDialog::get()->on_changed=[this, rows, view, iter](unsigned int index, const std::string &text) {
+    SelectionDialog::get()->on_changed=[self=this->shared_from_this(), rows, view, iter](unsigned int index, const std::string &text) {
       if(index>=rows->size()) {
-        debug_variable_tooltips.hide();
+        self->debug_variable_tooltips.hide();
         return;
       }
-      debug_variable_tooltips.clear();
-      auto create_tooltip_buffer=[this, rows, view, index]() {
+      self->debug_variable_tooltips.clear();
+      auto create_tooltip_buffer=[rows, view, index]() {
         auto variable=(*rows)[index];
         auto tooltip_buffer=view?Gtk::TextBuffer::create(view->get_buffer()->get_tag_table()):Gtk::TextBuffer::create();
         
@@ -679,11 +682,11 @@ void Project::Clang::debug_show_variables() {
       };
       
       if(view)
-        debug_variable_tooltips.emplace_back(create_tooltip_buffer, view, view->get_buffer()->create_mark(iter), view->get_buffer()->create_mark(iter));
+        self->debug_variable_tooltips.emplace_back(create_tooltip_buffer, view, view->get_buffer()->create_mark(iter), view->get_buffer()->create_mark(iter));
       else
-        debug_variable_tooltips.emplace_back(create_tooltip_buffer);
+        self->debug_variable_tooltips.emplace_back(create_tooltip_buffer);
   
-      debug_variable_tooltips.show(true);
+      self->debug_variable_tooltips.show(true);
     };
     
     if(view)

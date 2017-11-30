@@ -1,3 +1,3 @@
 #include "project.h"
 
-std::unique_ptr<Project::Base> Project::current;
+std::shared_ptr<Project::Base> Project::current;

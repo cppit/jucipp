@@ -85,8 +85,7 @@ R"RAW(
     "terminal": {
         "history_size": 1000,
         "font_comment": "Use \"\" to use source.font with slightly smaller size",
-        "font": "",
-        "show_progress": false
+        "font": ""
     },
     "keybindings": {
         "preferences": "<primary>comma",
