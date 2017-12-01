@@ -30,7 +30,7 @@ elseif(CMAKE_CXX_COMPILER_ID MATCHES "Clang")
 endif()
 
 if(APPLE)
-  add_definitions(-undefined dynamic_lookup -Wno-unused-command-line-argument) #TODO: fix this
+  add_compile_options(-undefined dynamic_lookup -Wno-unused-command-line-argument) #TODO: fix this
   link_directories(/usr/local/lib /usr/local/opt/gettext/lib)
   include_directories(/usr/local/opt/gettext/include)
   set(CMAKE_MACOSX_RPATH 1)
@@ -83,10 +83,7 @@ include_directories(
 
 add_subdirectory("src")
 
-#TODO: instead of the if-expression below, disable tests on Travis CI for clang++ builds
-if(NOT (("${CMAKE_CXX_COMPILER_ID}" STREQUAL "Clang") AND (NOT $ENV{distribution} STREQUAL "")))
-  if(BUILD_TESTING)
-    enable_testing()
-    add_subdirectory(tests)
-  endif()
+if(BUILD_TESTING)
+  enable_testing()
+  add_subdirectory(tests)
 endif()
