@@ -6,6 +6,8 @@ Dispatcher::Dispatcher() {
     std::vector<std::list<std::function<void()>>::iterator> its;
     {
       std::unique_lock<std::mutex> lock(functions_mutex);
+      if(functions.empty())
+        return;
       its.reserve(functions.size());
       for(auto it=functions.begin();it!=functions.end();++it)
         its.emplace_back(it);
