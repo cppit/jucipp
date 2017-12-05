@@ -24,9 +24,9 @@ endif()
 
 # temporarily disable these warnings: Only <gtksourceview/gtksource.h> can be included directly.
 if("${CMAKE_CXX_COMPILER_ID}" STREQUAL "GNU")
-  add_definitions(-Wno-cpp)
+  add_compile_options(-Wno-cpp)
 elseif(CMAKE_CXX_COMPILER_ID MATCHES "Clang")
-  add_definitions("-Wno-#warnings")
+  add_compile_options("-Wno-#warnings")
 endif()
 
 if(APPLE)
