@@ -30,7 +30,6 @@ elseif(CMAKE_CXX_COMPILER_ID MATCHES "Clang")
 endif()
 
 if(APPLE)
-  add_compile_options(-undefined dynamic_lookup -Wno-unused-command-line-argument) #TODO: fix this
   link_directories(/usr/local/lib /usr/local/opt/gettext/lib)
   include_directories(/usr/local/opt/gettext/include)
   set(CMAKE_MACOSX_RPATH 1)
