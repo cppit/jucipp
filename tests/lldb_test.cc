@@ -98,9 +98,7 @@ int main() {
     }
   });
   
-  std::thread debug_thread([&] {
-    Debug::LLDB::get().start(exec_path.string(), "", breakpoints);
-  });
+  Debug::LLDB::get().start(exec_path.string(), "", breakpoints);
   
   for(;;) {
     if(exited) {
@@ -139,6 +137,4 @@ int main() {
   }
   
   Debug::LLDB::get().cancel();
-  
-  debug_thread.join();
 }
