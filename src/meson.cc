@@ -9,7 +9,7 @@
 Meson::Meson(const boost::filesystem::path &path) {
   const auto find_project=[this](const boost::filesystem::path &file_path) {
     for(auto &line: filesystem::read_lines(file_path)) {
-      const static std::regex project_regex("^ *project *\\(.*$", std::regex::icase);
+      const static std::regex project_regex("^ *project *\\(.*\\r?$", std::regex::icase);
       std::smatch sm;
       if(std::regex_match(line, sm, project_regex))
         return true;

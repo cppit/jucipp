@@ -9,7 +9,7 @@
 CMake::CMake(const boost::filesystem::path &path) {
   const auto find_cmake_project=[this](const boost::filesystem::path &cmake_path) {
     for(auto &line: filesystem::read_lines(cmake_path)) {
-      const static std::regex project_regex("^ *project *\\(.*$", std::regex::icase);
+      const static std::regex project_regex("^ *project *\\(.*\\r?$", std::regex::icase);
       std::smatch sm;
       if(std::regex_match(line, sm, project_regex))
         return true;
@@ -333,7 +333,7 @@ std::vector<std::string> CMake::get_function_parameters(std::string &data) {
 }
 
 std::vector<std::pair<boost::filesystem::path, std::vector<std::string> > > CMake::get_functions_parameters(const std::string &name) {
-  const std::regex function_regex("^ *"+name+" *\\( *(.*)\\) *$", std::regex::icase);
+  const std::regex function_regex("^ *"+name+" *\\( *(.*)\\) *\\r?$", std::regex::icase);
   variables.clear();
   if(!parsed)
     parse();
@@ -348,8 +348,8 @@ std::vector<std::pair<boost::filesystem::path, std::vector<std::string> > > CMak
       if(end_line>start_line) {
         auto line=files[c].substr(start_line, end_line-start_line);
         std::smatch sm;
-        const static std::regex set_regex("^ *set *\\( *([A-Za-z_][A-Za-z_0-9]*) +(.*)\\) *$", std::regex::icase);
-        const static std::regex project_regex("^ *project *\\( *([^ ]+).*\\) *$", std::regex::icase);
+        const static std::regex set_regex("^ *set *\\( *([A-Za-z_][A-Za-z_0-9]*) +(.*)\\) *\\r?$", std::regex::icase);
+        const static std::regex project_regex("^ *project *\\( *([^ ]+).*\\) *\\r?$", std::regex::icase);
         if(std::regex_match(line, sm, set_regex)) {
           auto data=sm[2].str();
           while(data.size()>0 && data.back()==' ')
