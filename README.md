@@ -29,6 +29,7 @@ towards libclang with speed, stability, and ease of use in mind.
 * Highlighting of similar types (C++)
 * Automated documentation search (C++)
 * Go to declaration, implementation, methods and usages (C++)
+* CUDA files are supported and parsed as C++
 * Find symbol through Ctags
 * Spell checking depending on file context
 * Run shell commands within juCi++

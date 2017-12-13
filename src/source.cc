@@ -62,6 +62,12 @@ Glib::RefPtr<Gsv::Language> Source::guess_language(const boost::filesystem::path
       }
     }
   }
+  else if(language->get_id()=="cuda") {
+    if(file_path.extension()==".cuh")
+      language=language_manager->get_language("cpphdr");
+    else
+      language=language_manager->get_language("cpp");
+  }
   return language;
 }
 

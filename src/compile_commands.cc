@@ -127,10 +127,15 @@ std::vector<std::string> CompileCommands::get_arguments(const boost::filesystem:
      extension!=".c")
     arguments.emplace_back("-xc++");
   
-  if(extension.empty() || (1<extension.size() && extension[1]=='h') || extension==".tcc") {
+  if(extension.empty() || (1<extension.size() && extension[1]=='h') || extension==".tcc" || extension==".cuh") {
     arguments.emplace_back("-Wno-pragma-once-outside-header");
     arguments.emplace_back("-Wno-pragma-system-header-outside-header");
     arguments.emplace_back("-Wno-include-next-outside-header");
+  }
+  
+  if(extension==".cu" || extension==".cuh") {
+    arguments.emplace_back("-include");
+    arguments.emplace_back("cuda_runtime.h");
   }
   
   if(!build_path.empty()) {
