@@ -42,6 +42,8 @@ namespace Source {
     std::mutex parse_mutex;
     std::atomic<ParseState> parse_state;
     std::atomic<ParseProcessState> parse_process_state;
+    
+    CXCompletionString selected_completion_string;
   private:
     Glib::ustring parse_thread_buffer;
     
@@ -59,6 +61,8 @@ namespace Source {
     ClangViewAutocomplete(const boost::filesystem::path &file_path, Glib::RefPtr<Gsv::Language> language);
   protected:
     Autocomplete autocomplete;
+    std::unique_ptr<clangmm::CodeCompleteResults> code_complete_results;
+    std::vector<CXCompletionString> completion_strings;
     sigc::connection delayed_show_arguments_connection;
   private:
     bool is_possible_parameter();
