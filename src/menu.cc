@@ -33,6 +33,10 @@ const Glib::ustring menu_xml= R"RAW(<interface>
         <attribute name='action'>app.source_goto_declaration</attribute>
       </item>
       <item>
+        <attribute name='label' translatable='yes'>_Go _to _Type _Declaration</attribute>
+        <attribute name='action'>app.source_goto_type_declaration</attribute>
+      </item>
+      <item>
         <attribute name='label' translatable='yes'>_Go _to _Implementation</attribute>
         <attribute name='action'>app.source_goto_implementation</attribute>
       </item>
@@ -292,6 +296,10 @@ const Glib::ustring menu_xml= R"RAW(<interface>
         <item>
           <attribute name='label' translatable='yes'>_Go to Declaration</attribute>
           <attribute name='action'>app.source_goto_declaration</attribute>
+        </item>
+        <item>
+          <attribute name='label' translatable='yes'>_Go to _Type _Declaration</attribute>
+          <attribute name='action'>app.source_goto_type_declaration</attribute>
         </item>
         <item>
           <attribute name='label' translatable='yes'>_Go to Implementation</attribute>

@@ -1062,6 +1062,27 @@ Source::ClangViewRefactor::ClangViewRefactor(const boost::filesystem::path &file
     return offset;
   };
   
+  get_type_declaration_location=[this](){
+    if(!parsed) {
+      Info::get().print("Buffer is parsing");
+      return Offset();
+    }
+    auto identifier=get_identifier();
+    if(identifier) {
+      auto type_cursor=identifier.cursor.get_type().get_cursor();
+      if(type_cursor) {
+        auto source_location=type_cursor.get_source_location();
+        auto path=source_location.get_path();
+        if(!path.empty()) {
+          auto location_offset=source_location.get_offset();
+          return Offset(location_offset.line-1, location_offset.index-1, path);
+        }
+      }
+    }
+    Info::get().print("No type declaration found");
+    return Offset();
+  };
+  
   auto implementation_locations=[this](const Identifier &identifier) {
     std::vector<Offset> offsets;
     if(identifier) {

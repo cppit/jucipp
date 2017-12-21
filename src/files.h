@@ -124,6 +124,7 @@ R"RAW(
         "source_comments_add_documentation": "<primary><alt>slash",
         "source_find_documentation": "<primary><shift>d",
         "source_goto_declaration": "<primary>d",
+        "source_goto_type_declaration": "<alt><shift>d",
         "source_goto_implementation": "<primary>i",
         "source_goto_usage": "<primary>u",
         "source_goto_method": "<primary>m",

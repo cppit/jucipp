@@ -827,6 +827,23 @@ void Window::set_menu_actions() {
       }
     }
   });
+  menu.add_action("source_goto_type_declaration", [this]() {
+    if(auto view=Notebook::get().get_current_view()) {
+      if(view->get_type_declaration_location) {
+        auto location=view->get_type_declaration_location();
+        if(location) {
+          if(!boost::filesystem::is_regular_file(location.file_path))
+            return;
+          Notebook::get().open(location.file_path);
+          auto view=Notebook::get().get_current_view();
+          auto line=static_cast<int>(location.line);
+          auto index=static_cast<int>(location.index);
+          view->place_cursor_at_line_index(line, index);
+          view->scroll_to_cursor_delayed(view, true, false);
+        }
+      }
+    }
+  });
   auto goto_selected_location=[](Source::View *view, const std::vector<Source::Offset> &locations) {
     if(!locations.empty()) {
       auto dialog_iter=view->get_iter_for_dialog();
@@ -1306,6 +1323,7 @@ void Window::activate_menu_items() {
   menu.actions["source_comments_add_documentation"]->set_enabled(view && view->get_documentation_template);
   menu.actions["source_find_documentation"]->set_enabled(view && view->get_token_data);
   menu.actions["source_goto_declaration"]->set_enabled(view && view->get_declaration_location);
+  menu.actions["source_goto_type_declaration"]->set_enabled(view && view->get_type_declaration_location);
   menu.actions["source_goto_implementation"]->set_enabled(view && view->get_implementation_locations);
   menu.actions["source_goto_declaration_or_implementation"]->set_enabled(view && view->get_declaration_or_implementation_locations);
   menu.actions["source_goto_usage"]->set_enabled(view && view->get_usages);

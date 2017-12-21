@@ -70,6 +70,7 @@ namespace Source {
     std::function<void()> non_interactive_completion;
     std::function<void(bool)> format_style;
     std::function<Offset()> get_declaration_location;
+    std::function<Offset()> get_type_declaration_location;
     std::function<std::vector<Offset>()> get_implementation_locations;
     std::function<std::vector<Offset>()> get_declaration_or_implementation_locations;
     std::function<std::vector<std::pair<Offset, std::string> >()> get_usages;
