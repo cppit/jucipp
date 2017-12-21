@@ -1034,10 +1034,19 @@ Source::ClangViewRefactor::ClangViewRefactor(const boost::filesystem::path &file
         auto completion_cursor=clangmm::CompletionString(selected_completion_string).get_cursor(clang_tu->cx_tu);
         if(completion_cursor) {
           auto source_location=completion_cursor.get_source_location();
-          auto offset=source_location.get_offset();
+          auto source_location_offset=source_location.get_offset();
           if(CompletionDialog::get())
             CompletionDialog::get()->hide();
-          return Offset(offset.line-1, offset.index-1, source_location.get_path());
+          auto offset=Offset(source_location_offset.line-1, source_location_offset.index-1, source_location.get_path());
+          
+          // Workaround for bug in ArchLinux's clang_getFileName()
+          // TODO: remove the workaround when this is fixed
+          auto include_path=filesystem::get_normal_path(offset.file_path);
+          boost::system::error_code ec;
+          if(!boost::filesystem::exists(include_path, ec))
+            offset.file_path="/usr/include"/include_path;
+          
+          return offset;
         }
         else {
           Info::get().print("No declaration found");
@@ -1074,8 +1083,17 @@ Source::ClangViewRefactor::ClangViewRefactor(const boost::filesystem::path &file
         auto source_location=type_cursor.get_source_location();
         auto path=source_location.get_path();
         if(!path.empty()) {
-          auto location_offset=source_location.get_offset();
-          return Offset(location_offset.line-1, location_offset.index-1, path);
+          auto source_location_offset=source_location.get_offset();
+          auto offset=Offset(source_location_offset.line-1, source_location_offset.index-1, path);
+          
+          // Workaround for bug in ArchLinux's clang_getFileName()
+          // TODO: remove the workaround when this is fixed
+          auto include_path=filesystem::get_normal_path(offset.file_path);
+          boost::system::error_code ec;
+          if(!boost::filesystem::exists(include_path, ec))
+            offset.file_path="/usr/include"/include_path;
+          
+          return offset;
         }
       }
     }
@@ -1180,6 +1198,16 @@ Source::ClangViewRefactor::ClangViewRefactor(const boost::filesystem::path &file
           }
           if(CompletionDialog::get())
             CompletionDialog::get()->hide();
+          
+          // Workaround for bug in ArchLinux's clang_getFileName()
+          // TODO: remove the workaround when this is fixed
+          for(auto &offset: offsets) {
+            auto include_path=filesystem::get_normal_path(offset.file_path);
+            boost::system::error_code ec;
+            if(!boost::filesystem::exists(include_path, ec))
+              offset.file_path="/usr/include"/include_path;
+          }
+          
           return offsets;
         }
         else {
