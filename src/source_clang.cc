@@ -1517,7 +1517,7 @@ Source::ClangViewRefactor::ClangViewRefactor(const boost::filesystem::path &file
       auto it=data.end();
       do {
         auto token_spelling=cursor.get_token_spelling();
-        if(!token_spelling.empty() && token_spelling!="__1") {
+        if(!token_spelling.empty() && token_spelling!="__1" && token_spelling.compare(0, 5, "__cxx")!=0) {
           it=data.emplace(it, token_spelling);
           if(symbol.empty())
             symbol=token_spelling;
