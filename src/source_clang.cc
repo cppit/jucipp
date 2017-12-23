@@ -1502,11 +1502,8 @@ Source::ClangViewRefactor::ClangViewRefactor(const boost::filesystem::path &file
     
     if(!cursor) {
       auto identifier=get_identifier();
-      if(identifier) {
-        cursor=identifier.cursor.get_definition();
-        if(!cursor)
-          cursor=identifier.cursor.get_canonical();
-      }
+      if(identifier)
+        cursor=identifier.cursor.get_canonical();
     }
     
     if(cursor) {
