@@ -5,6 +5,7 @@ set(JUCI_SHARED_FILES
   compile_commands.cc
   ctags.cc
   dispatcher.cc
+  documentation_cppreference.cc
   filesystem.cc
   git.cc
   menu.cc

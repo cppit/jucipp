@@ -768,8 +768,11 @@ void Window::set_menu_actions() {
   menu.add_action("source_find_documentation", [this]() {
     if(auto view=Notebook::get().get_current_view()) {
       if(view->get_token_data) {
-        auto data=view->get_token_data();        
-        if(data.size()>0) {
+        auto data=view->get_token_data();
+        std::string url;
+        if(data.size()==1)
+          url=data[0];
+        else if(data.size()>1) {
           auto documentation_search=Config::get().source.documentation_searches.find(data[0]);
           if(documentation_search!=Config::get().source.documentation_searches.end()) {
             std::string token_query;
@@ -789,22 +792,23 @@ void Window::set_menu_actions() {
               if(query==documentation_search->second.queries.end())
                 query=documentation_search->second.queries.find("@any");
               
-              if(query!=documentation_search->second.queries.end()) {
-                std::string uri=query->second+token_query;
-#ifdef __APPLE__
-                Terminal::get().process("open \""+uri+"\"");
-#else
-                GError* error=nullptr;
-#if GTK_VERSION_GE(3, 22)
-                gtk_show_uri_on_window(nullptr, uri.c_str(), GDK_CURRENT_TIME, &error);
-#else
-                gtk_show_uri(nullptr, uri.c_str(), GDK_CURRENT_TIME, &error);
-#endif
-                g_clear_error(&error);
-#endif
-              }
+              if(query!=documentation_search->second.queries.end())
+                url=query->second+token_query;
             }
           }
+        }
+        if(!url.empty()) {
+#ifdef __APPLE__
+          Terminal::get().process("open \""+url+"\"");
+#else
+          GError* error=nullptr;
+#if GTK_VERSION_GE(3, 22)
+          gtk_show_uri_on_window(nullptr, url.c_str(), GDK_CURRENT_TIME, &error);
+#else
+          gtk_show_uri(nullptr, url.c_str(), GDK_CURRENT_TIME, &error);
+#endif
+          g_clear_error(&error);
+#endif
         }
       }
     }

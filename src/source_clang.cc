@@ -12,6 +12,7 @@
 #include "filesystem.h"
 #include "compile_commands.h"
 #include "usages_clang.h"
+#include "documentation_cppreference.h"
 
 clangmm::Index Source::ClangViewParse::clang_index(0, 0);
 
@@ -1481,107 +1482,63 @@ Source::ClangViewRefactor::ClangViewRefactor(const boost::filesystem::path &file
     return methods;
   };
   
-  get_token_data=[this]() {
-    const auto find_non_word_char=[](const std::string &str, size_t start_pos) {
-      for(size_t c=start_pos;c<str.size();c++) {
-        if(!((str[c]>='a' && str[c]<='z') ||
-             (str[c]>='A' && str[c]<='Z') ||
-             (str[c]>='0' && str[c]<='9') ||
-             str[c]=='_'))
-        return c;
-      }
-      return std::string::npos;
-    };
+  get_token_data=[this]() -> std::vector<std::string> {
+    clangmm::Cursor cursor;
     
     std::vector<std::string> data;
     if(!parsed) {
-      Info::get().print("Buffer is parsing");
-      return data;
-    }
-    auto iter=get_buffer()->get_insert()->get_iter();
-    auto line=static_cast<unsigned>(iter.get_line());
-    auto index=static_cast<unsigned>(iter.get_line_index());
-    for(size_t c=0;c<clang_tokens->size();++c) {
-      auto &token=(*clang_tokens)[c];
-      if(token.is_identifier()) {
-        auto &token_offsets=clang_tokens_offsets[c];
-        if(line==token_offsets.first.line-1 && index>=token_offsets.first.index-1 && index <=token_offsets.second.index-1) {
-          auto referenced=token.get_cursor().get_referenced();
-          if(referenced) {
-            auto usr=referenced.get_usr();
-            
-            data.emplace_back("clang");
-            
-            //namespace
-            size_t pos1, pos2=0;
-            while((pos1=usr.find('@', pos2))!=std::string::npos && pos1+1<usr.size() && usr[pos1+1]=='N') {
-              pos1+=3;
-              pos2=find_non_word_char(usr, pos1);
-              if(pos2!=std::string::npos) {
-                auto ns=usr.substr(pos1, pos2-pos1);
-                if(ns=="__1")
-                  break;
-                data.emplace_back(ns);
-              }
-              else
-                break;
-            }
-            if(data.size()==1)
-              data.emplace_back("");
-            
-            //template arguments
-            size_t template_pos=usr.find('$');
-            
-            bool found_type_or_function=false;
-            //type
-            pos2=0;
-            while(((pos1=usr.find("T@", pos2))!=std::string::npos || (pos1=usr.find("S@", pos2))!=std::string::npos) && pos1<template_pos) {
-              found_type_or_function=true;
-              pos1+=2;
-              pos2=find_non_word_char(usr, pos1);
-              if(pos2!=std::string::npos)
-                data.emplace_back(usr.substr(pos1, pos2-pos1));
-              else {
-                data.emplace_back(usr.substr(pos1));
-                break;
-              }
-            }
-            
-            //function/constant//variable
-            pos1=usr.find("F@");
-            if(pos1==std::string::npos)
-              pos1=usr.find("C@");
-            if(pos1==std::string::npos)
-              pos1=usr.find("I@");
-            if(pos1!=std::string::npos) {
-              pos1+=2;
-              pos2=find_non_word_char(usr, pos1);
-            }
-            if(pos1!=std::string::npos) {
-              found_type_or_function=true;
-              if(pos2!=std::string::npos)
-                data.emplace_back(usr.substr(pos1, pos2-pos1));
-              else
-                data.emplace_back(usr.substr(pos1));
-            }
-            
-            //Sometimes a method is at end without a identifier it seems:
-            if(!found_type_or_function && (pos1=usr.rfind('@'))!=std::string::npos) {
-              pos1++;
-              pos2=find_non_word_char(usr, pos1);
-              if(pos2!=std::string::npos)
-                data.emplace_back(usr.substr(pos1, pos2-pos1));
-              else
-                data.emplace_back(usr.substr(pos1));
-            }
-            
-            break;
-          }
+      if(selected_completion_string) {
+        cursor=clangmm::CompletionString(selected_completion_string).get_cursor(clang_tu->cx_tu);
+        if(!cursor) {
+          Info::get().print("No symbol found");
+          return data;
         }
       }
+      else {
+        Info::get().print("Buffer is parsing");
+        return data;
+      }
     }
+    
+    if(!cursor) {
+      auto identifier=get_identifier();
+      if(identifier) {
+        cursor=identifier.cursor.get_definition();
+        if(!cursor)
+          cursor=identifier.cursor.get_canonical();
+      }
+    }
+    
+    if(cursor) {
+      data.emplace_back("clang");
+      
+      std::string symbol;
+      clangmm::Cursor last_cursor;
+      auto it=data.end();
+      do {
+        auto token_spelling=cursor.get_token_spelling();
+        if(!token_spelling.empty() && token_spelling!="__1") {
+          it=data.emplace(it, token_spelling);
+          if(symbol.empty())
+            symbol=token_spelling;
+          else
+            symbol.insert(0, token_spelling+"::");
+        }
+        last_cursor=cursor;
+        cursor=cursor.get_semantic_parent();
+      } while(cursor.get_kind()!=clangmm::Cursor::Kind::TranslationUnit);
+      
+      if(last_cursor.get_kind()!=clangmm::Cursor::Kind::Namespace)
+        data.emplace(++data.begin(), "");
+      
+      auto url=Documentation::CppReference::get_url(symbol);
+      if(!url.empty())
+        return {url};
+    }
+    
     if(data.empty())
       Info::get().print("No symbol found at current cursor location");
+    
     return data;
   };
   
