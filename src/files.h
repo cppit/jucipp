@@ -45,7 +45,7 @@ R"RAW(
         "smart_brackets_comment": "If smart_inserts is enabled, this option is automatically enabled. When inserting an already closed bracket, the cursor might instead be moved, avoiding the need of arrow keys after autocomplete",
         "smart_brackets": true,
         "smart_inserts_comment": "When for instance inserting (, () gets inserted. Applies to: (), [], \", '. Also enables pressing ; inside an expression before a final ) to insert ; at the end of line, and deletions of empty insertions",
-        "smart_inserts": false,
+        "smart_inserts": true,
         "show_map": true,
         "map_font_size": "1",
         "show_git_diff": true,
