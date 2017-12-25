@@ -1398,9 +1398,9 @@ Source::ClangViewRefactor::ClangViewRefactor(const boost::filesystem::path &file
               for(auto &argument_cursor: cursor.get_arguments()) {
                 auto argument_type=argument_cursor.get_type().get_spelling();
                 for(auto it=semantic_parents.rbegin();it!=semantic_parents.rend();++it) {
-                  size_t pos=argument_type.find(' '+*it);
-                  if(pos!=std::string::npos)
-                    argument_type.erase(pos+1, it->size());
+                  size_t pos=argument_type.find(*it);
+                  if(pos==0)
+                    argument_type.erase(pos, it->size());
                 }
                 auto argument=argument_cursor.get_spelling();
                 if(!arguments.empty())
