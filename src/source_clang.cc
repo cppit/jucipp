@@ -1360,57 +1360,108 @@ Source::ClangViewRefactor::ClangViewRefactor(const boost::filesystem::path &file
     auto iter=get_buffer()->get_insert()->get_iter();
     auto line=static_cast<unsigned>(iter.get_line());
     auto index=static_cast<unsigned>(iter.get_line_index());
-    for(size_t c=0;c<clang_tokens->size();++c) {
+    for(size_t c=clang_tokens->size()-1;c!=static_cast<size_t>(-1);--c) {
       auto &token=(*clang_tokens)[c];
       if(token.is_identifier()) {
         auto &token_offsets=clang_tokens_offsets[c];
-        if(line==token_offsets.first.line-1 && index>=token_offsets.first.index-1 && index <=token_offsets.second.index-1) {
-          auto cursor=token.get_cursor();
-          auto kind=cursor.get_kind();
-          if(kind==clangmm::Cursor::Kind::FunctionDecl || kind==clangmm::Cursor::Kind::CXXMethod ||
-             kind==clangmm::Cursor::Kind::Constructor || kind==clangmm::Cursor::Kind::Destructor ||
-             kind==clangmm::Cursor::Kind::ConversionFunction) {
-            auto referenced=cursor.get_referenced();
-            if(referenced && referenced==cursor) {
-              std::string result;
-              std::string specifier;
-              if(kind==clangmm::Cursor::Kind::FunctionDecl || kind==clangmm::Cursor::Kind::CXXMethod) {
-                result=cursor.get_type().get_result().get_spelling();
-                
-                if(!result.empty() && result.back()!='*' && result.back()!='&')
-                  result+=' ';
-                
-                if(clang_CXXMethod_isConst(cursor.cx_cursor))
-                  specifier=" const";
-              }
-              
-              auto name=cursor.get_spelling();
-              auto parent=cursor.get_semantic_parent();
-              std::vector<std::string> semantic_parents;
-              while(parent && parent.get_kind()!=clangmm::Cursor::Kind::TranslationUnit) {
-                auto spelling=parent.get_spelling()+"::";
-                semantic_parents.emplace_back(spelling);
-                name.insert(0, spelling);
-                parent=parent.get_semantic_parent();
-              }
-              
-              std::string arguments;
-              for(auto &argument_cursor: cursor.get_arguments()) {
-                auto argument_type=argument_cursor.get_type().get_spelling();
-                for(auto it=semantic_parents.rbegin();it!=semantic_parents.rend();++it) {
-                  size_t pos=argument_type.find(*it);
-                  if(pos==0)
-                    argument_type.erase(pos, it->size());
+        if(line==token_offsets.first.line-1 && index>=token_offsets.first.index-1 && index<=token_offsets.second.index-1) {
+          auto token_spelling=token.get_spelling();
+          if(!token_spelling.empty() &&
+             (token_spelling.size()>1 || (token_spelling.back()>='a' && token_spelling.back()<='z') ||
+              (token_spelling.back()>='A' && token_spelling.back()<='Z') ||
+              token_spelling.back()=='_')) {
+            auto cursor=token.get_cursor();
+            auto kind=cursor.get_kind();
+            if(kind==clangmm::Cursor::Kind::FunctionDecl || kind==clangmm::Cursor::Kind::CXXMethod ||
+               kind==clangmm::Cursor::Kind::Constructor || kind==clangmm::Cursor::Kind::Destructor ||
+               kind==clangmm::Cursor::Kind::ConversionFunction) {
+              auto referenced=cursor.get_referenced();
+              if(referenced && referenced==cursor) {
+                std::string result;
+                std::string specifier;
+                if(kind==clangmm::Cursor::Kind::FunctionDecl || kind==clangmm::Cursor::Kind::CXXMethod) {
+                  auto start_offset=cursor.get_source_range().get_start().get_offset();
+                  auto end_offset=token_offsets.first;
+                  
+                  // To accurately get result type:
+                  size_t last_c;
+                  int angle_brackets=0;
+                  for(size_t c=0;c<clang_tokens->size();++c) {
+                    auto &token=(*clang_tokens)[c];
+                    auto &token_offsets=clang_tokens_offsets[c];
+                    if((token_offsets.first.line==start_offset.line && token_offsets.second.line!=end_offset.line && token_offsets.first.index>=start_offset.index) ||
+                       (token_offsets.first.line>start_offset.line && token_offsets.second.line<end_offset.line) ||
+                       (token_offsets.first.line!=start_offset.line && token_offsets.second.line==end_offset.line && token_offsets.second.index<=end_offset.index) ||
+                       (token_offsets.first.line==start_offset.line && token_offsets.second.line==end_offset.line &&
+                        token_offsets.first.index>=start_offset.index && token_offsets.second.index<=end_offset.index)) {                     
+                      auto token_spelling=token.get_spelling();
+                      if(token.get_kind()==clangmm::Token::Kind::Identifier) {
+                        if(c==0 || (*clang_tokens)[c-1].get_spelling()!="::") {
+                          auto name=token_spelling;
+                          auto parent=token.get_cursor().get_type().get_cursor().get_semantic_parent();
+                          while(parent && parent.get_kind()!=clangmm::Cursor::Kind::TranslationUnit) {
+                            auto spelling=parent.get_token_spelling();
+                            name.insert(0, spelling+"::");
+                            parent=parent.get_semantic_parent();
+                          }
+                          result+=name;
+                        }
+                        else
+                          result+=token_spelling;
+                      }
+                      else if((token_spelling=="*" || token_spelling=="&") && !result.empty() && result.back()!='*' && result.back()!='&')
+                        result+=' '+token_spelling;
+                      else if(token_spelling=="extern" || token_spelling=="static" || token_spelling=="virtual" || token_spelling=="friend") {}
+                      else if(token_spelling=="," || (token_spelling.size()>1 && token_spelling!="::" && angle_brackets==0))
+                        result+=token_spelling+' ';
+                      else {
+                        if(token_spelling=="<")
+                          ++angle_brackets;
+                        else if(token_spelling==">")
+                          --angle_brackets;
+                        result+=token_spelling;
+                      }
+                      last_c=c;
+                    }
+                  }
+                  
+                  if(!result.empty() && result.back()!='*' && result.back()!='&' && result.back()!=' ')
+                    result+=' ';
+                  
+                  if(clang_CXXMethod_isConst(cursor.cx_cursor))
+                    specifier=" const";
                 }
-                auto argument=argument_cursor.get_spelling();
-                if(!arguments.empty())
-                  arguments+=", ";
-                arguments+=argument_type;
-                if(!arguments.empty() && arguments.back()!='*' && arguments.back()!='&')
-                  arguments+=' ';
-                arguments+=argument;
+                
+                auto name=cursor.get_spelling();
+                auto parent=cursor.get_semantic_parent();
+                std::vector<std::string> semantic_parents;
+                while(parent && parent.get_kind()!=clangmm::Cursor::Kind::TranslationUnit) {
+                  auto spelling=parent.get_spelling()+"::";
+                  if(spelling!="::") {
+                    semantic_parents.emplace_back(spelling);
+                    name.insert(0, spelling);
+                  }
+                  parent=parent.get_semantic_parent();
+                }
+                
+                std::string arguments;
+                for(auto &argument_cursor: cursor.get_arguments()) {
+                  auto argument_type=argument_cursor.get_type().get_spelling();
+                  for(auto it=semantic_parents.rbegin();it!=semantic_parents.rend();++it) {
+                    size_t pos=argument_type.find(*it);
+                    if(pos==0)
+                      argument_type.erase(pos, it->size());
+                  }
+                  auto argument=argument_cursor.get_spelling();
+                  if(!arguments.empty())
+                    arguments+=", ";
+                  arguments+=argument_type;
+                  if(!arguments.empty() && arguments.back()!='*' && arguments.back()!='&')
+                    arguments+=' ';
+                  arguments+=argument;
+                }
+                return result+name+'('+arguments+")"+specifier+" {}";
               }
-              return result+name+'('+arguments+")"+specifier+" {}";
             }
           }
         }
