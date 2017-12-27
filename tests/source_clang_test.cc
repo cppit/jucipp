@@ -131,6 +131,76 @@ int main() {
     g_assert_cmpstr(old_source.c_str(),==,source.c_str());
   }
   
+  // Test Implement method
+  {
+    clang_view->get_buffer()->set_text(R"(#include <string>
+#include <vector>
+#include <map>
+
+namespace N {
+  class T {
+    void f1();
+    void f1(T &t);
+    void f1(const T &t);
+    void f1(std::vector<T> ts);
+    void f1(const std::vector<T> &ts);
+    std::string f2();
+    const std::string &f3();
+    std::vector<T> f4();
+    std::vector<T*> f5();
+    std::vector<T&> f6();
+    std::map<T, std::string> f7();
+    static
+    std::map<T,
+             std::string
+    > f8();
+  };
+}
+)");
+    while(!clang_view->parsed)
+      flush_events();
+    g_assert_cmpuint(clang_view->clang_diagnostics.size(), ==, 0);
+    
+    auto buffer=clang_view->get_buffer();
+    
+    buffer->place_cursor(buffer->get_iter_at_line_offset(6, 9));
+    auto method=clang_view->get_method();
+    g_assert_cmpstr(method.c_str(), ==, "void N::T::f1() {}");
+    buffer->place_cursor(buffer->get_iter_at_line_offset(7, 9));
+    method=clang_view->get_method();
+    g_assert_cmpstr(method.c_str(), ==, "void N::T::f1(T &t) {}");
+    buffer->place_cursor(buffer->get_iter_at_line_offset(8, 9));
+    method=clang_view->get_method();
+    g_assert_cmpstr(method.c_str(), ==, "void N::T::f1(const T &t) {}");
+    buffer->place_cursor(buffer->get_iter_at_line_offset(9, 9));
+    method=clang_view->get_method();
+    g_assert_cmpstr(method.c_str(), ==, "void N::T::f1(std::vector<T> ts) {}");
+    buffer->place_cursor(buffer->get_iter_at_line_offset(10, 9));
+    method=clang_view->get_method();
+    g_assert_cmpstr(method.c_str(), ==, "void N::T::f1(const std::vector<T> &ts) {}");
+    buffer->place_cursor(buffer->get_iter_at_line_offset(11, 16));
+    method=clang_view->get_method();
+    g_assert_cmpstr(method.c_str(), ==, "std::string N::T::f2() {}");
+    buffer->place_cursor(buffer->get_iter_at_line_offset(12, 23));
+    method=clang_view->get_method();
+    g_assert_cmpstr(method.c_str(), ==, "const std::string &N::T::f3() {}");
+    buffer->place_cursor(buffer->get_iter_at_line_offset(13, 19));
+    method=clang_view->get_method();
+    g_assert_cmpstr(method.c_str(), ==, "std::vector<N::T> N::T::f4() {}");
+    buffer->place_cursor(buffer->get_iter_at_line_offset(14, 20));
+    method=clang_view->get_method();
+    g_assert_cmpstr(method.c_str(), ==, "std::vector<N::T *> N::T::f5() {}");
+    buffer->place_cursor(buffer->get_iter_at_line_offset(15, 20));
+    method=clang_view->get_method();
+    g_assert_cmpstr(method.c_str(), ==, "std::vector<N::T &> N::T::f6() {}");
+    buffer->place_cursor(buffer->get_iter_at_line_offset(16, 29));
+    method=clang_view->get_method();
+    g_assert_cmpstr(method.c_str(), ==, "std::map<N::T, std::string> N::T::f7() {}");
+    buffer->place_cursor(buffer->get_iter_at_line_offset(20, 6));
+    method=clang_view->get_method();
+    g_assert_cmpstr(method.c_str(), ==, "std::map<N::T, std::string> N::T::f8() {}");
+  }
+  
   clang_view->async_delete();
   clang_view->delete_thread.join();
   flush_events();
