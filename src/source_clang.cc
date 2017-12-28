@@ -636,14 +636,14 @@ Source::ClangViewAutocomplete::ClangViewAutocomplete(const boost::filesystem::pa
             Recursive::f(result, text);
             if(!text.empty()) {
               bool already_added=false;
-              for(auto &pair: autocomplete.rows) {
-                if(pair.first==text) {
+              for(auto &row: autocomplete.rows) {
+                if(row==text) {
                   already_added=true;
                   break;
                 }
               }
               if(!already_added) {
-                autocomplete.rows.emplace_back(std::move(text), result.get_brief_comment());
+                autocomplete.rows.emplace_back(std::move(text));
                 completion_strings.emplace_back(result.cx_completion_string);
               }
             }
@@ -670,7 +670,7 @@ Source::ClangViewAutocomplete::ClangViewAutocomplete(const boost::filesystem::pa
             if(match && !text.empty()) {
               if(!return_text.empty())
                 text+=return_text;
-              autocomplete.rows.emplace_back(std::move(text), result.get_brief_comment());
+              autocomplete.rows.emplace_back(std::move(text));
               completion_strings.emplace_back(result.cx_completion_string);
             }
           }
@@ -778,6 +778,10 @@ Source::ClangViewAutocomplete::ClangViewAutocomplete(const boost::filesystem::pa
         }
       }
     }
+  };
+  
+  autocomplete.get_tooltip = [this](unsigned int index) {
+    return clangmm::to_string(clang_getCompletionBriefComment(completion_strings[index]));
   };
 }
 

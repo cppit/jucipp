@@ -18,7 +18,7 @@ public:
 
   std::string prefix;
   std::mutex prefix_mutex;
-  std::vector<std::pair<std::string, std::string>> rows;
+  std::vector<std::string> rows;
   Tooltips tooltips;
 
   std::atomic<State> state;
@@ -46,6 +46,8 @@ public:
   std::function<void()> on_hide = [] {};
   std::function<void(unsigned int, const std::string &)> on_changed = [](unsigned int index, const std::string &text) {};
   std::function<void(unsigned int, const std::string &, bool)> on_select = [](unsigned int index, const std::string &text, bool hide_window) {};
+  
+  std::function<std::string(unsigned int)> get_tooltip = [](unsigned int index) {return std::string();};
 
   Autocomplete(Gtk::TextView *view, bool &interactive_completion, guint &last_keyval, bool strip_word);
 

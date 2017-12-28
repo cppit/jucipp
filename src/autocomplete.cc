@@ -101,8 +101,8 @@ void Autocomplete::run() {
             CompletionDialog::create(view, view->get_buffer()->create_mark(start_iter));
             setup_dialog();
             for(auto &row : rows) {
-              CompletionDialog::get()->add_row(row.first);
-              row.first.clear();
+              CompletionDialog::get()->add_row(row);
+              row.clear();
             }
             state = State::IDLE;
 
@@ -150,7 +150,7 @@ void Autocomplete::setup_dialog() {
     
     on_changed(index, text);
     
-    auto tooltip = rows[index].second;
+    auto tooltip = get_tooltip(index);
     if(tooltip.empty())
       tooltips.hide();
     else {
