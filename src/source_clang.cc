@@ -1387,8 +1387,7 @@ Source::ClangViewRefactor::ClangViewRefactor(const boost::filesystem::path &file
                   auto start_offset=cursor.get_source_range().get_start().get_offset();
                   auto end_offset=token_offsets.first;
                   
-                  // To accurately get result type:
-                  size_t last_c;
+                  // To accurately get result type with needed namespace and class/struct names:
                   int angle_brackets=0;
                   for(size_t c=0;c<clang_tokens->size();++c) {
                     auto &token=(*clang_tokens)[c];
@@ -1415,7 +1414,8 @@ Source::ClangViewRefactor::ClangViewRefactor(const boost::filesystem::path &file
                       }
                       else if((token_spelling=="*" || token_spelling=="&") && !result.empty() && result.back()!='*' && result.back()!='&')
                         result+=' '+token_spelling;
-                      else if(token_spelling=="extern" || token_spelling=="static" || token_spelling=="virtual" || token_spelling=="friend") {}
+                      else if(token_spelling=="extern" || token_spelling=="static" || token_spelling=="virtual" || token_spelling=="friend")
+                        continue;
                       else if(token_spelling=="," || (token_spelling.size()>1 && token_spelling!="::" && angle_brackets==0))
                         result+=token_spelling+' ';
                       else {
@@ -1425,7 +1425,6 @@ Source::ClangViewRefactor::ClangViewRefactor(const boost::filesystem::path &file
                           --angle_brackets;
                         result+=token_spelling;
                       }
-                      last_c=c;
                     }
                   }
                   
