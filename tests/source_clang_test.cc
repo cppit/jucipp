@@ -154,6 +154,7 @@ namespace N {
     std::map<T,
              std::string
     > f8();
+    void f9() const;
   };
 }
 )");
@@ -199,6 +200,9 @@ namespace N {
     buffer->place_cursor(buffer->get_iter_at_line_offset(20, 6));
     method=clang_view->get_method();
     g_assert_cmpstr(method.c_str(), ==, "std::map<N::T, std::string> N::T::f8() {}");
+    buffer->place_cursor(buffer->get_iter_at_line_offset(21, 9));
+    method=clang_view->get_method();
+    g_assert_cmpstr(method.c_str(), ==, "void N::T::f9() const {}");
   }
   
   clang_view->async_delete();
