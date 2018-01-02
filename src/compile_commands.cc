@@ -81,27 +81,36 @@ CompileCommands::CompileCommands(const boost::filesystem::path &build_path) {
 }
 
 std::vector<std::string> CompileCommands::get_arguments(const boost::filesystem::path &build_path, const boost::filesystem::path &file_path) {
+  std::string default_std_argument="-std=c++1y";
+  
   std::vector<std::string> arguments;
   if(!build_path.empty()) {
     clangmm::CompilationDatabase db(build_path.string());
-    clangmm::CompileCommands commands(file_path.string(), db);
-    auto cmds = commands.get_commands();
-    for (auto &cmd : cmds) {
-      auto cmd_arguments = cmd.get_arguments();
-      bool ignore_next=false;
-      for (size_t c = 1; c < cmd_arguments.size(); c++) {
-        if(ignore_next) {
-          ignore_next=false;
-          continue;
+    if(db) {
+      clangmm::CompileCommands commands(file_path.string(), db);
+      auto cmds = commands.get_commands();
+      for (auto &cmd : cmds) {
+        auto cmd_arguments = cmd.get_arguments();
+        bool ignore_next=false;
+        for (size_t c = 1; c < cmd_arguments.size(); c++) {
+          if(ignore_next) {
+            ignore_next=false;
+            continue;
+          }
+          else if(cmd_arguments[c]=="-o" || cmd_arguments[c]=="-c") {
+            ignore_next=true;
+            continue;
+          }
+          arguments.emplace_back(cmd_arguments[c]);
         }
-        else if(cmd_arguments[c]=="-o" || cmd_arguments[c]=="-c") {
-          ignore_next=true;
-          continue;
-        }
-        arguments.emplace_back(cmd_arguments[c]);
       }
     }
+    else
+      arguments.emplace_back(default_std_argument);
   }
+  else
+    arguments.emplace_back(default_std_argument);
+  
   auto clang_version_string=clangmm::to_string(clang_getClangVersion());
   const static std::regex clang_version_regex("^[A-Za-z ]+([0-9.]+).*$");
   std::smatch sm;
