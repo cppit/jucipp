@@ -1,5 +1,4 @@
-#ifndef JUCI_SOURCE_H_
-#define JUCI_SOURCE_H_
+#pragma once
 #include "source_spellcheck.h"
 #include "source_diff.h"
 #include "tooltips.h"
@@ -184,4 +183,3 @@ namespace Source {
     void parse_language_file(Glib::RefPtr<CompletionBuffer> &completion_buffer, bool &has_context_class, const boost::property_tree::ptree &pt);
   };
 }
-#endif  // JUCI_SOURCE_H_

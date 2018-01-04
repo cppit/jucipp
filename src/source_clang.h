@@ -1,6 +1,4 @@
-#ifndef JUCI_SOURCE_CLANG_H_
-#define JUCI_SOURCE_CLANG_H_
-
+#pragma once
 #include <thread>
 #include <atomic>
 #include <mutex>
@@ -114,5 +112,3 @@ namespace Source {
     bool full_reparse_running=false;
   };
 }
-
-#endif  // JUCI_SOURCE_CLANG_H_

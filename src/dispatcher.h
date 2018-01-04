@@ -1,5 +1,4 @@
-#ifndef DISPATCHER_H_
-#define	DISPATCHER_H_
+#pragma once
 #include <gtkmm.h>
 #include <mutex>
 #include <list>
@@ -25,5 +24,3 @@ public:
   
   void disconnect();
 };
-
-#endif	/* DISPATCHER_H_ */

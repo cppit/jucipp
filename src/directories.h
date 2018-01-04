@@ -1,6 +1,4 @@
-#ifndef JUCI_DIRECTORIES_H_
-#define JUCI_DIRECTORIES_H_
-
+#pragma once
 #include <gtkmm.h>
 #include <vector>
 #include <string>
@@ -94,5 +92,3 @@ private:
   Gtk::MenuItem menu_root_item_new_folder;
   boost::filesystem::path menu_popup_row_path;
 };
-
-#endif  // JUCI_DIRECTORIES_H_

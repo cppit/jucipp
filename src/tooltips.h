@@ -1,5 +1,4 @@
-#ifndef JUCI_TOOLTIPS_H_
-#define JUCI_TOOLTIPS_H_
+#pragma once
 #include "gtkmm.h"
 #include <string>
 #include <list>
@@ -47,5 +46,3 @@ public:
 private:
   std::list<Tooltip> tooltip_list;
 };
-
-#endif  // JUCI_TOOLTIPS_H_

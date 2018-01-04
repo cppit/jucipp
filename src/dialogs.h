@@ -1,5 +1,4 @@
-#ifndef JUCI_DIALOG_H_
-#define JUCI_DIALOG_H_
+#pragma once
 #include <string>
 #include <boost/filesystem.hpp>
 #include <vector>
@@ -25,5 +24,3 @@ private:
                           const std::vector<std::pair<std::string, Gtk::ResponseType>> &buttons,
                           Gtk::FileChooserAction gtk_options);
 };
-
-#endif //JUCI_DIALOG_H_

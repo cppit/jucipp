@@ -1,6 +1,4 @@
-#ifndef JUCI_MESON_H_
-#define JUCI_MESON_H_
-
+#pragma once
 #include <boost/filesystem.hpp>
 #include <vector>
 
@@ -15,5 +13,3 @@ public:
   
   boost::filesystem::path get_executable(const boost::filesystem::path &build_path, const boost::filesystem::path &file_path);
 };
-
-#endif //JUCI_MESON_H_

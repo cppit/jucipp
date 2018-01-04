@@ -1,5 +1,4 @@
-#ifndef JUCI_CMAKE_H_
-#define JUCI_CMAKE_H_
+#pragma once
 #include <boost/filesystem.hpp>
 #include <vector>
 #include <unordered_map>
@@ -29,4 +28,3 @@ private:
   std::vector<std::pair<boost::filesystem::path, std::vector<std::string> > > get_functions_parameters(const std::string &name);
   bool parsed=false;
 };
-#endif //JUCI_CMAKE_H_

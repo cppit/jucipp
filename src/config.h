@@ -1,5 +1,4 @@
-#ifndef JUCI_CONFIG_H_
-#define JUCI_CONFIG_H_
+#pragma once
 #include <boost/property_tree/json_parser.hpp>
 #include <boost/filesystem.hpp>
 #include <unordered_map>
@@ -123,4 +122,3 @@ private:
   bool remove_deprecated_nodes(boost::property_tree::ptree &cfg, const boost::property_tree::ptree &default_cfg, std::string parent_path="");
   void read(const boost::property_tree::ptree &cfg);
 };
-#endif

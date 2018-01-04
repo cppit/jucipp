@@ -1,6 +1,4 @@
-#ifndef JUCI_PROJECT_BUILD_H_
-#define JUCI_PROJECT_BUILD_H_
-
+#pragma once
 #include <boost/filesystem.hpp>
 #include "cmake.h"
 #include "meson.h"
@@ -45,5 +43,3 @@ namespace Project {
     boost::filesystem::path get_executable(const boost::filesystem::path &path) override;
   };
 }
-
-#endif // JUCI_PROJECT_BUILD_H_

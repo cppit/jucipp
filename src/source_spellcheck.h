@@ -1,5 +1,4 @@
-#ifndef JUCI_SOURCE_SPELLCHECK_H_
-#define JUCI_SOURCE_SPELLCHECK_H_
+#pragma once
 #include <gtksourceviewmm.h>
 #include <aspell.h>
 
@@ -46,5 +45,3 @@ namespace Source {
     void spellcheck(const Gtk::TextIter& start, const Gtk::TextIter& end);
   };
 }
-
-#endif //JUCI_SOURCE_SPELLCHECK_H_

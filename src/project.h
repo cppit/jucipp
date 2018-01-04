@@ -1,6 +1,4 @@
-#ifndef JUCI_PROJECT_H_
-#define JUCI_PROJECT_H_
-
+#pragma once
 #include <gtkmm.h>
 #include <boost/filesystem.hpp>
 #include <atomic>
@@ -142,5 +140,3 @@ namespace Project {
   std::shared_ptr<Base> create();
   extern std::shared_ptr<Base> current;
 };
-
-#endif  // JUCI_PROJECT_H_

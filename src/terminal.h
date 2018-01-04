@@ -1,6 +1,4 @@
-#ifndef JUCI_TERMINAL_H_
-#define JUCI_TERMINAL_H_
-
+#pragma once
 #include <mutex>
 #include <functional>
 #include "gtkmm.h"
@@ -50,5 +48,3 @@ private:
   std::mutex processes_mutex;
   Glib::ustring stdin_buffer;
 };
-
-#endif  // JUCI_TERMINAL_H_

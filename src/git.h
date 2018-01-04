@@ -1,5 +1,4 @@
-#ifndef JUCI_GIT_H_
-#define JUCI_GIT_H_
+#pragma once
 #include <git2.h>
 #include <mutex>
 #include <memory>
@@ -97,4 +96,3 @@ private:
 public:
   static std::shared_ptr<Repository> get_repository(const boost::filesystem::path &path);
 };
-#endif //JUCI_GIT_H_

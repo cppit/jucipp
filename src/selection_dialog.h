@@ -1,6 +1,4 @@
-#ifndef JUCI_SELECTIONDIALOG_H_
-#define JUCI_SELECTIONDIALOG_H_
-
+#pragma once
 #include "gtkmm.h"
 #include <unordered_map>
 
@@ -96,5 +94,3 @@ private:
   int show_offset;
   bool row_in_entry=false;
 };
-
-#endif  // JUCI_SELECTIONDIALOG_H_

@@ -1,6 +1,4 @@
-#ifndef JUCI_ENTRYBOX_H_
-#define JUCI_ENTRYBOX_H_
-
+#pragma once
 #include <list>
 #include <functional>
 #include "gtkmm.h"
@@ -54,5 +52,3 @@ public:
 private:
   static std::unordered_map<std::string, std::vector<std::string> > entry_histories;
 };
-
-#endif  // JUCI_ENTRYBOX_H_

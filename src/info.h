@@ -1,6 +1,4 @@
-#ifndef JUCI_INFO_H_
-#define JUCI_INFO_H_
-
+#pragma once
 #include <gtkmm.h>
 
 class Info : public Gtk::InfoBar {
@@ -17,5 +15,3 @@ private:
   Gtk::Label label;
   sigc::connection timeout_connection;
 };
-
-#endif // JUCI_INFO_H_

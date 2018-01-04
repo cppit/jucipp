@@ -1,5 +1,4 @@
-#ifndef JUCI_FILESYSTEM_H_
-#define JUCI_FILESYSTEM_H_
+#pragma once
 #include <vector>
 #include <string>
 #include <boost/filesystem.hpp>
@@ -35,4 +34,3 @@ public:
   /// Return executable with latest version in filename on systems that is lacking executable_name symbolic link
   static boost::filesystem::path get_executable(const boost::filesystem::path &executable_name) noexcept;
 };
-#endif  // JUCI_FILESYSTEM_H_

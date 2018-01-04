@@ -1,6 +1,4 @@
-#ifndef JUCI_MENU_H_
-#define JUCI_MENU_H_
-
+#pragma once
 #include <string>
 #include <unordered_map>
 #include <gtkmm.h>
@@ -26,4 +24,3 @@ public:
 private:
   Glib::RefPtr<Gtk::Builder> builder;
 };
-#endif  // JUCI_MENU_H_

@@ -1,3 +1,4 @@
+#pragma once
 /**
    \mainpage
    juCi++ is a lightweight C++ IDE written in C++
@@ -24,10 +25,6 @@
    [juCi++] --> [tiny-process-library] : use
   \enduml
 */
-
-#ifndef JUCI_JUCI_H_
-#define JUCI_JUCI_H_
-
 #include <gtkmm.h>
 #include <boost/filesystem.hpp>
 
@@ -42,6 +39,3 @@ private:
   std::vector<std::pair<boost::filesystem::path, size_t> > files;
   std::vector<std::string> errors;
 };
-
-#endif // JUCI_JUCI_H_
-

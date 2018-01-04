@@ -1,5 +1,4 @@
-#ifndef JUCI_SOURCE_DIFF_H_
-#define JUCI_SOURCE_DIFF_H_
+#pragma once
 #include <gtksourceviewmm.h>
 #include <boost/filesystem.hpp>
 #include "dispatcher.h"
@@ -74,5 +73,3 @@ namespace Source {
     void update_lines();
   };
 }
-
-#endif //JUCI_SOURCE_DIFF_H_

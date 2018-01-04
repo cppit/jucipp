@@ -1,6 +1,4 @@
-#ifndef JUCI_WINDOW_H_
-#define JUCI_WINDOW_H_
-
+#pragma once
 #include <gtkmm.h>
 #include <atomic>
 
@@ -36,5 +34,3 @@ private:
   bool regex_search=false;
   bool search_entry_shown=false;
 };
-
-#endif  // JUCI_WINDOW_H

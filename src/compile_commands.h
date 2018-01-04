@@ -1,6 +1,4 @@
-#ifndef JUCI_COMPILE_COMMANDS_H_
-#define JUCI_COMPILE_COMMANDS_H_
-
+#pragma once
 #include <boost/filesystem.hpp>
 #include <vector>
 #include <string>
@@ -22,5 +20,3 @@ public:
   /// Return arguments for the given file using libclangmm
   static std::vector<std::string> get_arguments(const boost::filesystem::path &build_path, const boost::filesystem::path &file_path);
 };
-
-#endif // JUCI_COMPILE_COMMANDS_H_

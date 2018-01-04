@@ -1,5 +1,4 @@
-#ifndef JUCI_CTAGS_H_
-#define JUCI_CTAGS_H_
+#pragma once
 #include <string>
 #include <boost/filesystem.hpp>
 #include <sstream>
@@ -26,5 +25,3 @@ public:
 private:
   static std::vector<std::string> get_type_parts(const std::string type);
 };
-
-#endif //JUCI_CTAGS_H_

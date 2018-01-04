@@ -1,5 +1,4 @@
-#ifndef JUCI_USAGES_CLANG_H_
-#define JUCI_USAGES_CLANG_H_
+#pragma once
 #include "clangmm.h"
 #include <atomic>
 #include <boost/archive/text_iarchive.hpp>
@@ -148,4 +147,3 @@ namespace Usages {
     static Cache read_cache(const boost::filesystem::path &project_path, const boost::filesystem::path &build_path, const boost::filesystem::path &path);
   };
 } // namespace Usages
-#endif // JUCI_USAGES_CLANG_H_

@@ -1,6 +1,4 @@
-#ifndef JUCI_DEBUG_CLANG_H_
-#define JUCI_DEBUG_CLANG_H_
-
+#pragma once
 #include <boost/filesystem.hpp>
 #include <list>
 #include <lldb/API/LLDB.h>
@@ -88,5 +86,3 @@ namespace Debug {
     size_t buffer_size;
   };
 }
-
-#endif

@@ -1,5 +1,4 @@
-#ifndef JUCI_FILES_H_
-#define JUCI_FILES_H_
+#pragma once
 #include <string>
 
 /// If you add or remove nodes from the default_config_file, increase the juci
@@ -406,5 +405,3 @@ const std::string juci_dark_blue_style = R"RAW(<?xml version="1.0" encoding="UTF
 
 </style-scheme>
 )RAW";
-
-#endif  // JUCI_FILES_H_

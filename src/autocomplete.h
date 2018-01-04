@@ -1,5 +1,4 @@
-#ifndef JUCI_AUTOCOMPLETE_H_
-#define JUCI_AUTOCOMPLETE_H_
+#pragma once
 #include "dispatcher.h"
 #include "tooltips.h"
 #include <atomic>
@@ -57,5 +56,3 @@ public:
 private:
   void setup_dialog();
 };
-
-#endif // JUCI_AUTOCOMPLETE_H_

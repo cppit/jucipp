@@ -1,6 +1,4 @@
-#ifndef JUCI_NOTEBOOK_H_
-#define JUCI_NOTEBOOK_H_
-
+#pragma once
 #include <iostream>
 #include "gtkmm.h"
 #include "source.h"
@@ -89,4 +87,3 @@ private:
   
   bool save_modified_dialog(size_t index);
 };
-#endif  // JUCI_NOTEBOOK_H_
