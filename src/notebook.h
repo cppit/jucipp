@@ -2,7 +2,6 @@
 #include <iostream>
 #include "gtkmm.h"
 #include "source.h"
-#include "source_clang.h"
 #include <type_traits>
 #include <map>
 #include <sigc++/sigc++.h>

@@ -11,6 +11,7 @@
 #include "debug_lldb.h"
 #endif
 #include "info.h"
+#include "source_clang.h"
 #include "usages_clang.h"
 
 boost::filesystem::path Project::debug_last_stop_file_path;

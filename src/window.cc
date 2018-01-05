@@ -10,6 +10,7 @@
 #include "info.h"
 #include "ctags.h"
 #include "selection_dialog.h"
+#include "terminal.h"
 
 Window::Window() {
   set_title("juCi++");

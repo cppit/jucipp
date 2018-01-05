@@ -6,6 +6,7 @@
 #include "project.h"
 #include "filesystem.h"
 #include "selection_dialog.h"
+#include "source_clang.h"
 #include "gtksourceview-3.0/gtksourceview/gtksourcemap.h"
 
 Notebook::TabLabel::TabLabel(const boost::filesystem::path &path, std::function<void()> on_close) {

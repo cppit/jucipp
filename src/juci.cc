@@ -4,6 +4,7 @@
 #include "directories.h"
 #include "menu.h"
 #include "config.h"
+#include "terminal.h"
 
 int Application::on_command_line(const Glib::RefPtr<Gio::ApplicationCommandLine> &cmd) {
   Glib::set_prgname("juci");
