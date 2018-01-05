@@ -42,4 +42,8 @@ namespace Project {
     
     boost::filesystem::path get_executable(const boost::filesystem::path &path) override;
   };
+
+  class CargoBuild : public Build {};
+
+  class NpmBuild : public Build {};
 }

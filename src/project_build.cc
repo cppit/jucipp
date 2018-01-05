@@ -7,17 +7,29 @@ std::unique_ptr<Project::Build> Project::Build::create(const boost::filesystem::
   
   while(true) {
     if(boost::filesystem::exists(search_path/"CMakeLists.txt")) {
-      std::unique_ptr<Project::Build> cmake(new CMakeBuild(path));
-      if(!cmake->project_path.empty())
-        return cmake;
+      std::unique_ptr<Project::Build> build(new CMakeBuild(path));
+      if(!build->project_path.empty())
+        return build;
       else
         return std::make_unique<Project::Build>();
     }
     
     if(boost::filesystem::exists(search_path/"meson.build")) {
-      std::unique_ptr<Project::Build> meson(new MesonBuild(path));
-      if(!meson->project_path.empty())
-        return meson;
+      std::unique_ptr<Project::Build> build(new MesonBuild(path));
+      if(!build->project_path.empty())
+        return build;
+    }
+    
+    if(boost::filesystem::exists(search_path/"Cargo.toml")) {
+      std::unique_ptr<Project::Build> build(new CargoBuild());
+      build->project_path=search_path;
+      return build;
+    }
+    
+    if(boost::filesystem::exists(search_path/"package.json")) {
+      std::unique_ptr<Project::Build> build(new NpmBuild());
+      build->project_path=search_path;
+      return build;
     }
     
     if(search_path==search_path.root_directory())

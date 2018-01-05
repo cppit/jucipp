@@ -24,6 +24,8 @@ towards libclang with speed, stability, and ease of use in mind.
 * Git support through libgit2
 * Fast C++ autocompletion
 * Keyword and buffer autocompletion for other file types
+* Experimental language server protocol support that is enabled if `[language identifier]-language-server` executable is found. This executable can be a symbolic link to one of your installed language server binaries.
+See [language-server-protocol/specification.md](https://github.com/Microsoft/language-server-protocol/blob/gh-pages/specification.md) for a table of the currently defined language identifiers.
 * Tooltips showing type information and doxygen documentation (C++)
 * Rename refactoring across files (C++)
 * Highlighting of similar types (C++)

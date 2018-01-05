@@ -214,3 +214,33 @@ boost::filesystem::path filesystem::get_executable(const boost::filesystem::path
   
   return executable_name;
 }
+
+// Based on https://stackoverflow.com/a/11295568
+const std::vector<boost::filesystem::path> &filesystem::get_executable_search_paths() {
+  static std::vector<boost::filesystem::path> result;
+  if(!result.empty())
+    return result;
+
+  const std::string env = getenv("PATH");
+  const char delimiter = ':';
+
+  size_t previous = 0;
+  size_t pos;
+  while((pos = env.find(delimiter, previous)) != std::string::npos) {
+    result.emplace_back(env.substr(previous, pos - previous));
+    previous = pos + 1;
+  }
+  result.emplace_back(env.substr(previous));
+
+  return result;
+}
+
+boost::filesystem::path filesystem::find_executable(const std::string &executable_name) {
+  for(auto &path: get_executable_search_paths()) {
+    boost::system::error_code ec;
+    auto executable_path=path/executable_name;
+    if(boost::filesystem::exists(executable_path, ec))
+      return executable_path;
+  }
+  return boost::filesystem::path();
+}

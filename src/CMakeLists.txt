@@ -14,6 +14,7 @@ set(JUCI_SHARED_FILES
   source.cc
   source_clang.cc
   source_diff.cc
+  source_language_protocol.cc
   source_spellcheck.cc
   terminal.cc
   usages_clang.cc

@@ -137,6 +137,13 @@ namespace Project {
     void compile_and_run() override;
   };
   
+  class Rust : public Base {
+  public:
+    Rust(std::unique_ptr<Build> &&build) : Base(std::move(build)) {}
+    
+    void compile_and_run() override;
+  };
+  
   std::shared_ptr<Base> create();
   extern std::shared_ptr<Base> current;
 };

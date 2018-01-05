@@ -53,6 +53,8 @@ Glib::RefPtr<Gsv::Language> Source::guess_language(const boost::filesystem::path
       language=language_manager->get_language("makefile");
     else if(file_path.extension()==".tcc")
       language=language_manager->get_language("cpphdr");
+    else if(file_path.extension()==".ts")
+      language=language_manager->get_language("js");
     else if(!file_path.has_extension()) {
       for(auto &part: file_path) {
         if(part=="include") {

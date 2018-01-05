@@ -7,6 +7,7 @@
 #include "filesystem.h"
 #include "selection_dialog.h"
 #include "source_clang.h"
+#include "source_language_protocol.h"
 #include "gtksourceview-3.0/gtksourceview/gtksourcemap.h"
 
 Notebook::TabLabel::TabLabel(const boost::filesystem::path &path, std::function<void()> on_close) {
@@ -144,8 +145,22 @@ void Notebook::open(const boost::filesystem::path &file_path_, size_t notebook_i
   auto last_view=get_current_view();
   
   auto language=Source::guess_language(file_path);
+  
+  std::string language_protocol_language_id;
+  if(language) {
+    language_protocol_language_id=language->get_id();
+    if(language_protocol_language_id=="js") {
+      if(file_path.extension()==".ts")
+        language_protocol_language_id="typescript";
+      else
+        language_protocol_language_id="javascript";
+    }
+  }
+  
   if(language && (language->get_id()=="chdr" || language->get_id()=="cpphdr" || language->get_id()=="c" || language->get_id()=="cpp" || language->get_id()=="objc"))
     source_views.emplace_back(new Source::ClangView(file_path, language));
+  else if(language && !language_protocol_language_id.empty() && !filesystem::find_executable(language_protocol_language_id+"-language-server").empty())
+    source_views.emplace_back(new Source::LanguageProtocolView(file_path, language, language_protocol_language_id));
   else
     source_views.emplace_back(new Source::GenericView(file_path, language));
   

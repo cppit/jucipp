@@ -33,4 +33,8 @@ public:
   
   /// Return executable with latest version in filename on systems that is lacking executable_name symbolic link
   static boost::filesystem::path get_executable(const boost::filesystem::path &executable_name) noexcept;
+
+  static const std::vector<boost::filesystem::path> &get_executable_search_paths();
+  
+  static boost::filesystem::path find_executable(const std::string &executable_name);
 };

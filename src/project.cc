@@ -146,6 +146,8 @@ std::shared_ptr<Project::Base> Project::create() {
         return std::shared_ptr<Project::Base>(new Project::JavaScript(std::move(build)));
       if(language_id=="html")
         return std::shared_ptr<Project::Base>(new Project::HTML(std::move(build)));
+      if(language_id=="rust")
+      return std::shared_ptr<Project::Base>(new Project::Rust(std::move(build)));
     }
   }
   else
@@ -781,4 +783,12 @@ void Project::HTML::compile_and_run() {
 #endif
   g_clear_error(&error);
 #endif
+}
+
+void Project::Rust::compile_and_run() {
+  std::string command="cargo run";
+  Terminal::get().print("Running "+command+"\n");
+  Terminal::get().async_process(command, Notebook::get().get_current_view()->file_path.parent_path(), [command](int exit_status) {
+    Terminal::get().async_print(command+" returned: "+std::to_string(exit_status)+'\n');
+  });
 }
