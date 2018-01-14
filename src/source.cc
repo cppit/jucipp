@@ -2230,6 +2230,19 @@ bool Source::View::on_key_press_event_bracket_language(GdkEventKey* key) {
       }
     }
   }
+  // Mark parameters of templated functions after pressing tab and after writing template argument
+  else if(key->keyval==GDK_KEY_Tab && (key->state&GDK_SHIFT_MASK)==0) {
+    if(*iter=='>') {
+      iter.forward_char();
+      Gtk::TextIter parenthesis_end_iter;
+      if(*iter=='(' && is_templated_function(iter, parenthesis_end_iter)) {
+        iter.forward_char();
+        get_buffer()->select_range(iter, parenthesis_end_iter);
+        scroll_to(get_buffer()->get_insert());
+        return true;
+      }
+    }
+  }
   
   return false;
 }
