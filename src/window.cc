@@ -756,9 +756,9 @@ void Window::set_menu_actions() {
             return;
           Notebook::get().open(offset.file_path);
           auto view=Notebook::get().get_current_view();
-          auto iter=view->get_buffer()->get_iter_at_line_index(offset.line, offset.index);
+          auto iter=view->get_iter_at_line_pos(offset.line, offset.index);
           view->get_buffer()->insert(iter, std::get<1>(documentation_template));
-          iter=view->get_buffer()->get_iter_at_line_index(offset.line, offset.index);
+          iter=view->get_iter_at_line_pos(offset.line, offset.index);
           iter.forward_chars(std::get<2>(documentation_template));
           view->get_buffer()->place_cursor(iter);
           view->scroll_to_cursor_delayed(view, true, false);
@@ -826,7 +826,7 @@ void Window::set_menu_actions() {
           auto view=Notebook::get().get_current_view();
           auto line=static_cast<int>(location.line);
           auto index=static_cast<int>(location.index);
-          view->place_cursor_at_line_index(line, index);
+          view->place_cursor_at_line_pos(line, index);
           view->scroll_to_cursor_delayed(view, true, false);
         }
       }
@@ -843,7 +843,7 @@ void Window::set_menu_actions() {
           auto view=Notebook::get().get_current_view();
           auto line=static_cast<int>(location.line);
           auto index=static_cast<int>(location.index);
-          view->place_cursor_at_line_index(line, index);
+          view->place_cursor_at_line_pos(line, index);
           view->scroll_to_cursor_delayed(view, true, false);
         }
       }
@@ -880,7 +880,7 @@ void Window::set_menu_actions() {
         auto view=Notebook::get().get_current_view();
         auto line=static_cast<int>(location.line);
         auto index=static_cast<int>(location.index);
-        view->place_cursor_at_line_index(line, index);
+        view->place_cursor_at_line_pos(line, index);
         view->scroll_to_cursor_delayed(view, true, false);
         return;
       }
@@ -892,7 +892,7 @@ void Window::set_menu_actions() {
           return;
         Notebook::get().open(location.file_path);
         auto view=Notebook::get().get_current_view();
-        view->place_cursor_at_line_index(location.line, location.index);
+        view->place_cursor_at_line_pos(location.line, location.index);
         view->scroll_to_cursor_delayed(view, true, false);
         view->hide_tooltips();
       };
@@ -952,7 +952,7 @@ void Window::set_menu_actions() {
               return;
             Notebook::get().open(offset.file_path);
             auto view=Notebook::get().get_current_view();
-            view->place_cursor_at_line_index(offset.line, offset.index);
+            view->place_cursor_at_line_pos(offset.line, offset.index);
             view->scroll_to_cursor_delayed(view, true, false);
             view->hide_tooltips();
           };
@@ -981,7 +981,7 @@ void Window::set_menu_actions() {
             if(index>=rows.size())
               return;
             auto offset=rows[index];
-            view->get_buffer()->place_cursor(view->get_buffer()->get_iter_at_line_index(offset.line, offset.index));
+            view->get_buffer()->place_cursor(view->get_iter_at_line_pos(offset.line, offset.index));
             view->scroll_to(view->get_buffer()->get_insert(), 0.0, 1.0, 0.5);
             view->hide_tooltips();
           };
@@ -1037,8 +1037,8 @@ void Window::set_menu_actions() {
         auto fix_its=view->get_fix_its();
         std::vector<std::pair<Glib::RefPtr<Gtk::TextMark>, Glib::RefPtr<Gtk::TextMark> > > fix_it_marks;
         for(auto &fix_it: fix_its) {
-          auto start_iter=buffer->get_iter_at_line_index(fix_it.offsets.first.line, fix_it.offsets.first.index);
-          auto end_iter=buffer->get_iter_at_line_index(fix_it.offsets.second.line, fix_it.offsets.second.index);
+          auto start_iter=view->get_iter_at_line_pos(fix_it.offsets.first.line, fix_it.offsets.first.index);
+          auto end_iter=view->get_iter_at_line_pos(fix_it.offsets.second.line, fix_it.offsets.second.index);
           fix_it_marks.emplace_back(buffer->create_mark(start_iter), buffer->create_mark(end_iter));
         }
         size_t c=0;

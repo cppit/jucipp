@@ -78,6 +78,8 @@ namespace Source {
     std::string uri;
 
     void update_diagnostics(std::vector<LanguageProtocol::Diagnostic> &&diagnostics);
+    
+    Gtk::TextIter get_iter_at_line_pos(int line, int pos) override;
 
   protected:
     void show_diagnostic_tooltips(const Gdk::Rectangle &rectangle) override;
@@ -93,9 +95,16 @@ namespace Source {
 
     Dispatcher dispatcher;
 
+    void setup_navigation_and_refactoring();
+
     void escape_text(std::string &text);
+    void unescape_text(std::string &text);
 
     std::set<int> diagnostic_offsets;
+    
+    Glib::RefPtr<Gtk::TextTag> similar_symbol_tag;
+    sigc::connection delayed_tag_similar_symbols_connection;
+    void tag_similar_symbols();
 
     Autocomplete autocomplete;
     void setup_autocomplete();

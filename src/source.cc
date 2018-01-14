@@ -1213,6 +1213,21 @@ Gtk::TextIter Source::View::get_iter_for_dialog() {
   return iter;
 }
 
+Gtk::TextIter Source::View::get_iter_at_line_pos(int line, int pos) {
+  line=std::min(line, get_buffer()->get_line_count()-1);
+  if(line<0)
+    line=0;
+  auto iter=get_iter_at_line_end(line);
+  pos=std::min(pos, iter.get_line_index());
+  if(pos<0)
+    pos=0;
+  return get_buffer()->get_iter_at_line_index(line, pos);
+}
+
+void Source::View::place_cursor_at_line_pos(int line, int pos) {
+  get_buffer()->place_cursor(get_iter_at_line_pos(line, pos));
+}
+
 void Source::View::place_cursor_at_line_offset(int line, int offset) {
   line=std::min(line, get_buffer()->get_line_count()-1);
   if(line<0)

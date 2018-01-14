@@ -87,7 +87,13 @@ namespace Source {
     Gtk::TextIter get_iter_for_dialog();
     
     std::function<void(View* view, bool center, bool show_tooltips)> scroll_to_cursor_delayed=[](View* view, bool center, bool show_tooltips) {};
+    /// Safely returns iter at a line at an offset using either byte index or character offset. Defaults to using byte index.
+    virtual Gtk::TextIter get_iter_at_line_pos(int line, int pos);
+    /// Safely places cursor at line using get_iter_at_line_pos.
+    void place_cursor_at_line_pos(int line, int pos);
+    /// Safely places cursor at line offset
     void place_cursor_at_line_offset(int line, int offset);
+    /// Safely places cursor at line index
     void place_cursor_at_line_index(int line, int index);
     
     void hide_tooltips() override;
