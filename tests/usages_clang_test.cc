@@ -81,7 +81,7 @@ int main() {
     assert(paths_with_spelling.find(project_path / "test.hpp") != paths_with_spelling.end());
     assert(paths_with_spelling.find(project_path / "test2.hpp") != paths_with_spelling.end());
 
-    auto pair2 = Usages::Clang::find_potential_paths(cursor.get_canonical().get_source_location().get_path(), project_path, pair.first, pair.second);
+    auto pair2 = Usages::Clang::find_potential_paths({cursor.get_canonical().get_source_location().get_path()}, project_path, pair.first, pair.second);
 
     auto &potential_paths = pair2.first;
     assert(potential_paths.size() == 3);

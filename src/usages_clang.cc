@@ -141,7 +141,12 @@ std::vector<Usages::Clang::Usages> Usages::Clang::get_usages(const boost::filesy
 
   auto paths = find_paths(project_path, build_path, debug_path);
   auto pair = parse_paths(spelling, paths);
-  auto pair2 = find_potential_paths(cursor.get_canonical().get_source_location().get_path(), project_path, pair.first, pair.second);
+  PathSet all_cursors_paths;
+  auto canonical=cursor.get_canonical();
+  all_cursors_paths.emplace(canonical.get_source_location().get_path());
+  for(auto &cursor: canonical.get_all_overridden_cursors())
+    all_cursors_paths.emplace(cursor.get_source_location().get_path());
+  auto pair2 = find_potential_paths(all_cursors_paths, project_path, pair.first, pair.second);
   auto &potential_paths = pair2.first;
   auto &all_includes = pair2.second;
 
@@ -642,29 +647,35 @@ Usages::Clang::PathSet Usages::Clang::get_all_includes(const boost::filesystem::
   return all_includes;
 }
 
-std::pair<Usages::Clang::PathSet, Usages::Clang::PathSet> Usages::Clang::find_potential_paths(const boost::filesystem::path &path, const boost::filesystem::path &project_path,
+std::pair<Usages::Clang::PathSet, Usages::Clang::PathSet> Usages::Clang::find_potential_paths(const PathSet &paths, const boost::filesystem::path &project_path,
                                                                                               const std::map<boost::filesystem::path, PathSet> &paths_includes, const PathSet &paths_with_spelling) {
   PathSet potential_paths;
   PathSet all_includes;
 
-  if(filesystem::file_in_path(path, project_path)) {
-    for(auto &path_with_spelling : paths_with_spelling) {
-      auto path_all_includes = get_all_includes(path_with_spelling, paths_includes);
-      if((path_all_includes.find(path) != path_all_includes.end() || path_with_spelling == path)) {
-        potential_paths.emplace(path_with_spelling);
-
-        for(auto &include : path_all_includes)
-          all_includes.emplace(include);
+  bool first=true;
+  for(auto &path: paths) {
+    if(filesystem::file_in_path(path, project_path)) {
+      for(auto &path_with_spelling : paths_with_spelling) {
+        auto path_all_includes = get_all_includes(path_with_spelling, paths_includes);
+        if((path_all_includes.find(path) != path_all_includes.end() || path_with_spelling == path)) {
+          potential_paths.emplace(path_with_spelling);
+  
+          for(auto &include : path_all_includes)
+            all_includes.emplace(include);
+        }
       }
     }
-  }
-  else {
-    for(auto &path_with_spelling : paths_with_spelling) {
-      potential_paths.emplace(path_with_spelling);
-
-      auto path_all_includes = get_all_includes(path_with_spelling, paths_includes);
-      for(auto &include : path_all_includes)
-        all_includes.emplace(include);
+    else {
+      if(first) {
+        for(auto &path_with_spelling : paths_with_spelling) {
+          potential_paths.emplace(path_with_spelling);
+    
+          auto path_all_includes = get_all_includes(path_with_spelling, paths_includes);
+          for(auto &include : path_all_includes)
+            all_includes.emplace(include);
+        }
+        first=false;
+      }
     }
   }
 

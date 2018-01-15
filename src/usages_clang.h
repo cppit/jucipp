@@ -138,9 +138,11 @@ namespace Usages {
 
     static std::pair<std::map<boost::filesystem::path, PathSet>, PathSet> parse_paths(const std::string &spelling, const PathSet &paths);
 
+    /// Recursively find and return all the include paths of path
     static PathSet get_all_includes(const boost::filesystem::path &path, const std::map<boost::filesystem::path, PathSet> &paths_includes);
 
-    static std::pair<Clang::PathSet, Clang::PathSet> find_potential_paths(const boost::filesystem::path &project_path, const boost::filesystem::path &include_path,
+    /// Based on cursor paths, paths_includes and paths_with_spelling return potential paths that might contain the sought after symbol
+    static std::pair<Clang::PathSet, Clang::PathSet> find_potential_paths(const PathSet &paths, const boost::filesystem::path &project_path,
                                                                           const std::map<boost::filesystem::path, PathSet> &paths_includes, const PathSet &paths_with_spelling);
 
     static void write_cache(const boost::filesystem::path &path, const Cache &cache);
