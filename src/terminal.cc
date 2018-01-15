@@ -397,13 +397,14 @@ bool Terminal::on_key_press_event(GdkEventKey *event) {
   debug_is_running=Project::current?Project::current->debug_is_running():false;
 #endif
   if(processes.size()>0 || debug_is_running) {
-    get_buffer()->place_cursor(get_buffer()->end());
     auto unicode=gdk_keyval_to_unicode(event->keyval);
-    if(unicode>=32 && unicode!=126) {
+    if(unicode>=32 && unicode!=126 && unicode!=0) {
+      get_buffer()->place_cursor(get_buffer()->end());
       stdin_buffer+=unicode;
       get_buffer()->insert_at_cursor(stdin_buffer.substr(stdin_buffer.size()-1));
     }
     else if(event->keyval==GDK_KEY_BackSpace) {
+      get_buffer()->place_cursor(get_buffer()->end());
       if(stdin_buffer.size()>0 && get_buffer()->get_char_count()>0) {
         auto iter=get_buffer()->end();
         iter--;
@@ -412,6 +413,7 @@ bool Terminal::on_key_press_event(GdkEventKey *event) {
       }
     }
     else if(event->keyval==GDK_KEY_Return || event->keyval==GDK_KEY_KP_Enter) {
+      get_buffer()->place_cursor(get_buffer()->end());
       stdin_buffer+='\n';
       if(debug_is_running) {
 #ifdef JUCI_ENABLE_DEBUG
