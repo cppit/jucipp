@@ -94,7 +94,7 @@ namespace Source {
     size_t document_version = 1;
 
     Dispatcher dispatcher;
-
+    
     void setup_navigation_and_refactoring();
 
     void escape_text(std::string &text);
@@ -105,6 +105,8 @@ namespace Source {
     Glib::RefPtr<Gtk::TextTag> similar_symbol_tag;
     sigc::connection delayed_tag_similar_symbols_connection;
     void tag_similar_symbols();
+    
+    Offset get_declaration(const Gtk::TextIter &iter);
 
     Autocomplete autocomplete;
     void setup_autocomplete();

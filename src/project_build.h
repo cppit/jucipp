@@ -11,9 +11,9 @@ namespace Project {
     
     boost::filesystem::path project_path;
     
-    boost::filesystem::path get_default_path();
+    virtual boost::filesystem::path get_default_path();
     virtual bool update_default(bool force=false) {return false;}
-    boost::filesystem::path get_debug_path();
+    virtual boost::filesystem::path get_debug_path();
     virtual bool update_debug(bool force=false) {return false;}
     
     virtual std::string get_compile_command() { return std::string(); }
@@ -46,7 +46,16 @@ namespace Project {
     boost::filesystem::path get_executable(const boost::filesystem::path &path) override;
   };
 
-  class CargoBuild : public Build {};
+  class CargoBuild : public Build {
+  public:
+    boost::filesystem::path get_default_path() override { return project_path/"target"/"debug"; }
+    bool update_default(bool force=false) override { return true; }
+    boost::filesystem::path get_debug_path() override { return get_default_path(); }
+    bool update_debug(bool force=false) override { return true; }
+    
+    std::string get_compile_command() override { return "cargo build"; }
+    boost::filesystem::path get_executable(const boost::filesystem::path &path) override { return get_debug_path()/project_path.filename(); }
+  };
 
   class NpmBuild : public Build {};
 }

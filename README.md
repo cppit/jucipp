@@ -23,15 +23,16 @@ towards libclang with speed, stability, and ease of use in mind.
   * Meson
 * Git support through libgit2
 * Fast C++ autocompletion
-* Keyword and buffer autocompletion for other file types
-* Language server protocol support that is enabled if `[language identifier]-language-server` executable is found. This executable can be a symbolic link to one of your installed language server binaries.
-See [language-server-protocol/specification.md](https://github.com/Microsoft/language-server-protocol/blob/gh-pages/specification.md) for the currently defined language identifiers.
 * Tooltips showing type information and doxygen documentation (C++)
 * Rename refactoring across files (C++)
 * Highlighting of similar types (C++)
 * Automated documentation search (C++)
 * Go to declaration, implementation, methods and usages (C++)
 * CUDA files are supported and parsed as C++
+* Other file types:
+  * Language server protocol support is enabled if `[language identifier]-language-server` executable is found. This executable can be a symbolic link to one of your installed language server binaries.
+See [language-server-protocol/specification.md](https://github.com/Microsoft/language-server-protocol/blob/gh-pages/specification.md) for the currently defined language identifiers.
+  * otherwise, only keyword and buffer completion supported
 * Find symbol through Ctags
 * Spell checking depending on file context
 * Run shell commands within juCi++

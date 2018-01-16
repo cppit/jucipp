@@ -4,6 +4,7 @@
 #include "terminal.h"
 #include "project.h"
 #include "filesystem.h"
+#include "debug_lldb.h"
 #include <regex>
 #include <future>
 
@@ -15,8 +16,7 @@ LanguageProtocol::Client::Client(std::string root_uri_, std::string language_id_
     server_message_stream.write(bytes, n);
     parse_server_message();
   }, [](const char *bytes, size_t n) {
-    if(output_messages_and_errors)
-      Terminal::get().async_print("Error (language server): "+std::string(bytes, n)+'\n', true);
+    std::cerr.write(bytes, n);
   }, true);
 }
 
@@ -162,6 +162,8 @@ void LanguageProtocol::Client::parse_server_message() {
           }
         }
         else if(error_it!=pt.not_found()) {
+          if(!output_messages_and_errors)
+            boost::property_tree::write_json(std::cerr, pt);
           if(message_id) {
             auto id_it=handlers.find(message_id);
             if(id_it!=handlers.end()) {
@@ -399,31 +401,10 @@ void Source::LanguageProtocolView::setup_navigation_and_refactoring() {
   };
   
   get_declaration_location=[this]() {
-    auto iter=get_buffer()->get_insert()->get_iter();
-    auto offset=std::make_shared<Offset>();
-    std::promise<void> result_processed;
-    client->write_request("textDocument/definition", "\"textDocument\":{\"uri\":\""+uri+"\"}, \"position\": {\"line\": "+std::to_string(iter.get_line())+", \"character\": "+std::to_string(iter.get_line_offset())+"}", [offset, &result_processed](const boost::property_tree::ptree &result, bool error) {
-      if(!error) {
-        for(auto it=result.begin();it!=result.end();++it) {
-          auto uri=it->second.get<std::string>("uri", "");
-          if(uri.compare(0, 7, "file://")==0)
-            uri.erase(0, 7);
-          auto range=it->second.find("range");
-          if(range!=it->second.not_found()) {
-            auto start=range->second.find("start");
-            if(start!=range->second.not_found())
-              *offset=Offset(start->second.get<unsigned>("line", 0), start->second.get<unsigned>("character", 0), uri);
-          }
-          break; // TODO: can a language server return several definitions?
-        }
-      }
-      result_processed.set_value();
-    });
-    result_processed.get_future().get();
-    
-    if(!*offset)
+    auto offset=get_declaration(get_buffer()->get_insert()->get_iter());
+    if(!offset)
       Info::get().print("No declaration found");
-    return *offset;
+    return offset;
   };
   
   get_usages=[this] {
@@ -816,9 +797,42 @@ void Source::LanguageProtocolView::show_type_tooltips(const Gdk::Rectangle &rect
             if(offset>=get_buffer()->get_char_count())
               return;
             type_tooltips.clear();
-            auto create_tooltip_buffer=[this, value=std::move(value)]() {
+            auto create_tooltip_buffer=[this, offset, value=std::move(value)]() {
               auto tooltip_buffer=Gtk::TextBuffer::create(get_buffer()->get_tag_table());
               tooltip_buffer->insert_with_tag(tooltip_buffer->get_insert()->get_iter(), "Type: "+value, "def:note");
+              
+#ifdef JUCI_ENABLE_DEBUG
+              if(language_id=="rust") {
+                if(Debug::LLDB::get().is_stopped()) {
+                  Glib::ustring value_type="Value";
+                  
+                  auto start=get_buffer()->get_iter_at_offset(offset);
+                  auto end=start;
+                  auto previous=start;
+                  while(previous.backward_char() && ((*previous>='A' && *previous<='Z') || (*previous>='a' && *previous<='z') || (*previous>='0' && *previous<='9') || *previous=='_') && start.backward_char()) {}
+                  while(((*end>='A' && *end<='Z') || (*end>='a' && *end<='z') || (*end>='0' && *end<='9') || *end=='_') && end.forward_char()) {}
+                  
+                  auto offset=get_declaration(start);
+                  Glib::ustring debug_value=Debug::LLDB::get().get_value(get_buffer()->get_text(start, end), offset.file_path, offset.line+1, offset.index+1);
+                  if(debug_value.empty()) {
+                    value_type="Return value";
+                    debug_value=Debug::LLDB::get().get_return_value(file_path, start.get_line()+1, start.get_line_index()+1);
+                  }
+                  if(!debug_value.empty()) {
+                    size_t pos=debug_value.find(" = ");
+                    if(pos!=Glib::ustring::npos) {
+                      Glib::ustring::iterator iter;
+                      while(!debug_value.validate(iter)) {
+                        auto next_char_iter=iter;
+                        next_char_iter++;
+                        debug_value.replace(iter, next_char_iter, "?");
+                      }
+                      tooltip_buffer->insert_with_tag(tooltip_buffer->get_insert()->get_iter(), "\n\n"+value_type+": "+debug_value.substr(pos+3, debug_value.size()-(pos+3)-1), "def:note");
+                    }
+                  }
+                }
+              }
+#endif
               
               return tooltip_buffer;
             };
@@ -870,6 +884,30 @@ void Source::LanguageProtocolView::tag_similar_symbols() {
     auto end=get_iter_at_line_pos(pair.second.line, pair.second.index);
     get_buffer()->apply_tag(similar_symbol_tag, start, end);
   }
+}
+
+Source::Offset Source::LanguageProtocolView::get_declaration(const Gtk::TextIter &iter) {
+  auto offset=std::make_shared<Offset>();
+  std::promise<void> result_processed;
+  client->write_request("textDocument/definition", "\"textDocument\":{\"uri\":\""+uri+"\"}, \"position\": {\"line\": "+std::to_string(iter.get_line())+", \"character\": "+std::to_string(iter.get_line_offset())+"}", [offset, &result_processed](const boost::property_tree::ptree &result, bool error) {
+    if(!error) {
+      for(auto it=result.begin();it!=result.end();++it) {
+        auto uri=it->second.get<std::string>("uri", "");
+        if(uri.compare(0, 7, "file://")==0)
+          uri.erase(0, 7);
+        auto range=it->second.find("range");
+        if(range!=it->second.not_found()) {
+          auto start=range->second.find("start");
+          if(start!=range->second.not_found())
+            *offset=Offset(start->second.get<unsigned>("line", 0), start->second.get<unsigned>("character", 0), uri);
+        }
+        break; // TODO: can a language server return several definitions?
+      }
+    }
+    result_processed.set_value();
+  });
+  result_processed.get_future().get();
+  return *offset;
 }
 
 void Source::LanguageProtocolView::setup_autocomplete() {

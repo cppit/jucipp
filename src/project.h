@@ -143,9 +143,9 @@ namespace Project {
     void compile_and_run() override;
   };
   
-  class Rust : public Base {
+  class Rust : public LLDB {
   public:
-    Rust(std::unique_ptr<Build> &&build) : Base(std::move(build)) {}
+    Rust(std::unique_ptr<Build> &&build) : LLDB(std::move(build)) {}
     
     void compile_and_run() override;
   };

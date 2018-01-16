@@ -366,7 +366,7 @@ void Notebook::open(const boost::filesystem::path &file_path_, size_t notebook_i
   });
   
 #ifdef JUCI_ENABLE_DEBUG
-  if(dynamic_cast<Source::ClangView*>(source_view)) {
+  if(dynamic_cast<Source::ClangView*>(source_view) || (source_view->language && source_view->language->get_id()=="rust")) {
     source_view->toggle_breakpoint=[source_view](int line_nr) {
       if(source_view->get_source_buffer()->get_source_marks_at_line(line_nr, "debug_breakpoint").size()>0) {
         auto start_iter=source_view->get_buffer()->get_iter_at_line(line_nr);

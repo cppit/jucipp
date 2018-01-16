@@ -411,21 +411,23 @@ std::string Debug::LLDB::get_value(const std::string &variable, const boost::fil
     
     auto values=frame.GetVariables(true, true, true, false);
     //First try to find variable based on name, file and line number
-    for(uint32_t value_index=0;value_index<values.GetSize();value_index++) {
-      lldb::SBStream stream;
-      auto value=values.GetValueAtIndex(value_index);
-
-      if(value.GetName()!=nullptr && value.GetName()==variable) {
-        auto declaration=value.GetDeclaration();
-        if(declaration.IsValid()) {
-          if(declaration.GetLine()==line_nr && (declaration.GetColumn()==0 || declaration.GetColumn()==line_index)) {
-            auto file_spec=declaration.GetFileSpec();
-            auto value_decl_path=filesystem::get_normal_path(file_spec.GetDirectory());
-            value_decl_path/=file_spec.GetFilename();
-            if(value_decl_path==file_path) {
-              value.GetDescription(stream);
-              variable_value=stream.GetData();
-              break;
+    if(!file_path.empty()) {
+      for(uint32_t value_index=0;value_index<values.GetSize();value_index++) {
+        lldb::SBStream stream;
+        auto value=values.GetValueAtIndex(value_index);
+  
+        if(value.GetName()!=nullptr && value.GetName()==variable) {
+          auto declaration=value.GetDeclaration();
+          if(declaration.IsValid()) {
+            if(declaration.GetLine()==line_nr && (declaration.GetColumn()==0 || declaration.GetColumn()==line_index)) {
+              auto file_spec=declaration.GetFileSpec();
+              auto value_decl_path=filesystem::get_normal_path(file_spec.GetDirectory());
+              value_decl_path/=file_spec.GetFilename();
+              if(value_decl_path==file_path) {
+                value.GetDescription(stream);
+                variable_value=stream.GetData();
+                break;
+              }
             }
           }
         }
