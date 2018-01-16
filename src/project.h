@@ -67,7 +67,7 @@ namespace Project {
     virtual void debug_cancel() {}
   };
   
-  class Clang : public Base {
+  class LLDB : public Base {
 #ifdef JUCI_ENABLE_DEBUG
     class DebugOptions : public Base::DebugOptions {
     public:
@@ -77,14 +77,10 @@ namespace Project {
     };
     static std::unordered_map<std::string, DebugOptions> debug_options;
 #endif
-  public:
-    Clang(std::unique_ptr<Build> &&build) : Base(std::move(build)) {}
-    ~Clang() { dispatcher.disconnect(); }
     
-    std::pair<std::string, std::string> get_run_arguments() override;
-    void compile() override;
-    void compile_and_run() override;
-    void recreate_build() override;
+  public:
+    LLDB(std::unique_ptr<Build> &&build) : Base(std::move(build)) {}
+    ~LLDB() { dispatcher.disconnect(); }
     
 #ifdef JUCI_ENABLE_DEBUG
     std::pair<std::string, std::string> debug_get_run_arguments() override;
@@ -105,6 +101,16 @@ namespace Project {
     void debug_write(const std::string &buffer) override;
     void debug_cancel() override;
 #endif
+  };
+  
+  class Clang : public LLDB {
+  public:
+    Clang(std::unique_ptr<Build> &&build) : LLDB(std::move(build)) {}
+    
+    std::pair<std::string, std::string> get_run_arguments() override;
+    void compile() override;
+    void compile_and_run() override;
+    void recreate_build() override;    
   };
   
   class Markdown : public Base {

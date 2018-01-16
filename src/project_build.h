@@ -16,6 +16,7 @@ namespace Project {
     boost::filesystem::path get_debug_path();
     virtual bool update_debug(bool force=false) {return false;}
     
+    virtual std::string get_compile_command() { return std::string(); }
     virtual boost::filesystem::path get_executable(const boost::filesystem::path &path) {return boost::filesystem::path();}
     
     static std::unique_ptr<Build> create(const boost::filesystem::path &path);
@@ -29,6 +30,7 @@ namespace Project {
     bool update_default(bool force=false) override;
     bool update_debug(bool force=false) override;
     
+    std::string get_compile_command() override;
     boost::filesystem::path get_executable(const boost::filesystem::path &path) override;
   };
   
@@ -40,6 +42,7 @@ namespace Project {
     bool update_default(bool force=false) override;
     bool update_debug(bool force=false) override;
     
+    std::string get_compile_command() override;
     boost::filesystem::path get_executable(const boost::filesystem::path &path) override;
   };
 

@@ -109,6 +109,10 @@ bool Project::CMakeBuild::update_debug(bool force) {
   return cmake.update_debug_build(get_debug_path(), force);
 }
 
+std::string Project::CMakeBuild::get_compile_command() {
+  return Config::get().project.cmake.compile_command;
+}
+
 boost::filesystem::path Project::CMakeBuild::get_executable(const boost::filesystem::path &path) {
   return cmake.get_executable(get_default_path(), path).string();
 }
@@ -123,6 +127,10 @@ bool Project::MesonBuild::update_default(bool force) {
 
 bool Project::MesonBuild::update_debug(bool force) {
   return meson.update_debug_build(get_debug_path(), force);
+}
+
+std::string Project::MesonBuild::get_compile_command() {
+  return Config::get().project.meson.compile_command;
 }
 
 boost::filesystem::path Project::MesonBuild::get_executable(const boost::filesystem::path &path) {

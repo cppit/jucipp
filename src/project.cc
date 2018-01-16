@@ -23,7 +23,7 @@ std::pair<boost::filesystem::path, std::pair<int, int> > Project::debug_stop;
 std::string Project::debug_status;
 std::shared_ptr<Project::Base> Project::current;
 #ifdef JUCI_ENABLE_DEBUG
-std::unordered_map<std::string, Project::Clang::DebugOptions> Project::Clang::debug_options;
+std::unordered_map<std::string, Project::LLDB::DebugOptions> Project::LLDB::debug_options;
 #endif
 
 Gtk::Label &Project::debug_status_label() {
@@ -186,7 +186,7 @@ void Project::Base::debug_start() {
 }
 
 #ifdef JUCI_ENABLE_DEBUG
-Project::Clang::DebugOptions::DebugOptions() : Base::DebugOptions() {
+Project::LLDB::DebugOptions::DebugOptions() : Base::DebugOptions() {
   remote_enabled.set_active(false);
   remote_enabled.set_label("Enabled");
   remote_enabled.signal_clicked().connect([this] {
@@ -211,155 +211,8 @@ Project::Clang::DebugOptions::DebugOptions() : Base::DebugOptions() {
   show_all();
   set_visible(false);
 }
-#endif
 
-std::pair<std::string, std::string> Project::Clang::get_run_arguments() {
-  auto build_path=build->get_default_path();
-  if(build_path.empty())
-    return {"", ""};
-  
-  auto project_path=build->project_path.string();
-  auto run_arguments_it=run_arguments.find(project_path);
-  std::string arguments;
-  if(run_arguments_it!=run_arguments.end())
-    arguments=run_arguments_it->second;
-  
-  if(arguments.empty()) {
-    auto view=Notebook::get().get_current_view();
-    auto executable=build->get_executable(view?view->file_path:Directories::get().path);
-    
-    if(!executable.empty())
-      arguments=filesystem::escape_argument(filesystem::get_short_path(executable).string());
-    else
-      arguments=filesystem::escape_argument(filesystem::get_short_path(build->get_default_path()).string());
-  }
-  
-  return {project_path, arguments};
-}
-
-void Project::Clang::compile() {
-  auto default_build_path=build->get_default_path();
-  if(default_build_path.empty() || !build->update_default())
-    return;
-  
-  compiling=true;
-  
-  if(Config::get().project.clear_terminal_on_compile)
-    Terminal::get().clear();
-  
-  Terminal::get().print("Compiling project "+filesystem::get_short_path(build->project_path).string()+"\n");
-  std::string compile_command;
-  if(dynamic_cast<CMakeBuild*>(build.get()))
-    compile_command=Config::get().project.cmake.compile_command;
-  else if(dynamic_cast<MesonBuild*>(build.get()))
-    compile_command=Config::get().project.meson.compile_command;
-  Terminal::get().async_process(compile_command, default_build_path, [](int exit_status) {
-    compiling=false;
-  });
-}
-
-void Project::Clang::compile_and_run() {
-  auto default_build_path=build->get_default_path();
-  if(default_build_path.empty() || !build->update_default())
-    return;
-  
-  auto project_path=build->project_path;
-  
-  auto run_arguments_it=run_arguments.find(project_path.string());
-  std::string arguments;
-  if(run_arguments_it!=run_arguments.end())
-    arguments=run_arguments_it->second;
-  
-  if(arguments.empty()) {
-    auto view=Notebook::get().get_current_view();
-    auto executable=build->get_executable(view?view->file_path:Directories::get().path);
-    if(executable.empty()) {
-      Terminal::get().print("Warning: could not find executable.\n");
-      Terminal::get().print("Solution: either use Project Set Run Arguments, or open a source file within a directory where an executable is defined.\n", true);
-      return;
-    }
-    arguments=filesystem::escape_argument(filesystem::get_short_path(executable).string());
-  }
-  
-  compiling=true;
-  
-  if(Config::get().project.clear_terminal_on_compile)
-    Terminal::get().clear();
-  
-  Terminal::get().print("Compiling and running "+arguments+"\n");
-  std::string compile_command;
-  if(dynamic_cast<CMakeBuild*>(build.get()))
-    compile_command=Config::get().project.cmake.compile_command;
-  else if(dynamic_cast<MesonBuild*>(build.get()))
-    compile_command=Config::get().project.meson.compile_command;
-  Terminal::get().async_process(compile_command, default_build_path, [arguments, project_path](int exit_status){
-    compiling=false;
-    if(exit_status==EXIT_SUCCESS) {
-      Terminal::get().async_process(arguments, project_path, [arguments](int exit_status){
-        Terminal::get().async_print(arguments+" returned: "+std::to_string(exit_status)+'\n');
-      });
-    }
-  });
-}
-
-void Project::Clang::recreate_build() {
-  if(build->project_path.empty())
-    return;
-  auto default_build_path=build->get_default_path();
-  if(default_build_path.empty())
-    return;
-  
-  auto debug_build_path=build->get_debug_path();
-  bool has_default_build=boost::filesystem::exists(default_build_path);
-  bool has_debug_build=!debug_build_path.empty() && boost::filesystem::exists(debug_build_path);
-  
-  if(has_default_build || has_debug_build) {
-    Gtk::MessageDialog dialog(*static_cast<Gtk::Window*>(Notebook::get().get_toplevel()), "Recreate Build", false, Gtk::MESSAGE_QUESTION, Gtk::BUTTONS_YES_NO);
-    dialog.set_default_response(Gtk::RESPONSE_NO);
-    std::string message="Are you sure you want to recreate ";
-    if(has_default_build)
-      message+=default_build_path.string();
-    if(has_debug_build) {
-      if(has_default_build)
-        message+=" and ";
-      message+=debug_build_path.string();
-    }
-    dialog.set_secondary_text(message+"?");
-    if(dialog.run()!=Gtk::RESPONSE_YES)
-      return;
-    Usages::Clang::erase_all_caches_for_project(build->project_path, default_build_path);
-    try {
-      if(has_default_build)
-        boost::filesystem::remove_all(default_build_path);
-      if(has_debug_build)
-        boost::filesystem::remove_all(debug_build_path);
-    }
-    catch(const std::exception &e) {
-      Terminal::get().print(std::string("Error: could not remove build: ")+e.what()+"\n", true);
-      return;
-    }
-  }
-  
-  build->update_default(true);
-  if(has_debug_build)
-    build->update_debug(true);
-  
-  for(size_t c=0;c<Notebook::get().size();c++) {
-    auto source_view=Notebook::get().get_view(c);
-    if(auto source_clang_view=dynamic_cast<Source::ClangView*>(source_view)) {
-      if(filesystem::file_in_path(source_clang_view->file_path, build->project_path))
-        source_clang_view->full_reparse_needed=true;
-    }
-  }
-  
-  if(auto view=Notebook::get().get_current_view()) {
-    if(view->full_reparse_needed)
-      view->full_reparse();
-  }
-}
-
-#ifdef JUCI_ENABLE_DEBUG
-std::pair<std::string, std::string> Project::Clang::debug_get_run_arguments() {
+std::pair<std::string, std::string> Project::LLDB::debug_get_run_arguments() {
   auto debug_build_path=build->get_debug_path();
   auto default_build_path=build->get_default_path();
   if(debug_build_path.empty() || default_build_path.empty())
@@ -388,13 +241,13 @@ std::pair<std::string, std::string> Project::Clang::debug_get_run_arguments() {
   return {project_path, arguments};
 }
 
-Gtk::Popover *Project::Clang::debug_get_options() {
+Gtk::Popover *Project::LLDB::debug_get_options() {
   if(!build->project_path.empty())
     return &debug_options[build->project_path.string()];
   return nullptr;
 }
 
-void Project::Clang::debug_start() {
+void Project::LLDB::debug_start() {
   auto debug_build_path=build->get_debug_path();
   auto default_build_path=build->get_default_path();
   if(debug_build_path.empty() || !build->update_debug() || default_build_path.empty())
@@ -427,12 +280,7 @@ void Project::Clang::debug_start() {
     Terminal::get().clear();
   
   Terminal::get().print("Compiling and debugging "+*run_arguments+"\n");
-  std::string compile_command;
-  if(dynamic_cast<CMakeBuild*>(build.get()))
-    compile_command=Config::get().project.cmake.compile_command;
-  else if(dynamic_cast<MesonBuild*>(build.get()))
-    compile_command=Config::get().project.meson.compile_command;
-  Terminal::get().async_process(compile_command, debug_build_path, [self=this->shared_from_this(), run_arguments, project_path](int exit_status){
+  Terminal::get().async_process(build->get_compile_command(), debug_build_path, [self=this->shared_from_this(), run_arguments, project_path](int exit_status){
     if(exit_status!=EXIT_SUCCESS)
       debugging=false;
     else {
@@ -523,36 +371,36 @@ void Project::Clang::debug_start() {
   });
 }
 
-void Project::Clang::debug_continue() {
+void Project::LLDB::debug_continue() {
   Debug::LLDB::get().continue_debug();
 }
 
-void Project::Clang::debug_stop() {
+void Project::LLDB::debug_stop() {
   if(debugging)
     Debug::LLDB::get().stop();
 }
 
-void Project::Clang::debug_kill() {
+void Project::LLDB::debug_kill() {
   if(debugging)
     Debug::LLDB::get().kill();
 }
 
-void Project::Clang::debug_step_over() {
+void Project::LLDB::debug_step_over() {
   if(debugging)
     Debug::LLDB::get().step_over();
 }
 
-void Project::Clang::debug_step_into() {
+void Project::LLDB::debug_step_into() {
   if(debugging)
     Debug::LLDB::get().step_into();
 }
 
-void Project::Clang::debug_step_out() {
+void Project::LLDB::debug_step_out() {
   if(debugging)
     Debug::LLDB::get().step_out();
 }
 
-void Project::Clang::debug_backtrace() {
+void Project::LLDB::debug_backtrace() {
   if(debugging) {
     auto view=Notebook::get().get_current_view();
     auto backtrace=Debug::LLDB::get().get_backtrace();
@@ -611,7 +459,7 @@ void Project::Clang::debug_backtrace() {
   }
 }
 
-void Project::Clang::debug_show_variables() {
+void Project::LLDB::debug_show_variables() {
   if(debugging) {
     auto view=Notebook::get().get_current_view();
     auto variables=Debug::LLDB::get().get_variables();
@@ -698,7 +546,7 @@ void Project::Clang::debug_show_variables() {
   }
 }
 
-void Project::Clang::debug_run_command(const std::string &command) {
+void Project::LLDB::debug_run_command(const std::string &command) {
   if(debugging) {
     auto command_return=Debug::LLDB::get().run_command(command);
     Terminal::get().async_print(command_return.first);
@@ -706,26 +554,161 @@ void Project::Clang::debug_run_command(const std::string &command) {
   }
 }
 
-void Project::Clang::debug_add_breakpoint(const boost::filesystem::path &file_path, int line_nr) {
+void Project::LLDB::debug_add_breakpoint(const boost::filesystem::path &file_path, int line_nr) {
   Debug::LLDB::get().add_breakpoint(file_path, line_nr);
 }
 
-void Project::Clang::debug_remove_breakpoint(const boost::filesystem::path &file_path, int line_nr, int line_count) {
+void Project::LLDB::debug_remove_breakpoint(const boost::filesystem::path &file_path, int line_nr, int line_count) {
   Debug::LLDB::get().remove_breakpoint(file_path, line_nr, line_count);
 }
 
-bool Project::Clang::debug_is_running() {
+bool Project::LLDB::debug_is_running() {
   return Debug::LLDB::get().is_running();
 }
 
-void Project::Clang::debug_write(const std::string &buffer) {
+void Project::LLDB::debug_write(const std::string &buffer) {
   Debug::LLDB::get().write(buffer);
 }
 
-void Project::Clang::debug_cancel() {
+void Project::LLDB::debug_cancel() {
   Debug::LLDB::get().cancel();
 }
 #endif
+
+std::pair<std::string, std::string> Project::Clang::get_run_arguments() {
+  auto build_path=build->get_default_path();
+  if(build_path.empty())
+    return {"", ""};
+  
+  auto project_path=build->project_path.string();
+  auto run_arguments_it=run_arguments.find(project_path);
+  std::string arguments;
+  if(run_arguments_it!=run_arguments.end())
+    arguments=run_arguments_it->second;
+  
+  if(arguments.empty()) {
+    auto view=Notebook::get().get_current_view();
+    auto executable=build->get_executable(view?view->file_path:Directories::get().path);
+    
+    if(!executable.empty())
+      arguments=filesystem::escape_argument(filesystem::get_short_path(executable).string());
+    else
+      arguments=filesystem::escape_argument(filesystem::get_short_path(build->get_default_path()).string());
+  }
+  
+  return {project_path, arguments};
+}
+
+void Project::Clang::compile() {
+  auto default_build_path=build->get_default_path();
+  if(default_build_path.empty() || !build->update_default())
+    return;
+  
+  compiling=true;
+  
+  if(Config::get().project.clear_terminal_on_compile)
+    Terminal::get().clear();
+  
+  Terminal::get().print("Compiling project "+filesystem::get_short_path(build->project_path).string()+"\n");
+  Terminal::get().async_process(build->get_compile_command(), default_build_path, [](int exit_status) {
+    compiling=false;
+  });
+}
+
+void Project::Clang::compile_and_run() {
+  auto default_build_path=build->get_default_path();
+  if(default_build_path.empty() || !build->update_default())
+    return;
+  
+  auto project_path=build->project_path;
+  
+  auto run_arguments_it=run_arguments.find(project_path.string());
+  std::string arguments;
+  if(run_arguments_it!=run_arguments.end())
+    arguments=run_arguments_it->second;
+  
+  if(arguments.empty()) {
+    auto view=Notebook::get().get_current_view();
+    auto executable=build->get_executable(view?view->file_path:Directories::get().path);
+    if(executable.empty()) {
+      Terminal::get().print("Warning: could not find executable.\n");
+      Terminal::get().print("Solution: either use Project Set Run Arguments, or open a source file within a directory where an executable is defined.\n", true);
+      return;
+    }
+    arguments=filesystem::escape_argument(filesystem::get_short_path(executable).string());
+  }
+  
+  compiling=true;
+  
+  if(Config::get().project.clear_terminal_on_compile)
+    Terminal::get().clear();
+  
+  Terminal::get().print("Compiling and running "+arguments+"\n");
+  Terminal::get().async_process(build->get_compile_command(), default_build_path, [arguments, project_path](int exit_status){
+    compiling=false;
+    if(exit_status==EXIT_SUCCESS) {
+      Terminal::get().async_process(arguments, project_path, [arguments](int exit_status){
+        Terminal::get().async_print(arguments+" returned: "+std::to_string(exit_status)+'\n');
+      });
+    }
+  });
+}
+
+void Project::Clang::recreate_build() {
+  if(build->project_path.empty())
+    return;
+  auto default_build_path=build->get_default_path();
+  if(default_build_path.empty())
+    return;
+  
+  auto debug_build_path=build->get_debug_path();
+  bool has_default_build=boost::filesystem::exists(default_build_path);
+  bool has_debug_build=!debug_build_path.empty() && boost::filesystem::exists(debug_build_path);
+  
+  if(has_default_build || has_debug_build) {
+    Gtk::MessageDialog dialog(*static_cast<Gtk::Window*>(Notebook::get().get_toplevel()), "Recreate Build", false, Gtk::MESSAGE_QUESTION, Gtk::BUTTONS_YES_NO);
+    dialog.set_default_response(Gtk::RESPONSE_NO);
+    std::string message="Are you sure you want to recreate ";
+    if(has_default_build)
+      message+=default_build_path.string();
+    if(has_debug_build) {
+      if(has_default_build)
+        message+=" and ";
+      message+=debug_build_path.string();
+    }
+    dialog.set_secondary_text(message+"?");
+    if(dialog.run()!=Gtk::RESPONSE_YES)
+      return;
+    Usages::Clang::erase_all_caches_for_project(build->project_path, default_build_path);
+    try {
+      if(has_default_build)
+        boost::filesystem::remove_all(default_build_path);
+      if(has_debug_build)
+        boost::filesystem::remove_all(debug_build_path);
+    }
+    catch(const std::exception &e) {
+      Terminal::get().print(std::string("Error: could not remove build: ")+e.what()+"\n", true);
+      return;
+    }
+  }
+  
+  build->update_default(true);
+  if(has_debug_build)
+    build->update_debug(true);
+  
+  for(size_t c=0;c<Notebook::get().size();c++) {
+    auto source_view=Notebook::get().get_view(c);
+    if(auto source_clang_view=dynamic_cast<Source::ClangView*>(source_view)) {
+      if(filesystem::file_in_path(source_clang_view->file_path, build->project_path))
+        source_clang_view->full_reparse_needed=true;
+    }
+  }
+  
+  if(auto view=Notebook::get().get_current_view()) {
+    if(view->full_reparse_needed)
+      view->full_reparse();
+  }
+}
 
 Project::Markdown::~Markdown() {
   if(!last_temp_path.empty()) {
