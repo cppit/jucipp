@@ -768,6 +768,14 @@ void Project::HTML::compile_and_run() {
 #endif
 }
 
+void Project::Rust::compile() {
+  std::string command=build->get_compile_command();
+  Terminal::get().print("Running "+command+"\n");
+  Terminal::get().async_process(command, Notebook::get().get_current_view()->file_path.parent_path(), [command](int exit_status) {
+    Terminal::get().async_print(command+" returned: "+std::to_string(exit_status)+'\n');
+  });
+}
+
 void Project::Rust::compile_and_run() {
   std::string command="cargo run";
   Terminal::get().print("Running "+command+"\n");
