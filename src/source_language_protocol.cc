@@ -4,7 +4,9 @@
 #include "terminal.h"
 #include "project.h"
 #include "filesystem.h"
+#ifdef JUCI_ENABLE_DEBUG
 #include "debug_lldb.h"
+#endif
 #include <regex>
 #include <future>
 
