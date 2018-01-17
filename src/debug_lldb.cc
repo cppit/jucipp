@@ -89,7 +89,7 @@ std::tuple<std::vector<std::string>, std::string, std::vector<std::string> > Deb
 
 void Debug::LLDB::start(const std::string &command, const boost::filesystem::path &path,
                   const std::vector<std::pair<boost::filesystem::path, int> > &breakpoints,
-                  const std::string &remote_host) {
+                  const std::vector<std::string> &startup_commands, const std::string &remote_host) {
   if(!debugger) {
     lldb::SBDebugger::Initialize();
     debugger=std::make_unique<lldb::SBDebugger>(lldb::SBDebugger::Create(true, log, nullptr));
@@ -181,6 +181,12 @@ void Debug::LLDB::start(const std::string &command, const boost::filesystem::pat
     debug_thread.join();
   for(auto &handler: on_start)
     handler(*process);
+  
+  for(auto &command: startup_commands) {
+    lldb::SBCommandReturnObject command_return_object;
+    debugger->GetCommandInterpreter().HandleCommand(command.c_str(), command_return_object, false);
+  }
+  
   debug_thread=std::thread([this]() {
     lldb::SBEvent event;
     while(true) {

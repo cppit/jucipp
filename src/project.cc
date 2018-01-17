@@ -365,7 +365,19 @@ void Project::LLDB::debug_start() {
         });
         on_event_it=std::prev(Debug::LLDB::get().on_event.end());
         
-        Debug::LLDB::get().start(*run_arguments, *project_path, breakpoints, remote_host);
+        std::vector<std::string> startup_commands;
+        if(dynamic_cast<CargoBuild*>(self->build.get())) {
+          std::stringstream istream, ostream;
+          if(Terminal::get().process(istream, ostream, "rustc --print sysroot")==0) {
+            auto sysroot=ostream.str();
+            while(!sysroot.empty() && (sysroot.back()=='\n' || sysroot.back()=='\r'))
+              sysroot.pop_back();
+            startup_commands.emplace_back("command script import \""+sysroot+"/lib/rustlib/etc/lldb_rust_formatters.py\"");
+            startup_commands.emplace_back("type summary add --no-value --python-function lldb_rust_formatters.print_val -x \".*\" --category Rust");
+            startup_commands.emplace_back("type category enable Rust");
+          }
+        }
+        Debug::LLDB::get().start(*run_arguments, *project_path, breakpoints, std::move(startup_commands), remote_host);
       });
     }
   });

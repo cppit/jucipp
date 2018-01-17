@@ -47,7 +47,7 @@ namespace Debug {
 
     void start(const std::string &command, const boost::filesystem::path &path="",
                const std::vector<std::pair<boost::filesystem::path, int> > &breakpoints={},
-               const std::string &remote_host="");
+               const std::vector<std::string> &startup_commands={}, const std::string &remote_host="");
     void continue_debug(); //can't use continue as function name
     void stop();
     void kill();
