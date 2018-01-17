@@ -154,10 +154,10 @@ void LanguageProtocol::Client::parse_server_message() {
             auto id_it=handlers.find(message_id);
             if(id_it!=handlers.end()) {
               auto function=std::move(id_it->second);
+              handlers.erase(id_it->first);
               lock.unlock();
               function(result_it->second, false);
               lock.lock();
-              handlers.erase(id_it->first);
             }
           }
         }
@@ -168,10 +168,10 @@ void LanguageProtocol::Client::parse_server_message() {
             auto id_it=handlers.find(message_id);
             if(id_it!=handlers.end()) {
               auto function=std::move(id_it->second);
+              handlers.erase(id_it->first);
               lock.unlock();
               function(result_it->second, true);
               lock.lock();
-              handlers.erase(id_it->first);
             }
           }
         }
@@ -221,10 +221,10 @@ void LanguageProtocol::Client::write_request(const std::string &method, const st
       auto id_it=handlers.find(message_id);
       if(id_it!=handlers.end()) {
         auto function=std::move(id_it->second);
+        handlers.erase(id_it->first);
         lock.unlock();
         function(boost::property_tree::ptree(), false);
         lock.lock();
-        handlers.erase(id_it->first);
       }
     });
   }
@@ -236,10 +236,10 @@ void LanguageProtocol::Client::write_request(const std::string &method, const st
     auto id_it=handlers.find(message_id);
     if(id_it!=handlers.end()) {
       auto function=std::move(id_it->second);
+      handlers.erase(id_it->first);
       lock.unlock();
       function(boost::property_tree::ptree(), false);
       lock.lock();
-      handlers.erase(id_it->first);
     }
   }
 }
