@@ -377,7 +377,7 @@ void Project::LLDB::debug_start() {
             startup_commands.emplace_back("type category enable Rust");
           }
         }
-        Debug::LLDB::get().start(*run_arguments, *project_path, breakpoints, std::move(startup_commands), remote_host);
+        Debug::LLDB::get().start(*run_arguments, *project_path, breakpoints, startup_commands, remote_host);
       });
     }
   });
