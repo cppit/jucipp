@@ -5,6 +5,9 @@
 #include "menu.h"
 #include "config.h"
 #include "terminal.h"
+#ifndef _WIN32
+#include <signal.h>
+#endif
 
 int Application::on_command_line(const Glib::RefPtr<Gio::ApplicationCommandLine> &cmd) {
   Glib::set_prgname("juci");
@@ -124,5 +127,8 @@ Application::Application() : Gtk::Application("no.sout.juci", Gio::APPLICATION_N
 }
 
 int main(int argc, char *argv[]) {
+#ifndef _WIN32
+  signal(SIGPIPE, SIG_IGN); // Do not terminate application when writing to a process fails
+#endif
   return Application().run(argc, argv);
 }

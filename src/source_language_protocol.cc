@@ -232,7 +232,16 @@ void LanguageProtocol::Client::write_request(const std::string &method, const st
   auto message="Content-Length: "+std::to_string(content.size())+"\r\n\r\n"+content;
   if(output_messages_and_errors)
     std::cout << "Language client: " << content << std::endl;
-  process->write(message);
+  if(!process->write(message)) {
+    auto id_it=handlers.find(message_id);
+    if(id_it!=handlers.end()) {
+      auto function=std::move(id_it->second);
+      lock.unlock();
+      function(boost::property_tree::ptree(), false);
+      lock.lock();
+      handlers.erase(id_it->first);
+    }
+  }
 }
 
 void LanguageProtocol::Client::write_notification(const std::string &method, const std::string &params) {
