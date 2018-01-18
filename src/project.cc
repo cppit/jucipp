@@ -146,8 +146,6 @@ std::shared_ptr<Project::Base> Project::create() {
         return std::shared_ptr<Project::Base>(new Project::JavaScript(std::move(build)));
       if(language_id=="html")
         return std::shared_ptr<Project::Base>(new Project::HTML(std::move(build)));
-      if(language_id=="rust")
-      return std::shared_ptr<Project::Base>(new Project::Rust(std::move(build)));
     }
   }
   else
@@ -155,6 +153,8 @@ std::shared_ptr<Project::Base> Project::create() {
   
   if(dynamic_cast<CMakeBuild*>(build.get()) || dynamic_cast<MesonBuild*>(build.get()))
     return std::shared_ptr<Project::Base>(new Project::Clang(std::move(build)));
+  else if(dynamic_cast<CargoBuild*>(build.get()))
+    return std::shared_ptr<Project::Base>(new Project::Rust(std::move(build)));
   else
     return std::shared_ptr<Project::Base>(new Project::Base(std::move(build)));
 }
@@ -783,7 +783,7 @@ void Project::HTML::compile_and_run() {
 void Project::Rust::compile() {
   std::string command=build->get_compile_command();
   Terminal::get().print("Running "+command+"\n");
-  Terminal::get().async_process(command, Notebook::get().get_current_view()->file_path.parent_path(), [command](int exit_status) {
+  Terminal::get().async_process(command, build->project_path, [command](int exit_status) {
     Terminal::get().async_print(command+" returned: "+std::to_string(exit_status)+'\n');
   });
 }
@@ -791,7 +791,7 @@ void Project::Rust::compile() {
 void Project::Rust::compile_and_run() {
   std::string command="cargo run";
   Terminal::get().print("Running "+command+"\n");
-  Terminal::get().async_process(command, Notebook::get().get_current_view()->file_path.parent_path(), [command](int exit_status) {
+  Terminal::get().async_process(command, build->project_path, [command](int exit_status) {
     Terminal::get().async_print(command+" returned: "+std::to_string(exit_status)+'\n');
   });
 }
