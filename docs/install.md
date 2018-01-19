@@ -156,14 +156,6 @@ make
 make install
 ```
 
-Before running juCi++ on MSYS2, you currently need to recompile and reinstall gtksourceviewmm3:
-```sh
-git clone git://github.com/Alexpux/MINGW-packages
-cd MINGW-packages/mingw-w64-gtksourceviewmm3
-makepkg-mingw -sLf
-pacman -U mingw-w64-x86_64-gtksourceviewmm3*
-```
-
 ## Run
 ```sh
 juci
