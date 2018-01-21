@@ -35,6 +35,7 @@ namespace Project {
     };
 #endif
   public:
+    Base() {}
     Base(std::unique_ptr<Build> &&build): build(std::move(build)) {}
     virtual ~Base() {}
     
@@ -46,6 +47,8 @@ namespace Project {
     virtual void compile();
     virtual void compile_and_run();
     virtual void recreate_build();
+    
+    virtual void show_symbols();
     
     virtual std::pair<std::string, std::string> debug_get_run_arguments();
     virtual Gtk::Popover *debug_get_options() { return nullptr; }
@@ -67,7 +70,7 @@ namespace Project {
     virtual void debug_cancel() {}
   };
   
-  class LLDB : public Base {
+  class LLDB : public virtual Base {
 #ifdef JUCI_ENABLE_DEBUG
     class DebugOptions : public Base::DebugOptions {
     public:
@@ -79,7 +82,7 @@ namespace Project {
 #endif
     
   public:
-    LLDB(std::unique_ptr<Build> &&build) : Base(std::move(build)) {}
+    LLDB() {}
     ~LLDB() { dispatcher.disconnect(); }
     
 #ifdef JUCI_ENABLE_DEBUG
@@ -103,9 +106,16 @@ namespace Project {
 #endif
   };
   
+  class LanguageProtocol : public virtual Base {
+  public:
+    LanguageProtocol() {}
+    virtual std::string get_language_id()=0;
+    void show_symbols() override;
+  };
+  
   class Clang : public LLDB {
   public:
-    Clang(std::unique_ptr<Build> &&build) : LLDB(std::move(build)) {}
+    Clang(std::unique_ptr<Build> &&build) : Base(std::move(build)) {}
     
     std::pair<std::string, std::string> get_run_arguments() override;
     void compile() override;
@@ -122,18 +132,22 @@ namespace Project {
     void compile_and_run() override;
   };
   
-  class Python : public Base {
+  class Python : public LanguageProtocol {
   public:
     Python(std::unique_ptr<Build> &&build) : Base(std::move(build)) {}
     
     void compile_and_run() override;
+    
+    std::string get_language_id() override { return "python"; }
   };
   
-  class JavaScript : public Base {
+  class JavaScript : public LanguageProtocol {
   public:
     JavaScript(std::unique_ptr<Build> &&build) : Base(std::move(build)) {}
     
     void compile_and_run() override;
+    
+    std::string get_language_id() override { return "javascript"; }
   };
   
   class HTML : public Base {
@@ -143,12 +157,14 @@ namespace Project {
     void compile_and_run() override;
   };
   
-  class Rust : public LLDB {
+  class Rust : public LLDB, public LanguageProtocol {
   public:
-    Rust(std::unique_ptr<Build> &&build) : LLDB(std::move(build)) {}
+    Rust(std::unique_ptr<Build> &&build) : Base(std::move(build)) {}
     
     void compile() override;
     void compile_and_run() override;
+    
+    std::string get_language_id() override { return "rust"; }
   };
   
   std::shared_ptr<Base> create();

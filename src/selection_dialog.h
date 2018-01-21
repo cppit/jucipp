@@ -18,6 +18,7 @@ class SelectionDialogBase {
     ColumnRecord column_record;
     ListViewText(bool use_markup);
     void append(const std::string& value);
+    void erase_rows();
     void clear();
   private:
     Glib::RefPtr<Gtk::ListStore> list_store;
@@ -35,6 +36,7 @@ public:
   SelectionDialogBase(Gtk::TextView *text_view, Glib::RefPtr<Gtk::TextBuffer::Mark> start_mark, bool show_search_entry, bool use_markup);
   virtual ~SelectionDialogBase();
   void add_row(const std::string& row);
+  void erase_rows();
   void set_cursor_at_last_row();
   void show();
   void hide();
@@ -46,6 +48,7 @@ public:
   std::function<void()> on_hide;
   std::function<void(unsigned int index, const std::string &text, bool hide_window)> on_select;
   std::function<void(unsigned int index, const std::string &text)> on_changed;
+  std::function<void(const std::string &text)> on_search_entry_changed;
   Glib::RefPtr<Gtk::TextBuffer::Mark> start_mark;
   
 protected:

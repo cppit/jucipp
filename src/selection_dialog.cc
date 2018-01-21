@@ -25,6 +25,11 @@ void SelectionDialogBase::ListViewText::append(const std::string& value) {
   new_row->set_value(column_record.index, size++);
 }
 
+void SelectionDialogBase::ListViewText::erase_rows() {
+  list_store->clear();
+  size=0;
+}
+
 void SelectionDialogBase::ListViewText::clear() {
   unset_model();
   list_store.reset();
@@ -39,6 +44,11 @@ SelectionDialogBase::SelectionDialogBase(Gtk::TextView *text_view, Glib::RefPtr<
   window.set_transient_for(*application->get_active_window());
   
   window.set_type_hint(Gdk::WindowTypeHint::WINDOW_TYPE_HINT_COMBO);
+  
+  search_entry.signal_changed().connect([this] {
+    if(on_search_entry_changed)
+      on_search_entry_changed(search_entry.get_text());
+  }, false);
   
   list_view_text.set_search_entry(search_entry);
   
@@ -133,6 +143,10 @@ void SelectionDialogBase::cursor_changed() {
 }
 void SelectionDialogBase::add_row(const std::string& row) {
   list_view_text.append(row);
+}
+
+void SelectionDialogBase::erase_rows() {
+  list_view_text.erase_rows();
 }
 
 void SelectionDialogBase::show() {

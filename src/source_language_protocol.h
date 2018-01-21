@@ -29,6 +29,7 @@ namespace LanguageProtocol {
                                   INCREMENTAL };
     TextDocumentSync text_document_sync;
     bool document_highlight;
+    bool workspace_symbol;
   };
 
   class Client {

@@ -12,7 +12,10 @@
 #endif
 #include "info.h"
 #include "source_clang.h"
+#include "source_language_protocol.h"
 #include "usages_clang.h"
+#include "ctags.h"
+#include <future>
 
 boost::filesystem::path Project::debug_last_stop_file_path;
 std::unordered_map<std::string, std::string> Project::run_arguments;
@@ -155,6 +158,8 @@ std::shared_ptr<Project::Base> Project::create() {
     return std::shared_ptr<Project::Base>(new Project::Clang(std::move(build)));
   else if(dynamic_cast<CargoBuild*>(build.get()))
     return std::shared_ptr<Project::Base>(new Project::Rust(std::move(build)));
+  else if(dynamic_cast<NpmBuild*>(build.get()))
+    return std::shared_ptr<Project::Base>(new Project::JavaScript(std::move(build)));
   else
     return std::shared_ptr<Project::Base>(new Project::Base(std::move(build)));
 }
@@ -174,6 +179,71 @@ void Project::Base::compile_and_run() {
 
 void Project::Base::recreate_build() {
   Info::get().print("Could not find a supported project");
+}
+
+void Project::Base::show_symbols() {
+  auto view=Notebook::get().get_current_view();
+  
+  boost::filesystem::path search_path;
+  if(view)
+    search_path=view->file_path.parent_path();
+  else if(!Directories::get().path.empty())
+    search_path=Directories::get().path;
+  else {
+    boost::system::error_code ec;
+    search_path=boost::filesystem::current_path(ec);
+    if(ec) {
+      Terminal::get().print("Error: could not find current path\n", true);
+      return;
+    }
+  }
+  auto pair=Ctags::get_result(search_path);
+  
+  auto path=std::move(pair.first);
+  auto stream=std::move(pair.second);
+  stream->seekg(0, std::ios::end);
+  if(stream->tellg()==0) {
+    Info::get().print("No symbols found in current project");
+    return;
+  }
+  stream->seekg(0, std::ios::beg);
+  
+  if(view) {
+    auto dialog_iter=view->get_iter_for_dialog();
+    SelectionDialog::create(view, view->get_buffer()->create_mark(dialog_iter), true, true);
+  }
+  else
+    SelectionDialog::create(true, true);
+  
+  std::vector<Source::Offset> rows;
+    
+  std::string line;
+  while(std::getline(*stream, line)) {
+    auto location=Ctags::get_location(line, true);
+    
+    std::string row=location.file_path.string()+":"+std::to_string(location.line+1)+": "+location.source;
+    rows.emplace_back(Source::Offset(location.line, location.index, location.file_path));
+    SelectionDialog::get()->add_row(row);
+  }
+    
+  if(rows.size()==0)
+    return;
+  SelectionDialog::get()->on_select=[rows=std::move(rows), path=std::move(path)](unsigned int index, const std::string &text, bool hide_window) {
+    if(index>=rows.size())
+      return;
+    auto offset=rows[index];
+    auto full_path=path/offset.file_path;
+    if(!boost::filesystem::is_regular_file(full_path))
+      return;
+    Notebook::get().open(full_path);
+    auto view=Notebook::get().get_current_view();
+    view->place_cursor_at_line_index(offset.line, offset.index);
+    view->scroll_to_cursor_delayed(view, true, false);
+    view->hide_tooltips();
+  };
+  if(view)
+    view->hide_tooltips();
+  SelectionDialog::get()->show();
 }
 
 std::pair<std::string, std::string> Project::Base::debug_get_run_arguments() {
@@ -587,6 +657,102 @@ void Project::LLDB::debug_cancel() {
 }
 #endif
 
+void Project::LanguageProtocol::show_symbols() {
+  if(build->project_path.empty()) {
+    Info::get().print("Could not find project folder");
+    return;
+  }
+  
+  auto language_id=get_language_id();
+  auto executable_name=language_id+"-language-server";
+  if(filesystem::find_executable(executable_name).empty()) {
+    Info::get().print("Executable "+executable_name+" not found");
+    return;
+  }
+  
+  auto project_path=std::make_shared<boost::filesystem::path>(build->project_path);
+  
+  auto client=::LanguageProtocol::Client::get(*project_path, language_id);
+  auto capabilities=client->initialize(nullptr);
+  
+  if(!capabilities.workspace_symbol) {
+    Info::get().print("Language server does not support workspace/symbol");
+    return;
+  }
+  
+  auto view=Notebook::get().get_current_view();
+  if(view) {
+    auto dialog_iter=view->get_iter_for_dialog();
+    SelectionDialog::create(view, view->get_buffer()->create_mark(dialog_iter), true, true);
+  }
+  else
+    SelectionDialog::create(true, true);
+  
+  SelectionDialog::get()->on_hide=[] {
+    SelectionDialog::get()->on_search_entry_changed=nullptr; // To delete client object
+  };
+  
+  auto offsets=std::make_shared<std::vector<Source::Offset>>();
+  SelectionDialog::get()->on_search_entry_changed=[client, project_path, offsets](const std::string &text) {
+    if(text.size()>1)
+      return;
+    else {
+      offsets->clear();
+      SelectionDialog::get()->erase_rows();
+      if(text.empty())
+        return;
+    }
+    std::vector<std::string> names;
+    std::promise<void> result_processed;
+    client->write_request("workspace/symbol", "\"query\":\""+text+"\"", [&result_processed, &names, offsets, project_path](const boost::property_tree::ptree &result, bool error) {
+      if(!error) {
+        for(auto it=result.begin();it!=result.end();++it) {
+          auto name=it->second.get<std::string>("name", "");
+          if(!name.empty()) {
+            auto location_it=it->second.find("location");
+            if(location_it!=it->second.not_found()) {
+              auto file=location_it->second.get<std::string>("uri", "");
+              if(file.size()>7) {
+                file.erase(0, 7);
+                auto range_it=location_it->second.find("range");
+                if(range_it!=location_it->second.not_found()) {
+                  auto start_it=range_it->second.find("start");
+                  if(start_it!=range_it->second.not_found()) {
+                    try {
+                      offsets->emplace_back(Source::Offset(start_it->second.get<unsigned>("line"), start_it->second.get<unsigned>("character"), file));
+                      names.emplace_back(name);
+                    }
+                    catch(...) {}
+                  }
+                }
+              }
+            }
+          }
+        }
+      }
+      result_processed.set_value();
+    });
+    result_processed.get_future().get();
+    for(size_t c=0;c<offsets->size() && c<names.size();++c)
+      SelectionDialog::get()->add_row(filesystem::get_relative_path((*offsets)[c].file_path, *project_path).string()+':'+std::to_string((*offsets)[c].line+1)+':'+std::to_string((*offsets)[c].index+1)+": "+names[c]);
+  };
+  
+  SelectionDialog::get()->on_select=[offsets](unsigned int index, const std::string &text, bool hide_window) {
+    auto &offset=(*offsets)[index];
+    if(!boost::filesystem::is_regular_file(offset.file_path))
+      return;
+    Notebook::get().open(offset.file_path);
+    auto view=Notebook::get().get_current_view();
+    view->place_cursor_at_line_offset(offset.line, offset.index);
+    view->scroll_to_cursor_delayed(view, true, false);
+    view->hide_tooltips();
+  };
+  
+  if(view)
+    view->hide_tooltips();
+  SelectionDialog::get()->show();
+}
+
 std::pair<std::string, std::string> Project::Clang::get_run_arguments() {
   auto build_path=build->get_default_path();
   if(build_path.empty())
@@ -755,9 +921,23 @@ void Project::Python::compile_and_run() {
 }
 
 void Project::JavaScript::compile_and_run() {
-  auto command="node --harmony "+filesystem::escape_argument(filesystem::get_short_path(Notebook::get().get_current_view()->file_path).string());
+  std::string command;
+  boost::filesystem::path path;
+  if(!build->project_path.empty()) {
+    command="npm start";
+    path=build->project_path;
+  }
+  else {
+    auto view=Notebook::get().get_current_view();
+    if(!view) {
+      Info::get().print("No executable found");
+      return;
+    }
+    command="node --harmony "+filesystem::escape_argument(filesystem::get_short_path(view->file_path).string());
+    path=view->file_path.parent_path();
+  }
   Terminal::get().print("Running "+command+"\n");
-  Terminal::get().async_process(command, Notebook::get().get_current_view()->file_path.parent_path(), [command](int exit_status) {
+  Terminal::get().async_process(command, path, [command](int exit_status) {
     Terminal::get().async_print(command+" returned: "+std::to_string(exit_status)+'\n');
   });
 }

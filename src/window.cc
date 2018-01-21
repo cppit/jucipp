@@ -8,7 +8,6 @@
 #include "project.h"
 #include "entrybox.h"
 #include "info.h"
-#include "ctags.h"
 #include "selection_dialog.h"
 #include "terminal.h"
 
@@ -600,69 +599,9 @@ void Window::set_menu_actions() {
     }
   });
   
-  menu.add_action("source_find_symbol_ctags", [this]() {
-    auto view=Notebook::get().get_current_view();
-    
-    boost::filesystem::path search_path;
-    if(view)
-      search_path=view->file_path.parent_path();
-    else if(!Directories::get().path.empty())
-      search_path=Directories::get().path;
-    else {
-      boost::system::error_code ec;
-      search_path=boost::filesystem::current_path(ec);
-      if(ec) {
-        Terminal::get().print("Error: could not find current path\n", true);
-        return;
-      }
-    }
-    auto pair=Ctags::get_result(search_path);
-    
-    auto path=std::move(pair.first);
-    auto stream=std::move(pair.second);
-    stream->seekg(0, std::ios::end);
-    if(stream->tellg()==0) {
-      Info::get().print("No symbols found in current project");
-      return;
-    }
-    stream->seekg(0, std::ios::beg);
-    
-    if(view) {
-      auto dialog_iter=view->get_iter_for_dialog();
-      SelectionDialog::create(view, view->get_buffer()->create_mark(dialog_iter), true, true);
-    }
-    else
-      SelectionDialog::create(true, true);
-    
-    std::vector<Source::Offset> rows;
-      
-    std::string line;
-    while(std::getline(*stream, line)) {
-      auto location=Ctags::get_location(line, true);
-      
-      std::string row=location.file_path.string()+":"+std::to_string(location.line+1)+": "+location.source;
-      rows.emplace_back(Source::Offset(location.line, location.index, location.file_path));
-      SelectionDialog::get()->add_row(row);
-    }
-      
-    if(rows.size()==0)
-      return;
-    SelectionDialog::get()->on_select=[this, rows=std::move(rows), path=std::move(path)](unsigned int index, const std::string &text, bool hide_window) {
-      if(index>=rows.size())
-        return;
-      auto offset=rows[index];
-      auto full_path=path/offset.file_path;
-      if(!boost::filesystem::is_regular_file(full_path))
-        return;
-      Notebook::get().open(full_path);
-      auto view=Notebook::get().get_current_view();
-      view->place_cursor_at_line_index(offset.line, offset.index);
-      view->scroll_to_cursor_delayed(view, true, false);
-      view->hide_tooltips();
-    };
-    if(view)
-      view->hide_tooltips();
-    SelectionDialog::get()->show();
+  menu.add_action("source_find_symbol", [this]() {
+    auto project=Project::create();
+    project->show_symbols();
   });
   
   menu.add_action("source_find_file", [this]() {

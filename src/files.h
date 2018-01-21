@@ -118,7 +118,7 @@ R"RAW(
         "source_show_completion_comment" : "Add completion keybinding to disable interactive autocompletion",
         "source_show_completion" : "",
         "source_find_file": "<primary>p",
-        "source_find_symbol_ctags": "<primary><shift>f",
+        "source_find_symbol": "<primary><shift>f",
         "source_comments_toggle": "<primary>slash",
         "source_comments_add_documentation": "<primary><alt>slash",
         "source_find_documentation": "<primary><shift>d",

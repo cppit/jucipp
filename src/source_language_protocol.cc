@@ -70,7 +70,7 @@ LanguageProtocol::Client::~Client() {
 }
 
 LanguageProtocol::Capabilities LanguageProtocol::Client::initialize(Source::LanguageProtocolView *view) {
-  {
+  if(view) {
     std::unique_lock<std::mutex> lock(views_mutex);
     views.emplace(view);
   }
@@ -85,9 +85,12 @@ LanguageProtocol::Capabilities LanguageProtocol::Client::initialize(Source::Lang
       if(capabilities_pt!=result.not_found()) {
         capabilities.text_document_sync=static_cast<LanguageProtocol::Capabilities::TextDocumentSync>(capabilities_pt->second.get<unsigned>("textDocumentSync", 0));
         capabilities.document_highlight=capabilities_pt->second.get<bool>("documentHighlightProvider", false);
+        capabilities.workspace_symbol=capabilities_pt->second.get<bool>("workspaceSymbolProvider", false);
       }
       
       write_notification("initialized", "");
+      if(language_id=="rust")
+        write_notification("workspace/didChangeConfiguration", "\"settings\":{\"rust\":{\"sysroot\":null,\"target\":null,\"rustflags\":null,\"clear_env_rust_log\":true,\"build_lib\":null,\"build_bin\":null,\"cfg_test\":false,\"unstable_features\":false,\"wait_to_build\":500,\"show_warnings\":true,\"goto_def_racer_fallback\":false,\"use_crate_blacklist\":true,\"build_on_save\":false,\"workspace_mode\":false,\"analyze_package\":null,\"features\":[],\"all_features\":false,\"no_default_features\":false}}");
     }
     result_processed.set_value();
   });
@@ -299,8 +302,6 @@ Source::LanguageProtocolView::LanguageProtocolView(const boost::filesystem::path
   similar_symbol_tag->property_weight()=Pango::WEIGHT_ULTRAHEAVY;
   
   capabilities=client->initialize(this);
-  if(language_id=="rust")
-    client->write_notification("workspace/didChangeConfiguration", "\"settings\":{\"rust\":{\"sysroot\":null,\"target\":null,\"rustflags\":null,\"clear_env_rust_log\":true,\"build_lib\":null,\"build_bin\":null,\"cfg_test\":false,\"unstable_features\":false,\"wait_to_build\":500,\"show_warnings\":true,\"goto_def_racer_fallback\":false,\"use_crate_blacklist\":true,\"build_on_save\":false,\"workspace_mode\":false,\"analyze_package\":null,\"features\":[],\"all_features\":false,\"no_default_features\":false}}");
   std::string text=get_buffer()->get_text();
   escape_text(text);
   client->write_notification("textDocument/didOpen", "\"textDocument\":{\"uri\":\""+uri+"\",\"languageId\":\""+language_id+"\",\"version\":"+std::to_string(document_version++)+",\"text\":\""+text+"\"}");

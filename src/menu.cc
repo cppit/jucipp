@@ -271,8 +271,8 @@ const Glib::ustring menu_xml= R"RAW(<interface>
           <attribute name='action'>app.source_find_file</attribute>
         </item>
         <item>
-          <attribute name='label' translatable='yes'>_Find _Symbol (Ctags)</attribute>
-          <attribute name='action'>app.source_find_symbol_ctags</attribute>
+          <attribute name='label' translatable='yes'>_Find _Symbol</attribute>
+          <attribute name='action'>app.source_find_symbol</attribute>
         </item>
       </section>
       <section>
