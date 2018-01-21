@@ -82,8 +82,11 @@ LanguageProtocol::Capabilities LanguageProtocol::Client::initialize(Source::Lang
   write_request("initialize", "\"processId\":"+std::to_string(process->get_id())+",\"rootUri\":\"file://"+root_uri+"\",\"capabilities\":{\"workspace\":{\"didChangeConfiguration\":{\"dynamicRegistration\":true},\"didChangeWatchedFiles\":{\"dynamicRegistration\":true},\"symbol\":{\"dynamicRegistration\":true},\"executeCommand\":{\"dynamicRegistration\":true}},\"textDocument\":{\"synchronization\":{\"dynamicRegistration\":true,\"willSave\":true,\"willSaveWaitUntil\":true,\"didSave\":true},\"completion\":{\"dynamicRegistration\":true,\"completionItem\":{\"snippetSupport\":true}},\"hover\":{\"dynamicRegistration\":true},\"signatureHelp\":{\"dynamicRegistration\":true},\"definition\":{\"dynamicRegistration\":true},\"references\":{\"dynamicRegistration\":true},\"documentHighlight\":{\"dynamicRegistration\":true},\"documentSymbol\":{\"dynamicRegistration\":true},\"codeAction\":{\"dynamicRegistration\":true},\"codeLens\":{\"dynamicRegistration\":true},\"formatting\":{\"dynamicRegistration\":true},\"rangeFormatting\":{\"dynamicRegistration\":true},\"onTypeFormatting\":{\"dynamicRegistration\":true},\"rename\":{\"dynamicRegistration\":true},\"documentLink\":{\"dynamicRegistration\":true}}},\"initializationOptions\":{\"omitInitBuild\":true},\"trace\":\"off\"", [this, &result_processed](const boost::property_tree::ptree &result, bool error) {
     if(!error) {
       auto capabilities_pt=result.find("capabilities");
-      if(capabilities_pt!=result.not_found())
+      if(capabilities_pt!=result.not_found()) {
         capabilities.text_document_sync=static_cast<LanguageProtocol::Capabilities::TextDocumentSync>(capabilities_pt->second.get<unsigned>("textDocumentSync", 0));
+        capabilities.document_highlight=capabilities_pt->second.get<bool>("documentHighlightProvider", false);
+      }
+      
       write_notification("initialized", "");
     }
     result_processed.set_value();
@@ -866,10 +869,15 @@ void Source::LanguageProtocolView::tag_similar_symbols() {
   auto iter=get_buffer()->get_insert()->get_iter();
   std::vector<std::pair<Offset, Offset>> offsets;
   std::promise<void> result_processed;
-  client->write_request("textDocument/references", "\"textDocument\":{\"uri\":\""+uri+"\"}, \"position\": {\"line\": "+std::to_string(iter.get_line())+", \"character\": "+std::to_string(iter.get_line_offset())+"}, \"context\": {\"includeDeclaration\": true}", [this, &result_processed, &offsets](const boost::property_tree::ptree &result, bool error) {
+  std::string method;
+  if(capabilities.document_highlight)
+    method="textDocument/documentHighlight";
+  else
+    method="textDocument/references";
+  client->write_request(method, "\"textDocument\":{\"uri\":\""+uri+"\"}, \"position\": {\"line\": "+std::to_string(iter.get_line())+", \"character\": "+std::to_string(iter.get_line_offset())+"}, \"context\": {\"includeDeclaration\": true}", [this, &result_processed, &offsets](const boost::property_tree::ptree &result, bool error) {
     if(!error) {
       for(auto it=result.begin();it!=result.end();++it) {
-        if(it->second.get<std::string>("uri", "")==uri) {
+        if(capabilities.document_highlight || it->second.get<std::string>("uri", "")==uri) {
           auto range_it=it->second.find("range");
           if(range_it!=it->second.not_found()) {
             auto start_it=range_it->second.find("start");

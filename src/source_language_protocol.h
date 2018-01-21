@@ -28,6 +28,7 @@ namespace LanguageProtocol {
                                   FULL,
                                   INCREMENTAL };
     TextDocumentSync text_document_sync;
+    bool document_highlight;
   };
 
   class Client {
