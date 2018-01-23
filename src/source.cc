@@ -348,6 +348,7 @@ Source::View::View(const boost::filesystem::path &file_path, Glib::RefPtr<Gsv::L
       };
       
       get_buffer()->begin_user_action();
+      disable_spellcheck=true;
       cleanup_whitespace_characters();
       
       auto iter=get_buffer()->begin();
@@ -427,6 +428,7 @@ Source::View::View(const boost::filesystem::path &file_path, Glib::RefPtr<Gsv::L
           }
         }
       } while(iter.forward_char());
+      disable_spellcheck=false;
       get_buffer()->end_user_action();
     };
   }
