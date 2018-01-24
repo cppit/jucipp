@@ -380,7 +380,7 @@ void Source::LanguageProtocolView::setup_navigation_and_refactoring() {
     };
     std::vector<Replace> replaces;
     std::promise<void> result_processed;
-    client->write_request("textDocument/formatting", "\"textDocument\":{\"uri\":\""+uri+"\"},\"options\":{\"tabSize\":2,\"insertSpaces\":true}", [&replaces, &result_processed](const boost::property_tree::ptree &result, bool error) {
+    client->write_request("textDocument/formatting", "\"textDocument\":{\"uri\":\""+uri+"\"},\"options\":{\"tabSize\":"+std::to_string(tab_size)+",\"insertSpaces\":"+(tab_char==' '?"true":"false")+"}", [&replaces, &result_processed](const boost::property_tree::ptree &result, bool error) {
       if(!error) {
         for(auto it=result.begin();it!=result.end();++it) {
           auto range_it=it->second.find("range");
