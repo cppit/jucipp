@@ -960,18 +960,49 @@ void Project::HTML::compile_and_run() {
 #endif
 }
 
+std::pair<std::string, std::string> Project::Rust::get_run_arguments() {
+  auto project_path=build->project_path.string();
+  auto run_arguments_it=run_arguments.find(project_path);
+  std::string arguments;
+  if(run_arguments_it!=run_arguments.end())
+    arguments=run_arguments_it->second;
+  
+  if(arguments.empty())
+    arguments=filesystem::get_short_path(build->get_executable(project_path)).string();
+  
+  return {project_path, arguments};
+}
+
 void Project::Rust::compile() {
-  std::string command=build->get_compile_command();
-  Terminal::get().print("Running "+command+"\n");
-  Terminal::get().async_process(command, build->project_path, [command](int exit_status) {
-    Terminal::get().async_print(command+" returned: "+std::to_string(exit_status)+'\n');
+  compiling=true;
+  
+  if(Config::get().project.clear_terminal_on_compile)
+    Terminal::get().clear();
+  
+  Terminal::get().print("Compiling project "+filesystem::get_short_path(build->project_path).string()+"\n");
+  
+  auto command=build->get_compile_command();
+  Terminal::get().async_process(command, build->project_path, [](int exit_status) {
+    compiling=false;
   });
 }
 
 void Project::Rust::compile_and_run() {
-  std::string command="cargo run";
-  Terminal::get().print("Running "+command+"\n");
-  Terminal::get().async_process(command, build->project_path, [command](int exit_status) {
-    Terminal::get().async_print(command+" returned: "+std::to_string(exit_status)+'\n');
+  compiling=true;
+  
+  if(Config::get().project.clear_terminal_on_compile)
+    Terminal::get().clear();
+  
+  auto arguments=get_run_arguments().second;
+  Terminal::get().print("Compiling and running "+arguments+"\n");
+  
+  auto self=this->shared_from_this();
+  Terminal::get().async_process(build->get_compile_command(), build->project_path, [self, arguments=std::move(arguments)](int exit_status) {
+    compiling=false;
+    if(exit_status==EXIT_SUCCESS) {
+      Terminal::get().async_process(arguments, self->build->project_path, [arguments](int exit_status) {
+        Terminal::get().async_print(arguments+" returned: "+std::to_string(exit_status)+'\n');
+      });
+    }
   });
 }

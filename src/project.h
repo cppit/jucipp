@@ -161,6 +161,7 @@ namespace Project {
   public:
     Rust(std::unique_ptr<Build> &&build) : Base(std::move(build)) {}
     
+    std::pair<std::string, std::string> get_run_arguments() override;
     void compile() override;
     void compile_and_run() override;
     
