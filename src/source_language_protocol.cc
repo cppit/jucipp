@@ -84,8 +84,15 @@ LanguageProtocol::Capabilities LanguageProtocol::Client::initialize(Source::Lang
       auto capabilities_pt=result.find("capabilities");
       if(capabilities_pt!=result.not_found()) {
         capabilities.text_document_sync=static_cast<LanguageProtocol::Capabilities::TextDocumentSync>(capabilities_pt->second.get<unsigned>("textDocumentSync", 0));
+        capabilities.hover=capabilities_pt->second.get<bool>("hoverProvider", false);
+        capabilities.completion=capabilities_pt->second.find("completionProvider")!=capabilities_pt->second.not_found()?true:false;
+        capabilities.definition=capabilities_pt->second.get<bool>("definitionProvider", false);
+        capabilities.references=capabilities_pt->second.get<bool>("referencesProvider", false);
         capabilities.document_highlight=capabilities_pt->second.get<bool>("documentHighlightProvider", false);
         capabilities.workspace_symbol=capabilities_pt->second.get<bool>("workspaceSymbolProvider", false);
+        capabilities.document_formatting=capabilities_pt->second.get<bool>("documentFormattingProvider", false);
+        capabilities.document_range_formatting=capabilities_pt->second.get<bool>("documentRangeFormattingProvider", false);
+        capabilities.rename=capabilities_pt->second.get<bool>("renameProvider", false);
       }
       
       write_notification("initialized", "");
@@ -369,176 +376,182 @@ Source::LanguageProtocolView::~LanguageProtocolView() {
 }
 
 void Source::LanguageProtocolView::setup_navigation_and_refactoring() {
-  format_style=[this](bool continue_without_style_file) {
-    if(!continue_without_style_file)
-      return;
-    
-    class Replace {
-    public:
-      Offset start, end;
-      std::string text;
-    };
-    std::vector<Replace> replaces;
-    std::promise<void> result_processed;
-    client->write_request("textDocument/formatting", "\"textDocument\":{\"uri\":\""+uri+"\"},\"options\":{\"tabSize\":"+std::to_string(tab_size)+",\"insertSpaces\":"+(tab_char==' '?"true":"false")+"}", [&replaces, &result_processed](const boost::property_tree::ptree &result, bool error) {
-      if(!error) {
-        for(auto it=result.begin();it!=result.end();++it) {
-          auto range_it=it->second.find("range");
-          auto text_it=it->second.find("newText");
-          if(range_it!=it->second.not_found() && text_it!=it->second.not_found()) {
-            auto start_it=range_it->second.find("start");
-            auto end_it=range_it->second.find("end");
-            if(start_it!=range_it->second.not_found() && end_it!=range_it->second.not_found()) {
-              try {
-                replaces.emplace_back(Replace{Offset(start_it->second.get<unsigned>("line"), start_it->second.get<unsigned>("character")),
-                                              Offset(end_it->second.get<unsigned>("line"), end_it->second.get<unsigned>("character")),
-                                              text_it->second.get_value<std::string>()});
+  if(capabilities.document_formatting) {
+    format_style=[this](bool continue_without_style_file) {
+      if(!continue_without_style_file)
+        return;
+      
+      class Replace {
+      public:
+        Offset start, end;
+        std::string text;
+      };
+      std::vector<Replace> replaces;
+      std::promise<void> result_processed;
+      client->write_request("textDocument/formatting", "\"textDocument\":{\"uri\":\""+uri+"\"},\"options\":{\"tabSize\":"+std::to_string(tab_size)+",\"insertSpaces\":"+(tab_char==' '?"true":"false")+"}", [&replaces, &result_processed](const boost::property_tree::ptree &result, bool error) {
+        if(!error) {
+          for(auto it=result.begin();it!=result.end();++it) {
+            auto range_it=it->second.find("range");
+            auto text_it=it->second.find("newText");
+            if(range_it!=it->second.not_found() && text_it!=it->second.not_found()) {
+              auto start_it=range_it->second.find("start");
+              auto end_it=range_it->second.find("end");
+              if(start_it!=range_it->second.not_found() && end_it!=range_it->second.not_found()) {
+                try {
+                  replaces.emplace_back(Replace{Offset(start_it->second.get<unsigned>("line"), start_it->second.get<unsigned>("character")),
+                                                Offset(end_it->second.get<unsigned>("line"), end_it->second.get<unsigned>("character")),
+                                                text_it->second.get_value<std::string>()});
+                }
+                catch(...) {}
               }
-              catch(...) {}
             }
           }
         }
+        result_processed.set_value();
+      });
+      result_processed.get_future().get();
+      
+      get_buffer()->begin_user_action();
+      for(auto it=replaces.rbegin();it!=replaces.rend();++it) {
+        auto start=get_iter_at_line_pos(it->start.line, it->start.index);
+        auto end=get_iter_at_line_pos(it->end.line, it->end.index);
+        get_buffer()->erase(start, end);
+        start=get_iter_at_line_pos(it->start.line, it->start.index);
+        unescape_text(it->text);
+        get_buffer()->insert(start, it->text);
       }
-      result_processed.set_value();
-    });
-    result_processed.get_future().get();
-    
-    get_buffer()->begin_user_action();
-    for(auto it=replaces.rbegin();it!=replaces.rend();++it) {
-      auto start=get_iter_at_line_pos(it->start.line, it->start.index);
-      auto end=get_iter_at_line_pos(it->end.line, it->end.index);
-      get_buffer()->erase(start, end);
-      start=get_iter_at_line_pos(it->start.line, it->start.index);
-      unescape_text(it->text);
-      get_buffer()->insert(start, it->text);
-    }
-    get_buffer()->end_user_action();
-  };
+      get_buffer()->end_user_action();
+    };
+  }
   
-  get_declaration_location=[this]() {
-    auto offset=get_declaration(get_buffer()->get_insert()->get_iter());
-    if(!offset)
-      Info::get().print("No declaration found");
-    return offset;
-  };
+  if(capabilities.definition) {
+    get_declaration_location=[this]() {
+      auto offset=get_declaration(get_buffer()->get_insert()->get_iter());
+      if(!offset)
+        Info::get().print("No declaration found");
+      return offset;
+    };
+  }
   
-  get_usages=[this] {
-    auto iter=get_buffer()->get_insert()->get_iter();
-    std::vector<std::pair<Offset, std::string>> usages;
-    std::vector<Offset> end_offsets;
-    std::promise<void> result_processed;
-    client->write_request("textDocument/references", "\"textDocument\":{\"uri\":\""+uri+"\"}, \"position\": {\"line\": "+std::to_string(iter.get_line())+", \"character\": "+std::to_string(iter.get_line_offset())+"}, \"context\": {\"includeDeclaration\": true}", [&usages, &end_offsets, &result_processed](const boost::property_tree::ptree &result, bool error) {
-      if(!error) {
-        try {
-          for(auto it=result.begin();it!=result.end();++it) {
-            auto path=it->second.get<std::string>("uri", "");
-            if(path.size()>=7) {
-              path.erase(0, 7);
-              auto range_it=it->second.find("range");
-              if(range_it!=it->second.not_found()) {
-                auto start_it=range_it->second.find("start");
-                auto end_it=range_it->second.find("end");
-                if(start_it!=range_it->second.not_found() && end_it!=range_it->second.not_found()) {
-                  usages.emplace_back(std::make_pair(Offset(start_it->second.get<unsigned>("line"), start_it->second.get<unsigned>("character"), path), ""));
-                  end_offsets.emplace_back(end_it->second.get<unsigned>("line"), end_it->second.get<unsigned>("character"));
+  if(capabilities.references) {
+    get_usages=[this] {
+      auto iter=get_buffer()->get_insert()->get_iter();
+      std::vector<std::pair<Offset, std::string>> usages;
+      std::vector<Offset> end_offsets;
+      std::promise<void> result_processed;
+      client->write_request("textDocument/references", "\"textDocument\":{\"uri\":\""+uri+"\"}, \"position\": {\"line\": "+std::to_string(iter.get_line())+", \"character\": "+std::to_string(iter.get_line_offset())+"}, \"context\": {\"includeDeclaration\": true}", [&usages, &end_offsets, &result_processed](const boost::property_tree::ptree &result, bool error) {
+        if(!error) {
+          try {
+            for(auto it=result.begin();it!=result.end();++it) {
+              auto path=it->second.get<std::string>("uri", "");
+              if(path.size()>=7) {
+                path.erase(0, 7);
+                auto range_it=it->second.find("range");
+                if(range_it!=it->second.not_found()) {
+                  auto start_it=range_it->second.find("start");
+                  auto end_it=range_it->second.find("end");
+                  if(start_it!=range_it->second.not_found() && end_it!=range_it->second.not_found()) {
+                    usages.emplace_back(std::make_pair(Offset(start_it->second.get<unsigned>("line"), start_it->second.get<unsigned>("character"), path), ""));
+                    end_offsets.emplace_back(end_it->second.get<unsigned>("line"), end_it->second.get<unsigned>("character"));
+                  }
                 }
               }
             }
           }
-        }
-        catch(...) {
-          usages.clear();
-          end_offsets.clear();
-        }
-      }
-      result_processed.set_value();
-    });
-    result_processed.get_future().get();
-    
-    auto embolden_token=[](std::string &line_, unsigned token_start_pos, unsigned token_end_pos) {
-      Glib::ustring line=line_;
-      if(token_start_pos>=line.size() || token_end_pos>=line.size())
-        return;
-  
-      //markup token as bold
-      size_t pos=0;
-      while((pos=line.find('&', pos))!=Glib::ustring::npos) {
-        size_t pos2=line.find(';', pos+2);
-        if(token_start_pos>pos) {
-          token_start_pos+=pos2-pos;
-          token_end_pos+=pos2-pos;
-        }
-        else if(token_end_pos>pos)
-          token_end_pos+=pos2-pos;
-        else
-          break;
-        pos=pos2+1;
-      }
-      line.insert(token_end_pos, "</b>");
-      line.insert(token_start_pos, "<b>");
-      
-      size_t start_pos=0;
-      while(start_pos<line.size() && (line[start_pos]==' ' || line[start_pos]=='\t'))
-        ++start_pos;
-      if(start_pos>0)
-        line.erase(0, start_pos);
-      
-      line_=line.raw();
-    };
-    
-    std::map<boost::filesystem::path, std::vector<std::string>> file_lines;
-    size_t c=static_cast<size_t>(-1);
-    for(auto &usage: usages) {
-      ++c;
-      auto view_it=views.end();
-      for(auto it=views.begin();it!=views.end();++it) {
-        if(usage.first.file_path==(*it)->file_path) {
-          view_it=it;
-          break;
-        }
-      }
-      if(view_it!=views.end()) {
-        if(usage.first.line<static_cast<unsigned>((*view_it)->get_buffer()->get_line_count())) {
-          auto start=(*view_it)->get_buffer()->get_iter_at_line(usage.first.line);
-          auto end=start;
-          end.forward_to_line_end();
-          usage.second=(*view_it)->get_buffer()->get_text(start, end);
-          embolden_token(usage.second, usage.first.index, end_offsets[c].index);
-        }
-      }
-      else {
-        auto it=file_lines.find(usage.first.file_path);
-        if(it==file_lines.end()) {
-          std::ifstream ifs(usage.first.file_path.string());
-          if(ifs) {
-            std::vector<std::string> lines;
-            std::string line;
-            while(std::getline(ifs, line)) {
-              if(!line.empty() && line.back()=='\r')
-                line.pop_back();
-              lines.emplace_back(line);
-            }
-            auto pair=file_lines.emplace(usage.first.file_path, lines);
-            it=pair.first;
-          }
-          else {
-            auto pair=file_lines.emplace(usage.first.file_path, std::vector<std::string>());
-            it=pair.first;
+          catch(...) {
+            usages.clear();
+            end_offsets.clear();
           }
         }
+        result_processed.set_value();
+      });
+      result_processed.get_future().get();
+      
+      auto embolden_token=[](std::string &line_, unsigned token_start_pos, unsigned token_end_pos) {
+        Glib::ustring line=line_;
+        if(token_start_pos>=line.size() || token_end_pos>=line.size())
+          return;
+    
+        //markup token as bold
+        size_t pos=0;
+        while((pos=line.find('&', pos))!=Glib::ustring::npos) {
+          size_t pos2=line.find(';', pos+2);
+          if(token_start_pos>pos) {
+            token_start_pos+=pos2-pos;
+            token_end_pos+=pos2-pos;
+          }
+          else if(token_end_pos>pos)
+            token_end_pos+=pos2-pos;
+          else
+            break;
+          pos=pos2+1;
+        }
+        line.insert(token_end_pos, "</b>");
+        line.insert(token_start_pos, "<b>");
         
-        if(usage.first.line<it->second.size()) {
-          usage.second=it->second[usage.first.line];
-          embolden_token(usage.second, usage.first.index, end_offsets[c].index);
+        size_t start_pos=0;
+        while(start_pos<line.size() && (line[start_pos]==' ' || line[start_pos]=='\t'))
+          ++start_pos;
+        if(start_pos>0)
+          line.erase(0, start_pos);
+        
+        line_=line.raw();
+      };
+      
+      std::map<boost::filesystem::path, std::vector<std::string>> file_lines;
+      size_t c=static_cast<size_t>(-1);
+      for(auto &usage: usages) {
+        ++c;
+        auto view_it=views.end();
+        for(auto it=views.begin();it!=views.end();++it) {
+          if(usage.first.file_path==(*it)->file_path) {
+            view_it=it;
+            break;
+          }
+        }
+        if(view_it!=views.end()) {
+          if(usage.first.line<static_cast<unsigned>((*view_it)->get_buffer()->get_line_count())) {
+            auto start=(*view_it)->get_buffer()->get_iter_at_line(usage.first.line);
+            auto end=start;
+            end.forward_to_line_end();
+            usage.second=(*view_it)->get_buffer()->get_text(start, end);
+            embolden_token(usage.second, usage.first.index, end_offsets[c].index);
+          }
+        }
+        else {
+          auto it=file_lines.find(usage.first.file_path);
+          if(it==file_lines.end()) {
+            std::ifstream ifs(usage.first.file_path.string());
+            if(ifs) {
+              std::vector<std::string> lines;
+              std::string line;
+              while(std::getline(ifs, line)) {
+                if(!line.empty() && line.back()=='\r')
+                  line.pop_back();
+                lines.emplace_back(line);
+              }
+              auto pair=file_lines.emplace(usage.first.file_path, lines);
+              it=pair.first;
+            }
+            else {
+              auto pair=file_lines.emplace(usage.first.file_path, std::vector<std::string>());
+              it=pair.first;
+            }
+          }
+          
+          if(usage.first.line<it->second.size()) {
+            usage.second=it->second[usage.first.line];
+            embolden_token(usage.second, usage.first.index, end_offsets[c].index);
+          }
         }
       }
-    }
-    
-    if(usages.empty())
-      Info::get().print("No symbol found at current cursor location");
-    
-    return usages;
-  };
+      
+      if(usages.empty())
+        Info::get().print("No symbol found at current cursor location");
+      
+      return usages;
+    };
+  }
   
   get_token_spelling=[this]() -> std::string {
     auto start=get_buffer()->get_insert()->get_iter();
@@ -555,114 +568,116 @@ void Source::LanguageProtocolView::setup_navigation_and_refactoring() {
     return get_buffer()->get_text(start, end);
   };
   
-  rename_similar_tokens=[this](const std::string &text) {
-    class Usages {
-    public:
-      boost::filesystem::path path;
-      std::vector<std::pair<Offset, Offset>> offsets;
-    };
-    
-    auto previous_text=get_token_spelling();
-    if(previous_text.empty())
-      return;
-    
-    auto iter=get_buffer()->get_insert()->get_iter();
-    std::vector<Usages> usages;
-    std::promise<void> result_processed;
-    client->write_request("textDocument/rename", "\"textDocument\":{\"uri\":\""+uri+"\"}, \"position\": {\"line\": "+std::to_string(iter.get_line())+", \"character\": "+std::to_string(iter.get_line_offset())+"}, \"newName\": \""+text+"\"", [&usages, &result_processed](const boost::property_tree::ptree &result, bool error) {
-      if(!error) {
-        try {
-          auto changes_it=result.find("changes");
-          if(changes_it!=result.not_found()) {
-            for(auto file_it=changes_it->second.begin();file_it!=changes_it->second.end();++file_it) {
-              auto path=file_it->first;
-              if(path.size()>=7) {
-                path.erase(0, 7);
-                usages.emplace_back(Usages{path, std::vector<std::pair<Offset, Offset>>()});
-                for(auto edit_it=file_it->second.begin();edit_it!=file_it->second.end();++edit_it) {
-                  auto range_it=edit_it->second.find("range");
-                  if(range_it!=edit_it->second.not_found()) {
-                    auto start_it=range_it->second.find("start");
-                    auto end_it=range_it->second.find("end");
-                    if(start_it!=range_it->second.not_found() && end_it!=range_it->second.not_found())
-                      usages.back().offsets.emplace_back(std::make_pair(Offset(start_it->second.get<unsigned>("line"), start_it->second.get<unsigned>("character")),
-                                                                        Offset(end_it->second.get<unsigned>("line"), end_it->second.get<unsigned>("character"))));
+  if(capabilities.rename) {
+    rename_similar_tokens=[this](const std::string &text) {
+      class Usages {
+      public:
+        boost::filesystem::path path;
+        std::vector<std::pair<Offset, Offset>> offsets;
+      };
+      
+      auto previous_text=get_token_spelling();
+      if(previous_text.empty())
+        return;
+      
+      auto iter=get_buffer()->get_insert()->get_iter();
+      std::vector<Usages> usages;
+      std::promise<void> result_processed;
+      client->write_request("textDocument/rename", "\"textDocument\":{\"uri\":\""+uri+"\"}, \"position\": {\"line\": "+std::to_string(iter.get_line())+", \"character\": "+std::to_string(iter.get_line_offset())+"}, \"newName\": \""+text+"\"", [&usages, &result_processed](const boost::property_tree::ptree &result, bool error) {
+        if(!error) {
+          try {
+            auto changes_it=result.find("changes");
+            if(changes_it!=result.not_found()) {
+              for(auto file_it=changes_it->second.begin();file_it!=changes_it->second.end();++file_it) {
+                auto path=file_it->first;
+                if(path.size()>=7) {
+                  path.erase(0, 7);
+                  usages.emplace_back(Usages{path, std::vector<std::pair<Offset, Offset>>()});
+                  for(auto edit_it=file_it->second.begin();edit_it!=file_it->second.end();++edit_it) {
+                    auto range_it=edit_it->second.find("range");
+                    if(range_it!=edit_it->second.not_found()) {
+                      auto start_it=range_it->second.find("start");
+                      auto end_it=range_it->second.find("end");
+                      if(start_it!=range_it->second.not_found() && end_it!=range_it->second.not_found())
+                        usages.back().offsets.emplace_back(std::make_pair(Offset(start_it->second.get<unsigned>("line"), start_it->second.get<unsigned>("character")),
+                                                                          Offset(end_it->second.get<unsigned>("line"), end_it->second.get<unsigned>("character"))));
+                    }
                   }
                 }
               }
             }
           }
-        }
-        catch(...) {
-          usages.clear();
-        }
-      }
-      result_processed.set_value();
-    });
-    result_processed.get_future().get();
-    
-    std::vector<Usages*> usages_renamed;
-    for(auto &usage: usages) {
-      auto view_it=views.end();
-      for(auto it=views.begin();it!=views.end();++it) {
-        if((*it)->file_path==usage.path) {
-          view_it=it;
-          break;
-        }
-      }
-      if(view_it!=views.end()) {
-        (*view_it)->get_buffer()->begin_user_action();
-        for(auto offset_it=usage.offsets.rbegin();offset_it!=usage.offsets.rend();++offset_it) {
-          auto start_iter=(*view_it)->get_iter_at_line_pos(offset_it->first.line, offset_it->first.index);
-          auto end_iter=(*view_it)->get_iter_at_line_pos(offset_it->second.line, offset_it->second.index);
-          (*view_it)->get_buffer()->erase(start_iter, end_iter);
-          start_iter=(*view_it)->get_iter_at_line_pos(offset_it->first.line, offset_it->first.index);
-          (*view_it)->get_buffer()->insert(start_iter, text);
-        }
-        (*view_it)->get_buffer()->end_user_action();
-        (*view_it)->save();
-        usages_renamed.emplace_back(&usage);
-      }
-      else {
-        Glib::ustring buffer;
-        {
-          std::ifstream stream(usage.path.string(), std::ifstream::binary);
-          if(stream)
-            buffer.assign(std::istreambuf_iterator<char>(stream), std::istreambuf_iterator<char>());
-        }
-        std::ofstream stream(usage.path.string(), std::ifstream::binary);
-        if(!buffer.empty() && stream) {
-          std::vector<size_t> lines_start_pos={0};
-          for(size_t c=0;c<buffer.size();++c) {
-            if(buffer[c]=='\n')
-              lines_start_pos.emplace_back(c+1);
+          catch(...) {
+            usages.clear();
           }
+        }
+        result_processed.set_value();
+      });
+      result_processed.get_future().get();
+      
+      std::vector<Usages*> usages_renamed;
+      for(auto &usage: usages) {
+        auto view_it=views.end();
+        for(auto it=views.begin();it!=views.end();++it) {
+          if((*it)->file_path==usage.path) {
+            view_it=it;
+            break;
+          }
+        }
+        if(view_it!=views.end()) {
+          (*view_it)->get_buffer()->begin_user_action();
           for(auto offset_it=usage.offsets.rbegin();offset_it!=usage.offsets.rend();++offset_it) {
-            auto start_line=offset_it->first.line;
-            auto end_line=offset_it->second.line;
-            if(start_line<lines_start_pos.size() && end_line<lines_start_pos.size()) {
-              auto start=lines_start_pos[start_line]+offset_it->first.index;
-              auto end=lines_start_pos[end_line]+offset_it->second.index;
-              if(start<buffer.size() && end<=buffer.size())
-                buffer.replace(start, end-start, text);
-            }
+            auto start_iter=(*view_it)->get_iter_at_line_pos(offset_it->first.line, offset_it->first.index);
+            auto end_iter=(*view_it)->get_iter_at_line_pos(offset_it->second.line, offset_it->second.index);
+            (*view_it)->get_buffer()->erase(start_iter, end_iter);
+            start_iter=(*view_it)->get_iter_at_line_pos(offset_it->first.line, offset_it->first.index);
+            (*view_it)->get_buffer()->insert(start_iter, text);
           }
-          stream.write(buffer.data(), buffer.bytes());
+          (*view_it)->get_buffer()->end_user_action();
+          (*view_it)->save();
           usages_renamed.emplace_back(&usage);
         }
-        else
-          Terminal::get().print("Error: could not write to file "+usage.path.string()+'\n', true);
+        else {
+          Glib::ustring buffer;
+          {
+            std::ifstream stream(usage.path.string(), std::ifstream::binary);
+            if(stream)
+              buffer.assign(std::istreambuf_iterator<char>(stream), std::istreambuf_iterator<char>());
+          }
+          std::ofstream stream(usage.path.string(), std::ifstream::binary);
+          if(!buffer.empty() && stream) {
+            std::vector<size_t> lines_start_pos={0};
+            for(size_t c=0;c<buffer.size();++c) {
+              if(buffer[c]=='\n')
+                lines_start_pos.emplace_back(c+1);
+            }
+            for(auto offset_it=usage.offsets.rbegin();offset_it!=usage.offsets.rend();++offset_it) {
+              auto start_line=offset_it->first.line;
+              auto end_line=offset_it->second.line;
+              if(start_line<lines_start_pos.size() && end_line<lines_start_pos.size()) {
+                auto start=lines_start_pos[start_line]+offset_it->first.index;
+                auto end=lines_start_pos[end_line]+offset_it->second.index;
+                if(start<buffer.size() && end<=buffer.size())
+                  buffer.replace(start, end-start, text);
+              }
+            }
+            stream.write(buffer.data(), buffer.bytes());
+            usages_renamed.emplace_back(&usage);
+          }
+          else
+            Terminal::get().print("Error: could not write to file "+usage.path.string()+'\n', true);
+        }
       }
-    }
-    
-    if(!usages_renamed.empty()) {
-      Terminal::get().print("Renamed ");
-      Terminal::get().print(previous_text, true);
-      Terminal::get().print(" to ");
-      Terminal::get().print(text, true);
-      Terminal::get().print("\n");
-    }
-  };
+      
+      if(!usages_renamed.empty()) {
+        Terminal::get().print("Renamed ");
+        Terminal::get().print(previous_text, true);
+        Terminal::get().print(" to ");
+        Terminal::get().print(text, true);
+        Terminal::get().print("\n");
+      }
+    };
+  }
   
   goto_next_diagnostic=[this]() {
     auto insert_offset=get_buffer()->get_insert()->get_iter().get_offset();
@@ -790,6 +805,9 @@ void Source::LanguageProtocolView::show_diagnostic_tooltips(const Gdk::Rectangle
 }
 
 void Source::LanguageProtocolView::show_type_tooltips(const Gdk::Rectangle &rectangle) {
+  if(!capabilities.hover)
+    return;
+  
   Gtk::TextIter iter;
   int location_x, location_y;
   window_to_buffer_coords(Gtk::TextWindowType::TEXT_WINDOW_TEXT, rectangle.get_x(), rectangle.get_y(), location_x, location_y);
@@ -817,7 +835,7 @@ void Source::LanguageProtocolView::show_type_tooltips(const Gdk::Rectangle &rect
               tooltip_buffer->insert_with_tag(tooltip_buffer->get_insert()->get_iter(), "Type: "+value, "def:note");
               
 #ifdef JUCI_ENABLE_DEBUG
-              if(language_id=="rust") {
+              if(language_id=="rust" && capabilities.definition) {
                 if(Debug::LLDB::get().is_stopped()) {
                   Glib::ustring value_type="Value";
                   
@@ -867,6 +885,9 @@ void Source::LanguageProtocolView::show_type_tooltips(const Gdk::Rectangle &rect
 }
 
 void Source::LanguageProtocolView::tag_similar_symbols() {
+  if(!capabilities.document_highlight && !capabilities.references)
+    return;
+  
   auto iter=get_buffer()->get_insert()->get_iter();
   std::vector<std::pair<Offset, Offset>> offsets;
   std::promise<void> result_processed;
@@ -931,6 +952,9 @@ Source::Offset Source::LanguageProtocolView::get_declaration(const Gtk::TextIter
 }
 
 void Source::LanguageProtocolView::setup_autocomplete() {
+  if(!capabilities.completion)
+    return;
+  
   non_interactive_completion=[this] {
     if(CompletionDialog::get() && CompletionDialog::get()->is_visible())
       return;

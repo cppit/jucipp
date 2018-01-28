@@ -28,8 +28,15 @@ namespace LanguageProtocol {
                                   FULL,
                                   INCREMENTAL };
     TextDocumentSync text_document_sync;
+    bool hover;
+    bool completion;
+    bool definition;
+    bool references;
     bool document_highlight;
     bool workspace_symbol;
+    bool document_formatting;
+    bool document_range_formatting;
+    bool rename;
   };
 
   class Client {
