@@ -431,6 +431,13 @@ void Source::LanguageProtocolView::setup_navigation_and_refactoring() {
         Info::get().print("No declaration found");
       return offset;
     };
+    get_declaration_or_implementation_locations=[this]() {
+      std::vector<Offset> offsets;
+      auto offset=get_declaration_location();
+      if(offset)
+        offsets.emplace_back(std::move(offset));
+      return offsets;
+    };
   }
   
   if(capabilities.references) {
