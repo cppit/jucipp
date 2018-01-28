@@ -219,9 +219,9 @@ void LanguageProtocol::Client::parse_server_message() {
 
 void LanguageProtocol::Client::write_request(const std::string &method, const std::string &params, std::function<void(const boost::property_tree::ptree &, bool error)> &&function) {
   std::unique_lock<std::mutex> lock(read_write_mutex);
-  if(function)
+  if(function) {
     handlers.emplace(message_id, std::move(function));
-  {
+    
     auto message_id=this->message_id;
     std::unique_lock<std::mutex> lock(timeout_threads_mutex);
     timeout_threads.emplace_back([this, message_id] {
@@ -248,7 +248,8 @@ void LanguageProtocol::Client::write_request(const std::string &method, const st
   if(output_messages_and_errors)
     std::cout << "Language client: " << content << std::endl;
   if(!process->write(message)) {
-    auto id_it=handlers.find(message_id);
+    Terminal::get().async_print("Error writing to language protocol server. Please close and reopen all project source files.\n", true);
+    auto id_it=handlers.find(message_id-1);
     if(id_it!=handlers.end()) {
       auto function=std::move(id_it->second);
       handlers.erase(id_it->first);
