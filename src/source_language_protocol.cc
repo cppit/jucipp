@@ -829,64 +829,71 @@ void Source::LanguageProtocolView::show_type_tooltips(const Gdk::Rectangle &rect
   auto offset=iter.get_offset();
   client->write_request("textDocument/hover", "\"textDocument\": {\"uri\":\"file://"+file_path.string()+"\"}, \"position\": {\"line\": "+std::to_string(iter.get_line())+", \"character\": "+std::to_string(iter.get_line_offset())+"}", [this, offset](const boost::property_tree::ptree &result, bool error) {
     if(!error) {
-      auto contents=result.get_child("contents", boost::property_tree::ptree());
-      auto it=contents.begin();
-      if(it!=contents.end()) {
-        auto value=it->second.get<std::string>("value", "");
-        if(!value.empty()) {
-          dispatcher.post([this, offset, value=std::move(value)] {
-            if(offset>=get_buffer()->get_char_count())
-              return;
-            type_tooltips.clear();
-            auto create_tooltip_buffer=[this, offset, value=std::move(value)]() {
-              auto tooltip_buffer=Gtk::TextBuffer::create(get_buffer()->get_tag_table());
-              tooltip_buffer->insert_with_tag(tooltip_buffer->get_insert()->get_iter(), "Type: "+value, "def:note");
-              
+      std::string content;
+      {
+        auto contents_pt=result.get_child("contents", boost::property_tree::ptree());
+        auto contents_it=contents_pt.begin();
+        if(contents_it!=contents_pt.end())
+          content=contents_it->second.get<std::string>("value", "");
+      }
+      if(content.empty()) {
+        auto contents_it=result.find("contents");
+        if(contents_it!=result.not_found())
+          content=contents_it->second.get_value<std::string>("");
+      }
+      if(!content.empty()) {
+        dispatcher.post([this, offset, content=std::move(content)] {
+          if(offset>=get_buffer()->get_char_count())
+            return;
+          type_tooltips.clear();
+          auto create_tooltip_buffer=[this, offset, content=std::move(content)]() {
+            auto tooltip_buffer=Gtk::TextBuffer::create(get_buffer()->get_tag_table());
+            tooltip_buffer->insert_with_tag(tooltip_buffer->get_insert()->get_iter(), content, "def:note");
+            
 #ifdef JUCI_ENABLE_DEBUG
-              if(language_id=="rust" && capabilities.definition) {
-                if(Debug::LLDB::get().is_stopped()) {
-                  Glib::ustring value_type="Value";
-                  
-                  auto start=get_buffer()->get_iter_at_offset(offset);
-                  auto end=start;
-                  auto previous=start;
-                  while(previous.backward_char() && ((*previous>='A' && *previous<='Z') || (*previous>='a' && *previous<='z') || (*previous>='0' && *previous<='9') || *previous=='_') && start.backward_char()) {}
-                  while(((*end>='A' && *end<='Z') || (*end>='a' && *end<='z') || (*end>='0' && *end<='9') || *end=='_') && end.forward_char()) {}
-                  
-                  auto offset=get_declaration(start);
-                  Glib::ustring debug_value=Debug::LLDB::get().get_value(get_buffer()->get_text(start, end), offset.file_path, offset.line+1, offset.index+1);
-                  if(debug_value.empty()) {
-                    value_type="Return value";
-                    debug_value=Debug::LLDB::get().get_return_value(file_path, start.get_line()+1, start.get_line_index()+1);
-                  }
-                  if(!debug_value.empty()) {
-                    size_t pos=debug_value.find(" = ");
-                    if(pos!=Glib::ustring::npos) {
-                      Glib::ustring::iterator iter;
-                      while(!debug_value.validate(iter)) {
-                        auto next_char_iter=iter;
-                        next_char_iter++;
-                        debug_value.replace(iter, next_char_iter, "?");
-                      }
-                      tooltip_buffer->insert_with_tag(tooltip_buffer->get_insert()->get_iter(), "\n\n"+value_type+": "+debug_value.substr(pos+3, debug_value.size()-(pos+3)-1), "def:note");
+            if(language_id=="rust" && capabilities.definition) {
+              if(Debug::LLDB::get().is_stopped()) {
+                Glib::ustring value_type="Value";
+                
+                auto start=get_buffer()->get_iter_at_offset(offset);
+                auto end=start;
+                auto previous=start;
+                while(previous.backward_char() && ((*previous>='A' && *previous<='Z') || (*previous>='a' && *previous<='z') || (*previous>='0' && *previous<='9') || *previous=='_') && start.backward_char()) {}
+                while(((*end>='A' && *end<='Z') || (*end>='a' && *end<='z') || (*end>='0' && *end<='9') || *end=='_') && end.forward_char()) {}
+                
+                auto offset=get_declaration(start);
+                Glib::ustring debug_value=Debug::LLDB::get().get_value(get_buffer()->get_text(start, end), offset.file_path, offset.line+1, offset.index+1);
+                if(debug_value.empty()) {
+                  value_type="Return value";
+                  debug_value=Debug::LLDB::get().get_return_value(file_path, start.get_line()+1, start.get_line_index()+1);
+                }
+                if(!debug_value.empty()) {
+                  size_t pos=debug_value.find(" = ");
+                  if(pos!=Glib::ustring::npos) {
+                    Glib::ustring::iterator iter;
+                    while(!debug_value.validate(iter)) {
+                      auto next_char_iter=iter;
+                      next_char_iter++;
+                      debug_value.replace(iter, next_char_iter, "?");
                     }
+                    tooltip_buffer->insert_with_tag(tooltip_buffer->get_insert()->get_iter(), "\n\n"+value_type+": "+debug_value.substr(pos+3, debug_value.size()-(pos+3)-1), "def:note");
                   }
                 }
               }
+            }
 #endif
-              
-              return tooltip_buffer;
-            };
             
-            auto start=get_buffer()->get_iter_at_offset(offset);
-            auto end=start;
-            auto previous=start;
-            while(previous.backward_char() && ((*previous>='A' && *previous<='Z') || (*previous>='a' && *previous<='z') || (*previous>='0' && *previous<='9') || *previous=='_') && start.backward_char()) {}
-            while(((*end>='A' && *end<='Z') || (*end>='a' && *end<='z') || (*end>='0' && *end<='9') || *end=='_') && end.forward_char()) {}
-            type_tooltips.emplace_back(create_tooltip_buffer, this, get_buffer()->create_mark(start), get_buffer()->create_mark(end));
-            type_tooltips.show();
-          });
-        }
+            return tooltip_buffer;
+          };
+          
+          auto start=get_buffer()->get_iter_at_offset(offset);
+          auto end=start;
+          auto previous=start;
+          while(previous.backward_char() && ((*previous>='A' && *previous<='Z') || (*previous>='a' && *previous<='z') || (*previous>='0' && *previous<='9') || *previous=='_') && start.backward_char()) {}
+          while(((*end>='A' && *end<='Z') || (*end>='a' && *end<='z') || (*end>='0' && *end<='9') || *end=='_') && end.forward_char()) {}
+          type_tooltips.emplace_back(create_tooltip_buffer, this, get_buffer()->create_mark(start), get_buffer()->create_mark(end));
+          type_tooltips.show();
+        });
       }
     }
   });
@@ -1072,10 +1079,16 @@ void Source::LanguageProtocolView::setup_autocomplete() {
           for(auto it=begin;it!=end;++it) {
             auto label=it->second.get<std::string>("label", "");
             auto detail=it->second.get<std::string>("detail", "");
+            auto documentation=it->second.get<std::string>("documentation", "");
             auto insert=it->second.get<std::string>("insertText", label);
             if(!label.empty()) {
               autocomplete.rows.emplace_back(std::move(label));
               autocomplete_comment.emplace_back(std::move(detail));
+              if(!documentation.empty()) {
+                if(!autocomplete_comment.back().empty())
+                  autocomplete_comment.back()+="\n\n";
+                autocomplete_comment.back()+=documentation;
+              }
               autocomplete_insert.emplace_back(std::move(insert));
             }
           }
