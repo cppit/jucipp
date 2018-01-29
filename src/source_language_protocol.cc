@@ -523,7 +523,7 @@ void Source::LanguageProtocolView::setup_navigation_and_refactoring() {
             auto start=(*view_it)->get_buffer()->get_iter_at_line(usage.first.line);
             auto end=start;
             end.forward_to_line_end();
-            usage.second=(*view_it)->get_buffer()->get_text(start, end);
+            usage.second=Glib::Markup::escape_text((*view_it)->get_buffer()->get_text(start, end));
             embolden_token(usage.second, usage.first.index, end_offsets[c].index);
           }
         }
