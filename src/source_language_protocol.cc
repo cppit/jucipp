@@ -9,6 +9,7 @@
 #endif
 #include <regex>
 #include <future>
+#include <limits>
 
 const bool output_messages_and_errors=false;
 
@@ -581,6 +582,7 @@ void Source::LanguageProtocolView::setup_navigation_and_refactoring() {
       class Usages {
       public:
         boost::filesystem::path path;
+        std::unique_ptr<std::string> new_text;
         std::vector<std::pair<Offset, Offset>> offsets;
       };
       
@@ -600,7 +602,7 @@ void Source::LanguageProtocolView::setup_navigation_and_refactoring() {
                 auto path=file_it->first;
                 if(path.size()>=7) {
                   path.erase(0, 7);
-                  usages.emplace_back(Usages{path, std::vector<std::pair<Offset, Offset>>()});
+                  usages.emplace_back(Usages{path, nullptr, std::vector<std::pair<Offset, Offset>>()});
                   for(auto edit_it=file_it->second.begin();edit_it!=file_it->second.end();++edit_it) {
                     auto range_it=edit_it->second.find("range");
                     if(range_it!=edit_it->second.not_found()) {
@@ -609,6 +611,38 @@ void Source::LanguageProtocolView::setup_navigation_and_refactoring() {
                       if(start_it!=range_it->second.not_found() && end_it!=range_it->second.not_found())
                         usages.back().offsets.emplace_back(std::make_pair(Offset(start_it->second.get<unsigned>("line"), start_it->second.get<unsigned>("character")),
                                                                           Offset(end_it->second.get<unsigned>("line"), end_it->second.get<unsigned>("character"))));
+                    }
+                  }
+                }
+              }
+            }
+            else {
+              auto changes_pt=result.get_child("documentChanges", boost::property_tree::ptree());
+              for(auto change_it=changes_pt.begin();change_it!=changes_pt.end();++change_it) {
+                auto document_it=change_it->second.find("textDocument");
+                if(document_it!=change_it->second.not_found()) {
+                  auto path=document_it->second.get<std::string>("uri", "");
+                  if(path.size()>=7) {
+                    path.erase(0, 7);
+                    usages.emplace_back(Usages{path, std::make_unique<std::string>(), std::vector<std::pair<Offset, Offset>>()});
+                    auto edits_pt=change_it->second.get_child("edits", boost::property_tree::ptree());
+                    for(auto edit_it=edits_pt.begin();edit_it!=edits_pt.end();++edit_it) {
+                      auto new_text_it=edit_it->second.find("newText");
+                      if(new_text_it!=edit_it->second.not_found()) {
+                        auto range_it=edit_it->second.find("range");
+                        if(range_it!=edit_it->second.not_found()) {
+                          auto start_it=range_it->second.find("start");
+                          auto end_it=range_it->second.find("end");
+                          if(start_it!=range_it->second.not_found() && end_it!=range_it->second.not_found()) {
+                            auto end_line=end_it->second.get<size_t>("line");
+                            if(end_line>std::numeric_limits<int>::max())
+                              end_line=std::numeric_limits<int>::max();
+                            *usages.back().new_text=new_text_it->second.get_value<std::string>();
+                            usages.back().offsets.emplace_back(std::make_pair(Offset(start_it->second.get<unsigned>("line"), start_it->second.get<unsigned>("character")),
+                                                                              Offset(static_cast<unsigned>(end_line), end_it->second.get<unsigned>("character"))));
+                          }
+                        }
+                      }
                     }
                   }
                 }
@@ -639,7 +673,10 @@ void Source::LanguageProtocolView::setup_navigation_and_refactoring() {
             auto end_iter=(*view_it)->get_iter_at_line_pos(offset_it->second.line, offset_it->second.index);
             (*view_it)->get_buffer()->erase(start_iter, end_iter);
             start_iter=(*view_it)->get_iter_at_line_pos(offset_it->first.line, offset_it->first.index);
-            (*view_it)->get_buffer()->insert(start_iter, text);
+            if(usage.new_text)
+              (*view_it)->get_buffer()->insert(start_iter, *usage.new_text);
+            else
+              (*view_it)->get_buffer()->insert(start_iter, text);
           }
           (*view_it)->get_buffer()->end_user_action();
           (*view_it)->save();
@@ -662,11 +699,19 @@ void Source::LanguageProtocolView::setup_navigation_and_refactoring() {
             for(auto offset_it=usage.offsets.rbegin();offset_it!=usage.offsets.rend();++offset_it) {
               auto start_line=offset_it->first.line;
               auto end_line=offset_it->second.line;
-              if(start_line<lines_start_pos.size() && end_line<lines_start_pos.size()) {
+              if(start_line<lines_start_pos.size()) {
                 auto start=lines_start_pos[start_line]+offset_it->first.index;
-                auto end=lines_start_pos[end_line]+offset_it->second.index;
-                if(start<buffer.size() && end<=buffer.size())
-                  buffer.replace(start, end-start, text);
+                unsigned end;
+                if(end_line>=lines_start_pos.size())
+                  end=buffer.size();
+                else
+                  end=lines_start_pos[end_line]+offset_it->second.index;
+                if(start<buffer.size() && end<=buffer.size()) {
+                  if(usage.new_text)
+                    buffer.replace(start, end-start, *usage.new_text);
+                  else
+                    buffer.replace(start, end-start, text);
+                }
               }
             }
             stream.write(buffer.data(), buffer.bytes());
