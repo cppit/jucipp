@@ -414,6 +414,9 @@ void Source::LanguageProtocolView::setup_navigation_and_refactoring() {
       result_processed.get_future().get();
       
       get_buffer()->begin_user_action();
+      auto iter=get_buffer()->get_insert()->get_iter();
+      auto line=iter.get_line();
+      auto offset=iter.get_line_offset();
       for(auto it=replaces.rbegin();it!=replaces.rend();++it) {
         auto start=get_iter_at_line_pos(it->start.line, it->start.index);
         auto end=get_iter_at_line_pos(it->end.line, it->end.index);
@@ -421,6 +424,11 @@ void Source::LanguageProtocolView::setup_navigation_and_refactoring() {
         start=get_iter_at_line_pos(it->start.line, it->start.index);
         unescape_text(it->text);
         get_buffer()->insert(start, it->text);
+      }
+      if(get_buffer()->get_insert()->get_iter().is_end()) {
+        place_cursor_at_line_offset(line, offset);
+        hide_tooltips();
+        scroll_to_cursor_delayed(this, true, false);
       }
       get_buffer()->end_user_action();
     };
@@ -668,6 +676,9 @@ void Source::LanguageProtocolView::setup_navigation_and_refactoring() {
         }
         if(view_it!=views.end()) {
           (*view_it)->get_buffer()->begin_user_action();
+          auto iter=get_buffer()->get_insert()->get_iter();
+          auto line=iter.get_line();
+          auto offset=iter.get_line_offset();
           for(auto offset_it=usage.offsets.rbegin();offset_it!=usage.offsets.rend();++offset_it) {
             auto start_iter=(*view_it)->get_iter_at_line_pos(offset_it->first.line, offset_it->first.index);
             auto end_iter=(*view_it)->get_iter_at_line_pos(offset_it->second.line, offset_it->second.index);
@@ -677,6 +688,11 @@ void Source::LanguageProtocolView::setup_navigation_and_refactoring() {
               (*view_it)->get_buffer()->insert(start_iter, *usage.new_text);
             else
               (*view_it)->get_buffer()->insert(start_iter, text);
+          }
+          if(usage.new_text && get_buffer()->get_insert()->get_iter().is_end()) {
+            place_cursor_at_line_offset(line, offset);
+            hide_tooltips();
+            scroll_to_cursor_delayed(this, true, false);
           }
           (*view_it)->get_buffer()->end_user_action();
           (*view_it)->save();
