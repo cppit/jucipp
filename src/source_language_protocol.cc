@@ -601,8 +601,14 @@ void Source::LanguageProtocolView::setup_navigation_and_refactoring() {
       auto iter=get_buffer()->get_insert()->get_iter();
       std::vector<Usages> usages;
       std::promise<void> result_processed;
-      client->write_request("textDocument/rename", "\"textDocument\":{\"uri\":\""+uri+"\"}, \"position\": {\"line\": "+std::to_string(iter.get_line())+", \"character\": "+std::to_string(iter.get_line_offset())+"}, \"newName\": \""+text+"\"", [&usages, &result_processed](const boost::property_tree::ptree &result, bool error) {
+      client->write_request("textDocument/rename", "\"textDocument\":{\"uri\":\""+uri+"\"}, \"position\": {\"line\": "+std::to_string(iter.get_line())+", \"character\": "+std::to_string(iter.get_line_offset())+"}, \"newName\": \""+text+"\"", [this, &usages, &result_processed](const boost::property_tree::ptree &result, bool error) {
         if(!error) {
+          boost::filesystem::path project_path;
+          auto build=Project::Build::create(file_path);
+          if(!build->project_path.empty())
+            project_path=build->project_path;
+          else
+            project_path=file_path.parent_path();
           try {
             auto changes_it=result.find("changes");
             if(changes_it!=result.not_found()) {
@@ -610,15 +616,17 @@ void Source::LanguageProtocolView::setup_navigation_and_refactoring() {
                 auto path=file_it->first;
                 if(path.size()>=7) {
                   path.erase(0, 7);
-                  usages.emplace_back(Usages{path, nullptr, std::vector<std::pair<Offset, Offset>>()});
-                  for(auto edit_it=file_it->second.begin();edit_it!=file_it->second.end();++edit_it) {
-                    auto range_it=edit_it->second.find("range");
-                    if(range_it!=edit_it->second.not_found()) {
-                      auto start_it=range_it->second.find("start");
-                      auto end_it=range_it->second.find("end");
-                      if(start_it!=range_it->second.not_found() && end_it!=range_it->second.not_found())
-                        usages.back().offsets.emplace_back(std::make_pair(Offset(start_it->second.get<unsigned>("line"), start_it->second.get<unsigned>("character")),
-                                                                          Offset(end_it->second.get<unsigned>("line"), end_it->second.get<unsigned>("character"))));
+                  if(filesystem::file_in_path(path, project_path)) {
+                    usages.emplace_back(Usages{path, nullptr, std::vector<std::pair<Offset, Offset>>()});
+                    for(auto edit_it=file_it->second.begin();edit_it!=file_it->second.end();++edit_it) {
+                      auto range_it=edit_it->second.find("range");
+                      if(range_it!=edit_it->second.not_found()) {
+                        auto start_it=range_it->second.find("start");
+                        auto end_it=range_it->second.find("end");
+                        if(start_it!=range_it->second.not_found() && end_it!=range_it->second.not_found())
+                          usages.back().offsets.emplace_back(std::make_pair(Offset(start_it->second.get<unsigned>("line"), start_it->second.get<unsigned>("character")),
+                                                                            Offset(end_it->second.get<unsigned>("line"), end_it->second.get<unsigned>("character"))));
+                      }
                     }
                   }
                 }
@@ -632,22 +640,24 @@ void Source::LanguageProtocolView::setup_navigation_and_refactoring() {
                   auto path=document_it->second.get<std::string>("uri", "");
                   if(path.size()>=7) {
                     path.erase(0, 7);
-                    usages.emplace_back(Usages{path, std::make_unique<std::string>(), std::vector<std::pair<Offset, Offset>>()});
-                    auto edits_pt=change_it->second.get_child("edits", boost::property_tree::ptree());
-                    for(auto edit_it=edits_pt.begin();edit_it!=edits_pt.end();++edit_it) {
-                      auto new_text_it=edit_it->second.find("newText");
-                      if(new_text_it!=edit_it->second.not_found()) {
-                        auto range_it=edit_it->second.find("range");
-                        if(range_it!=edit_it->second.not_found()) {
-                          auto start_it=range_it->second.find("start");
-                          auto end_it=range_it->second.find("end");
-                          if(start_it!=range_it->second.not_found() && end_it!=range_it->second.not_found()) {
-                            auto end_line=end_it->second.get<size_t>("line");
-                            if(end_line>std::numeric_limits<int>::max())
-                              end_line=std::numeric_limits<int>::max();
-                            *usages.back().new_text=new_text_it->second.get_value<std::string>();
-                            usages.back().offsets.emplace_back(std::make_pair(Offset(start_it->second.get<unsigned>("line"), start_it->second.get<unsigned>("character")),
-                                                                              Offset(static_cast<unsigned>(end_line), end_it->second.get<unsigned>("character"))));
+                    if(filesystem::file_in_path(path, project_path)) {
+                      usages.emplace_back(Usages{path, std::make_unique<std::string>(), std::vector<std::pair<Offset, Offset>>()});
+                      auto edits_pt=change_it->second.get_child("edits", boost::property_tree::ptree());
+                      for(auto edit_it=edits_pt.begin();edit_it!=edits_pt.end();++edit_it) {
+                        auto new_text_it=edit_it->second.find("newText");
+                        if(new_text_it!=edit_it->second.not_found()) {
+                          auto range_it=edit_it->second.find("range");
+                          if(range_it!=edit_it->second.not_found()) {
+                            auto start_it=range_it->second.find("start");
+                            auto end_it=range_it->second.find("end");
+                            if(start_it!=range_it->second.not_found() && end_it!=range_it->second.not_found()) {
+                              auto end_line=end_it->second.get<size_t>("line");
+                              if(end_line>std::numeric_limits<int>::max())
+                                end_line=std::numeric_limits<int>::max();
+                              *usages.back().new_text=new_text_it->second.get_value<std::string>();
+                              usages.back().offsets.emplace_back(std::make_pair(Offset(start_it->second.get<unsigned>("line"), start_it->second.get<unsigned>("character")),
+                                                                                Offset(static_cast<unsigned>(end_line), end_it->second.get<unsigned>("character"))));
+                            }
                           }
                         }
                       }
