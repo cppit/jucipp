@@ -390,7 +390,22 @@ void Source::LanguageProtocolView::setup_navigation_and_refactoring() {
       };
       std::vector<Replace> replaces;
       std::promise<void> result_processed;
-      client->write_request("textDocument/formatting", "\"textDocument\":{\"uri\":\""+uri+"\"},\"options\":{\"tabSize\":"+std::to_string(tab_size)+",\"insertSpaces\":"+(tab_char==' '?"true":"false")+"}", [&replaces, &result_processed](const boost::property_tree::ptree &result, bool error) {
+      
+      std::string method;
+      std::string params;
+      std::string options("\"tabSize\":"+std::to_string(tab_size)+",\"insertSpaces\":"+(tab_char==' '?"true":"false"));
+      if(get_buffer()->get_has_selection() && capabilities.document_range_formatting) {
+        method="textDocument/rangeFormatting";
+        Gtk::TextIter start, end;
+        get_buffer()->get_selection_bounds(start, end);
+        params="\"textDocument\":{\"uri\":\""+uri+"\"},\"range\":{\"start\":{\"line\":"+std::to_string(start.get_line())+",\"character\":"+std::to_string(start.get_line_offset())+"},\"end\":{\"line\":"+std::to_string(end.get_line())+",\"character\":"+std::to_string(end.get_line_offset())+"}},\"options\":{"+options+"}";
+      }
+      else {
+        method="textDocument/formatting";
+        params="\"textDocument\":{\"uri\":\""+uri+"\"},\"options\":{"+options+"}";
+      }
+      
+      client->write_request(method, params, [&replaces, &result_processed](const boost::property_tree::ptree &result, bool error) {
         if(!error) {
           for(auto it=result.begin();it!=result.end();++it) {
             auto range_it=it->second.find("range");
