@@ -14,7 +14,7 @@
 const bool output_messages_and_errors=false;
 
 LanguageProtocol::Client::Client(std::string root_uri_, std::string language_id_) : root_uri(std::move(root_uri_)), language_id(std::move(language_id_)) {
-  process = std::make_unique<TinyProcessLib::Process>(language_id+"-language-server", "",
+  process = std::make_unique<TinyProcessLib::Process>(language_id+"-language-server", root_uri,
                                                       [this](const char *bytes, size_t n) {
     server_message_stream.write(bytes, n);
     parse_server_message();
@@ -900,6 +900,7 @@ void Source::LanguageProtocolView::show_type_tooltips(const Gdk::Rectangle &rect
   auto offset=iter.get_offset();
   client->write_request("textDocument/hover", "\"textDocument\": {\"uri\":\"file://"+file_path.string()+"\"}, \"position\": {\"line\": "+std::to_string(iter.get_line())+", \"character\": "+std::to_string(iter.get_line_offset())+"}", [this, offset](const boost::property_tree::ptree &result, bool error) {
     if(!error) {
+      // hover result structure vary significantly from the different language servers
       std::string content;
       {
         auto contents_pt=result.get_child("contents", boost::property_tree::ptree());
@@ -911,6 +912,8 @@ void Source::LanguageProtocolView::show_type_tooltips(const Gdk::Rectangle &rect
         auto contents_it=result.find("contents");
         if(contents_it!=result.not_found())
           content=contents_it->second.get_value<std::string>("");
+        if(content.empty())
+          content=contents_it->second.get<std::string>("value", "");
       }
       if(!content.empty()) {
         dispatcher.post([this, offset, content=std::move(content)] {
