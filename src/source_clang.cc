@@ -21,7 +21,7 @@ Source::ClangViewParse::ClangViewParse(const boost::filesystem::path &file_path,
   Usages::Clang::erase_cache(file_path);
   
   auto tag_table=get_buffer()->get_tag_table();
-  for (auto &item : Config::get().source.clang_types) {
+  for (auto &item : clang_types()) {
     if(!tag_table->lookup(item.second)) {
       get_buffer()->create_tag(item.second);
     }
@@ -55,7 +55,7 @@ void Source::ClangViewParse::configure() {
   
   auto scheme = get_source_buffer()->get_style_scheme();
   auto tag_table=get_buffer()->get_tag_table();
-  for (auto &item : Config::get().source.clang_types) {
+  for (auto &item : clang_types()) {
     auto tag = get_buffer()->get_tag_table()->lookup(item.second);
     if(tag) {
       auto style = scheme->get_style(item.second);
@@ -208,11 +208,29 @@ void Source::ClangViewParse::soft_reparse(bool delayed) {
   }, delayed?1000:0);
 }
 
+const std::unordered_map<int, std::string> &Source::ClangViewParse::clang_types() {
+  static std::unordered_map<int, std::string> types{
+      {8, "def:function"},
+      {21, "def:function"},
+      {22, "def:identifier"},
+      {24, "def:function"},
+      {25, "def:function"},
+      {43, "def:type"},
+      {44, "def:type"},
+      {45, "def:type"},
+      {46, "def:identifier"},
+      {109, "def:string"},
+      {702, "def:statement"},
+      {705, "def:comment"}
+  };
+  return types;
+}
+
 void Source::ClangViewParse::update_syntax() {
   auto buffer=get_buffer();
   const auto apply_tag=[this, buffer](const std::pair<clangmm::Offset, clangmm::Offset> &offsets, int type) {
-    auto type_it=Config::get().source.clang_types.find(type);
-    if(type_it!=Config::get().source.clang_types.end()) {
+    auto type_it=clang_types().find(type);
+    if(type_it!=clang_types().end()) {
       last_syntax_tags.emplace(type_it->second);
       Gtk::TextIter begin_iter = buffer->get_iter_at_line_index(offsets.first.line-1, offsets.first.index-1);
       Gtk::TextIter end_iter  = buffer->get_iter_at_line_index(offsets.second.line-1, offsets.second.index-1);

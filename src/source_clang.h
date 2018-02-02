@@ -45,6 +45,7 @@ namespace Source {
   private:
     Glib::ustring parse_thread_buffer;
     
+    static const std::unordered_map<int, std::string> &clang_types();
     void update_syntax();
     std::set<std::string> last_syntax_tags;
 

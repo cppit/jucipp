@@ -113,54 +113,54 @@ const Glib::ustring menu_xml= R"RAW(<interface>
       <section>
         <item>
           <attribute name='label' translatable='yes'>_New _File</attribute>
-          <attribute name='action'>app.new_file</attribute>
+          <attribute name='action'>app.file_new_file</attribute>
         </item>
         <item>
           <attribute name='label' translatable='yes'>_New _Folder</attribute>
-          <attribute name='action'>app.new_folder</attribute>
+          <attribute name='action'>app.file_new_folder</attribute>
         </item>
         <submenu>
           <attribute name='label' translatable='yes'>_New _Project</attribute>
           <item>
             <attribute name='label' translatable='no'>C</attribute>
-            <attribute name='action'>app.new_project_c</attribute>
+            <attribute name='action'>app.file_new_project_c</attribute>
           </item>
           <item>
             <attribute name='label' translatable='no'>C++</attribute>
-            <attribute name='action'>app.new_project_cpp</attribute>
+            <attribute name='action'>app.file_new_project_cpp</attribute>
           </item>
         </submenu>
       </section>
       <section>
         <item>
           <attribute name='label' translatable='yes'>_Open _File</attribute>
-          <attribute name='action'>app.open_file</attribute>
+          <attribute name='action'>app.file_open_file</attribute>
         </item>
         <item>
           <attribute name='label' translatable='yes'>_Open _Folder</attribute>
-          <attribute name='action'>app.open_folder</attribute>
+          <attribute name='action'>app.file_open_folder</attribute>
         </item>
       </section>
       <section>
         <item>
           <attribute name='label' translatable='yes'>_Reload _File</attribute>
-          <attribute name='action'>app.reload_file</attribute>
+          <attribute name='action'>app.file_reload_file</attribute>
         </item>
       </section>
       <section>
         <item>
           <attribute name='label' translatable='yes'>_Save</attribute>
-          <attribute name='action'>app.save</attribute>
+          <attribute name='action'>app.file_save</attribute>
         </item>
         <item>
           <attribute name='label' translatable='yes'>_Save _As</attribute>
-          <attribute name='action'>app.save_as</attribute>
+          <attribute name='action'>app.file_save_as</attribute>
         </item>
       </section>
       <section>
         <item>
           <attribute name='label' translatable='yes'>_Print</attribute>
-          <attribute name='action'>app.print</attribute>
+          <attribute name='action'>app.file_print</attribute>
         </item>
       </section>
     </submenu>
@@ -343,11 +343,11 @@ const Glib::ustring menu_xml= R"RAW(<interface>
         </item>
         <item>
           <attribute name='label' translatable='yes'>_Compile _and _Run</attribute>
-          <attribute name='action'>app.compile_and_run</attribute>
+          <attribute name='action'>app.project_compile_and_run</attribute>
         </item>
         <item>
           <attribute name='label' translatable='yes'>_Compile</attribute>
-          <attribute name='action'>app.compile</attribute>
+          <attribute name='action'>app.project_compile</attribute>
         </item>
         <item>
           <attribute name='label' translatable='yes'>_Recreate _Build</attribute>
@@ -357,15 +357,15 @@ const Glib::ustring menu_xml= R"RAW(<interface>
       <section>
         <item>
           <attribute name='label' translatable='yes'>_Run _Command</attribute>
-          <attribute name='action'>app.run_command</attribute>
+          <attribute name='action'>app.project_run_command</attribute>
         </item>
         <item>
           <attribute name='label' translatable='yes'>_Kill _Last _Process</attribute>
-          <attribute name='action'>app.kill_last_running</attribute>
+          <attribute name='action'>app.project_kill_last_running</attribute>
         </item>
         <item>
           <attribute name='label' translatable='yes'>_Force _Kill _Last _Process</attribute>
-          <attribute name='action'>app.force_kill_last_running</attribute>
+          <attribute name='action'>app.project_force_kill_last_running</attribute>
         </item>
       </section>
     </submenu>
@@ -439,15 +439,15 @@ const Glib::ustring menu_xml= R"RAW(<interface>
       <section>
         <item>
           <attribute name='label' translatable='yes'>_Next _Tab</attribute>
-          <attribute name='action'>app.next_tab</attribute>
+          <attribute name='action'>app.window_next_tab</attribute>
         </item>
         <item>
           <attribute name='label' translatable='yes'>_Previous _Tab</attribute>
-          <attribute name='action'>app.previous_tab</attribute>
+          <attribute name='action'>app.window_previous_tab</attribute>
         </item>
         <item>
           <attribute name='label' translatable='yes'>_Close _Tab</attribute>
-          <attribute name='action'>app.close_tab</attribute>
+          <attribute name='action'>app.window_close_tab</attribute>
         </item>
       </section>
       <section>

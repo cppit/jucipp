@@ -85,7 +85,6 @@ public:
     bool highlight_current_line;
     bool show_line_numbers;
     
-    std::unordered_map<int, std::string> clang_types;
     std::string clang_format_style;
     unsigned clang_usages_threads;
     

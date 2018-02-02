@@ -58,20 +58,6 @@ R"RAW(
         "wrap_lines": false,
         "highlight_current_line": true,
         "show_line_numbers": true,
-        "clang_types": {
-            "8": "def:function",
-            "21": "def:function",
-            "22": "def:identifier",
-            "24": "def:function",
-            "25": "def:function",
-            "43": "def:type",
-            "44": "def:type",
-            "45": "def:type",
-            "46": "def:identifier",
-            "109": "def:string",
-            "702": "def:statement",
-            "705": "def:comment"
-        },
         "clang_format_style_comment": "IndentWidth, AccessModifierOffset and UseTab are set automatically. See http://clang.llvm.org/docs/ClangFormatStyleOptions.html",
         "clang_format_style": "ColumnLimit: 0, MaxEmptyLinesToKeep: 2, SpaceBeforeParens: Never, NamespaceIndentation: All, BreakBeforeBraces: Custom, BraceWrapping: {BeforeElse: true, BeforeCatch: true}",
         "clang_usages_threads_comment": "The number of threads used in finding usages in unparsed files. -1 corresponds to the number of cores available, and 0 disables the search",
@@ -85,21 +71,20 @@ R"RAW(
     "keybindings": {
         "preferences": "<primary>comma",
         "quit": "<primary>q",
-        "new_file": "<primary>n",
-        "new_folder": "<primary><shift>n",
-        "open_file": "<primary>o",
-        "open_folder": "<primary><shift>o",
-        "reload_file": "",
-        "save": "<primary>s",
-        "save_as": "<primary><shift>s",
-        "print": "",
+        "file_new_file": "<primary>n",
+        "file_new_folder": "<primary><shift>n",
+        "file_open_file": "<primary>o",
+        "file_open_folder": "<primary><shift>o",
+        "file_reload_file": "",
+        "file_save": "<primary>s",
+        "file_save_as": "<primary><shift>s",
+        "file_print": "",
         "edit_undo": "<primary>z",
         "edit_redo": "<primary><shift>z",
         "edit_cut": "<primary>x",
         "edit_copy": "<primary>c",
         "edit_paste": "<primary>v",
         "edit_find": "<primary>f",
-        "edit_set_tab": "",
         "source_spellcheck": "",
         "source_spellcheck_clear": "",
         "source_spellcheck_next_error": "<primary><shift>e",
@@ -128,11 +113,11 @@ R"RAW(
         "source_goto_next_diagnostic": "<primary>e",
         "source_apply_fix_its": "<control>space",
         "project_set_run_arguments": "",
-        "compile_and_run": "<primary>Return",
-        "compile": "<primary><shift>Return",
-        "run_command": "<alt>Return",
-        "kill_last_running": "<primary>Escape",
-        "force_kill_last_running": "<primary><shift>Escape",
+        "project_compile_and_run": "<primary>Return",
+        "project_compile": "<primary><shift>Return",
+        "project_run_command": "<alt>Return",
+        "project_kill_last_running": "<primary>Escape",
+        "project_force_kill_last_running": "<primary><shift>Escape",
         "debug_set_run_arguments": "",
         "debug_start_continue": "<primary>y",
         "debug_stop": "<primary><shift>y",
@@ -147,15 +132,15 @@ R"RAW(
         "debug_goto_stop": "<primary><shift>l",)RAW"
 #ifdef __linux
 R"RAW(
-        "next_tab": "<primary>Tab",
-        "previous_tab": "<primary><shift>Tab",)RAW"
+        "window_next_tab": "<primary>Tab",
+        "window_previous_tab": "<primary><shift>Tab",)RAW"
 #else
 R"RAW(
-        "next_tab": "<primary><alt>Right",
-        "previous_tab": "<primary><alt>Left",)RAW"
+        "window_next_tab": "<primary><alt>Right",
+        "window_previous_tab": "<primary><alt>Left",)RAW"
 #endif
 R"RAW(
-        "close_tab": "<primary>w",
+        "window_close_tab": "<primary>w",
         "window_toggle_split": "",)RAW"
 #ifdef __APPLE__
 R"RAW(

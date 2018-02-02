@@ -148,7 +148,7 @@ void Window::set_menu_actions() {
     close();
   });
   
-  menu.add_action("new_file", [this]() {
+  menu.add_action("file_new_file", [this]() {
     boost::filesystem::path path = Dialog::new_file(Notebook::get().get_current_folder());
     if(path!="") {
       if(boost::filesystem::exists(path)) {
@@ -168,7 +168,7 @@ void Window::set_menu_actions() {
       }
     }
   });
-  menu.add_action("new_folder", [this]() {
+  menu.add_action("file_new_folder", [this]() {
     auto time_now=std::chrono::system_clock::to_time_t(std::chrono::system_clock::now());
     boost::filesystem::path path = Dialog::new_folder(Notebook::get().get_current_folder());
     if(path!="" && boost::filesystem::exists(path)) {
@@ -184,7 +184,7 @@ void Window::set_menu_actions() {
       Directories::get().select(path);
     }
   });
-  menu.add_action("new_project_c", [this]() {
+  menu.add_action("file_new_project_c", [this]() {
     boost::filesystem::path project_path = Dialog::new_folder(Notebook::get().get_current_folder());
     if(project_path!="") {
       auto project_name=project_path.filename().string();
@@ -216,7 +216,7 @@ void Window::set_menu_actions() {
         Terminal::get().print("Error: Could not create project "+project_path.string()+"\n", true);
     }
   });
-  menu.add_action("new_project_cpp", [this]() {
+  menu.add_action("file_new_project_cpp", [this]() {
     boost::filesystem::path project_path = Dialog::new_folder(Notebook::get().get_current_folder());
     if(project_path!="") {
       auto project_name=project_path.filename().string();
@@ -249,7 +249,7 @@ void Window::set_menu_actions() {
     }
   });
   
-  menu.add_action("open_file", [this]() {
+  menu.add_action("file_open_file", [this]() {
     auto folder_path=Notebook::get().get_current_folder();
     if(auto view=Notebook::get().get_current_view()) {
       if(!Directories::get().path.empty() && !filesystem::file_in_path(view->file_path, Directories::get().path))
@@ -259,13 +259,13 @@ void Window::set_menu_actions() {
     if(path!="")
       Notebook::get().open(path);
   });
-  menu.add_action("open_folder", [this]() {
+  menu.add_action("file_open_folder", [this]() {
     auto path = Dialog::open_folder(Notebook::get().get_current_folder());
     if (path!="" && boost::filesystem::exists(path))
       Directories::get().open(path);
   });
   
-  menu.add_action("reload_file", [this]() {
+  menu.add_action("file_reload_file", [this]() {
     if(auto view=Notebook::get().get_current_view()) {
       Gtk::MessageDialog dialog(*static_cast<Gtk::Window*>(get_toplevel()), "Reload file!", false, Gtk::MESSAGE_QUESTION, Gtk::BUTTONS_YES_NO);
       dialog.set_default_response(Gtk::RESPONSE_YES);
@@ -299,7 +299,7 @@ void Window::set_menu_actions() {
     }
   });
   
-  menu.add_action("save", [this]() {
+  menu.add_action("file_save", [this]() {
     if(auto view=Notebook::get().get_current_view()) {
       if(Notebook::get().save_current()) {
         if(view->file_path==Config::get().home_juci_path/"config"/"config.json") {
@@ -312,7 +312,7 @@ void Window::set_menu_actions() {
       }
     }
   });
-  menu.add_action("save_as", [this]() {
+  menu.add_action("file_save_as", [this]() {
     if(auto view=Notebook::get().get_current_view()) {
       auto path = Dialog::save_file_as(view->file_path);
       if(path!="") {
@@ -331,7 +331,7 @@ void Window::set_menu_actions() {
     }
   });
   
-  menu.add_action("print", [this]() {
+  menu.add_action("file_print", [this]() {
     if(auto view=Notebook::get().get_current_view()) {
       auto print_operation=Gtk::PrintOperation::create();
       auto print_compositor=Gsv::PrintCompositor::create(*view);
@@ -948,7 +948,7 @@ void Window::set_menu_actions() {
     });
     EntryBox::get().show();
   });
-  menu.add_action("compile_and_run", [this]() {
+  menu.add_action("project_compile_and_run", [this]() {
     if(Project::compiling || Project::debugging) {
       Info::get().print("Compile or debug in progress");
       return;
@@ -961,7 +961,7 @@ void Window::set_menu_actions() {
     
     Project::current->compile_and_run();
   });
-  menu.add_action("compile", [this]() {
+  menu.add_action("project_compile", [this]() {
     if(Project::compiling || Project::debugging) {
       Info::get().print("Compile or debug in progress");
       return;
@@ -985,7 +985,7 @@ void Window::set_menu_actions() {
     Project::current->recreate_build();
   });
   
-  menu.add_action("run_command", [this]() {
+  menu.add_action("project_run_command", [this]() {
     EntryBox::get().clear();
     EntryBox::get().labels.emplace_back();
     auto label_it=EntryBox::get().labels.begin();
@@ -1013,10 +1013,10 @@ void Window::set_menu_actions() {
     EntryBox::get().show();
   });
   
-  menu.add_action("kill_last_running", [this]() {
+  menu.add_action("project_kill_last_running", [this]() {
     Terminal::get().kill_last_async_process();
   });
-  menu.add_action("force_kill_last_running", [this]() {
+  menu.add_action("project_force_kill_last_running", [this]() {
     Terminal::get().kill_last_async_process(true);
   });
   
@@ -1141,13 +1141,13 @@ void Window::set_menu_actions() {
   Project::debug_update_status("");
 #endif
   
-  menu.add_action("next_tab", [this]() {
+  menu.add_action("window_next_tab", [this]() {
     Notebook::get().next();
   });
-  menu.add_action("previous_tab", [this]() {
+  menu.add_action("window_previous_tab", [this]() {
     Notebook::get().previous();
   });
-  menu.add_action("close_tab", [this]() {
+  menu.add_action("window_close_tab", [this]() {
     if(Notebook::get().get_current_view())
       Notebook::get().close_current();
   });
@@ -1172,7 +1172,7 @@ void Window::activate_menu_items() {
   auto &menu = Menu::get();
   auto view=Notebook::get().get_current_view();
   
-  menu.actions["reload_file"]->set_enabled(view);
+  menu.actions["file_reload_file"]->set_enabled(view);
   menu.actions["source_spellcheck"]->set_enabled(view);
   menu.actions["source_spellcheck_clear"]->set_enabled(view);
   menu.actions["source_spellcheck_next_error"]->set_enabled(view);
