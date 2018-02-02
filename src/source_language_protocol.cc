@@ -1238,6 +1238,17 @@ void Source::LanguageProtocolView::setup_autocomplete() {
     get_buffer()->erase(CompletionDialog::get()->start_mark->get_iter(), get_buffer()->get_insert()->get_iter());
     if(hide_window) {
       Glib::ustring insert=autocomplete_insert[index];
+      
+      // Do not insert function/template parameters if they already exist
+      auto iter=get_buffer()->get_insert()->get_iter();
+      if(*iter=='(' || *iter=='<') {
+        auto bracket_pos=insert.find(*iter);
+        if(bracket_pos!=std::string::npos) {
+          insert=insert.substr(0, bracket_pos);
+        }
+      }
+      
+      // Find and add position marks that one can move to using tab-key
       size_t pos1=0;
       std::vector<std::pair<size_t, size_t>> mark_offsets;
       while((pos1=insert.find("${"), pos1)!=Glib::ustring::npos) {
