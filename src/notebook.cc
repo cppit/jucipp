@@ -450,27 +450,6 @@ bool Notebook::save_current() {
   return false;
 }
 
-void Notebook::save_session() {
-  try {
-    boost::property_tree::ptree pt_root, pt_files;
-    pt_root.put("folder", Directories::get().path.string());
-    for(size_t notebook_index=0;notebook_index<notebooks.size();++notebook_index) {
-      for(int page=0;page<notebooks[notebook_index].get_n_pages();++page) {
-        auto view=get_view(notebook_index, page);
-        boost::property_tree::ptree pt_child;
-        pt_child.put("notebook", notebook_index);
-        pt_child.put("file", view->file_path.string());
-        pt_files.push_back(std::make_pair("", pt_child));
-      }
-    }
-    pt_root.add_child("files", pt_files);
-    if(auto view=Notebook::get().get_current_view())
-      pt_root.put("current_file", view->file_path.string());
-    boost::property_tree::write_json((Config::get().home_juci_path/"last_session.json").string(), pt_root);
-  }
-  catch(const std::exception &) {}
-}
-
 bool Notebook::close(size_t index) {
   if(auto view=get_view(index)) {
     if(view->get_buffer()->get_modified()){
@@ -609,6 +588,17 @@ boost::filesystem::path Notebook::get_current_folder() {
     return view->file_path.parent_path();
   else
     return boost::filesystem::path();
+}
+
+std::vector<std::pair<size_t, Source::View *>> Notebook::get_notebook_views() {
+  std::vector<std::pair<size_t, Source::View *>> notebook_views;
+  for(size_t notebook_index=0;notebook_index<notebooks.size();++notebook_index) {
+    for(int page=0;page<notebooks[notebook_index].get_n_pages();++page) {
+      if(auto view=get_view(notebook_index, page))
+        notebook_views.emplace_back(notebook_index, view);
+    }
+  }
+  return notebook_views;
 }
 
 void Notebook::update_status(Source::View *view) {

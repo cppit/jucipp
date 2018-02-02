@@ -19,15 +19,13 @@
 
 boost::filesystem::path Project::debug_last_stop_file_path;
 std::unordered_map<std::string, std::string> Project::run_arguments;
-std::unordered_map<std::string, std::string> Project::debug_run_arguments;
+std::unordered_map<std::string, Project::DebugRunArguments> Project::debug_run_arguments;
 std::atomic<bool> Project::compiling(false);
 std::atomic<bool> Project::debugging(false);
 std::pair<boost::filesystem::path, std::pair<int, int> > Project::debug_stop;
 std::string Project::debug_status;
 std::shared_ptr<Project::Base> Project::current;
-#ifdef JUCI_ENABLE_DEBUG
-std::unordered_map<std::string, Project::LLDB::DebugOptions> Project::LLDB::debug_options;
-#endif
+std::unique_ptr<Project::DebugOptions> Project::Base::debug_options;
 
 Gtk::Label &Project::debug_status_label() {
   static Gtk::Label label;
@@ -256,32 +254,6 @@ void Project::Base::debug_start() {
 }
 
 #ifdef JUCI_ENABLE_DEBUG
-Project::LLDB::DebugOptions::DebugOptions() : Base::DebugOptions() {
-  remote_enabled.set_active(false);
-  remote_enabled.set_label("Enabled");
-  remote_enabled.signal_clicked().connect([this] {
-    remote_host.set_sensitive(remote_enabled.get_active());
-  });
-  remote_host.set_sensitive(false);
-  remote_host.set_placeholder_text("host:port");
-  remote_host.signal_activate().connect([this] {
-    set_visible(false);
-  });
-  
-  auto remote_vbox=Gtk::manage(new Gtk::Box(Gtk::Orientation::ORIENTATION_VERTICAL));
-  remote_vbox->pack_start(remote_enabled, true, true);
-  remote_vbox->pack_end(remote_host, true, true);
-  
-  auto remote_frame=Gtk::manage(new Gtk::Frame());
-  remote_frame->set_label("Remote Debugging");
-  remote_frame->add(*remote_vbox);
-  
-  vbox.pack_end(*remote_frame, true, true);
-  
-  show_all();
-  set_visible(false);
-}
-
 std::pair<std::string, std::string> Project::LLDB::debug_get_run_arguments() {
   auto debug_build_path=build->get_debug_path();
   auto default_build_path=build->get_default_path();
@@ -292,7 +264,7 @@ std::pair<std::string, std::string> Project::LLDB::debug_get_run_arguments() {
   auto run_arguments_it=debug_run_arguments.find(project_path);
   std::string arguments;
   if(run_arguments_it!=debug_run_arguments.end())
-    arguments=run_arguments_it->second;
+    arguments=run_arguments_it->second.arguments;
   
   if(arguments.empty()) {
     auto view=Notebook::get().get_current_view();
@@ -311,10 +283,47 @@ std::pair<std::string, std::string> Project::LLDB::debug_get_run_arguments() {
   return {project_path, arguments};
 }
 
-Gtk::Popover *Project::LLDB::debug_get_options() {
-  if(!build->project_path.empty())
-    return &debug_options[build->project_path.string()];
-  return nullptr;
+Project::DebugOptions *Project::LLDB::debug_get_options() {
+  if(build->project_path.empty())
+    return nullptr;
+  
+  debug_options=std::make_unique<DebugOptions>();
+  
+  auto &arguments=Project::debug_run_arguments[build->project_path.string()];
+  
+  auto remote_enabled=Gtk::manage(new Gtk::CheckButton());
+  auto remote_host_port=Gtk::manage(new Gtk::Entry());
+  remote_enabled->set_active(arguments.remote_enabled);
+  remote_enabled->set_label("Enabled");
+  remote_enabled->signal_clicked().connect([remote_enabled, remote_host_port] {
+    remote_host_port->set_sensitive(remote_enabled->get_active());
+  });
+  
+  remote_host_port->set_sensitive(arguments.remote_enabled);
+  remote_host_port->set_text(arguments.remote_host_port);
+  remote_host_port->set_placeholder_text("host:port");
+  remote_host_port->signal_activate().connect([] {
+    debug_options->hide();
+  });
+  
+  auto self=this->shared_from_this();
+  debug_options->signal_hide().connect([self, remote_enabled, remote_host_port] {
+    auto &arguments=Project::debug_run_arguments[self->build->project_path.string()];
+    arguments.remote_enabled=remote_enabled->get_active();
+    arguments.remote_host_port=remote_host_port->get_text();
+  });
+  
+  auto remote_vbox=Gtk::manage(new Gtk::Box(Gtk::Orientation::ORIENTATION_VERTICAL));
+  remote_vbox->pack_start(*remote_enabled, true, true);
+  remote_vbox->pack_end(*remote_host_port, true, true);
+  
+  auto remote_frame=Gtk::manage(new Gtk::Frame());
+  remote_frame->set_label("Remote Debugging");
+  remote_frame->add(*remote_vbox);
+  
+  debug_options->vbox.pack_end(*remote_frame, true, true);
+  
+  return debug_options.get();
 }
 
 void Project::LLDB::debug_start() {
@@ -328,7 +337,7 @@ void Project::LLDB::debug_start() {
   auto run_arguments_it=debug_run_arguments.find(project_path->string());
   auto run_arguments=std::make_shared<std::string>();
   if(run_arguments_it!=debug_run_arguments.end())
-    *run_arguments=run_arguments_it->second;
+    *run_arguments=run_arguments_it->second.arguments;
   
   if(run_arguments->empty()) {
     auto view=Notebook::get().get_current_view();
@@ -368,9 +377,9 @@ void Project::LLDB::debug_start() {
         }
         
         std::string remote_host;
-        auto options_it=debug_options.find(project_path->string());
-        if(options_it!=debug_options.end() && options_it->second.remote_enabled.get_active())
-          remote_host=options_it->second.remote_host.get_text();
+        auto debug_run_arguments_it=debug_run_arguments.find(project_path->string());
+        if(debug_run_arguments_it!=debug_run_arguments.end() && debug_run_arguments_it->second.remote_enabled)
+          remote_host=debug_run_arguments_it->second.remote_host_port;
         
         static auto on_exit_it=Debug::LLDB::get().on_exit.end();
         if(on_exit_it!=Debug::LLDB::get().on_exit.end())

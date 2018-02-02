@@ -37,7 +37,6 @@ public:
   void configure(size_t index);
   bool save(size_t index);
   bool save_current();
-  void save_session();
   bool close(size_t index);
   bool close_current();
   void next();
@@ -46,6 +45,7 @@ public:
   /// Hide/Show tabs.		
   void toggle_tabs();
   boost::filesystem::path get_current_folder();
+  std::vector<std::pair<size_t, Source::View*>> get_notebook_views();
 
   Gtk::Label status_location;
   Gtk::Label status_file_path;

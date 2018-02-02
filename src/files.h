@@ -6,10 +6,6 @@
 /// the changes to user's ~/.juci/config/config.json files
 const std::string default_config_file = R"RAW({
     "version": ")RAW"+std::string(JUCI_VERSION)+R"RAW(",
-    "default_window_size": {
-        "width": 800,
-        "height": 600
-    },
     "gtk_theme": {
         "name_comment": "Use \"\" for default theme, At least these two exist on all systems: Adwaita, Raleigh",
         "name": "",

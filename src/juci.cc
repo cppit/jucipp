@@ -46,30 +46,14 @@ int Application::on_command_line(const Glib::RefPtr<Gio::ApplicationCommandLine>
 }
 
 void Application::on_activate() {
+  std::vector<std::pair<int, int>> file_offsets;
+  std::string current_file;
+  Window::get().load_session(directories, files, file_offsets, current_file, directories.empty() && files.empty());
+  
+  Window::get().add_widgets();
+  
   add_window(Window::get());
   Window::get().show();
-  
-  std::string last_current_file;
-  
-  if(directories.empty() && files.empty()) {
-    try {
-      boost::property_tree::ptree pt;
-      boost::property_tree::read_json((Config::get().home_juci_path/"last_session.json").string(), pt);
-      auto folder=pt.get<std::string>("folder");
-      if(!folder.empty() && boost::filesystem::exists(folder) && boost::filesystem::is_directory(folder))
-        directories.emplace_back(folder);
-      for(auto &pt_file: pt.get_child("files")) {
-        auto notebook=pt_file.second.get<size_t>("notebook", -1);
-        auto file=pt_file.second.get<std::string>("file", "");
-        if(!file.empty() && boost::filesystem::exists(file) && !boost::filesystem::is_directory(file))
-          files.emplace_back(file, notebook);
-      }
-      last_current_file=pt.get<std::string>("current_file");
-      if(!boost::filesystem::exists(last_current_file) || boost::filesystem::is_directory(last_current_file))
-        last_current_file.clear();
-    }
-    catch(const std::exception &) {}
-  }
   
   bool first_directory=true;
   for(auto &directory: directories) {
@@ -87,7 +71,7 @@ void Application::on_activate() {
         else
           it++;
       }
-      std::thread another_juci_app([this, directory, files_in_directory](){
+      std::thread another_juci_app([directory, files_in_directory](){
         Terminal::get().async_print("Executing: juci "+directory.string()+files_in_directory+"\n");
         Terminal::get().process("juci "+directory.string()+files_in_directory, "", false);
       });
@@ -95,14 +79,28 @@ void Application::on_activate() {
     }
   }
   
-  for(auto &file: files)
-    Notebook::get().open(file.first, file.second);
+  for(size_t i=0;i<files.size();++i) {
+    Notebook::get().open(files[i].first, files[i].second);
+    if(i<file_offsets.size()) {
+      if(auto view=Notebook::get().get_current_view()) {
+        view->place_cursor_at_line_offset(file_offsets[i].first, file_offsets[i].second);
+        view->scroll_to_cursor_delayed(view, true, false);
+      }
+    }
+  }
   
   for(auto &error: errors)
     Terminal::get().print(error, true);
   
-  if(!last_current_file.empty())
-    Notebook::get().open(last_current_file);
+  if(!current_file.empty()) {
+    Notebook::get().open(current_file);
+    if(auto view=Notebook::get().get_current_view()) {
+      auto iter=view->get_buffer()->get_insert()->get_iter();
+      // To update cursor history
+      view->place_cursor_at_line_offset(iter.get_line(), iter.get_line_offset());
+      view->hide_tooltips();
+    }
+  }
 }
 
 void Application::on_startup() {

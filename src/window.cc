@@ -21,95 +21,15 @@ Window::Window() {
   
   Menu::get().right_click_line_menu->attach_to_widget(*this);
   Menu::get().right_click_selected_menu->attach_to_widget(*this);
-
-  set_default_size(Config::get().window.default_size.first, Config::get().window.default_size.second);
   
-  auto directories_scrolled_window=Gtk::manage(new Gtk::ScrolledWindow());
-  directories_scrolled_window->add(Directories::get());
-  
-  auto notebook_vbox=Gtk::manage(new Gtk::Box(Gtk::Orientation::ORIENTATION_VERTICAL));
-  notebook_vbox->pack_start(Notebook::get());
-  notebook_vbox->pack_end(EntryBox::get(), Gtk::PACK_SHRINK);
-  
-  auto terminal_scrolled_window=Gtk::manage(new Gtk::ScrolledWindow());
-  terminal_scrolled_window->add(Terminal::get());
-  
-  auto notebook_and_terminal_vpaned=Gtk::manage(new Gtk::Paned(Gtk::Orientation::ORIENTATION_VERTICAL));
-  notebook_and_terminal_vpaned->set_position(static_cast<int>(0.75*Config::get().window.default_size.second));
-  notebook_and_terminal_vpaned->pack1(*notebook_vbox, Gtk::SHRINK);
-  notebook_and_terminal_vpaned->pack2(*terminal_scrolled_window, Gtk::SHRINK);
-  
-  auto hpaned=Gtk::manage(new Gtk::Paned());
-  hpaned->set_position(static_cast<int>(0.2*Config::get().window.default_size.first));
-  hpaned->pack1(*directories_scrolled_window, Gtk::SHRINK);
-  hpaned->pack2(*notebook_and_terminal_vpaned, Gtk::SHRINK);
-  
-  auto status_hbox=Gtk::manage(new Gtk::Box());
-  status_hbox->set_homogeneous(true);
-  status_hbox->pack_start(*Gtk::manage(new Gtk::Box()));
-  auto status_right_hbox=Gtk::manage(new Gtk::Box());
-  status_right_hbox->pack_end(Notebook::get().status_state, Gtk::PACK_SHRINK);
-  auto status_right_overlay=Gtk::manage(new Gtk::Overlay());
-  status_right_overlay->add(*status_right_hbox);
-  status_right_overlay->add_overlay(Notebook::get().status_diagnostics);
-  status_hbox->pack_end(*status_right_overlay);
-  
-  auto status_overlay=Gtk::manage(new Gtk::Overlay());
-  status_overlay->add(*status_hbox);
-  auto status_file_info_hbox=Gtk::manage(new Gtk::Box);
-  status_file_info_hbox->pack_start(Notebook::get().status_file_path, Gtk::PACK_SHRINK);
-  status_file_info_hbox->pack_start(Notebook::get().status_branch, Gtk::PACK_SHRINK);
-  status_file_info_hbox->pack_start(Notebook::get().status_location, Gtk::PACK_SHRINK);
-  status_overlay->add_overlay(*status_file_info_hbox);
-  status_overlay->add_overlay(Project::debug_status_label());
-  
-  auto vbox=Gtk::manage(new Gtk::Box(Gtk::Orientation::ORIENTATION_VERTICAL));
-  vbox->pack_start(*hpaned);
-  vbox->pack_start(*status_overlay, Gtk::PACK_SHRINK);
-  
-  auto overlay_vbox=Gtk::manage(new Gtk::Box(Gtk::Orientation::ORIENTATION_VERTICAL));
-  auto overlay_hbox=Gtk::manage(new Gtk::Box());
-  overlay_vbox->set_hexpand(false);
-  overlay_vbox->set_halign(Gtk::Align::ALIGN_START);
-  overlay_vbox->pack_start(Info::get(), Gtk::PACK_SHRINK, 20);
-  overlay_hbox->set_hexpand(false);
-  overlay_hbox->set_halign(Gtk::Align::ALIGN_END);
-  overlay_hbox->pack_end(*overlay_vbox, Gtk::PACK_SHRINK, 20);
-  
-  auto overlay=Gtk::manage(new Gtk::Overlay());
-  overlay->add(*vbox);
-  overlay->add_overlay(*overlay_hbox);
-  overlay->set_overlay_pass_through(*overlay_hbox, true);
-  add(*overlay);
-  
-  show_all_children();
-  Info::get().hide();
-
-  //Scroll to end of terminal whenever info is printed
-  Terminal::get().signal_size_allocate().connect([terminal_scrolled_window](Gtk::Allocation& allocation){
-    auto adjustment=terminal_scrolled_window->get_vadjustment();
-    adjustment->set_value(adjustment->get_upper()-adjustment->get_page_size());
-    Terminal::get().queue_draw();
-  });
-
-  EntryBox::get().signal_show().connect([this, hpaned, notebook_and_terminal_vpaned, notebook_vbox](){
-    hpaned->set_focus_chain({notebook_and_terminal_vpaned});
-    notebook_and_terminal_vpaned->set_focus_chain({notebook_vbox});
-    notebook_vbox->set_focus_chain({&EntryBox::get()});
-  });
-  EntryBox::get().signal_hide().connect([this, hpaned, notebook_and_terminal_vpaned, notebook_vbox](){
-    hpaned->unset_focus_chain();
-    notebook_and_terminal_vpaned->unset_focus_chain();
-    notebook_vbox->unset_focus_chain();
-  });
-  EntryBox::get().signal_hide().connect([this]() {
+  EntryBox::get().signal_hide().connect([]() {
     if(auto view=Notebook::get().get_current_view())
       view->grab_focus();
   });
 
   Notebook::get().on_change_page=[this](Source::View *view) {
     if(search_entry_shown && EntryBox::get().labels.size()>0) {
-      view->update_search_occurrences=[this](int number){
+      view->update_search_occurrences=[](int number){
         EntryBox::get().labels.begin()->update(0, std::to_string(number));
       };
       view->search_highlight(last_search, case_sensitive_search, regex_search);
@@ -170,7 +90,7 @@ Window::Window() {
     Project::current=nullptr;
   });
   
-  Gtk::Settings::get_default()->connect_property_changed("gtk-theme-name", [this] {
+  Gtk::Settings::get_default()->connect_property_changed("gtk-theme-name", [] {
     Directories::get().update();
     if(auto view=Notebook::get().get_current_view())
       Notebook::get().update_status(view);
@@ -1115,15 +1035,15 @@ void Window::set_menu_actions() {
     };
     label_it->update(0, "");
     EntryBox::get().entries.emplace_back(run_arguments.second, [this, run_arguments_first=std::move(run_arguments.first)](const std::string& content){
-      Project::debug_run_arguments[run_arguments_first]=content;
+      Project::debug_run_arguments[run_arguments_first].arguments=content;
       EntryBox::get().hide();
     }, 50);
     auto entry_it=EntryBox::get().entries.begin();
     entry_it->set_placeholder_text("Debug: Set Run Arguments");
     
     if(auto options=project->debug_get_options()) {
-      EntryBox::get().buttons.emplace_back("", [this, options]() {
-        options->set_visible(true);
+      EntryBox::get().buttons.emplace_back("", [options]() {
+        options->show_all();
       });
       EntryBox::get().buttons.back().set_image_from_icon_name("preferences-system");
       EntryBox::get().buttons.back().set_always_show_image(true);
@@ -1281,6 +1201,90 @@ void Window::activate_menu_items() {
 #endif
 }
 
+void Window::add_widgets() {
+  auto directories_scrolled_window=Gtk::manage(new Gtk::ScrolledWindow());
+  directories_scrolled_window->add(Directories::get());
+  
+  auto notebook_vbox=Gtk::manage(new Gtk::Box(Gtk::Orientation::ORIENTATION_VERTICAL));
+  notebook_vbox->pack_start(Notebook::get());
+  notebook_vbox->pack_end(EntryBox::get(), Gtk::PACK_SHRINK);
+  
+  auto terminal_scrolled_window=Gtk::manage(new Gtk::ScrolledWindow());
+  terminal_scrolled_window->add(Terminal::get());
+  
+  int width, height;
+  get_default_size(width, height);
+  
+  auto notebook_and_terminal_vpaned=Gtk::manage(new Gtk::Paned(Gtk::Orientation::ORIENTATION_VERTICAL));
+  notebook_and_terminal_vpaned->set_position(static_cast<int>(0.75*height));
+  notebook_and_terminal_vpaned->pack1(*notebook_vbox, Gtk::SHRINK);
+  notebook_and_terminal_vpaned->pack2(*terminal_scrolled_window, Gtk::SHRINK);
+  
+  auto hpaned=Gtk::manage(new Gtk::Paned());
+  hpaned->set_position(static_cast<int>(0.2*width));
+  hpaned->pack1(*directories_scrolled_window, Gtk::SHRINK);
+  hpaned->pack2(*notebook_and_terminal_vpaned, Gtk::SHRINK);
+  
+  auto status_hbox=Gtk::manage(new Gtk::Box());
+  status_hbox->set_homogeneous(true);
+  status_hbox->pack_start(*Gtk::manage(new Gtk::Box()));
+  auto status_right_hbox=Gtk::manage(new Gtk::Box());
+  status_right_hbox->pack_end(Notebook::get().status_state, Gtk::PACK_SHRINK);
+  auto status_right_overlay=Gtk::manage(new Gtk::Overlay());
+  status_right_overlay->add(*status_right_hbox);
+  status_right_overlay->add_overlay(Notebook::get().status_diagnostics);
+  status_hbox->pack_end(*status_right_overlay);
+  
+  auto status_overlay=Gtk::manage(new Gtk::Overlay());
+  status_overlay->add(*status_hbox);
+  auto status_file_info_hbox=Gtk::manage(new Gtk::Box);
+  status_file_info_hbox->pack_start(Notebook::get().status_file_path, Gtk::PACK_SHRINK);
+  status_file_info_hbox->pack_start(Notebook::get().status_branch, Gtk::PACK_SHRINK);
+  status_file_info_hbox->pack_start(Notebook::get().status_location, Gtk::PACK_SHRINK);
+  status_overlay->add_overlay(*status_file_info_hbox);
+  status_overlay->add_overlay(Project::debug_status_label());
+  
+  auto vbox=Gtk::manage(new Gtk::Box(Gtk::Orientation::ORIENTATION_VERTICAL));
+  vbox->pack_start(*hpaned);
+  vbox->pack_start(*status_overlay, Gtk::PACK_SHRINK);
+  
+  auto overlay_vbox=Gtk::manage(new Gtk::Box(Gtk::Orientation::ORIENTATION_VERTICAL));
+  auto overlay_hbox=Gtk::manage(new Gtk::Box());
+  overlay_vbox->set_hexpand(false);
+  overlay_vbox->set_halign(Gtk::Align::ALIGN_START);
+  overlay_vbox->pack_start(Info::get(), Gtk::PACK_SHRINK, 20);
+  overlay_hbox->set_hexpand(false);
+  overlay_hbox->set_halign(Gtk::Align::ALIGN_END);
+  overlay_hbox->pack_end(*overlay_vbox, Gtk::PACK_SHRINK, 20);
+  
+  auto overlay=Gtk::manage(new Gtk::Overlay());
+  overlay->add(*vbox);
+  overlay->add_overlay(*overlay_hbox);
+  overlay->set_overlay_pass_through(*overlay_hbox, true);
+  add(*overlay);
+  
+  show_all_children();
+  Info::get().hide();
+  
+  //Scroll to end of terminal whenever info is printed
+  Terminal::get().signal_size_allocate().connect([terminal_scrolled_window](Gtk::Allocation& allocation){
+    auto adjustment=terminal_scrolled_window->get_vadjustment();
+    adjustment->set_value(adjustment->get_upper()-adjustment->get_page_size());
+    Terminal::get().queue_draw();
+  });
+  
+  EntryBox::get().signal_show().connect([this, hpaned, notebook_and_terminal_vpaned, notebook_vbox](){
+    hpaned->set_focus_chain({notebook_and_terminal_vpaned});
+    notebook_and_terminal_vpaned->set_focus_chain({notebook_vbox});
+    notebook_vbox->set_focus_chain({&EntryBox::get()});
+  });
+  EntryBox::get().signal_hide().connect([this, hpaned, notebook_and_terminal_vpaned, notebook_vbox](){
+    hpaned->unset_focus_chain();
+    notebook_and_terminal_vpaned->unset_focus_chain();
+    notebook_vbox->unset_focus_chain();
+  });
+}
+
 bool Window::on_key_press_event(GdkEventKey *event) {
   if(event->keyval==GDK_KEY_Escape) {
     EntryBox::get().hide();
@@ -1321,7 +1325,7 @@ bool Window::on_key_press_event(GdkEventKey *event) {
 }
 
 bool Window::on_delete_event(GdkEventAny *event) {
-  Notebook::get().save_session();
+  save_session();
   
   for(size_t c=Notebook::get().size()-1;c!=static_cast<size_t>(-1);--c) {
     if(!Notebook::get().close(c))
@@ -1550,5 +1554,123 @@ void Window::rename_token_entry() {
         EntryBox::get().show();
       }
     }
+  }
+}
+
+void Window::save_session() {
+  try {
+    boost::property_tree::ptree root_pt;
+    root_pt.put("folder", Directories::get().path.string());
+    
+    boost::property_tree::ptree files_pt;
+    for(auto &notebook_view: Notebook::get().get_notebook_views()) {
+      boost::property_tree::ptree file_pt;
+      file_pt.put("path", notebook_view.second->file_path.string());
+      file_pt.put("notebook", notebook_view.first);
+      auto iter=notebook_view.second->get_buffer()->get_insert()->get_iter();
+      file_pt.put("line", iter.get_line());
+      file_pt.put("line_offset", iter.get_line_offset());
+      files_pt.push_back(std::make_pair("", file_pt));
+    }
+    root_pt.add_child("files", files_pt);
+    
+    boost::property_tree::ptree current_file_pt;
+    if(auto view=Notebook::get().get_current_view()) {
+      current_file_pt.put("path", view->file_path.string());
+      auto iter=view->get_buffer()->get_insert()->get_iter();
+      current_file_pt.put("line", iter.get_line());
+      current_file_pt.put("line_offset", iter.get_line_offset());
+    }
+    std::string current_path;
+    if(auto view=Notebook::get().get_current_view())
+      current_path=view->file_path.string();
+    root_pt.put("current_file", current_path);
+    
+    boost::property_tree::ptree run_arguments_pt;
+    for(auto &run_argument: Project::run_arguments) {
+      if(run_argument.second.empty())
+        continue;
+      boost::system::error_code ec;
+      if(boost::filesystem::exists(run_argument.first, ec) && boost::filesystem::is_directory(run_argument.first, ec)) {
+        boost::property_tree::ptree run_argument_pt;
+        run_argument_pt.put("path", run_argument.first);
+        run_argument_pt.put("arguments", run_argument.second);
+        run_arguments_pt.push_back(std::make_pair("", run_argument_pt));
+      }
+    }
+    root_pt.add_child("run_arguments", run_arguments_pt);
+    
+    boost::property_tree::ptree debug_run_arguments_pt;
+    for(auto &debug_run_argument: Project::debug_run_arguments) {
+      if(debug_run_argument.second.arguments.empty() && !debug_run_argument.second.remote_enabled && debug_run_argument.second.remote_host_port.empty())
+        continue;
+      boost::system::error_code ec;
+      if(boost::filesystem::exists(debug_run_argument.first, ec) && boost::filesystem::is_directory(debug_run_argument.first, ec)) {
+        boost::property_tree::ptree debug_run_argument_pt;
+        debug_run_argument_pt.put("path", debug_run_argument.first);
+        debug_run_argument_pt.put("arguments", debug_run_argument.second.arguments);
+        debug_run_argument_pt.put("remote_enabled", debug_run_argument.second.remote_enabled);
+        debug_run_argument_pt.put("remote_host_port", debug_run_argument.second.remote_host_port);
+        debug_run_arguments_pt.push_back(std::make_pair("", debug_run_argument_pt));
+      }
+    }
+    root_pt.add_child("debug_run_arguments", debug_run_arguments_pt);
+    
+    int width, height;
+    get_size(width, height);
+    boost::property_tree::ptree window_pt;
+    window_pt.put("width", width);
+    window_pt.put("height", height);
+    root_pt.add_child("window", window_pt);
+    
+    boost::property_tree::write_json((Config::get().home_juci_path/"last_session.json").string(), root_pt);
+  }
+  catch(...) {}
+}
+
+void Window::load_session(std::vector<boost::filesystem::path> &directories, std::vector<std::pair<boost::filesystem::path, size_t> > &files, std::vector<std::pair<int, int> > &file_offsets, std::string &current_file, bool read_directories_and_files) {
+  try {
+    boost::property_tree::ptree root_pt;
+    boost::property_tree::read_json((Config::get().home_juci_path/"last_session.json").string(), root_pt);
+    if(read_directories_and_files) {
+      auto folder=root_pt.get<std::string>("folder");
+      if(!folder.empty() && boost::filesystem::exists(folder) && boost::filesystem::is_directory(folder))
+        directories.emplace_back(folder);
+      
+      for(auto &file_pt: root_pt.get_child("files")) {
+        auto file=file_pt.second.get<std::string>("path");
+        auto notebook=file_pt.second.get<size_t>("notebook");
+        auto line=file_pt.second.get<int>("line");
+        auto line_offset=file_pt.second.get<int>("line_offset");
+        if(!file.empty() && boost::filesystem::exists(file) && !boost::filesystem::is_directory(file)) {
+          files.emplace_back(file, notebook);
+          file_offsets.emplace_back(line, line_offset);
+        }
+      }
+     
+      current_file=root_pt.get<std::string>("current_file");
+    }
+    
+    for(auto &run_argument: root_pt.get_child(("run_arguments"))) {
+      auto path=run_argument.second.get<std::string>("path");
+      boost::system::error_code ec;
+      if(boost::filesystem::exists(path, ec) && boost::filesystem::is_directory(path, ec))
+        Project::run_arguments.emplace(path, run_argument.second.get<std::string>("arguments"));
+    }
+    
+    for(auto &debug_run_argument: root_pt.get_child(("debug_run_arguments"))) {
+      auto path=debug_run_argument.second.get<std::string>("path");
+      boost::system::error_code ec;
+      if(boost::filesystem::exists(path, ec) && boost::filesystem::is_directory(path, ec))
+        Project::debug_run_arguments.emplace(path, Project::DebugRunArguments{debug_run_argument.second.get<std::string>("arguments"),
+                                                                              debug_run_argument.second.get<bool>("remote_enabled"),
+                                                                              debug_run_argument.second.get<std::string>("remote_host_port")});
+    }
+    
+    auto window_pt=root_pt.get_child("window");
+    set_default_size(window_pt.get<int>("width"), window_pt.get<int>("height"));
+  }
+  catch(...) {
+    set_default_size(800, 600);
   }
 }

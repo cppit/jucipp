@@ -9,13 +9,26 @@
 #include "project_build.h"
 
 namespace Project {
+  class DebugRunArguments {
+  public:
+    std::string arguments;
+    bool remote_enabled;
+    std::string remote_host_port;
+  };
+  
+  class DebugOptions : public Gtk::Popover {
+  public:
+    DebugOptions() : Gtk::Popover(), vbox(Gtk::Orientation::ORIENTATION_VERTICAL) { add(vbox); }
+    Gtk::Box vbox;
+  };
+  
   Gtk::Label &debug_status_label();
   void save_files(const boost::filesystem::path &path);
   void on_save(size_t index);
   
   extern boost::filesystem::path debug_last_stop_file_path;
   extern std::unordered_map<std::string, std::string> run_arguments;
-  extern std::unordered_map<std::string, std::string> debug_run_arguments;
+  extern std::unordered_map<std::string, DebugRunArguments> debug_run_arguments;
   extern std::atomic<bool> compiling;
   extern std::atomic<bool> debugging;
   extern std::pair<boost::filesystem::path, std::pair<int, int> > debug_stop;
@@ -26,14 +39,7 @@ namespace Project {
   
   class Base : public std::enable_shared_from_this<Base> {
   protected:
-#ifdef JUCI_ENABLE_DEBUG
-    class DebugOptions : public Gtk::Popover {
-    public:
-      DebugOptions() : Gtk::Popover(), vbox(Gtk::Orientation::ORIENTATION_VERTICAL) { add(vbox); }
-    protected:
-      Gtk::Box vbox;
-    };
-#endif
+    static std::unique_ptr<DebugOptions> debug_options;
   public:
     Base() {}
     Base(std::unique_ptr<Build> &&build): build(std::move(build)) {}
@@ -51,7 +57,7 @@ namespace Project {
     virtual void show_symbols();
     
     virtual std::pair<std::string, std::string> debug_get_run_arguments();
-    virtual Gtk::Popover *debug_get_options() { return nullptr; }
+    virtual Project::DebugOptions *debug_get_options() { return nullptr; }
     Tooltips debug_variable_tooltips;
     virtual void debug_start();
     virtual void debug_continue() {}
@@ -71,23 +77,13 @@ namespace Project {
   };
   
   class LLDB : public virtual Base {
-#ifdef JUCI_ENABLE_DEBUG
-    class DebugOptions : public Base::DebugOptions {
-    public:
-      DebugOptions();
-      Gtk::CheckButton remote_enabled;
-      Gtk::Entry remote_host;
-    };
-    static std::unordered_map<std::string, DebugOptions> debug_options;
-#endif
-    
   public:
     LLDB() {}
     ~LLDB() { dispatcher.disconnect(); }
     
 #ifdef JUCI_ENABLE_DEBUG
     std::pair<std::string, std::string> debug_get_run_arguments() override;
-    Gtk::Popover *debug_get_options() override;
+    Project::DebugOptions *debug_get_options() override;
     void debug_start() override;
     void debug_continue() override;
     void debug_stop() override;

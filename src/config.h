@@ -19,7 +19,6 @@ public:
     std::string theme_name;
     std::string theme_variant;
     std::string version;
-    std::pair<int, int> default_size;
   };
   
   class Terminal {

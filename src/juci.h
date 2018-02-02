@@ -36,6 +36,6 @@ public:
   void on_startup() override;
 private:
   std::vector<boost::filesystem::path> directories;
-  std::vector<std::pair<boost::filesystem::path, size_t> > files;
+  std::vector<std::pair<boost::filesystem::path, size_t>> files;
   std::vector<std::string> errors;
 };
