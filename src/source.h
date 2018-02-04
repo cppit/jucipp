@@ -149,6 +149,14 @@ namespace Source {
     
     void cleanup_whitespace_characters_on_return(const Gtk::TextIter &iter);
     
+    /// Move iter to line start. Depending on iter position, before or after indentation.
+    /// Works with wrapped lines. 
+    Gtk::TextIter get_smart_home_iter(const Gtk::TextIter &iter);
+    /// Move iter to line end. Depending on iter position, before or after indentation.
+    /// Works with wrapped lines. 
+    /// Note that smart end goes FIRST to end of line to avoid hiding empty chars after expressions.
+    Gtk::TextIter get_smart_end_iter(const Gtk::TextIter &iter);
+    
     bool is_bracket_language=false;
     bool on_key_press_event(GdkEventKey* key) override;
     bool on_key_press_event_basic(GdkEventKey* key);
@@ -175,6 +183,14 @@ namespace Source {
     static void search_occurrences_updated(GtkWidget* widget, GParamSpec* property, gpointer data);
     
     sigc::connection renderer_activate_connection;
+    
+    bool multiple_cursors_signals_set=false;
+    bool multiple_cursors_use=false;
+    std::vector<std::pair<Glib::RefPtr<Gtk::TextBuffer::Mark>, int>> multiple_cursors_extra_cursors;
+    Glib::RefPtr<Gtk::TextBuffer::Mark> multiple_cursors_last_insert;
+    int multiple_cursors_erase_backward_length;
+    int multiple_cursors_erase_forward_length;
+    bool on_key_press_event_multiple_cursors(GdkEventKey* key);
   };
   
   class GenericView : public View {

@@ -1071,6 +1071,14 @@ void Source::View::replace_all(const std::string &replacement) {
 }
 
 void Source::View::paste() {
+  class Guard {
+  public:
+    bool &value;
+    Guard(bool &value_) : value(value_) { value = true; }
+    ~Guard() { value = false; }
+  };
+  Guard guard{multiple_cursors_use};
+  
   std::string text=Gtk::Clipboard::get()->wait_for_text();
   
   //Replace carriage returns (which leads to crash) with newlines
@@ -1600,6 +1608,14 @@ void Source::View::cleanup_whitespace_characters_on_return(const Gtk::TextIter &
 }
 
 bool Source::View::on_key_press_event(GdkEventKey* key) {
+  class Guard {
+  public:
+    bool &value;
+    Guard(bool &value_) : value(value_) { value = true; }
+    ~Guard() { value = false; }
+  };
+  Guard guard{multiple_cursors_use};
+  
   if(SelectionDialog::get() && SelectionDialog::get()->is_visible()) {
     if(SelectionDialog::get()->on_key_press(key))
       return true;
@@ -1612,6 +1628,9 @@ bool Source::View::on_key_press_event(GdkEventKey* key) {
   if(last_keyval<GDK_KEY_Shift_L || last_keyval>GDK_KEY_Hyper_R)
     previous_non_modifier_keyval=last_keyval;
   last_keyval=key->keyval;
+  
+  if(on_key_press_event_multiple_cursors(key))
+    return true;
   
   //Move cursor one paragraph down
   if((key->keyval==GDK_KEY_Down || key->keyval==GDK_KEY_KP_Down) && (key->state&GDK_CONTROL_MASK)>0) {
@@ -1678,7 +1697,7 @@ bool Source::View::on_key_press_event(GdkEventKey* key) {
     scroll_to(get_buffer()->get_insert());
     return true;
   }
-  
+
   get_buffer()->begin_user_action();
   
   // Shift+enter: go to end of line and enter
@@ -1711,6 +1730,33 @@ bool Source::View::on_key_press_event(GdkEventKey* key) {
     get_buffer()->end_user_action();
     return Gsv::View::on_key_press_event(key);
   }
+}
+
+Gtk::TextIter Source::View::get_smart_home_iter(const Gtk::TextIter &iter) {
+  auto start_line_iter=get_buffer()->get_iter_at_line(iter.get_line());
+  auto start_sentence_iter=start_line_iter;
+  while(!start_sentence_iter.ends_line() && 
+        (*start_sentence_iter==' ' || *start_sentence_iter=='\t') &&
+        start_sentence_iter.forward_char()) {}
+  
+  if(iter>start_sentence_iter || iter==start_line_iter)
+    return start_sentence_iter;
+  else
+    return start_line_iter;
+}
+Gtk::TextIter Source::View::get_smart_end_iter(const Gtk::TextIter &iter) {
+  auto end_line_iter=get_iter_at_line_end(iter.get_line());
+  auto end_sentence_iter=end_line_iter;
+  while(!end_sentence_iter.starts_line() && 
+        (*end_sentence_iter==' ' || *end_sentence_iter=='\t' || end_sentence_iter.ends_line()) &&
+        end_sentence_iter.backward_char()) {}
+  if(!end_sentence_iter.ends_line() && *end_sentence_iter!=' ' && *end_sentence_iter!='\t')
+    end_sentence_iter.forward_char();
+  
+  if(iter==end_line_iter)
+    return end_sentence_iter;
+  else
+    return end_line_iter;
 }
 
 //Basic indentation
@@ -1868,50 +1914,20 @@ bool Source::View::on_key_press_event_basic(GdkEventKey* key) {
       return true;
     }
   }
-  //Next two are smart home/end keys that works with wrapped lines
-  //Note that smart end goes FIRST to end of line to avoid hiding empty chars after expressions
-  else if((key->keyval==GDK_KEY_End || key->keyval==GDK_KEY_KP_End) && (key->state&GDK_CONTROL_MASK)==0) {
-    auto end_line_iter=get_iter_at_line_end(iter.get_line());
-    auto end_sentence_iter=end_line_iter;
-    while(!end_sentence_iter.starts_line() && 
-          (*end_sentence_iter==' ' || *end_sentence_iter=='\t' || end_sentence_iter.ends_line()) &&
-          end_sentence_iter.backward_char()) {}
-    if(!end_sentence_iter.ends_line() && *end_sentence_iter!=' ' && *end_sentence_iter!='\t')
-      end_sentence_iter.forward_char();
-    if(iter==end_line_iter) {
-      if((key->state&GDK_SHIFT_MASK)>0)
-        get_buffer()->move_mark_by_name("insert", end_sentence_iter);
-      else
-        get_buffer()->place_cursor(end_sentence_iter);
-    }
-    else {
-      if((key->state&GDK_SHIFT_MASK)>0)
-        get_buffer()->move_mark_by_name("insert", end_line_iter);
-      else
-        get_buffer()->place_cursor(end_line_iter);
-    }
+  // Smart Home/End-keys
+  else if((key->keyval==GDK_KEY_Home || key->keyval==GDK_KEY_KP_Home) && (key->state&GDK_CONTROL_MASK)==0) {
+    if((key->state&GDK_SHIFT_MASK)>0)
+      get_buffer()->move_mark_by_name("insert", get_smart_home_iter(iter));
+    else
+      get_buffer()->place_cursor(get_smart_home_iter(iter));
     scroll_to(get_buffer()->get_insert());
     return true;
   }
-  else if((key->keyval==GDK_KEY_Home || key->keyval==GDK_KEY_KP_Home) && (key->state&GDK_CONTROL_MASK)==0) {
-    auto start_line_iter=get_buffer()->get_iter_at_line(iter.get_line());
-    auto start_sentence_iter=start_line_iter;
-    while(!start_sentence_iter.ends_line() && 
-          (*start_sentence_iter==' ' || *start_sentence_iter=='\t') &&
-          start_sentence_iter.forward_char()) {}
-    
-    if(iter>start_sentence_iter || iter==start_line_iter) {
-      if((key->state&GDK_SHIFT_MASK)>0)
-        get_buffer()->move_mark_by_name("insert", start_sentence_iter);
-      else
-        get_buffer()->place_cursor(start_sentence_iter);
-    }
-    else {
-      if((key->state&GDK_SHIFT_MASK)>0)
-        get_buffer()->move_mark_by_name("insert", start_line_iter);
-      else
-        get_buffer()->place_cursor(start_line_iter);
-    }
+  else if((key->keyval==GDK_KEY_End || key->keyval==GDK_KEY_KP_End) && (key->state&GDK_CONTROL_MASK)==0) {
+    if((key->state&GDK_SHIFT_MASK)>0)
+      get_buffer()->move_mark_by_name("insert", get_smart_end_iter(iter));
+    else
+      get_buffer()->place_cursor(get_smart_end_iter(iter));
     scroll_to(get_buffer()->get_insert());
     return true;
   }
@@ -2523,6 +2539,256 @@ bool Source::View::on_key_press_event_smart_inserts(GdkEventKey *key) {
         return true;
       }
     }
+  }
+  
+  return false;
+}
+
+bool Source::View::on_key_press_event_multiple_cursors(GdkEventKey *key) {
+  if(!multiple_cursors_signals_set) {
+    multiple_cursors_signals_set=true;
+    multiple_cursors_last_insert=get_buffer()->create_mark(get_buffer()->get_insert()->get_iter(), false);
+    get_buffer()->signal_mark_set().connect([this](const Gtk::TextBuffer::iterator &iter, const Glib::RefPtr<Gtk::TextBuffer::Mark> &mark) {
+      for(auto &extra_cursor: multiple_cursors_extra_cursors) {
+        if(extra_cursor.first==mark && (!iter.ends_line() || iter.get_line_offset()>extra_cursor.second)) {
+          extra_cursor.second=iter.get_line_offset();
+          break;
+        }
+      }
+      
+      if(mark->get_name()=="insert") {
+        if(multiple_cursors_use) {
+          multiple_cursors_use=false;
+          auto offset_diff=mark->get_iter().get_offset()-multiple_cursors_last_insert->get_iter().get_offset();
+          if(offset_diff!=0) {
+            for(auto &extra_cursor: multiple_cursors_extra_cursors) {
+              auto iter=extra_cursor.first->get_iter();
+              iter.forward_chars(offset_diff);
+              get_buffer()->move_mark(extra_cursor.first, iter);
+            }
+          }
+          multiple_cursors_use=true;
+        }
+        get_buffer()->delete_mark(multiple_cursors_last_insert);
+        multiple_cursors_last_insert=get_buffer()->create_mark(mark->get_iter(), false);
+      }
+    });
+    
+    // TODO: this handler should run after signal_insert
+    get_buffer()->signal_insert().connect([this](const Gtk::TextBuffer::iterator &iter, const Glib::ustring &text, int bytes) {
+      if(multiple_cursors_use) {
+        multiple_cursors_use=false;
+        auto offset=iter.get_offset()-get_buffer()->get_insert()->get_iter().get_offset();
+        for(auto &extra_cursor: multiple_cursors_extra_cursors) {
+          auto iter=extra_cursor.first->get_iter();
+          iter.forward_chars(offset);
+          get_buffer()->insert(iter, text);
+        }
+        multiple_cursors_use=true;
+      }
+    });
+    
+    get_buffer()->signal_erase().connect([this](const Gtk::TextBuffer::iterator &iter_start, const Gtk::TextBuffer::iterator &iter_end) {
+      if(multiple_cursors_use) {
+        auto insert_offset=get_buffer()->get_insert()->get_iter().get_offset();
+        multiple_cursors_erase_backward_length=insert_offset-iter_start.get_offset();
+        multiple_cursors_erase_forward_length=iter_end.get_offset()-insert_offset;
+      }
+    }, false);
+    
+    get_buffer()->signal_erase().connect([this](const Gtk::TextBuffer::iterator &iter_start, const Gtk::TextBuffer::iterator &iter_end) {
+      if(multiple_cursors_use) {
+        multiple_cursors_use=false;
+        for(auto &extra_cursor: multiple_cursors_extra_cursors) {
+          auto start_iter=extra_cursor.first->get_iter();
+          auto end_iter=start_iter;
+          start_iter.backward_chars(multiple_cursors_erase_backward_length);
+          end_iter.forward_chars(multiple_cursors_erase_forward_length);
+          get_buffer()->erase(start_iter, end_iter);
+        }
+        multiple_cursors_use=true;
+      }
+    });
+  }
+  
+  
+  if(key->keyval==GDK_KEY_Escape && !multiple_cursors_extra_cursors.empty()) {
+    for(auto &extra_cursor: multiple_cursors_extra_cursors) {
+      extra_cursor.first->set_visible(false);
+      get_buffer()->delete_mark(extra_cursor.first);
+    }
+    multiple_cursors_extra_cursors.clear();
+    return true;
+  }
+  
+  unsigned create_cursor_mask=GDK_MOD1_MASK;
+  unsigned move_last_created_cursor_mask=GDK_SHIFT_MASK|GDK_MOD1_MASK;
+  
+  // Move last created cursor
+  if((key->keyval==GDK_KEY_Left || key->keyval==GDK_KEY_KP_Left) && (key->state&move_last_created_cursor_mask)==move_last_created_cursor_mask) {
+    if(multiple_cursors_extra_cursors.empty())
+      return false;
+    auto &cursor=multiple_cursors_extra_cursors.back().first;
+    auto iter=cursor->get_iter();
+    iter.backward_char();
+    get_buffer()->move_mark(cursor, iter);
+    return true;
+  }
+  if((key->keyval==GDK_KEY_Right || key->keyval==GDK_KEY_KP_Right) && (key->state&move_last_created_cursor_mask)==move_last_created_cursor_mask) {
+    if(multiple_cursors_extra_cursors.empty())
+      return false;
+    auto &cursor=multiple_cursors_extra_cursors.back().first;
+    auto iter=cursor->get_iter();
+    iter.forward_char();
+    get_buffer()->move_mark(cursor, iter);
+    return true;
+  }
+  if((key->keyval==GDK_KEY_Up || key->keyval==GDK_KEY_KP_Up) && (key->state&move_last_created_cursor_mask)==move_last_created_cursor_mask) {
+    if(multiple_cursors_extra_cursors.empty())
+      return false;
+    auto &extra_cursor=multiple_cursors_extra_cursors.back();
+    auto iter=extra_cursor.first->get_iter();
+    auto line_offset=extra_cursor.second;
+    if(iter.backward_line()) {
+      auto end_line_iter=iter;
+      if(!end_line_iter.ends_line())
+        end_line_iter.forward_to_line_end();
+      iter.forward_chars(std::min(line_offset, end_line_iter.get_line_offset()));
+      get_buffer()->move_mark(extra_cursor.first, iter);
+    }
+    return true;
+  }
+  if((key->keyval==GDK_KEY_Down || key->keyval==GDK_KEY_KP_Down) && (key->state&move_last_created_cursor_mask)==move_last_created_cursor_mask) {
+    if(multiple_cursors_extra_cursors.empty())
+      return false;
+    auto &extra_cursor=multiple_cursors_extra_cursors.back();
+    auto iter=extra_cursor.first->get_iter();
+    auto line_offset=extra_cursor.second;
+    if(iter.forward_line()) {
+      auto end_line_iter=iter;
+      if(!end_line_iter.ends_line())
+        end_line_iter.forward_to_line_end();
+      iter.forward_chars(std::min(line_offset, end_line_iter.get_line_offset()));
+      get_buffer()->move_mark(extra_cursor.first, iter);
+    }
+    return true;
+  }
+  
+  // Create extra cursor
+  if((key->keyval==GDK_KEY_Up || key->keyval==GDK_KEY_KP_Up) && (key->state&create_cursor_mask)==create_cursor_mask) {
+    auto insert_iter=get_buffer()->get_insert()->get_iter();
+    auto insert_line_offset=insert_iter.get_line_offset();
+    auto offset=insert_iter.get_offset();
+    for(auto &extra_cursor: multiple_cursors_extra_cursors)
+      offset=std::min(offset, extra_cursor.first->get_iter().get_offset());
+    auto iter=get_buffer()->get_iter_at_offset(offset);
+    if(iter.backward_line()) {
+      auto end_line_iter=iter;
+      if(!end_line_iter.ends_line())
+        end_line_iter.forward_to_line_end();
+      iter.forward_chars(std::min(insert_line_offset, end_line_iter.get_line_offset()));
+      multiple_cursors_extra_cursors.emplace_back(get_buffer()->create_mark(iter, false), insert_line_offset);
+      multiple_cursors_extra_cursors.back().first->set_visible(true);
+    }
+    return true;
+  }
+  if((key->keyval==GDK_KEY_Down || key->keyval==GDK_KEY_KP_Down) && (key->state&create_cursor_mask)==create_cursor_mask) {
+    auto insert_iter=get_buffer()->get_insert()->get_iter();
+    auto insert_line_offset=insert_iter.get_line_offset();
+    auto offset=insert_iter.get_offset();
+    for(auto &extra_cursor: multiple_cursors_extra_cursors)
+      offset=std::max(offset, extra_cursor.first->get_iter().get_offset());
+    auto iter=get_buffer()->get_iter_at_offset(offset);
+    if(iter.forward_line()) {
+      auto end_line_iter=iter;
+      if(!end_line_iter.ends_line())
+        end_line_iter.forward_to_line_end();
+      iter.forward_chars(std::min(insert_line_offset, end_line_iter.get_line_offset()));
+      multiple_cursors_extra_cursors.emplace_back(get_buffer()->create_mark(iter, false), insert_line_offset);
+      multiple_cursors_extra_cursors.back().first->set_visible(true);
+    }
+    return true;
+  }
+  
+  // Move cursors left/right
+  if((key->keyval==GDK_KEY_Left || key->keyval==GDK_KEY_KP_Left) && (key->state&GDK_CONTROL_MASK)>0) {
+    multiple_cursors_use=false;
+    for(auto &extra_cursor: multiple_cursors_extra_cursors) {
+      auto iter=extra_cursor.first->get_iter();
+      iter.backward_word_start();
+      extra_cursor.second=iter.get_line_offset();
+      get_buffer()->move_mark(extra_cursor.first, iter);
+    }
+    auto insert=get_buffer()->get_insert();
+    auto iter=insert->get_iter();
+    iter.backward_word_start();
+    get_buffer()->move_mark(insert, iter);
+    if((key->state&GDK_SHIFT_MASK)==0)
+      get_buffer()->move_mark_by_name("selection_bound", iter);
+    return true;
+  }
+  if((key->keyval==GDK_KEY_Right || key->keyval==GDK_KEY_KP_Right) && (key->state&GDK_CONTROL_MASK)>0) {
+    multiple_cursors_use=false;
+    for(auto &extra_cursor: multiple_cursors_extra_cursors) {
+      auto iter=extra_cursor.first->get_iter();
+      iter.forward_visible_word_end();
+      extra_cursor.second=iter.get_line_offset();
+      get_buffer()->move_mark(extra_cursor.first, iter);
+    }
+    auto insert=get_buffer()->get_insert();
+    auto iter=insert->get_iter();
+    iter.forward_visible_word_end();
+    get_buffer()->move_mark(insert, iter);
+    if((key->state&GDK_SHIFT_MASK)==0)
+      get_buffer()->move_mark_by_name("selection_bound", iter);
+    return true;
+  }
+  
+  // Move cursors up/down
+  if((key->keyval==GDK_KEY_Up || key->keyval==GDK_KEY_KP_Up)) {
+    multiple_cursors_use=false;
+    for(auto &extra_cursor: multiple_cursors_extra_cursors) {
+      auto iter=extra_cursor.first->get_iter();
+      auto line_offset=extra_cursor.second;
+      if(iter.backward_line()) {
+        auto end_line_iter=iter;
+        if(!end_line_iter.ends_line())
+          end_line_iter.forward_to_line_end();
+        iter.forward_chars(std::min(line_offset, end_line_iter.get_line_offset()));
+        get_buffer()->move_mark(extra_cursor.first, iter);
+      }
+    }
+    return false;
+  }
+  if((key->keyval==GDK_KEY_Down || key->keyval==GDK_KEY_KP_Down)) {
+    multiple_cursors_use=false;
+    for(auto &extra_cursor: multiple_cursors_extra_cursors) {
+      auto iter=extra_cursor.first->get_iter();
+      auto line_offset=extra_cursor.second;
+      if(iter.forward_line()) {
+        auto end_line_iter=iter;
+        if(!end_line_iter.ends_line())
+          end_line_iter.forward_to_line_end();
+        iter.forward_chars(std::min(line_offset, end_line_iter.get_line_offset()));
+        get_buffer()->move_mark(extra_cursor.first, iter);
+      }
+    }
+    return false;
+  }
+  
+  // Smart Home-key, start of line
+  if((key->keyval==GDK_KEY_Home || key->keyval==GDK_KEY_KP_Home) && (key->state&GDK_CONTROL_MASK)==0) {
+    for(auto &extra_cursor: multiple_cursors_extra_cursors)
+      get_buffer()->move_mark(extra_cursor.first, get_smart_home_iter(extra_cursor.first->get_iter()));
+    multiple_cursors_use=false;
+    return false;
+  }
+  // Smart End-key, end of line
+  if((key->keyval==GDK_KEY_End || key->keyval==GDK_KEY_KP_End) && (key->state&GDK_CONTROL_MASK)==0) {
+    for(auto &extra_cursor: multiple_cursors_extra_cursors)
+      get_buffer()->move_mark(extra_cursor.first, get_smart_end_iter(extra_cursor.first->get_iter()));
+    multiple_cursors_use=false;
+    return false;
   }
   
   return false;
