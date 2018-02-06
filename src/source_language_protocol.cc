@@ -925,10 +925,11 @@ void Source::LanguageProtocolView::show_type_tooltips(const Gdk::Rectangle &rect
       }
       if(content.empty()) {
         auto contents_it=result.find("contents");
-        if(contents_it!=result.not_found())
-          content=contents_it->second.get_value<std::string>("");
-        if(content.empty())
+        if(contents_it!=result.not_found()) {
           content=contents_it->second.get<std::string>("value", "");
+          if(content.empty())
+            content=contents_it->second.get_value<std::string>("");
+        }
       }
       if(!content.empty()) {
         dispatcher.post([this, offset, content=std::move(content)] {
