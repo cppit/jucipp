@@ -98,7 +98,7 @@ LanguageProtocol::Capabilities LanguageProtocol::Client::initialize(Source::Lang
       
       write_notification("initialized", "");
       if(language_id=="rust")
-        write_notification("workspace/didChangeConfiguration", "\"settings\":{\"rust\":{\"sysroot\":null,\"target\":null,\"rustflags\":null,\"clear_env_rust_log\":true,\"build_lib\":null,\"build_bin\":null,\"cfg_test\":false,\"unstable_features\":false,\"wait_to_build\":500,\"show_warnings\":true,\"goto_def_racer_fallback\":false,\"use_crate_blacklist\":true,\"build_on_save\":false,\"workspace_mode\":false,\"analyze_package\":null,\"features\":[],\"all_features\":false,\"no_default_features\":false}}");
+        write_notification("workspace/didChangeConfiguration", "\"settings\":{\"rust\":{\"sysroot\":null,\"target\":null,\"rustflags\":null,\"clear_env_rust_log\":true,\"build_lib\":null,\"build_bin\":null,\"cfg_test\":false,\"unstable_features\":false,\"wait_to_build\":500,\"show_warnings\":true,\"goto_def_racer_fallback\":false,\"use_crate_blacklist\":true,\"build_on_save\":false,\"workspace_mode\":true,\"analyze_package\":null,\"features\":[],\"all_features\":false,\"no_default_features\":false}}");
     }
     result_processed.set_value();
   });
