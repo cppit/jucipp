@@ -1170,7 +1170,22 @@ void Source::LanguageProtocolView::setup_autocomplete() {
             auto label=it->second.get<std::string>("label", "");
             auto detail=it->second.get<std::string>("detail", "");
             auto documentation=it->second.get<std::string>("documentation", "");
-            auto insert=it->second.get<std::string>("insertText", label);
+            auto insert=it->second.get<std::string>("insertText", "");
+            if(insert.empty()) {
+              insert=label;
+              auto kind=it->second.get<unsigned>("kind", 0);
+              if(kind>=2 && kind<=3) {
+                bool found_bracket=false;
+                for(auto &chr: insert) {
+                  if(chr=='(' || chr=='{') {
+                    found_bracket=true;
+                    break;
+                  }
+                }
+                if(!found_bracket)
+                  insert+="(${1:})";
+              }
+            }
             if(!label.empty()) {
               autocomplete.rows.emplace_back(std::move(label));
               autocomplete_comment.emplace_back(std::move(detail));
