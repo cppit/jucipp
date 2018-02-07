@@ -84,7 +84,7 @@ void Application::on_activate() {
     if(i<file_offsets.size()) {
       if(auto view=Notebook::get().get_current_view()) {
         view->place_cursor_at_line_offset(file_offsets[i].first, file_offsets[i].second);
-        view->scroll_to_cursor_delayed(view, true, false);
+        view->hide_tooltips();
       }
     }
   }
@@ -101,6 +101,11 @@ void Application::on_activate() {
       view->hide_tooltips();
     }
   }
+  
+  while(Gtk::Main::events_pending())
+    Gtk::Main::iteration(false);
+  for(auto view: Notebook::get().get_views())
+    view->scroll_to(view->get_buffer()->get_insert(), 0.0, 1.0, 0.5);
 }
 
 void Application::on_startup() {
