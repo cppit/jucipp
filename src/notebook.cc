@@ -195,20 +195,41 @@ void Notebook::open(const boost::filesystem::path &file_path_, size_t notebook_i
     }
   };
   source_views.back()->update_tab_label=[this](Source::View *view) {
-    std::string title=view->file_path.filename().string();
-    if(view->get_buffer()->get_modified())
-      title+='*';
-    else
-      title+=' ';
+    const auto update_label = [&](size_t index, const std::string &prepend){
+      const auto current_view = source_views[index];
+      auto title = prepend+current_view->file_path.filename().string();
+      if(current_view->get_buffer()->get_modified())
+        title+='*';
+      else
+        title+=' ';
+      auto &tab_label=tab_labels.at(index);
+      tab_label->label.set_text(title);
+      tab_label->set_tooltip_text(filesystem::get_short_path(current_view->file_path).string());
+    };
+    const auto file_name=view->file_path.filename();
+    std::string prepend_current_view;
     for(size_t c=0;c<size();++c) {
       if(source_views[c]==view) {
-        auto &tab_label=tab_labels.at(c);
-        tab_label->label.set_text(title);
-        tab_label->set_tooltip_text(filesystem::get_short_path(view->file_path).string());
-        update_status(view);
-        return;
+        update_label(c, prepend_current_view);
+        continue;
+      }
+      if (source_views[c]->file_path.filename() == file_name) {
+        int diff=0;
+        const auto parent_path1=view->file_path.parent_path();
+        const auto parent_path2=source_views[c]->file_path.parent_path();
+        auto it1=parent_path1.rbegin();
+        auto it2=parent_path2.rbegin();
+        while (it1 != parent_path1.rend() && it2 != parent_path2.rend() && *it1 == *it2) {
+                  ++it1;
+                  ++it2;
+                  ++diff;
+        }
+        if(prepend_current_view.empty())
+          prepend_current_view=it1->string()+(diff>0?"/.../":"/");
+        update_label(c, it2->string()+(diff>0?"/.../":"/"));
       }
     }
+    update_status(view);
   };
   source_views.back()->update_status_diagnostics=[this](Source::View* view) {
     if(get_current_view()==view) {
