@@ -917,11 +917,16 @@ void Source::LanguageProtocolView::show_type_tooltips(const Gdk::Rectangle &rect
     if(!error) {
       // hover result structure vary significantly from the different language servers
       std::string content;
-      {
-        auto contents_pt=result.get_child("contents", boost::property_tree::ptree());
-        auto contents_it=contents_pt.begin();
-        if(contents_it!=contents_pt.end())
-          content=contents_it->second.get<std::string>("value", "");
+      auto contents_pt=result.get_child("contents", boost::property_tree::ptree());
+      for(auto it=contents_pt.begin();it!=contents_pt.end();++it) {
+        auto value=it->second.get<std::string>("value", "");
+        if(!value.empty())
+          content.insert(0, value+(content.empty()?"":"\n\n"));
+        else {
+          value=it->second.get_value<std::string>("");
+          if(!value.empty())
+            content+=(content.empty()?"":"\n\n")+value;
+        }
       }
       if(content.empty()) {
         auto contents_it=result.find("contents");
