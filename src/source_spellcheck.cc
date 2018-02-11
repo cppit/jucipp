@@ -384,6 +384,20 @@ bool Source::SpellCheckView::is_code_iter(const Gtk::TextIter &iter) {
   }
   if(string_tag) {
     if(iter.has_tag(string_tag)) {
+      // When ending an open ''-string with ', the last '-iter is not correctly marked as end iter for string_tag
+      // For instance 'test, when inserting ' at end, would lead to spellcheck error of test'
+      if(*iter=='\'') {
+        long backslash_count=0;
+        auto it=iter;
+        while(it.backward_char() && *it=='\\')
+          ++backslash_count;
+        if(backslash_count%2==0) {
+          auto it=iter;
+          while(!it.begins_tag(string_tag) && it.backward_to_tag_toggle(string_tag)) {}
+          if(it.begins_tag(string_tag) && *it=='\'' && iter!=it)
+            return true;
+        }
+      }
       if(!iter.begins_tag(string_tag))
         return false;
     }
