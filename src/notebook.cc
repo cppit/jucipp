@@ -314,7 +314,10 @@ void Notebook::open(const boost::filesystem::path &file_path_, size_t notebook_i
     if(index!=static_cast<size_t>(-1))
       close(index);
   }));
-  
+
+  if(source_view->update_tab_label)
+      source_view->update_tab_label(source_view);
+
   //Add star on tab label when the page is not saved:
   source_view->get_buffer()->signal_modified_changed().connect([this, source_view]() {
     if(source_view->update_tab_label)
@@ -526,6 +529,10 @@ bool Notebook::close(size_t index) {
     scrolled_windows.erase(scrolled_windows.begin()+index);
     hboxes.erase(hboxes.begin()+index);
     tab_labels.erase(tab_labels.begin()+index);
+  }
+  for(auto view: get_views()) { // Update all view tabs in case one clicks cross to close a buffer
+    if(view->update_tab_label)
+      view->update_tab_label(view);
   }
   return true;
 }
