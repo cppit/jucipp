@@ -147,6 +147,14 @@ std::vector<std::string> CompileCommands::get_arguments(const boost::filesystem:
     arguments.emplace_back("cuda_runtime.h");
   }
   
+  if(extension==".cl") {
+    arguments.emplace_back("-xcl");
+    arguments.emplace_back("-cl-std=CL2.0");
+    arguments.emplace_back("-Xclang");
+    arguments.emplace_back("-finclude-default-header");
+    arguments.emplace_back("-Wno-gcc-compat");
+  }
+  
   if(!build_path.empty()) {
     arguments.emplace_back("-working-directory");
     arguments.emplace_back(build_path.string());

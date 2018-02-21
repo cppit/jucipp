@@ -561,7 +561,8 @@ bool Usages::Clang::is_source(const boost::filesystem::path &path) {
   auto ext = path.extension();
   if(ext == ".c" || // c sources
      ext == ".cpp" || ext == ".cxx" || ext == ".cc" || ext == ".C" || ext == ".c++" || // c++ sources
-     ext == ".cu") // CUDA sources
+     ext == ".cu" || // CUDA sources
+     ext == ".cl") // OpenCL sources
     return true;
   else
     return false;

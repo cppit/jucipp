@@ -70,6 +70,9 @@ Glib::RefPtr<Gsv::Language> Source::guess_language(const boost::filesystem::path
     else
       language=language_manager->get_language("cpp");
   }
+  else if(language->get_id()=="opencl") {
+    language = language_manager->get_language("cpp");
+  }
   return language;
 }
 
