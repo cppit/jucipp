@@ -10,25 +10,6 @@ bool Directories::TreeStore::row_drop_possible_vfunc(const Gtk::TreeModel::Path 
   return true;
 }
 
-bool Directories::TreeStore::row_draggable_vfunc(const TreeModel::Path &path) const {
-  // Drag and drop does not work on MacOS anymore
-  // TODO june 2018, see if this issue has been fixed
-  #ifdef __APPLE__
-    return false;
-  #else
-    return Gtk::TreeStore::row_draggable_vfunc(path);
-  #endif
-}
-
-bool Directories::TreeStore::drag_data_get_vfunc(const TreeModel::Path &path, Gtk::SelectionData &selection_data) const {
-  // Workaround for MacOS crash when dragging a path for instance inside dir/subdir
-#ifdef __APPLE__
-  return true;
-#else
-  return Gtk::TreeStore::drag_data_get_vfunc(path, selection_data);
-#endif
-}
-
 bool Directories::TreeStore::drag_data_received_vfunc(const TreeModel::Path &path, const Gtk::SelectionData &selection_data) {
   auto &directories=Directories::get();
   
