@@ -100,6 +100,7 @@ namespace Source {
     void hide_dialogs() override;
     
     std::function<void(View *view)> update_tab_label;
+    std::function<void(View *view)> update_modified;
     std::function<void(View *view)> update_status_location;
     std::function<void(View *view)> update_status_file_path;
     std::function<void(View *view)> update_status_diagnostics;

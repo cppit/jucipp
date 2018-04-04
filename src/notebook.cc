@@ -194,16 +194,21 @@ void Notebook::open(const boost::filesystem::path &file_path_, size_t notebook_i
         status_branch.set_text("");
     }
   };
+  source_views.back()->update_modified = [this](Source::View *view) {
+    const auto view_index = get_index(view);
+    auto &label = tab_labels.at(view_index)->label;
+    const auto tab_title = label.get_text();
+    const auto title = view->get_buffer()->get_modified() ? tab_title + '*' : tab_title.substr(0, tab_title.size() - 1);
+    label.set_text(title);
+  };
   source_views.back()->update_tab_label = [this](Source::View *view) {
     const auto update_label = [&](size_t index, const std::string &prepend) {
       const auto current_view = source_views[index];
       auto title = prepend + current_view->file_path.filename().string();
-      if (current_view->get_buffer()->get_modified())
-        title += '*';
-      else
-        title += ' ';
       auto &tab_label = tab_labels.at(index);
       tab_label->label.set_text(title);
+      if (current_view->update_modified && current_view->get_buffer()->get_modified())
+        current_view->update_modified(current_view);
       tab_label->set_tooltip_text(filesystem::get_short_path(current_view->file_path).string());
     };
     const auto file_name = view->file_path.filename();
@@ -318,14 +323,13 @@ void Notebook::open(const boost::filesystem::path &file_path_, size_t notebook_i
   }));
 
   if(source_view->update_tab_label)
-      source_view->update_tab_label(source_view);
-
-  //Add star on tab label when the page is not saved:
-  source_view->get_buffer()->signal_modified_changed().connect([this, source_view]() {
-    if(source_view->update_tab_label)
-      source_view->update_tab_label(source_view);
-  });
+    source_view->update_tab_label(source_view);
   
+  source_view->get_buffer()->signal_modified_changed().connect([source_view]() {
+    if (source_view->update_modified)
+      source_view->update_modified(source_view);
+  });
+
   //Cursor history
   auto update_cursor_locations=[this, source_view](const Gtk::TextBuffer::iterator &iter) {
     bool mark_moved=false;
@@ -532,8 +536,8 @@ bool Notebook::close(size_t index) {
     hboxes.erase(hboxes.begin()+index);
     tab_labels.erase(tab_labels.begin()+index);
   }
-  for(auto view: get_views()) { // Update all view tabs in case one clicks cross to close a buffer
-    if(view->update_tab_label)
+  for (auto view : get_views()) {
+    if (view->update_tab_label)
       view->update_tab_label(view);
   }
   return true;
