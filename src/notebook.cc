@@ -223,11 +223,13 @@ void Notebook::open(const boost::filesystem::path &file_path_, size_t notebook_i
         int diff = 0;
         const auto parent_path1 = view->file_path.parent_path();
         const auto parent_path2 = source_views[c]->file_path.parent_path();
-        auto it1 = parent_path1.rbegin();
-        auto it2 = parent_path2.rbegin();
-        while (it1 != parent_path1.rend() && it2 != parent_path2.rend() && *it1 == *it2) {
-          ++it1;
-          ++it2;
+        auto it1 = parent_path1.end();
+        const auto it1_end = parent_path1.begin();
+        auto it2 = parent_path2.end();
+        const auto it2_end = parent_path2.begin();
+        while (it1 != it1_end && it2 != it2_end && *it1 == *it2) {
+          --it1;
+          --it2;
           ++diff;
         }
         if (prepend_current_view.empty())
