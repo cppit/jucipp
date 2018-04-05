@@ -233,8 +233,8 @@ void Notebook::open(const boost::filesystem::path &file_path_, size_t notebook_i
           ++diff;
         }
         if (prepend_current_view.empty())
-          prepend_current_view = it1->string() + (diff > 0 ? "/.../" : "/");
-        update_label(c, it2->string() + (diff > 0 ? "/.../" : "/"));
+          prepend_current_view = it1->string() + (diff > 0 ? "/…/" : "/");
+        update_label(c, it2->string() + (diff > 0 ? "/…/" : "/"));
       }
     }
     update_label(current_view_index, prepend_current_view);
