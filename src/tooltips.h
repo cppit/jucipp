@@ -2,6 +2,7 @@
 #include "gtkmm.h"
 #include <string>
 #include <list>
+#include <functional>
 
 class Tooltip {
 public:
