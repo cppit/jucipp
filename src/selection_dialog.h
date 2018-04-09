@@ -1,6 +1,7 @@
 #pragma once
 #include "gtkmm.h"
 #include <unordered_map>
+#include <functional>
 
 class SelectionDialogBase {
   class ListViewText : public Gtk::TreeView {

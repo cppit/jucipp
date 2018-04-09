@@ -1,6 +1,7 @@
 #pragma once
 #include <gtkmm.h>
 #include <mutex>
+#include <functional>
 #include <list>
 
 class Dispatcher {
