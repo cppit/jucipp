@@ -25,7 +25,7 @@ Autocomplete::Autocomplete(Gtk::TextView *view, bool &interactive_completion, gu
       stop();
   });
 
-  view->signal_key_release_event().connect([this](GdkEventKey *key) {
+  view->signal_key_release_event().connect([](GdkEventKey *key) {
     if(CompletionDialog::get() && CompletionDialog::get()->is_visible()) {
       if(CompletionDialog::get()->on_key_release(key))
         return true;

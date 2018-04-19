@@ -177,7 +177,7 @@ Directories::Directories() : Gtk::ListViewText(1) {
     });
     auto entry_it=EntryBox::get().entries.begin();
     entry_it->set_placeholder_text("Filename");
-    EntryBox::get().buttons.emplace_back("Create New File", [this, entry_it](){
+    EntryBox::get().buttons.emplace_back("Create New File", [entry_it](){
       entry_it->activate();
     });
     EntryBox::get().show();
@@ -220,7 +220,7 @@ Directories::Directories() : Gtk::ListViewText(1) {
     });
     auto entry_it=EntryBox::get().entries.begin();
     entry_it->set_placeholder_text("Folder name");
-    EntryBox::get().buttons.emplace_back("Create New Folder", [this, entry_it](){
+    EntryBox::get().buttons.emplace_back("Create New Folder", [entry_it](){
       entry_it->activate();
     });
     EntryBox::get().show();
@@ -296,7 +296,7 @@ Directories::Directories() : Gtk::ListViewText(1) {
     });
     auto entry_it=EntryBox::get().entries.begin();
     entry_it->set_placeholder_text("Filename");
-    EntryBox::get().buttons.emplace_back("Rename file", [this, entry_it](){
+    EntryBox::get().buttons.emplace_back("Rename file", [entry_it](){
       entry_it->activate();
     });
     EntryBox::get().show();

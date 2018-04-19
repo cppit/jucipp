@@ -13,7 +13,7 @@ Source::SpellCheckView::SpellCheckView() : Gsv::View() {
   spellcheck_error_tag=get_buffer()->create_tag("spellcheck_error");
   spellcheck_error_tag->property_underline()=Pango::Underline::UNDERLINE_ERROR;
   
-  signal_key_press_event().connect([this](GdkEventKey *event) {
+  signal_key_press_event().connect([](GdkEventKey *event) {
     if(SelectionDialog::get() && SelectionDialog::get()->is_visible()) {
       if(SelectionDialog::get()->on_key_press(event))
         return true;
@@ -182,7 +182,7 @@ Source::SpellCheckView::SpellCheckView() : Gsv::View() {
     }
   });
   
-  get_buffer()->signal_mark_set().connect([this](const Gtk::TextBuffer::iterator& iterator, const Glib::RefPtr<Gtk::TextBuffer::Mark>& mark) {
+  get_buffer()->signal_mark_set().connect([](const Gtk::TextBuffer::iterator& iterator, const Glib::RefPtr<Gtk::TextBuffer::Mark>& mark) {
     if(mark->get_name()=="insert") {
       if(SelectionDialog::get())
         SelectionDialog::get()->hide();

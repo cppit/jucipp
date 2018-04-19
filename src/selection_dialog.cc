@@ -215,7 +215,7 @@ SelectionDialog::SelectionDialog(Gtk::TextView *text_view, Glib::RefPtr<Gtk::Tex
   
   list_view_text.set_model(filter_model);
   
-  list_view_text.set_search_equal_func([this](const Glib::RefPtr<Gtk::TreeModel>& model, int column, const Glib::ustring& key, const Gtk::TreeModel::iterator& iter) {
+  list_view_text.set_search_equal_func([](const Glib::RefPtr<Gtk::TreeModel>& model, int column, const Glib::ustring& key, const Gtk::TreeModel::iterator& iter) {
     return false;
   });
   
@@ -238,10 +238,10 @@ SelectionDialog::SelectionDialog(Gtk::TextView *text_view, Glib::RefPtr<Gtk::Tex
     }
     hide();
   };
-  search_entry.signal_activate().connect([this, activate](){
+  search_entry.signal_activate().connect([activate](){
     activate();
   });
-  list_view_text.signal_row_activated().connect([this, activate](const Gtk::TreeModel::Path& path, Gtk::TreeViewColumn*) {
+  list_view_text.signal_row_activated().connect([activate](const Gtk::TreeModel::Path& path, Gtk::TreeViewColumn*) {
     activate();
   });
 }
@@ -323,7 +323,7 @@ CompletionDialog::CompletionDialog(Gtk::TextView *text_view, Glib::RefPtr<Gtk::T
   auto search_key=std::make_shared<std::string>();
   auto filter_model=Gtk::TreeModelFilter::create(list_view_text.get_model());  
   if(show_offset==start_mark->get_iter().get_offset()) {
-    filter_model->set_visible_func([this, search_key](const Gtk::TreeModel::const_iterator& iter){
+    filter_model->set_visible_func([search_key](const Gtk::TreeModel::const_iterator& iter){
       std::string row_lc;
       iter->get_value(0, row_lc);
       auto search_key_lc=*search_key;
@@ -335,7 +335,7 @@ CompletionDialog::CompletionDialog(Gtk::TextView *text_view, Glib::RefPtr<Gtk::T
     });
   }
   else {
-    filter_model->set_visible_func([this, search_key](const Gtk::TreeModel::const_iterator& iter){
+    filter_model->set_visible_func([search_key](const Gtk::TreeModel::const_iterator& iter){
       std::string row;
       iter->get_value(0, row);
       if(row.find(*search_key)==0)

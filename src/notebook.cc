@@ -295,7 +295,7 @@ void Notebook::open(const boost::filesystem::path &file_path_, size_t notebook_i
   }));
   
   //Add star on tab label when the page is not saved:
-  source_view->get_buffer()->signal_modified_changed().connect([this, source_view]() {
+  source_view->get_buffer()->signal_modified_changed().connect([source_view]() {
     if(source_view->update_tab_label)
       source_view->update_tab_label(source_view);
   });
@@ -352,7 +352,7 @@ void Notebook::open(const boost::filesystem::path &file_path_, size_t notebook_i
     if(current_cursor_location>=cursor_locations.size())
       current_cursor_location=cursor_locations.size()-1;
   };
-  source_view->get_buffer()->signal_mark_set().connect([this, source_view, update_cursor_locations](const Gtk::TextBuffer::iterator &iter, const Glib::RefPtr<Gtk::TextBuffer::Mark> &mark) {
+  source_view->get_buffer()->signal_mark_set().connect([this, update_cursor_locations](const Gtk::TextBuffer::iterator &iter, const Glib::RefPtr<Gtk::TextBuffer::Mark> &mark) {
     if(mark->get_name()=="insert") {
       if(disable_next_update_cursor_locations) {
         disable_next_update_cursor_locations=false;

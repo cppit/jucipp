@@ -141,14 +141,14 @@ void Window::set_menu_actions() {
     about.show();
     about.present();
   });
-  menu.add_action("preferences", [this]() {
+  menu.add_action("preferences", []() {
     Notebook::get().open(Config::get().home_juci_path/"config"/"config.json");
   });
   menu.add_action("quit", [this]() {
     close();
   });
   
-  menu.add_action("file_new_file", [this]() {
+  menu.add_action("file_new_file", []() {
     boost::filesystem::path path = Dialog::new_file(Notebook::get().get_current_folder());
     if(path!="") {
       if(boost::filesystem::exists(path)) {
@@ -168,7 +168,7 @@ void Window::set_menu_actions() {
       }
     }
   });
-  menu.add_action("file_new_folder", [this]() {
+  menu.add_action("file_new_folder", []() {
     auto time_now=std::chrono::system_clock::to_time_t(std::chrono::system_clock::now());
     boost::filesystem::path path = Dialog::new_folder(Notebook::get().get_current_folder());
     if(path!="" && boost::filesystem::exists(path)) {
@@ -184,7 +184,7 @@ void Window::set_menu_actions() {
       Directories::get().select(path);
     }
   });
-  menu.add_action("file_new_project_c", [this]() {
+  menu.add_action("file_new_project_c", []() {
     boost::filesystem::path project_path = Dialog::new_folder(Notebook::get().get_current_folder());
     if(project_path!="") {
       auto project_name=project_path.filename().string();
@@ -216,7 +216,7 @@ void Window::set_menu_actions() {
         Terminal::get().print("Error: Could not create project "+project_path.string()+"\n", true);
     }
   });
-  menu.add_action("file_new_project_cpp", [this]() {
+  menu.add_action("file_new_project_cpp", []() {
     boost::filesystem::path project_path = Dialog::new_folder(Notebook::get().get_current_folder());
     if(project_path!="") {
       auto project_name=project_path.filename().string();
@@ -249,7 +249,7 @@ void Window::set_menu_actions() {
     }
   });
   
-  menu.add_action("file_open_file", [this]() {
+  menu.add_action("file_open_file", []() {
     auto folder_path=Notebook::get().get_current_folder();
     if(auto view=Notebook::get().get_current_view()) {
       if(!Directories::get().path.empty() && !filesystem::file_in_path(view->file_path, Directories::get().path))
@@ -259,7 +259,7 @@ void Window::set_menu_actions() {
     if(path!="")
       Notebook::get().open(path);
   });
-  menu.add_action("file_open_folder", [this]() {
+  menu.add_action("file_open_folder", []() {
     auto path = Dialog::open_folder(Notebook::get().get_current_folder());
     if (path!="" && boost::filesystem::exists(path))
       Directories::get().open(path);
@@ -312,7 +312,7 @@ void Window::set_menu_actions() {
       }
     }
   });
-  menu.add_action("file_save_as", [this]() {
+  menu.add_action("file_save_as", []() {
     if(auto view=Notebook::get().get_current_view()) {
       auto path = Dialog::save_file_as(view->file_path);
       if(path!="") {
@@ -351,7 +351,7 @@ void Window::set_menu_actions() {
     }
   });
   
-  menu.add_action("edit_undo", [this]() {
+  menu.add_action("edit_undo", []() {
     if(auto view=Notebook::get().get_current_view()) {
       auto undo_manager = view->get_source_buffer()->get_undo_manager();
       if (undo_manager->can_undo()) {
@@ -362,7 +362,7 @@ void Window::set_menu_actions() {
       }
     }
   });
-  menu.add_action("edit_redo", [this]() {
+  menu.add_action("edit_redo", []() {
     if(auto view=Notebook::get().get_current_view()) {
       auto undo_manager = view->get_source_buffer()->get_undo_manager();
       if(undo_manager->can_redo()) {
@@ -406,26 +406,26 @@ void Window::set_menu_actions() {
     search_and_replace_entry();
   });
   
-  menu.add_action("source_spellcheck", [this]() {
+  menu.add_action("source_spellcheck", []() {
     if(auto view=Notebook::get().get_current_view()) {
       view->remove_spellcheck_errors();
       view->spellcheck();
     }
   });
-  menu.add_action("source_spellcheck_clear", [this]() {
+  menu.add_action("source_spellcheck_clear", []() {
     if(auto view=Notebook::get().get_current_view())
       view->remove_spellcheck_errors();
   });
-  menu.add_action("source_spellcheck_next_error", [this]() {
+  menu.add_action("source_spellcheck_next_error", []() {
     if(auto view=Notebook::get().get_current_view())
       view->goto_next_spellcheck_error();
   });
   
-  menu.add_action("source_git_next_diff", [this]() {
+  menu.add_action("source_git_next_diff", []() {
     if(auto view=Notebook::get().get_current_view())
       view->git_goto_next_diff();
   });
-  menu.add_action("source_git_show_diff", [this]() {
+  menu.add_action("source_git_show_diff", []() {
     if(auto view=Notebook::get().get_current_view()) {
       auto diff_details=view->git_get_diff_details();
       if(diff_details.empty())
@@ -451,7 +451,7 @@ void Window::set_menu_actions() {
   menu.add_action("source_indentation_set_buffer_tab", [this]() {
     set_tab_entry();
   });
-  menu.add_action("source_indentation_auto_indent_buffer", [this]() {
+  menu.add_action("source_indentation_auto_indent_buffer", []() {
     auto view=Notebook::get().get_current_view();
     if(view && view->format_style) {
       view->disable_spellcheck=true;
@@ -463,11 +463,11 @@ void Window::set_menu_actions() {
   menu.add_action("source_goto_line", [this]() {
     goto_line_entry();
   });
-  menu.add_action("source_center_cursor", [this]() {
+  menu.add_action("source_center_cursor", []() {
     if(auto view=Notebook::get().get_current_view())
       view->scroll_to_cursor_delayed(view, true, false);
   });
-  menu.add_action("source_cursor_history_back", [this]() {
+  menu.add_action("source_cursor_history_back", []() {
     if(Notebook::get().cursor_locations.size()==0)
       return;
     if(Notebook::get().current_cursor_location==static_cast<size_t>(-1))
@@ -493,7 +493,7 @@ void Window::set_menu_actions() {
     cursor_location->view->get_buffer()->place_cursor(cursor_location->mark->get_iter());
     cursor_location->view->scroll_to_cursor_delayed(cursor_location->view, true, false);
   });
-  menu.add_action("source_cursor_history_forward", [this]() {
+  menu.add_action("source_cursor_history_forward", []() {
     if(Notebook::get().cursor_locations.size()<=1)
       return;
     if(Notebook::get().current_cursor_location==static_cast<size_t>(-1))
@@ -510,7 +510,7 @@ void Window::set_menu_actions() {
     cursor_location.view->scroll_to_cursor_delayed(cursor_location.view, true, false);
   });
   
-  menu.add_action("source_show_completion", [this] {
+  menu.add_action("source_show_completion", [] {
     if(auto view=Notebook::get().get_current_view()) {
       if(view->non_interactive_completion)
         view->non_interactive_completion();
@@ -519,12 +519,12 @@ void Window::set_menu_actions() {
     }
   });
   
-  menu.add_action("source_find_symbol", [this]() {
+  menu.add_action("source_find_symbol", []() {
     auto project=Project::create();
     project->show_symbols();
   });
   
-  menu.add_action("source_find_file", [this]() {
+  menu.add_action("source_find_file", []() {
     auto view = Notebook::get().get_current_view();
 
     boost::filesystem::path search_path;
@@ -584,7 +584,7 @@ void Window::set_menu_actions() {
       return;
     }
   
-    SelectionDialog::get()->on_select=[this, paths=std::move(paths)](unsigned int index, const std::string &text, bool hide_window) {
+    SelectionDialog::get()->on_select=[paths=std::move(paths)](unsigned int index, const std::string &text, bool hide_window) {
       if(index>=paths.size())
         return;
       Notebook::get().open(paths[index]);
@@ -598,14 +598,14 @@ void Window::set_menu_actions() {
   
   });
   
-  menu.add_action("source_comments_toggle", [this]() {
+  menu.add_action("source_comments_toggle", []() {
     if(auto view=Notebook::get().get_current_view()) {
       if(view->toggle_comments) {
         view->toggle_comments();
       }
     }
   });
-  menu.add_action("source_comments_add_documentation", [this]() {
+  menu.add_action("source_comments_add_documentation", []() {
     if(auto view=Notebook::get().get_current_view()) {
       if(view->get_documentation_template) {
         auto documentation_template=view->get_documentation_template();
@@ -625,7 +625,7 @@ void Window::set_menu_actions() {
       }
     }
   });
-  menu.add_action("source_find_documentation", [this]() {
+  menu.add_action("source_find_documentation", []() {
     if(auto view=Notebook::get().get_current_view()) {
       if(view->get_token_data) {
         auto data=view->get_token_data();
@@ -674,7 +674,7 @@ void Window::set_menu_actions() {
     }
   });
   
-  menu.add_action("source_goto_declaration", [this]() {
+  menu.add_action("source_goto_declaration", []() {
     if(auto view=Notebook::get().get_current_view()) {
       if(view->get_declaration_location) {
         auto location=view->get_declaration_location();
@@ -691,7 +691,7 @@ void Window::set_menu_actions() {
       }
     }
   });
-  menu.add_action("source_goto_type_declaration", [this]() {
+  menu.add_action("source_goto_type_declaration", []() {
     if(auto view=Notebook::get().get_current_view()) {
       if(view->get_type_declaration_location) {
         auto location=view->get_type_declaration_location();
@@ -759,20 +759,20 @@ void Window::set_menu_actions() {
       SelectionDialog::get()->show();
     }
   };
-  menu.add_action("source_goto_implementation", [this, goto_selected_location]() {
+  menu.add_action("source_goto_implementation", [goto_selected_location]() {
     if(auto view=Notebook::get().get_current_view()) {
       if(view->get_implementation_locations)
         goto_selected_location(view, view->get_implementation_locations());
     }
   });
-  menu.add_action("source_goto_declaration_or_implementation", [this, goto_selected_location]() {
+  menu.add_action("source_goto_declaration_or_implementation", [goto_selected_location]() {
     if(auto view=Notebook::get().get_current_view()) {
       if(view->get_declaration_or_implementation_locations)
         goto_selected_location(view, view->get_declaration_or_implementation_locations());
     }
   });
 
-  menu.add_action("source_goto_usage", [this]() {
+  menu.add_action("source_goto_usage", []() {
     if(auto view=Notebook::get().get_current_view()) {
       if(view->get_usages) {
         auto usages=view->get_usages();
@@ -803,7 +803,7 @@ void Window::set_menu_actions() {
           
           if(rows.size()==0)
             return;
-          SelectionDialog::get()->on_select=[this, rows=std::move(rows)](unsigned int index, const std::string &text, bool hide_window) {
+          SelectionDialog::get()->on_select=[rows=std::move(rows)](unsigned int index, const std::string &text, bool hide_window) {
             if(index>=rows.size())
               return;
             auto offset=rows[index];
@@ -821,7 +821,7 @@ void Window::set_menu_actions() {
       }
     }
   });
-  menu.add_action("source_goto_method", [this]() {
+  menu.add_action("source_goto_method", []() {
     if(auto view=Notebook::get().get_current_view()) {
       if(view->get_methods) {
         auto methods=Notebook::get().get_current_view()->get_methods();
@@ -853,7 +853,7 @@ void Window::set_menu_actions() {
   menu.add_action("source_rename", [this]() {
     rename_token_entry();
   });
-  menu.add_action("source_implement_method", [this]() {
+  menu.add_action("source_implement_method", []() {
     const static std::string button_text="Insert Method Implementation";
     
     if(auto view=Notebook::get().get_current_view()) {
@@ -871,7 +871,7 @@ void Window::set_menu_actions() {
         EntryBox::get().clear();
         EntryBox::get().labels.emplace_back();
         EntryBox::get().labels.back().set_text(method);
-        EntryBox::get().buttons.emplace_back(button_text, [this, method=std::move(method)](){
+        EntryBox::get().buttons.emplace_back(button_text, [method=std::move(method)](){
           if(auto view=Notebook::get().get_current_view()) {
             view->get_buffer()->insert_at_cursor(method);
             EntryBox::get().clear();
@@ -882,14 +882,14 @@ void Window::set_menu_actions() {
     }
   });
   
-  menu.add_action("source_goto_next_diagnostic", [this]() {
+  menu.add_action("source_goto_next_diagnostic", []() {
     if(auto view=Notebook::get().get_current_view()) {
       if(view->goto_next_diagnostic) {
         view->goto_next_diagnostic();
       }
     }
   });
-  menu.add_action("source_apply_fix_its", [this]() {
+  menu.add_action("source_apply_fix_its", []() {
     if(auto view=Notebook::get().get_current_view()) {
       if(view->get_fix_its) {
         auto buffer=view->get_buffer();
@@ -924,7 +924,7 @@ void Window::set_menu_actions() {
     }
   });
   
-  menu.add_action("project_set_run_arguments", [this]() {
+  menu.add_action("project_set_run_arguments", []() {
     auto project=Project::create();
     auto run_arguments=project->get_run_arguments();
     if(run_arguments.second.empty())
@@ -937,18 +937,18 @@ void Window::set_menu_actions() {
       label_it->set_text("Synopsis: [environment_variable=value]... executable [argument]...\nSet empty to let juCi++ deduce executable.");
     };
     label_it->update(0, "");
-    EntryBox::get().entries.emplace_back(run_arguments.second, [this, run_arguments_first=std::move(run_arguments.first)](const std::string &content){
+    EntryBox::get().entries.emplace_back(run_arguments.second, [run_arguments_first=std::move(run_arguments.first)](const std::string &content){
       Project::run_arguments[run_arguments_first]=content;
       EntryBox::get().hide();
     }, 50);
     auto entry_it=EntryBox::get().entries.begin();
     entry_it->set_placeholder_text("Project: Set Run Arguments");
-    EntryBox::get().buttons.emplace_back("Project: set run arguments", [this, entry_it](){
+    EntryBox::get().buttons.emplace_back("Project: set run arguments", [entry_it](){
       entry_it->activate();
     });
     EntryBox::get().show();
   });
-  menu.add_action("project_compile_and_run", [this]() {
+  menu.add_action("project_compile_and_run", []() {
     if(Project::compiling || Project::debugging) {
       Info::get().print("Compile or debug in progress");
       return;
@@ -961,7 +961,7 @@ void Window::set_menu_actions() {
     
     Project::current->compile_and_run();
   });
-  menu.add_action("project_compile", [this]() {
+  menu.add_action("project_compile", []() {
     if(Project::compiling || Project::debugging) {
       Info::get().print("Compile or debug in progress");
       return;
@@ -974,7 +974,7 @@ void Window::set_menu_actions() {
     
     Project::current->compile();
   });
-  menu.add_action("project_recreate_build", [this]() {
+  menu.add_action("project_recreate_build", []() {
     if(Project::compiling || Project::debugging) {
       Info::get().print("Compile or debug in progress");
       return;
@@ -999,7 +999,7 @@ void Window::set_menu_actions() {
         auto run_path=Notebook::get().get_current_folder();
         Terminal::get().async_print("Running: "+content+'\n');
   
-        Terminal::get().async_process(content, run_path, [this, content](int exit_status){
+        Terminal::get().async_process(content, run_path, [content](int exit_status){
           Terminal::get().async_print(content+" returned: "+std::to_string(exit_status)+'\n');
         });
       }
@@ -1007,21 +1007,21 @@ void Window::set_menu_actions() {
     }, 30);
     auto entry_it=EntryBox::get().entries.begin();
     entry_it->set_placeholder_text("Command");
-    EntryBox::get().buttons.emplace_back("Run command", [this, entry_it](){
+    EntryBox::get().buttons.emplace_back("Run command", [entry_it](){
       entry_it->activate();
     });
     EntryBox::get().show();
   });
   
-  menu.add_action("project_kill_last_running", [this]() {
+  menu.add_action("project_kill_last_running", []() {
     Terminal::get().kill_last_async_process();
   });
-  menu.add_action("project_force_kill_last_running", [this]() {
+  menu.add_action("project_force_kill_last_running", []() {
     Terminal::get().kill_last_async_process(true);
   });
   
 #ifdef JUCI_ENABLE_DEBUG
-  menu.add_action("debug_set_run_arguments", [this]() {
+  menu.add_action("debug_set_run_arguments", []() {
     auto project=Project::create();
     auto run_arguments=project->debug_get_run_arguments();
     if(run_arguments.second.empty())
@@ -1034,7 +1034,7 @@ void Window::set_menu_actions() {
       label_it->set_text("Synopsis: [environment_variable=value]... executable [argument]...\nSet empty to let juCi++ deduce executable.");
     };
     label_it->update(0, "");
-    EntryBox::get().entries.emplace_back(run_arguments.second, [this, run_arguments_first=std::move(run_arguments.first)](const std::string& content){
+    EntryBox::get().entries.emplace_back(run_arguments.second, [run_arguments_first=std::move(run_arguments.first)](const std::string& content){
       Project::debug_run_arguments[run_arguments_first].arguments=content;
       EntryBox::get().hide();
     }, 50);
@@ -1051,12 +1051,12 @@ void Window::set_menu_actions() {
       options->set_relative_to(EntryBox::get().buttons.back());
     }
     
-    EntryBox::get().buttons.emplace_back("Debug: set run arguments", [this, entry_it](){
+    EntryBox::get().buttons.emplace_back("Debug: set run arguments", [entry_it](){
       entry_it->activate();
     });
     EntryBox::get().show();
   });
-  menu.add_action("debug_start_continue", [this](){
+  menu.add_action("debug_start_continue", [](){
     if(Project::compiling) {
       Info::get().print("Compile in progress");
       return;
@@ -1073,31 +1073,31 @@ void Window::set_menu_actions() {
     
     Project::current->debug_start();
   });
-  menu.add_action("debug_stop", [this]() {
+  menu.add_action("debug_stop", []() {
     if(Project::current)
       Project::current->debug_stop();
   });
-  menu.add_action("debug_kill", [this]() {
+  menu.add_action("debug_kill", []() {
     if(Project::current)
       Project::current->debug_kill();
   });
-  menu.add_action("debug_step_over", [this]() {
+  menu.add_action("debug_step_over", []() {
     if(Project::current)
       Project::current->debug_step_over();
   });
-  menu.add_action("debug_step_into", [this]() {
+  menu.add_action("debug_step_into", []() {
     if(Project::current)
       Project::current->debug_step_into();
   });
-  menu.add_action("debug_step_out", [this]() {
+  menu.add_action("debug_step_out", []() {
     if(Project::current)
       Project::current->debug_step_out();
   });
-  menu.add_action("debug_backtrace", [this]() {
+  menu.add_action("debug_backtrace", []() {
     if(Project::current)
       Project::current->debug_backtrace();
   });
-  menu.add_action("debug_show_variables", [this]() {
+  menu.add_action("debug_show_variables", []() {
     if(Project::current)
       Project::current->debug_show_variables();
   });
@@ -1113,18 +1113,18 @@ void Window::set_menu_actions() {
     }, 30);
     auto entry_it=EntryBox::get().entries.begin();
     entry_it->set_placeholder_text("Debug Command");
-    EntryBox::get().buttons.emplace_back("Run debug command", [this, entry_it](){
+    EntryBox::get().buttons.emplace_back("Run debug command", [entry_it](){
       entry_it->activate();
     });
     EntryBox::get().show();
   });
-  menu.add_action("debug_toggle_breakpoint", [this](){
+  menu.add_action("debug_toggle_breakpoint", [](){
     if(auto view=Notebook::get().get_current_view()) {
       if(view->toggle_breakpoint)
         view->toggle_breakpoint(view->get_buffer()->get_insert()->get_iter().get_line());
     }
   });
-  menu.add_action("debug_goto_stop", [this](){
+  menu.add_action("debug_goto_stop", [](){
     if(Project::debugging) {
       if(!Project::debug_stop.first.empty()) {
         Notebook::get().open(Project::debug_stop.first);
@@ -1141,17 +1141,17 @@ void Window::set_menu_actions() {
   Project::debug_update_status("");
 #endif
   
-  menu.add_action("window_next_tab", [this]() {
+  menu.add_action("window_next_tab", []() {
     Notebook::get().next();
   });
-  menu.add_action("window_previous_tab", [this]() {
+  menu.add_action("window_previous_tab", []() {
     Notebook::get().previous();
   });
-  menu.add_action("window_close_tab", [this]() {
+  menu.add_action("window_close_tab", []() {
     if(Notebook::get().get_current_view())
       Notebook::get().close_current();
   });
-  menu.add_action("window_toggle_split", [this] {
+  menu.add_action("window_toggle_split", [] {
     Notebook::get().toggle_split();
   });
   menu.add_action("window_toggle_full_screen", [this] {
@@ -1160,10 +1160,10 @@ void Window::set_menu_actions() {
     else
       fullscreen();
   });
-  menu.add_action("window_toggle_tabs", [this] {
+  menu.add_action("window_toggle_tabs", [] {
     Notebook::get().toggle_tabs();
   });
-  menu.add_action("window_clear_terminal", [this] {
+  menu.add_action("window_clear_terminal", [] {
     Terminal::get().clear();
   });
 }
@@ -1273,12 +1273,12 @@ void Window::add_widgets() {
     Terminal::get().queue_draw();
   });
   
-  EntryBox::get().signal_show().connect([this, hpaned, notebook_and_terminal_vpaned, notebook_vbox](){
+  EntryBox::get().signal_show().connect([hpaned, notebook_and_terminal_vpaned, notebook_vbox](){
     hpaned->set_focus_chain({notebook_and_terminal_vpaned});
     notebook_and_terminal_vpaned->set_focus_chain({notebook_vbox});
     notebook_vbox->set_focus_chain({&EntryBox::get()});
   });
-  EntryBox::get().signal_hide().connect([this, hpaned, notebook_and_terminal_vpaned, notebook_vbox](){
+  EntryBox::get().signal_hide().connect([hpaned, notebook_and_terminal_vpaned, notebook_vbox](){
     hpaned->unset_focus_chain();
     notebook_and_terminal_vpaned->unset_focus_chain();
     notebook_vbox->unset_focus_chain();
@@ -1358,7 +1358,7 @@ void Window::search_and_replace_entry() {
       catch(const std::exception &e) {}
     }
   };
-  EntryBox::get().entries.emplace_back(last_search, [this](const std::string& content){
+  EntryBox::get().entries.emplace_back(last_search, [](const std::string& content){
     if(auto view=Notebook::get().get_current_view())
       view->search_forward();
   });
@@ -1370,7 +1370,7 @@ void Window::search_and_replace_entry() {
     };
     view->search_highlight(search_entry_it->get_text(), case_sensitive_search, regex_search);
   }
-  search_entry_it->signal_key_press_event().connect([this](GdkEventKey* event){
+  search_entry_it->signal_key_press_event().connect([](GdkEventKey* event){
     if((event->keyval==GDK_KEY_Return || event->keyval==GDK_KEY_KP_Enter) && (event->state&GDK_SHIFT_MASK)>0) {
       if(auto view=Notebook::get().get_current_view())
         view->search_backward();
@@ -1383,14 +1383,14 @@ void Window::search_and_replace_entry() {
       view->search_highlight(search_entry_it->get_text(), case_sensitive_search, regex_search);
   });
 
-  EntryBox::get().entries.emplace_back(last_replace, [this](const std::string &content){
+  EntryBox::get().entries.emplace_back(last_replace, [](const std::string &content){
     if(auto view=Notebook::get().get_current_view())
       view->replace_forward(content);
   });
   auto replace_entry_it=EntryBox::get().entries.begin();
   replace_entry_it++;
   replace_entry_it->set_placeholder_text("Replace");
-  replace_entry_it->signal_key_press_event().connect([this, replace_entry_it](GdkEventKey* event){
+  replace_entry_it->signal_key_press_event().connect([replace_entry_it](GdkEventKey* event){
     if((event->keyval==GDK_KEY_Return || event->keyval==GDK_KEY_KP_Enter) && (event->state&GDK_SHIFT_MASK)>0) {
       if(auto view=Notebook::get().get_current_view())
         view->replace_backward(replace_entry_it->get_text());
@@ -1401,23 +1401,23 @@ void Window::search_and_replace_entry() {
     last_replace=replace_entry_it->get_text();
   });
   
-  EntryBox::get().buttons.emplace_back("↑", [this](){
+  EntryBox::get().buttons.emplace_back("↑", [](){
     if(auto view=Notebook::get().get_current_view())
         view->search_backward();
   });
   EntryBox::get().buttons.back().set_tooltip_text("Find Previous\n\nShortcut: Shift+Enter in the Find entry field");
-  EntryBox::get().buttons.emplace_back("⇄", [this, replace_entry_it](){
+  EntryBox::get().buttons.emplace_back("⇄", [replace_entry_it](){
     if(auto view=Notebook::get().get_current_view()) {
       view->replace_forward(replace_entry_it->get_text());
     }
   });
   EntryBox::get().buttons.back().set_tooltip_text("Replace Next\n\nShortcut: Enter in the Replace entry field");
-  EntryBox::get().buttons.emplace_back("↓", [this](){
+  EntryBox::get().buttons.emplace_back("↓", [](){
     if(auto view=Notebook::get().get_current_view())
       view->search_forward();
   });
   EntryBox::get().buttons.back().set_tooltip_text("Find Next\n\nShortcut: Enter in the Find entry field");
-  EntryBox::get().buttons.emplace_back("Replace All", [this, replace_entry_it](){
+  EntryBox::get().buttons.emplace_back("Replace All", [replace_entry_it](){
     if(auto view=Notebook::get().get_current_view())
       view->replace_all(replace_entry_it->get_text());
   });
@@ -1473,7 +1473,7 @@ void Window::set_tab_entry() {
     auto entry_tab_char_it=EntryBox::get().entries.rbegin();
     entry_tab_char_it->set_placeholder_text("Tab char");
     
-    const auto activate_function=[this, entry_tab_char_it, entry_tab_size_it, label_it](const std::string& content){
+    const auto activate_function=[entry_tab_char_it, entry_tab_size_it, label_it](const std::string& content){
       if(auto view=Notebook::get().get_current_view()) {
         char tab_char=0;
         unsigned tab_size=0;
@@ -1501,7 +1501,7 @@ void Window::set_tab_entry() {
     entry_tab_char_it->on_activate=activate_function;
     entry_tab_size_it->on_activate=activate_function;
     
-    EntryBox::get().buttons.emplace_back("Set tab in current buffer", [this, entry_tab_char_it](){
+    EntryBox::get().buttons.emplace_back("Set tab in current buffer", [entry_tab_char_it](){
       entry_tab_char_it->activate();
     });
     
@@ -1512,7 +1512,7 @@ void Window::set_tab_entry() {
 void Window::goto_line_entry() {
   EntryBox::get().clear();
   if(Notebook::get().get_current_view()) {
-    EntryBox::get().entries.emplace_back("", [this](const std::string& content){
+    EntryBox::get().entries.emplace_back("", [](const std::string& content){
       if(auto view=Notebook::get().get_current_view()) {
         try {
           view->place_cursor_at_line_index(stoi(content)-1, 0);
@@ -1524,7 +1524,7 @@ void Window::goto_line_entry() {
     });
     auto entry_it=EntryBox::get().entries.begin();
     entry_it->set_placeholder_text("Line number");
-    EntryBox::get().buttons.emplace_back("Go to line", [this, entry_it](){
+    EntryBox::get().buttons.emplace_back("Go to line", [entry_it](){
       entry_it->activate();
     });
     EntryBox::get().show();
@@ -1537,7 +1537,7 @@ void Window::rename_token_entry() {
     if(view->get_token_spelling && view->rename_similar_tokens) {
       auto spelling=std::make_shared<std::string>(view->get_token_spelling());
       if(!spelling->empty()) {
-        EntryBox::get().entries.emplace_back(*spelling, [this, view, spelling, iter=view->get_buffer()->get_insert()->get_iter()](const std::string& content){
+        EntryBox::get().entries.emplace_back(*spelling, [view, spelling, iter=view->get_buffer()->get_insert()->get_iter()](const std::string& content){
           //TODO: gtk needs a way to check if iter is valid without dumping g_error message
           //iter->get_buffer() will print such a message, but no segfault will occur
           if(Notebook::get().get_current_view()==view && content!=*spelling && iter.get_buffer() && view->get_buffer()->get_insert()->get_iter()==iter)
@@ -1548,7 +1548,7 @@ void Window::rename_token_entry() {
         });
         auto entry_it=EntryBox::get().entries.begin();
         entry_it->set_placeholder_text("New name");
-        EntryBox::get().buttons.emplace_back("Rename", [this, entry_it](){
+        EntryBox::get().buttons.emplace_back("Rename", [entry_it](){
           entry_it->activate();
         });
         EntryBox::get().show();

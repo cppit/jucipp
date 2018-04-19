@@ -39,7 +39,7 @@ int Terminal::process(const std::string &command, const boost::filesystem::path 
 }
 
 int Terminal::process(std::istream &stdin_stream, std::ostream &stdout_stream, const std::string &command, const boost::filesystem::path &path) {
-  TinyProcessLib::Process process(command, path.string(), [this, &stdout_stream](const char* bytes, size_t n) {
+  TinyProcessLib::Process process(command, path.string(), [&stdout_stream](const char* bytes, size_t n) {
     Glib::ustring umessage(std::string(bytes, n));
     Glib::ustring::iterator iter;
     while(!umessage.validate(iter)) {
@@ -284,7 +284,7 @@ size_t Terminal::print(const std::string &message, bool bold){
 }
 
 void Terminal::async_print(const std::string &message, bool bold) {
-  dispatcher.post([this, message, bold] {
+  dispatcher.post([message, bold] {
     Terminal::get().print(message, bold);
   });
 }

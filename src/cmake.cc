@@ -7,7 +7,7 @@
 #include "compile_commands.h"
 
 CMake::CMake(const boost::filesystem::path &path) {
-  const auto find_cmake_project=[this](const boost::filesystem::path &cmake_path) {
+  const auto find_cmake_project=[](const boost::filesystem::path &cmake_path) {
     for(auto &line: filesystem::read_lines(cmake_path)) {
       const static std::regex project_regex("^ *project *\\(.*\\r?$", std::regex::icase);
       std::smatch sm;
