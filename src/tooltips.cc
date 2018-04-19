@@ -91,9 +91,11 @@ void Tooltip::show(bool disregard_drawn) {
     auto activation_rectangle_x=std::max(activation_rectangle.get_x(), visible_x);
     
     text_view->get_window(Gtk::TextWindowType::TEXT_WINDOW_TEXT)->get_root_coords(activation_rectangle_x, activation_rectangle.get_y(), root_x, root_y);
+    if(root_y<size.second)
+      root_x+=visible_rect.get_width()*0.1;
   }
   Gdk::Rectangle rectangle;
-  rectangle.set_x(root_y<size.second ? root_x+size.first*0.2 : root_x);
+  rectangle.set_x(root_x);
   rectangle.set_y(std::max(0, root_y-size.second));
   rectangle.set_width(size.first);
   rectangle.set_height(size.second);
