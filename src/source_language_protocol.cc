@@ -380,7 +380,19 @@ Source::LanguageProtocolView::~LanguageProtocolView() {
 void Source::LanguageProtocolView::setup_navigation_and_refactoring() {
   if(capabilities.document_formatting) {
     format_style=[this](bool continue_without_style_file) {
-      if(!continue_without_style_file)
+      bool has_style_file=false;
+      auto style_file_search_path=this->file_path.parent_path();
+      auto style_file='.'+language_id+"-format";
+      while(true) {
+        if(boost::filesystem::exists(style_file_search_path/style_file)) {
+          has_style_file=true;
+          break;
+        }
+        if(style_file_search_path==style_file_search_path.root_directory())
+          break;
+        style_file_search_path=style_file_search_path.parent_path();
+      }
+      if(!has_style_file && !continue_without_style_file)
         return;
       
       class Replace {
