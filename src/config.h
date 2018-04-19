@@ -85,6 +85,7 @@ public:
     bool wrap_lines;
     bool highlight_current_line;
     bool show_line_numbers;
+    bool enable_multiple_cursors;
     
     std::string clang_format_style;
     unsigned clang_usages_threads;

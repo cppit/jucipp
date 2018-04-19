@@ -42,6 +42,7 @@ See [language-server-protocol/specification.md](https://github.com/Microsoft/lan
 * Auto-indentation of C++ file buffers through [clang-format](http://clang.llvm.org/docs/ClangFormat.html)
 * Source minimap
 * Split view
+* Multiple cursors
 * Full UTF-8 support
 * Wayland supported with GTK+ 3.20 or newer
 

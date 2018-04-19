@@ -1632,7 +1632,7 @@ bool Source::View::on_key_press_event(GdkEventKey* key) {
     previous_non_modifier_keyval=last_keyval;
   last_keyval=key->keyval;
   
-  if(on_key_press_event_multiple_cursors(key))
+  if(Config::get().source.enable_multiple_cursors && on_key_press_event_multiple_cursors(key))
     return true;
   
   //Move cursor one paragraph down
