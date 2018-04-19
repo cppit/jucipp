@@ -195,6 +195,7 @@ void Config::read(const boost::property_tree::ptree &cfg) {
   project.save_on_compile_or_run=cfg.get<bool>("project.save_on_compile_or_run");
   project.clear_terminal_on_compile=cfg.get<bool>("project.clear_terminal_on_compile");
   project.ctags_command=cfg.get<std::string>("project.ctags_command");
+  project.python_command=cfg.get<std::string>("project.python_command");
   
   terminal.history_size=cfg.get<int>("terminal.history_size");
   terminal.font=cfg.get<std::string>("terminal.font");

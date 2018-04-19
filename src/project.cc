@@ -922,7 +922,7 @@ void Project::Markdown::compile_and_run() {
 }
 
 void Project::Python::compile_and_run() {
-  auto command="PYTHONUNBUFFERED=1 python "+filesystem::escape_argument(filesystem::get_short_path(Notebook::get().get_current_view()->file_path).string());
+  auto command=Config::get().project.python_command+' '+filesystem::escape_argument(filesystem::get_short_path(Notebook::get().get_current_view()->file_path).string());
   Terminal::get().print("Running "+command+"\n");
   Terminal::get().async_process(command, Notebook::get().get_current_view()->file_path.parent_path(), [command](int exit_status) {
     Terminal::get().async_print(command+" returned: "+std::to_string(exit_status)+'\n');

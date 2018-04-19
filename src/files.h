@@ -175,7 +175,8 @@ R"RAW(
         },
         "save_on_compile_or_run": true,
         "clear_terminal_on_compile": true,
-        "ctags_command": "ctags"
+        "ctags_command": "ctags",
+        "python_command": "PYTHONUNBUFFERED=1 python"
     },
     "documentation_searches": {
         "clang": {
