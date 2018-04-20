@@ -48,6 +48,8 @@ namespace LanguageProtocol {
 
     std::unordered_set<Source::LanguageProtocolView *> views;
     std::mutex views_mutex;
+    
+    std::mutex initialize_mutex;
 
     std::unique_ptr<TinyProcessLib::Process> process;
     std::mutex read_write_mutex;
@@ -59,7 +61,7 @@ namespace LanguageProtocol {
 
     size_t message_id = 1;
 
-    std::unordered_map<size_t, std::function<void(const boost::property_tree::ptree &, bool error)>> handlers;
+    std::unordered_map<size_t, std::pair<Source::LanguageProtocolView*, std::function<void(const boost::property_tree::ptree &, bool error)>>> handlers;
     std::vector<std::thread> timeout_threads;
     std::mutex timeout_threads_mutex;
 
@@ -73,7 +75,7 @@ namespace LanguageProtocol {
     void close(Source::LanguageProtocolView *view);
     
     void parse_server_message();
-    void write_request(const std::string &method, const std::string &params, std::function<void(const boost::property_tree::ptree &, bool)> &&function = nullptr);
+    void write_request(Source::LanguageProtocolView *view, const std::string &method, const std::string &params, std::function<void(const boost::property_tree::ptree &, bool)> &&function = nullptr);
     void write_notification(const std::string &method, const std::string &params);
     void handle_server_request(const std::string &method, const boost::property_tree::ptree &params);
   };
@@ -102,6 +104,7 @@ namespace Source {
 
     size_t document_version = 1;
 
+    std::thread initialize_thread;
     Dispatcher dispatcher;
     
     void setup_navigation_and_refactoring();

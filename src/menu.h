@@ -22,6 +22,7 @@ public:
   Glib::RefPtr<Gio::Menu> window_menu;
   std::unique_ptr<Gtk::Menu> right_click_line_menu;
   std::unique_ptr<Gtk::Menu> right_click_selected_menu;
+  std::function<void()> toggle_menu_items = []{};
 private:
   Glib::RefPtr<Gtk::Builder> builder;
 };

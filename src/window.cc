@@ -17,7 +17,7 @@ Window::Window() {
   
   set_menu_actions();
   configure();
-  activate_menu_items();
+  Menu::get().toggle_menu_items();
   
   Menu::get().right_click_line_menu->attach_to_widget(*this);
   Menu::get().right_click_selected_menu->attach_to_widget(*this);
@@ -35,7 +35,7 @@ Window::Window() {
       view->search_highlight(last_search, case_sensitive_search, regex_search);
     }
 
-    activate_menu_items();
+    Menu::get().toggle_menu_items();
     
     Directories::get().select(view->file_path);
     
@@ -51,7 +51,7 @@ Window::Window() {
       Project::debug_update_stop();
 #endif
   };
-  Notebook::get().on_close_page=[this](Source::View *view) {
+  Notebook::get().on_close_page=[](Source::View *view) {
 #ifdef JUCI_ENABLE_DEBUG
     if(Project::current && Project::debugging) {
       auto iter=view->get_buffer()->begin();
@@ -69,7 +69,7 @@ Window::Window() {
     else {
       Notebook::get().clear_status();
       
-      activate_menu_items();
+      Menu::get().toggle_menu_items();
     }
   };
   
@@ -1166,39 +1166,39 @@ void Window::set_menu_actions() {
   menu.add_action("window_clear_terminal", [] {
     Terminal::get().clear();
   });
-}
-
-void Window::activate_menu_items() {
-  auto &menu = Menu::get();
-  auto view=Notebook::get().get_current_view();
   
-  menu.actions["file_reload_file"]->set_enabled(view);
-  menu.actions["source_spellcheck"]->set_enabled(view);
-  menu.actions["source_spellcheck_clear"]->set_enabled(view);
-  menu.actions["source_spellcheck_next_error"]->set_enabled(view);
-  menu.actions["source_git_next_diff"]->set_enabled(view);
-  menu.actions["source_git_show_diff"]->set_enabled(view);
-  menu.actions["source_indentation_set_buffer_tab"]->set_enabled(view);
-  menu.actions["source_goto_line"]->set_enabled(view);
-  menu.actions["source_center_cursor"]->set_enabled(view);
-  
-  menu.actions["source_indentation_auto_indent_buffer"]->set_enabled(view && view->format_style);
-  menu.actions["source_comments_toggle"]->set_enabled(view && view->toggle_comments);
-  menu.actions["source_comments_add_documentation"]->set_enabled(view && view->get_documentation_template);
-  menu.actions["source_find_documentation"]->set_enabled(view && view->get_token_data);
-  menu.actions["source_goto_declaration"]->set_enabled(view && view->get_declaration_location);
-  menu.actions["source_goto_type_declaration"]->set_enabled(view && view->get_type_declaration_location);
-  menu.actions["source_goto_implementation"]->set_enabled(view && view->get_implementation_locations);
-  menu.actions["source_goto_declaration_or_implementation"]->set_enabled(view && view->get_declaration_or_implementation_locations);
-  menu.actions["source_goto_usage"]->set_enabled(view && view->get_usages);
-  menu.actions["source_goto_method"]->set_enabled(view && view->get_methods);
-  menu.actions["source_rename"]->set_enabled(view && view->rename_similar_tokens);
-  menu.actions["source_implement_method"]->set_enabled(view && view->get_method);
-  menu.actions["source_goto_next_diagnostic"]->set_enabled(view && view->goto_next_diagnostic);
-  menu.actions["source_apply_fix_its"]->set_enabled(view && view->get_fix_its);
+  menu.toggle_menu_items=[] {
+    auto &menu = Menu::get();
+    auto view=Notebook::get().get_current_view();
+    
+    menu.actions["file_reload_file"]->set_enabled(view);
+    menu.actions["source_spellcheck"]->set_enabled(view);
+    menu.actions["source_spellcheck_clear"]->set_enabled(view);
+    menu.actions["source_spellcheck_next_error"]->set_enabled(view);
+    menu.actions["source_git_next_diff"]->set_enabled(view);
+    menu.actions["source_git_show_diff"]->set_enabled(view);
+    menu.actions["source_indentation_set_buffer_tab"]->set_enabled(view);
+    menu.actions["source_goto_line"]->set_enabled(view);
+    menu.actions["source_center_cursor"]->set_enabled(view);
+    
+    menu.actions["source_indentation_auto_indent_buffer"]->set_enabled(view && view->format_style);
+    menu.actions["source_comments_toggle"]->set_enabled(view && view->toggle_comments);
+    menu.actions["source_comments_add_documentation"]->set_enabled(view && view->get_documentation_template);
+    menu.actions["source_find_documentation"]->set_enabled(view && view->get_token_data);
+    menu.actions["source_goto_declaration"]->set_enabled(view && view->get_declaration_location);
+    menu.actions["source_goto_type_declaration"]->set_enabled(view && view->get_type_declaration_location);
+    menu.actions["source_goto_implementation"]->set_enabled(view && view->get_implementation_locations);
+    menu.actions["source_goto_declaration_or_implementation"]->set_enabled(view && view->get_declaration_or_implementation_locations);
+    menu.actions["source_goto_usage"]->set_enabled(view && view->get_usages);
+    menu.actions["source_goto_method"]->set_enabled(view && view->get_methods);
+    menu.actions["source_rename"]->set_enabled(view && view->rename_similar_tokens);
+    menu.actions["source_implement_method"]->set_enabled(view && view->get_method);
+    menu.actions["source_goto_next_diagnostic"]->set_enabled(view && view->goto_next_diagnostic);
+    menu.actions["source_apply_fix_its"]->set_enabled(view && view->get_fix_its);
 #ifdef JUCI_ENABLE_DEBUG
-  Project::debug_activate_menu_items();
+    Project::debug_activate_menu_items();
 #endif
+  };
 }
 
 void Window::add_widgets() {
