@@ -327,6 +327,10 @@ Source::LanguageProtocolView::LanguageProtocolView(const boost::filesystem::path
   similar_symbol_tag=get_buffer()->create_tag();
   similar_symbol_tag->property_weight()=Pango::WEIGHT_ULTRAHEAVY;
   
+  status_state="initializing...";
+  if(update_status_state)
+    update_status_state(this);
+  
   initialize_thread=std::thread([this] {
     auto capabilities=client->initialize(this);
     dispatcher.post([this, capabilities] {
@@ -339,6 +343,12 @@ Source::LanguageProtocolView::LanguageProtocolView(const boost::filesystem::path
       setup_autocomplete();
       setup_navigation_and_refactoring();
       Menu::get().toggle_menu_items();
+      
+      if(status_state=="initializing...") {
+        status_state="";
+        if(update_status_state)
+          update_status_state(this);
+      }
     });
   });
   
