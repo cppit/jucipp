@@ -34,26 +34,12 @@ void Source::DiffView::Renderer::draw_vfunc(const Cairo::RefPtr<Cairo::Context> 
   }
 }
 
-Source::DiffView::DiffView(const boost::filesystem::path &file_path) : Gsv::View(), file_path(file_path), renderer(new Renderer()) {
-  boost::system::error_code ec;
-  canonical_file_path=boost::filesystem::canonical(file_path, ec);
-  if(ec)
-    canonical_file_path=file_path;
-  
+Source::DiffView::DiffView(const boost::filesystem::path &file_path, Glib::RefPtr<Gsv::Language> language) : BaseView(file_path, language), renderer(new Renderer()) {
   renderer->tag_added=get_buffer()->create_tag("git_added");
   renderer->tag_modified=get_buffer()->create_tag("git_modified");
   renderer->tag_removed=get_buffer()->create_tag("git_removed");
   renderer->tag_removed_below=get_buffer()->create_tag();
   renderer->tag_removed_above=get_buffer()->create_tag();
-  
-  last_write_time=boost::filesystem::last_write_time(file_path, ec);
-  if(ec)
-    last_write_time=static_cast<std::time_t>(-1);
-  
-  signal_focus_in_event().connect([this](GdkEventFocus *event) {
-    check_last_write_time();
-    return false;
-  });
   
   configure();
 }
@@ -71,15 +57,6 @@ Source::DiffView::~DiffView() {
     parse_stop=true;
     if(parse_thread.joinable())
       parse_thread.join();
-  }
-}
-
-void Source::DiffView::check_last_write_time() {
-  if(has_focus()) {
-    boost::system::error_code ec;
-    auto last_write_time=boost::filesystem::last_write_time(file_path, ec);
-    if(!ec && this->last_write_time!=static_cast<std::time_t>(-1) && last_write_time!=this->last_write_time)
-      Info::get().print("Caution: " + file_path.filename().string() + " was changed outside of juCi++");
   }
 }
 
@@ -272,23 +249,6 @@ void Source::DiffView::configure() {
       });
     }
   });
-}
-
-Gtk::TextIter Source::DiffView::get_iter_at_line_end(int line_nr) {
-  if(line_nr>=get_buffer()->get_line_count())
-    return get_buffer()->end();
-  else if(line_nr+1<get_buffer()->get_line_count()) {
-    auto iter=get_buffer()->get_iter_at_line(line_nr+1);
-    iter.backward_char();
-    if(!iter.ends_line()) // for CR+LF
-      iter.backward_char();
-    return iter;
-  }
-  else {
-    auto iter=get_buffer()->get_iter_at_line(line_nr);
-    while(!iter.ends_line() && iter.forward_char()) {}
-    return iter;
-  }
 }
 
 void Source::DiffView::git_goto_next_diff() {

@@ -17,7 +17,7 @@
 clangmm::Index Source::ClangViewParse::clang_index(0, 0);
 
 Source::ClangViewParse::ClangViewParse(const boost::filesystem::path &file_path, Glib::RefPtr<Gsv::Language> language):
-    Source::View(file_path, language) {
+    BaseView(file_path, language), Source::View(file_path, language) {
   Usages::Clang::erase_cache(file_path);
   
   auto tag_table=get_buffer()->get_tag_table();
@@ -454,7 +454,7 @@ void Source::ClangViewParse::show_type_tooltips(const Gdk::Rectangle &rectangle)
 
 
 Source::ClangViewAutocomplete::ClangViewAutocomplete(const boost::filesystem::path &file_path, Glib::RefPtr<Gsv::Language> language):
-    Source::ClangViewParse(file_path, language), autocomplete(this, interactive_completion, last_keyval, true) {
+    BaseView(file_path, language), Source::ClangViewParse(file_path, language), autocomplete(this, interactive_completion, last_keyval, true) {
   non_interactive_completion=[this] {
     if(CompletionDialog::get() && CompletionDialog::get()->is_visible())
       return;
@@ -829,7 +829,7 @@ const std::unordered_map<std::string, std::string> &Source::ClangViewAutocomplet
 
 
 Source::ClangViewRefactor::ClangViewRefactor(const boost::filesystem::path &file_path, Glib::RefPtr<Gsv::Language> language) :
-    Source::ClangViewParse(file_path, language) {
+    BaseView(file_path, language), Source::ClangViewParse(file_path, language) {
   similar_identifiers_tag=get_buffer()->create_tag();
   similar_identifiers_tag->property_weight()=Pango::WEIGHT_ULTRAHEAVY;
   
@@ -1771,7 +1771,7 @@ void Source::ClangViewRefactor::tag_similar_identifiers(const Identifier &identi
 
 
 Source::ClangView::ClangView(const boost::filesystem::path &file_path, Glib::RefPtr<Gsv::Language> language):
-    ClangViewParse(file_path, language), ClangViewAutocomplete(file_path, language), ClangViewRefactor(file_path, language) {
+    BaseView(file_path, language), ClangViewParse(file_path, language), ClangViewAutocomplete(file_path, language), ClangViewRefactor(file_path, language) {
   if(language) {
     get_source_buffer()->set_highlight_syntax(true);
     get_source_buffer()->set_language(language);

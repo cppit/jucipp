@@ -164,7 +164,7 @@ void Notebook::open(const boost::filesystem::path &file_path_, size_t notebook_i
   else
     source_views.emplace_back(new Source::GenericView(file_path, language));
   
-  source_views.back()->scroll_to_cursor_delayed=[this](Source::View* view, bool center, bool show_tooltips) {
+  source_views.back()->scroll_to_cursor_delayed=[this](Source::BaseView* view, bool center, bool show_tooltips) {
     while(Gtk::Main::events_pending())
       Gtk::Main::iteration(false);
     if(get_current_view()==view) {
@@ -176,17 +176,17 @@ void Notebook::open(const boost::filesystem::path &file_path_, size_t notebook_i
         view->hide_tooltips();
     }
   };
-  source_views.back()->update_status_location=[this](Source::View* view) {
+  source_views.back()->update_status_location=[this](Source::BaseView* view) {
     if(get_current_view()==view) {
       auto iter=view->get_buffer()->get_insert()->get_iter();
       status_location.set_text(" "+std::to_string(iter.get_line()+1)+":"+std::to_string(iter.get_line_offset()+1));
     }
   };
-  source_views.back()->update_status_file_path=[this](Source::View* view) {
+  source_views.back()->update_status_file_path=[this](Source::BaseView* view) {
     if(get_current_view()==view)
       status_file_path.set_text(' '+filesystem::get_short_path(view->file_path).string());
   };
-  source_views.back()->update_status_branch=[this](Source::DiffView* view) {
+  source_views.back()->update_status_branch=[this](Source::BaseView* view) {
     if(get_current_view()==view) {
       if(!view->status_branch.empty())
         status_branch.set_text(" ("+view->status_branch+")");
@@ -194,7 +194,7 @@ void Notebook::open(const boost::filesystem::path &file_path_, size_t notebook_i
         status_branch.set_text("");
     }
   };
-  source_views.back()->update_tab_label=[this](Source::View *view) {
+  source_views.back()->update_tab_label=[this](Source::BaseView *view) {
     std::string title=view->file_path.filename().string();
     if(view->get_buffer()->get_modified())
       title+='*';
@@ -210,7 +210,7 @@ void Notebook::open(const boost::filesystem::path &file_path_, size_t notebook_i
       }
     }
   };
-  source_views.back()->update_status_diagnostics=[this](Source::View* view) {
+  source_views.back()->update_status_diagnostics=[this](Source::BaseView* view) {
     if(get_current_view()==view) {
       std::string diagnostic_info;
       
@@ -271,7 +271,7 @@ void Notebook::open(const boost::filesystem::path &file_path_, size_t notebook_i
       status_diagnostics.set_markup(diagnostic_info);
     }
   };
-  source_views.back()->update_status_state=[this](Source::View* view) {
+  source_views.back()->update_status_state=[this](Source::BaseView* view) {
     if(get_current_view()==view)
       status_state.set_text(view->status_state+" ");
   };
@@ -601,7 +601,7 @@ std::vector<std::pair<size_t, Source::View *>> Notebook::get_notebook_views() {
   return notebook_views;
 }
 
-void Notebook::update_status(Source::View *view) {
+void Notebook::update_status(Source::BaseView *view) {
   if(view->update_status_location)
     view->update_status_location(view);
   if(view->update_status_file_path)

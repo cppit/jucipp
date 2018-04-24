@@ -52,7 +52,7 @@ public:
   Gtk::Label status_branch;
   Gtk::Label status_diagnostics;
   Gtk::Label status_state;
-  void update_status(Source::View *view);
+  void update_status(Source::BaseView *view);
   void clear_status();
   
   std::function<void(Source::View*)> on_change_page;

@@ -99,17 +99,23 @@ int main() {
       assert(buffer->get_insert()->get_iter().get_line_offset()==0);
     }
     {
-      // Fails on libgit2 shipped with Ubuntu 16
-      // auto old_text="line 1\nline 3";
-      // auto new_text="";
-      // buffer->set_text(old_text);
-      // source_view.replace_text(new_text);
-      // assert(buffer->get_text()==new_text);
+      auto old_text="line 1\nline 3";
+      auto new_text="";
+      buffer->set_text(old_text);
+      source_view.replace_text(new_text);
+      assert(buffer->get_text()==new_text);
       
-      // source_view.replace_text(old_text);
-      // assert(buffer->get_text()==old_text);
-      // assert(buffer->get_insert()->get_iter().get_line()==1);
-      // assert(buffer->get_insert()->get_iter().get_line_offset()==6);
+      source_view.replace_text(old_text);
+      assert(buffer->get_text()==old_text);
+      assert(buffer->get_insert()->get_iter().get_line()==1);
+      assert(buffer->get_insert()->get_iter().get_line_offset()==6);
+    }
+    {
+      auto old_text="";
+      auto new_text="";
+      buffer->set_text(old_text);
+      source_view.replace_text(new_text);
+      assert(buffer->get_text()==new_text);
     }
     {
       auto old_text="line 1\nline 3\n";

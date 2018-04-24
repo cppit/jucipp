@@ -45,12 +45,7 @@ namespace Source {
     View(const boost::filesystem::path &file_path, Glib::RefPtr<Gsv::Language> language);
     ~View();
     
-    bool load();
-    void rename(const boost::filesystem::path &path);
-    
-    virtual bool save();
-    ///Set new text without moving scrolled window
-    void replace_text(const std::string &new_text);
+    bool save() override;
     
     void configure() override;
     
@@ -63,8 +58,6 @@ namespace Source {
     void replace_all(const std::string &replacement);
     
     void paste();
-    
-    Glib::RefPtr<Gsv::Language> language;
     
     std::function<void()> non_interactive_completion;
     std::function<void(bool)> format_style;
@@ -86,26 +79,8 @@ namespace Source {
     
     Gtk::TextIter get_iter_for_dialog();
     
-    std::function<void(View* view, bool center, bool show_tooltips)> scroll_to_cursor_delayed=[](View* view, bool center, bool show_tooltips) {};
-    /// Safely returns iter at a line at an offset using either byte index or character offset. Defaults to using byte index.
-    virtual Gtk::TextIter get_iter_at_line_pos(int line, int pos);
-    /// Safely places cursor at line using get_iter_at_line_pos.
-    void place_cursor_at_line_pos(int line, int pos);
-    /// Safely places cursor at line offset
-    void place_cursor_at_line_offset(int line, int offset);
-    /// Safely places cursor at line index
-    void place_cursor_at_line_index(int line, int index);
-    
     void hide_tooltips() override;
     void hide_dialogs() override;
-    
-    std::function<void(View *view)> update_tab_label;
-    std::function<void(View *view)> update_status_location;
-    std::function<void(View *view)> update_status_file_path;
-    std::function<void(View *view)> update_status_diagnostics;
-    std::function<void(View *view)> update_status_state;
-    std::tuple<size_t, size_t, size_t> status_diagnostics;
-    std::string status_state;
     
     void set_tab_char_and_size(char tab_char, unsigned tab_size);
     std::pair<char, unsigned> get_tab_char_and_size() {return {tab_char, tab_size};}
@@ -124,18 +99,6 @@ namespace Source {
     gdouble on_motion_last_x=0.0;
     gdouble on_motion_last_y=0.0;
     void set_tooltip_and_dialog_events();
-        
-    std::string get_line(const Gtk::TextIter &iter);
-    std::string get_line(Glib::RefPtr<Gtk::TextBuffer::Mark> mark);
-    std::string get_line(int line_nr);
-    std::string get_line();
-    std::string get_line_before(const Gtk::TextIter &iter);
-    std::string get_line_before(Glib::RefPtr<Gtk::TextBuffer::Mark> mark);
-    std::string get_line_before();
-    Gtk::TextIter get_tabs_end_iter(const Gtk::TextIter &iter);
-    Gtk::TextIter get_tabs_end_iter(Glib::RefPtr<Gtk::TextBuffer::Mark> mark);
-    Gtk::TextIter get_tabs_end_iter(int line_nr);
-    Gtk::TextIter get_tabs_end_iter();
     
     /// Usually returns at start of line, but not always
     Gtk::TextIter find_start_of_sentence(Gtk::TextIter iter);
@@ -148,14 +111,6 @@ namespace Source {
     std::string get_token(Gtk::TextIter iter);
     
     void cleanup_whitespace_characters_on_return(const Gtk::TextIter &iter);
-    
-    /// Move iter to line start. Depending on iter position, before or after indentation.
-    /// Works with wrapped lines. 
-    Gtk::TextIter get_smart_home_iter(const Gtk::TextIter &iter);
-    /// Move iter to line end. Depending on iter position, before or after indentation.
-    /// Works with wrapped lines. 
-    /// Note that smart end goes FIRST to end of line to avoid hiding empty chars after expressions.
-    Gtk::TextIter get_smart_end_iter(const Gtk::TextIter &iter);
     
     bool is_bracket_language=false;
     bool on_key_press_event(GdkEventKey* key) override;

@@ -1,23 +1,20 @@
 #pragma once
-#include <gtksourceviewmm.h>
+#include "source_base.h"
 #include <aspell.h>
 
 namespace Source {
-  class SpellCheckView : virtual public Gsv::View {
+  class SpellCheckView : virtual public Source::BaseView {
   public:
-    SpellCheckView();
+    SpellCheckView(const boost::filesystem::path &file_path, Glib::RefPtr<Gsv::Language> language);
     ~SpellCheckView();
     
-    virtual void configure();
-    
-    virtual void hide_tooltips() {}
-    virtual void hide_dialogs();
+    void configure() override;
+    void hide_dialogs() override;
     
     void spellcheck();
     void remove_spellcheck_errors();
     void goto_next_spellcheck_error();
     
-    bool disable_spellcheck=false;
   protected:
     bool is_code_iter(const Gtk::TextIter &iter);
     bool spellcheck_all=false;

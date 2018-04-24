@@ -12,6 +12,7 @@ set(JUCI_SHARED_FILES
   meson.cc
   project_build.cc
   source.cc
+  source_base.cc
   source_clang.cc
   source_diff.cc
   source_language_protocol.cc

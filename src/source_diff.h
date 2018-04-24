@@ -1,5 +1,5 @@
 #pragma once
-#include <gtksourceviewmm.h>
+#include "source_base.h"
 #include <boost/filesystem.hpp>
 #include "dispatcher.h"
 #include <set>
@@ -10,7 +10,7 @@
 #include "git.h"
 
 namespace Source {
-  class DiffView : virtual public Gsv::View {
+  class DiffView : virtual public Source::BaseView {
     enum class ParseState {IDLE, STARTING, PREPROCESSING, PROCESSING, POSTPROCESSING};
     
     class Renderer : public Gsv::GutterRenderer {
@@ -29,22 +29,11 @@ namespace Source {
                       Gsv::GutterRendererState p6) override;
     };
   public:
-    DiffView(const boost::filesystem::path &file_path);
+    DiffView(const boost::filesystem::path &file_path, Glib::RefPtr<Gsv::Language> language);
     ~DiffView();
     
-    boost::filesystem::path file_path;
-    boost::filesystem::path canonical_file_path;
-  protected:
-    std::mutex file_path_mutex;
-    std::time_t last_write_time;
-    void check_last_write_time();
   public:
-    virtual void configure();
-    
-    std::function<void(DiffView *view)> update_status_branch;
-    std::string status_branch;
-    
-    Gtk::TextIter get_iter_at_line_end(int line_nr);
+    void configure() override;
     
     void git_goto_next_diff();
     std::string git_get_diff_details();
