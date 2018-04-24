@@ -285,14 +285,10 @@ void Window::set_menu_actions() {
           return;
         }
         
-        int line = view->get_buffer()->get_insert()->get_iter().get_line();
-        int offset = view->get_buffer()->get_insert()->get_iter().get_line_offset();
         view->load();
         while(Gtk::Main::events_pending())
           Gtk::Main::iteration(false);
         Notebook::get().delete_cursor_locations(view);
-        view->place_cursor_at_line_offset(line, offset);
-        view->scroll_to_cursor_delayed(view, true, false);
         view->get_buffer()->set_modified(false);
         view->full_reparse();
       }

@@ -477,24 +477,26 @@ void Source::LanguageProtocolView::setup_navigation_and_refactoring() {
       });
       result_processed.get_future().get();
       
-      get_buffer()->begin_user_action();
-      auto iter=get_buffer()->get_insert()->get_iter();
-      auto line=iter.get_line();
-      auto offset=iter.get_line_offset();
-      for(auto it=replaces.rbegin();it!=replaces.rend();++it) {
-        auto start=get_iter_at_line_pos(it->start.line, it->start.index);
-        auto end=get_iter_at_line_pos(it->end.line, it->end.index);
-        get_buffer()->erase(start, end);
-        start=get_iter_at_line_pos(it->start.line, it->start.index);
-        unescape_text(it->text);
-        get_buffer()->insert(start, it->text);
+      auto end_iter=get_buffer()->end();
+      if(replaces.size()==1 &&
+         replaces[0].start.line==0 && replaces[0].start.index==0 &&
+         (replaces[0].end.line>static_cast<unsigned>(end_iter.get_line()) ||
+          (replaces[0].end.line==static_cast<unsigned>(end_iter.get_line()) && replaces[0].end.index>=static_cast<unsigned>(end_iter.get_line_offset())))) {
+        unescape_text(replaces[0].text);
+        replace_text(replaces[0].text);
       }
-      if(get_buffer()->get_insert()->get_iter().is_end()) {
-        place_cursor_at_line_offset(line, offset);
-        hide_tooltips();
-        scroll_to_cursor_delayed(this, true, false);
+      else {
+        get_buffer()->begin_user_action();
+        for(auto it=replaces.rbegin();it!=replaces.rend();++it) {
+          auto start=get_iter_at_line_pos(it->start.line, it->start.index);
+          auto end=get_iter_at_line_pos(it->end.line, it->end.index);
+          get_buffer()->erase(start, end);
+          start=get_iter_at_line_pos(it->start.line, it->start.index);
+          unescape_text(it->text);
+          get_buffer()->insert(start, it->text);
+        }
+        get_buffer()->end_user_action();
       }
-      get_buffer()->end_user_action();
     };
   }
   

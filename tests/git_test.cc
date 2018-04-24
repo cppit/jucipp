@@ -37,5 +37,22 @@ int main() {
     return 1;
   }
   
-  return 0;
+  {
+    std::string old_text("line 1\nline2\n\nline4\n\n");
+    std::string new_text("line2\n\nline41\nline5\n\nline 5\nline 6\n");
+    auto hunks=Git::Repository::Diff::get_hunks(old_text, new_text);
+    assert(hunks.size()==3);
+    assert(hunks[0].old_lines.first==1);
+    assert(hunks[0].old_lines.second==1);
+    assert(hunks[0].new_lines.first==0);
+    assert(hunks[0].new_lines.second==0);
+    assert(hunks[1].old_lines.first==4);
+    assert(hunks[1].old_lines.second==1);
+    assert(hunks[1].new_lines.first==3);
+    assert(hunks[1].new_lines.second==2);
+    assert(hunks[2].old_lines.first==5);
+    assert(hunks[2].old_lines.second==0);
+    assert(hunks[2].new_lines.first==6);
+    assert(hunks[2].new_lines.second==2);
+  }
 }

@@ -31,6 +31,14 @@ public:
         std::vector<std::pair<int, int> > modified;
         std::vector<int> removed;
       };
+      class Hunk {
+      public:
+        Hunk(int old_start, int old_size, int new_start, int new_size): old_lines(old_start, old_size), new_lines(new_start, new_size) {}
+        /// Start and size
+        std::pair<int, int> old_lines;
+        /// Start and size
+        std::pair<int, int> new_lines;
+      };
     private:
       friend class Repository;
       Diff(const boost::filesystem::path &path, git_repository *repository);
@@ -42,6 +50,7 @@ public:
     public:
       Diff() : repository(nullptr), blob(nullptr) {}
       Lines get_lines(const std::string &buffer);
+      static std::vector<Hunk> get_hunks(const std::string &old_buffer, const std::string &new_buffer);
       std::string get_details(const std::string &buffer, int line_nr);
     };
     

@@ -6,6 +6,7 @@
 #include "directories.h"
 #include "menu.h"
 #include "selection_dialog.h"
+#include "git.h"
 #include <gtksourceview/gtksource.h>
 #include <boost/property_tree/json_parser.hpp>
 #include <boost/spirit/home/qi/char.hpp>
@@ -15,6 +16,7 @@
 #include <numeric>
 #include <set>
 #include <regex>
+#include <limits>
 
 // TODO 2019: Remove workarounds when Debian stable and FreeBSD has newer glibmm packages
 #if GLIBMM_MAJOR_VERSION>2 || (GLIBMM_MAJOR_VERSION==2 && (GLIBMM_MINOR_VERSION>51 || (GLIBMM_MINOR_VERSION==51 && GLIBMM_MICRO_VERSION>=2)))
@@ -565,7 +567,6 @@ Source::View::View(const boost::filesystem::path &file_path, Glib::RefPtr<Gsv::L
 bool Source::View::load() {
   disable_spellcheck=true;
   get_source_buffer()->begin_not_undoable_action();
-  get_buffer()->erase(get_buffer()->begin(), get_buffer()->end());
   bool status=true;
   if(language) {
     std::ifstream input(file_path.string(), std::ofstream::binary);
@@ -581,8 +582,11 @@ bool Source::View::load() {
         next_char_iter++;
         ustr.replace(iter, next_char_iter, "?");
         valid=false;
-      }  
-      get_buffer()->insert_at_cursor(ustr);
+      }
+      if(get_buffer()->size()==0)
+        get_buffer()->insert_at_cursor(ustr);
+      else
+        replace_text(ustr.raw());
     
       if(!valid)
         Terminal::get().print("Warning: "+file_path.string()+" is not a valid UTF-8 file. Saving might corrupt the file.\n");
@@ -596,8 +600,12 @@ bool Source::View::load() {
       Glib::ustring ustr=ss.str();
       
       bool valid=true;
-      if(ustr.validate())
-        get_buffer()->insert_at_cursor(ustr);
+      if(ustr.validate()) {
+        if(get_buffer()->size()==0)
+          get_buffer()->insert_at_cursor(ustr);
+        else
+          replace_text(ustr.raw());
+      }
       else
         valid=false;
       
@@ -731,61 +739,59 @@ bool Source::View::save() {
   }
 }
 
-void Source::View::replace_text(const std::string &text) {
+void Source::View::replace_text(const std::string &new_text) {
   get_buffer()->begin_user_action();
   auto iter=get_buffer()->get_insert()->get_iter();
-  auto cursor_line_nr=iter.get_line();
-  auto cursor_line_offset=iter.get_line_offset();
+  int cursor_line_nr=iter.get_line();
+  int cursor_line_offset=iter.ends_line() ? std::numeric_limits<int>::max() : iter.get_line_offset();
   
-  size_t start_line_index=0;
-  int line_nr=0;
-  for(size_t c=0;c<text.size();++c) {
-    if(text[c]=='\n' || c==text.size()-1) {
-      std::string line=text.substr(start_line_index, c-start_line_index);
-      if(text[c]!='\n')
-        line+=text[c];
-      //Remove carriage return
-      for(auto it=line.begin();it!=line.end();) {
-        if(*it=='\r')
-          it=line.erase(it);
-        else
-          ++it;
-      }
-      Gtk::TextIter iter;
-      if(line_nr<get_buffer()->get_line_count()) {
-        auto start_iter=get_buffer()->get_iter_at_line(line_nr);
-        auto end_iter=get_iter_at_line_end(line_nr);
-        
-        if(get_buffer()->get_text(start_iter, end_iter)!=line) {
-          get_buffer()->erase(start_iter, end_iter);
-          iter=get_buffer()->get_iter_at_line(line_nr);
-          get_buffer()->insert(iter, line);
-        }
-      }
-      else {
-        iter=get_buffer()->end();
-        get_buffer()->insert(iter, '\n'+line);
-      }
-      
-      ++line_nr;
-      start_line_index=c+1;
+  std::vector<std::pair<const char*, const char*>> new_lines;
+  
+  const char* line_start=new_text.c_str();
+  for(size_t i=0;i<new_text.size();++i) {
+    if(new_text[i]=='\n') {
+      new_lines.emplace_back(line_start, &new_text[i]+1);
+      line_start = &new_text[i]+1;
     }
   }
+  if(new_text.empty() || new_text.back()!='\n')
+    new_lines.emplace_back(line_start, &new_text[new_text.size()]);
   
-  if(text[text.size()-1]=='\n') {
-    Gtk::TextIter iter;
-    get_buffer()->insert(get_iter_at_line_end(line_nr-1), "\n");
-    ++line_nr;
+  try {
+    auto hunks = Git::Repository::Diff::get_hunks(get_buffer()->get_text().raw(), new_text);
+    
+    for(auto it=hunks.rbegin();it!=hunks.rend();++it) {
+      bool place_cursor=false;
+      Gtk::TextIter start;
+      if(it->old_lines.second!=0) {
+        start=get_buffer()->get_iter_at_line(it->old_lines.first-1);
+        auto end=get_buffer()->get_iter_at_line(it->old_lines.first-1+it->old_lines.second);
+        
+        if(cursor_line_nr>=start.get_line() && cursor_line_nr<end.get_line()) {
+          if(it->new_lines.second!=0) {
+            place_cursor = true;
+            int line_diff=cursor_line_nr-start.get_line();
+            cursor_line_nr+=static_cast<int>(0.5+(static_cast<float>(line_diff)/it->old_lines.second)*it->new_lines.second)-line_diff;
+          }
+        }
+        
+        get_buffer()->erase(start, end);
+        start=get_buffer()->get_iter_at_line(it->old_lines.first-1);
+      }
+      else
+        start=get_buffer()->get_iter_at_line(it->old_lines.first);
+      if(it->new_lines.second!=0) {
+        get_buffer()->insert(start, new_lines[it->new_lines.first-1].first, new_lines[it->new_lines.first-1+it->new_lines.second-1].second);
+        if(place_cursor)
+          place_cursor_at_line_offset(cursor_line_nr, cursor_line_offset);
+      }
+    }
   }
-  
-  if(line_nr<get_buffer()->get_line_count()) {
-    auto iter=get_iter_at_line_end(line_nr-1);
-    get_buffer()->erase(iter, get_buffer()->end());
+  catch(...) {
+    Terminal::get().print("Error: Could not replace text in buffer\n", true);
   }
   
   get_buffer()->end_user_action();
-  
-  place_cursor_at_line_offset(cursor_line_nr, cursor_line_offset);
 }
 
 void Source::View::configure() {

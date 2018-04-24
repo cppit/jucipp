@@ -50,7 +50,7 @@ namespace Source {
     
     virtual bool save();
     ///Set new text without moving scrolled window
-    void replace_text(const std::string &text);
+    void replace_text(const std::string &new_text);
     
     void configure() override;
     
