@@ -417,20 +417,24 @@ Source::LanguageProtocolView::~LanguageProtocolView() {
 void Source::LanguageProtocolView::setup_navigation_and_refactoring() {
   if(capabilities.document_formatting) {
     format_style=[this](bool continue_without_style_file) {
-      bool has_style_file=false;
-      auto style_file_search_path=this->file_path.parent_path();
-      auto style_file='.'+language_id+"-format";
-      while(true) {
-        if(boost::filesystem::exists(style_file_search_path/style_file)) {
-          has_style_file=true;
-          break;
+      if(!continue_without_style_file) {
+        bool has_style_file=false;
+        auto style_file_search_path=this->file_path.parent_path();
+        auto style_file='.'+language_id+"-format";
+        
+        while(true) {
+          if(boost::filesystem::exists(style_file_search_path/style_file)) {
+            has_style_file=true;
+            break;
+          }
+          if(style_file_search_path==style_file_search_path.root_directory())
+            break;
+          style_file_search_path=style_file_search_path.parent_path();
         }
-        if(style_file_search_path==style_file_search_path.root_directory())
-          break;
-        style_file_search_path=style_file_search_path.parent_path();
+        
+        if(!has_style_file && !continue_without_style_file)
+          return;
       }
-      if(!has_style_file && !continue_without_style_file)
-        return;
       
       class Replace {
       public:
@@ -943,10 +947,6 @@ Gtk::TextIter Source::LanguageProtocolView::get_iter_at_line_pos(int line, int p
   if(pos<0)
     pos=0;
   return get_buffer()->get_iter_at_line_offset(line, pos);
-}
-
-void Source::LanguageProtocolView::show_diagnostic_tooltips(const Gdk::Rectangle &rectangle) {
-  diagnostic_tooltips.show(rectangle);
 }
 
 void Source::LanguageProtocolView::show_type_tooltips(const Gdk::Rectangle &rectangle) {

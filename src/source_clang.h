@@ -30,7 +30,6 @@ namespace Source {
     std::vector<std::pair<clangmm::Offset, clangmm::Offset>> clang_tokens_offsets;
     sigc::connection delayed_reparse_connection;
     
-    void show_diagnostic_tooltips(const Gdk::Rectangle &rectangle) override;
     void show_type_tooltips(const Gdk::Rectangle &rectangle) override;
     
     std::set<int> diagnostic_offsets;

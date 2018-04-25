@@ -32,13 +32,17 @@ namespace Source {
     DiffView(const boost::filesystem::path &file_path, Glib::RefPtr<Gsv::Language> language);
     ~DiffView();
     
-  public:
     void configure() override;
+    
+    void rename(const boost::filesystem::path &path) override;
     
     void git_goto_next_diff();
     std::string git_get_diff_details();
     
+    boost::filesystem::path canonical_file_path;
   private:
+    std::mutex canonical_file_path_mutex;
+    
     std::unique_ptr<Renderer> renderer;
     Dispatcher dispatcher;
     

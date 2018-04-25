@@ -55,7 +55,7 @@ Glib::RefPtr<Gsv::Language> Source::guess_language(const boost::filesystem::path
       language=language_manager->get_language("makefile");
     else if(file_path.extension()==".tcc")
       language=language_manager->get_language("cpphdr");
-    else if(file_path.extension()==".ts")
+    else if(file_path.extension()==".ts" || file_path.extension()==".jsx")
       language=language_manager->get_language("js");
     else if(!file_path.has_extension()) {
       for(auto &part: file_path) {
@@ -125,10 +125,6 @@ Source::View::View(const boost::filesystem::path &file_path, Glib::RefPtr<Gsv::L
   non_deleted_views.emplace(this);
   views.emplace(this);
   
-  load();
-  
-  get_buffer()->place_cursor(get_buffer()->get_iter_at_offset(0)); 
-  
   search_settings = gtk_source_search_settings_new();
   gtk_source_search_settings_set_wrap_around(search_settings, true);
   search_context = gtk_source_search_context_new(get_source_buffer()->gobj(), search_settings);
@@ -190,7 +186,96 @@ Source::View::View(const boost::filesystem::path &file_path, Glib::RefPtr<Gsv::L
   
   set_tooltip_and_dialog_events();
   
-  if(language && (language->get_id()=="chdr" || language->get_id()=="cpphdr" || language->get_id()=="c" ||
+  static auto prettier = filesystem::find_executable("prettier");
+  if(!prettier.empty() && language &&
+     (language->get_id()=="js" || language->get_id()=="json" || language->get_id()=="css")) {
+    format_style=[this](bool continue_without_style_file) {
+      auto command=prettier.string()+" --cursor-offset "+std::to_string(get_buffer()->get_insert()->get_iter().get_offset());
+      command+=" --stdin-filepath "+this->file_path.string();
+      
+      if(get_buffer()->get_has_selection()) {
+        Gtk::TextIter start, end;
+        get_buffer()->get_selection_bounds(start, end);
+        command+=" --range-start "+std::to_string(start.get_offset());
+        command+=" --range-end "+std::to_string(end.get_offset());
+      }
+      
+      if(!continue_without_style_file) {
+        bool has_style_file=false;
+        auto style_file_search_path=this->file_path.parent_path();
+        
+        while(true) {
+          if(boost::filesystem::exists(style_file_search_path/".prettierrc") ||
+             boost::filesystem::exists(style_file_search_path/"prettier.config")) {
+            has_style_file=true;
+            break;
+          }
+          if(style_file_search_path==style_file_search_path.root_directory())
+            break;
+          style_file_search_path=style_file_search_path.parent_path();
+        }
+        
+        if(!has_style_file && !continue_without_style_file)
+          return;
+      }
+      
+      std::stringstream stdin_stream(get_buffer()->get_text()), stdout_stream, stderr_stream;
+      
+      auto exit_status=Terminal::get().process(stdin_stream, stdout_stream, command, this->file_path.parent_path(), &stderr_stream);
+      if(exit_status==0) {
+        replace_text(stdout_stream.str());
+        std::string line;
+        std::getline(stderr_stream, line);
+        if(line!="NaN") {
+          try {
+            auto offset=atoi(line.c_str());
+            if(offset<get_buffer()->size()) {
+              get_buffer()->place_cursor(get_buffer()->get_iter_at_offset(offset));
+              hide_tooltips();
+            }
+          }
+          catch(...) {}
+        }
+      }
+      else {
+        // static std::regex regex("^\\[error\\] stdin: (.*) \\(([0-9]*):([0-9]*)\\)$");
+        // std::string line;
+        // std::getline(stderr_stream, line);
+        // std::smatch sm;
+        // if(std::regex_match(line, sm, regex)) {
+        //   auto line=std::min(atoi(sm[1].str().c_str()), get_buffer()->get_line_count()-1); // TODO: add try
+        //   if(line<0)
+        //     line=0;
+        //   auto iter=get_iter_at_line_end(line);
+        //   auto pos=std::min(atoi(sm[2].str().c_str()), iter.get_line_offset()); // TODO: add try
+        //   if(pos<0)
+        //     pos=0;
+        //   auto start=get_buffer()->get_iter_at_line_offset(line, pos);
+        //   auto end=start;
+        //   end.forward_char();
+        //   if(start==end)
+        //       start.forward_char();
+          
+        //   std::string diagnostic_tag_name="def:error";
+        //   std::string severity_spelling="Error";
+          
+        //   auto spelling=sm[1].str();
+          
+        //   auto create_tooltip_buffer=[this, spelling, severity_spelling, diagnostic_tag_name]() {
+        //     auto tooltip_buffer=Gtk::TextBuffer::create(get_buffer()->get_tag_table());
+        //     tooltip_buffer->insert_with_tag(tooltip_buffer->get_insert()->get_iter(), severity_spelling, diagnostic_tag_name);
+        //     tooltip_buffer->insert_with_tag(tooltip_buffer->get_insert()->get_iter(), ":\n"+spelling, "def:note");
+        //     return tooltip_buffer;
+        //   };
+        //   diagnostic_tooltips.emplace_back(create_tooltip_buffer, this, get_buffer()->create_mark(start), get_buffer()->create_mark(end));
+          
+        //   get_buffer()->apply_tag_by_name(diagnostic_tag_name+"_underline", start, end);
+        // }
+        Terminal::get().print("Prettier:\n"+stderr_stream.str()+'\n', true); // TODO: consider using the above WiP code instead
+      }
+    };
+  }
+  else if(language && (language->get_id()=="chdr" || language->get_id()=="cpphdr" || language->get_id()=="c" ||
                   language->get_id()=="cpp" || language->get_id()=="objc" || language->get_id()=="java" ||
                   language->get_id()=="js" || language->get_id()=="ts" || language->get_id()=="proto" ||
                   language->get_id()=="c-sharp" || language->get_id()=="html" || language->get_id()=="cuda" ||

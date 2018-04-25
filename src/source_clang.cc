@@ -358,10 +358,6 @@ void Source::ClangViewParse::update_diagnostics() {
     update_status_diagnostics(this);
 }
 
-void Source::ClangViewParse::show_diagnostic_tooltips(const Gdk::Rectangle &rectangle) {
-  diagnostic_tooltips.show(rectangle);
-}
-
 void Source::ClangViewParse::show_type_tooltips(const Gdk::Rectangle &rectangle) {
   if(parsed) {
     Gtk::TextIter iter;

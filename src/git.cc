@@ -111,8 +111,7 @@ Git::Repository::Repository(const boost::filesystem::path &path) {
   if(work_path.empty())
     throw std::runtime_error("Could not find work path");
   
-  auto git_path_str=get_path().string();
-  auto git_directory=Glib::wrap(g_file_new_for_path(git_path_str.c_str())); //TODO: report missing constructor in giomm
+  auto git_directory=Gio::File::create_for_path(get_path().string());
   monitor=git_directory->monitor_directory(Gio::FileMonitorFlags::FILE_MONITOR_WATCH_MOVES);
   monitor_changed_connection=monitor->signal_changed().connect([this](const Glib::RefPtr<Gio::File> &file,
                                                                       const Glib::RefPtr<Gio::File>&,

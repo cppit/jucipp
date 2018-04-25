@@ -38,7 +38,7 @@ int Terminal::process(const std::string &command, const boost::filesystem::path 
   return process->get_exit_status();
 }
 
-int Terminal::process(std::istream &stdin_stream, std::ostream &stdout_stream, const std::string &command, const boost::filesystem::path &path) {
+int Terminal::process(std::istream &stdin_stream, std::ostream &stdout_stream, const std::string &command, const boost::filesystem::path &path, std::ostream *stderr_stream) {
   TinyProcessLib::Process process(command, path.string(), [&stdout_stream](const char* bytes, size_t n) {
     Glib::ustring umessage(std::string(bytes, n));
     Glib::ustring::iterator iter;
@@ -48,8 +48,11 @@ int Terminal::process(std::istream &stdin_stream, std::ostream &stdout_stream, c
       umessage.replace(iter, next_char_iter, "?");
     }
     stdout_stream.write(umessage.data(), n);
-  }, [this](const char* bytes, size_t n) {
-    async_print(std::string(bytes, n), true);
+  }, [this, stderr_stream](const char* bytes, size_t n) {
+    if(stderr_stream)
+      stderr_stream->write(bytes, n);
+    else
+      async_print(std::string(bytes, n), true);
   }, true);
   
   if(process.get_id()<=0) {

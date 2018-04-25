@@ -172,6 +172,7 @@ void Config::read(const boost::property_tree::ptree &cfg) {
   source.highlight_current_line = source_json.get<bool>("highlight_current_line");
   source.show_line_numbers = source_json.get<bool>("show_line_numbers");
   source.enable_multiple_cursors = source_json.get<bool>("enable_multiple_cursors");
+  source.auto_reload_changed_files = source_json.get<bool>("auto_reload_changed_files");
   source.clang_format_style = source_json.get<std::string>("clang_format_style");
   source.clang_usages_threads = static_cast<unsigned>(source_json.get<int>("clang_usages_threads"));
   auto pt_doc_search=cfg.get_child("documentation_searches");

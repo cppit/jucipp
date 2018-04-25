@@ -93,7 +93,6 @@ namespace Source {
     Gtk::TextIter get_iter_at_line_pos(int line, int pos) override;
 
   protected:
-    void show_diagnostic_tooltips(const Gdk::Rectangle &rectangle) override;
     void show_type_tooltips(const Gdk::Rectangle &rectangle) override;
 
   private:

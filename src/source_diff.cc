@@ -35,6 +35,11 @@ void Source::DiffView::Renderer::draw_vfunc(const Cairo::RefPtr<Cairo::Context> 
 }
 
 Source::DiffView::DiffView(const boost::filesystem::path &file_path, Glib::RefPtr<Gsv::Language> language) : BaseView(file_path, language), renderer(new Renderer()) {
+  boost::system::error_code ec;
+  canonical_file_path=boost::filesystem::canonical(file_path, ec);
+  if(ec)
+    canonical_file_path=file_path;
+  
   renderer->tag_added=get_buffer()->create_tag("git_added");
   renderer->tag_modified=get_buffer()->create_tag("git_modified");
   renderer->tag_removed=get_buffer()->create_tag("git_removed");
@@ -144,7 +149,6 @@ void Source::DiffView::configure() {
     if(monitor_event!=Gio::FileMonitorEvent::FILE_MONITOR_EVENT_CHANGES_DONE_HINT) {
       delayed_monitor_changed_connection.disconnect();
       delayed_monitor_changed_connection=Glib::signal_timeout().connect([this]() {
-        check_last_write_time();
         monitor_changed=true;
         parse_state=ParseState::STARTING;
         std::unique_lock<std::mutex> lock(parse_mutex);
@@ -251,6 +255,16 @@ void Source::DiffView::configure() {
   });
 }
 
+void Source::DiffView::rename(const boost::filesystem::path &path) {
+  Source::BaseView::rename(path);
+  
+  std::lock_guard<std::mutex> lock(canonical_file_path_mutex);
+  boost::system::error_code ec;
+  canonical_file_path=boost::filesystem::canonical(path, ec);
+  if(ec)
+    canonical_file_path=path;
+}
+
 void Source::DiffView::git_goto_next_diff() {
   auto iter=get_buffer()->get_insert()->get_iter();
   auto insert_iter=iter;
@@ -300,7 +314,7 @@ std::unique_ptr<Git::Repository::Diff> Source::DiffView::get_diff() {
   auto work_path=filesystem::get_normal_path(repository->get_work_path());
   boost::filesystem::path relative_path;
   {
-    std::unique_lock<std::mutex> lock(file_path_mutex);
+    std::unique_lock<std::mutex> lock(canonical_file_path_mutex);
     relative_path=filesystem::get_relative_path(canonical_file_path, work_path);
     if(relative_path.empty())
       throw std::runtime_error("not a relative path");

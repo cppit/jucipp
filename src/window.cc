@@ -285,12 +285,10 @@ void Window::set_menu_actions() {
           return;
         }
         
-        view->load();
-        while(Gtk::Main::events_pending())
-          Gtk::Main::iteration(false);
-        Notebook::get().delete_cursor_locations(view);
-        view->get_buffer()->set_modified(false);
-        view->full_reparse();
+        if(view->load()) {
+          view->get_buffer()->set_modified(false);
+          view->full_reparse();
+        }
       }
     }
   });

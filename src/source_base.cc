@@ -2,28 +2,78 @@
 #include "info.h"
 #include "terminal.h"
 #include "git.h"
+#include "config.h"
 #include <fstream>
 
-Source::BaseView::BaseView(const boost::filesystem::path &file_path, Glib::RefPtr<Gsv::Language> language): file_path(file_path), language(language), status_diagnostics(0, 0, 0) {
-  boost::system::error_code ec;
-  canonical_file_path=boost::filesystem::canonical(file_path, ec);
-  if(ec)
-    canonical_file_path=file_path;
+Source::BaseView::BaseView(const boost::filesystem::path &file_path, Glib::RefPtr<Gsv::Language> language): Gsv::View(), file_path(file_path), language(language), status_diagnostics(0, 0, 0) {
+  load();
+  get_buffer()->place_cursor(get_buffer()->get_iter_at_offset(0)); 
   
+  signal_focus_in_event().connect([this](GdkEventFocus *event) {
+    if(this->last_write_time!=static_cast<std::time_t>(-1))
+      check_last_write_time();
+    return false;
+  });
+  
+#ifdef __APPLE__ // TODO: Gio file monitor is bugged on MacOS
+  class Recursive {
+  public:
+    static void f(BaseView *view, std::time_t last_write_time_) {
+      view->delayed_monitor_changed_connection.disconnect();
+      view->delayed_monitor_changed_connection=Glib::signal_timeout().connect([view, last_write_time_]() {
+        boost::system::error_code ec;
+        auto last_write_time=boost::filesystem::last_write_time(view->file_path, ec);
+        if(last_write_time!=last_write_time_)
+          view->check_last_write_time(last_write_time);
+        Recursive::f(view, last_write_time);
+        return false;
+      }, 1000);
+    }
+  };
+  if(this->last_write_time!=static_cast<std::time_t>(-1))
+    Recursive::f(this, last_write_time);
+#else
+  if(this->last_write_time!=static_cast<std::time_t>(-1)) {
+    monitor=Gio::File::create_for_path(file_path.string())->monitor_file(Gio::FileMonitorFlags::FILE_MONITOR_NONE);
+    monitor_changed_connection=monitor->signal_changed().connect([this](const Glib::RefPtr<Gio::File> &file,
+                                                                        const Glib::RefPtr<Gio::File>&,
+                                                                        Gio::FileMonitorEvent monitor_event) {
+      if(monitor_event!=Gio::FileMonitorEvent::FILE_MONITOR_EVENT_CHANGES_DONE_HINT) {
+        delayed_monitor_changed_connection.disconnect();
+        delayed_monitor_changed_connection=Glib::signal_timeout().connect([this]() {
+          check_last_write_time();
+          return false;
+        }, 500);
+      }
+    });
+  }
+#endif
+}
+
+Source::BaseView::~BaseView() {
+  monitor_changed_connection.disconnect();
+  delayed_monitor_changed_connection.disconnect();
+}
+
+bool Source::BaseView::load() {
+  boost::system::error_code ec;
   last_write_time=boost::filesystem::last_write_time(file_path, ec);
   if(ec)
     last_write_time=static_cast<std::time_t>(-1);
   
-  signal_focus_in_event().connect([this](GdkEventFocus *event) {
-    check_last_write_time();
-    return false;
-  });
-}
-
-bool Source::BaseView::load() {
   disable_spellcheck=true;
   get_source_buffer()->begin_not_undoable_action();
-  bool status=true;
+  
+  class Guard {
+  public:
+    Source::BaseView *view;
+    ~Guard() {
+      view->get_source_buffer()->end_not_undoable_action();
+      view->disable_spellcheck=false;
+    }
+  };
+  Guard guard{this};
+  
   if(language) {
     std::ifstream input(file_path.string(), std::ofstream::binary);
     if(input) {
@@ -39,13 +89,17 @@ bool Source::BaseView::load() {
         ustr.replace(iter, next_char_iter, "?");
         valid=false;
       }
+      
+      if(!valid)
+        Terminal::get().print("Warning: "+file_path.string()+" is not a valid UTF-8 file. Saving might corrupt the file.\n");
+      
       if(get_buffer()->size()==0)
         get_buffer()->insert_at_cursor(ustr);
       else
         replace_text(ustr.raw());
-    
-      if(!valid)
-        Terminal::get().print("Warning: "+file_path.string()+" is not a valid UTF-8 file. Saving might corrupt the file.\n");
+    }
+    else {
+      return false;
     }
   }
   else {
@@ -55,30 +109,23 @@ bool Source::BaseView::load() {
       ss << input.rdbuf();
       Glib::ustring ustr=ss.str();
       
-      bool valid=true;
       if(ustr.validate()) {
         if(get_buffer()->size()==0)
           get_buffer()->insert_at_cursor(ustr);
         else
           replace_text(ustr.raw());
       }
-      else
-        valid=false;
-      
-      if(!valid)
+      else {
         Terminal::get().print("Error: "+file_path.string()+" is not a valid UTF-8 file.\n", true);
-      status=false;
+        return false;
+      }
+    }
+    else {
+      return false;
     }
   }
-  get_source_buffer()->end_not_undoable_action();
-  disable_spellcheck=false;
   
-  boost::system::error_code ec;
-  last_write_time=boost::filesystem::last_write_time(file_path, ec);
-  if(ec)
-    last_write_time=static_cast<std::time_t>(-1);
-  
-  return status;
+  return true;
 }
 
 void Source::BaseView::replace_text(const std::string &new_text) {
@@ -149,15 +196,8 @@ void Source::BaseView::replace_text(const std::string &new_text) {
 }
 
 void Source::BaseView::rename(const boost::filesystem::path &path) {
-  {
-    std::unique_lock<std::mutex> lock(file_path_mutex);
-    file_path=path;
-    
-    boost::system::error_code ec;
-    canonical_file_path=boost::filesystem::canonical(file_path, ec);
-    if(ec)
-      canonical_file_path=file_path;
-  }
+  file_path=path;
+  
   if(update_status_file_path)
     update_status_file_path(this);
   if(update_tab_label)
@@ -284,11 +324,24 @@ Gtk::TextIter Source::BaseView::get_tabs_end_iter() {
   return get_tabs_end_iter(get_buffer()->get_insert());
 }
 
-void Source::BaseView::check_last_write_time() {
-  if(has_focus()) {
+void Source::BaseView::check_last_write_time(std::time_t last_write_time_) {
+  if(this->last_write_time==static_cast<std::time_t>(-1))
+    return;
+  
+  if(Config::get().source.auto_reload_changed_files && !get_buffer()->get_modified()) {
     boost::system::error_code ec;
-    auto last_write_time=boost::filesystem::last_write_time(file_path, ec);
-    if(!ec && this->last_write_time!=static_cast<std::time_t>(-1) && last_write_time!=this->last_write_time)
+    auto last_write_time=last_write_time_!=static_cast<std::time_t>(-1) ? last_write_time_ : boost::filesystem::last_write_time(file_path, ec);
+    if(!ec && last_write_time!=this->last_write_time) {
+      if(load()) {
+        get_buffer()->set_modified(false);
+        return;
+      }
+    }
+  }
+  else if(has_focus()) {
+    boost::system::error_code ec;
+    auto last_write_time=last_write_time_!=static_cast<std::time_t>(-1) ? last_write_time_ : boost::filesystem::last_write_time(file_path, ec);
+    if(!ec && last_write_time!=this->last_write_time)
       Info::get().print("Caution: " + file_path.filename().string() + " was changed outside of juCi++");
   }
 }

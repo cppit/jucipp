@@ -94,7 +94,7 @@ namespace Source {
     Tooltips diagnostic_tooltips;
     Tooltips type_tooltips;
     sigc::connection delayed_tooltips_connection;
-    virtual void show_diagnostic_tooltips(const Gdk::Rectangle &rectangle) {}
+    virtual void show_diagnostic_tooltips(const Gdk::Rectangle &rectangle) { diagnostic_tooltips.show(rectangle); }
     virtual void show_type_tooltips(const Gdk::Rectangle &rectangle) {}
     gdouble on_motion_last_x=0.0;
     gdouble on_motion_last_y=0.0;

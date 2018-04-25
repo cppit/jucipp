@@ -59,6 +59,7 @@ R"RAW(
         "highlight_current_line": true,
         "show_line_numbers": true,
         "enable_multiple_cursors": false,
+        "auto_reload_changed_files": false,
         "clang_format_style_comment": "IndentWidth, AccessModifierOffset and UseTab are set automatically. See http://clang.llvm.org/docs/ClangFormatStyleOptions.html",
         "clang_format_style": "ColumnLimit: 0, MaxEmptyLinesToKeep: 2, SpaceBeforeParens: Never, NamespaceIndentation: All, BreakBeforeBraces: Custom, BraceWrapping: {BeforeElse: true, BeforeCatch: true}",
         "clang_usages_threads_comment": "The number of threads used in finding usages in unparsed files. -1 corresponds to the number of cores available, and 0 disables the search",

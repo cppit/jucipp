@@ -17,7 +17,7 @@ public:
   }
   
   int process(const std::string &command, const boost::filesystem::path &path="", bool use_pipes=true);
-  int process(std::istream &stdin_stream, std::ostream &stdout_stream, const std::string &command, const boost::filesystem::path &path="");
+  int process(std::istream &stdin_stream, std::ostream &stdout_stream, const std::string &command, const boost::filesystem::path &path="", std::ostream *stderr_stream=nullptr);
   void async_process(const std::string &command, const boost::filesystem::path &path="", std::function<void(int exit_status)> callback=nullptr, bool quiet=false);
   void kill_last_async_process(bool force=false);
   void kill_async_processes(bool force=false);

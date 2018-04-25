@@ -8,16 +8,20 @@ namespace Source {
   class BaseView : public Gsv::View {
   public:
     BaseView(const boost::filesystem::path &file_path, Glib::RefPtr<Gsv::Language> language);
+    ~BaseView();
     boost::filesystem::path file_path;
-    boost::filesystem::path canonical_file_path;
     
     Glib::RefPtr<Gsv::Language> language;
     
     bool load();
     /// Set new text more optimally and without unnecessary scrolling
     void replace_text(const std::string &new_text);
-    void rename(const boost::filesystem::path &path);
+    virtual void rename(const boost::filesystem::path &path);
     virtual bool save() = 0;
+    
+    Glib::RefPtr<Gio::FileMonitor> monitor;
+    sigc::connection monitor_changed_connection;
+    sigc::connection delayed_monitor_changed_connection;
     
     virtual void configure() = 0;
     virtual void hide_tooltips() = 0;
@@ -69,8 +73,7 @@ namespace Source {
     bool disable_spellcheck=false;
     
   protected:
-    std::mutex file_path_mutex;
     std::time_t last_write_time;
-    void check_last_write_time();
+    void check_last_write_time(std::time_t last_write_time_=static_cast<std::time_t>(-1));
   };
 }
