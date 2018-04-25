@@ -41,7 +41,7 @@ namespace Source {
     std::atomic<ParseState> parse_state;
     std::atomic<ParseProcessState> parse_process_state;
     
-    CXCompletionString selected_completion_string;
+    CXCompletionString selected_completion_string=nullptr;
   private:
     Glib::ustring parse_thread_buffer;
     
