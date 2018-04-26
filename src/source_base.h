@@ -2,6 +2,7 @@
 
 #include <gtksourceviewmm.h>
 #include <mutex>
+#include <set>
 #include <boost/filesystem.hpp>
 
 namespace Source {
@@ -29,16 +30,27 @@ namespace Source {
     
     std::function<void(BaseView* view, bool center, bool show_tooltips)> scroll_to_cursor_delayed=[](BaseView* view, bool center, bool show_tooltips) {};
     
-    Gtk::TextIter get_iter_at_line_end(int line_nr);
-    
-    /// Safely returns iter at a line at an offset using either byte index or character offset. Defaults to using byte index.
+    /// Safely returns iter given line and an offset using either byte index or character offset. Defaults to using byte index.
     virtual Gtk::TextIter get_iter_at_line_pos(int line, int pos);
+    /// Safely returns iter given line and character offset
+    Gtk::TextIter get_iter_at_line_offset(int line, int offset);
+    /// Safely returns iter given line and byte index
+    Gtk::TextIter get_iter_at_line_index(int line, int index);
+    
+    Gtk::TextIter get_iter_at_line_end(int line_nr);
+    Gtk::TextIter get_iter_for_dialog();
+    
     /// Safely places cursor at line using get_iter_at_line_pos.
     void place_cursor_at_line_pos(int line, int pos);
     /// Safely places cursor at line offset
     void place_cursor_at_line_offset(int line, int offset);
     /// Safely places cursor at line index
     void place_cursor_at_line_index(int line, int index);
+    
+  protected:
+    std::time_t last_write_time;
+    void monitor_file();
+    void check_last_write_time(std::time_t last_write_time_=static_cast<std::time_t>(-1));
     
     /// Move iter to line start. Depending on iter position, before or after indentation.
     /// Works with wrapped lines. 
@@ -60,6 +72,9 @@ namespace Source {
     Gtk::TextIter get_tabs_end_iter(int line_nr);
     Gtk::TextIter get_tabs_end_iter();
     
+    std::set<int> diagnostic_offsets;
+    void place_cursor_at_next_diagnostic();
+  public:
     std::function<void(BaseView *view)> update_tab_label;
     std::function<void(BaseView *view)> update_status_location;
     std::function<void(BaseView *view)> update_status_file_path;
@@ -71,9 +86,5 @@ namespace Source {
     std::string status_branch;
     
     bool disable_spellcheck=false;
-    
-  protected:
-    std::time_t last_write_time;
-    void check_last_write_time(std::time_t last_write_time_=static_cast<std::time_t>(-1));
   };
 }

@@ -39,6 +39,7 @@ namespace Source {
     void git_goto_next_diff();
     std::string git_get_diff_details();
     
+    /// Use canonical path to follow symbolic links
     boost::filesystem::path canonical_file_path;
   private:
     std::mutex canonical_file_path_mutex;

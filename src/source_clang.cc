@@ -265,11 +265,8 @@ void Source::ClangViewParse::update_syntax() {
 }
 
 void Source::ClangViewParse::update_diagnostics() {
-  diagnostic_offsets.clear();
-  diagnostic_tooltips.clear();
+  clear_diagnostic_tooltips();
   fix_its.clear();
-  get_buffer()->remove_tag_by_name("def:warning_underline", get_buffer()->begin(), get_buffer()->end());
-  get_buffer()->remove_tag_by_name("def:error_underline", get_buffer()->begin(), get_buffer()->end());
   size_t num_warnings=0;
   size_t num_errors=0;
   size_t num_fix_its=0;
@@ -295,19 +292,18 @@ void Source::ClangViewParse::update_diagnostics() {
       index=diagnostic.offsets.second.index-1;
       if(index>=0 && index<end.get_line_index())
         end=get_buffer()->get_iter_at_line_index(line, index);
-            
-      std::string diagnostic_tag_name;
-      if(diagnostic.severity<=CXDiagnostic_Warning) {
-        diagnostic_tag_name="def:warning";
+      
+      bool error=false;
+      std::string severity_tag_name;
+      if(diagnostic.severity<=clangmm::Diagnostic::Severity::Warning) {
+        severity_tag_name="def:warning";
         num_warnings++;
       }
       else {
-        diagnostic_tag_name="def:error";
+        severity_tag_name="def:error";
         num_errors++;
+        error=true;
       }
-      
-      auto spelling=diagnostic.spelling;
-      auto severity_spelling=diagnostic.severity_spelling;
       
       std::string fix_its_string;
       unsigned fix_its_count=0;
@@ -333,23 +329,15 @@ void Source::ClangViewParse::update_diagnostics() {
       else if(fix_its_count>1)
         fix_its_string.insert(0, "Fix-its:\n");
       
-      auto create_tooltip_buffer=[this, spelling, severity_spelling, diagnostic_tag_name, fix_its_string]() {
-        auto tooltip_buffer=Gtk::TextBuffer::create(get_buffer()->get_tag_table());
-        tooltip_buffer->insert_with_tag(tooltip_buffer->get_insert()->get_iter(), severity_spelling, diagnostic_tag_name);
-        tooltip_buffer->insert_with_tag(tooltip_buffer->get_insert()->get_iter(), ":\n"+spelling, "def:note");
-        if(fix_its_string.size()>0) {
-          tooltip_buffer->insert_with_tag(tooltip_buffer->get_insert()->get_iter(), ":\n\n"+fix_its_string, "def:note");
-        }
-        return tooltip_buffer;
-      };
-      diagnostic_tooltips.emplace_back(create_tooltip_buffer, this, get_buffer()->create_mark(start), get_buffer()->create_mark(end));
-    
-      get_buffer()->apply_tag_by_name(diagnostic_tag_name+"_underline", start, end);
+      if(!fix_its_string.empty())
+        diagnostic.spelling+="\n\n"+fix_its_string;
+      add_diagnostic_tooltip(start, end, diagnostic.spelling, error);
+      
       auto iter=get_buffer()->get_insert()->get_iter();
       if(iter.ends_line()) {
         auto next_iter=iter;
         if(next_iter.forward_char())
-          get_buffer()->remove_tag_by_name(diagnostic_tag_name+"_underline", iter, next_iter);
+          get_buffer()->remove_tag_by_name(severity_tag_name+"_underline", iter, next_iter);
       }
     }
   }
@@ -1616,21 +1604,7 @@ Source::ClangViewRefactor::ClangViewRefactor(const boost::filesystem::path &file
       Info::get().print("Buffer is parsing");
       return;
     }
-    auto insert_offset=get_buffer()->get_insert()->get_iter().get_offset();
-    for(auto offset: diagnostic_offsets) {
-      if(offset>insert_offset) {
-        get_buffer()->place_cursor(get_buffer()->get_iter_at_offset(offset));
-        scroll_to(get_buffer()->get_insert(), 0.0, 1.0, 0.5);
-        return;
-      }
-    }
-    if(diagnostic_offsets.size()==0)
-      Info::get().print("No diagnostics found in current buffer");
-    else {
-      auto iter=get_buffer()->get_iter_at_offset(*diagnostic_offsets.begin());
-      get_buffer()->place_cursor(iter);
-      scroll_to(get_buffer()->get_insert(), 0.0, 1.0, 0.5);
-    }
+    place_cursor_at_next_diagnostic();
   };
   
   get_fix_its=[this]() {

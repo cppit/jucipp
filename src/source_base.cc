@@ -15,39 +15,7 @@ Source::BaseView::BaseView(const boost::filesystem::path &file_path, Glib::RefPt
     return false;
   });
   
-#ifdef __APPLE__ // TODO: Gio file monitor is bugged on MacOS
-  class Recursive {
-  public:
-    static void f(BaseView *view, std::time_t last_write_time_) {
-      view->delayed_monitor_changed_connection.disconnect();
-      view->delayed_monitor_changed_connection=Glib::signal_timeout().connect([view, last_write_time_]() {
-        boost::system::error_code ec;
-        auto last_write_time=boost::filesystem::last_write_time(view->file_path, ec);
-        if(last_write_time!=last_write_time_)
-          view->check_last_write_time(last_write_time);
-        Recursive::f(view, last_write_time);
-        return false;
-      }, 1000);
-    }
-  };
-  if(this->last_write_time!=static_cast<std::time_t>(-1))
-    Recursive::f(this, last_write_time);
-#else
-  if(this->last_write_time!=static_cast<std::time_t>(-1)) {
-    monitor=Gio::File::create_for_path(file_path.string())->monitor_file(Gio::FileMonitorFlags::FILE_MONITOR_NONE);
-    monitor_changed_connection=monitor->signal_changed().connect([this](const Glib::RefPtr<Gio::File> &file,
-                                                                        const Glib::RefPtr<Gio::File>&,
-                                                                        Gio::FileMonitorEvent monitor_event) {
-      if(monitor_event!=Gio::FileMonitorEvent::FILE_MONITOR_EVENT_CHANGES_DONE_HINT) {
-        delayed_monitor_changed_connection.disconnect();
-        delayed_monitor_changed_connection=Glib::signal_timeout().connect([this]() {
-          check_last_write_time();
-          return false;
-        }, 500);
-      }
-    });
-  }
-#endif
+  monitor_file();
 }
 
 Source::BaseView::~BaseView() {
@@ -204,6 +172,92 @@ void Source::BaseView::rename(const boost::filesystem::path &path) {
     update_tab_label(this);
 }
 
+void Source::BaseView::monitor_file() {
+#ifdef __APPLE__ // TODO: Gio file monitor is bugged on MacOS
+  class Recursive {
+  public:
+    static void f(BaseView *view, std::time_t last_write_time_) {
+      view->delayed_monitor_changed_connection.disconnect();
+      view->delayed_monitor_changed_connection=Glib::signal_timeout().connect([view, last_write_time_]() {
+        boost::system::error_code ec;
+        auto last_write_time=boost::filesystem::last_write_time(view->file_path, ec);
+        if(last_write_time!=last_write_time_)
+          view->check_last_write_time(last_write_time);
+        Recursive::f(view, last_write_time);
+        return false;
+      }, 1000);
+    }
+  };
+  delayed_monitor_changed_connection.disconnect();
+  if(this->last_write_time!=static_cast<std::time_t>(-1))
+    Recursive::f(this, last_write_time);
+#else
+  if(this->last_write_time!=static_cast<std::time_t>(-1)) {
+    monitor=Gio::File::create_for_path(file_path.string())->monitor_file(Gio::FileMonitorFlags::FILE_MONITOR_NONE);
+    monitor_changed_connection.disconnect();
+    monitor_changed_connection=monitor->signal_changed().connect([this](const Glib::RefPtr<Gio::File> &file,
+                                                                        const Glib::RefPtr<Gio::File>&,
+                                                                        Gio::FileMonitorEvent monitor_event) {
+      if(monitor_event!=Gio::FileMonitorEvent::FILE_MONITOR_EVENT_CHANGES_DONE_HINT) {
+        delayed_monitor_changed_connection.disconnect();
+        delayed_monitor_changed_connection=Glib::signal_timeout().connect([this]() {
+          check_last_write_time();
+          return false;
+        }, 500);
+      }
+    });
+  }
+#endif
+}
+
+void Source::BaseView::check_last_write_time(std::time_t last_write_time_) {
+  if(this->last_write_time==static_cast<std::time_t>(-1))
+    return;
+  
+  if(Config::get().source.auto_reload_changed_files && !get_buffer()->get_modified()) {
+    boost::system::error_code ec;
+    auto last_write_time=last_write_time_!=static_cast<std::time_t>(-1) ? last_write_time_ : boost::filesystem::last_write_time(file_path, ec);
+    if(!ec && last_write_time!=this->last_write_time) {
+      if(load()) {
+        get_buffer()->set_modified(false);
+        return;
+      }
+    }
+  }
+  else if(has_focus()) {
+    boost::system::error_code ec;
+    auto last_write_time=last_write_time_!=static_cast<std::time_t>(-1) ? last_write_time_ : boost::filesystem::last_write_time(file_path, ec);
+    if(!ec && last_write_time!=this->last_write_time)
+      Info::get().print("Caution: " + file_path.filename().string() + " was changed outside of juCi++");
+  }
+}
+
+Gtk::TextIter Source::BaseView::get_iter_at_line_pos(int line, int pos) {
+  return get_iter_at_line_index(line, pos);
+}
+
+Gtk::TextIter Source::BaseView::get_iter_at_line_offset(int line, int offset) {
+  line=std::min(line, get_buffer()->get_line_count()-1);
+  if(line<0)
+    line=0;
+  auto iter=get_iter_at_line_end(line);
+  offset=std::min(offset, iter.get_line_offset());
+  if(offset<0)
+    offset=0;
+  return get_buffer()->get_iter_at_line_offset(line, offset);
+}
+
+Gtk::TextIter Source::BaseView::get_iter_at_line_index(int line, int index) {
+  line=std::min(line, get_buffer()->get_line_count()-1);
+  if(line<0)
+    line=0;
+  auto iter=get_iter_at_line_end(line);
+  index=std::min(index, iter.get_line_index());
+  if(index<0)
+    index=0;
+  return get_buffer()->get_iter_at_line_index(line, index);
+}
+
 Gtk::TextIter Source::BaseView::get_iter_at_line_end(int line_nr) {
   if(line_nr>=get_buffer()->get_line_count())
     return get_buffer()->end();
@@ -221,15 +275,20 @@ Gtk::TextIter Source::BaseView::get_iter_at_line_end(int line_nr) {
   }
 }
 
-Gtk::TextIter Source::BaseView::get_iter_at_line_pos(int line, int pos) {
-  line=std::min(line, get_buffer()->get_line_count()-1);
-  if(line<0)
-    line=0;
-  auto iter=get_iter_at_line_end(line);
-  pos=std::min(pos, iter.get_line_index());
-  if(pos<0)
-    pos=0;
-  return get_buffer()->get_iter_at_line_index(line, pos);
+Gtk::TextIter Source::BaseView::get_iter_for_dialog() {
+  auto iter=get_buffer()->get_insert()->get_iter();
+  Gdk::Rectangle visible_rect;
+  get_visible_rect(visible_rect);
+  Gdk::Rectangle iter_rect;
+  get_iter_location(iter, iter_rect);
+  iter_rect.set_width(1);
+  if(iter.get_line_offset()>=80) {
+    get_iter_at_location(iter, visible_rect.get_x(), iter_rect.get_y());
+    get_iter_location(iter, iter_rect);
+  }
+  if(!visible_rect.intersects(iter_rect))
+    get_iter_at_location(iter, visible_rect.get_x(), visible_rect.get_y()+visible_rect.get_height()/3);
+  return iter;
 }
 
 void Source::BaseView::place_cursor_at_line_pos(int line, int pos) {
@@ -237,21 +296,11 @@ void Source::BaseView::place_cursor_at_line_pos(int line, int pos) {
 }
 
 void Source::BaseView::place_cursor_at_line_offset(int line, int offset) {
-  line=std::min(line, get_buffer()->get_line_count()-1);
-  if(line<0)
-    line=0;
-  auto iter=get_iter_at_line_end(line);
-  offset=std::min(offset, iter.get_line_offset());
-  get_buffer()->place_cursor(get_buffer()->get_iter_at_line_offset(line, offset));
+  get_buffer()->place_cursor(get_iter_at_line_offset(line, offset));
 }
 
 void Source::BaseView::place_cursor_at_line_index(int line, int index) {
-  line=std::min(line, get_buffer()->get_line_count()-1);
-  if(line<0)
-    line=0;
-  auto iter=get_iter_at_line_end(line);
-  index=std::min(index, iter.get_line_index());
-  get_buffer()->place_cursor(get_buffer()->get_iter_at_line_index(line, index));
+  get_buffer()->place_cursor(get_iter_at_line_index(line, index));
 }
 
 Gtk::TextIter Source::BaseView::get_smart_home_iter(const Gtk::TextIter &iter) {
@@ -266,6 +315,7 @@ Gtk::TextIter Source::BaseView::get_smart_home_iter(const Gtk::TextIter &iter) {
   else
     return start_line_iter;
 }
+
 Gtk::TextIter Source::BaseView::get_smart_end_iter(const Gtk::TextIter &iter) {
   auto end_line_iter=get_iter_at_line_end(iter.get_line());
   auto end_sentence_iter=end_line_iter;
@@ -324,24 +374,20 @@ Gtk::TextIter Source::BaseView::get_tabs_end_iter() {
   return get_tabs_end_iter(get_buffer()->get_insert());
 }
 
-void Source::BaseView::check_last_write_time(std::time_t last_write_time_) {
-  if(this->last_write_time==static_cast<std::time_t>(-1))
-    return;
-  
-  if(Config::get().source.auto_reload_changed_files && !get_buffer()->get_modified()) {
-    boost::system::error_code ec;
-    auto last_write_time=last_write_time_!=static_cast<std::time_t>(-1) ? last_write_time_ : boost::filesystem::last_write_time(file_path, ec);
-    if(!ec && last_write_time!=this->last_write_time) {
-      if(load()) {
-        get_buffer()->set_modified(false);
-        return;
-      }
+void Source::BaseView::place_cursor_at_next_diagnostic() {
+  auto insert_offset=get_buffer()->get_insert()->get_iter().get_offset();
+  for(auto offset: diagnostic_offsets) {
+    if(offset>insert_offset) {
+      get_buffer()->place_cursor(get_buffer()->get_iter_at_offset(offset));
+      scroll_to(get_buffer()->get_insert(), 0.0, 1.0, 0.5);
+      return;
     }
   }
-  else if(has_focus()) {
-    boost::system::error_code ec;
-    auto last_write_time=last_write_time_!=static_cast<std::time_t>(-1) ? last_write_time_ : boost::filesystem::last_write_time(file_path, ec);
-    if(!ec && last_write_time!=this->last_write_time)
-      Info::get().print("Caution: " + file_path.filename().string() + " was changed outside of juCi++");
+  if(diagnostic_offsets.size()==0)
+    Info::get().print("No diagnostics found in current buffer");
+  else {
+    auto iter=get_buffer()->get_iter_at_offset(*diagnostic_offsets.begin());
+    get_buffer()->place_cursor(iter);
+    scroll_to(get_buffer()->get_insert(), 0.0, 1.0, 0.5);
   }
 }

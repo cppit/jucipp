@@ -121,7 +121,7 @@ std::string Source::FixIt::string(Glib::RefPtr<Gtk::TextBuffer> buffer) {
 std::unordered_set<Source::View*> Source::View::non_deleted_views;
 std::unordered_set<Source::View*> Source::View::views;
 
-Source::View::View(const boost::filesystem::path &file_path, Glib::RefPtr<Gsv::Language> language): BaseView(file_path, language), SpellCheckView(file_path, language), DiffView(file_path, language) {
+Source::View::View(const boost::filesystem::path &file_path, Glib::RefPtr<Gsv::Language> language, bool is_generic_view): BaseView(file_path, language), SpellCheckView(file_path, language), DiffView(file_path, language) {
   non_deleted_views.emplace(this);
   views.emplace(this);
   
@@ -184,49 +184,463 @@ Source::View::View(const boost::filesystem::path &file_path, Glib::RefPtr<Gsv::L
     }
   });
   
-  set_tooltip_and_dialog_events();
+  setup_tooltip_and_dialog_events();
+  setup_format_style(is_generic_view);
   
+#ifndef __APPLE__
+  set_tab_width(4); //Visual size of a \t hardcoded to be equal to visual size of 4 spaces. Buggy on OS X
+#endif
+  tab_char=Config::get().source.default_tab_char;
+  tab_size=Config::get().source.default_tab_size;
+  if(Config::get().source.auto_tab_char_and_size) {
+    auto tab_char_and_size=find_tab_char_and_size();
+    if(tab_char_and_size.second!=0) {
+      if(tab_char!=tab_char_and_size.first || tab_size!=tab_char_and_size.second) {
+        std::string tab_str;
+        if(tab_char_and_size.first==' ')
+          tab_str="<space>";
+        else
+          tab_str="<tab>";
+      }
+      
+      tab_char=tab_char_and_size.first;
+      tab_size=tab_char_and_size.second;
+    }
+  }
+  set_tab_char_and_size(tab_char, tab_size);
+  
+  std::string comment_characters;
+  if(is_bracket_language)
+    comment_characters="//";
+  else if(language) {
+    if(language->get_id()=="cmake" || language->get_id()=="makefile" || language->get_id()=="python" ||
+       language->get_id()=="python3" || language->get_id()=="sh" || language->get_id()=="perl" ||
+       language->get_id()=="ruby" || language->get_id()=="r" || language->get_id()=="asm" ||
+       language->get_id()=="automake")
+      comment_characters="#";
+    else if(language->get_id()=="latex" || language->get_id()=="matlab" || language->get_id()=="octave" ||
+            language->get_id()=="bibtex")
+      comment_characters="%";
+    else if(language->get_id()=="fortran")
+      comment_characters="!";
+    else if(language->get_id()=="pascal")
+      comment_characters="//";
+    else if(language->get_id()=="lua")
+      comment_characters="--";
+  }
+  if(!comment_characters.empty()) {
+    toggle_comments=[this, comment_characters=std::move(comment_characters)] {
+      std::vector<int> lines;
+      Gtk::TextIter selection_start, selection_end;
+      get_buffer()->get_selection_bounds(selection_start, selection_end);
+      auto line_start=selection_start.get_line();
+      auto line_end=selection_end.get_line();
+      if(line_start!=line_end && selection_end.starts_line())
+        --line_end;
+      bool lines_commented=true;
+      bool extra_spaces=true;
+      int min_indentation=-1;
+      for(auto line=line_start;line<=line_end;++line) {
+        auto iter=get_buffer()->get_iter_at_line(line);
+        bool line_added=false;
+        bool line_commented=false;
+        bool extra_space=false;
+        int indentation=0;
+        for(;;) {
+          if(iter.ends_line())
+            break;
+          else if(*iter==' ' || *iter=='\t') {
+            ++indentation;
+            iter.forward_char();
+            continue;
+          }
+          else {
+            lines.emplace_back(line);
+            line_added=true;
+            for(size_t c=0;c<comment_characters.size();++c) {
+              if(iter.ends_line()) {
+                break;
+              }
+              else if(*iter==static_cast<unsigned int>(comment_characters[c])) {
+                if(c<comment_characters.size()-1) {
+                  iter.forward_char();
+                  continue;
+                }
+                else {
+                  line_commented=true;
+                  if(!iter.ends_line()) {
+                    iter.forward_char();
+                    if(*iter==' ')
+                      extra_space=true;
+                  }
+                  break;
+                }
+              }
+              else
+                break;
+            }
+            break;
+          }
+        }
+        if(line_added) {
+          lines_commented&=line_commented;
+          extra_spaces&=extra_space;
+          if(min_indentation==-1 || indentation<min_indentation)
+            min_indentation=indentation;
+        }
+      }
+      if(lines.size()) {
+        auto comment_characters_and_space=comment_characters+' ';
+        get_buffer()->begin_user_action();
+        for(auto &line: lines) {
+          auto iter=get_buffer()->get_iter_at_line(line);
+          iter.forward_chars(min_indentation);
+          if(lines_commented) {
+            auto end_iter=iter;
+            end_iter.forward_chars(comment_characters.size()+static_cast<int>(extra_spaces));
+            while(*iter==' ' || *iter=='\t') {
+              iter.forward_char();
+              end_iter.forward_char();
+            }
+            get_buffer()->erase(iter, end_iter);
+          }
+          else
+            get_buffer()->insert(iter, comment_characters_and_space);
+        }
+        get_buffer()->end_user_action();
+      }
+    };
+  }
+}
+
+void Source::View::set_tab_char_and_size(char tab_char, unsigned tab_size) {
+  this->tab_char=tab_char;
+  this->tab_size=tab_size;
+      
+  tab.clear();
+  for(unsigned c=0;c<tab_size;c++)
+    tab+=tab_char;
+}
+
+void Source::View::cleanup_whitespace_characters() {
+  auto buffer=get_buffer();
+  buffer->begin_user_action();
+  for(int line=0;line<buffer->get_line_count();line++) {
+    auto iter=buffer->get_iter_at_line(line);
+    auto end_iter=get_iter_at_line_end(line);
+    if(iter==end_iter)
+      continue;
+    iter=end_iter;
+    while(!iter.starts_line() && (*iter==' ' || *iter=='\t' || iter.ends_line()))
+      iter.backward_char();
+    if(*iter!=' ' && *iter!='\t')
+      iter.forward_char();
+    if(iter==end_iter)
+      continue;
+    buffer->erase(iter, end_iter);
+  }
+  auto iter=buffer->end();
+  if(!iter.starts_line())
+    buffer->insert(buffer->end(), "\n");
+  buffer->end_user_action();
+}
+
+Gsv::DrawSpacesFlags Source::View::parse_show_whitespace_characters(const std::string &text) {
+  namespace qi = boost::spirit::qi;
+  
+  qi::symbols<char, Gsv::DrawSpacesFlags> options;
+  options.add
+    ("space",    Gsv::DRAW_SPACES_SPACE)
+    ("tab",      Gsv::DRAW_SPACES_TAB)
+    ("newline",  Gsv::DRAW_SPACES_NEWLINE)
+    ("nbsp",     Gsv::DRAW_SPACES_NBSP)
+    ("leading",  Gsv::DRAW_SPACES_LEADING)
+    ("text",     Gsv::DRAW_SPACES_TEXT)
+    ("trailing", Gsv::DRAW_SPACES_TRAILING)
+    ("all",      Gsv::DRAW_SPACES_ALL);
+
+  std::set<Gsv::DrawSpacesFlags> out;
+  
+  // parse comma-separated list of options
+  qi::phrase_parse(text.begin(), text.end(), options % ',', qi::space, out);
+  
+  return out.count(Gsv::DRAW_SPACES_ALL)>0 ?
+    Gsv::DRAW_SPACES_ALL :
+    static_cast<Gsv::DrawSpacesFlags>(std::accumulate(out.begin(), out.end(), 0));
+}
+
+bool Source::View::save() {
+  if(file_path.empty() || !get_buffer()->get_modified())
+    return false;
+  if(Config::get().source.cleanup_whitespace_characters)
+    cleanup_whitespace_characters();
+  
+  if(format_style) {
+    if(Config::get().source.format_style_on_save)
+      format_style(true);
+    else if(Config::get().source.format_style_on_save_if_style_file_found)
+      format_style(false);
+  }
+  
+  std::ofstream output(file_path.string(), std::ofstream::binary);
+  if(output) {
+    auto start_iter=get_buffer()->begin();
+    auto end_iter=start_iter;
+    bool end_reached=false;
+    while(!end_reached) {
+      for(size_t c=0;c<131072;c++) {
+        if(!end_iter.forward_char()) {
+          end_reached=true;
+          break;
+        }
+      }
+      output << get_buffer()->get_text(start_iter, end_iter).c_str();
+      start_iter=end_iter;
+    }
+    boost::system::error_code ec;
+    last_write_time=boost::filesystem::last_write_time(file_path, ec);
+    if(ec)
+      last_write_time=static_cast<std::time_t>(-1);
+    // Remonitor file in case it did not exist before
+    monitor_file();
+    get_buffer()->set_modified(false);
+    Directories::get().on_save_file(file_path);
+    return true;
+  }
+  else {
+    Terminal::get().print("Error: could not save file "+file_path.string()+"\n", true);
+    return false;
+  }
+}
+
+void Source::View::configure() {
+  SpellCheckView::configure();
+  DiffView::configure();
+  
+  auto style_scheme_manager=StyleSchemeManager::get_default();
+  static std::string juci_search_path=(Config::get().home_juci_path/"styles").string();
+  bool found_juci_search_path=false;
+  for(auto &search_path: style_scheme_manager->get_search_path()) {
+    if(search_path==juci_search_path) {
+      found_juci_search_path=true;
+      break;
+    }
+  }
+  if(!found_juci_search_path)
+    style_scheme_manager->prepend_search_path(juci_search_path);
+  if(Config::get().source.style.size()>0) {
+    auto scheme = style_scheme_manager->get_scheme(Config::get().source.style);
+    if(scheme)
+      get_source_buffer()->set_style_scheme(scheme);
+    else
+      Terminal::get().print("Error: Could not find gtksourceview style: "+Config::get().source.style+'\n', true);
+  }
+  
+  set_draw_spaces(parse_show_whitespace_characters(Config::get().source.show_whitespace_characters));
+  
+  if(Config::get().source.wrap_lines)
+    set_wrap_mode(Gtk::WrapMode::WRAP_CHAR);
+  else
+    set_wrap_mode(Gtk::WrapMode::WRAP_NONE);
+  property_highlight_current_line() = Config::get().source.highlight_current_line;
+  property_show_line_numbers() = Config::get().source.show_line_numbers;
+  if(Config::get().source.font.size()>0)
+    override_font(Pango::FontDescription(Config::get().source.font));
+  if(Config::get().source.show_background_pattern)
+    gtk_source_view_set_background_pattern(this->gobj(), GTK_SOURCE_BACKGROUND_PATTERN_TYPE_GRID);
+  else
+    gtk_source_view_set_background_pattern(this->gobj(), GTK_SOURCE_BACKGROUND_PATTERN_TYPE_NONE);
+  property_show_right_margin() = Config::get().source.show_right_margin;
+  property_right_margin_position() = Config::get().source.right_margin_position;
+  
+  //Create tags for diagnostic warnings and errors:
+  auto scheme = get_source_buffer()->get_style_scheme();
+  auto tag_table=get_buffer()->get_tag_table();
+  auto style=scheme->get_style("def:warning");
+  auto diagnostic_tag=get_buffer()->get_tag_table()->lookup("def:warning");
+  auto diagnostic_tag_underline=get_buffer()->get_tag_table()->lookup("def:warning_underline");
+  if(style && (style->property_foreground_set() || style->property_background_set())) {
+    Glib::ustring warning_property;
+    if(style->property_foreground_set()) {
+      warning_property=style->property_foreground().get_value();
+      diagnostic_tag->property_foreground() = warning_property;
+    }
+    else if(style->property_background_set())
+      warning_property=style->property_background().get_value();
+  
+    diagnostic_tag_underline->property_underline()=Pango::Underline::UNDERLINE_ERROR;
+    auto tag_class=G_OBJECT_GET_CLASS(diagnostic_tag_underline->gobj()); //For older GTK+ 3 versions:
+    auto param_spec=g_object_class_find_property(tag_class, "underline-rgba");
+    if(param_spec!=nullptr) {
+      diagnostic_tag_underline->set_property("underline-rgba", Gdk::RGBA(warning_property));
+    }
+  }
+  style=scheme->get_style("def:error");
+  diagnostic_tag=get_buffer()->get_tag_table()->lookup("def:error");
+  diagnostic_tag_underline=get_buffer()->get_tag_table()->lookup("def:error_underline");
+  if(style && (style->property_foreground_set() || style->property_background_set())) {
+    Glib::ustring error_property;
+    if(style->property_foreground_set()) {
+      error_property=style->property_foreground().get_value();
+      diagnostic_tag->property_foreground() = error_property;
+    }
+    else if(style->property_background_set())
+      error_property=style->property_background().get_value();
+    
+    diagnostic_tag_underline->property_underline()=Pango::Underline::UNDERLINE_ERROR;
+    diagnostic_tag_underline->set_property("underline-rgba", Gdk::RGBA(error_property));
+  }
+  //TODO: clear tag_class and param_spec?
+
+  //Add tooltip foreground and background
+  style = scheme->get_style("def:note");
+  auto note_tag=get_buffer()->get_tag_table()->lookup("def:note_background");
+  if(style->property_background_set()) {
+    note_tag->property_background()=style->property_background();
+  }
+  note_tag=get_buffer()->get_tag_table()->lookup("def:note");
+  if(style->property_foreground_set()) {
+    note_tag->property_foreground()=style->property_foreground();
+  }
+  
+  if(Config::get().menu.keys["source_show_completion"].empty()) {
+    get_completion()->unblock_interactive();
+    interactive_completion=true;
+  }
+  else {
+    get_completion()->block_interactive();
+    interactive_completion=false;
+  }
+}
+
+void Source::View::setup_tooltip_and_dialog_events() {
+  get_buffer()->signal_changed().connect([this] {
+    hide_tooltips();
+  });
+  
+  signal_motion_notify_event().connect([this](GdkEventMotion* event) {
+    if(on_motion_last_x!=event->x || on_motion_last_y!=event->y) {
+      delayed_tooltips_connection.disconnect();
+      if((event->state&GDK_BUTTON1_MASK)==0) {
+        gdouble x=event->x;
+        gdouble y=event->y;
+        delayed_tooltips_connection=Glib::signal_timeout().connect([this, x, y]() {
+          Tooltips::init();
+          Gdk::Rectangle rectangle(x, y, 1, 1);
+          if(parsed) {
+            show_type_tooltips(rectangle);
+            show_diagnostic_tooltips(rectangle);
+          }
+          return false;
+        }, 100);
+      }
+      type_tooltips.hide();
+      diagnostic_tooltips.hide();
+    }
+    on_motion_last_x=event->x;
+    on_motion_last_y=event->y;
+    return false;
+  });
+  
+  get_buffer()->signal_mark_set().connect([this](const Gtk::TextBuffer::iterator& iterator, const Glib::RefPtr<Gtk::TextBuffer::Mark>& mark) {
+    if(get_buffer()->get_has_selection() && mark->get_name()=="selection_bound")
+      delayed_tooltips_connection.disconnect();
+    
+    if(mark->get_name()=="insert") {
+      hide_tooltips();
+      delayed_tooltips_connection=Glib::signal_timeout().connect([this]() {
+        Tooltips::init();
+        Gdk::Rectangle rectangle;
+        get_iter_location(get_buffer()->get_insert()->get_iter(), rectangle);
+        int location_window_x, location_window_y;
+        buffer_to_window_coords(Gtk::TextWindowType::TEXT_WINDOW_TEXT, rectangle.get_x(), rectangle.get_y(), location_window_x, location_window_y);
+        rectangle.set_x(location_window_x-2);
+        rectangle.set_y(location_window_y);
+        rectangle.set_width(5);
+        if(parsed) {
+          show_type_tooltips(rectangle);
+          show_diagnostic_tooltips(rectangle);
+        }
+        return false;
+      }, 500);
+      
+      if(SelectionDialog::get())
+        SelectionDialog::get()->hide();
+      if(CompletionDialog::get())
+        CompletionDialog::get()->hide();
+      
+      if(update_status_location)
+        update_status_location(this);
+    }
+  });
+
+  signal_scroll_event().connect([this](GdkEventScroll* event) {
+    hide_tooltips();
+    hide_dialogs();
+    return false;
+  });
+  
+  signal_focus_out_event().connect([this](GdkEventFocus* event) {
+    hide_tooltips();
+    return false;
+  });
+  
+  signal_leave_notify_event().connect([this](GdkEventCrossing*) {
+    delayed_tooltips_connection.disconnect();
+    return false;
+  });
+}
+
+void Source::View::setup_format_style(bool is_generic_view) {
   static auto prettier = filesystem::find_executable("prettier");
   if(!prettier.empty() && language &&
      (language->get_id()=="js" || language->get_id()=="json" || language->get_id()=="css")) {
-    format_style=[this](bool continue_without_style_file) {
-      auto command=prettier.string()+" --cursor-offset "+std::to_string(get_buffer()->get_insert()->get_iter().get_offset());
-      command+=" --stdin-filepath "+this->file_path.string();
+    if(is_generic_view) {
+      goto_next_diagnostic=[this] {
+        place_cursor_at_next_diagnostic();
+      };
+      get_buffer()->signal_changed().connect([this] {
+        clear_diagnostic_tooltips();
+        status_diagnostics=std::make_tuple<size_t, size_t, size_t>(0, 0, 0);
+        if(update_status_diagnostics)
+          update_status_diagnostics(this);
+      });
+    }
+    format_style=[this, is_generic_view](bool continue_without_style_file) {
+      auto command=prettier.string();
+      if(!continue_without_style_file) {
+        std::stringstream stdin_stream, stdout_stream;
+        auto exit_status=Terminal::get().process(stdin_stream, stdout_stream, command+" --find-config-path "+this->file_path.string());
+        if(exit_status==0) {
+          if(stdout_stream.tellp()==0)
+            return;
+        }
+        else
+          return;
+      }
       
-      if(get_buffer()->get_has_selection()) {
+      command+=" --stdin-filepath "+this->file_path.string()+" --print-width 120 --config-precedence prefer-file";
+      
+      if(get_buffer()->get_has_selection()) { // Cannot be used together with --cursor-offset
         Gtk::TextIter start, end;
         get_buffer()->get_selection_bounds(start, end);
         command+=" --range-start "+std::to_string(start.get_offset());
         command+=" --range-end "+std::to_string(end.get_offset());
       }
+      else
+        command+=" --cursor-offset "+std::to_string(get_buffer()->get_insert()->get_iter().get_offset());
       
-      if(!continue_without_style_file) {
-        bool has_style_file=false;
-        auto style_file_search_path=this->file_path.parent_path();
-        
-        while(true) {
-          if(boost::filesystem::exists(style_file_search_path/".prettierrc") ||
-             boost::filesystem::exists(style_file_search_path/"prettier.config")) {
-            has_style_file=true;
-            break;
-          }
-          if(style_file_search_path==style_file_search_path.root_directory())
-            break;
-          style_file_search_path=style_file_search_path.parent_path();
-        }
-        
-        if(!has_style_file && !continue_without_style_file)
-          return;
-      }
+      size_t num_warnings=0, num_errors=0, num_fix_its=0;
+      if(is_generic_view)
+        clear_diagnostic_tooltips();
       
       std::stringstream stdin_stream(get_buffer()->get_text()), stdout_stream, stderr_stream;
-      
       auto exit_status=Terminal::get().process(stdin_stream, stdout_stream, command, this->file_path.parent_path(), &stderr_stream);
       if(exit_status==0) {
         replace_text(stdout_stream.str());
         std::string line;
         std::getline(stderr_stream, line);
-        if(line!="NaN") {
+        if(!line.empty() && line!="NaN") {
           try {
             auto offset=atoi(line.c_str());
             if(offset<get_buffer()->size()) {
@@ -237,41 +651,31 @@ Source::View::View(const boost::filesystem::path &file_path, Glib::RefPtr<Gsv::L
           catch(...) {}
         }
       }
-      else {
-        // static std::regex regex("^\\[error\\] stdin: (.*) \\(([0-9]*):([0-9]*)\\)$");
-        // std::string line;
-        // std::getline(stderr_stream, line);
-        // std::smatch sm;
-        // if(std::regex_match(line, sm, regex)) {
-        //   auto line=std::min(atoi(sm[1].str().c_str()), get_buffer()->get_line_count()-1); // TODO: add try
-        //   if(line<0)
-        //     line=0;
-        //   auto iter=get_iter_at_line_end(line);
-        //   auto pos=std::min(atoi(sm[2].str().c_str()), iter.get_line_offset()); // TODO: add try
-        //   if(pos<0)
-        //     pos=0;
-        //   auto start=get_buffer()->get_iter_at_line_offset(line, pos);
-        //   auto end=start;
-        //   end.forward_char();
-        //   if(start==end)
-        //       start.forward_char();
-          
-        //   std::string diagnostic_tag_name="def:error";
-        //   std::string severity_spelling="Error";
-          
-        //   auto spelling=sm[1].str();
-          
-        //   auto create_tooltip_buffer=[this, spelling, severity_spelling, diagnostic_tag_name]() {
-        //     auto tooltip_buffer=Gtk::TextBuffer::create(get_buffer()->get_tag_table());
-        //     tooltip_buffer->insert_with_tag(tooltip_buffer->get_insert()->get_iter(), severity_spelling, diagnostic_tag_name);
-        //     tooltip_buffer->insert_with_tag(tooltip_buffer->get_insert()->get_iter(), ":\n"+spelling, "def:note");
-        //     return tooltip_buffer;
-        //   };
-        //   diagnostic_tooltips.emplace_back(create_tooltip_buffer, this, get_buffer()->create_mark(start), get_buffer()->create_mark(end));
-          
-        //   get_buffer()->apply_tag_by_name(diagnostic_tag_name+"_underline", start, end);
-        // }
-        Terminal::get().print("Prettier:\n"+stderr_stream.str()+'\n', true); // TODO: consider using the above WiP code instead
+      else if(is_generic_view) {
+        static std::regex regex("^\\[error\\] stdin: (.*) \\(([0-9]*):([0-9]*)\\)$");
+        std::string line;
+        std::getline(stderr_stream, line);
+        std::smatch sm;
+        if(std::regex_match(line, sm, regex)) {
+          try {
+            auto start=get_iter_at_line_offset(atoi(sm[2].str().c_str())-1, atoi(sm[3].str().c_str())-1);
+            ++num_errors;
+            if(start.ends_line())
+              start.backward_char();
+            auto end=start;
+            end.forward_char();
+            if(start==end)
+                start.forward_char();
+            
+            add_diagnostic_tooltip(start, end, sm[1].str(), true);
+          }
+          catch(...) {}
+        }
+      }
+      if(is_generic_view) {
+        status_diagnostics=std::make_tuple(num_warnings, num_errors, num_fix_its);
+        if(update_status_diagnostics)
+          update_status_diagnostics(this);
       }
     };
   }
@@ -522,407 +926,6 @@ Source::View::View(const boost::filesystem::path &file_path, Glib::RefPtr<Gsv::L
       get_buffer()->end_user_action();
     };
   }
-  
-#ifndef __APPLE__
-  set_tab_width(4); //Visual size of a \t hardcoded to be equal to visual size of 4 spaces. Buggy on OS X
-#endif
-  tab_char=Config::get().source.default_tab_char;
-  tab_size=Config::get().source.default_tab_size;
-  if(Config::get().source.auto_tab_char_and_size) {
-    auto tab_char_and_size=find_tab_char_and_size();
-    if(tab_char_and_size.second!=0) {
-      if(tab_char!=tab_char_and_size.first || tab_size!=tab_char_and_size.second) {
-        std::string tab_str;
-        if(tab_char_and_size.first==' ')
-          tab_str="<space>";
-        else
-          tab_str="<tab>";
-      }
-      
-      tab_char=tab_char_and_size.first;
-      tab_size=tab_char_and_size.second;
-    }
-  }
-  set_tab_char_and_size(tab_char, tab_size);
-  
-  std::string comment_characters;
-  if(is_bracket_language)
-    comment_characters="//";
-  else if(language) {
-    if(language->get_id()=="cmake" || language->get_id()=="makefile" || language->get_id()=="python" ||
-       language->get_id()=="python3" || language->get_id()=="sh" || language->get_id()=="perl" ||
-       language->get_id()=="ruby" || language->get_id()=="r" || language->get_id()=="asm" ||
-       language->get_id()=="automake")
-      comment_characters="#";
-    else if(language->get_id()=="latex" || language->get_id()=="matlab" || language->get_id()=="octave" ||
-            language->get_id()=="bibtex")
-      comment_characters="%";
-    else if(language->get_id()=="fortran")
-      comment_characters="!";
-    else if(language->get_id()=="pascal")
-      comment_characters="//";
-    else if(language->get_id()=="lua")
-      comment_characters="--";
-  }
-  if(!comment_characters.empty()) {
-    toggle_comments=[this, comment_characters=std::move(comment_characters)] {
-      std::vector<int> lines;
-      Gtk::TextIter selection_start, selection_end;
-      get_buffer()->get_selection_bounds(selection_start, selection_end);
-      auto line_start=selection_start.get_line();
-      auto line_end=selection_end.get_line();
-      if(line_start!=line_end && selection_end.starts_line())
-        --line_end;
-      bool lines_commented=true;
-      bool extra_spaces=true;
-      int min_indentation=-1;
-      for(auto line=line_start;line<=line_end;++line) {
-        auto iter=get_buffer()->get_iter_at_line(line);
-        bool line_added=false;
-        bool line_commented=false;
-        bool extra_space=false;
-        int indentation=0;
-        for(;;) {
-          if(iter.ends_line())
-            break;
-          else if(*iter==' ' || *iter=='\t') {
-            ++indentation;
-            iter.forward_char();
-            continue;
-          }
-          else {
-            lines.emplace_back(line);
-            line_added=true;
-            for(size_t c=0;c<comment_characters.size();++c) {
-              if(iter.ends_line()) {
-                break;
-              }
-              else if(*iter==static_cast<unsigned int>(comment_characters[c])) {
-                if(c<comment_characters.size()-1) {
-                  iter.forward_char();
-                  continue;
-                }
-                else {
-                  line_commented=true;
-                  if(!iter.ends_line()) {
-                    iter.forward_char();
-                    if(*iter==' ')
-                      extra_space=true;
-                  }
-                  break;
-                }
-              }
-              else
-                break;
-            }
-            break;
-          }
-        }
-        if(line_added) {
-          lines_commented&=line_commented;
-          extra_spaces&=extra_space;
-          if(min_indentation==-1 || indentation<min_indentation)
-            min_indentation=indentation;
-        }
-      }
-      if(lines.size()) {
-        auto comment_characters_and_space=comment_characters+' ';
-        get_buffer()->begin_user_action();
-        for(auto &line: lines) {
-          auto iter=get_buffer()->get_iter_at_line(line);
-          iter.forward_chars(min_indentation);
-          if(lines_commented) {
-            auto end_iter=iter;
-            end_iter.forward_chars(comment_characters.size()+static_cast<int>(extra_spaces));
-            while(*iter==' ' || *iter=='\t') {
-              iter.forward_char();
-              end_iter.forward_char();
-            }
-            get_buffer()->erase(iter, end_iter);
-          }
-          else
-            get_buffer()->insert(iter, comment_characters_and_space);
-        }
-        get_buffer()->end_user_action();
-      }
-    };
-  }
-}
-
-void Source::View::set_tab_char_and_size(char tab_char, unsigned tab_size) {
-  this->tab_char=tab_char;
-  this->tab_size=tab_size;
-      
-  tab.clear();
-  for(unsigned c=0;c<tab_size;c++)
-    tab+=tab_char;
-}
-
-void Source::View::cleanup_whitespace_characters() {
-  auto buffer=get_buffer();
-  buffer->begin_user_action();
-  for(int line=0;line<buffer->get_line_count();line++) {
-    auto iter=buffer->get_iter_at_line(line);
-    auto end_iter=get_iter_at_line_end(line);
-    if(iter==end_iter)
-      continue;
-    iter=end_iter;
-    while(!iter.starts_line() && (*iter==' ' || *iter=='\t' || iter.ends_line()))
-      iter.backward_char();
-    if(*iter!=' ' && *iter!='\t')
-      iter.forward_char();
-    if(iter==end_iter)
-      continue;
-    buffer->erase(iter, end_iter);
-  }
-  auto iter=buffer->end();
-  if(!iter.starts_line())
-    buffer->insert(buffer->end(), "\n");
-  buffer->end_user_action();
-}
-
-Gsv::DrawSpacesFlags Source::View::parse_show_whitespace_characters(const std::string &text) {
-  namespace qi = boost::spirit::qi;
-  
-  qi::symbols<char, Gsv::DrawSpacesFlags> options;
-  options.add
-    ("space",    Gsv::DRAW_SPACES_SPACE)
-    ("tab",      Gsv::DRAW_SPACES_TAB)
-    ("newline",  Gsv::DRAW_SPACES_NEWLINE)
-    ("nbsp",     Gsv::DRAW_SPACES_NBSP)
-    ("leading",  Gsv::DRAW_SPACES_LEADING)
-    ("text",     Gsv::DRAW_SPACES_TEXT)
-    ("trailing", Gsv::DRAW_SPACES_TRAILING)
-    ("all",      Gsv::DRAW_SPACES_ALL);
-
-  std::set<Gsv::DrawSpacesFlags> out;
-  
-  // parse comma-separated list of options
-  qi::phrase_parse(text.begin(), text.end(), options % ',', qi::space, out);
-  
-  return out.count(Gsv::DRAW_SPACES_ALL)>0 ?
-    Gsv::DRAW_SPACES_ALL :
-    static_cast<Gsv::DrawSpacesFlags>(std::accumulate(out.begin(), out.end(), 0));
-}
-
-bool Source::View::save() {
-  if(file_path.empty() || !get_buffer()->get_modified())
-    return false;
-  if(Config::get().source.cleanup_whitespace_characters)
-    cleanup_whitespace_characters();
-  
-  if(format_style) {
-    if(Config::get().source.format_style_on_save)
-      format_style(true);
-    else if(Config::get().source.format_style_on_save_if_style_file_found)
-      format_style(false);
-  }
-  
-  std::ofstream output(file_path.string(), std::ofstream::binary);
-  if(output) {
-    auto start_iter=get_buffer()->begin();
-    auto end_iter=start_iter;
-    bool end_reached=false;
-    while(!end_reached) {
-      for(size_t c=0;c<131072;c++) {
-        if(!end_iter.forward_char()) {
-          end_reached=true;
-          break;
-        }
-      }
-      output << get_buffer()->get_text(start_iter, end_iter).c_str();
-      start_iter=end_iter;
-    }
-    boost::system::error_code ec;
-    last_write_time=boost::filesystem::last_write_time(file_path, ec);
-    if(ec)
-      last_write_time=static_cast<std::time_t>(-1);
-    get_buffer()->set_modified(false);
-    Directories::get().on_save_file(file_path);
-    return true;
-  }
-  else {
-    Terminal::get().print("Error: could not save file "+file_path.string()+"\n", true);
-    return false;
-  }
-}
-
-void Source::View::configure() {
-  SpellCheckView::configure();
-  DiffView::configure();
-  
-  auto style_scheme_manager=StyleSchemeManager::get_default();
-  static std::string juci_search_path=(Config::get().home_juci_path/"styles").string();
-  bool found_juci_search_path=false;
-  for(auto &search_path: style_scheme_manager->get_search_path()) {
-    if(search_path==juci_search_path) {
-      found_juci_search_path=true;
-      break;
-    }
-  }
-  if(!found_juci_search_path)
-    style_scheme_manager->prepend_search_path(juci_search_path);
-  if(Config::get().source.style.size()>0) {
-    auto scheme = style_scheme_manager->get_scheme(Config::get().source.style);
-    if(scheme)
-      get_source_buffer()->set_style_scheme(scheme);
-    else
-      Terminal::get().print("Error: Could not find gtksourceview style: "+Config::get().source.style+'\n', true);
-  }
-  
-  set_draw_spaces(parse_show_whitespace_characters(Config::get().source.show_whitespace_characters));
-  
-  if(Config::get().source.wrap_lines)
-    set_wrap_mode(Gtk::WrapMode::WRAP_CHAR);
-  else
-    set_wrap_mode(Gtk::WrapMode::WRAP_NONE);
-  property_highlight_current_line() = Config::get().source.highlight_current_line;
-  property_show_line_numbers() = Config::get().source.show_line_numbers;
-  if(Config::get().source.font.size()>0)
-    override_font(Pango::FontDescription(Config::get().source.font));
-  if(Config::get().source.show_background_pattern)
-    gtk_source_view_set_background_pattern(this->gobj(), GTK_SOURCE_BACKGROUND_PATTERN_TYPE_GRID);
-  else
-    gtk_source_view_set_background_pattern(this->gobj(), GTK_SOURCE_BACKGROUND_PATTERN_TYPE_NONE);
-  property_show_right_margin() = Config::get().source.show_right_margin;
-  property_right_margin_position() = Config::get().source.right_margin_position;
-  
-  //Create tags for diagnostic warnings and errors:
-  auto scheme = get_source_buffer()->get_style_scheme();
-  auto tag_table=get_buffer()->get_tag_table();
-  auto style=scheme->get_style("def:warning");
-  auto diagnostic_tag=get_buffer()->get_tag_table()->lookup("def:warning");
-  auto diagnostic_tag_underline=get_buffer()->get_tag_table()->lookup("def:warning_underline");
-  if(style && (style->property_foreground_set() || style->property_background_set())) {
-    Glib::ustring warning_property;
-    if(style->property_foreground_set()) {
-      warning_property=style->property_foreground().get_value();
-      diagnostic_tag->property_foreground() = warning_property;
-    }
-    else if(style->property_background_set())
-      warning_property=style->property_background().get_value();
-  
-    diagnostic_tag_underline->property_underline()=Pango::Underline::UNDERLINE_ERROR;
-    auto tag_class=G_OBJECT_GET_CLASS(diagnostic_tag_underline->gobj()); //For older GTK+ 3 versions:
-    auto param_spec=g_object_class_find_property(tag_class, "underline-rgba");
-    if(param_spec!=nullptr) {
-      diagnostic_tag_underline->set_property("underline-rgba", Gdk::RGBA(warning_property));
-    }
-  }
-  style=scheme->get_style("def:error");
-  diagnostic_tag=get_buffer()->get_tag_table()->lookup("def:error");
-  diagnostic_tag_underline=get_buffer()->get_tag_table()->lookup("def:error_underline");
-  if(style && (style->property_foreground_set() || style->property_background_set())) {
-    Glib::ustring error_property;
-    if(style->property_foreground_set()) {
-      error_property=style->property_foreground().get_value();
-      diagnostic_tag->property_foreground() = error_property;
-    }
-    else if(style->property_background_set())
-      error_property=style->property_background().get_value();
-    
-    diagnostic_tag_underline->property_underline()=Pango::Underline::UNDERLINE_ERROR;
-    diagnostic_tag_underline->set_property("underline-rgba", Gdk::RGBA(error_property));
-  }
-  //TODO: clear tag_class and param_spec?
-
-  //Add tooltip foreground and background
-  style = scheme->get_style("def:note");
-  auto note_tag=get_buffer()->get_tag_table()->lookup("def:note_background");
-  if(style->property_background_set()) {
-    note_tag->property_background()=style->property_background();
-  }
-  note_tag=get_buffer()->get_tag_table()->lookup("def:note");
-  if(style->property_foreground_set()) {
-    note_tag->property_foreground()=style->property_foreground();
-  }
-  
-  if(Config::get().menu.keys["source_show_completion"].empty()) {
-    get_completion()->unblock_interactive();
-    interactive_completion=true;
-  }
-  else {
-    get_completion()->block_interactive();
-    interactive_completion=false;
-  }
-}
-
-void Source::View::set_tooltip_and_dialog_events() {
-  get_buffer()->signal_changed().connect([this] {
-    hide_tooltips();
-  });
-  
-  signal_motion_notify_event().connect([this](GdkEventMotion* event) {
-    if(on_motion_last_x!=event->x || on_motion_last_y!=event->y) {
-      delayed_tooltips_connection.disconnect();
-      if((event->state&GDK_BUTTON1_MASK)==0) {
-        gdouble x=event->x;
-        gdouble y=event->y;
-        delayed_tooltips_connection=Glib::signal_timeout().connect([this, x, y]() {
-          Tooltips::init();
-          Gdk::Rectangle rectangle(x, y, 1, 1);
-          if(parsed) {
-            show_type_tooltips(rectangle);
-            show_diagnostic_tooltips(rectangle);
-          }
-          return false;
-        }, 100);
-      }
-      type_tooltips.hide();
-      diagnostic_tooltips.hide();
-    }
-    on_motion_last_x=event->x;
-    on_motion_last_y=event->y;
-    return false;
-  });
-  
-  get_buffer()->signal_mark_set().connect([this](const Gtk::TextBuffer::iterator& iterator, const Glib::RefPtr<Gtk::TextBuffer::Mark>& mark) {
-    if(get_buffer()->get_has_selection() && mark->get_name()=="selection_bound")
-      delayed_tooltips_connection.disconnect();
-    
-    if(mark->get_name()=="insert") {
-      hide_tooltips();
-      delayed_tooltips_connection=Glib::signal_timeout().connect([this]() {
-        Tooltips::init();
-        Gdk::Rectangle rectangle;
-        get_iter_location(get_buffer()->get_insert()->get_iter(), rectangle);
-        int location_window_x, location_window_y;
-        buffer_to_window_coords(Gtk::TextWindowType::TEXT_WINDOW_TEXT, rectangle.get_x(), rectangle.get_y(), location_window_x, location_window_y);
-        rectangle.set_x(location_window_x-2);
-        rectangle.set_y(location_window_y);
-        rectangle.set_width(5);
-        if(parsed) {
-          show_type_tooltips(rectangle);
-          show_diagnostic_tooltips(rectangle);
-        }
-        return false;
-      }, 500);
-      
-      if(SelectionDialog::get())
-        SelectionDialog::get()->hide();
-      if(CompletionDialog::get())
-        CompletionDialog::get()->hide();
-      
-      if(update_status_location)
-        update_status_location(this);
-    }
-  });
-
-  signal_scroll_event().connect([this](GdkEventScroll* event) {
-    hide_tooltips();
-    hide_dialogs();
-    return false;
-  });
-  
-  signal_focus_out_event().connect([this](GdkEventFocus* event) {
-    hide_tooltips();
-    return false;
-  });
-  
-  signal_leave_notify_event().connect([this](GdkEventCrossing*) {
-    delayed_tooltips_connection.disconnect();
-    return false;
-  });
 }
 
 void Source::View::search_occurrences_updated(GtkWidget* widget, GParamSpec* property, gpointer data) {
@@ -1169,26 +1172,33 @@ void Source::View::paste() {
   scroll_to_cursor_delayed(this, false, false);
 }
 
-Gtk::TextIter Source::View::get_iter_for_dialog() {
-  auto iter=get_buffer()->get_insert()->get_iter();
-  Gdk::Rectangle visible_rect;
-  get_visible_rect(visible_rect);
-  Gdk::Rectangle iter_rect;
-  get_iter_location(iter, iter_rect);
-  iter_rect.set_width(1);
-  if(iter.get_line_offset()>=80) {
-    get_iter_at_location(iter, visible_rect.get_x(), iter_rect.get_y());
-    get_iter_location(iter, iter_rect);
-  }
-  if(!visible_rect.intersects(iter_rect))
-    get_iter_at_location(iter, visible_rect.get_x(), visible_rect.get_y()+visible_rect.get_height()/3);
-  return iter;
-}
-
 void Source::View::hide_tooltips() {
   delayed_tooltips_connection.disconnect();
   type_tooltips.hide();
   diagnostic_tooltips.hide();
+}
+
+void Source::View::add_diagnostic_tooltip(const Gtk::TextIter &start, const Gtk::TextIter &end, std::string spelling, bool error) {
+  diagnostic_offsets.emplace(start.get_offset());
+  
+  std::string severity_tag_name = error ? "def:error" : "def:warning";
+  
+  auto create_tooltip_buffer=[this, spelling=std::move(spelling), error, severity_tag_name]() {
+    auto tooltip_buffer=Gtk::TextBuffer::create(get_buffer()->get_tag_table());
+    tooltip_buffer->insert_with_tag(tooltip_buffer->get_insert()->get_iter(), error ? "Error" : "Warning", severity_tag_name);
+    tooltip_buffer->insert_with_tag(tooltip_buffer->get_insert()->get_iter(), ":\n"+spelling, "def:note");
+    return tooltip_buffer;
+  };
+  diagnostic_tooltips.emplace_back(create_tooltip_buffer, this, get_buffer()->create_mark(start), get_buffer()->create_mark(end));
+  
+  get_buffer()->apply_tag_by_name(severity_tag_name+"_underline", start, end);
+}
+
+void Source::View::clear_diagnostic_tooltips() {
+  diagnostic_offsets.clear();
+  diagnostic_tooltips.clear();
+  get_buffer()->remove_tag_by_name("def:warning_underline", get_buffer()->begin(), get_buffer()->end());
+  get_buffer()->remove_tag_by_name("def:error_underline", get_buffer()->begin(), get_buffer()->end());
 }
 
 void Source::View::hide_dialogs() {
@@ -2887,7 +2897,7 @@ std::pair<char, unsigned> Source::View::find_tab_char_and_size() {
 /////////////////////
 //// GenericView ////
 /////////////////////
-Source::GenericView::GenericView(const boost::filesystem::path &file_path, Glib::RefPtr<Gsv::Language> language) : BaseView(file_path, language), View(file_path, language) {
+Source::GenericView::GenericView(const boost::filesystem::path &file_path, Glib::RefPtr<Gsv::Language> language) : BaseView(file_path, language), View(file_path, language, true) {
   configure();
   spellcheck_all=true;
   

@@ -42,7 +42,7 @@ namespace Source {
     static std::unordered_set<View*> non_deleted_views;
     static std::unordered_set<View*> views;
     
-    View(const boost::filesystem::path &file_path, Glib::RefPtr<Gsv::Language> language);
+    View(const boost::filesystem::path &file_path, Glib::RefPtr<Gsv::Language> language, bool is_generic_view=false);
     ~View();
     
     bool save() override;
@@ -77,8 +77,6 @@ namespace Source {
     std::function<std::tuple<Source::Offset, std::string, size_t>()> get_documentation_template;
     std::function<void(int)> toggle_breakpoint;
     
-    Gtk::TextIter get_iter_for_dialog();
-    
     void hide_tooltips() override;
     void hide_dialogs() override;
     
@@ -90,15 +88,16 @@ namespace Source {
     virtual void soft_reparse(bool delayed=false) {soft_reparse_needed=false;}
     virtual void full_reparse() {full_reparse_needed=false;}
   protected:
-    bool parsed=false;
+    bool parsed=true;
     Tooltips diagnostic_tooltips;
     Tooltips type_tooltips;
     sigc::connection delayed_tooltips_connection;
     virtual void show_diagnostic_tooltips(const Gdk::Rectangle &rectangle) { diagnostic_tooltips.show(rectangle); }
+    void add_diagnostic_tooltip(const Gtk::TextIter &start, const Gtk::TextIter &end, std::string spelling, bool error);
+    void clear_diagnostic_tooltips();
     virtual void show_type_tooltips(const Gdk::Rectangle &rectangle) {}
     gdouble on_motion_last_x=0.0;
     gdouble on_motion_last_y=0.0;
-    void set_tooltip_and_dialog_events();
     
     /// Usually returns at start of line, but not always
     Gtk::TextIter find_start_of_sentence(Gtk::TextIter iter);
@@ -130,6 +129,9 @@ namespace Source {
     
     guint previous_non_modifier_keyval=0;
   private:
+    void setup_tooltip_and_dialog_events();
+    void setup_format_style(bool is_generic_view);
+    
     void cleanup_whitespace_characters();
     Gsv::DrawSpacesFlags parse_show_whitespace_characters(const std::string &text);
     

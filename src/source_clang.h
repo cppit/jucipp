@@ -32,7 +32,6 @@ namespace Source {
     
     void show_type_tooltips(const Gdk::Rectangle &rectangle) override;
     
-    std::set<int> diagnostic_offsets;
     std::vector<FixIt> fix_its;
     
     std::thread parse_thread;

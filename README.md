@@ -39,7 +39,7 @@ See [language-server-protocol/specification.md](https://github.com/Microsoft/lan
 * Regex search and replace
 * Smart paste, keys and indentation
 * Multiple cursors
-* Auto-indentation of C++ file buffers through [clang-format](http://clang.llvm.org/docs/ClangFormat.html)
+* Auto-indentation through [clang-format](http://clang.llvm.org/docs/ClangFormat.html) or [Prettier](https://github.com/prettier/prettier) if installed
 * Source minimap
 * Split view
 * Multiple cursors

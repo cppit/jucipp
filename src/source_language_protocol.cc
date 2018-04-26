@@ -322,7 +322,6 @@ Source::LanguageProtocolView::LanguageProtocolView(const boost::filesystem::path
   configure();
   get_source_buffer()->set_language(language);
   get_source_buffer()->set_highlight_syntax(true);
-  parsed=true;
   
   similar_symbol_tag=get_buffer()->create_tag();
   similar_symbol_tag->property_weight()=Pango::WEIGHT_ULTRAHEAVY;
@@ -829,21 +828,7 @@ void Source::LanguageProtocolView::setup_navigation_and_refactoring() {
   }
   
   goto_next_diagnostic=[this]() {
-    auto insert_offset=get_buffer()->get_insert()->get_iter().get_offset();
-    for(auto offset: diagnostic_offsets) {
-      if(offset>insert_offset) {
-        get_buffer()->place_cursor(get_buffer()->get_iter_at_offset(offset));
-        scroll_to(get_buffer()->get_insert(), 0.0, 1.0, 0.5);
-        return;
-      }
-    }
-    if(diagnostic_offsets.size()==0)
-      Info::get().print("No diagnostics found in current buffer");
-    else {
-      auto iter=get_buffer()->get_iter_at_offset(*diagnostic_offsets.begin());
-      get_buffer()->place_cursor(iter);
-      scroll_to(get_buffer()->get_insert(), 0.0, 1.0, 0.5);
-    }
+    place_cursor_at_next_diagnostic();
   };
 }
 
@@ -879,10 +864,7 @@ void Source::LanguageProtocolView::unescape_text(std::string &text) {
 
 void Source::LanguageProtocolView::update_diagnostics(std::vector<LanguageProtocol::Diagnostic> &&diagnostics) {
   dispatcher.post([this, diagnostics=std::move(diagnostics)] {
-    diagnostic_offsets.clear();
-    diagnostic_tooltips.clear();
-    get_buffer()->remove_tag_by_name("def:warning_underline", get_buffer()->begin(), get_buffer()->end());
-    get_buffer()->remove_tag_by_name("def:error_underline", get_buffer()->begin(), get_buffer()->end());
+    clear_diagnostic_tooltips();
     size_t num_warnings=0;
     size_t num_errors=0;
     size_t num_fix_its=0;
@@ -898,37 +880,25 @@ void Source::LanguageProtocolView::update_diagnostics(std::vector<LanguageProtoc
             start.forward_char();
         }
         
-        diagnostic_offsets.emplace(start.get_offset());
-        
-        std::string diagnostic_tag_name;
-        std::string severity_spelling;
+        bool error=false;
+        std::string severity_tag_name;
         if(diagnostic.severity>=2) {
-          severity_spelling="Warning";
-          diagnostic_tag_name="def:warning";
+          severity_tag_name="def:warning";
           num_warnings++;
         }
         else {
-          severity_spelling="Error";
-          diagnostic_tag_name="def:error";
+          severity_tag_name="def:error";
           num_errors++;
+          error=true;
         }
         
-        auto spelling=diagnostic.spelling;
+        add_diagnostic_tooltip(start, end, diagnostic.spelling, error);
         
-        auto create_tooltip_buffer=[this, spelling, severity_spelling, diagnostic_tag_name]() {
-          auto tooltip_buffer=Gtk::TextBuffer::create(get_buffer()->get_tag_table());
-          tooltip_buffer->insert_with_tag(tooltip_buffer->get_insert()->get_iter(), severity_spelling, diagnostic_tag_name);
-          tooltip_buffer->insert_with_tag(tooltip_buffer->get_insert()->get_iter(), ":\n"+spelling, "def:note");
-          return tooltip_buffer;
-        };
-        diagnostic_tooltips.emplace_back(create_tooltip_buffer, this, get_buffer()->create_mark(start), get_buffer()->create_mark(end));
-      
-        get_buffer()->apply_tag_by_name(diagnostic_tag_name+"_underline", start, end);
         auto iter=get_buffer()->get_insert()->get_iter();
         if(iter.ends_line()) {
           auto next_iter=iter;
           if(next_iter.forward_char())
-            get_buffer()->remove_tag_by_name(diagnostic_tag_name+"_underline", iter, next_iter);
+            get_buffer()->remove_tag_by_name(severity_tag_name+"_underline", iter, next_iter);
         }
       }
     }
@@ -939,14 +909,7 @@ void Source::LanguageProtocolView::update_diagnostics(std::vector<LanguageProtoc
 }
 
 Gtk::TextIter Source::LanguageProtocolView::get_iter_at_line_pos(int line, int pos) {
-  line=std::min(line, get_buffer()->get_line_count()-1);
-  if(line<0)
-    line=0;
-  auto iter=get_iter_at_line_end(line);
-  pos=std::min(pos, iter.get_line_offset());
-  if(pos<0)
-    pos=0;
-  return get_buffer()->get_iter_at_line_offset(line, pos);
+  return get_iter_at_line_offset(line, pos);
 }
 
 void Source::LanguageProtocolView::show_type_tooltips(const Gdk::Rectangle &rectangle) {

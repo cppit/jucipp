@@ -69,13 +69,13 @@ Notebook::Notebook() : Gtk::Paned(), notebooks(2) {
     });
     
     auto provider = Gtk::CssProvider::create();
-      //GtkNotebook-tab-overlap got removed in gtk 3.20, but margin works in 3.20
+    //GtkNotebook-tab-overlap got removed in gtk 3.20, but margin works in 3.20
 #if GTK_VERSION_GE(3, 20)
-        provider->load_from_data("tab {border-radius: 5px 5px 0 0; padding: 0 4px; margin: 0;}");
+    provider->load_from_data("tab {border-radius: 5px 5px 0 0; padding: 0 4px; margin: 0;}");
 #else
-        provider->load_from_data(".notebook {-GtkNotebook-tab-overlap: 0px;} tab {border-radius: 5px 5px 0 0; padding: 4px 4px;}");
+    provider->load_from_data(".notebook {-GtkNotebook-tab-overlap: 0px;} tab {border-radius: 5px 5px 0 0; padding: 4px 4px;}");
 #endif
-      notebook.get_style_context()->add_provider(provider, GTK_STYLE_PROVIDER_PRIORITY_APPLICATION);
+    notebook.get_style_context()->add_provider(provider, GTK_STYLE_PROVIDER_PRIORITY_APPLICATION);
   }
   pack1(notebooks[0], true, true);
 }
@@ -120,6 +120,7 @@ void Notebook::open(const boost::filesystem::path &file_path_, size_t notebook_i
   if(notebook_index==1 && !split)
     toggle_split();
   
+  // Use canonical path to follow symbolic links
   boost::system::error_code ec;
   auto canonical_file_path=boost::filesystem::canonical(file_path, ec);
   if(ec)
