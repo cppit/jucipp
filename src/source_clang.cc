@@ -383,7 +383,7 @@ void Source::ClangViewParse::show_type_tooltips(const Gdk::Rectangle &rectangle)
           if(referenced) {
             auto start=get_buffer()->get_iter_at_line_index(token_offsets.first.line-1, token_offsets.first.index-1);
             auto end=get_buffer()->get_iter_at_line_index(token_offsets.second.line-1, token_offsets.second.index-1);
-            auto create_tooltip_buffer=[this, &token, &token_offsets]() {
+            auto create_tooltip_buffer=[this, &token, &start, &end]() {
               auto tooltip_buffer=Gtk::TextBuffer::create(get_buffer()->get_tag_table());
               tooltip_buffer->insert_with_tag(tooltip_buffer->get_insert()->get_iter(), "Type: "+token.get_cursor().get_type_description(), "def:note");
               auto brief_comment=token.get_cursor().get_brief_comments();
@@ -392,11 +392,10 @@ void Source::ClangViewParse::show_type_tooltips(const Gdk::Rectangle &rectangle)
   
 #ifdef JUCI_ENABLE_DEBUG
               if(Debug::LLDB::get().is_stopped()) {
-                auto location=token.get_cursor().get_referenced().get_source_location();
+                auto referenced=token.get_cursor().get_referenced();
+                auto location=referenced.get_source_location();
                 Glib::ustring value_type="Value";
                 
-                auto start=get_buffer()->get_iter_at_line_index(token_offsets.first.line-1, token_offsets.first.index-1);
-                auto end=get_buffer()->get_iter_at_line_index(token_offsets.second.line-1, token_offsets.second.index-1);
                 auto iter=start;
                 while((*iter>='a' && *iter<='z') || (*iter>='A' && *iter<='Z') || (*iter>='0' && *iter<='9') || *iter=='_' || *iter=='.') {
                   start=iter;
@@ -413,12 +412,17 @@ void Source::ClangViewParse::show_type_tooltips(const Gdk::Rectangle &rectangle)
                 }
                 auto spelling=get_buffer()->get_text(start, end).raw();
                 
-                Glib::ustring debug_value=Debug::LLDB::get().get_value(spelling, location.get_path(), location.get_offset().line, location.get_offset().index);
+                Glib::ustring debug_value;
+                auto cursor_kind=referenced.get_kind();
+                if(cursor_kind!=clangmm::Cursor::Kind::FunctionDecl && cursor_kind!=clangmm::Cursor::Kind::CXXMethod &&
+                   cursor_kind!=clangmm::Cursor::Kind::Constructor && cursor_kind!=clangmm::Cursor::Kind::Destructor &&
+                   cursor_kind!=clangmm::Cursor::Kind::FunctionTemplate && cursor_kind!=clangmm::Cursor::Kind::ConversionFunction) {
+                  debug_value=Debug::LLDB::get().get_value(spelling, location.get_path(), location.get_offset().line, location.get_offset().index);
+                }
                 if(debug_value.empty()) {
                   value_type="Return value";
-                  auto cursor=token.get_cursor();
-                  auto offsets=cursor.get_source_range().get_offsets();
-                  debug_value=Debug::LLDB::get().get_return_value(cursor.get_source_location().get_path(), offsets.first.line, offsets.first.index);
+                  auto offsets=token.get_source_range().get_offsets();
+                  debug_value=Debug::LLDB::get().get_return_value(token.get_source_location().get_path(), offsets.first.line, offsets.first.index);
                 }
                 if(!debug_value.empty()) {
                   size_t pos=debug_value.find(" = ");
