@@ -50,20 +50,35 @@ void Tooltip::show(bool disregard_drawn) {
     window->set_accept_focus(false);
     window->set_skip_taskbar_hint(true);
     window->set_default_size(0, 0);
+    
+    window->get_style_context()->add_class("juci_tooltip_window");
+    auto visual = window->get_screen()->get_rgba_visual();
+    if(visual)
+      gtk_widget_set_visual(reinterpret_cast<GtkWidget*>(window->gobj()), visual->gobj());
 
-    tooltip_widget=std::make_unique<Gtk::TextView>(create_tooltip_buffer());
-    wrap_lines(tooltip_widget->get_buffer());
-    tooltip_widget->set_editable(false);
+    auto box=Gtk::manage(new Gtk::Box());
+    box->get_style_context()->add_class("juci_tooltip_box");
+    window->add(*box);
+
+    auto buffer=create_tooltip_buffer();
+    wrap_lines(buffer);
+    auto tooltip_text_view=Gtk::manage(new Gtk::TextView(buffer));
+    
+    tooltip_text_view->set_editable(false);
     if(text_view) {
       auto tag=text_view->get_buffer()->get_tag_table()->lookup("def:note_background");
-      tooltip_widget->override_background_color(tag->property_background_rgba());
+      box->override_background_color(tag->property_background_rgba());
+      tooltip_text_view->override_background_color(tag->property_background_rgba());
     }
-    window->add(*tooltip_widget);
+    else
+      box->override_background_color(tooltip_text_view->get_style_context()->get_background_color());
+    box->add(*tooltip_text_view);
 
-    auto layout=Pango::Layout::create(tooltip_widget->get_pango_context());
-    layout->set_text(tooltip_widget->get_buffer()->get_text());
+    auto layout=Pango::Layout::create(tooltip_text_view->get_pango_context());
+    layout->set_text(buffer->get_text());
     layout->get_pixel_size(size.first, size.second);
-    size.second+=2;
+    size.first+=6; // 2xpadding
+    size.second+=8; // 2xpadding + 2
     
     window->signal_realize().connect([this] {
       if(!text_view) {
@@ -71,6 +86,7 @@ void Tooltip::show(bool disregard_drawn) {
         if(dialog && dialog->is_visible()) {
           int root_x, root_y;
           dialog->get_position(root_x, root_y);
+          root_x-=3; // -1xpadding
           position.first=root_x;
           position.second=root_y-size.second;
           if(position.second<0)
@@ -91,6 +107,7 @@ void Tooltip::show(bool disregard_drawn) {
     auto activation_rectangle_x=std::max(activation_rectangle.get_x(), visible_x);
     
     text_view->get_window(Gtk::TextWindowType::TEXT_WINDOW_TEXT)->get_root_coords(activation_rectangle_x, activation_rectangle.get_y(), root_x, root_y);
+    root_x-=3; // -1xpadding
     if(root_y<size.second)
       root_x+=visible_rect.get_width()*0.1;
   }

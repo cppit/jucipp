@@ -22,7 +22,6 @@ private:
   void wrap_lines(Glib::RefPtr<Gtk::TextBuffer> text_buffer);
   
   std::function<Glib::RefPtr<Gtk::TextBuffer>()> create_tooltip_buffer;
-  std::unique_ptr<Gtk::TextView> tooltip_widget;
   Gtk::TextView *text_view;
   std::pair<int, int> size;
   std::pair<int, int> position;

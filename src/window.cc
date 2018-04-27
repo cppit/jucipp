@@ -15,6 +15,24 @@ Window::Window() {
   set_title("juCi++");
   set_events(Gdk::POINTER_MOTION_MASK|Gdk::FOCUS_CHANGE_MASK|Gdk::SCROLL_MASK|Gdk::LEAVE_NOTIFY_MASK);
   
+  auto provider = Gtk::CssProvider::create();
+  auto screen = get_screen();
+  std::string border_radius_style;
+  if(screen->get_rgba_visual())
+    border_radius_style="border-radius: 5px; ";
+#if GTK_VERSION_GE(3, 20)
+  std::string notebook_style(".juci_notebook tab {border-radius: 5px 5px 0 0; padding: 0 4px; margin: 0;}");
+#else
+  std::string notebook_style(".juci_notebook {-GtkNotebook-tab-overlap: 0px;} .juci_notebook tab {border-radius: 5px 5px 0 0; padding: 4px 4px;}");
+#endif
+  provider->load_from_data(R"(
+    .juci_directories *:selected {border-left-color: inherit; color: inherit; background-color: rgba(128, 128, 128 , 0.2); background-image: inherit;}
+    )"+notebook_style+R"(
+    .juci_tooltip_window {background-color: transparent;}
+    .juci_tooltip_box {)"+border_radius_style+R"(padding: 3px;}
+  )");
+  get_style_context()->add_provider_for_screen(screen, provider, GTK_STYLE_PROVIDER_PRIORITY_APPLICATION);
+  
   set_menu_actions();
   configure();
   Menu::get().toggle_menu_items();
