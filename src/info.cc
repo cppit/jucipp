@@ -8,10 +8,8 @@ Info::Info() {
   label.set_max_width_chars(40);
   label.set_line_wrap(true);
   content_area->add(label);
-    
-  auto provider = Gtk::CssProvider::create();
-  provider->load_from_data("* {border-radius: 5px;}");
-  get_style_context()->add_provider(provider, GTK_STYLE_PROVIDER_PRIORITY_APPLICATION);
+  
+  get_style_context()->add_class("juci_info");
   
   //Workaround from https://bugzilla.gnome.org/show_bug.cgi?id=710888
   //Issue described at the same issue report
