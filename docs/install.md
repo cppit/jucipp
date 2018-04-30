@@ -17,7 +17,8 @@
 ## Debian/Linux Mint/Ubuntu
 Install dependencies:
 ```sh
-sudo apt-get install git cmake make g++ libclang-3.8-dev liblldb-3.8-dev clang-format pkg-config libboost-filesystem-dev libboost-serialization-dev libgtksourceviewmm-3.0-dev aspell-en libaspell-dev libgit2-dev exuberant-ctags
+sudo apt-get install libclang-4.0-dev liblldb-4.0-dev || sudo apt-get install libclang-3.8-dev liblldb-3.8-dev
+sudo apt-get install git cmake make g++ clang-format pkg-config libboost-filesystem-dev libboost-serialization-dev libgtksourceviewmm-3.0-dev aspell-en libaspell-dev libgit2-dev exuberant-ctags
 ```
 
 Get juCi++ source, compile and install:
