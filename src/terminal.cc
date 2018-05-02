@@ -9,6 +9,8 @@
 #include <thread>
 
 Terminal::Terminal() {
+  set_editable(false);
+  
   bold_tag=get_buffer()->create_tag();
   bold_tag->property_weight()=Pango::WEIGHT_ULTRAHEAVY;
   

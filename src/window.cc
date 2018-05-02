@@ -391,27 +391,73 @@ void Window::set_menu_actions() {
     auto widget=get_focus();
     if(auto entry=dynamic_cast<Gtk::Entry*>(widget))
       entry->cut_clipboard();
-    else if(auto view=Notebook::get().get_current_view()) {
-      view->disable_spellcheck=true;
-      view->get_buffer()->cut_clipboard(Gtk::Clipboard::get());
-      view->disable_spellcheck=false;
+    else if(auto view=dynamic_cast<Gtk::TextView*>(widget)) {
+      auto source_view=dynamic_cast<Source::View*>(view);
+      if(source_view)
+        source_view->disable_spellcheck=true;
+      if(!view->get_buffer()->get_has_selection()) {
+        auto start=view->get_buffer()->get_iter_at_line(view->get_buffer()->get_insert()->get_iter().get_line());
+        auto end=start;
+        if(!end.ends_line())
+          end.forward_to_line_end();
+        end.forward_char();
+        if(!end.starts_line()) // In case of \r\n
+          end.forward_char();
+        Gtk::Clipboard::get()->set_text(view->get_buffer()->get_text(start, end));
+        if(view->get_editable())
+          view->get_buffer()->erase(start, end);
+      }
+      else {
+        if(view->get_editable())
+          view->get_buffer()->cut_clipboard(Gtk::Clipboard::get());
+        else
+          view->get_buffer()->copy_clipboard(Gtk::Clipboard::get());
+      }
+      if(source_view)
+        source_view->disable_spellcheck=false;
     }
   });
   menu.add_action("edit_copy", [this]() {
+    // Copy from a tooltip if it has selected text
+    for(auto tooltip: Tooltips::shown_tooltips) {
+      auto buffer=tooltip->text_buffer;
+      if(buffer && buffer->get_has_selection()) {
+        buffer->copy_clipboard(Gtk::Clipboard::get());
+        return;
+      }
+    }
+    
     auto widget=get_focus();
     if(auto entry=dynamic_cast<Gtk::Entry*>(widget))
       entry->copy_clipboard();
-    else if(auto text_view=dynamic_cast<Gtk::TextView*>(widget))
-      text_view->get_buffer()->copy_clipboard(Gtk::Clipboard::get());
+    else if(auto view=dynamic_cast<Gtk::TextView*>(widget)) {
+      if(!view->get_buffer()->get_has_selection()) {
+        auto start=view->get_buffer()->get_iter_at_line(view->get_buffer()->get_insert()->get_iter().get_line());
+        auto end=start;
+        if(!end.ends_line())
+          end.forward_to_line_end();
+        end.forward_char();
+        if(!end.starts_line()) // In case of \r\n
+          end.forward_char();
+        Gtk::Clipboard::get()->set_text(view->get_buffer()->get_text(start, end));
+      }
+      else
+        view->get_buffer()->copy_clipboard(Gtk::Clipboard::get());
+    }
   });
   menu.add_action("edit_paste", [this]() {
     auto widget=get_focus();
     if(auto entry=dynamic_cast<Gtk::Entry*>(widget))
       entry->paste_clipboard();
-    else if(auto view=Notebook::get().get_current_view()) {
-      view->disable_spellcheck=true;
-      view->paste();
-      view->disable_spellcheck=false;
+    else if(auto view=dynamic_cast<Gtk::TextView*>(widget)) {
+      auto source_view=dynamic_cast<Source::View*>(view);
+      if(source_view) {
+        source_view->disable_spellcheck=true;
+        source_view->paste();
+        source_view->disable_spellcheck=false;
+      }
+      else if(view->get_editable())
+        view->get_buffer()->paste_clipboard(Gtk::Clipboard::get());
     }
   });
   

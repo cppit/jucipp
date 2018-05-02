@@ -1,6 +1,7 @@
 #include "tooltips.h"
 #include "selection_dialog.h"
 
+std::set<Tooltip*> Tooltips::shown_tooltips;
 Gdk::Rectangle Tooltips::drawn_tooltips_rectangle=Gdk::Rectangle();
 
 Tooltip::Tooltip(std::function<Glib::RefPtr<Gtk::TextBuffer>()> create_tooltip_buffer, Gtk::TextView *text_view, 
@@ -8,6 +9,7 @@ Glib::RefPtr<Gtk::TextBuffer::Mark> start_mark, Glib::RefPtr<Gtk::TextBuffer::Ma
     : start_mark(start_mark), end_mark(end_mark), create_tooltip_buffer(create_tooltip_buffer), text_view(text_view) {}
 
 Tooltip::~Tooltip() {
+  Tooltips::shown_tooltips.erase(this);
   if(text_view) {
     text_view->get_buffer()->delete_mark(start_mark);
     text_view->get_buffer()->delete_mark(end_mark);
@@ -34,6 +36,8 @@ void Tooltip::update() {
 }
 
 void Tooltip::show(bool disregard_drawn) {
+  Tooltips::shown_tooltips.emplace(this);
+  
   if(!window) {
     //init window
     window=std::make_unique<Gtk::Window>(Gtk::WindowType::WINDOW_POPUP);
@@ -60,9 +64,9 @@ void Tooltip::show(bool disregard_drawn) {
     box->get_style_context()->add_class("juci_tooltip_box");
     window->add(*box);
 
-    auto buffer=create_tooltip_buffer();
-    wrap_lines(buffer);
-    auto tooltip_text_view=Gtk::manage(new Gtk::TextView(buffer));
+    text_buffer=create_tooltip_buffer();
+    wrap_lines();
+    auto tooltip_text_view=Gtk::manage(new Gtk::TextView(text_buffer));
     
     tooltip_text_view->set_editable(false);
     if(text_view) {
@@ -75,7 +79,7 @@ void Tooltip::show(bool disregard_drawn) {
     box->add(*tooltip_text_view);
 
     auto layout=Pango::Layout::create(tooltip_text_view->get_pango_context());
-    layout->set_text(buffer->get_text());
+    layout->set_text(text_buffer->get_text());
     layout->get_pixel_size(size.first, size.second);
     size.first+=6; // 2xpadding
     size.second+=8; // 2xpadding + 2
@@ -139,11 +143,15 @@ void Tooltip::show(bool disregard_drawn) {
 }
 
 void Tooltip::hide() {
+  Tooltips::shown_tooltips.erase(this);
   if(window)
     window->hide();
 }
 
-void Tooltip::wrap_lines(Glib::RefPtr<Gtk::TextBuffer> text_buffer) {
+void Tooltip::wrap_lines() {
+  if(!text_buffer)
+    return;
+  
   auto iter=text_buffer->begin();
   
   while(iter) {
