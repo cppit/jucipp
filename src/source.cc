@@ -397,6 +397,7 @@ bool Source::View::save() {
       output << get_buffer()->get_text(start_iter, end_iter).c_str();
       start_iter=end_iter;
     }
+    output.close();
     boost::system::error_code ec;
     last_write_time=boost::filesystem::last_write_time(file_path, ec);
     if(ec)
