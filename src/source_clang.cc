@@ -364,7 +364,7 @@ void Source::ClangViewParse::show_type_tooltips(const Gdk::Rectangle &rectangle)
     for(size_t c=clang_tokens->size()-1;c!=static_cast<size_t>(-1);--c) {
       auto &token=(*clang_tokens)[c];
       auto &token_offsets=clang_tokens_offsets[c];
-      if(token.is_identifier()) {
+      if(token.is_identifier() || token.get_spelling() == "auto" ) {
         if(line==token_offsets.first.line-1 && index>=token_offsets.first.index-1 && index <=token_offsets.second.index-1) {
           auto cursor=token.get_cursor();
           auto referenced=cursor.get_referenced();
