@@ -13,4 +13,4 @@ void Tooltips::show(Gdk::Rectangle const&, bool) {}
 
 void Tooltips::show(bool) {}
 
-void Tooltips::hide() {}
+void Tooltips::hide(const std::pair<int, int> &, const std::pair<int, int> &) {}

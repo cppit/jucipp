@@ -515,6 +515,13 @@ void Source::View::configure() {
 }
 
 void Source::View::setup_tooltip_and_dialog_events() {
+  type_tooltips.on_motion=[this] {
+    delayed_tooltips_connection.disconnect();
+  };
+  diagnostic_tooltips.on_motion=[this] {
+    delayed_tooltips_connection.disconnect();
+  };
+  
   get_buffer()->signal_changed().connect([this] {
     hide_tooltips();
   });
@@ -526,6 +533,8 @@ void Source::View::setup_tooltip_and_dialog_events() {
         gdouble x=event->x;
         gdouble y=event->y;
         delayed_tooltips_connection=Glib::signal_timeout().connect([this, x, y]() {
+          type_tooltips.hide();
+          diagnostic_tooltips.hide();
           Tooltips::init();
           Gdk::Rectangle rectangle(x, y, 1, 1);
           if(parsed) {
@@ -535,8 +544,10 @@ void Source::View::setup_tooltip_and_dialog_events() {
           return false;
         }, 100);
       }
-      type_tooltips.hide();
-      diagnostic_tooltips.hide();
+      auto last_mouse_pos = std::make_pair(on_motion_last_x, on_motion_last_y);
+      auto mouse_pos = std::make_pair(event->x, event->y);
+      type_tooltips.hide(last_mouse_pos, mouse_pos);
+      diagnostic_tooltips.hide(last_mouse_pos, mouse_pos);
     }
     on_motion_last_x=event->x;
     on_motion_last_y=event->y;

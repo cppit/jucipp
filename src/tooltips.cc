@@ -35,7 +35,7 @@ void Tooltip::update() {
   }
 }
 
-void Tooltip::show(bool disregard_drawn) {
+void Tooltip::show(bool disregard_drawn, const std::function<void()> &on_motion) {
   Tooltips::shown_tooltips.emplace(this);
   
   if(!window) {
@@ -54,6 +54,12 @@ void Tooltip::show(bool disregard_drawn) {
     window->set_accept_focus(false);
     window->set_skip_taskbar_hint(true);
     window->set_default_size(0, 0);
+    
+    window->signal_motion_notify_event().connect([on_motion](GdkEventMotion *event) {
+      if(on_motion)
+        on_motion();
+      return false;
+    });
     
     window->get_style_context()->add_class("juci_tooltip_window");
     auto visual = window->get_screen()->get_rgba_visual();
@@ -91,13 +97,13 @@ void Tooltip::show(bool disregard_drawn) {
           int root_x, root_y;
           dialog->get_position(root_x, root_y);
           root_x-=3; // -1xpadding
-          position.first=root_x;
-          position.second=root_y-size.second;
-          if(position.second<0)
-            position.second=0;
+          rectangle.set_x(root_x);
+          rectangle.set_y(root_y-size.second);
+          if(rectangle.get_y()<0)
+            rectangle.set_y(0);
         }
       }
-      window->move(position.first, position.second);
+      window->move(rectangle.get_x(), rectangle.get_y());
     });
   }
   
@@ -115,7 +121,6 @@ void Tooltip::show(bool disregard_drawn) {
     if(root_y<size.second)
       root_x+=visible_rect.get_width()*0.1;
   }
-  Gdk::Rectangle rectangle;
   rectangle.set_x(root_x);
   rectangle.set_y(std::max(0, root_y-size.second));
   rectangle.set_width(size.first);
@@ -135,17 +140,40 @@ void Tooltip::show(bool disregard_drawn) {
     else
       Tooltips::drawn_tooltips_rectangle=rectangle;
   }
-
-  position={rectangle.get_x(), rectangle.get_y()};
+  
   if(window->get_realized())
-    window->move(position.first, position.second);
+    window->move(rectangle.get_x(), rectangle.get_y());
   window->show_all();
+  shown=true;
 }
 
-void Tooltip::hide() {
+void Tooltip::hide(const std::pair<int, int> &last_mouse_pos, const std::pair<int, int> &mouse_pos) {
+  // Keep tooltip if mouse is moving towards it
+  // Calculated using dot product between the mouse_pos vector and the corners of the tooltip window
+  if(text_view && window && shown && last_mouse_pos.first!=-1 && last_mouse_pos.second!=-1 && mouse_pos.first!=-1 && mouse_pos.second!=-1) {
+    static int root_x, root_y;
+    text_view->get_window(Gtk::TextWindowType::TEXT_WINDOW_TEXT)->get_root_coords(last_mouse_pos.first, last_mouse_pos.second, root_x, root_y);
+    int diff_x=mouse_pos.first-last_mouse_pos.first;
+    int diff_y=mouse_pos.second-last_mouse_pos.second;
+    class Corner {
+    public:
+      Corner(int x, int y): x(x-root_x), y(y-root_y) {}
+      int x, y;
+    };
+    std::vector<Corner> corners;
+    corners.emplace_back(rectangle.get_x(), rectangle.get_y());
+    corners.emplace_back(rectangle.get_x()+rectangle.get_width(), rectangle.get_y());
+    corners.emplace_back(rectangle.get_x(), rectangle.get_y()+rectangle.get_height());
+    corners.emplace_back(rectangle.get_x()+rectangle.get_width(), rectangle.get_y()+rectangle.get_height());
+    for(auto &corner: corners) {
+      if(diff_x*corner.x + diff_y*corner.y >= 0)
+        return;
+    }
+  }
   Tooltips::shown_tooltips.erase(this);
   if(window)
     window->hide();
+  shown=false;
 }
 
 void Tooltip::wrap_lines() {
@@ -196,10 +224,8 @@ void Tooltip::wrap_lines() {
 void Tooltips::show(const Gdk::Rectangle& rectangle, bool disregard_drawn) {
   for(auto &tooltip : tooltip_list) {
     tooltip.update();
-    if(rectangle.intersects(tooltip.activation_rectangle)) {
-      tooltip.show(disregard_drawn);
-      shown=true;
-    }
+    if(rectangle.intersects(tooltip.activation_rectangle))
+      tooltip.show(disregard_drawn, on_motion);
     else
       tooltip.hide();
   }
@@ -208,13 +234,11 @@ void Tooltips::show(const Gdk::Rectangle& rectangle, bool disregard_drawn) {
 void Tooltips::show(bool disregard_drawn) {
   for(auto &tooltip : tooltip_list) {
     tooltip.update();
-    tooltip.show(disregard_drawn);
-    shown=true;
+    tooltip.show(disregard_drawn, on_motion);
   }
 }
 
-void Tooltips::hide() {
+void Tooltips::hide(const std::pair<int, int> &last_mouse_pos, const std::pair<int, int> &mouse_pos) {
   for(auto &tooltip : tooltip_list)
-    tooltip.hide();
-  shown=false;
+    tooltip.hide(last_mouse_pos, mouse_pos);
 }
