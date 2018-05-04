@@ -388,10 +388,19 @@ void Window::set_menu_actions() {
   });
   
   menu.add_action("edit_cut", [this]() {
+    // Return if a shown tooltip has selected text
+    for(auto tooltip: Tooltips::shown_tooltips) {
+      auto buffer=tooltip->text_buffer;
+      if(buffer && buffer->get_has_selection())
+        return;
+    }
+    
     auto widget=get_focus();
     if(auto entry=dynamic_cast<Gtk::Entry*>(widget))
       entry->cut_clipboard();
     else if(auto view=dynamic_cast<Gtk::TextView*>(widget)) {
+      if(!view->get_editable())
+        return;
       auto source_view=dynamic_cast<Source::View*>(view);
       if(source_view)
         source_view->disable_spellcheck=true;
@@ -404,15 +413,10 @@ void Window::set_menu_actions() {
         if(!end.starts_line()) // In case of \r\n
           end.forward_char();
         Gtk::Clipboard::get()->set_text(view->get_buffer()->get_text(start, end));
-        if(view->get_editable())
-          view->get_buffer()->erase(start, end);
+        view->get_buffer()->erase(start, end);
       }
-      else {
-        if(view->get_editable())
-          view->get_buffer()->cut_clipboard(Gtk::Clipboard::get());
-        else
-          view->get_buffer()->copy_clipboard(Gtk::Clipboard::get());
-      }
+      else
+        view->get_buffer()->cut_clipboard(Gtk::Clipboard::get());
       if(source_view)
         source_view->disable_spellcheck=false;
     }
