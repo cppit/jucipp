@@ -373,10 +373,10 @@ void Source::ClangViewParse::show_type_tooltips(const Gdk::Rectangle &rectangle)
             auto end=get_buffer()->get_iter_at_line_index(token_offsets.second.line-1, token_offsets.second.index-1);
             auto create_tooltip_buffer=[this, &token, &start, &end]() {
               auto tooltip_buffer=Gtk::TextBuffer::create(get_buffer()->get_tag_table());
-              tooltip_buffer->insert_with_tag(tooltip_buffer->get_insert()->get_iter(), "Type: "+token.get_cursor().get_type_description(), "def:note");
+              tooltip_buffer->insert(tooltip_buffer->get_insert()->get_iter(), "Type: "+token.get_cursor().get_type_description());
               auto brief_comment=token.get_cursor().get_brief_comments();
               if(brief_comment!="")
-                tooltip_buffer->insert_with_tag(tooltip_buffer->get_insert()->get_iter(), "\n\n"+brief_comment, "def:note");
+                tooltip_buffer->insert(tooltip_buffer->get_insert()->get_iter(), "\n\n"+brief_comment);
   
 #ifdef JUCI_ENABLE_DEBUG
               if(Debug::LLDB::get().is_stopped()) {
@@ -421,7 +421,7 @@ void Source::ClangViewParse::show_type_tooltips(const Gdk::Rectangle &rectangle)
                       next_char_iter++;
                       debug_value.replace(iter, next_char_iter, "?");
                     }
-                    tooltip_buffer->insert_with_tag(tooltip_buffer->get_insert()->get_iter(), "\n\n"+value_type+": "+debug_value.substr(pos+3, debug_value.size()-(pos+3)-1), "def:note");
+                    tooltip_buffer->insert(tooltip_buffer->get_insert()->get_iter(), "\n\n"+value_type+": "+debug_value.substr(pos+3, debug_value.size()-(pos+3)-1));
                   }
                 }
               }

@@ -12,6 +12,8 @@
 #include "terminal.h"
 
 Window::Window() {
+  Gsv::init();
+  
   set_title("juCi++");
   set_events(Gdk::POINTER_MOTION_MASK|Gdk::FOCUS_CHANGE_MASK|Gdk::SCROLL_MASK|Gdk::LEAVE_NOTIFY_MASK);
   
@@ -135,17 +137,43 @@ Window::Window() {
 
 void Window::configure() {
   Config::get().load();
-  auto screen = Gdk::Screen::get_default();
-  if(css_provider)
-    Gtk::StyleContext::remove_provider_for_screen(screen, css_provider);
+  auto screen = get_screen();
+  if(css_provider_theme)
+    Gtk::StyleContext::remove_provider_for_screen(screen, css_provider_theme);
   if(Config::get().window.theme_name.empty()) {
-    css_provider=Gtk::CssProvider::create();
+    css_provider_theme=Gtk::CssProvider::create();
     Gtk::Settings::get_default()->property_gtk_application_prefer_dark_theme()=(Config::get().window.theme_variant=="dark");
   }
   else
-    css_provider=Gtk::CssProvider::get_named(Config::get().window.theme_name, Config::get().window.theme_variant);
+    css_provider_theme=Gtk::CssProvider::get_named(Config::get().window.theme_name, Config::get().window.theme_variant);
   //TODO: add check if theme exists, or else write error to terminal
-  Gtk::StyleContext::add_provider_for_screen(screen, css_provider, GTK_STYLE_PROVIDER_PRIORITY_SETTINGS);
+  Gtk::StyleContext::add_provider_for_screen(screen, css_provider_theme, GTK_STYLE_PROVIDER_PRIORITY_SETTINGS);
+  
+  auto style_scheme_manager=Source::StyleSchemeManager::get_default();
+  if(css_provider_tooltips)
+    Gtk::StyleContext::remove_provider_for_screen(screen, css_provider_tooltips);
+  else
+    css_provider_tooltips=Gtk::CssProvider::create();
+  Glib::RefPtr<Gsv::Style> style;
+  if(Config::get().source.style.size()>0) {
+    auto scheme = style_scheme_manager->get_scheme(Config::get().source.style);
+    if(scheme)
+      style = scheme->get_style("def:note");
+    else {
+      Terminal::get().print("Error: Could not find gtksourceview style: "+Config::get().source.style+'\n', true);
+    }
+  }
+  auto foreground_value = style && style->property_foreground_set() ? style->property_foreground().get_value() : get_style_context()->get_color().to_string();
+  auto background_value = style && style->property_background_set() ? style->property_background().get_value() : get_style_context()->get_background_color().to_string();
+#if GTK_VERSION_GE(3, 20)
+  css_provider_tooltips->load_from_data(".juci_tooltip_box {background-color: "+background_value+";}"
+                                        ".juci_tooltip_text_view text {color: "+foreground_value+";background-color: "+background_value+";}");
+#else
+  css_provider_tooltips->load_from_data(".juci_tooltip_box {background-color: "+background_value+";}"
+                                        ".juci_tooltip_text_view *:not(:selected) {color: "+foreground_value+";background-color: "+background_value+";}");
+#endif
+  get_style_context()->add_provider_for_screen(screen, css_provider_tooltips, GTK_STYLE_PROVIDER_PRIORITY_APPLICATION);
+  
   Menu::get().set_keys();
   Terminal::get().configure();
   Directories::get().update();

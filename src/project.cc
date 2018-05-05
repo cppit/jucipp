@@ -615,7 +615,7 @@ void Project::LLDB::debug_show_variables() {
             value.replace(iter, next_char_iter, "?");
           }
           if(view)
-            tooltip_buffer->insert_with_tag(tooltip_buffer->get_insert()->get_iter(), value.substr(0, value.size()-1), "def:note");
+            tooltip_buffer->insert(tooltip_buffer->get_insert()->get_iter(), value.substr(0, value.size()-1));
           else
             tooltip_buffer->insert(tooltip_buffer->get_insert()->get_iter(), value.substr(0, value.size()-1));
         }

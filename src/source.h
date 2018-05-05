@@ -10,6 +10,17 @@
 #include <tuple>
 
 namespace Source {
+  /// Workaround for buggy Gsv::LanguageManager::get_default()
+  class LanguageManager {
+  public:
+    static Glib::RefPtr<Gsv::LanguageManager> get_default();
+  };
+  /// Workaround for buggy Gsv::StyleSchemeManager::get_default()
+  class StyleSchemeManager {
+  public:
+    static Glib::RefPtr<Gsv::StyleSchemeManager> get_default();
+  };
+  
   Glib::RefPtr<Gsv::Language> guess_language(const boost::filesystem::path &file_path);
   
   class Offset {

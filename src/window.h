@@ -21,7 +21,8 @@ protected:
 private:
   Gtk::AboutDialog about;
   
-  Glib::RefPtr<Gtk::CssProvider> css_provider;
+  Glib::RefPtr<Gtk::CssProvider> css_provider_theme;
+  Glib::RefPtr<Gtk::CssProvider> css_provider_tooltips;
 
   void configure();
   void set_menu_actions();

@@ -66,23 +66,24 @@ void Tooltip::show(bool disregard_drawn, const std::function<void()> &on_motion)
     if(visual)
       gtk_widget_set_visual(reinterpret_cast<GtkWidget*>(window->gobj()), visual->gobj());
 
-    auto box=Gtk::manage(new Gtk::Box());
+    auto box=Gtk::manage(new Gtk::Box(Gtk::Orientation::ORIENTATION_VERTICAL));
     box->get_style_context()->add_class("juci_tooltip_box");
     window->add(*box);
 
     text_buffer=create_tooltip_buffer();
     wrap_lines();
-    auto tooltip_text_view=Gtk::manage(new Gtk::TextView(text_buffer));
     
+    auto tooltip_text_view=Gtk::manage(new Gtk::TextView(text_buffer));
+    tooltip_text_view->get_style_context()->add_class("juci_tooltip_text_view");
     tooltip_text_view->set_editable(false);
-    if(text_view) {
-      auto tag=text_view->get_buffer()->get_tag_table()->lookup("def:note_background");
-      box->override_background_color(tag->property_background_rgba());
-      tooltip_text_view->override_background_color(tag->property_background_rgba());
-    }
-    else
-      box->override_background_color(tooltip_text_view->get_style_context()->get_background_color());
+    
+#if GTK_VERSION_GE(3, 20)
     box->add(*tooltip_text_view);
+#else
+    auto box2=Gtk::manage(new Gtk::Box());
+    box2->pack_start(*tooltip_text_view, true, true, 3);
+    box->pack_start(*box2, true, true, 3);
+#endif
 
     auto layout=Pango::Layout::create(tooltip_text_view->get_pango_context());
     layout->set_text(text_buffer->get_text());

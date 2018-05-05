@@ -41,6 +41,16 @@ int main() {
   g_assert(boost::filesystem::remove(source_file));
   g_assert(!boost::filesystem::exists(source_file));
   
+  for(int c=0;c<2;++c) {
+    size_t found=0;
+    auto style_scheme_manager=Source::StyleSchemeManager::get_default();
+    for(auto &search_path: style_scheme_manager->get_search_path()) {
+      if(search_path=="styles") // found added style
+        ++found;
+    }
+    g_assert(found==1);
+  }
+  
   // replace_text tests
   {
     auto buffer=source_view.get_buffer();

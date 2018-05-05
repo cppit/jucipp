@@ -158,7 +158,7 @@ void Autocomplete::setup_dialog() {
       auto create_tooltip_buffer = [ this, tooltip = std::move(tooltip) ]() {
         auto tooltip_buffer = Gtk::TextBuffer::create(view->get_buffer()->get_tag_table());
   
-        tooltip_buffer->insert_with_tag(tooltip_buffer->get_insert()->get_iter(), tooltip, "def:note");
+        tooltip_buffer->insert(tooltip_buffer->get_insert()->get_iter(), tooltip);
   
         return tooltip_buffer;
       };

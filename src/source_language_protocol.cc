@@ -963,7 +963,7 @@ void Source::LanguageProtocolView::show_type_tooltips(const Gdk::Rectangle &rect
           type_tooltips.clear();
           auto create_tooltip_buffer=[this, offset, content=std::move(content)]() {
             auto tooltip_buffer=Gtk::TextBuffer::create(get_buffer()->get_tag_table());
-            tooltip_buffer->insert_with_tag(tooltip_buffer->get_insert()->get_iter(), content, "def:note");
+            tooltip_buffer->insert(tooltip_buffer->get_insert()->get_iter(), content);
             
 #ifdef JUCI_ENABLE_DEBUG
             if(language_id=="rust" && capabilities.definition) {
@@ -991,7 +991,7 @@ void Source::LanguageProtocolView::show_type_tooltips(const Gdk::Rectangle &rect
                       next_char_iter++;
                       debug_value.replace(iter, next_char_iter, "?");
                     }
-                    tooltip_buffer->insert_with_tag(tooltip_buffer->get_insert()->get_iter(), "\n\n"+value_type+": "+debug_value.substr(pos+3, debug_value.size()-(pos+3)-1), "def:note");
+                    tooltip_buffer->insert(tooltip_buffer->get_insert()->get_iter(), "\n\n"+value_type+": "+debug_value.substr(pos+3, debug_value.size()-(pos+3)-1));
                   }
                 }
               }

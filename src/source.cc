@@ -18,26 +18,19 @@
 #include <regex>
 #include <limits>
 
-// TODO 2019: Remove workarounds when Debian stable and FreeBSD has newer glibmm packages
-#if GLIBMM_MAJOR_VERSION>2 || (GLIBMM_MAJOR_VERSION==2 && (GLIBMM_MINOR_VERSION>51 || (GLIBMM_MINOR_VERSION==51 && GLIBMM_MICRO_VERSION>=2)))
-using LanguageManager = Gsv::LanguageManager;
-using StyleSchemeManager = Gsv::StyleSchemeManager;
-#else
-class LanguageManager {
-public:
-  static Glib::RefPtr<Gsv::LanguageManager> get_default() {
-    static auto instance = Gsv::LanguageManager::create();
-    return instance;
+Glib::RefPtr<Gsv::LanguageManager> Source::LanguageManager::get_default() {
+  static auto instance = Gsv::LanguageManager::create();
+  return instance;
+}
+Glib::RefPtr<Gsv::StyleSchemeManager> Source::StyleSchemeManager::get_default() {
+  static auto instance = Gsv::StyleSchemeManager::create();
+  static bool first = true;
+  if(first) {
+    instance->prepend_search_path((Config::get().home_juci_path/"styles").string());
+    first=false;
   }
-};
-class StyleSchemeManager {
-public:
-  static Glib::RefPtr<Gsv::StyleSchemeManager> get_default() {
-    static auto instance = Gsv::StyleSchemeManager::create();
-    return instance;
-  }
-};
-#endif
+  return instance;
+}
 
 Glib::RefPtr<Gsv::Language> Source::guess_language(const boost::filesystem::path &file_path) {
   auto language_manager=LanguageManager::get_default();
@@ -143,8 +136,6 @@ Source::View::View(const boost::filesystem::path &file_path, Glib::RefPtr<Gsv::L
   get_buffer()->create_tag("def:warning_underline");
   get_buffer()->create_tag("def:error");
   get_buffer()->create_tag("def:error_underline");
-  get_buffer()->create_tag("def:note_background");
-  get_buffer()->create_tag("def:note");
   
   auto mark_attr_debug_breakpoint=Gsv::MarkAttributes::create();
   Gdk::RGBA rgba;
@@ -418,23 +409,10 @@ void Source::View::configure() {
   SpellCheckView::configure();
   DiffView::configure();
   
-  auto style_scheme_manager=StyleSchemeManager::get_default();
-  static std::string juci_search_path=(Config::get().home_juci_path/"styles").string();
-  bool found_juci_search_path=false;
-  for(auto &search_path: style_scheme_manager->get_search_path()) {
-    if(search_path==juci_search_path) {
-      found_juci_search_path=true;
-      break;
-    }
-  }
-  if(!found_juci_search_path)
-    style_scheme_manager->prepend_search_path(juci_search_path);
   if(Config::get().source.style.size()>0) {
-    auto scheme = style_scheme_manager->get_scheme(Config::get().source.style);
+    auto scheme = StyleSchemeManager::get_default()->get_scheme(Config::get().source.style);
     if(scheme)
       get_source_buffer()->set_style_scheme(scheme);
-    else
-      Terminal::get().print("Error: Could not find gtksourceview style: "+Config::get().source.style+'\n', true);
   }
   
   set_draw_spaces(parse_show_whitespace_characters(Config::get().source.show_whitespace_characters));
@@ -492,17 +470,6 @@ void Source::View::configure() {
     diagnostic_tag_underline->set_property("underline-rgba", Gdk::RGBA(error_property));
   }
   //TODO: clear tag_class and param_spec?
-
-  //Add tooltip foreground and background
-  style = scheme->get_style("def:note");
-  auto note_tag=get_buffer()->get_tag_table()->lookup("def:note_background");
-  if(style->property_background_set()) {
-    note_tag->property_background()=style->property_background();
-  }
-  note_tag=get_buffer()->get_tag_table()->lookup("def:note");
-  if(style->property_foreground_set()) {
-    note_tag->property_foreground()=style->property_foreground();
-  }
   
   if(Config::get().menu.keys["source_show_completion"].empty()) {
     get_completion()->unblock_interactive();
@@ -1198,7 +1165,7 @@ void Source::View::add_diagnostic_tooltip(const Gtk::TextIter &start, const Gtk:
   auto create_tooltip_buffer=[this, spelling=std::move(spelling), error, severity_tag_name]() {
     auto tooltip_buffer=Gtk::TextBuffer::create(get_buffer()->get_tag_table());
     tooltip_buffer->insert_with_tag(tooltip_buffer->get_insert()->get_iter(), error ? "Error" : "Warning", severity_tag_name);
-    tooltip_buffer->insert_with_tag(tooltip_buffer->get_insert()->get_iter(), ":\n"+spelling, "def:note");
+    tooltip_buffer->insert(tooltip_buffer->get_insert()->get_iter(), ":\n"+spelling);
     return tooltip_buffer;
   };
   diagnostic_tooltips.emplace_back(create_tooltip_buffer, this, get_buffer()->create_mark(start), get_buffer()->create_mark(end));

@@ -41,8 +41,6 @@ Notebook::TabLabel::TabLabel(const boost::filesystem::path &path, std::function<
 }
 
 Notebook::Notebook() : Gtk::Paned(), notebooks(2) {
-  Gsv::init();
-  
   for(auto &notebook: notebooks) {
     notebook.get_style_context()->add_class("juci_notebook");
     notebook.set_scrollable();
