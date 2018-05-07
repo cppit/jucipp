@@ -332,10 +332,8 @@ void Window::set_menu_actions() {
           return;
         }
         
-        if(view->load()) {
-          view->get_buffer()->set_modified(false);
+        if(view->load())
           view->full_reparse();
-        }
       }
     }
   });

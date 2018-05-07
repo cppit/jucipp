@@ -10,15 +10,13 @@
 #include "source_language_protocol.h"
 #include "gtksourceview-3.0/gtksourceview/gtksourcemap.h"
 
-Notebook::TabLabel::TabLabel(const boost::filesystem::path &path, std::function<void()> on_close) {
+Notebook::TabLabel::TabLabel(std::function<void()> on_close) {
   set_can_focus(false);
-  set_tooltip_text(path.string());
   
   auto button=Gtk::manage(new Gtk::Button());
   auto hbox=Gtk::manage(new Gtk::Box());
   
   hbox->set_can_focus(false);
-  label.set_text(path.filename().string()+' ');
   label.set_can_focus(false);
   button->set_image_from_icon_name("window-close-symbolic", Gtk::ICON_SIZE_MENU);
   button->set_can_focus(false);
@@ -155,7 +153,9 @@ void Notebook::open(const boost::filesystem::path &file_path_, size_t notebook_i
   else
     source_views.emplace_back(new Source::GenericView(file_path, language));
   
-  source_views.back()->scroll_to_cursor_delayed=[this](Source::BaseView* view, bool center, bool show_tooltips) {
+  auto source_view=source_views.back();
+  
+  source_view->scroll_to_cursor_delayed=[this](Source::BaseView* view, bool center, bool show_tooltips) {
     while(Gtk::Main::events_pending())
       Gtk::Main::iteration(false);
     if(get_current_view()==view) {
@@ -167,17 +167,17 @@ void Notebook::open(const boost::filesystem::path &file_path_, size_t notebook_i
         view->hide_tooltips();
     }
   };
-  source_views.back()->update_status_location=[this](Source::BaseView* view) {
+  source_view->update_status_location=[this](Source::BaseView* view) {
     if(get_current_view()==view) {
       auto iter=view->get_buffer()->get_insert()->get_iter();
       status_location.set_text(" "+std::to_string(iter.get_line()+1)+":"+std::to_string(iter.get_line_offset()+1));
     }
   };
-  source_views.back()->update_status_file_path=[this](Source::BaseView* view) {
+  source_view->update_status_file_path=[this](Source::BaseView* view) {
     if(get_current_view()==view)
       status_file_path.set_text(' '+filesystem::get_short_path(view->file_path).string());
   };
-  source_views.back()->update_status_branch=[this](Source::BaseView* view) {
+  source_view->update_status_branch=[this](Source::BaseView* view) {
     if(get_current_view()==view) {
       if(!view->status_branch.empty())
         status_branch.set_text(" ("+view->status_branch+")");
@@ -185,23 +185,7 @@ void Notebook::open(const boost::filesystem::path &file_path_, size_t notebook_i
         status_branch.set_text("");
     }
   };
-  source_views.back()->update_tab_label=[this](Source::BaseView *view) {
-    std::string title=view->file_path.filename().string();
-    if(view->get_buffer()->get_modified())
-      title+='*';
-    else
-      title+=' ';
-    for(size_t c=0;c<size();++c) {
-      if(source_views[c]==view) {
-        auto &tab_label=tab_labels.at(c);
-        tab_label->label.set_text(title);
-        tab_label->set_tooltip_text(filesystem::get_short_path(view->file_path).string());
-        update_status(view);
-        return;
-      }
-    }
-  };
-  source_views.back()->update_status_diagnostics=[this](Source::BaseView* view) {
+  source_view->update_status_diagnostics=[this](Source::BaseView* view) {
     if(get_current_view()==view) {
       std::string diagnostic_info;
       
@@ -262,28 +246,43 @@ void Notebook::open(const boost::filesystem::path &file_path_, size_t notebook_i
       status_diagnostics.set_markup(diagnostic_info);
     }
   };
-  source_views.back()->update_status_state=[this](Source::BaseView* view) {
+  source_view->update_status_state=[this](Source::BaseView* view) {
     if(get_current_view()==view)
       status_state.set_text(view->status_state+" ");
   };
   
   scrolled_windows.emplace_back(new Gtk::ScrolledWindow());
   hboxes.emplace_back(new Gtk::Box());
-  scrolled_windows.back()->add(*source_views.back());
+  scrolled_windows.back()->add(*source_view);
   hboxes.back()->pack_start(*scrolled_windows.back());
 
   source_maps.emplace_back(Glib::wrap(gtk_source_map_new()));
-  gtk_source_map_set_view(GTK_SOURCE_MAP(source_maps.back()->gobj()), source_views.back()->gobj());
+  gtk_source_map_set_view(GTK_SOURCE_MAP(source_maps.back()->gobj()), source_view->gobj());
 
   configure(source_views.size()-1);
   
   //Set up tab label
-  auto source_view=source_views.back();
-  tab_labels.emplace_back(new TabLabel(file_path, [this, source_view]() {
+  tab_labels.emplace_back(new TabLabel([this, source_view]() {
     auto index=get_index(source_view);
     if(index!=static_cast<size_t>(-1))
       close(index);
   }));
+  source_view->update_tab_label=[this](Source::BaseView *view) {
+    std::string title=view->file_path.filename().string();
+    if(view->get_buffer()->get_modified())
+      title+='*';
+    else
+      title+=' ';
+    for(size_t c=0;c<size();++c) {
+      if(source_views[c]==view) {
+        auto &tab_label=tab_labels.at(c);
+        tab_label->label.set_text(title);
+        tab_label->set_tooltip_text(filesystem::get_short_path(view->file_path).string());
+        return;
+      }
+    }
+  };
+  source_view->update_tab_label(source_view);
   
   //Add star on tab label when the page is not saved:
   source_view->get_buffer()->signal_modified_changed().connect([source_view]() {
@@ -412,7 +411,6 @@ void Notebook::open(const boost::filesystem::path &file_path_, size_t notebook_i
   }
   
   set_focus_child(*source_views.back());
-  source_view->get_buffer()->set_modified(false);
   focus_view(source_view);
 }
 

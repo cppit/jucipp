@@ -66,9 +66,8 @@ bool Source::BaseView::load() {
       else
         replace_text(ustr.raw());
     }
-    else {
+    else
       return false;
-    }
   }
   else {
     std::ifstream input(file_path.string(), std::ofstream::binary);
@@ -88,11 +87,11 @@ bool Source::BaseView::load() {
         return false;
       }
     }
-    else {
+    else
       return false;
-    }
   }
   
+  get_buffer()->set_modified(false);
   return true;
 }
 
@@ -218,10 +217,8 @@ void Source::BaseView::check_last_write_time(std::time_t last_write_time_) {
     boost::system::error_code ec;
     auto last_write_time=last_write_time_!=static_cast<std::time_t>(-1) ? last_write_time_ : boost::filesystem::last_write_time(file_path, ec);
     if(!ec && last_write_time!=this->last_write_time) {
-      if(load()) {
-        get_buffer()->set_modified(false);
+      if(load())
         return;
-      }
     }
   }
   else if(has_focus()) {

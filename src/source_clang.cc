@@ -28,6 +28,13 @@ Source::ClangViewParse::ClangViewParse(const boost::filesystem::path &file_path,
   }
   configure();
   
+  if(get_buffer()->size()==0 && (language->get_id()=="chdr" || language->get_id()=="cpphdr")) {
+    disable_spellcheck=true;
+    get_buffer()->insert_at_cursor("#pragma once\n");
+    disable_spellcheck=false;
+    Info::get().print("Added \"#pragma once\" to empty C/C++ header file");
+  }
+  
   parse_initialize();
   
   get_buffer()->signal_changed().connect([this]() {
