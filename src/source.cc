@@ -175,6 +175,15 @@ Source::View::View(const boost::filesystem::path &file_path, Glib::RefPtr<Gsv::L
     }
   });
   
+  if(language && (language->get_id()=="chdr" || language->get_id()=="cpphdr" || language->get_id()=="c" ||
+                  language->get_id()=="cpp" || language->get_id()=="objc" || language->get_id()=="java" ||
+                  language->get_id()=="js" || language->get_id()=="ts" || language->get_id()=="proto" ||
+                  language->get_id()=="c-sharp" || language->get_id()=="html" || language->get_id()=="cuda" ||
+                  language->get_id()=="php" || language->get_id()=="rust" || language->get_id()=="swift" ||
+                  language->get_id()=="go" || language->get_id()=="scala" || language->get_id()=="opencl" ||
+                  language->get_id()=="json" || language->get_id()=="css"))
+    is_bracket_language=true;
+  
   setup_tooltip_and_dialog_events();
   setup_format_style(is_generic_view);
   
@@ -658,14 +667,7 @@ void Source::View::setup_format_style(bool is_generic_view) {
       }
     };
   }
-  else if(language && (language->get_id()=="chdr" || language->get_id()=="cpphdr" || language->get_id()=="c" ||
-                  language->get_id()=="cpp" || language->get_id()=="objc" || language->get_id()=="java" ||
-                  language->get_id()=="js" || language->get_id()=="ts" || language->get_id()=="proto" ||
-                  language->get_id()=="c-sharp" || language->get_id()=="html" || language->get_id()=="cuda" ||
-                  language->get_id()=="php" || language->get_id()=="rust" || language->get_id()=="swift" ||
-                  language->get_id()=="go" || language->get_id()=="scala" || language->get_id()=="opencl")) {
-    is_bracket_language=true;
-    
+  else if(is_bracket_language) {
     format_style=[this](bool continue_without_style_file) {
       static auto clang_format_command = filesystem::get_executable("clang-format").string();
       
