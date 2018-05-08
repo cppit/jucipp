@@ -14,7 +14,7 @@ namespace Source {
     
     Glib::RefPtr<Gsv::Language> language;
     
-    bool load();
+    bool load(bool not_undoable_action=false);
     /// Set new text more optimally and without unnecessary scrolling
     void replace_text(const std::string &new_text);
     virtual void rename(const boost::filesystem::path &path);

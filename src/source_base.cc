@@ -6,7 +6,7 @@
 #include <fstream>
 
 Source::BaseView::BaseView(const boost::filesystem::path &file_path, Glib::RefPtr<Gsv::Language> language): Gsv::View(), file_path(file_path), language(language), status_diagnostics(0, 0, 0) {
-  load();
+  load(true);
   get_buffer()->place_cursor(get_buffer()->get_iter_at_offset(0)); 
   
   signal_focus_in_event().connect([this](GdkEventFocus *event) {
@@ -23,24 +23,27 @@ Source::BaseView::~BaseView() {
   delayed_monitor_changed_connection.disconnect();
 }
 
-bool Source::BaseView::load() {
+bool Source::BaseView::load(bool not_undoable_action) {
   boost::system::error_code ec;
   last_write_time=boost::filesystem::last_write_time(file_path, ec);
   if(ec)
     last_write_time=static_cast<std::time_t>(-1);
   
   disable_spellcheck=true;
-  get_source_buffer()->begin_not_undoable_action();
+  if(not_undoable_action)
+    get_source_buffer()->begin_not_undoable_action();
   
   class Guard {
   public:
     Source::BaseView *view;
+    bool not_undoable_action;
     ~Guard() {
-      view->get_source_buffer()->end_not_undoable_action();
+      if(not_undoable_action)
+        view->get_source_buffer()->end_not_undoable_action();
       view->disable_spellcheck=false;
     }
   };
-  Guard guard{this};
+  Guard guard{this, not_undoable_action};
   
   if(language) {
     std::ifstream input(file_path.string(), std::ofstream::binary);
