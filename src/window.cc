@@ -312,29 +312,23 @@ void Window::set_menu_actions() {
       Directories::get().open(path);
   });
   
-  menu.add_action("file_reload_file", [this]() {
+  menu.add_action("file_reload_file", []() {
     if(auto view=Notebook::get().get_current_view()) {
-      Gtk::MessageDialog dialog(*static_cast<Gtk::Window*>(get_toplevel()), "Reload file!", false, Gtk::MESSAGE_QUESTION, Gtk::BUTTONS_YES_NO);
-      dialog.set_default_response(Gtk::RESPONSE_YES);
-      dialog.set_secondary_text("Do you want to reload: " + view->file_path.string()+" ? The current buffer will be lost.");
-      int result = dialog.run();
-      if(result==Gtk::RESPONSE_YES) {
-        if(boost::filesystem::exists(view->file_path)) {
-          std::ifstream can_read(view->file_path.string());
-          if(!can_read) {
-            Terminal::get().print("Error: could not read "+view->file_path.string()+"\n", true);
-            return;
-          }
-          can_read.close();
-        }
-        else {
-          Terminal::get().print("Error: "+view->file_path.string()+" does not exist\n", true);
+      if(boost::filesystem::exists(view->file_path)) {
+        std::ifstream can_read(view->file_path.string());
+        if(!can_read) {
+          Terminal::get().print("Error: could not read "+view->file_path.string()+"\n", true);
           return;
         }
-        
-        if(view->load())
-          view->full_reparse();
+        can_read.close();
       }
+      else {
+        Terminal::get().print("Error: "+view->file_path.string()+" does not exist\n", true);
+        return;
+      }
+      
+      if(view->load())
+        view->full_reparse();
     }
   });
   
