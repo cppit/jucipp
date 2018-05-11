@@ -130,6 +130,6 @@ namespace Source {
     std::vector<std::pair<Glib::RefPtr<Gtk::TextMark>, Glib::RefPtr<Gtk::TextMark>>> flow_coverage_marks;
     const std::string flow_coverage_message="Not covered by Flow";
     size_t num_warnings=0, num_errors=0, num_fix_its=0, num_flow_coverage_warnings=0;
-    void add_flow_coverage_tooltips();
+    void add_flow_coverage_tooltips(bool called_in_thread);
   };
 } // namespace Source

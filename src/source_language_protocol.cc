@@ -349,7 +349,7 @@ Source::LanguageProtocolView::LanguageProtocolView(const boost::filesystem::path
     auto capabilities=client->initialize(this);
     
     if(!flow_coverage_executable.empty())
-      add_flow_coverage_tooltips();
+      add_flow_coverage_tooltips(true);
     
     dispatcher.post([this, capabilities] {
       this->capabilities=capabilities;
@@ -437,7 +437,7 @@ bool Source::LanguageProtocolView::save() {
     return false;
   
   if(!flow_coverage_executable.empty())
-    add_flow_coverage_tooltips();
+    add_flow_coverage_tooltips(false);
   
   return true;
 }
@@ -1366,11 +1366,11 @@ void Source::LanguageProtocolView::setup_autocomplete() {
   };
 }
 
-void Source::LanguageProtocolView::add_flow_coverage_tooltips() {
+void Source::LanguageProtocolView::add_flow_coverage_tooltips(bool called_in_thread) {
   std::stringstream stdin_stream, stderr_stream;
   auto stdout_stream=std::make_shared<std::stringstream>();
   auto exit_status=Terminal::get().process(stdin_stream, *stdout_stream, flow_coverage_executable.string()+" coverage --json "+file_path.string(), "", &stderr_stream);
-  dispatcher.post([this, exit_status, stdout_stream] {
+  auto f=[this, exit_status, stdout_stream] {
     clear_diagnostic_tooltips();
     num_flow_coverage_warnings=0;
     for(auto &mark: flow_coverage_marks) {
@@ -1401,5 +1401,9 @@ void Source::LanguageProtocolView::add_flow_coverage_tooltips() {
     status_diagnostics=std::make_tuple(num_warnings+num_flow_coverage_warnings, num_errors, num_fix_its);
     if(update_status_diagnostics)
       update_status_diagnostics(this);
-  });
+  };
+  if(called_in_thread)
+    dispatcher.post(std::move(f));
+  else
+    f();
 }
