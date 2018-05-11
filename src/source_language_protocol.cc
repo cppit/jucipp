@@ -330,8 +330,27 @@ Source::LanguageProtocolView::LanguageProtocolView(const boost::filesystem::path
   if(update_status_state)
     update_status_state(this);
   
+  if(language_id=="javascript") {
+    boost::filesystem::path project_path;
+    auto build=Project::Build::create(file_path);
+    if(auto npm_build=dynamic_cast<Project::NpmBuild*>(build.get())) {
+      boost::system::error_code ec;
+      if(!build->project_path.empty() && boost::filesystem::exists(build->project_path/".flowconfig", ec)) {
+        auto executable=build->project_path/"node_modules"/".bin"/"flow"; // It is recommended to use Flow binary installed in project, despite the security risk of doing so...
+        if(boost::filesystem::exists(executable, ec))
+          flow_coverage_executable=executable;
+        else
+          flow_coverage_executable=filesystem::find_executable("flow");
+      }
+    }
+  }
+  
   initialize_thread=std::thread([this] {
     auto capabilities=client->initialize(this);
+    
+    if(!flow_coverage_executable.empty())
+      add_flow_coverage_tooltips();
+    
     dispatcher.post([this, capabilities] {
       this->capabilities=capabilities;
       
@@ -411,6 +430,16 @@ Source::LanguageProtocolView::~LanguageProtocolView() {
   client->close(this);
   
   client=nullptr;
+}
+
+bool Source::LanguageProtocolView::save() {
+  if(!Source::View::save())
+    return false;
+  
+  if(!flow_coverage_executable.empty())
+    add_flow_coverage_tooltips();
+  
+  return true;
 }
 
 void Source::LanguageProtocolView::setup_navigation_and_refactoring() {
@@ -865,9 +894,9 @@ void Source::LanguageProtocolView::unescape_text(std::string &text) {
 void Source::LanguageProtocolView::update_diagnostics(std::vector<LanguageProtocol::Diagnostic> &&diagnostics) {
   dispatcher.post([this, diagnostics=std::move(diagnostics)] {
     clear_diagnostic_tooltips();
-    size_t num_warnings=0;
-    size_t num_errors=0;
-    size_t num_fix_its=0;
+    num_warnings=0;
+    num_errors=0;
+    num_fix_its=0;
     for(auto &diagnostic: diagnostics) {
       if(diagnostic.uri==uri) {
         auto start=get_iter_at_line_pos(diagnostic.offsets.first.line, diagnostic.offsets.first.index);
@@ -893,16 +922,13 @@ void Source::LanguageProtocolView::update_diagnostics(std::vector<LanguageProtoc
         }
         
         add_diagnostic_tooltip(start, end, diagnostic.spelling, error);
-        
-        auto iter=get_buffer()->get_insert()->get_iter();
-        if(iter.ends_line()) {
-          auto next_iter=iter;
-          if(next_iter.forward_char())
-            get_buffer()->remove_tag_by_name(severity_tag_name+"_underline", iter, next_iter);
-        }
       }
     }
-    status_diagnostics=std::make_tuple(num_warnings, num_errors, num_fix_its);
+    
+    for(auto &mark: flow_coverage_marks)
+      add_diagnostic_tooltip(mark.first->get_iter(), mark.second->get_iter(), flow_coverage_message, false);
+    
+    status_diagnostics=std::make_tuple(num_warnings+num_flow_coverage_warnings, num_errors, num_fix_its);
     if(update_status_diagnostics)
       update_status_diagnostics(this);
   });
@@ -1338,4 +1364,42 @@ void Source::LanguageProtocolView::setup_autocomplete() {
   autocomplete.get_tooltip = [this](unsigned int index) {
     return autocomplete_comment[index];
   };
+}
+
+void Source::LanguageProtocolView::add_flow_coverage_tooltips() {
+  std::stringstream stdin_stream, stderr_stream;
+  auto stdout_stream=std::make_shared<std::stringstream>();
+  auto exit_status=Terminal::get().process(stdin_stream, *stdout_stream, flow_coverage_executable.string()+" coverage --json "+file_path.string(), "", &stderr_stream);
+  dispatcher.post([this, exit_status, stdout_stream] {
+    clear_diagnostic_tooltips();
+    num_flow_coverage_warnings=0;
+    for(auto &mark: flow_coverage_marks) {
+      get_buffer()->delete_mark(mark.first);
+      get_buffer()->delete_mark(mark.second);
+    }
+    flow_coverage_marks.clear();
+    
+    if(exit_status==0) {
+      boost::property_tree::ptree pt;
+      try {
+        boost::property_tree::read_json(*stdout_stream, pt);
+        auto uncovered_locs_pt=pt.get_child("expressions.uncovered_locs");
+        for(auto it=uncovered_locs_pt.begin();it!=uncovered_locs_pt.end();++it) {
+          auto start_pt=it->second.get_child("start");
+          auto start=get_iter_at_line_offset(start_pt.get<int>("line")-1, start_pt.get<int>("column")-1);
+          auto end_pt=it->second.get_child("end");
+          auto end=get_iter_at_line_offset(end_pt.get<int>("line")-1, end_pt.get<int>("column"));
+          
+          add_diagnostic_tooltip(start, end, flow_coverage_message, false);
+          ++num_flow_coverage_warnings;
+          
+          flow_coverage_marks.emplace_back(get_buffer()->create_mark(start), get_buffer()->create_mark(end));
+        }
+      }
+      catch(...) {}
+    }
+    status_diagnostics=std::make_tuple(num_warnings+num_flow_coverage_warnings, num_errors, num_fix_its);
+    if(update_status_diagnostics)
+      update_status_diagnostics(this);
+  });
 }

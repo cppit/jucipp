@@ -1173,6 +1173,13 @@ void Source::View::add_diagnostic_tooltip(const Gtk::TextIter &start, const Gtk:
   diagnostic_tooltips.emplace_back(create_tooltip_buffer, this, get_buffer()->create_mark(start), get_buffer()->create_mark(end));
   
   get_buffer()->apply_tag_by_name(severity_tag_name+"_underline", start, end);
+  
+  auto iter=get_buffer()->get_insert()->get_iter();
+  if(iter.ends_line()) {
+    auto next_iter=iter;
+    if(next_iter.forward_char())
+      get_buffer()->remove_tag_by_name(severity_tag_name+"_underline", iter, next_iter);
+  }
 }
 
 void Source::View::clear_diagnostic_tooltips() {

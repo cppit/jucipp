@@ -338,14 +338,8 @@ void Source::ClangViewParse::update_diagnostics() {
       
       if(!fix_its_string.empty())
         diagnostic.spelling+="\n\n"+fix_its_string;
-      add_diagnostic_tooltip(start, end, diagnostic.spelling, error);
       
-      auto iter=get_buffer()->get_insert()->get_iter();
-      if(iter.ends_line()) {
-        auto next_iter=iter;
-        if(next_iter.forward_char())
-          get_buffer()->remove_tag_by_name(severity_tag_name+"_underline", iter, next_iter);
-      }
+      add_diagnostic_tooltip(start, end, diagnostic.spelling, error);
     }
   }
   status_diagnostics=std::make_tuple(num_warnings, num_errors, num_fix_its);
