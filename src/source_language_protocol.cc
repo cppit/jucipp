@@ -335,8 +335,8 @@ Source::LanguageProtocolView::LanguageProtocolView(const boost::filesystem::path
     auto build=Project::Build::create(file_path);
     if(auto npm_build=dynamic_cast<Project::NpmBuild*>(build.get())) {
       boost::system::error_code ec;
-      if(!build->project_path.empty() && boost::filesystem::exists(build->project_path/".flowconfig", ec)) {
-        auto executable=build->project_path/"node_modules"/".bin"/"flow"; // It is recommended to use Flow binary installed in project, despite the security risk of doing so...
+      if(!npm_build->project_path.empty() && boost::filesystem::exists(npm_build->project_path/".flowconfig", ec)) {
+        auto executable=npm_build->project_path/"node_modules"/".bin"/"flow"; // It is recommended to use Flow binary installed in project, despite the security risk of doing so...
         if(boost::filesystem::exists(executable, ec))
           flow_coverage_executable=executable;
         else
