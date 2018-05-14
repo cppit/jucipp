@@ -665,6 +665,7 @@ void Source::View::setup_format_style(bool is_generic_view) {
         if(update_status_diagnostics)
           update_status_diagnostics(this);
       }
+      hide_tooltips();
     };
   }
   else if(is_bracket_language) {

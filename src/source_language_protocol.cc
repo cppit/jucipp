@@ -529,6 +529,7 @@ void Source::LanguageProtocolView::setup_navigation_and_refactoring() {
         }
         get_buffer()->end_user_action();
       }
+      hide_tooltips();
     };
   }
   
