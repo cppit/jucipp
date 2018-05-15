@@ -979,6 +979,7 @@ void Source::LanguageProtocolView::show_type_tooltips(const Gdk::Rectangle &rect
         }
       }
       if(!content.empty()) {
+        while(!content.empty() && content.back()=='\n') { content.pop_back(); } // Remove unnecessary newlines
         dispatcher.post([this, offset, content=std::move(content), current_request] {
           if(current_request!=request_count)
             return;
