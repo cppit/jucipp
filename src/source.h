@@ -103,6 +103,7 @@ namespace Source {
     Tooltips diagnostic_tooltips;
     Tooltips type_tooltips;
     sigc::connection delayed_tooltips_connection;
+    sigc::connection delayed_tag_similar_symbols_connection;
     virtual void show_diagnostic_tooltips(const Gdk::Rectangle &rectangle) { diagnostic_tooltips.show(rectangle); }
     void add_diagnostic_tooltip(const Gtk::TextIter &start, const Gtk::TextIter &end, std::string spelling, bool error);
     void clear_diagnostic_tooltips();

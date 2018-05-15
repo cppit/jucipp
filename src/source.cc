@@ -380,6 +380,7 @@ bool Source::View::save() {
       format_style(true);
     else if(Config::get().source.format_style_on_save_if_style_file_found)
       format_style(false);
+    hide_tooltips();
   }
   
   std::ofstream output(file_path.string(), std::ofstream::binary);
@@ -665,7 +666,6 @@ void Source::View::setup_format_style(bool is_generic_view) {
         if(update_status_diagnostics)
           update_status_diagnostics(this);
       }
-      hide_tooltips();
     };
   }
   else if(is_bracket_language) {
@@ -921,6 +921,7 @@ Source::View::~View() {
   g_clear_object(&search_settings);
   
   delayed_tooltips_connection.disconnect();
+  delayed_tag_similar_symbols_connection.disconnect();
   renderer_activate_connection.disconnect();
   
   non_deleted_views.erase(this);
@@ -1156,6 +1157,7 @@ void Source::View::paste() {
 
 void Source::View::hide_tooltips() {
   delayed_tooltips_connection.disconnect();
+  delayed_tag_similar_symbols_connection.disconnect();
   type_tooltips.hide();
   diagnostic_tooltips.hide();
 }

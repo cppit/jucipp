@@ -391,6 +391,7 @@ void Window::set_menu_actions() {
         view->disable_spellcheck=true;
         undo_manager->undo();
         view->disable_spellcheck=false;
+        view->hide_tooltips();
         view->scroll_to(view->get_buffer()->get_insert());
       }
     }
@@ -402,6 +403,7 @@ void Window::set_menu_actions() {
         view->disable_spellcheck=true;
         undo_manager->redo();
         view->disable_spellcheck=false;
+        view->hide_tooltips();
         view->scroll_to(view->get_buffer()->get_insert());
       }
     }
@@ -479,6 +481,7 @@ void Window::set_menu_actions() {
         source_view->disable_spellcheck=true;
         source_view->paste();
         source_view->disable_spellcheck=false;
+        source_view->hide_tooltips();
       }
       else if(view->get_editable())
         view->get_buffer()->paste_clipboard(Gtk::Clipboard::get());
@@ -540,6 +543,7 @@ void Window::set_menu_actions() {
       view->disable_spellcheck=true;
       view->format_style(true);
       view->disable_spellcheck=false;
+      view->hide_tooltips();
     }
   });
   

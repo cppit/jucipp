@@ -970,8 +970,8 @@ Source::ClangViewRefactor::ClangViewRefactor(const boost::filesystem::path &file
   
   get_buffer()->signal_mark_set().connect([this](const Gtk::TextBuffer::iterator& iterator, const Glib::RefPtr<Gtk::TextBuffer::Mark>& mark){
     if(mark->get_name()=="insert") {
-      delayed_tag_similar_identifiers_connection.disconnect();
-      delayed_tag_similar_identifiers_connection=Glib::signal_timeout().connect([this]() {
+      delayed_tag_similar_symbols_connection.disconnect();
+      delayed_tag_similar_symbols_connection=Glib::signal_timeout().connect([this]() {
         auto identifier=get_identifier();
         tag_similar_identifiers(identifier);
         return false;
@@ -1797,7 +1797,6 @@ void Source::ClangView::full_reparse() {
 
 void Source::ClangView::async_delete() {
   delayed_show_arguments_connection.disconnect();
-  delayed_tag_similar_identifiers_connection.disconnect();
   
   views.erase(this);
   std::set<boost::filesystem::path> project_paths_in_use;

@@ -417,8 +417,6 @@ Source::LanguageProtocolView::LanguageProtocolView(const boost::filesystem::path
 }
 
 Source::LanguageProtocolView::~LanguageProtocolView() {
-  delayed_tag_similar_symbols_connection.disconnect();
-  
   if(initialize_thread.joinable())
     initialize_thread.join();
   
@@ -529,7 +527,6 @@ void Source::LanguageProtocolView::setup_navigation_and_refactoring() {
         }
         get_buffer()->end_user_action();
       }
-      hide_tooltips();
     };
   }
   

@@ -85,8 +85,6 @@ namespace Source {
     };
   public:
     ClangViewRefactor(const boost::filesystem::path &file_path, Glib::RefPtr<Gsv::Language> language);
-  protected:
-    sigc::connection delayed_tag_similar_identifiers_connection;
   private:
     Identifier get_identifier();
     void wait_parsing();
