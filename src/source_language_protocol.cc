@@ -1225,10 +1225,13 @@ void Source::LanguageProtocolView::setup_autocomplete() {
             auto detail=it->second.get<std::string>("detail", "");
             auto documentation=it->second.get<std::string>("documentation", "");
             auto insert=it->second.get<std::string>("insertText", "");
-            if(!insert.empty()) { // In case ( is missing in insert but is present in label
-              auto pos=label.find('(');
-              if(pos!=std::string::npos && pos==insert.size() && pos+1<label.size() && label.back()==')' && insert.find('(')==std::string::npos)
-                insert+="(${1:"+label.substr(pos+1, label.size()-1-(pos+1))+"})";
+            if(!insert.empty()) {
+              // In case ( is missing in insert but is present in label
+              if(label.size()>insert.size() && label.back()==')' && insert.find('(')==std::string::npos) {
+                auto pos=label.find('(');
+                if(pos!=std::string::npos && pos==insert.size() && pos+1<label.size())
+                  insert+="(${1:"+label.substr(pos+1, label.size()-1-(pos+1))+"})";
+              }
             }
             else {
               insert=label;
