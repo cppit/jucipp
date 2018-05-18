@@ -70,14 +70,20 @@ SelectionDialogBase::SelectionDialogBase(Gtk::TextView *text_view, Glib::RefPtr<
     auto application=Glib::RefPtr<Gtk::Application>::cast_static(gio_application);
     auto application_window=application->get_active_window();
     
-    int row_width=0, row_height;
+    // Calculate window width and height
+    int row_width=0, padding_height=0, window_height=0;
     Gdk::Rectangle rect;
-    list_view_text.get_cell_area(list_view_text.get_model()->get_path(list_view_text.get_model()->children().begin()), *(list_view_text.get_column(0)), rect);
-    row_width=rect.get_width();
-    row_height=rect.get_height();
-    
-    row_width+=rect.get_x()*2; //TODO: Add correct margin x and y
-    row_height+=rect.get_y()*2;
+    auto children=list_view_text.get_model()->children();
+    size_t c=0;
+    for(auto it=children.begin();it!=children.end() && c<10;++it) {
+      list_view_text.get_cell_area(list_view_text.get_model()->get_path(it), *(list_view_text.get_column(0)), rect);
+      if(c==0) {
+        row_width=rect.get_width()+rect.get_x()*2;
+        padding_height=rect.get_y()*2;
+      }
+      window_height+=rect.get_height()+padding_height;
+      ++c;
+    }
     
     if(this->text_view && row_width>this->text_view->get_width()*2/3)
       row_width=this->text_view->get_width()*2/3;
@@ -86,7 +92,6 @@ SelectionDialogBase::SelectionDialogBase(Gtk::TextView *text_view, Glib::RefPtr<
     else
       scrolled_window.set_policy(Gtk::PolicyType::POLICY_NEVER, Gtk::PolicyType::POLICY_AUTOMATIC);
     
-    int window_height=std::min(row_height*static_cast<int>(list_view_text.get_model()->children().size()), row_height*10);
     if(this->show_search_entry)
       window_height+=search_entry.get_height();
     int window_width=row_width+1;
