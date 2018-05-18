@@ -2928,7 +2928,7 @@ Source::GenericView::GenericView(const boost::filesystem::path &file_path, Glib:
       }
       bool has_context_class=false;
       parse_language_file(completion_buffer_keywords, has_context_class, pt);
-      if(!has_context_class)
+      if(!has_context_class || language->get_id()=="cmake") // TODO: no longer use the spellcheck_all flag
         spellcheck_all=false;
       completion_words->register_provider(completion_buffer_keywords);
     }
