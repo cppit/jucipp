@@ -1,5 +1,3 @@
-#include <utility>
-
 #include "source_base.h"
 #include "info.h"
 #include "terminal.h"
