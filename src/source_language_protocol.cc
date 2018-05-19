@@ -1148,8 +1148,8 @@ void Source::LanguageProtocolView::setup_autocomplete() {
     
     std::string line=" "+get_line_before();
     const static std::regex dot_or_arrow(R"(^.*[a-zA-Z0-9_\)\]\>"'](\.)([a-zA-Z0-9_]*)$)");
-    const static std::regex colon_colon("^.*::([a-zA-Z0-9_]*)$");
-    const static std::regex part_of_symbol("^.*[^a-zA-Z0-9_]+([a-zA-Z0-9_]{3,})$");
+    const static std::regex colon_colon(R"(^.*::([a-zA-Z0-9_]*)$)");
+    const static std::regex part_of_symbol(R"(^.*[^a-zA-Z0-9_]+([a-zA-Z0-9_]{3,})$)");
     std::smatch sm;
     if(std::regex_match(line, sm, dot_or_arrow)) {
       {

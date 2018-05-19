@@ -536,8 +536,8 @@ Source::ClangViewAutocomplete::ClangViewAutocomplete(const boost::filesystem::pa
     
     std::string line=" "+get_line_before();
     const static std::regex dot_or_arrow(R"(^.*[a-zA-Z0-9_\)\]\>](\.|->)([a-zA-Z0-9_]*)$)");
-    const static std::regex colon_colon("^.*::([a-zA-Z0-9_]*)$");
-    const static std::regex part_of_symbol("^.*[^a-zA-Z0-9_]+([a-zA-Z0-9_]{3,})$");
+    const static std::regex colon_colon(R"(^.*::([a-zA-Z0-9_]*)$)");
+    const static std::regex part_of_symbol(R"(^.*[^a-zA-Z0-9_]+([a-zA-Z0-9_]{3,})$)");
     std::smatch sm;
     if(std::regex_match(line, sm, dot_or_arrow)) {
       {
@@ -987,7 +987,7 @@ Source::ClangViewRefactor::ClangViewRefactor(const boost::filesystem::path &file
     }
     else {
       // If cursor is at an include line, return offset to included file
-      const static std::regex include_regex("^[ \t]*#[ \t]*include[ \t]*[<\"]([^<>\"]+)[>\"].*$");
+      const static std::regex include_regex(R"(^[ \t]*#[ \t]*include[ \t]*[<"]([^<>"]+)[>"].*$)");
       std::smatch sm;
       auto line=get_line();
       if(std::regex_match(line, sm, include_regex)) {

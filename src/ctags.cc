@@ -48,7 +48,7 @@ Ctags::Location Ctags::get_location(const std::string &line, bool markup) {
   auto &line_fixed=line;
 #endif
 
-  const static std::regex regex("^([^\t]+)\t([^\t]+)\t(?:/\\^)?([ \t]*)(.+?)(\\$/)?;\"\tline:([0-9]+)\t?[a-zA-Z]*:?(.*)$");
+  const static std::regex regex(R"(^([^\t]+)\t([^\t]+)\t(?:/\^)?([ \t]*)(.+?)(\$/)?;"\tline:([0-9]+)\t?[a-zA-Z]*:?(.*)$)");
   std::smatch sm;
   if(std::regex_match(line_fixed, sm, regex)) {
     location.symbol=sm[1].str();
