@@ -45,7 +45,7 @@ namespace Source {
     
     static const std::unordered_map<int, std::string> &clang_types();
     void update_syntax();
-    std::set<std::string> last_syntax_tags;
+    std::map<int, Glib::RefPtr<Gtk::TextTag>> syntax_tags;
 
     void update_diagnostics();
     std::vector<clangmm::Diagnostic> clang_diagnostics;

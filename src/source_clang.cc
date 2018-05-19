@@ -22,9 +22,11 @@ Source::ClangViewParse::ClangViewParse(const boost::filesystem::path &file_path,
   
   auto tag_table=get_buffer()->get_tag_table();
   for (auto &item : clang_types()) {
-    if(!tag_table->lookup(item.second)) {
-      get_buffer()->create_tag(item.second);
-    }
+    auto tag=tag_table->lookup(item.second);
+    if(!tag)
+      syntax_tags.emplace(item.first, get_buffer()->create_tag(item.second));
+    else
+      syntax_tags.emplace(item.first, tag);
   }
   
   if(get_buffer()->size()==0 && (language->get_id()=="chdr" || language->get_id()=="cpphdr")) {
@@ -235,18 +237,16 @@ const std::unordered_map<int, std::string> &Source::ClangViewParse::clang_types(
 void Source::ClangViewParse::update_syntax() {
   auto buffer=get_buffer();
   const auto apply_tag=[this, buffer](const std::pair<clangmm::Offset, clangmm::Offset> &offsets, int type) {
-    auto type_it=clang_types().find(type);
-    if(type_it!=clang_types().end()) {
-      last_syntax_tags.emplace(type_it->second);
+    auto syntax_tag_it=syntax_tags.find(type);
+    if(syntax_tag_it!=syntax_tags.end()) {
       Gtk::TextIter begin_iter = buffer->get_iter_at_line_index(offsets.first.line-1, offsets.first.index-1);
       Gtk::TextIter end_iter  = buffer->get_iter_at_line_index(offsets.second.line-1, offsets.second.index-1);
-      buffer->apply_tag_by_name(type_it->second, begin_iter, end_iter);
+      buffer->apply_tag(syntax_tag_it->second, begin_iter, end_iter);
     }
   };
   
-  for(auto &tag: last_syntax_tags)
-    buffer->remove_tag_by_name(tag, buffer->begin(), buffer->end());
-  last_syntax_tags.clear();
+  for(auto &pair: syntax_tags)
+    buffer->remove_tag(pair.second, buffer->begin(), buffer->end());
   
   for(size_t c=0;c<clang_tokens->size();++c) {
     auto &token=(*clang_tokens)[c];
