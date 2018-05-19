@@ -15,7 +15,7 @@ class Notebook : public Gtk::Paned {
   
   class CursorLocation {
   public:
-    CursorLocation(Source::View *view, Glib::RefPtr<Gtk::TextBuffer::Mark> mark) : view(view), mark(mark) {}
+    CursorLocation(Source::View *view, Glib::RefPtr<Gtk::TextBuffer::Mark> mark_) : view(view), mark(std::move(mark_)) {}
     Source::View *view;
     Glib::RefPtr<Gtk::TextBuffer::Mark> mark;
   };

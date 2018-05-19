@@ -6,7 +6,7 @@ namespace Source {
   class SpellCheckView : virtual public Source::BaseView {
   public:
     SpellCheckView(const boost::filesystem::path &file_path, Glib::RefPtr<Gsv::Language> language);
-    ~SpellCheckView();
+    ~SpellCheckView() override;
     
     void configure() override;
     void hide_dialogs() override;

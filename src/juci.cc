@@ -6,7 +6,7 @@
 #include "config.h"
 #include "terminal.h"
 #ifndef _WIN32
-#include <signal.h>
+#include <csignal>
 #endif
 
 int Application::on_command_line(const Glib::RefPtr<Gio::ApplicationCommandLine> &cmd) {

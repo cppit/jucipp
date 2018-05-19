@@ -535,7 +535,7 @@ Source::ClangViewAutocomplete::ClangViewAutocomplete(const boost::filesystem::pa
     show_arguments=false;
     
     std::string line=" "+get_line_before();
-    const static std::regex dot_or_arrow("^.*[a-zA-Z0-9_\\)\\]\\>](\\.|->)([a-zA-Z0-9_]*)$");
+    const static std::regex dot_or_arrow(R"(^.*[a-zA-Z0-9_\)\]\>](\.|->)([a-zA-Z0-9_]*)$)");
     const static std::regex colon_colon("^.*::([a-zA-Z0-9_]*)$");
     const static std::regex part_of_symbol("^.*[^a-zA-Z0-9_]+([a-zA-Z0-9_]{3,})$");
     std::smatch sm;

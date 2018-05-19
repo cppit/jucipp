@@ -235,9 +235,9 @@ void Window::set_menu_actions() {
     boost::filesystem::path project_path = Dialog::new_folder(Notebook::get().get_current_folder());
     if(project_path!="") {
       auto project_name=project_path.filename().string();
-      for(size_t c=0;c<project_name.size();c++) {
-        if(project_name[c]==' ')
-          project_name[c]='_';
+      for(auto &chr: project_name) {
+        if(chr==' ')
+          chr='_';
       }
       auto cmakelists_path=project_path;
       cmakelists_path/="CMakeLists.txt";
@@ -267,9 +267,9 @@ void Window::set_menu_actions() {
     boost::filesystem::path project_path = Dialog::new_folder(Notebook::get().get_current_folder());
     if(project_path!="") {
       auto project_name=project_path.filename().string();
-      for(size_t c=0;c<project_name.size();c++) {
-        if(project_name[c]==' ')
-          project_name[c]='_';
+      for(auto &chr: project_name) {
+        if(chr==' ')
+          chr='_';
       }
       auto cmakelists_path=project_path;
       cmakelists_path/="CMakeLists.txt";

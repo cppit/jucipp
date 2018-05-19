@@ -70,8 +70,8 @@ namespace Source {
   class ClangViewRefactor : public virtual ClangViewParse {
     class Identifier {
     public:
-      Identifier(const std::string &spelling, const clangmm::Cursor &cursor)
-          : kind(cursor.get_kind()), spelling(spelling), usr_extended(cursor.get_usr_extended()), cursor(cursor) {}
+      Identifier(std::string spelling_, const clangmm::Cursor &cursor)
+          : kind(cursor.get_kind()), spelling(std::move(spelling_)), usr_extended(cursor.get_usr_extended()), cursor(cursor) {}
       Identifier() : kind(static_cast<clangmm::Cursor::Kind>(0)) {}
       
       operator bool() const { return static_cast<int>(kind)!=0; }

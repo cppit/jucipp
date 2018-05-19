@@ -2,7 +2,7 @@
 
 std::unordered_map<std::string, std::vector<std::string> > EntryBox::entry_histories;
 
-EntryBox::Entry::Entry(const std::string& content, std::function<void(const std::string& content)> on_activate, unsigned width_chars) : Gtk::Entry(), on_activate(on_activate) {
+EntryBox::Entry::Entry(const std::string& content, std::function<void(const std::string& content)> on_activate_, unsigned width_chars) : Gtk::Entry(), on_activate(std::move(on_activate_)) {
   set_max_length(0);
   set_width_chars(width_chars);
   set_text(content);
@@ -41,7 +41,7 @@ EntryBox::Entry::Entry(const std::string& content, std::function<void(const std:
   });
 }
 
-EntryBox::Button::Button(const std::string& label, std::function<void()> on_activate) : Gtk::Button(label), on_activate(on_activate) {
+EntryBox::Button::Button(const std::string& label, std::function<void()> on_activate_) : Gtk::Button(label), on_activate(std::move(on_activate_)) {
   set_focus_on_click(false);
   signal_clicked().connect([this](){
     if(this->on_activate)
@@ -49,7 +49,7 @@ EntryBox::Button::Button(const std::string& label, std::function<void()> on_acti
   });
 }
 
-EntryBox::ToggleButton::ToggleButton(const std::string& label, std::function<void()> on_activate) : Gtk::ToggleButton(label), on_activate(on_activate) {
+EntryBox::ToggleButton::ToggleButton(const std::string& label, std::function<void()> on_activate_) : Gtk::ToggleButton(label), on_activate(std::move(on_activate_)) {
   set_focus_on_click(false);
   signal_clicked().connect([this](){
     if(this->on_activate)
@@ -57,7 +57,7 @@ EntryBox::ToggleButton::ToggleButton(const std::string& label, std::function<voi
   });
 }
 
-EntryBox::Label::Label(std::function<void(int state, const std::string& message)> update) : Gtk::Label(), update(update) {
+EntryBox::Label::Label(std::function<void(int state, const std::string& message)> update_) : Gtk::Label(), update(std::move(update_)) {
     if(this->update)
       this->update(-1, "");
 }

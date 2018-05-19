@@ -36,8 +36,8 @@ void SelectionDialogBase::ListViewText::clear() {
   size=0;
 }
 
-SelectionDialogBase::SelectionDialogBase(Gtk::TextView *text_view, Glib::RefPtr<Gtk::TextBuffer::Mark> start_mark, bool show_search_entry, bool use_markup):
-    start_mark(start_mark), text_view(text_view), window(Gtk::WindowType::WINDOW_POPUP), vbox(Gtk::Orientation::ORIENTATION_VERTICAL), list_view_text(use_markup), show_search_entry(show_search_entry) {
+SelectionDialogBase::SelectionDialogBase(Gtk::TextView *text_view, Glib::RefPtr<Gtk::TextBuffer::Mark> start_mark_, bool show_search_entry, bool use_markup):
+    start_mark(std::move(start_mark_)), text_view(text_view), window(Gtk::WindowType::WINDOW_POPUP), vbox(Gtk::Orientation::ORIENTATION_VERTICAL), list_view_text(use_markup), show_search_entry(show_search_entry) {
   auto g_application=g_application_get_default();
   auto gio_application=Glib::wrap(g_application, true);
   auto application=Glib::RefPtr<Gtk::Application>::cast_static(gio_application);
@@ -133,7 +133,7 @@ void SelectionDialogBase::cursor_changed() {
   if(!is_visible())
     return;
   auto it=list_view_text.get_selection()->get_selected();
-  unsigned int index=static_cast<unsigned int>(-1);
+  auto index=static_cast<unsigned int>(-1);
   if(it)
     index=it->get_value(list_view_text.column_record.index);
   if(last_index==index)

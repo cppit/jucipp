@@ -5,7 +5,7 @@
 #include <gtkmm.h>
 
 class Menu {
-  Menu() {}
+  Menu() = default;
 public:
   static Menu &get() {
     static Menu singleton;

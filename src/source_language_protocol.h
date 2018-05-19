@@ -85,7 +85,7 @@ namespace Source {
   class LanguageProtocolView : public View {
   public:
     LanguageProtocolView(const boost::filesystem::path &file_path, Glib::RefPtr<Gsv::Language> language, std::string language_id_);
-    ~LanguageProtocolView();
+    ~LanguageProtocolView() override;
     std::string uri;
     
     bool save() override;

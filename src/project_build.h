@@ -6,7 +6,6 @@
 namespace Project {
   class Build {
   public:
-    Build() {}
     virtual ~Build() {}
     
     boost::filesystem::path project_path;

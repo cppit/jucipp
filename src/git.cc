@@ -225,7 +225,7 @@ boost::filesystem::path Git::Repository::get_path() noexcept {
 
 boost::filesystem::path Git::Repository::get_root_path(const boost::filesystem::path &path) {
   initialize();
-  git_buf root = {0, 0, 0};
+  git_buf root = {nullptr, 0, 0};
   {
     Error error;
     std::lock_guard<std::mutex> lock(mutex);

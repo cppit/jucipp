@@ -25,8 +25,8 @@ namespace Source {
   
   class Offset {
   public:
-    Offset() {}
-    Offset(unsigned line, unsigned index, const boost::filesystem::path &file_path=""): line(line), index(index), file_path(file_path) {}
+    Offset() = default;
+    Offset(unsigned line, unsigned index, boost::filesystem::path file_path_=""): line(line), index(index), file_path(std::move(file_path_)) {}
     operator bool() { return !file_path.empty(); }
     bool operator==(const Offset &o) {return (line==o.line && index==o.index);}
     
@@ -39,9 +39,9 @@ namespace Source {
   public:
     enum class Type {INSERT, REPLACE, ERASE};
     
-    FixIt(const std::string &source, const std::pair<Offset, Offset> &offsets);
+    FixIt(std::string source_, std::pair<Offset, Offset> offsets_);
     
-    std::string string(Glib::RefPtr<Gtk::TextBuffer> buffer);
+    std::string string(const Glib::RefPtr<Gtk::TextBuffer> &buffer);
     
     Type type;
     std::string source;
@@ -54,7 +54,7 @@ namespace Source {
     static std::unordered_set<View*> views;
     
     View(const boost::filesystem::path &file_path, Glib::RefPtr<Gsv::Language> language, bool is_generic_view=false);
-    ~View();
+    ~View() override;
     
     bool save() override;
     

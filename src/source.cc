@@ -71,8 +71,8 @@ Glib::RefPtr<Gsv::Language> Source::guess_language(const boost::filesystem::path
   return language;
 }
 
-Source::FixIt::FixIt(const std::string &source, const std::pair<Offset, Offset> &offsets) : source(source), offsets(offsets) {
-  if(source.size()==0)
+Source::FixIt::FixIt(std::string source_, std::pair<Offset, Offset> offsets_) : source(std::move(source_)), offsets(std::move(offsets_)) {
+  if(this->source.size()==0)
     type=Type::ERASE;
   else {
     if(this->offsets.first==this->offsets.second)
@@ -82,7 +82,7 @@ Source::FixIt::FixIt(const std::string &source, const std::pair<Offset, Offset> 
   }
 }
 
-std::string Source::FixIt::string(Glib::RefPtr<Gtk::TextBuffer> buffer) {
+std::string Source::FixIt::string(const Glib::RefPtr<Gtk::TextBuffer> &buffer) {
   auto iter=buffer->get_iter_at_line_index(offsets.first.line, offsets.first.index);
   unsigned first_line_offset=iter.get_line_offset()+1;
   iter=buffer->get_iter_at_line_index(offsets.second.line, offsets.second.index);
@@ -641,7 +641,7 @@ void Source::View::setup_format_style(bool is_generic_view) {
         }
       }
       else if(is_generic_view) {
-        static std::regex regex("^\\[error\\] stdin: (.*) \\(([0-9]*):([0-9]*)\\)$");
+        static std::regex regex(R"(^\[error\] stdin: (.*) \(([0-9]*):([0-9]*)\)$)");
         std::string line;
         std::getline(stderr_stream, line);
         std::smatch sm;

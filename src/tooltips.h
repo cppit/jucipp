@@ -7,8 +7,8 @@
 
 class Tooltip {
 public:
-  Tooltip(std::function<Glib::RefPtr<Gtk::TextBuffer>()> create_tooltip_buffer, Gtk::TextView *text_view, Glib::RefPtr<Gtk::TextBuffer::Mark> start_mark, Glib::RefPtr<Gtk::TextBuffer::Mark> end_mark);
-  Tooltip(std::function<Glib::RefPtr<Gtk::TextBuffer>()> create_tooltip_buffer) : Tooltip(create_tooltip_buffer, nullptr, Glib::RefPtr<Gtk::TextBuffer::Mark>(), Glib::RefPtr<Gtk::TextBuffer::Mark>()) {}
+  Tooltip(std::function<Glib::RefPtr<Gtk::TextBuffer>()> create_tooltip_buffer_, Gtk::TextView *text_view, Glib::RefPtr<Gtk::TextBuffer::Mark> start_mark_, Glib::RefPtr<Gtk::TextBuffer::Mark> end_mark_);
+  Tooltip(std::function<Glib::RefPtr<Gtk::TextBuffer>()> create_tooltip_buffer_) : Tooltip(std::move(create_tooltip_buffer_), nullptr, Glib::RefPtr<Gtk::TextBuffer::Mark>(), Glib::RefPtr<Gtk::TextBuffer::Mark>()) {}
   ~Tooltip();
   
   void update();

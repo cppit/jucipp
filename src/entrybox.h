@@ -10,24 +10,24 @@ class EntryBox : public Gtk::Box {
 public:
   class Entry : public Gtk::Entry {
   public:
-    Entry(const std::string& content="", std::function<void(const std::string& content)> on_activate=nullptr, unsigned width_chars=-1);
+    Entry(const std::string& content="", std::function<void(const std::string& content)> on_activate_=nullptr, unsigned width_chars=-1);
     std::function<void(const std::string& content)> on_activate;
   private:
     size_t selected_history;
   };
   class Button : public Gtk::Button {
   public:
-    Button(const std::string& label, std::function<void()> on_activate=nullptr);
+    Button(const std::string& label, std::function<void()> on_activate_=nullptr);
     std::function<void()> on_activate;
   };
   class ToggleButton : public Gtk::ToggleButton {
   public:
-    ToggleButton(const std::string& label, std::function<void()> on_activate=nullptr);
+    ToggleButton(const std::string& label, std::function<void()> on_activate_=nullptr);
     std::function<void()> on_activate;
   };
   class Label : public Gtk::Label {
   public:
-    Label(std::function<void(int state, const std::string& message)> update=nullptr);
+    Label(std::function<void(int state, const std::string& message)> update_=nullptr);
     std::function<void(int state, const std::string& message)> update;
   };
   

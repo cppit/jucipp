@@ -41,9 +41,9 @@ namespace Project {
   protected:
     static std::unique_ptr<DebugOptions> debug_options;
   public:
-    Base() {}
+    Base() = default;
     Base(std::unique_ptr<Build> &&build): build(std::move(build)) {}
-    virtual ~Base() {}
+    virtual ~Base() = default;
     
     std::unique_ptr<Build> build;
     
@@ -78,8 +78,7 @@ namespace Project {
   
   class LLDB : public virtual Base {
   public:
-    LLDB() {}
-    ~LLDB() { dispatcher.disconnect(); }
+    ~LLDB() override { dispatcher.disconnect(); }
     
 #ifdef JUCI_ENABLE_DEBUG
     std::pair<std::string, std::string> debug_get_run_arguments() override;
@@ -104,7 +103,6 @@ namespace Project {
   
   class LanguageProtocol : public virtual Base {
   public:
-    LanguageProtocol() {}
     virtual std::string get_language_id()=0;
     void show_symbols() override;
   };
@@ -122,7 +120,7 @@ namespace Project {
   class Markdown : public Base {
   public:
     Markdown(std::unique_ptr<Build> &&build) : Base(std::move(build)) {}
-    ~Markdown();
+    ~Markdown() override;
     
     boost::filesystem::path last_temp_path;
     void compile_and_run() override;

@@ -713,7 +713,7 @@ void Project::LanguageProtocol::show_symbols() {
     }
     std::vector<std::string> names;
     std::promise<void> result_processed;
-    client->write_request(nullptr, "workspace/symbol", "\"query\":\""+text+"\"", [&result_processed, &names, offsets, project_path](const boost::property_tree::ptree &result, bool error) {
+    client->write_request(nullptr, "workspace/symbol", R"("query":")"+text+'"', [&result_processed, &names, offsets, project_path](const boost::property_tree::ptree &result, bool error) {
       if(!error) {
         for(auto it=result.begin();it!=result.end();++it) {
           auto name=it->second.get<std::string>("name", "");

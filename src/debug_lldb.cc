@@ -1,7 +1,7 @@
 #include "debug_lldb.h"
-#include <stdio.h>
+#include <cstdio>
 #ifdef __APPLE__
-#include <stdlib.h>
+#include <cstdlib>
 #endif
 #include <boost/filesystem.hpp>
 #include <iostream>
@@ -103,8 +103,8 @@ void Debug::LLDB::start(const std::string &command, const boost::filesystem::pat
   auto &arguments=std::get<2>(parsed_run_arguments);
   
   std::vector<const char*> argv;
-  for(size_t c=0;c<arguments.size();c++)
-    argv.emplace_back(arguments[c].c_str());
+  for(auto &argument : arguments)
+    argv.emplace_back(argument.c_str());
   argv.emplace_back(nullptr);
   
   auto target=debugger->CreateTarget(executable.c_str());

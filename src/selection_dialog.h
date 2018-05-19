@@ -34,7 +34,7 @@ class SelectionDialogBase {
   };
   
 public:
-  SelectionDialogBase(Gtk::TextView *text_view, Glib::RefPtr<Gtk::TextBuffer::Mark> start_mark, bool show_search_entry, bool use_markup);
+  SelectionDialogBase(Gtk::TextView *text_view, Glib::RefPtr<Gtk::TextBuffer::Mark> start_mark_, bool show_search_entry, bool use_markup);
   virtual ~SelectionDialogBase();
   void add_row(const std::string& row);
   void erase_rows();

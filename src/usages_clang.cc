@@ -33,9 +33,9 @@ bool Usages::Clang::Cache::Cursor::operator==(const Cursor &o) {
   return false;
 }
 
-Usages::Clang::Cache::Cache(const boost::filesystem::path &project_path, const boost::filesystem::path &build_path, const boost::filesystem::path &path,
+Usages::Clang::Cache::Cache(boost::filesystem::path project_path_, boost::filesystem::path build_path_, const boost::filesystem::path &path,
                             std::time_t before_parse_time, clangmm::TranslationUnit *translation_unit, clangmm::Tokens *clang_tokens)
-    : project_path(project_path), build_path(build_path) {
+    : project_path(std::move(project_path_)), build_path(std::move(build_path_)) {
   for(auto &clang_token : *clang_tokens) {
     tokens.emplace_back(Token{clang_token.get_spelling(), clang_token.get_source_range().get_offsets(), static_cast<size_t>(-1)});
 
@@ -71,7 +71,7 @@ Usages::Clang::Cache::Cache(const boost::filesystem::path &project_path, const b
     std::time_t before_parse_time;
     std::map<boost::filesystem::path, std::time_t> &paths_and_last_write_times;
   };
-  VisitorData visitor_data{project_path, path, before_parse_time, paths_and_last_write_times};
+  VisitorData visitor_data{this->project_path, path, before_parse_time, paths_and_last_write_times};
 
   clang_getInclusions(translation_unit->cx_tu, [](CXFile included_file, CXSourceLocation *inclusion_stack, unsigned include_len, CXClientData data) {
     auto visitor_data = static_cast<VisitorData *>(data);

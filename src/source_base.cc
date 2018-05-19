@@ -1,3 +1,5 @@
+#include <utility>
+
 #include "source_base.h"
 #include "info.h"
 #include "terminal.h"
@@ -5,9 +7,9 @@
 #include "config.h"
 #include <fstream>
 
-Source::BaseView::BaseView(const boost::filesystem::path &file_path, Glib::RefPtr<Gsv::Language> language): Gsv::View(), file_path(file_path), language(language), status_diagnostics(0, 0, 0) {
+Source::BaseView::BaseView(boost::filesystem::path file_path_, Glib::RefPtr<Gsv::Language> language_): Gsv::View(), file_path(std::move(file_path_)), language(std::move(language_)), status_diagnostics(0, 0, 0) {
   load(true);
-  get_buffer()->place_cursor(get_buffer()->get_iter_at_offset(0)); 
+  get_buffer()->place_cursor(get_buffer()->get_iter_at_offset(0));
   
   signal_focus_in_event().connect([this](GdkEventFocus *event) {
     if(this->last_write_time!=static_cast<std::time_t>(-1))
@@ -119,10 +121,10 @@ void Source::BaseView::replace_text(const std::string &new_text) {
   std::vector<std::pair<const char*, const char*>> new_lines;
   
   const char* line_start=new_text.c_str();
-  for(size_t i=0;i<new_text.size();++i) {
-    if(new_text[i]=='\n') {
-      new_lines.emplace_back(line_start, &new_text[i]+1);
-      line_start = &new_text[i]+1;
+  for(const char &chr: new_text) {
+    if(chr=='\n') {
+      new_lines.emplace_back(line_start, &chr+1);
+      line_start = &chr+1;
     }
   }
   if(new_text.empty() || new_text.back()!='\n')

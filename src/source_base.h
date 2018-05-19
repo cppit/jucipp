@@ -8,8 +8,8 @@
 namespace Source {
   class BaseView : public Gsv::View {
   public:
-    BaseView(const boost::filesystem::path &file_path, Glib::RefPtr<Gsv::Language> language);
-    ~BaseView();
+    BaseView(boost::filesystem::path file_path_, Glib::RefPtr<Gsv::Language> language_);
+    ~BaseView() override;
     boost::filesystem::path file_path;
     
     Glib::RefPtr<Gsv::Language> language;

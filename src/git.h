@@ -17,7 +17,6 @@ public:
     std::string message() noexcept;
   public:
     int code=0;
-    Error() {}
     operator bool() noexcept {return code<0;}
   };
   
@@ -42,13 +41,12 @@ public:
     private:
       friend class Repository;
       Diff(const boost::filesystem::path &path, git_repository *repository);
-      git_repository *repository;
-      std::shared_ptr<git_blob> blob;
+      git_repository *repository=nullptr;
+      std::shared_ptr<git_blob> blob=nullptr;
       git_diff_options options;
       static int hunk_cb(const git_diff_delta *delta, const git_diff_hunk *hunk, void *payload) noexcept;
       static int line_cb(const git_diff_delta *delta, const git_diff_hunk *hunk, const git_diff_line *line, void *payload) noexcept;
     public:
-      Diff() : repository(nullptr), blob(nullptr) {}
       Lines get_lines(const std::string &buffer);
       static std::vector<Hunk> get_hunks(const std::string &old_buffer, const std::string &new_buffer);
       std::string get_details(const std::string &buffer, int line_nr);

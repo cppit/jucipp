@@ -30,7 +30,7 @@ namespace boost {
 namespace Usages {
   class Clang {
   public:
-    typedef std::set<boost::filesystem::path> PathSet;
+    using PathSet = std::set<boost::filesystem::path>;
 
     class Usages {
     public:
@@ -89,8 +89,8 @@ namespace Usages {
       std::vector<Cursor> cursors;
       std::map<boost::filesystem::path, std::time_t> paths_and_last_write_times;
 
-      Cache() {}
-      Cache(const boost::filesystem::path &project_path, const boost::filesystem::path &build_path, const boost::filesystem::path &path,
+      Cache() = default;
+      Cache(boost::filesystem::path project_path_, boost::filesystem::path build_path_, const boost::filesystem::path &path,
             std::time_t before_parse_time, clangmm::TranslationUnit *translation_unit, clangmm::Tokens *clang_tokens);
 
       operator bool() const { return !paths_and_last_write_times.empty(); }

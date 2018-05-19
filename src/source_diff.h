@@ -30,7 +30,7 @@ namespace Source {
     };
   public:
     DiffView(const boost::filesystem::path &file_path, Glib::RefPtr<Gsv::Language> language);
-    ~DiffView();
+    ~DiffView() override;
     
     void configure() override;
     

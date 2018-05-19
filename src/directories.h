@@ -24,7 +24,7 @@ class Directories : public Gtk::ListViewText {
   
   class TreeStore : public Gtk::TreeStore {
   protected:
-    TreeStore() {}
+    TreeStore()=default;
     
     bool row_drop_possible_vfunc(const Gtk::TreeModel::Path &path, const Gtk::SelectionData &selection_data) const override;
     bool drag_data_received_vfunc(const TreeModel::Path &path, const Gtk::SelectionData &selection_data) override;
@@ -56,7 +56,7 @@ public:
     static Directories singleton;
     return singleton;
   }
-  ~Directories();
+  ~Directories() override;
   
   void open(const boost::filesystem::path &dir_path="");
   void update();
