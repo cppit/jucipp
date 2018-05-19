@@ -154,6 +154,7 @@ void Notebook::open(const boost::filesystem::path &file_path_, size_t notebook_i
     source_views.emplace_back(new Source::GenericView(file_path, language));
   
   auto source_view=source_views.back();
+  source_view->configure();
   
   source_view->scroll_to_cursor_delayed=[this](Source::BaseView* view, bool center, bool show_tooltips) {
     while(Gtk::Main::events_pending())

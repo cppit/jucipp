@@ -26,7 +26,6 @@ Source::ClangViewParse::ClangViewParse(const boost::filesystem::path &file_path,
       get_buffer()->create_tag(item.second);
     }
   }
-  configure();
   
   if(get_buffer()->size()==0 && (language->get_id()=="chdr" || language->get_id()=="cpphdr")) {
     disable_spellcheck=true;
