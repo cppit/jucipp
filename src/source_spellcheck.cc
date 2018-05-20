@@ -66,12 +66,11 @@ Source::SpellCheckView::SpellCheckView(const boost::filesystem::path &file_path,
         if(!iter.starts_line() && !iter.ends_line() && is_word_iter(iter) &&
            previous_iter.backward_char() && !previous_iter.starts_line() && !is_word_iter(previous_iter)) {
           auto first=previous_iter;
-          auto second=iter;
           if(first.backward_char()) {
-            get_buffer()->remove_tag(spellcheck_error_tag, first, second);
+            get_buffer()->remove_tag(spellcheck_error_tag, first, iter);
             auto word=get_word(first);
             spellcheck_word(word.first, word.second);
-            word=get_word(second);
+            word=get_word(iter);
             spellcheck_word(word.first, word.second);
           }
         }

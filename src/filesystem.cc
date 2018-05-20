@@ -187,7 +187,7 @@ boost::filesystem::path filesystem::get_executable(const boost::filesystem::path
         return executable_name;
     }
     
-    auto executable_name_str = executable_name.string();
+    auto &executable_name_str = executable_name.string();
     for(auto &path: bin_paths) {
       boost::filesystem::path executable;
       for(boost::filesystem::directory_iterator it(path), end; it != end; ++it) {

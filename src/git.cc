@@ -98,8 +98,7 @@ Git::Repository::Repository(const boost::filesystem::path &path) {
   {
     Error error;
     std::lock_guard<std::mutex> lock(mutex);
-    auto path_str=path.generic_string();
-    error.code = git_repository_open_ext(&repository_ptr, path_str.c_str(), 0, nullptr);
+    error.code = git_repository_open_ext(&repository_ptr, path.generic_string().c_str(), 0, nullptr);
     if(error)
       throw std::runtime_error(error.message());
   }
@@ -229,8 +228,7 @@ boost::filesystem::path Git::Repository::get_root_path(const boost::filesystem::
   {
     Error error;
     std::lock_guard<std::mutex> lock(mutex);
-    auto path_str=path.generic_string();
-    error.code = git_repository_discover(&root, path_str.c_str(), 0, nullptr);
+    error.code = git_repository_discover(&root, path.generic_string().c_str(), 0, nullptr);
     if(error)
       throw std::runtime_error(error.message());
   }
