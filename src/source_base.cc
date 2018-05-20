@@ -5,7 +5,7 @@
 #include "config.h"
 #include <fstream>
 
-Source::BaseView::BaseView(boost::filesystem::path file_path_, Glib::RefPtr<Gsv::Language> language_): Gsv::View(), file_path(std::move(file_path_)), language(std::move(language_)), status_diagnostics(0, 0, 0) {
+Source::BaseView::BaseView(const boost::filesystem::path &file_path, const Glib::RefPtr<Gsv::Language> &language): Gsv::View(), file_path(file_path), language(language), status_diagnostics(0, 0, 0) {
   load(true);
   get_buffer()->place_cursor(get_buffer()->get_iter_at_offset(0));
   
@@ -337,7 +337,7 @@ std::string Source::BaseView::get_line(const Gtk::TextIter &iter) {
   std::string line(get_buffer()->get_text(line_start_it, line_end_it));
   return line;
 }
-std::string Source::BaseView::get_line(Glib::RefPtr<Gtk::TextBuffer::Mark> mark) {
+std::string Source::BaseView::get_line(const Glib::RefPtr<Gtk::TextBuffer::Mark> &mark) {
   return get_line(mark->get_iter());
 }
 std::string Source::BaseView::get_line(int line_nr) {
@@ -352,7 +352,7 @@ std::string Source::BaseView::get_line_before(const Gtk::TextIter &iter) {
   std::string line(get_buffer()->get_text(line_it, iter));
   return line;
 }
-std::string Source::BaseView::get_line_before(Glib::RefPtr<Gtk::TextBuffer::Mark> mark) {
+std::string Source::BaseView::get_line_before(const Glib::RefPtr<Gtk::TextBuffer::Mark> &mark) {
   return get_line_before(mark->get_iter());
 }
 std::string Source::BaseView::get_line_before() {
@@ -362,7 +362,7 @@ std::string Source::BaseView::get_line_before() {
 Gtk::TextIter Source::BaseView::get_tabs_end_iter(const Gtk::TextIter &iter) {
   return get_tabs_end_iter(iter.get_line());
 }
-Gtk::TextIter Source::BaseView::get_tabs_end_iter(Glib::RefPtr<Gtk::TextBuffer::Mark> mark) {
+Gtk::TextIter Source::BaseView::get_tabs_end_iter(const Glib::RefPtr<Gtk::TextBuffer::Mark> &mark) {
   return get_tabs_end_iter(mark->get_iter());
 }
 Gtk::TextIter Source::BaseView::get_tabs_end_iter(int line_nr) {

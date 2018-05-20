@@ -34,7 +34,7 @@ void Source::DiffView::Renderer::draw_vfunc(const Cairo::RefPtr<Cairo::Context> 
   }
 }
 
-Source::DiffView::DiffView(const boost::filesystem::path &file_path, Glib::RefPtr<Gsv::Language> language) : BaseView(file_path, language), renderer(new Renderer()) {
+Source::DiffView::DiffView(const boost::filesystem::path &file_path, const Glib::RefPtr<Gsv::Language> &language) : BaseView(file_path, language), renderer(new Renderer()) {
   boost::system::error_code ec;
   canonical_file_path=boost::filesystem::canonical(file_path, ec);
   if(ec)

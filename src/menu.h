@@ -12,7 +12,7 @@ public:
     return singleton;
   }
   
-  void add_action(const std::string &name, std::function<void()> action);
+  void add_action(const std::string &name, const std::function<void()> &action);
   std::unordered_map<std::string, Glib::RefPtr<Gio::SimpleAction> > actions;
   void set_keys();
   

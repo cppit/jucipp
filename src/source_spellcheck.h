@@ -5,7 +5,7 @@
 namespace Source {
   class SpellCheckView : virtual public Source::BaseView {
   public:
-    SpellCheckView(const boost::filesystem::path &file_path, Glib::RefPtr<Gsv::Language> language);
+    SpellCheckView(const boost::filesystem::path &file_path, const Glib::RefPtr<Gsv::Language> &language);
     ~SpellCheckView() override;
     
     void configure() override;

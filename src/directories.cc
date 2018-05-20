@@ -394,7 +394,7 @@ void Directories::update() {
     add_or_update_path(directory.first, directory.second, false);
 }
 
-void Directories::on_save_file(boost::filesystem::path file_path) {
+void Directories::on_save_file(const boost::filesystem::path &file_path) {
   auto it=directories.find(file_path.parent_path().string());
   if(it!=directories.end()) {
     if(it->second.repository)
@@ -639,8 +639,9 @@ void Directories::remove_path(const boost::filesystem::path &dir_path) {
   }
 }
 
-void Directories::colorize_path(const boost::filesystem::path &dir_path, bool include_parent_paths) {
-  auto it=directories.find(dir_path.string());
+void Directories::colorize_path(boost::filesystem::path dir_path_, bool include_parent_paths) {
+  auto dir_path=std::make_shared<boost::filesystem::path>(std::move(dir_path_));
+  auto it=directories.find(dir_path->string());
   if(it==directories.end())
     return;
   
@@ -655,8 +656,8 @@ void Directories::colorize_path(const boost::filesystem::path &dir_path, bool in
         Terminal::get().async_print(std::string("Error (git): ")+e.what()+'\n', true);
       }
       
-      dispatcher.post([this, dir_path=std::move(dir_path), include_parent_paths, status=std::move(status)] {
-        auto it=directories.find(dir_path.string());
+      dispatcher.post([this, dir_path, include_parent_paths, status=std::move(status)] {
+        auto it=directories.find(dir_path->string());
         if(it==directories.end())
           return;
         

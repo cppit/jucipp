@@ -477,7 +477,7 @@ const Glib::ustring menu_xml= R"RAW(<interface>
 </interface>
 )RAW";
 
-void Menu::add_action(const std::string &name, std::function<void()> action) {
+void Menu::add_action(const std::string &name, const std::function<void()> &action) {
   auto g_application=g_application_get_default();
   auto gio_application=Glib::wrap(g_application, true);
   auto application=Glib::RefPtr<Gtk::Application>::cast_static(gio_application);

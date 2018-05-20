@@ -272,11 +272,11 @@ void CMake::parse_variable_parameters(std::string &data) {
   
   //Remove variables we do not know:
   pos=data.find("${");
-  auto pos_end=data.find("}", pos+2);
+  auto pos_end=data.find('}', pos+2);
   while(pos!=std::string::npos && pos_end!=std::string::npos) {
     data.erase(pos, pos_end-pos+1);
     pos=data.find("${");
-    pos_end=data.find("}", pos+2);
+    pos_end=data.find('}', pos+2);
   }
 }
 

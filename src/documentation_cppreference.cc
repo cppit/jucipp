@@ -1,7 +1,7 @@
 #include "documentation_cppreference.h"
 #include <unordered_map>
 
-std::string Documentation::CppReference::get_url(const std::string symbol) noexcept {
+std::string Documentation::CppReference::get_url(const std::string &symbol) noexcept {
   // Copied from http://upload.cppreference.com/mwiki/images/d/df/html_book_20170409.zip/reference/cppreference-export-ns0,4,8,10.xml
   // Using raw string instead of map to reduce compile time
   const static std::string symbol_urls = R"(size_t	c/types/size_t

@@ -8,7 +8,7 @@
 namespace Source {
   class BaseView : public Gsv::View {
   public:
-    BaseView(boost::filesystem::path file_path_, Glib::RefPtr<Gsv::Language> language_);
+    BaseView(const boost::filesystem::path &file_path, const Glib::RefPtr<Gsv::Language> &language);
     ~BaseView() override;
     boost::filesystem::path file_path;
     
@@ -61,14 +61,14 @@ namespace Source {
     Gtk::TextIter get_smart_end_iter(const Gtk::TextIter &iter);
     
     std::string get_line(const Gtk::TextIter &iter);
-    std::string get_line(Glib::RefPtr<Gtk::TextBuffer::Mark> mark);
+    std::string get_line(const Glib::RefPtr<Gtk::TextBuffer::Mark> &mark);
     std::string get_line(int line_nr);
     std::string get_line();
     std::string get_line_before(const Gtk::TextIter &iter);
-    std::string get_line_before(Glib::RefPtr<Gtk::TextBuffer::Mark> mark);
+    std::string get_line_before(const Glib::RefPtr<Gtk::TextBuffer::Mark> &mark);
     std::string get_line_before();
     Gtk::TextIter get_tabs_end_iter(const Gtk::TextIter &iter);
-    Gtk::TextIter get_tabs_end_iter(Glib::RefPtr<Gtk::TextBuffer::Mark> mark);
+    Gtk::TextIter get_tabs_end_iter(const Glib::RefPtr<Gtk::TextBuffer::Mark> &mark);
     Gtk::TextIter get_tabs_end_iter(int line_nr);
     Gtk::TextIter get_tabs_end_iter();
     

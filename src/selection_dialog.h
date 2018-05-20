@@ -34,7 +34,7 @@ class SelectionDialogBase {
   };
   
 public:
-  SelectionDialogBase(Gtk::TextView *text_view, Glib::RefPtr<Gtk::TextBuffer::Mark> start_mark_, bool show_search_entry, bool use_markup);
+  SelectionDialogBase(Gtk::TextView *text_view, const Glib::RefPtr<Gtk::TextBuffer::Mark> &start_mark, bool show_search_entry, bool use_markup);
   virtual ~SelectionDialogBase();
   void add_row(const std::string& row);
   void erase_rows();
@@ -67,12 +67,12 @@ protected:
 };
 
 class SelectionDialog : public SelectionDialogBase {
-  SelectionDialog(Gtk::TextView *text_view, Glib::RefPtr<Gtk::TextBuffer::Mark> start_mark, bool show_search_entry, bool use_markup);
+  SelectionDialog(Gtk::TextView *text_view, const Glib::RefPtr<Gtk::TextBuffer::Mark> &start_mark, bool show_search_entry, bool use_markup);
   static std::unique_ptr<SelectionDialog> instance;
 public:
   bool on_key_press(GdkEventKey* key);
   
-  static void create(Gtk::TextView *text_view, Glib::RefPtr<Gtk::TextBuffer::Mark> start_mark, bool show_search_entry=true, bool use_markup=false) {
+  static void create(Gtk::TextView *text_view, const Glib::RefPtr<Gtk::TextBuffer::Mark> &start_mark, bool show_search_entry=true, bool use_markup=false) {
     instance=std::unique_ptr<SelectionDialog>(new SelectionDialog(text_view, start_mark, show_search_entry, use_markup));
   }
   static void create(bool show_search_entry=true, bool use_markup=false) {
@@ -82,13 +82,13 @@ public:
 };
 
 class CompletionDialog : public SelectionDialogBase {
-  CompletionDialog(Gtk::TextView *text_view, Glib::RefPtr<Gtk::TextBuffer::Mark> start_mark);
+  CompletionDialog(Gtk::TextView *text_view, const Glib::RefPtr<Gtk::TextBuffer::Mark> &start_mark);
   static std::unique_ptr<CompletionDialog> instance;
 public:
   bool on_key_release(GdkEventKey* key);
   bool on_key_press(GdkEventKey* key);
   
-  static void create(Gtk::TextView *text_view, Glib::RefPtr<Gtk::TextBuffer::Mark> start_mark) {
+  static void create(Gtk::TextView *text_view, const Glib::RefPtr<Gtk::TextBuffer::Mark> &start_mark) {
     instance=std::unique_ptr<CompletionDialog>(new CompletionDialog(text_view, start_mark));
   }
   static std::unique_ptr<CompletionDialog> &get() {return instance;}

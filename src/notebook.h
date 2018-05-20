@@ -9,7 +9,7 @@
 class Notebook : public Gtk::Paned {
   class TabLabel : public Gtk::EventBox {
   public:
-    TabLabel(std::function<void()> on_close);
+    TabLabel(const std::function<void()> &on_close);
     Gtk::Label label;
   };
   

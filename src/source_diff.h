@@ -29,7 +29,7 @@ namespace Source {
                       Gsv::GutterRendererState p6) override;
     };
   public:
-    DiffView(const boost::filesystem::path &file_path, Glib::RefPtr<Gsv::Language> language);
+    DiffView(const boost::filesystem::path &file_path, const Glib::RefPtr<Gsv::Language> &language);
     ~DiffView() override;
     
     void configure() override;

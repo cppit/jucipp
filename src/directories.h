@@ -60,7 +60,7 @@ public:
   
   void open(const boost::filesystem::path &dir_path="");
   void update();
-  void on_save_file(boost::filesystem::path file_path);
+  void on_save_file(const boost::filesystem::path &file_path);
   void select(const boost::filesystem::path &path);
   
   boost::filesystem::path path;
@@ -71,7 +71,7 @@ protected:
 private:
   void add_or_update_path(const boost::filesystem::path &dir_path, const Gtk::TreeModel::Row &row, bool include_parent_paths);
   void remove_path(const boost::filesystem::path &dir_path);
-  void colorize_path(const boost::filesystem::path &dir_path, bool include_parent_paths);
+  void colorize_path(boost::filesystem::path dir_path_, bool include_parent_paths);
   
   Glib::RefPtr<Gtk::TreeStore> tree_store;
   TreeStore::ColumnRecord column_record;

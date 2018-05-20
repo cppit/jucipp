@@ -100,7 +100,7 @@ Ctags::Location Ctags::get_location(const std::string &line, bool markup) {
 }
 
 ///Split up a type into its various significant parts
-std::vector<std::string> Ctags::get_type_parts(const std::string type) {
+std::vector<std::string> Ctags::get_type_parts(const std::string &type) {
   std::vector<std::string> parts;
   size_t text_start=-1;
   for(size_t c=0;c<type.size();++c) {

@@ -103,6 +103,7 @@ void Debug::LLDB::start(const std::string &command, const boost::filesystem::pat
   auto &arguments=std::get<2>(parsed_run_arguments);
   
   std::vector<const char*> argv;
+  argv.reserve(arguments.size());
   for(auto &argument : arguments)
     argv.emplace_back(argument.c_str());
   argv.emplace_back(nullptr);
@@ -149,6 +150,7 @@ void Debug::LLDB::start(const std::string &command, const boost::filesystem::pat
     
     // Create environment array
     std::vector<const char*> environment;
+    environment.reserve(environment_from_arguments.size());
     for(auto &e: environment_from_arguments)
       environment.emplace_back(e.c_str());
     environment.emplace_back(nullptr);
@@ -160,6 +162,7 @@ void Debug::LLDB::start(const std::string &command, const boost::filesystem::pat
   else {
     // Create environment array
     std::vector<const char*> environment;
+    environment.reserve(environment_from_arguments.size());
     for(auto &e: environment_from_arguments)
       environment.emplace_back(e.c_str());
     size_t environ_size=0;

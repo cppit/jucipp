@@ -6,7 +6,7 @@
 
 AspellConfig* Source::SpellCheckView::spellcheck_config=nullptr;
 
-Source::SpellCheckView::SpellCheckView(const boost::filesystem::path &file_path, Glib::RefPtr<Gsv::Language> language): BaseView(file_path, language) {
+Source::SpellCheckView::SpellCheckView(const boost::filesystem::path &file_path, const Glib::RefPtr<Gsv::Language> &language): BaseView(file_path, language) {
   if(spellcheck_config==nullptr)
     spellcheck_config=new_aspell_config();
   spellcheck_checker=nullptr;

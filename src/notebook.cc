@@ -10,7 +10,7 @@
 #include "source_language_protocol.h"
 #include "gtksourceview-3.0/gtksourceview/gtksourcemap.h"
 
-Notebook::TabLabel::TabLabel(std::function<void()> on_close) {
+Notebook::TabLabel::TabLabel(const std::function<void()> &on_close) {
   set_can_focus(false);
   
   auto button=Gtk::manage(new Gtk::Button());

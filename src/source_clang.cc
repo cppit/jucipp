@@ -16,7 +16,7 @@
 
 clangmm::Index Source::ClangViewParse::clang_index(0, 0);
 
-Source::ClangViewParse::ClangViewParse(const boost::filesystem::path &file_path, Glib::RefPtr<Gsv::Language> language):
+Source::ClangViewParse::ClangViewParse(const boost::filesystem::path &file_path, const Glib::RefPtr<Gsv::Language> &language):
     BaseView(file_path, language), Source::View(file_path, language) {
   Usages::Clang::erase_cache(file_path);
   
@@ -441,7 +441,7 @@ void Source::ClangViewParse::show_type_tooltips(const Gdk::Rectangle &rectangle)
 }
 
 
-Source::ClangViewAutocomplete::ClangViewAutocomplete(const boost::filesystem::path &file_path, Glib::RefPtr<Gsv::Language> language):
+Source::ClangViewAutocomplete::ClangViewAutocomplete(const boost::filesystem::path &file_path, const Glib::RefPtr<Gsv::Language> &language):
     BaseView(file_path, language), Source::ClangViewParse(file_path, language), autocomplete(this, interactive_completion, last_keyval, true) {
   non_interactive_completion=[this] {
     if(CompletionDialog::get() && CompletionDialog::get()->is_visible())
@@ -816,7 +816,7 @@ const std::unordered_map<std::string, std::string> &Source::ClangViewAutocomplet
 }
 
 
-Source::ClangViewRefactor::ClangViewRefactor(const boost::filesystem::path &file_path, Glib::RefPtr<Gsv::Language> language) :
+Source::ClangViewRefactor::ClangViewRefactor(const boost::filesystem::path &file_path, const Glib::RefPtr<Gsv::Language> &language) :
     BaseView(file_path, language), Source::ClangViewParse(file_path, language) {
   similar_identifiers_tag=get_buffer()->create_tag();
   similar_identifiers_tag->property_weight()=Pango::WEIGHT_ULTRAHEAVY;
@@ -1502,7 +1502,7 @@ Source::ClangViewRefactor::ClangViewRefactor(const boost::filesystem::path &file
           std::string method;
           if(kind!=clangmm::Cursor::Kind::Constructor && kind!=clangmm::Cursor::Kind::Destructor) {
             method+=cursor.get_type().get_result().get_spelling();
-            auto pos=method.find(" ");
+            auto pos=method.find(' ');
             if(pos!=std::string::npos)
               method.erase(pos, 1);
             method+=" ";
@@ -1744,7 +1744,7 @@ void Source::ClangViewRefactor::tag_similar_identifiers(const Identifier &identi
 }
 
 
-Source::ClangView::ClangView(const boost::filesystem::path &file_path, Glib::RefPtr<Gsv::Language> language):
+Source::ClangView::ClangView(const boost::filesystem::path &file_path, const Glib::RefPtr<Gsv::Language>& language):
     BaseView(file_path, language), ClangViewParse(file_path, language), ClangViewAutocomplete(file_path, language), ClangViewRefactor(file_path, language) {
   if(language) {
     get_source_buffer()->set_highlight_syntax(true);

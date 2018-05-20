@@ -77,7 +77,7 @@ int Terminal::process(std::istream &stdin_stream, std::ostream &stdout_stream, c
   return process.get_exit_status();
 }
 
-void Terminal::async_process(const std::string &command, const boost::filesystem::path &path, std::function<void(int exit_status)> callback, bool quiet) {
+void Terminal::async_process(const std::string &command, const boost::filesystem::path &path, const std::function<void(int exit_status)> &callback, bool quiet) {
   std::thread async_execute_thread([this, command, path, callback, quiet]() {
     std::unique_lock<std::mutex> processes_lock(processes_mutex);
     stdin_buffer.clear();
@@ -190,7 +190,7 @@ std::tuple<size_t, size_t, std::string, std::string, std::string> Terminal::find
   return std::make_tuple(start_position, end_position, path, line_number, line_offset);
 }
 
-void Terminal::apply_link_tags(Gtk::TextIter start_iter, Gtk::TextIter end_iter) {
+void Terminal::apply_link_tags(const Gtk::TextIter &start_iter, const Gtk::TextIter &end_iter) {
   auto iter=start_iter;
   Gtk::TextIter line_start;
   bool line_start_set=false;

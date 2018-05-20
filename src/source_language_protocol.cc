@@ -317,7 +317,7 @@ void LanguageProtocol::Client::handle_server_request(const std::string &method, 
   }
 }
 
-Source::LanguageProtocolView::LanguageProtocolView(const boost::filesystem::path &file_path, Glib::RefPtr<Gsv::Language> language, std::string language_id_)
+Source::LanguageProtocolView::LanguageProtocolView(const boost::filesystem::path &file_path, const Glib::RefPtr<Gsv::Language> &language, std::string language_id_)
     : Source::BaseView(file_path, language), Source::View(file_path, language), uri("file://"+file_path.string()), language_id(std::move(language_id_)), client(LanguageProtocol::Client::get(file_path, language_id)), autocomplete(this, interactive_completion, last_keyval, false) {
   configure();
   get_source_buffer()->set_language(language);
@@ -958,37 +958,37 @@ void Source::LanguageProtocolView::show_type_tooltips(const Gdk::Rectangle &rect
   client->write_request(this, "textDocument/hover", R"("textDocument": {"uri":"file://)"+file_path.string()+R"("}, "position": {"line": )"+std::to_string(iter.get_line())+", \"character\": "+std::to_string(iter.get_line_offset())+"}", [this, offset, current_request](const boost::property_tree::ptree &result, bool error) {
     if(!error) {
       // hover result structure vary significantly from the different language servers
-      std::string content;
+      auto content=std::make_shared<std::string>();
       auto contents_pt=result.get_child("contents", boost::property_tree::ptree());
       for(auto it=contents_pt.begin();it!=contents_pt.end();++it) {
         auto value=it->second.get<std::string>("value", "");
         if(!value.empty())
-          content.insert(0, value+(content.empty()?"":"\n\n"));
+          content->insert(0, value+(content->empty()?"":"\n\n"));
         else {
           value=it->second.get_value<std::string>("");
           if(!value.empty())
-            content+=(content.empty()?"":"\n\n")+value;
+            *content+=(content->empty()?"":"\n\n")+value;
         }
       }
-      if(content.empty()) {
+      if(content->empty()) {
         auto contents_it=result.find("contents");
         if(contents_it!=result.not_found()) {
-          content=contents_it->second.get<std::string>("value", "");
-          if(content.empty())
-            content=contents_it->second.get_value<std::string>("");
+          *content=contents_it->second.get<std::string>("value", "");
+          if(content->empty())
+            *content=contents_it->second.get_value<std::string>("");
         }
       }
-      if(!content.empty()) {
-        while(!content.empty() && content.back()=='\n') { content.pop_back(); } // Remove unnecessary newlines
-        dispatcher.post([this, offset, content=std::move(content), current_request] {
+      if(!content->empty()) {
+        while(!content->empty() && content->back()=='\n') { content->pop_back(); } // Remove unnecessary newlines
+        dispatcher.post([this, offset, content, current_request] {
           if(current_request!=request_count)
             return;
           if(offset>=get_buffer()->get_char_count())
             return;
           type_tooltips.clear();
-          auto create_tooltip_buffer=[this, offset, content=std::move(content)]() {
+          auto create_tooltip_buffer=[this, offset, content]() {
             auto tooltip_buffer=Gtk::TextBuffer::create(get_buffer()->get_tag_table());
-            tooltip_buffer->insert(tooltip_buffer->get_insert()->get_iter(), content);
+            tooltip_buffer->insert(tooltip_buffer->get_insert()->get_iter(), *content);
             
 #ifdef JUCI_ENABLE_DEBUG
             if(language_id=="rust" && capabilities.definition) {

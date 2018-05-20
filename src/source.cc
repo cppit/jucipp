@@ -114,7 +114,7 @@ std::string Source::FixIt::string(const Glib::RefPtr<Gtk::TextBuffer> &buffer) {
 std::unordered_set<Source::View*> Source::View::non_deleted_views;
 std::unordered_set<Source::View*> Source::View::views;
 
-Source::View::View(const boost::filesystem::path &file_path, Glib::RefPtr<Gsv::Language> language, bool is_generic_view): BaseView(file_path, language), SpellCheckView(file_path, language), DiffView(file_path, language) {
+Source::View::View(const boost::filesystem::path &file_path, const Glib::RefPtr<Gsv::Language> &language, bool is_generic_view): BaseView(file_path, language), SpellCheckView(file_path, language), DiffView(file_path, language) {
   non_deleted_views.emplace(this);
   views.emplace(this);
   
@@ -2893,7 +2893,7 @@ std::pair<char, unsigned> Source::View::find_tab_char_and_size() {
 /////////////////////
 //// GenericView ////
 /////////////////////
-Source::GenericView::GenericView(const boost::filesystem::path &file_path, Glib::RefPtr<Gsv::Language> language) : BaseView(file_path, language), View(file_path, language, true) {
+Source::GenericView::GenericView(const boost::filesystem::path &file_path, const Glib::RefPtr<Gsv::Language> &language) : BaseView(file_path, language), View(file_path, language, true) {
   configure();
   spellcheck_all=true;
   

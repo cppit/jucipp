@@ -16,7 +16,7 @@ namespace Source {
     enum class ParseProcessState {IDLE, STARTING, PREPROCESSING, PROCESSING, POSTPROCESSING};
     
   public:
-    ClangViewParse(const boost::filesystem::path &file_path, Glib::RefPtr<Gsv::Language> language);
+    ClangViewParse(const boost::filesystem::path &file_path, const Glib::RefPtr<Gsv::Language> &language);
     
     bool save() override;
     void configure() override;
@@ -55,7 +55,7 @@ namespace Source {
     
   class ClangViewAutocomplete : public virtual ClangViewParse {
   public:
-    ClangViewAutocomplete(const boost::filesystem::path &file_path, Glib::RefPtr<Gsv::Language> language);
+    ClangViewAutocomplete(const boost::filesystem::path &file_path, const Glib::RefPtr<Gsv::Language> &language);
   protected:
     Autocomplete autocomplete;
     std::unique_ptr<clangmm::CodeCompleteResults> code_complete_results;
@@ -84,7 +84,7 @@ namespace Source {
       clangmm::Cursor cursor;
     };
   public:
-    ClangViewRefactor(const boost::filesystem::path &file_path, Glib::RefPtr<Gsv::Language> language);
+    ClangViewRefactor(const boost::filesystem::path &file_path, const Glib::RefPtr<Gsv::Language> &language);
   private:
     Identifier get_identifier();
     void wait_parsing();
@@ -97,7 +97,7 @@ namespace Source {
   
   class ClangView : public ClangViewAutocomplete, public ClangViewRefactor {
   public:
-    ClangView(const boost::filesystem::path &file_path, Glib::RefPtr<Gsv::Language> language);
+    ClangView(const boost::filesystem::path &file_path, const Glib::RefPtr<Gsv::Language> &language);
     
     void full_reparse() override;
     void async_delete();

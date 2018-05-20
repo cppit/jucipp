@@ -53,7 +53,7 @@ namespace Source {
     static std::unordered_set<View*> non_deleted_views;
     static std::unordered_set<View*> views;
     
-    View(const boost::filesystem::path &file_path, Glib::RefPtr<Gsv::Language> language, bool is_generic_view=false);
+    View(const boost::filesystem::path &file_path, const Glib::RefPtr<Gsv::Language> &language, bool is_generic_view=false);
     ~View() override;
     
     bool save() override;
@@ -169,7 +169,7 @@ namespace Source {
       static Glib::RefPtr<CompletionBuffer> create() {return Glib::RefPtr<CompletionBuffer>(new CompletionBuffer());}
     };
   public:
-    GenericView(const boost::filesystem::path &file_path, Glib::RefPtr<Gsv::Language> language);
+    GenericView(const boost::filesystem::path &file_path, const Glib::RefPtr<Gsv::Language> &language);
     
     void parse_language_file(Glib::RefPtr<CompletionBuffer> &completion_buffer, bool &has_context_class, const boost::property_tree::ptree &pt);
   };
