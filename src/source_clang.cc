@@ -1438,7 +1438,11 @@ Source::ClangViewRefactor::ClangViewRefactor(const boost::filesystem::path &file
                     result+=' ';
                   
                   if(clang_CXXMethod_isConst(cursor.cx_cursor))
-                    specifier=" const";
+                    specifier+=" const";
+                  
+                  auto exception_specification_kind=static_cast<CXCursor_ExceptionSpecificationKind>(clang_getCursorExceptionSpecificationType(cursor.cx_cursor));
+                  if(exception_specification_kind==CXCursor_ExceptionSpecificationKind_BasicNoexcept)
+                    specifier+=" noexcept";
                 }
                 
                 auto name=cursor.get_spelling();
