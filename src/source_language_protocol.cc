@@ -1229,8 +1229,12 @@ void Source::LanguageProtocolView::setup_autocomplete() {
               // In case ( is missing in insert but is present in label
               if(label.size()>insert.size() && label.back()==')' && insert.find('(')==std::string::npos) {
                 auto pos=label.find('(');
-                if(pos!=std::string::npos && pos==insert.size() && pos+1<label.size())
-                  insert+="(${1:"+label.substr(pos+1, label.size()-1-(pos+1))+"})";
+                if(pos!=std::string::npos && pos==insert.size() && pos+1<label.size()) {
+                  if(pos+2==label.size()) // If no parameters
+                    insert+="()";
+                  else
+                    insert+="(${1:"+label.substr(pos+1, label.size()-1-(pos+1))+"})";
+                }
               }
             }
             else {

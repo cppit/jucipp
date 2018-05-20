@@ -1630,13 +1630,18 @@ bool Source::View::on_key_press_event_basic(GdkEventKey* key) {
     iter=get_buffer()->get_insert()->get_iter();
     auto tabs=get_line_before(get_tabs_end_iter(iter));
     
-    int line_nr=iter.get_line();
-    if(iter.ends_line() && (line_nr+1)<get_buffer()->get_line_count()) {
-      auto next_line_tabs=get_line_before(get_tabs_end_iter(line_nr+1));
-      if(next_line_tabs.size()>tabs.size()) {
-        get_buffer()->insert_at_cursor("\n"+next_line_tabs);
-        scroll_to(get_buffer()->get_insert());
-        return true;
+    auto previous_iter=iter;
+    if(previous_iter.backward_char() && *previous_iter==':' && language && language->get_id()=="python") // Python indenting after :
+      tabs+=tab;
+    else {
+      int line_nr=iter.get_line();
+      if(iter.ends_line() && (line_nr+1)<get_buffer()->get_line_count()) {
+        auto next_line_tabs=get_line_before(get_tabs_end_iter(line_nr+1));
+        if(next_line_tabs.size()>tabs.size()) {
+          get_buffer()->insert_at_cursor("\n"+next_line_tabs);
+          scroll_to(get_buffer()->get_insert());
+          return true;
+        }
       }
     }
     get_buffer()->insert_at_cursor("\n"+tabs);
