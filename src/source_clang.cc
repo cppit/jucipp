@@ -1439,10 +1439,12 @@ Source::ClangViewRefactor::ClangViewRefactor(const boost::filesystem::path &file
                   
                   if(clang_CXXMethod_isConst(cursor.cx_cursor))
                     specifier+=" const";
-                  
+
+#if CINDEX_VERSION_MAJOR>0 || (CINDEX_VERSION_MAJOR==0 && CINDEX_VERSION_MINOR>=43)
                   auto exception_specification_kind=static_cast<CXCursor_ExceptionSpecificationKind>(clang_getCursorExceptionSpecificationType(cursor.cx_cursor));
                   if(exception_specification_kind==CXCursor_ExceptionSpecificationKind_BasicNoexcept)
                     specifier+=" noexcept";
+#endif
                 }
                 
                 auto name=cursor.get_spelling();
