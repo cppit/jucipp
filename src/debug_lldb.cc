@@ -24,8 +24,13 @@ Debug::LLDB::LLDB(): state(lldb::StateType::eStateInvalid), buffer_size(131072) 
       setenv("LLDB_DEBUGSERVER_PATH", debug_server_path.c_str(), 0);
 #else
     auto debug_server_path = filesystem::get_executable("lldb-server").string();
-    if(debug_server_path != "lldb-server")
+    if(debug_server_path != "lldb-server") {
+#ifdef _WIN32
+      Glib::setenv("LLDB_DEBUGSERVER_PATH", debug_server_path.c_str(), 0);
+#else
       setenv("LLDB_DEBUGSERVER_PATH", debug_server_path.c_str(), 0);
+#endif
+    }
 #endif
   }
 }
@@ -59,13 +64,8 @@ std::tuple<std::vector<std::string>, std::string, std::vector<std::string> > Deb
               break;
           }
           
-          if(!env_arg) {
+          if(!env_arg)
             executable=filesystem::unescape_argument(argument);
-#ifdef _WIN32
-            if(remote_host.empty())
-              executable+=".exe";
-#endif
-          }
         }
         else
           arguments.emplace_back(filesystem::unescape_argument(argument));
@@ -100,6 +100,10 @@ void Debug::LLDB::start(const std::string &command, const boost::filesystem::pat
   auto parsed_run_arguments=parse_run_arguments(command);
   auto &environment_from_arguments=std::get<0>(parsed_run_arguments);
   auto &executable=std::get<1>(parsed_run_arguments);
+#ifdef _WIN32
+  if(remote_host.empty())
+      executable+=".exe";
+#endif
   auto &arguments=std::get<2>(parsed_run_arguments);
   
   std::vector<const char*> argv;
