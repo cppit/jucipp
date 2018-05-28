@@ -99,7 +99,7 @@ namespace Source {
     virtual void soft_reparse(bool delayed=false) {soft_reparse_needed=false;}
     virtual void full_reparse() {full_reparse_needed=false;}
   protected:
-    bool parsed=true;
+    std::atomic<bool> parsed;
     Tooltips diagnostic_tooltips;
     Tooltips type_tooltips;
     sigc::connection delayed_tooltips_connection;

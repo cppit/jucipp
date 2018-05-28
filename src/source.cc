@@ -114,7 +114,7 @@ std::string Source::FixIt::string(const Glib::RefPtr<Gtk::TextBuffer> &buffer) {
 std::unordered_set<Source::View*> Source::View::non_deleted_views;
 std::unordered_set<Source::View*> Source::View::views;
 
-Source::View::View(const boost::filesystem::path &file_path, const Glib::RefPtr<Gsv::Language> &language, bool is_generic_view): BaseView(file_path, language), SpellCheckView(file_path, language), DiffView(file_path, language) {
+Source::View::View(const boost::filesystem::path &file_path, const Glib::RefPtr<Gsv::Language> &language, bool is_generic_view): BaseView(file_path, language), SpellCheckView(file_path, language), DiffView(file_path, language), parsed(true) {
   non_deleted_views.emplace(this);
   views.emplace(this);
   
