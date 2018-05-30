@@ -89,9 +89,7 @@ namespace Source {
     Identifier get_identifier();
     void wait_parsing();
     
-    std::list<std::pair<Glib::RefPtr<Gtk::TextMark>, Glib::RefPtr<Gtk::TextMark> > > similar_identifiers_marks;
     void tag_similar_identifiers(const Identifier &identifier);
-    Glib::RefPtr<Gtk::TextTag> similar_identifiers_tag;
     Identifier last_tagged_identifier;
   };
   

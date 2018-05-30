@@ -323,9 +323,6 @@ Source::LanguageProtocolView::LanguageProtocolView(const boost::filesystem::path
   get_source_buffer()->set_language(language);
   get_source_buffer()->set_highlight_syntax(true);
   
-  similar_symbol_tag=get_buffer()->create_tag();
-  similar_symbol_tag->property_weight()=Pango::WEIGHT_ULTRAHEAVY;
-  
   status_state="initializing...";
   if(update_status_state)
     update_status_state(this);

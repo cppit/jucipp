@@ -113,7 +113,6 @@ namespace Source {
     void escape_text(std::string &text);
     void unescape_text(std::string &text);
     
-    Glib::RefPtr<Gtk::TextTag> similar_symbol_tag;
     void tag_similar_symbols();
     
     Offset get_declaration(const Gtk::TextIter &iter);

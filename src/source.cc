@@ -132,6 +132,9 @@ Source::View::View(const boost::filesystem::path &file_path, const Glib::RefPtr<
   //TODO: (gtkmm's Gtk::Object has connect_property_changed, so subclassing this might be an idea)
   g_signal_connect(search_context, "notify::occurrences-count", G_CALLBACK(search_occurrences_updated), this);
   
+  similar_symbol_tag=get_buffer()->create_tag();
+  similar_symbol_tag->property_weight()=Pango::WEIGHT_ULTRAHEAVY;
+  
   get_buffer()->create_tag("def:warning");
   get_buffer()->create_tag("def:warning_underline");
   get_buffer()->create_tag("def:error");
@@ -537,6 +540,7 @@ void Source::View::setup_tooltip_and_dialog_events() {
     
     if(mark->get_name()=="insert") {
       hide_tooltips();
+      delayed_tooltips_connection.disconnect();
       delayed_tooltips_connection=Glib::signal_timeout().connect([this]() {
         Tooltips::init();
         Gdk::Rectangle rectangle;
@@ -1157,7 +1161,6 @@ void Source::View::paste() {
 
 void Source::View::hide_tooltips() {
   delayed_tooltips_connection.disconnect();
-  delayed_tag_similar_symbols_connection.disconnect();
   type_tooltips.hide();
   diagnostic_tooltips.hide();
 }

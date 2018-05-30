@@ -818,17 +818,9 @@ const std::unordered_map<std::string, std::string> &Source::ClangViewAutocomplet
 
 Source::ClangViewRefactor::ClangViewRefactor(const boost::filesystem::path &file_path, const Glib::RefPtr<Gsv::Language> &language) :
     BaseView(file_path, language), Source::ClangViewParse(file_path, language) {
-  similar_identifiers_tag=get_buffer()->create_tag();
-  similar_identifiers_tag->property_weight()=Pango::WEIGHT_ULTRAHEAVY;
-  
   get_buffer()->signal_changed().connect([this]() {
     if(last_tagged_identifier) {
-      for(auto &mark: similar_identifiers_marks) {
-        get_buffer()->remove_tag(similar_identifiers_tag, mark.first->get_iter(), mark.second->get_iter());
-        get_buffer()->delete_mark(mark.first);
-        get_buffer()->delete_mark(mark.second);
-      }
-      similar_identifiers_marks.clear();
+      get_buffer()->remove_tag(similar_symbol_tag, get_buffer()->begin(), get_buffer()->end());
       last_tagged_identifier=Identifier();
     }
   });
@@ -1722,29 +1714,18 @@ void Source::ClangViewRefactor::wait_parsing() {
 void Source::ClangViewRefactor::tag_similar_identifiers(const Identifier &identifier) {
   if(parsed) {
     if(identifier && last_tagged_identifier!=identifier) {
-      for(auto &mark: similar_identifiers_marks) {
-        get_buffer()->remove_tag(similar_identifiers_tag, mark.first->get_iter(), mark.second->get_iter());
-        get_buffer()->delete_mark(mark.first);
-        get_buffer()->delete_mark(mark.second);
-      }
-      similar_identifiers_marks.clear();
+      get_buffer()->remove_tag(similar_symbol_tag, get_buffer()->begin(), get_buffer()->end());
       auto offsets=clang_tokens->get_similar_token_offsets(identifier.kind, identifier.spelling, identifier.cursor.get_all_usr_extended());
       for(auto &offset: offsets) {
         auto start_iter=get_buffer()->get_iter_at_line_index(offset.first.line-1, offset.first.index-1);
         auto end_iter=get_buffer()->get_iter_at_line_index(offset.second.line-1, offset.second.index-1);
-        get_buffer()->apply_tag(similar_identifiers_tag, start_iter, end_iter);
-        similar_identifiers_marks.emplace_back(get_buffer()->create_mark(start_iter), get_buffer()->create_mark(end_iter)); 
+        get_buffer()->apply_tag(similar_symbol_tag, start_iter, end_iter);
       }
       last_tagged_identifier=identifier;
     }
   }
   if(!identifier && last_tagged_identifier) {
-    for(auto &mark: similar_identifiers_marks) {
-      get_buffer()->remove_tag(similar_identifiers_tag, mark.first->get_iter(), mark.second->get_iter());
-      get_buffer()->delete_mark(mark.first);
-      get_buffer()->delete_mark(mark.second);
-    }
-    similar_identifiers_marks.clear();
+    get_buffer()->remove_tag(similar_symbol_tag, get_buffer()->begin(), get_buffer()->end());
     last_tagged_identifier=Identifier();
   }
 }
