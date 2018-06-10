@@ -293,12 +293,19 @@ Directories::Directories() : Gtk::ListViewText(1) {
       
       EntryBox::get().hide();
     });
+    
     auto entry_it=EntryBox::get().entries.begin();
     entry_it->set_placeholder_text("Filename");
+    
     EntryBox::get().buttons.emplace_back("Rename file", [entry_it](){
       entry_it->activate();
     });
+    
     EntryBox::get().show();
+    
+    auto end_pos=Glib::ustring(menu_popup_row_path.filename().string()).rfind('.');
+    if(end_pos!=Glib::ustring::npos)
+      entry_it->select_region(0, end_pos);
   });
   menu.append(menu_item_rename);
   
