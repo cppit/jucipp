@@ -69,7 +69,7 @@ See [enhancements](https://github.com/cppit/jucipp/labels/enhancement) for plann
 * lldb
 * libgit2
 * [libclangmm](http://github.com/cppit/libclangmm/) (downloaded directly with git --recursive, no need to install)
-* [tiny-process-library](http://github.com/eidheim/tiny-process-library/) (downloaded directly with git --recursive, no need to install)
+* [tiny-process-library](http://gitlab.com/eidheim/tiny-process-library/) (downloaded directly with git --recursive, no need to install)
 
 ## Installation
 See [installation guide](docs/install.md).
