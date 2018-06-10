@@ -378,7 +378,7 @@ bool Source::View::save() {
   if(Config::get().source.cleanup_whitespace_characters)
     cleanup_whitespace_characters();
   
-  if(format_style) {
+  if(format_style && file_path.filename()!="package.json") {
     if(Config::get().source.format_style_on_save)
       format_style(true);
     else if(Config::get().source.format_style_on_save_if_style_file_found)
