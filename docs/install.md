@@ -23,7 +23,7 @@ sudo apt-get install git cmake make g++ clang-format pkg-config libboost-filesys
 
 Get juCi++ source, compile and install:
 ```sh
-git clone --recursive https://github.com/cppit/jucipp
+git clone --recursive https://gitlab.com/cppit/jucipp
 mkdir jucipp/build
 cd jucipp/build
 cmake -DCMAKE_CXX_COMPILER=g++ ..
@@ -49,7 +49,7 @@ sudo pacman -S git cmake pkg-config make clang lldb gtksourceviewmm boost aspell
 
 Get juCi++ source, compile and install:
 ```sh
-git clone --recursive https://github.com/cppit/jucipp
+git clone --recursive https://gitlab.com/cppit/jucipp
 mkdir jucipp/build
 cd jucipp/build
 cmake ..
@@ -65,7 +65,7 @@ sudo dnf install git cmake make gcc-c++ clang-devel clang lldb-devel boost-devel
 
 Get juCi++ source, compile and install:
 ```sh
-git clone --recursive https://github.com/cppit/jucipp
+git clone --recursive https://gitlab.com/cppit/jucipp
 mkdir jucipp/build
 cd jucipp/build
 cmake -DCMAKE_CXX_COMPILER=g++ ..
@@ -91,7 +91,7 @@ sudo urpmi git cmake make gcc-c++ clang lib64clang-devel lib64boost-devel lib64g
 
 Get juCi++ source, compile and install:
 ```sh
-git clone --recursive https://github.com/cppit/jucipp
+git clone --recursive https://gitlab.com/cppit/jucipp
 mkdir jucipp/build
 cd jucipp/build
 cmake -DCMAKE_CXX_COMPILER=g++ ..
@@ -107,7 +107,7 @@ sudo zypper install git-core cmake gcc-c++ boost-devel clang-devel lldb-devel ll
 
 Get juCi++ source, compile and install:
 ```sh
-git clone --recursive https://github.com/cppit/jucipp
+git clone --recursive https://gitlab.com/cppit/jucipp
 mkdir jucipp/build
 cd jucipp/build
 cmake -DCMAKE_CXX_COMPILER=g++ ..
@@ -129,7 +129,7 @@ brew install cmake pkg-config boost gtksourceviewmm3 gnome-icon-theme aspell cla
 
 Get juCi++ source, compile and install:
 ```sh
-git clone --recursive https://github.com/cppit/jucipp
+git clone --recursive https://gitlab.com/cppit/jucipp
 mkdir jucipp/build
 cd jucipp/build
 cmake ..
@@ -138,7 +138,7 @@ make install
 ```
 
 ## Windows with MSYS2 (https://msys2.github.io/)
-**See https://github.com/cppit/jucipp/issues/190 for details on adding debug support in MSYS2**
+**See https://gitlab.com/cppit/jucipp/issues/190 for details on adding debug support in MSYS2**
 
 Install dependencies (replace `x86_64` with `i686` for 32-bit MSYS2 installs):
 ```sh
@@ -149,7 +149,7 @@ Note that juCi++ must be built and run in a MinGW Shell (for instance MinGW-w64 
 
 Get juCi++ source, compile and install (replace `mingw64` with `mingw32` for 32-bit MSYS2 installs):
 ```sh
-git clone --recursive https://github.com/cppit/jucipp
+git clone --recursive https://gitlab.com/cppit/jucipp
 mkdir jucipp/build
 cd jucipp/build
 cmake -G"MSYS Makefiles" -DCMAKE_INSTALL_PREFIX=/mingw64 ..

@@ -1,7 +1,9 @@
-# juCi++ [![Build Status](https://travis-ci.org/cppit/jucipp.svg?branch=master)](https://travis-ci.org/cppit/jucipp) [![Build status](https://ci.appveyor.com/api/projects/status/tj8ants9q8ouuoob/branch/master?svg=true)](https://ci.appveyor.com/project/zalox/jucipp-6hwdu/branch/master)
+**_This project has moved to https://gitlab.com/cppit/jucipp._**
+
+# juCi++
 
 ###### a lightweight, platform independent C++-IDE with support for C++11, C++14 and C++17 features depending on libclang version.
-<!--<img src="https://github.com/cppit/jucipp/blob/master/docs/images/screenshot3.png"/>-->
+<!--<img src="https://gitlab.com/cppit/jucipp/blob/master/docs/images/screenshot3.png"/>-->
 ## About
 Current IDEs struggle with C++ support due to the complexity of
 the programming language. juCI++, however, is designed especially 
@@ -46,7 +48,7 @@ See [language-server-protocol/specification.md](https://github.com/Microsoft/lan
 * Full UTF-8 support
 * Wayland supported with GTK+ 3.20 or newer
 
-See [enhancements](https://github.com/cppit/jucipp/labels/enhancement) for planned features.
+See [enhancements](https://gitlab.com/cppit/jucipp/labels/enhancement) for planned features.
 
 ## Screenshots
 <table border="0">
@@ -68,7 +70,7 @@ See [enhancements](https://github.com/cppit/jucipp/labels/enhancement) for plann
 * libclang
 * lldb
 * libgit2
-* [libclangmm](http://github.com/cppit/libclangmm/) (downloaded directly with git --recursive, no need to install)
+* [libclangmm](http://gitlab.com/cppit/libclangmm/) (downloaded directly with git --recursive, no need to install)
 * [tiny-process-library](http://gitlab.com/eidheim/tiny-process-library/) (downloaded directly with git --recursive, no need to install)
 
 ## Installation
